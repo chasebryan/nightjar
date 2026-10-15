@@ -64,6 +64,20 @@ struct Classification {
                                   trackerShaped: false, rotatingPhone: false)
         }
 
+        // Round 2's recognition floor lives behind its own hook on
+        // purpose: inside the early MoreDecoders step it would answer
+        // at family rank before Services' decoders and Vendors ever
+        // ran (a DJI drone would lose its Remote ID label to "DJI
+        // device"). Here, after every real decoder has passed, it can
+        // only ever beat "unknown".
+        if let late = MoreDecoders.lateIdentify(sighting) {
+            return Classification(kind: late.kind, details: late.details,
+                                  rank: rankFor(specificity: late.specificity),
+                                  trackerShaped: late.trackerShaped,
+                                  rotatingPhone: late.rotatingPhone,
+                                  preferredLabel: late.preferredLabel)
+        }
+
         if let service = service {
             return Classification(kind: service.kind, details: service.details,
                                   rank: rankFamily, trackerShaped: false, rotatingPhone: false,
