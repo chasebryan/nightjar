@@ -50,6 +50,8 @@ final class ListeningPost: NSObject, ObservableObject {
 
     private var central: CBCentralManager!
     private var devices: [String: DeviceRow] = [:]
+    private var rankOrder: [String] = []
+    private var lastRankAt: TimeInterval = 0
     private var writer: JSONLWriter?
     private var ticker: Timer?
     private var dirty = false
@@ -193,15 +195,70 @@ final class ListeningPost: NSObject, ObservableObject {
 
     private func publishRows() {
         let now = Date().timeIntervalSince1970
-        rows = devices.values.sorted { lhs, rhs in
-            let lhsQuiet = lhs.age(now: now) > 20
-            let rhsQuiet = rhs.age(now: now) > 20
-            if lhsQuiet != rhsQuiet { return !lhsQuiet }
-            return (lhs.rssiLast ?? -200) > (rhs.rssiLast ?? -200)
+        // Contents (ages, signal, counts) refresh every tick,
+        // but the ORDER is re-ranked on a slow cadence, and
+        // even then a device climbs only by clearing the one
+        // above it by a margin (see ranked()). RSSI jitters by
+        // several dB between advertisements; sorting on the
+        // raw value every second made the list dance faster
+        // than anyone could read or tap it. Positions now
+        // settle and drift — the perimeter, not the noise.
+        if now - lastRankAt >= 5 || rankOrder.isEmpty {
+            lastRankAt = now
+            rankOrder = Self.ranked(devices: devices,
+                                    previous: rankOrder, now: now)
         }
+        var ordered = rankOrder.compactMap { devices[$0] }
+        let rankedIDs = Set(rankOrder)
+        ordered += devices.values
+            .filter { !rankedIDs.contains($0.id) }
+            .sorted { ($0.rssiSmooth ?? -200)
+                > ($1.rssiSmooth ?? -200) }
+        rows = ordered
         deviceCount = devices.count
         sightingCount = sightingsSeen
         dirty = false
+    }
+
+    /// The settled order: keep the previous one, let
+    /// newcomers join by smoothed RSSI, sink quiet devices
+    /// (> 20 s silent) below active ones, then run a few
+    /// hysteresis passes — a device overtakes only when its
+    /// smoothed RSSI beats the device above by the margin.
+    private static func ranked(devices: [String: DeviceRow],
+                               previous: [String],
+                               now: TimeInterval) -> [String] {
+        var order = previous.filter { devices[$0] != nil }
+        let known = Set(order)
+        let newcomers = devices.values
+            .filter { !known.contains($0.id) }
+            .sorted { ($0.rssiSmooth ?? -200)
+                > ($1.rssiSmooth ?? -200) }
+        order += newcomers.map { $0.id }
+        func isQuiet(_ id: String) -> Bool {
+            (devices[id]?.age(now: now) ?? 0) > 20
+        }
+        func smooth(_ id: String) -> Double {
+            devices[id]?.rssiSmooth ?? -200
+        }
+        order = order.filter { !isQuiet($0) }
+            + order.filter { isQuiet($0) }
+        let margin = 3.0
+        if order.count > 1 {
+            for _ in 0..<3 {
+                var swapped = false
+                for i in 0..<(order.count - 1) {
+                    let a = order[i], b = order[i + 1]
+                    if isQuiet(a) == isQuiet(b),
+                       smooth(b) > smooth(a) + margin {
+                        order.swapAt(i, i + 1)
+                        swapped = true
+                    }
+                }
+                if !swapped { break }
+            }
+        }
+        return order
     }
 
     private func applyIdleTimer() {
