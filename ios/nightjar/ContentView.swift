@@ -359,6 +359,22 @@ struct AboutView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section(header: Text("Backdrop")) {
+                    if let flag = UIImage(named: "AppBackground") {
+                        Text("Jolly Roger: loaded "
+                             + "(\(Int(flag.size.width))×"
+                             + "\(Int(flag.size.height)) pt) — it flies "
+                             + "behind every tab.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("Jolly Roger: NOT FOUND in this build. The "
+                             + "app looks for an image set named exactly "
+                             + "AppBackground in this project's "
+                             + "Assets.xcassets, with the picture in "
+                             + "its 1x slot.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
                 Section(header: Text("This post"),
                         footer: Text("The name of this ear, written into every session. "
                                      + "The Mac's fusion uses it to tell your phone apart "
