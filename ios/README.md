@@ -50,14 +50,28 @@ hex. Send-side settings persist like Serve's do.
 
 ## Also in the app
 
+- **The Scan tab.** A pentester's pocket recon, for your own gear
+  and engagements: a TCP connect scanner over the usual 28 ports
+  (or your own list) with banner grabbing; a TLS certificate
+  inspector that reads the chain out of a real handshake (system
+  trust verdict, subjects, validity windows); and a Bonjour sweep
+  listing what the Wi-Fi announces — SSH, printers, AirPlay, MQTT,
+  other nightjar phones. Connect scans only: iOS gives apps no
+  raw sockets, so no SYN or UDP scans and no monitor mode — the
+  Send tab remains the UDP tool. Every send and reply is also
+  written to a persistent exchange history (`exchanges.jsonl`),
+  exportable from the mouth log sheet: what was probed, when, and
+  what answered.
 - **Payload library.** The Send tab saves named payloads (source,
   transforms, framing included) and loads them back in one tap. It
   ships preloaded with built-ins: the basics (hello, ping, a JSON
   hello, a Wake-on-LAN template, a raw HTTP GET, a 32-byte length
   test) plus real protocol first words — a DNS query, an NTP time
   request, Redis PING, memcached stats, SMTP EHLO, an MQTT CONNECT,
-  a Modbus read, a CoAP GET, and a raw printer test page. Deletable,
-  restorable, and side by side with your own customs.
+  a Modbus read, a CoAP GET, a raw printer test page, an SNMP
+  sysDescr get, a SIP OPTIONS, a Postgres SSLRequest, and an HTTP
+  OPTIONS. Deletable, restorable, and side by side with your own
+  customs.
 - **Listen → Send.** Long-press a device in the Listen tab and choose
   "Write a payload…" — the Send tab opens with that device as the
   write target. The halves share the CoreBluetooth identifier only;
