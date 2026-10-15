@@ -93,10 +93,20 @@ Below the steps, the Send tab keeps working:
   many, Timed delivery, Centipede, SnatchSteal, PayPlant —
   fold open and shut from their headers, and the tab remembers
   which ones you left open. Releasing the centipede plays a
-  three-second full-screen flourish — a glitching, laughing
-  skull (the `centipede.gif` in this repo, animated from the
-  artwork; tap to skip) — while the walk's first hops run
-  underneath.
+  full-screen flourish for the GIF's own length — a glitching,
+  laughing skull (Chase's own `centipede.gif`, kept in the
+  app folder; tap to skip) — while the walk's first hops run
+  underneath. **Crosstalk** patches two doors together and
+  lets them talk: door A is knocked (its port's probe under
+  smart seed), its reply is carried verbatim to B, B's reply
+  back to A — alternating until silence, an echo, a repeat,
+  or the chosen rounds (1–12) run out. Any route-parser
+  target can be a door — TCP, UDP, TLS, HTTP(S), other
+  phones — and a train or range speaks through its first
+  door; one-tap buttons seat this phone's own Serve at
+  either end. The transcript, with timings and reply
+  summaries, stays on screen and in the history, and the
+  conversation's last word gets its own card.
   A *this phone* button adds the phone's own Serve endpoint
   as a guaranteed-live first target. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
