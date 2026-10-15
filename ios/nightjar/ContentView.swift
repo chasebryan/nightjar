@@ -304,13 +304,7 @@ struct SessionsView: View {
                     SessionRowView(
                         session: session,
                         isLive: post.session?.id == session.id,
-                        onDelete: post.session?.id == session.id ? nil : {
-                            SessionStore.delete(session)
-                            selection.remove(session.id)
-                            reload()
-                            toasts.show("Session deleted",
-                                        symbol: "trash")
-                        })
+                        onDelete: deleteAction(for: session))
                     .tag(session.id)
                 }
                 .onDelete { offsets in
@@ -353,17 +347,7 @@ struct SessionsView: View {
                     ToolbarItem(placement: .bottomBar) {
                         Button("Delete selected (\(selectedDeletableCount))",
                                role: .destructive) {
-                            var gone = 0
-                            for session in deletable
-                            where selection.contains(session.id) {
-                                SessionStore.delete(session)
-                                gone += 1
-                            }
-                            selection = []
-                            reload()
-                            toasts.show("Deleted \(gone) session"
-                                        + "\(gone == 1 ? "" : "s")",
-                                        symbol: "trash")
+                            deleteSelected()
                         }
                     }
                 }
@@ -375,13 +359,7 @@ struct SessionsView: View {
                 Button("Delete \(deletable.count) sessions "
                        + "(\(totalSizeText))",
                        role: .destructive) {
-                    let gone = SessionStore.deleteAll(
-                        exceptLiveID: post.session?.id)
-                    selection = []
-                    reload()
-                    toasts.show("Deleted \(gone) session"
-                                + "\(gone == 1 ? "" : "s")",
-                                symbol: "trash")
+                    deleteAll()
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
@@ -398,6 +376,44 @@ struct SessionsView: View {
 
     private func reload() {
         sessions = SessionStore.list()
+    }
+
+    /// The row's long-press delete: nothing for the session
+    /// still recording, a real closure for everything else.
+    /// (A named method, not an inline ternary in the body —
+    /// the type checker timed out on that expression.)
+    private func deleteAction(for session: SessionSummary)
+        -> (() -> Void)?
+    {
+        if post.session?.id == session.id { return nil }
+        return { deleteOne(session) }
+    }
+
+    private func deleteOne(_ session: SessionSummary) {
+        SessionStore.delete(session)
+        selection.remove(session.id)
+        reload()
+        toasts.show("Session deleted", symbol: "trash")
+    }
+
+    private func deleteSelected() {
+        var gone = 0
+        for session in deletable where selection.contains(session.id) {
+            SessionStore.delete(session)
+            gone += 1
+        }
+        selection = []
+        reload()
+        toasts.show("Deleted \(gone) session"
+                    + "\(gone == 1 ? "" : "s")", symbol: "trash")
+    }
+
+    private func deleteAll() {
+        let gone = SessionStore.deleteAll(exceptLiveID: post.session?.id)
+        selection = []
+        reload()
+        toasts.show("Deleted \(gone) session"
+                    + "\(gone == 1 ? "" : "s")", symbol: "trash")
     }
 }
 
