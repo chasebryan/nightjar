@@ -40,6 +40,12 @@ and shares test vectors with it.
 - **Shortcuts.** A "Send a payload" action for Shortcuts and Siri
   sends a text payload to a tcp/udp/http target without opening the
   app (BLE targets need the app's UI, and the action says so).
+- **Phone to phone, painlessly.** With serving started, a phone
+  advertises itself over Bonjour (`_nightjar._tcp`); the Send tab
+  lists nearby phones by name — tap one and the payload goes, no IP
+  addresses anywhere. Arrivals also banner as a local notification
+  with the message text, and the Send target and Serve settings are
+  remembered between launches, so receiving is: open, Serve, Start.
 
 ## Honest platform limits
 
