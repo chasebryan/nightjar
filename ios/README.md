@@ -77,9 +77,12 @@ Below the steps, the Send tab keeps working:
   at the end comes home — shown on a homecoming card, logged to
   history, and optionally delivered once to a target you name.
   A stop button calls it home early. The route can be loaded
-  from the Scan tab's hits, nearby phones, or the fan-out list,
-  and **per-device mode** gives every device in the list its
-  own out-and-back walk (the chain resets at each device).
+  from the Scan tab's hits, nearby phones, or the fan-out list —
+  or from its **built-in subnet sweep**, which knocks one port
+  across the phone's whole /24 (32 at a time) and loads every
+  answering host into the route. **Per-device mode** gives
+  every device in the list its own out-and-back walk (the
+  chain resets at each device).
   Every send on both legs is made by the phone; nothing is
   installed or left running on any target.
 - **SnatchSteal.** The receive-side weapon: knock on the step-1
