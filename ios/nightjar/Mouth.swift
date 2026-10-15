@@ -351,6 +351,16 @@ final class Mouth: NSObject, ObservableObject {
     @Published var serveError: String?
     @Published private(set) var writeTargets: [WriteTarget] = []
     @Published private(set) var writeScanning = false
+    @Published var pendingWriteID: UUID?
+    @Published var pendingWriteLabel: String?
+
+    /// The live instance, so App Intents (Shortcuts/Siri) can send.
+    static weak var shared: Mouth?
+
+    override init() {
+        super.init()
+        Mouth.shared = self
+    }
 
     struct WriteTarget: Identifiable {
         let id: UUID  // the peripheral's CoreBluetooth identifier
@@ -644,6 +654,73 @@ final class Mouth: NSObject, ObservableObject {
         pendingWrite = (target.peripheral, payload)
         line("connecting to \(target.name ?? target.id.uuidString)…")
         manager.connect(target.peripheral, options: nil)
+    }
+
+    // MARK: Listen -> Send handoff
+
+    func requestWrite(to id: UUID, label: String) {
+        pendingWriteID = id
+        pendingWriteLabel = label
+    }
+
+    func clearPendingWrite() {
+        pendingWriteID = nil
+        pendingWriteLabel = nil
+    }
+
+    /// Write to a device handed over from the Listen tab. CoreBluetooth
+    /// identifiers are stable per app on a phone, so the ear's peripheral
+    /// can be re-fetched here by identifier — the two halves share the
+    /// identifier, never any radio state.
+    func writeHandoff(payload: Data) {
+        guard let id = pendingWriteID else { return }
+        if centralManager == nil {
+            centralManager = CBCentralManager(delegate: self, queue: nil)
+        }
+        guard let manager = centralManager, manager.state == .poweredOn else {
+            line("nightjar: Bluetooth is not ready yet — give it a second and tap Write again")
+            return
+        }
+        guard let peripheral = manager.retrievePeripherals(
+            withIdentifiers: [id]).first else {
+            line("nightjar: that device is no longer in this phone's Bluetooth cache")
+            return
+        }
+        write(to: WriteTarget(id: id, peripheral: peripheral,
+                              name: pendingWriteLabel, rssi: nil),
+              payload: payload)
+        clearPendingWrite()
+    }
+
+    // MARK: Shortcuts
+
+    enum ShortcutError: Error, LocalizedError {
+        case appNotRunning
+        case needsTheApp
+        var errorDescription: String? {
+            switch self {
+            case .appNotRunning:
+                return "nightjar-hack is not running; open it once first."
+            case .needsTheApp:
+                return "That target needs the app: use the Send tab instead."
+            }
+        }
+    }
+
+    static func sendFromShortcut(targetText: String, payloadText: String) throws {
+        guard let mouth = shared else { throw ShortcutError.appNotRunning }
+        let target = try SendTarget.parse(targetText)
+        let data = Data(payloadText.utf8)
+        switch target {
+        case .http(_, _):
+            mouth.sendHTTP(target: target, payload: data, framing: "raw",
+                           method: "POST", timeout: 10)
+        case .tcp(_, _, _), .udp(_, _):
+            mouth.sendNetwork(target: target, payload: data, framing: "raw",
+                              read: false, timeout: 5)
+        default:
+            throw ShortcutError.needsTheApp
+        }
     }
 }
 
@@ -961,5 +1038,47 @@ extension Mouth {
         let length = httpContentLength(buffer)
         guard buffer.count > end else { return Data() }
         return buffer.subdata(in: end..<min(buffer.count, end + length))
+    }
+}
+
+// MARK: - Saved payloads
+
+struct SavedPayload: Codable, Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var source: String  // text | hex | base64
+    var text: String    // the contents of that source's field
+    var xorKey: String
+    var useGzip: Bool
+    var framing: String
+}
+
+/// The Send tab's payload library: named payloads kept in UserDefaults.
+final class PayloadBook: ObservableObject {
+    @Published private(set) var items: [SavedPayload] = []
+    private let key = "payloadBook.v1"
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([SavedPayload].self,
+                                                   from: data) {
+            items = decoded
+        }
+    }
+
+    func add(_ item: SavedPayload) {
+        items.append(item)
+        persist()
+    }
+
+    func remove(at offsets: IndexSet) {
+        items.remove(atOffsets: offsets)
+        persist()
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(items) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
     }
 }
