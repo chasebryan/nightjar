@@ -20,6 +20,10 @@ final class UpdateChecker: ObservableObject {
     @Published private(set) var available: Release?
     @Published private(set) var checking = false
     @Published private(set) var lastChecked: Date?
+    /// True when GitHub answered 404: no releases published yet.
+    /// Distinct from "up to date" — there is nothing to be up to
+    /// date with — and About displays it as its own state.
+    @Published private(set) var noReleasesYet = false
 
     let repo: String
     private let current: String
@@ -59,16 +63,28 @@ final class UpdateChecker: ObservableObject {
         request.setValue("nightjar-ios", forHTTPHeaderField: "User-Agent")
         do {
             let (data, response) = try await session.data(for: request)
+            // Only an actual HTTP response counts as a check: stamp
+            // lastChecked here, never on a transport failure.
+            guard let http = response as? HTTPURLResponse else { return }
             lastChecked = Date()
             UserDefaults.standard.set(lastChecked, forKey: Self.lastCheckKey)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                // 404 = no releases published yet. Not an error worth showing.
+            if http.statusCode == 404 {
+                // No releases published yet — its own state, not
+                // "up to date".
                 available = nil
+                noReleasesYet = true
                 return
             }
+            // Any other non-200 (rate limit, server error…) says
+            // nothing about releases: leave the known state —
+            // an available update, the no-releases flag, all of
+            // it — exactly as it was.
+            guard http.statusCode == 200 else { return }
+            noReleasesYet = false
             available = Self.parse(data, current: current)
         } catch {
-            // Offline or rate-limited: leave any prior result, surface nothing.
+            // Offline or transport failure: lastChecked stays where
+            // it was and any prior result stands; surface nothing.
         }
     }
 
