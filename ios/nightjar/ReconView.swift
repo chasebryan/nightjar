@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import Security
 import SwiftUI
 
 // MARK: - Connect scanner + Bonjour sweep
