@@ -46,6 +46,12 @@ and shares test vectors with it.
   addresses anywhere. Arrivals also banner as a local notification
   with the message text, and the Send target and Serve settings are
   remembered between launches, so receiving is: open, Serve, Start.
+- **Arm once (Bluetooth).** The socket listeners still need the app
+  in front of you, but the GATT host's physics are different: start
+  it once and it stays armed — hosting continues in the background,
+  the arm persists across relaunches (peripheral state restoration),
+  and a write to it lands in the inbox and banners like any arrival.
+  That makes the BLE route the "always set up" one.
 
 ## Honest platform limits
 
