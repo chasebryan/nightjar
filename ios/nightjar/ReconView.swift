@@ -12,6 +12,13 @@ struct PortResult: Identifiable {
     var banner: String?
 }
 
+struct SweepHost: Identifiable {
+    var id: String { "\(ip):\(port)" }
+    let ip: String
+    let octet: Int
+    let port: Int
+}
+
 struct DiscoveredService: Identifiable {
     let id = UUID()
     let type: String
@@ -28,6 +35,9 @@ final class ScanModel: ObservableObject {
     @Published private(set) var probedCount = 0
     @Published private(set) var totalCount = 0
     @Published private(set) var discovered: [DiscoveredService] = []
+    @Published private(set) var sweepHosts: [SweepHost] = []
+    @Published private(set) var sweeping = false
+    @Published private(set) var sweptCount = 0
 
     static let topPorts: [(Int, String)] = [
         (21, "FTP"), (22, "SSH"), (23, "Telnet"), (25, "SMTP"),
@@ -154,6 +164,79 @@ final class ScanModel: ObservableObject {
         }
         connection.start(queue: queue)
         queue.asyncAfter(deadline: .now() + 2.5) { finish(nil) }
+    }
+
+    // MARK: Subnet sweep
+
+    /// Host discovery: knock on one port across the phone's whole
+    /// Wi-Fi /24 and list whoever answers. Connect-only, like the
+    /// port scan — a host with that port closed or firewalled to
+    /// drops stays invisible, and the UI says so.
+    func sweep(port: Int) {
+        guard !sweeping, !scanning,
+              let own = Mouth.localIPAddress() else { return }
+        let parts = own.split(separator: ".")
+        guard parts.count == 4 else { return }
+        let prefix = parts.dropLast().joined(separator: ".") + "."
+        sweeping = true
+        sweepHosts = []
+        sweptCount = 0
+        var found: [SweepHost] = []
+        let group = DispatchGroup()
+        let semaphore = DispatchSemaphore(value: 32)
+        for octet in 1...254 {
+            let ip = prefix + "\(octet)"
+            group.enter()
+            queue.async { [weak self] in
+                guard let self = self else { group.leave(); return }
+                semaphore.wait()
+                self.sweepProbe(host: ip, port: port) { alive in
+                    if alive {
+                        self.lock.lock()
+                        found.append(SweepHost(ip: ip, octet: octet,
+                                               port: port))
+                        self.lock.unlock()
+                    }
+                    DispatchQueue.main.async { self.sweptCount += 1 }
+                    semaphore.signal()
+                    group.leave()
+                }
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            self?.sweepHosts = found.sorted { $0.octet < $1.octet }
+            self?.sweeping = false
+        }
+    }
+
+    private func sweepProbe(host: String, port: Int,
+                            done: @escaping (Bool) -> Void) {
+        guard let nwPort = NWEndpoint.Port(rawValue: UInt16(clamping: port))
+        else { done(false); return }
+        let connection = NWConnection(host: NWEndpoint.Host(host),
+                                      port: nwPort, using: .tcp)
+        let finishLock = NSLock()
+        var finished = false
+        let finish: (Bool) -> Void = { alive in
+            finishLock.lock()
+            defer { finishLock.unlock() }
+            guard !finished else { return }
+            finished = true
+            connection.cancel()
+            done(alive)
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                finish(true)
+            case .failed, .cancelled:
+                finish(false)
+            default:
+                break
+            }
+        }
+        connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
     }
 
     // MARK: Bonjour sweep
@@ -557,6 +640,7 @@ struct ScanView: View {
     @State private var tlsPort = "443"
     @State private var dnsName = ""
     @State private var dnsType = "A"
+    @State private var sweepPort = "80"
 
     private var portsToScan: [Int] {
         let typed = customPorts
@@ -632,6 +716,48 @@ struct ScanView: View {
                         Text("Nothing answered on those ports.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                }
+
+                Section(header: Text("Subnet sweep")) {
+                    HStack {
+                        Text("Port")
+                            .foregroundStyle(.secondary)
+                        TextField("80", text: $sweepPort)
+                            .keyboardType(.numberPad)
+                            .font(.body.monospaced())
+                        Button {
+                            Haptics.tap()
+                            model.sweep(port: Int(sweepPort) ?? 80)
+                        } label: {
+                            Label(model.sweeping
+                                    ? "Sweeping \(model.sweptCount)/254…"
+                                    : "Sweep this /24",
+                                  systemImage: "radar")
+                        }
+                        .disabled(model.sweeping || model.scanning)
+                    }
+                    ForEach(model.sweepHosts) { found in
+                        Button { sweepHandoff(found) } label: {
+                            HStack {
+                                Text(found.ip)
+                                    .font(.body.monospaced())
+                                Spacer()
+                                Text("\(found.port) open")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.green)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Text("Knocks on one port across your Wi-Fi's whole "
+                         + "/24 (254 addresses, under a minute) and "
+                         + "lists who answers. Tap a host to load it "
+                         + "into Send; the list also feeds the Send "
+                         + "tab's fan-out. Hosts that drop the knock "
+                         + "stay invisible — that's connect scanning.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section(header: Text("TLS certificate")) {
@@ -718,6 +844,20 @@ struct ScanView: View {
                 if !scanning, model.totalCount > 0 {
                     toasts.show("Scan finished — \(model.results.count) "
                                 + "open of \(model.totalCount)")
+                    let base = host.trimmingCharacters(in: .whitespaces)
+                    mouth.lastScanTargets = model.results.map {
+                        "tcp://\(base):\($0.port)"
+                    }
+                }
+            }
+            .onChange(of: model.sweeping) { sweeping in
+                if !sweeping, !model.sweepHosts.isEmpty {
+                    toasts.show("Sweep finished — "
+                                + "\(model.sweepHosts.count) host(s) "
+                                + "answer on \(sweepPort)")
+                    mouth.lastScanTargets = model.sweepHosts.map {
+                        "tcp://\($0.ip):\($0.port)"
+                    }
                 }
             }
         }
@@ -729,6 +869,13 @@ struct ScanView: View {
             "tcp://\(host.trimmingCharacters(in: .whitespaces)):"
             + "\(result.port)"
         mouth.scanHandoffPayload = ScanModel.payloadByPort[result.port]
+        tab = 1
+    }
+
+    private func sweepHandoff(_ found: SweepHost) {
+        Haptics.select()
+        mouth.scanHandoffTarget = "tcp://\(found.ip):\(found.port)"
+        mouth.scanHandoffPayload = ScanModel.payloadByPort[found.port]
         tab = 1
     }
 
