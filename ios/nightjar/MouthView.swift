@@ -45,13 +45,15 @@ struct SendView: View {
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
     @AppStorage("centipedeReturn") private var centipedeReturn = true
+    @AppStorage("centipedePerDevice") private var centipedePerDevice = false
     @State private var centipedeHome = ""
     private var centipedeLines: [String] {
         centipedeRoute.split(separator: "\n").map(String.init)
     }
     private var centipedeHopCount: Int {
-        let (stops, _) = Mouth.expandRoute(centipedeLines)
-        return min(centipedeReturn ? stops.count * 2 : stops.count, 300)
+        Mouth.journeyCount(route: centipedeLines,
+                           perDevice: centipedePerDevice,
+                           returnLeg: centipedeReturn)
     }
     @State private var showImporter = false
     @AppStorage("timingMode") private var timingMode = "now"
@@ -438,6 +440,42 @@ struct SendView: View {
                         .font(.body.monospaced())
                         .frame(minHeight: 96)
                         .scrollContentBackground(.hidden)
+                    HStack {
+                        Button {
+                            Haptics.tap()
+                            centipedeRoute = (mouth.lastScanTargets
+                                + centipedeLines)
+                                .joined(separator: "\n")
+                            toasts.show("Added \(mouth.lastScanTargets.count) "
+                                        + "device(s) from Scan")
+                        } label: {
+                            Label("From Scan (\(mouth.lastScanTargets.count))",
+                                  systemImage: "scope")
+                        }
+                        .disabled(mouth.lastScanTargets.isEmpty)
+                        Spacer()
+                        Button {
+                            Haptics.tap()
+                            centipedeRoute = (mouth.nearbyPhones
+                                    .map { "phone:\($0)" } + centipedeLines)
+                                .joined(separator: "\n")
+                        } label: {
+                            Label("Phones (\(mouth.nearbyPhones.count))",
+                                  systemImage: "iphone")
+                        }
+                        .disabled(mouth.nearbyPhones.isEmpty)
+                        Spacer()
+                        Button {
+                            Haptics.tap()
+                            centipedeRoute = (fanoutList + centipedeLines)
+                                .joined(separator: "\n")
+                        } label: {
+                            Label("Fan-out list",
+                                  systemImage: "list.bullet")
+                        }
+                        .disabled(fanoutList.isEmpty)
+                    }
+                    .font(.caption)
                     Picker("Mode", selection: $centipedeMode) {
                         Text("Chain").tag("chain")
                         Text("Seed").tag("seed")
@@ -445,6 +483,8 @@ struct SendView: View {
                     .pickerStyle(.segmented)
                     Toggle("Return to sender (walk the route back)",
                            isOn: $centipedeReturn)
+                    Toggle("Every device in the list gets its own walk",
+                           isOn: $centipedePerDevice)
                     TextField("Deliver homecoming to (optional)",
                               text: $centipedeHome)
                         .textInputAutocapitalization(.never)
@@ -468,6 +508,7 @@ struct SendView: View {
                                 route: centipedeLines,
                                 mode: centipedeMode,
                                 returnLeg: centipedeReturn,
+                                perDevice: centipedePerDevice,
                                 homeTarget: centipedeHome,
                                 payloadFor: { build(forTargetText: $0) },
                                 framing: framing, method: method)
