@@ -50,6 +50,20 @@
   logged to history, and the last word is carded like a
   homecoming. The centipede and Crosstalk refuse to run at
   the same time — they share the reply channel.
+  Listen tab fleshed out (collection untouched — still
+  receive-only; this is ordering and presentation). Rows are
+  ordered by an exponentially smoothed RSSI, re-ranked every
+  5 s with a 3 dB challenge margin, so the list settles and
+  drifts with the perimeter instead of re-sorting on raw
+  per-packet jitter every second; contents still refresh
+  every tick. Device rows now also carry the makers, TX
+  power, advertised services, a rotating-address flag and a
+  rough distance estimate, and tapping a device opens a
+  detail page with everything the post knows: all decoded
+  details, last/smoothed/closest RSSI, an RSSI-history
+  sparkline, first/last heard, dwell, sighting rate, the
+  identifier — and the write-a-payload handoff as a button,
+  not just a long-press.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
