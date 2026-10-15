@@ -17,7 +17,11 @@
   ports knocked across a /24 (the phone's own by default, or
   any named /24), each answering host arriving as a port train
   over the ports it answered on — plus a one-tap target for
-  the phone's own Serve endpoint.
+  the phone's own Serve endpoint. Smart seed makes fresh hops
+  speak their port's library probe; every reply is kept in a
+  harvest list (homecoming card + history); trail lines carry
+  per-hop round-trip times. (The crawl/discovery code also
+  moved from Mouth.swift into a new Crawl.swift extension.)
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
