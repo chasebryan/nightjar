@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// The Send and Serve tabs — the mouth's face. Everything here is a
@@ -13,16 +14,27 @@ struct SendView: View {
     @StateObject private var book = PayloadBook()
     @AppStorage("sendTarget") private var target = "tcp://127.0.0.1:9000"
     @State private var phoneSelection: String?
-    @State private var source = "text"
+    @AppStorage("sendSource") private var source = "text"
     @State private var payloadText = "hello"
     @State private var payloadHex = "68 65 6c 6c 6f"
     @State private var payloadB64 = "aGVsbG8="
     @State private var xorKey = ""
     @State private var useGzip = false
-    @State private var framing = "raw"
-    @State private var method = "POST"
-    @State private var readReply = true
-    @State private var beaconName = "nightjar-post"
+    @AppStorage("sendFraming") private var framing = "raw"
+    @AppStorage("sendMethod") private var method = "POST"
+    @AppStorage("sendReadReply") private var readReply = true
+    @AppStorage("beaconName") private var beaconName = "nightjar-post"
+    @AppStorage("recentTargets") private var recentTargetsBlob = ""
+
+    private var recentTargets: [String] {
+        recentTargetsBlob.split(separator: "\n").map(String.init)
+    }
+
+    private func noteTargetUsed(_ used: String) {
+        var list = recentTargets.filter { $0 != used }
+        list.insert(used, at: 0)
+        recentTargetsBlob = list.prefix(5).joined(separator: "\n")
+    }
     @State private var showError: String?
     @State private var selectedPayloadID: UUID?
     @State private var suppressClear = false
@@ -42,6 +54,29 @@ struct SendView: View {
     private var showPhones: Bool {
         if case .success(let value) = parsed { return isNetwork(value) }
         return true
+    }
+
+    /// The exact bytes a send would emit right now, for the preview.
+    private var previewData: Data? {
+        try? PayloadKit.build(source: source, text: payloadText,
+                              hex: payloadHex, b64: payloadB64,
+                              xorSpec: xorKey, useGzip: useGzip)
+    }
+
+    @ViewBuilder private var lastReplyView: some View {
+        if let reply = mouth.lastReply {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Last reply · \(reply.label) · "
+                     + reply.at.formatted(date: .omitted, time: .standard))
+                    .font(.caption.weight(.medium))
+                Text(PayloadKit.hexdump(reply.data))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                if let text = PayloadKit.printableText(reply.data) {
+                    Text(text).font(.caption)
+                }
+            }
+        }
     }
 
     var body: some View {
@@ -75,6 +110,13 @@ struct SendView: View {
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
                         .onTapGesture { phoneSelection = nil }
+                    if showPhones && mouth.nearbyPhones.isEmpty
+                        && phoneSelection == nil {
+                        Text("No nearby phones right now — start serving "
+                             + "on another phone on this Wi-Fi and it "
+                             + "appears here, or type an address.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     if phoneSelection != nil {
                         Text("A nearby phone is selected — the address "
                              + "is ignored until you tap it.")
@@ -87,6 +129,26 @@ struct SendView: View {
                         case .success(let value):
                             Text(describe(value))
                                 .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if !recentTargets.isEmpty && phoneSelection == nil {
+                    Section(header: Text("Recent addresses")) {
+                        ForEach(recentTargets, id: \.self) { recent in
+                            Button {
+                                Haptics.select()
+                                target = recent
+                            } label: {
+                                HStack {
+                                    Text(recent).font(.body.monospaced())
+                                    Spacer()
+                                    Image(systemName: "arrow.up.left")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .foregroundStyle(.primary)
                         }
                     }
                 }
@@ -140,6 +202,25 @@ struct SendView: View {
                              + "Custom to tweak it into your own.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                    if let data = previewData {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(data.isEmpty
+                                 ? "0 bytes — an empty payload"
+                                 : "\(data.count) bytes, exactly as they will go out:")
+                                .font(.caption).foregroundStyle(.secondary)
+                            if !data.isEmpty {
+                                Text(PayloadKit.hexdump(
+                                    Data(data.prefix(64))))
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                                if data.count > 64 {
+                                    Text("… (\(data.count - 64) more bytes)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 stepThreeSection
@@ -151,6 +232,13 @@ struct SendView: View {
             .onChange(of: payloadB64) { _ in unselectIfEditing() }
             .onChange(of: xorKey) { _ in unselectIfEditing() }
             .onChange(of: useGzip) { _ in unselectIfEditing() }
+            .onChange(of: mouth.nearbyPhones) { names in
+                if let picked = phoneSelection, !names.contains(picked) {
+                    phoneSelection = nil
+                    toasts.show("\(picked) left the network — "
+                                + "pick a destination in step 1")
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -214,6 +302,7 @@ struct SendView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                lastReplyView
             }
         } else {
             switch parsed {
@@ -236,6 +325,7 @@ struct SendView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    lastReplyView
                 }
             case .success(.bleBeacon):
                 Section(header: Text("Step 3 · BLE beacon")) {
@@ -372,6 +462,7 @@ struct SendView: View {
 
     private func sendNetwork(_ target: SendTarget) {
         guard let data = build() else { return }
+        noteTargetUsed(self.target)
         switch target {
         case .http(_, _):
             mouth.sendHTTP(target: target, payload: data, framing: framing,
@@ -545,6 +636,7 @@ struct MouthLogSheet: View {
 
 struct ServeView: View {
     @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var toasts: ToastCenter
     @AppStorage("serveUseTCP") private var useTCP = true
     @AppStorage("serveTcpPort") private var tcpPort = "9000"
     @AppStorage("serveUseUDP") private var useUDP = false
@@ -624,6 +716,19 @@ struct ServeView: View {
                             Label("Start serving", systemImage: "play.circle.fill")
                         }
                     }
+                    if mouth.serveRunning {
+                        if mouth.stealth {
+                            Text("Stealth: unlisted. Reachable only at "
+                                 + "\(Mouth.localIPAddress().map { "tcp://\($0):\(tcpPort)" } ?? "this phone's IP address") "
+                                 + "for anyone who already knows it.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        } else if useTCP {
+                            Text("Other phones see this one as "
+                                 + "'\(UIDevice.current.name)' in their "
+                                 + "Nearby phones list.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section(header: Text("Inbox")) {
@@ -646,6 +751,23 @@ struct ServeView: View {
                                 .font(.caption2.monospaced()).foregroundStyle(.secondary)
                             if let text = PayloadKit.printableText(item.data) {
                                 Text(text).font(.caption)
+                            }
+                        }
+                        .contextMenu {
+                            if let text = PayloadKit.printableText(item.data) {
+                                Button {
+                                    UIPasteboard.general.string = text
+                                    toasts.show("Copied the payload text")
+                                } label: {
+                                    Label("Copy text", systemImage: "doc.on.doc")
+                                }
+                            }
+                            Button {
+                                UIPasteboard.general.string = item.data
+                                    .map { String(format: "%02x", $0) }.joined()
+                                toasts.show("Copied the payload as hex")
+                            } label: {
+                                Label("Copy hex", systemImage: "number")
                             }
                         }
                     }
