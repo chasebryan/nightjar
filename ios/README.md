@@ -84,6 +84,12 @@ Below the steps, the Send tab keeps working:
   and loads every answering host into the route as a port
   train over the ports it answered on. The phone's own subnet
   is the default; any /24 can be named in the subnet field.
+  With **smart seed** on, fresh hops speak the library probe
+  that matches their port (a real Redis PING, an EHLO, an HTTP
+  GET) instead of the generic payload; every reply the walk
+  hears is kept in a **harvest** list on the homecoming card
+  and in the history, and each trail line carries its hop's
+  round-trip time.
   A *this phone* button adds the phone's own Serve endpoint
   as a guaranteed-live first target. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
