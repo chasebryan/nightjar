@@ -29,6 +29,14 @@ version (2.5.0), same six tabs, same engines.
   - `Crawl.kt` — the Centipede (route grammar, chain/seed,
     per-device walks, return leg, smart seed, harvest,
     subnet discovery) and Crosstalk.
+  - `Trace.kt` — Network Trace: a bounded, operator-started
+    map of one /24 (discovery knock, per-host profiling,
+    library probes, reference-following to depth 3,
+    frontier exhaustion), adaptive rules
+    (`contains X => followup/tag/stop`) shared with the
+    Centipede, the persistent crawl logbook, and the
+    versioned JSON trace export
+    (`net.nosuchmachine.nightjar.network-trace`).
   - `Engines.kt` — SnatchSteal, PayPlant (+ verify), timed
     delivery.
   - UI in Compose: boot splash, Jolly Roger backdrop, folding
