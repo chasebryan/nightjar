@@ -13,8 +13,9 @@
   The route loads from Scan hits, nearby phones, or the fan-out
   list, and per-device mode gives every device in the list its
   own walk, the chain resetting at each device. A built-in
-  subnet sweep (one port across the phone's /24, 32-way) feeds
-  the route with every answering host.
+  subnet sweep (one port across a /24, 32-way) feeds the route
+  with every answering host — the phone's own subnet by
+  default, or any /24 named in the subnet field.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
