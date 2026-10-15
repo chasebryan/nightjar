@@ -204,13 +204,39 @@ enum PayloadKit {
                 break
             }
         }
-        var out = raw
-        for (token, value) in [("{{target}}", targetText),
-                               ("{{host}}", host), ("{{ip}}", host),
-                               ("{{port}}", port), ("{{scheme}}", scheme)] {
-            out = out.replacingOccurrences(of: token, with: value)
+        // Single pass over the ORIGINAL string: values are written
+        // straight into the output and never rescanned, so a host or
+        // target that itself contains "{{port}}" cannot chain-expand.
+        let values: [String: String] = [
+            "{{target}}": targetText, "{{host}}": host, "{{ip}}": host,
+            "{{port}}": port, "{{scheme}}": scheme,
+        ]
+        var out = ""
+        var rest = raw[...]
+        while let open = rest.range(of: "{{") {
+            out += String(rest[..<open.lowerBound])
+            let tail = rest[open.lowerBound...]
+            guard let close = tail.range(of: "}}") else {
+                out += String(tail)
+                rest = rest[rest.endIndex...]
+                break
+            }
+            let token = String(tail[..<close.upperBound])
+            out += values[token] ?? token
+            rest = tail[close.upperBound...]
         }
+        out += String(rest)
         return out
+    }
+
+    /// Source-aware substitution: templating applies ONLY to text
+    /// payloads. Hex/base64 sources are literal bytes — a "{{host}}"
+    /// byte pattern in them is data, not a template — so they pass
+    /// through untouched.
+    static func substitute(_ raw: String, targetText: String,
+                           source: String) -> String {
+        guard source == "text" else { return raw }
+        return substitute(raw, targetText: targetText)
     }
 
     // MARK: PayPlant builders — payloads a target service stores
@@ -228,11 +254,15 @@ enum PayloadKit {
     }
 
     static func mqttConnect(clientID: String) -> Data {
+        // The length prefix is 2-byte big-endian: a value >= 65536
+        // would trap in UInt8(>>8). Fail the build (empty packet)
+        // instead of crashing.
+        guard clientID.utf8.count < 65536 else { return Data() }
         var body = Data()
         body.append(contentsOf: [0x00, 0x04])
         body.append(contentsOf: "MQTT".utf8)
         body.append(contentsOf: [0x04, 0x02, 0x00, 0x3C])
-        body.append(UInt8(clientID.utf8.count >> 8))
+        body.append(UInt8((clientID.utf8.count >> 8) & 0xff))
         body.append(UInt8(clientID.utf8.count & 0xff))
         body.append(contentsOf: clientID.utf8)
         var packet = Data([0x10])
@@ -245,8 +275,9 @@ enum PayloadKit {
     /// message and hands it to every future subscriber — the plant.
     static func mqttPublish(topic: String, payload: Data,
                             retain: Bool) -> Data {
+        guard topic.utf8.count < 65536 else { return Data() }
         var body = Data()
-        body.append(UInt8(topic.utf8.count >> 8))
+        body.append(UInt8((topic.utf8.count >> 8) & 0xff))
         body.append(UInt8(topic.utf8.count & 0xff))
         body.append(contentsOf: topic.utf8)
         body += payload
@@ -533,8 +564,19 @@ final class Mouth: NSObject, ObservableObject {
         ]
         if let reply = reply {
             record["replyBytes"] = reply.count
-            record["replyHex"] = reply.prefix(kind == "snatch" ? 512 : 48)
-                .map { String(format: "%02x", $0) }.joined()
+            if kind == "snatch" {
+                // A snatch haul is the point of the operation: history
+                // keeps ALL of it — the full printable text when it is
+                // text, otherwise the full hex — never a prefix.
+                if let text = PayloadKit.printableText(reply) {
+                    record["replyText"] = text
+                }
+                record["replyHex"] = reply
+                    .map { String(format: "%02x", $0) }.joined()
+            } else {
+                record["replyHex"] = reply.prefix(48)
+                    .map { String(format: "%02x", $0) }.joined()
+            }
         }
         guard let data = try? JSONSerialization.data(
                 withJSONObject: record),
@@ -542,10 +584,20 @@ final class Mouth: NSObject, ObservableObject {
         line += "\n"
         exchangeQueue.async {
             let url = Mouth.exchangesURL
-            if let handle = try? FileHandle(forWritingTo: url) {
-                handle.seekToEndOfFile()
-                handle.write(Data(line.utf8))
-                try? handle.close()
+            if FileManager.default.fileExists(atPath: url.path) {
+                // FileHandle.write raises an NSException on failure;
+                // the throwing contentsOf variant surfaces an Error
+                // instead. If the existing file cannot be opened the
+                // line is dropped — the atomic whole-file fallback
+                // must never truncate real history down to one line.
+                do {
+                    let handle = try FileHandle(forWritingTo: url)
+                    handle.seekToEndOfFile()
+                    try handle.write(contentsOf: Data(line.utf8))
+                    try? handle.close()
+                } catch {
+                    // Drop the line; history stays as it was.
+                }
             } else {
                 try? line.write(to: url, atomically: true, encoding: .utf8)
             }
@@ -578,10 +630,23 @@ final class Mouth: NSObject, ObservableObject {
     private var beaconName = "nightjar"
     private var gattPayload: Data = Data()
     private var gattCharacteristic: CBMutableCharacteristic?
+    /// Set by willRestoreState when iOS hands back a service with our
+    /// UUID: it already exists, so startGattHost must not re-add it.
+    private var gattServiceRestored = false
     private var centralManager: CBCentralManager?
     private var writePeripherals: [UUID: CBPeripheral] = [:]
     private var pendingWrite: (peripheral: CBPeripheral, payload: Data)?
+    private var writeToken = 0
     private var listeners: [NWListener] = []
+    /// Stamped on every startServe/stopServe. Listener state handlers
+    /// and arrival sinks capture the generation they were created
+    /// under and act only while it is still current — a stale
+    /// listener failing, or a pre-Stop peer's bytes landing late, can
+    /// no longer flip state or reach the inbox for a dead serve.
+    private var serveGeneration = 0
+    /// Accepted connections still in flight, so stopServe can cancel
+    /// them all instead of leaving half-open peers behind.
+    private var serveConnections: [NWConnection] = []
     private var serveReply: Data = Data()
     private var serveEcho = false
     private var serveFraming = "raw"
@@ -630,12 +695,20 @@ final class Mouth: NSObject, ObservableObject {
             self.inbox.insert(ReceivedPayload(at: Date(), transport: transport,
                                               peer: peer, data: data), at: 0)
             if self.inbox.count > 200 { self.inbox.removeLast(self.inbox.count - 200) }
-            if !self.stealth, let text = PayloadKit.printableText(data) {
-                // Make it pop: a banner with the message itself, not
-                // just a row appearing in the inbox.
+            // Stealth check stays FIRST: in stealth nothing banners.
+            if !self.stealth {
+                // Make it pop: a banner with the message itself when it
+                // is printable; binary arrivals banner their size and
+                // first bytes as hex instead of staying silent.
                 let content = UNMutableNotificationContent()
                 content.title = "nightjar-hack · \(transport) from \(peer)"
-                content.body = text
+                if let text = PayloadKit.printableText(data) {
+                    content.body = text
+                } else {
+                    let head = data.prefix(8)
+                        .map { String(format: "%02x", $0) }.joined(separator: " ")
+                    content.body = "\(data.count) bytes · \(head)"
+                }
                 content.sound = .default
                 UNUserNotificationCenter.current().add(
                     UNNotificationRequest(identifier: UUID().uuidString,
@@ -815,6 +888,12 @@ final class Mouth: NSObject, ObservableObject {
               (1...65535).contains(port) else { return nil }
         let octets = hostPart.split(separator: ".")
         guard octets.count == 4 else { return nil }
+        // All four octets must be real octets: a "999.168.1.10-40"
+        // entry is not a range, it is a typo.
+        for i in 0..<3 {
+            guard let value = Int(String(octets[i])),
+                  (0...255).contains(value) else { return nil }
+        }
         let ends = octets[3].split(separator: "-")
         guard ends.count == 2, let lo = Int(String(ends[0])),
               let hi = Int(String(ends[1])),
@@ -822,6 +901,35 @@ final class Mouth: NSObject, ObservableObject {
               lo < hi, hi - lo <= 255 else { return nil }
         let base = octets[0...2].joined(separator: ".") + "."
         return (lo...hi).map { "\(scheme)\(base)\($0):\(port)" }
+    }
+
+    /// Shape test for the UI: does this line LOOK like a last-octet
+    /// range ("192.168.1.10-40", optionally with a scheme prefix and/or
+    /// a :port suffix)? Shape only — expandRange does the real
+    /// validation (octets 0...255, lo < hi) when a send expands it.
+    static func looksLikeRange(_ line: String) -> Bool {
+        var rest = line.trimmingCharacters(in: .whitespaces)
+        if let schemeRange = rest.range(of: "://") {
+            rest = String(rest[schemeRange.upperBound...])
+        }
+        if let colon = rest.lastIndex(of: ":") {
+            let portText = rest[rest.index(after: colon)...]
+            if !portText.isEmpty, portText.allSatisfy({ $0.isNumber }) {
+                rest = String(rest[..<colon])
+            }
+        }
+        let octets = rest.split(separator: ".")
+        guard octets.count == 4 else { return false }
+        for i in 0..<3 {
+            if octets[i].isEmpty || !octets[i].allSatisfy({ $0.isNumber }) {
+                return false
+            }
+        }
+        let ends = octets[3].split(separator: "-")
+        guard ends.count == 2 else { return false }
+        return ends.allSatisfy {
+            !$0.isEmpty && $0.allSatisfy { $0.isNumber }
+        }
     }
 
     /// Send one payload to every target in the list, one at a time.
@@ -835,10 +943,18 @@ final class Mouth: NSObject, ObservableObject {
                     payloadFor: @escaping (String) -> Data?,
                     framing: String, method: String, readReply: Bool) {
         var expanded: [String] = []
+        var invalid: [String] = []
         for entry in rawTargets {
+            // One expansion call never materialises more than 5000
+            // targets, however wide the ranges in the list are.
+            if expanded.count >= 5000 { break }
             let text = entry.trimmingCharacters(in: .whitespaces)
             if let range = Mouth.expandRange(text) {
-                expanded += range
+                expanded += range.prefix(5000 - expanded.count)
+            } else if Mouth.looksLikeRange(text) {
+                // Range-shaped but invalid (bad octet, reversed):
+                // report it — never aim a send at the literal text.
+                invalid.append(text)
             } else {
                 expanded.append(text)
             }
@@ -848,9 +964,18 @@ final class Mouth: NSObject, ObservableObject {
             .filter { !$0.isEmpty && !$0.hasPrefix("#")
                       && seen.insert($0).inserted }
             .prefix(300)
-        guard !targets.isEmpty, !fanoutBusy else { return }
+        guard !fanoutBusy else { return }
+        if targets.isEmpty {
+            if !invalid.isEmpty {
+                fanoutLines = invalid.map { "✗ \($0) — invalid range" }
+            }
+            return
+        }
         fanoutBusy = true
         fanoutLines = ["Fanning out to \(targets.count) target(s)…"]
+        for text in invalid {
+            fanoutLines.append("✗ \(text) — invalid range")
+        }
         line("fan-out: one payload to \(targets.count) targets")
         var index = 0
         var sentCount = 0
@@ -876,7 +1001,11 @@ final class Mouth: NSObject, ObservableObject {
                     self?.fanoutLines.append(
                         "\(ok ? "✓" : "✗") \(text)")
                 }
-                step()
+                // Async hop: synchronously-failing targets (bad
+                // parse, unbuildable payload) report inside step()
+                // itself — recursing directly would grow the stack
+                // once per dead target.
+                DispatchQueue.main.async { step() }
             }
             guard let payload = payloadFor(text) else {
                 line("fan-out: payload failed to build for \(text)")
@@ -916,6 +1045,11 @@ final class Mouth: NSObject, ObservableObject {
 
     @Published var scheduleStatus: String?
     private var scheduleItems: [DispatchWorkItem] = []
+    /// Identity of the current schedule (an Int token; "UUID Int" in
+    /// the audit's words). Bumped on every schedule() and every
+    /// cancelSchedule(), so a work item fired late — or re-arming
+    /// after a cancel — can tell it no longer belongs.
+    private var scheduleIdentity = 0
     private var scheduleTimer: Timer?
     private var schedDeadline: Date?
     private var schedInterval: TimeInterval?
@@ -929,6 +1063,8 @@ final class Mouth: NSObject, ObservableObject {
     func schedule(after delay: TimeInterval, every interval: TimeInterval?,
                   rounds: Int, label: String, action: @escaping () -> Void) {
         cancelSchedule()
+        scheduleIdentity += 1
+        let identity = scheduleIdentity
         schedLabel = label
         schedInterval = interval
         schedRounds = interval == nil ? 1 : max(1, rounds)
@@ -941,11 +1077,17 @@ final class Mouth: NSObject, ObservableObject {
             refreshScheduleStatus()
             let item = DispatchWorkItem { [weak self] in
                 DispatchQueue.main.async {
-                    guard let self = self else { return }
+                    guard let self = self,
+                          self.scheduleIdentity == identity else { return }
+                    // The identity check above is the initiation guard:
+                    // a stale or cancelled item never runs and never
+                    // consumes a round — the count moves only once the
+                    // send is actually about to initiate.
                     self.schedFired += 1
                     self.line("timed: firing \(label) — round "
                               + "\(self.schedFired)/\(self.schedRounds)")
                     action()
+                    guard self.scheduleIdentity == identity else { return }
                     if self.schedFired < self.schedRounds,
                        let interval = self.schedInterval {
                         arm(after: interval)
@@ -969,6 +1111,7 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func cancelSchedule() {
+        scheduleIdentity += 1
         scheduleItems.forEach { $0.cancel() }
         scheduleItems = []
         scheduleTimer?.invalidate()
@@ -1045,6 +1188,7 @@ final class Mouth: NSObject, ObservableObject {
         }
         var loot = Data()
         var finished = false
+        var idleGeneration = 0
         let finishLock = NSLock()
         func finish() {
             finishLock.lock()
@@ -1064,12 +1208,28 @@ final class Mouth: NSObject, ObservableObject {
                     error: captured.isEmpty)
             }
         }
+        func armIdleTimer() {
+            // 3s of quiet ends the snatch (the 15s wall below still
+            // bounds the whole operation). Each chunk bumps the
+            // generation, which retires the previous timer.
+            let seen = idleGeneration
+            queue.asyncAfter(deadline: .now() + 3) {
+                if idleGeneration == seen { finish() }
+            }
+        }
         func drain() {
+            armIdleTimer()
             connection.receive(minimumIncompleteLength: 1,
                                maximumLength: 65536) {
                 data, _, isComplete, error in
                 if let data = data, !data.isEmpty {
-                    loot += data
+                    // Hard 64 KB cap: keep only what still fits and
+                    // finish the moment the bag is full.
+                    let remaining = 65536 - loot.count
+                    if remaining > 0 {
+                        loot += data.prefix(remaining)
+                    }
+                    idleGeneration += 1
                     let count = loot.count
                     DispatchQueue.main.async { [weak self] in
                         self?.snatchBytes = count
@@ -1174,18 +1334,85 @@ final class Mouth: NSObject, ObservableObject {
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let reply = data ?? Data()
-            completion?(true)
+            let ok = (200..<400).contains(status)
+            // State first, callback last: lastReply and the history
+            // entry are updated BEFORE completion fires, so a caller
+            // reacting to completion already sees the final state.
             self?.logExchange("http", request.url?.absoluteString ?? "http",
                               sent: body?.count ?? payload.count, reply: reply)
             self?.noteReply(label: "http", data: reply)
-            self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
+            if ok {
+                self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
+            } else {
+                self?.ui("HTTP \(status)", error: true)
+            }
             self?.line("  HTTP \(status), \(reply.count) byte reply")
             if !reply.isEmpty {
                 for l in PayloadKit.hexdump(reply).components(separatedBy: "\n") {
                     self?.line(l)
                 }
             }
+            completion?(ok)
         }.resume()
+    }
+
+    // MARK: MQTT plant
+
+    /// Plant a retained MQTT message properly: its own connection,
+    /// a real CONNECT/CONNACK handshake, then the PUBLISH. Completes
+    /// true only when CONNACK accepts (byte 0 == 0x20, return code 0)
+    /// and the publish has been handed to the socket; every failure
+    /// path completes false, exactly once. (UI calls this signature.)
+    func plantMQTT(host: String, port: Int, topic: String, payload: Data,
+                   completion: @escaping (Bool) -> Void) {
+        let connectPacket = PayloadKit.mqttConnect(clientID: "nightjar-hack")
+        let publishPacket = PayloadKit.mqttPublish(topic: topic, payload: payload,
+                                                   retain: true)
+        guard !connectPacket.isEmpty, !publishPacket.isEmpty,
+              let endpointPort = NWEndpoint.Port(
+                rawValue: UInt16(clamping: port)) else {
+            completion(false)
+            return
+        }
+        let connection = NWConnection(host: NWEndpoint.Host(host),
+                                      port: endpointPort, using: .tcp)
+        var finished = false
+        func finish(_ ok: Bool) {
+            guard !finished else { return }
+            finished = true
+            connection.cancel()
+            completion(ok)
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                connection.send(content: connectPacket,
+                                completion: .contentProcessed { error in
+                    if error != nil { finish(false); return }
+                    connection.receive(minimumIncompleteLength: 1,
+                                       maximumLength: 1024) {
+                        data, _, _, error in
+                        // CONNACK: 0x20, remaining length, flags, rc.
+                        guard error == nil, let data = data, data.count >= 4,
+                              data[0] == 0x20, data[3] == 0 else {
+                            finish(false)
+                            return
+                        }
+                        connection.send(content: publishPacket,
+                                        completion: .contentProcessed { error in
+                            finish(error == nil)
+                        })
+                    }
+                })
+            case .failed, .cancelled:
+                finish(false)
+            default:
+                break
+            }
+        }
+        connection.start(queue: queue)
+        // 3s for the CONNACK (and the whole plant) to land.
+        queue.asyncAfter(deadline: .now() + 3) { finish(false) }
     }
 
     // MARK: BLE beacon + GATT host (one peripheral manager)
@@ -1271,7 +1498,7 @@ final class Mouth: NSObject, ObservableObject {
         UserDefaults.standard.set(name, forKey: "gattArm.name")
         let manager = ensurePeripheral()
         ui("GATT host armed — writes land in the Serve inbox")
-        if gattCharacteristic == nil {
+        if gattCharacteristic == nil && !gattServiceRestored {
             let characteristic = CBMutableCharacteristic(
                 type: Mouth.charUUID, properties: [.read, .write, .notify],
                 value: nil, permissions: [.readable, .writeable])
@@ -1286,6 +1513,11 @@ final class Mouth: NSObject, ObservableObject {
 
     func stopGattHost() {
         gattArmOn = false
+        // The armed payload goes too: a stopped host must not leave a
+        // payload behind in UserDefaults for a later relaunch to serve.
+        UserDefaults.standard.removeObject(forKey: "gattArm.payload")
+        UserDefaults.standard.removeObject(forKey: "gattArm.name")
+        gattServiceRestored = false
         gattHostOn = false
         ui("GATT host off")
         peripheralManager?.removeAllServices()
@@ -1352,9 +1584,22 @@ final class Mouth: NSObject, ObservableObject {
         manager.stopScan()
         writeScanning = false
         pendingWrite = (target.peripheral, payload)
+        writeToken += 1
+        let token = writeToken
+        let peripheral = target.peripheral
         line("connecting to \(target.name ?? target.id.uuidString)…")
         ui("Writing to \(target.name ?? "device")…")
         manager.connect(target.peripheral, options: nil)
+        // 15s timeout: a write that never lands fails and clears the
+        // pending state instead of hanging the next write forever.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self = self, self.writeToken == token,
+                  self.pendingWrite?.peripheral === peripheral else { return }
+            self.pendingWrite = nil
+            self.centralManager?.cancelPeripheralConnection(peripheral)
+            self.line("nightjar: BLE write timed out")
+            self.ui("BLE write timed out", error: true)
+        }
     }
 
     // MARK: Listen -> Send handoff
@@ -1433,6 +1678,20 @@ extension Mouth: CBPeripheralManagerDelegate {
         // iOS relaunched the app for a Bluetooth event; the saved arm
         // replays in peripheralManagerDidUpdateState, which follows.
         line("bluetooth state restored — re-arming what was left on")
+        // If a service with our UUID is among the restored services it
+        // already exists on the manager — adopt it instead of letting
+        // startGattHost add a duplicate.
+        if let services = dict[CBPeripheralManagerRestoredStateServicesKey]
+                as? [CBService],
+           let service = services.first(where: { $0.uuid == Mouth.serviceUUID }) {
+            gattServiceRestored = true
+            if let chars = service.characteristics,
+               let characteristic = chars.first(
+                   where: { $0.uuid == Mouth.charUUID })
+                   as? CBMutableCharacteristic {
+                gattCharacteristic = characteristic
+            }
+        }
     }
 
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
@@ -1452,28 +1711,80 @@ extension Mouth: CBPeripheralManagerDelegate {
                            error: Error?) {
         if let error = error {
             line("nightjar: GATT service failed: \(error.localizedDescription)")
+            // No service, no host: clear the optimistic host state.
+            gattHostOn = false
+            gattCharacteristic = nil
             return
         }
         refreshAdvertising()
     }
 
+    func peripheralManagerDidStartAdvertising(
+        _ peripheral: CBPeripheralManager, error: Error?) {
+        if let error = error {
+            // Advertising never started: clear the optimistic on-air
+            // state set by startBeacon/startGattHost and say so.
+            line("nightjar: advertising failed: \(error.localizedDescription)")
+            beaconOn = false
+            gattHostOn = false
+            return
+        }
+        // Confirmed on the air: reflect the live intent.
+        if gattHostOn {
+            gattHostOn = true
+        } else if wantBeacon {
+            beaconOn = true
+        }
+    }
+
     func peripheralManager(_ peripheral: CBPeripheralManager,
                            didReceiveRead request: CBATTRequest) {
-        request.value = gattPayload
+        // Honor the offset: a long read asks for the slice from there,
+        // and an offset past the value is an error, not a full reply.
+        guard request.offset >= 0, request.offset <= gattPayload.count else {
+            peripheral.respond(to: request, withResult: .invalidOffset)
+            return
+        }
+        request.value = request.offset == 0
+            ? gattPayload
+            : gattPayload.subdata(in: request.offset..<gattPayload.count)
         peripheral.respond(to: request, withResult: .success)
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager,
                            didReceiveWrite requests: [CBATTRequest]) {
-        for request in requests {
-            if let value = request.value {
-                if request.characteristic.uuid == Mouth.charUUID {
-                    gattPayload = value
-                }
-                receive(transport: "ble-gatt", peer: "central", data: value)
-            }
-            peripheral.respond(to: request, withResult: .success)
+        // A long write arrives as a batch: coalesce the chunks at
+        // their offsets into ONE payload, land it in the inbox once,
+        // and respond ONCE (to the first request), per ATT.
+        guard let first = requests.first else { return }
+        let ours = requests.filter { $0.characteristic.uuid == Mouth.charUUID }
+        guard !ours.isEmpty else {
+            peripheral.respond(to: first, withResult: .success)
+            return
         }
+        var assembled = Data()
+        for request in ours {
+            guard let value = request.value else { continue }
+            let offset = request.offset
+            guard offset >= 0, offset <= assembled.count else {
+                peripheral.respond(to: first, withResult: .invalidOffset)
+                return
+            }
+            if offset < assembled.count {
+                assembled.replaceSubrange(
+                    offset..<min(assembled.count, offset + value.count),
+                    with: value.prefix(assembled.count - offset))
+                if offset + value.count > assembled.count {
+                    assembled.append(value.suffix(
+                        offset + value.count - assembled.count))
+                }
+            } else {
+                assembled.append(value)
+            }
+        }
+        gattPayload = assembled
+        receive(transport: "ble-gatt", peer: "central", data: assembled)
+        peripheral.respond(to: first, withResult: .success)
     }
 }
 
@@ -1509,12 +1820,18 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral,
                         error: Error?) {
         line("nightjar: connect failed: \(error?.localizedDescription ?? "unknown")")
-        pendingWrite = nil
+        if pendingWrite?.peripheral.identifier == peripheral.identifier {
+            pendingWrite = nil
+        }
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral,
                         error: Error?) {
-        pendingWrite = nil
+        // Only the pending target's own disconnect clears the pending
+        // write — some other peripheral dropping must not eat it.
+        if pendingWrite?.peripheral.identifier == peripheral.identifier {
+            pendingWrite = nil
+        }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
@@ -1567,8 +1884,22 @@ extension Mouth {
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
                     reply: String, framing: String, echo: Bool = false) {
         stopServe()
-        lastServeParams = (tcpPort, udpPort, httpPort, reply, framing, echo)
-        serveReply = Data(reply.utf8)
+        // Port hygiene: parse + clamp each enabled port ONCE, here;
+        // the bind, the announce text and lastServeParams all use
+        // these sanitized values and nothing else.
+        let cleanTCP = tcpPort.map { min(65535, max(1, $0)) }
+        let cleanUDP = udpPort.map { min(65535, max(1, $0)) }
+        let cleanHTTP = httpPort.map { min(65535, max(1, $0)) }
+        serveGeneration += 1
+        let generation = serveGeneration
+        lastServeParams = (cleanTCP, cleanUDP, cleanHTTP, reply, framing, echo)
+        // Reply text/mode/framing are a SNAPSHOT from this moment:
+        // the arrival sink answers with these, never with whatever
+        // the live values happen to be when a peer shows up.
+        let snapReply = Data(reply.utf8)
+        let snapEcho = echo
+        let snapFraming = framing
+        serveReply = snapReply
         serveEcho = echo
         serveFraming = framing
         serveError = nil
@@ -1581,21 +1912,29 @@ extension Mouth {
         }
         var started: [String] = []
         do {
-            if let port = tcpPort {
-                listeners.append(try makeListener(port: port, params: .tcp, bonjour: !stealth) { [weak self] conn in
-                    self?.handleStreamConnection(conn, transport: "tcp", http: false)
+            if let port = cleanTCP {
+                listeners.append(try makeListener(port: port, params: .tcp, bonjour: !stealth, generation: generation) { [weak self] conn in
+                    self?.handleStreamConnection(conn, transport: "tcp", http: false,
+                                                  generation: generation,
+                                                  snapReply: snapReply, snapEcho: snapEcho,
+                                                  snapFraming: snapFraming)
                 })
                 started.append("tcp://0.0.0.0:\(port)")
             }
-            if let port = udpPort {
-                listeners.append(try makeListener(port: port, params: .udp) { [weak self] conn in
-                    self?.handleDatagramConnection(conn)
+            if let port = cleanUDP {
+                listeners.append(try makeListener(port: port, params: .udp, generation: generation) { [weak self] conn in
+                    self?.handleDatagramConnection(conn, generation: generation,
+                                                    snapReply: snapReply, snapEcho: snapEcho,
+                                                    snapFraming: snapFraming)
                 })
                 started.append("udp://0.0.0.0:\(port)")
             }
-            if let port = httpPort {
-                listeners.append(try makeListener(port: port, params: .tcp) { [weak self] conn in
-                    self?.handleStreamConnection(conn, transport: "http", http: true)
+            if let port = cleanHTTP {
+                listeners.append(try makeListener(port: port, params: .tcp, generation: generation) { [weak self] conn in
+                    self?.handleStreamConnection(conn, transport: "http", http: true,
+                                                  generation: generation,
+                                                  snapReply: snapReply, snapEcho: snapEcho,
+                                                  snapFraming: snapFraming)
                 })
                 started.append("http://0.0.0.0:\(port)/")
             }
@@ -1621,13 +1960,26 @@ extension Mouth {
 
     func stopServe() {
         let wasRunning = serveRunning
+        serveGeneration += 1
         for listener in listeners { listener.cancel() }
         listeners = []
+        for connection in serveConnections { connection.cancel() }
+        serveConnections = []
         DispatchQueue.main.async { self.serveRunning = false }
         if wasRunning { ui("Stopped serving") }
     }
 
+    private func trackServeConnection(_ connection: NWConnection) {
+        serveConnections.append(connection)
+    }
+
+    private func untrackServeConnection(_ connection: NWConnection) {
+        let id = ObjectIdentifier(connection)
+        serveConnections.removeAll { ObjectIdentifier($0) == id }
+    }
+
     private func makeListener(port: Int, params: NWParameters, bonjour: Bool = false,
+                              generation: Int,
                               onConnection: @escaping (NWConnection) -> Void) throws -> NWListener {
         guard let endpoint = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else {
             throw MouthError.message("bad port \(port)")
@@ -1642,8 +1994,12 @@ extension Mouth {
         listener.stateUpdateHandler = { [weak self] state in
             if case .failed(let error) = state {
                 DispatchQueue.main.async {
-                    self?.serveError = "nightjar: listener failed: \(error.localizedDescription)"
-                    self?.serveRunning = false
+                    // A stale listener's failure must not clear the
+                    // state of the serve that replaced it.
+                    guard let self = self,
+                          self.serveGeneration == generation else { return }
+                    self.serveError = "nightjar: listener failed: \(error.localizedDescription)"
+                    self.serveRunning = false
                 }
             }
         }
@@ -1655,35 +2011,74 @@ extension Mouth {
     /// send.py's `_tcp_conn`: sink when the peer half-closes, or after a
     /// short idle pause once bytes have arrived.
     private func handleStreamConnection(_ connection: NWConnection, transport: String,
-                                        http: Bool) {
+                                        http: Bool, generation: Int,
+                                        snapReply: Data, snapEcho: Bool,
+                                        snapFraming: String) {
+        trackServeConnection(connection)
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .cancelled, .failed:
+                self?.untrackServeConnection(connection)
+            default:
+                break
+            }
+        }
         connection.start(queue: queue)
         var buffer = Data()
         var sunk = false
-        var generation = 0
+        var chunkGeneration = 0
         let peer = "\(connection.endpoint)"
         func sinkAndAnswer() {
-            guard !sunk, !buffer.isEmpty else {
+            guard !sunk else {
+                connection.cancel()
+                return
+            }
+            // Arrivals from a stale generation (a peer accepted before
+            // Stop, landing late) are dropped, never inboxed.
+            guard generation == serveGeneration else {
+                sunk = true
+                connection.cancel()
+                return
+            }
+            guard !buffer.isEmpty else {
                 connection.cancel()
                 return
             }
             sunk = true
             if http {
-                let body = Self.httpBody(buffer)
+                // Framing applies to HTTP arrivals too: the body goes
+                // through the same unframe step as TCP/UDP payloads
+                // before it reaches the inbox or any echo reply.
+                let body = PayloadKit.unframe(Self.httpBody(buffer),
+                                              framing: snapFraming)
                 receive(transport: "http", peer: peer, data: body)
-                let payload = serveEcho ? body
-                    : (serveReply.isEmpty ? Data("ok\n".utf8) : serveReply)
+                let payload = snapEcho ? body
+                    : (snapReply.isEmpty ? Data("ok\n".utf8) : snapReply)
                 let head = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
                     + "Content-Length: \(payload.count)\r\nConnection: close\r\n\r\n"
-                connection.send(content: Data(head.utf8) + payload,
+                // HEAD: same headers (Content-Length included), no body.
+                let response = Self.httpMethod(buffer) == "HEAD"
+                    ? Data(head.utf8) : Data(head.utf8) + payload
+                connection.send(content: response,
                                 completion: .contentProcessed { _ in connection.cancel() })
             } else {
-                let data = PayloadKit.unframe(buffer, framing: serveFraming)
+                let data = PayloadKit.unframe(buffer, framing: snapFraming)
                 receive(transport: transport, peer: peer, data: data)
-                let answer = serveEcho ? data : serveReply
+                let answer = snapEcho ? data : snapReply
                 if !answer.isEmpty {
                     connection.send(content: answer,
                                     completion: .contentProcessed { _ in connection.cancel() })
                 } else {
+                    connection.cancel()
+                }
+            }
+        }
+        if http {
+            // 30s idle deadline: a peer that never completes a request
+            // does not hold the connection (or a tracking slot) forever.
+            queue.asyncAfter(deadline: .now() + 30) {
+                if !sunk {
+                    sunk = true
                     connection.cancel()
                 }
             }
@@ -1693,7 +2088,7 @@ extension Mouth {
                 data, _, isComplete, error in
                 if let data = data, !data.isEmpty {
                     buffer += data
-                    generation += 1
+                    chunkGeneration += 1
                     if http, Self.httpComplete(buffer) {
                         sinkAndAnswer()
                         return
@@ -1706,9 +2101,9 @@ extension Mouth {
                     // payload, the way send.py's read timeout does. The
                     // generation check keeps a slow sender's later chunks
                     // from being cut off by an earlier chunk's timer.
-                    let seen = generation
+                    let seen = chunkGeneration
                     self.queue.asyncAfter(deadline: .now() + 1.2) {
-                        if generation == seen, !buffer.isEmpty { sinkAndAnswer() }
+                        if chunkGeneration == seen, !buffer.isEmpty { sinkAndAnswer() }
                     }
                     pump()
                 }
@@ -1717,23 +2112,43 @@ extension Mouth {
         pump()
     }
 
-    private func handleDatagramConnection(_ connection: NWConnection) {
+    private func handleDatagramConnection(_ connection: NWConnection,
+                                          generation: Int,
+                                          snapReply: Data, snapEcho: Bool,
+                                          snapFraming: String) {
+        trackServeConnection(connection)
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .cancelled, .failed:
+                self?.untrackServeConnection(connection)
+            default:
+                break
+            }
+        }
         connection.start(queue: queue)
         func pump() {
-            connection.receiveMessage { [weak self] data, _, isComplete, error in
+            connection.receiveMessage { [weak self] data, _, _, error in
                 guard let self = self else { return }
-                if let data = data, !data.isEmpty {
-                    let unframed = PayloadKit.unframe(data, framing: self.serveFraming)
+                // A terminal error (including stopServe's cancel) is
+                // the only thing that stops the pump.
+                if error != nil {
+                    self.untrackServeConnection(connection)
+                    return
+                }
+                if let data = data, !data.isEmpty,
+                   generation == self.serveGeneration {
+                    let unframed = PayloadKit.unframe(data, framing: snapFraming)
                     self.receive(transport: "udp", peer: "\(connection.endpoint)", data: unframed)
-                    let answer = self.serveEcho ? unframed : self.serveReply
+                    let answer = snapEcho ? unframed : snapReply
                     if !answer.isEmpty {
                         connection.send(content: answer,
                                         completion: .contentProcessed { _ in })
                     }
                 }
-                if !isComplete && error == nil {
-                    pump()
-                }
+                // Always re-arm: the old `!isComplete` condition could
+                // retire the pump after one datagram and silently drop
+                // every later datagram from the peer.
+                pump()
             }
         }
         pump()
@@ -1764,16 +2179,91 @@ extension Mouth {
         return 0
     }
 
+    /// The request-line method ("GET", "HEAD", …), uppercased.
+    private static func httpMethod(_ buffer: Data) -> String {
+        let bytes = [UInt8](buffer)
+        var lineEnd = bytes.count
+        for i in 0..<max(0, bytes.count - 1) where bytes[i] == 13 && bytes[i + 1] == 10 {
+            lineEnd = i
+            break
+        }
+        guard let line = String(data: buffer.prefix(lineEnd), encoding: .utf8) else {
+            return ""
+        }
+        return line.split(separator: " ").first
+            .map { String($0).uppercased() } ?? ""
+    }
+
+    private static func httpIsChunked(_ buffer: Data) -> Bool {
+        guard let end = httpHeaderEnd(buffer),
+              let head = String(data: buffer.prefix(end), encoding: .utf8) else {
+            return false
+        }
+        for line in head.components(separatedBy: "\r\n") {
+            let parts = line.split(separator: ":", maxSplits: 1)
+            if parts.count == 2,
+               parts[0].trimmingCharacters(in: .whitespaces).lowercased()
+                   == "transfer-encoding",
+               parts[1].lowercased().contains("chunked") {
+                return true
+            }
+        }
+        return false
+    }
+
     private static func httpComplete(_ buffer: Data) -> Bool {
         guard let end = httpHeaderEnd(buffer) else { return false }
+        if httpIsChunked(buffer) {
+            // Complete only once the terminating 0-chunk has arrived
+            // (optionally followed by trailers and the final CRLF).
+            let body = buffer.subdata(in: end..<buffer.count)
+            let tail: [UInt8] = [48, 13, 10, 13, 10]  // "0\r\n\r\n"
+            let bytes = [UInt8](body)
+            if bytes.count >= tail.count,
+               Array(bytes.suffix(tail.count)) == tail { return true }
+            if let text = String(data: body, encoding: .utf8),
+               text.contains("\r\n0\r\n"), text.hasSuffix("\r\n\r\n") {
+                return true
+            }
+            return false
+        }
         return buffer.count >= end + httpContentLength(buffer)
     }
 
     private static func httpBody(_ buffer: Data) -> Data {
         guard let end = httpHeaderEnd(buffer) else { return buffer }
-        let length = httpContentLength(buffer)
         guard buffer.count > end else { return Data() }
+        if httpIsChunked(buffer) {
+            return httpDechunk(buffer.subdata(in: end..<buffer.count))
+        }
+        let length = httpContentLength(buffer)
         return buffer.subdata(in: end..<min(buffer.count, end + length))
+    }
+
+    /// Reassemble a chunked body: <hex size>CRLF<data>CRLF … 0-chunk.
+    private static func httpDechunk(_ body: Data) -> Data {
+        var out = Data()
+        var pos = 0
+        let bytes = [UInt8](body)
+        while pos < bytes.count {
+            var crlf: Int?
+            var i = pos
+            while i + 1 < bytes.count {
+                if bytes[i] == 13, bytes[i + 1] == 10 { crlf = i; break }
+                i += 1
+            }
+            guard let sizeEnd = crlf,
+                  let sizeText = String(data: body.subdata(in: pos..<sizeEnd),
+                                        encoding: .utf8),
+                  let size = Int(sizeText.trimmingCharacters(in: .whitespaces),
+                                 radix: 16) else { break }
+            if size == 0 { break }
+            let dataStart = sizeEnd + 2
+            guard dataStart + size <= bytes.count else { break }
+            out.append(body.subdata(in: dataStart..<(dataStart + size)))
+            pos = dataStart + size + 2  // skip the trailing CRLF
+        }
+        return out
     }
 }
 
@@ -1921,10 +2411,17 @@ final class PayloadBook: ObservableObject {
     ]
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([SavedPayload].self,
-                                                   from: data) {
-            items = decoded
+        if let data = UserDefaults.standard.data(forKey: key) {
+            if let decoded = try? JSONDecoder().decode([SavedPayload].self,
+                                                       from: data) {
+                items = decoded
+            } else {
+                // The persisted blob is unreadable (older format,
+                // corruption): run on the built-ins in memory but do
+                // NOT persist over it — storage stays untouched until
+                // a later successful mutation replaces it knowingly.
+                items = PayloadBook.builtIns
+            }
         } else {
             items = PayloadBook.builtIns
             persist()
@@ -1932,8 +2429,11 @@ final class PayloadBook: ObservableObject {
     }
 
     var missingBuiltIns: [SavedPayload] {
+        // Dedupe by NAME against ALL entries: a custom payload the
+        // user named like a built-in already occupies that name, so
+        // restoring must not stack a duplicate next to it.
         PayloadBook.builtIns.filter { seed in
-            !items.contains { $0.builtIn && $0.name == seed.name }
+            !items.contains { $0.name == seed.name }
         }
     }
 
@@ -1943,7 +2443,12 @@ final class PayloadBook: ObservableObject {
     }
 
     func add(_ item: SavedPayload) {
-        items.append(item)
+        // Same name replaces, never duplicates.
+        if let index = items.firstIndex(where: { $0.name == item.name }) {
+            items[index] = item
+        } else {
+            items.append(item)
+        }
         persist()
     }
 
