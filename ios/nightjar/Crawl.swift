@@ -209,6 +209,8 @@ extension Mouth {
     /// is installed, left running, or re-sent by any target.
     func crawl(route rawLines: [String], mode: String,
                returnLeg: Bool, perDevice: Bool, homeTarget: String,
+               smartSeed: Bool,
+               probeFor: @escaping (String) -> (data: Data, name: String)?,
                payloadFor: @escaping (String) -> Data?,
                framing: String, method: String) {
         guard !crawlBusy else { return }
@@ -225,6 +227,7 @@ extension Mouth {
         let journey = Array(hops.prefix(total))
         crawlBusy = true
         crawlHomecoming = nil
+        crawlFindings = []
         crawlLines = ["Centipede released — \(total) hop(s)"
                       + (returnLeg ? ", out and back" : "")
                       + (perDevice ? ", per device" : "")]
@@ -239,6 +242,22 @@ extension Mouth {
                 self?.crawlLines.append(text)
             }
         }
+        func harvest(_ text: String, leg: String, reply: Data) {
+            let preview: String
+            if let spoken = PayloadKit.printableText(reply),
+               let first = spoken.split(separator: "\n").first {
+                preview = String(first)
+            } else {
+                preview = "\(reply.count) bytes · " + reply.prefix(8)
+                    .map { String(format: "%02x", $0) }
+                    .joined(separator: " ")
+            }
+            let finding = "\(text) (\(leg)) — "
+                + String(preview.prefix(70))
+            DispatchQueue.main.async { [weak self] in
+                self?.crawlFindings.append(finding)
+            }
+        }
         func finishJourney() {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
@@ -246,6 +265,14 @@ extension Mouth {
                 self.crawlHomecoming = carried
                 self.crawlLines.append(
                     "Home — carrying \(carried?.count ?? 0) byte(s)")
+                if !self.crawlFindings.isEmpty {
+                    self.crawlLines.append(
+                        "Harvest — \(self.crawlFindings.count) "
+                        + (self.crawlFindings.count == 1
+                           ? "reply" : "replies") + " kept:")
+                    self.crawlLines += self.crawlFindings
+                        .map { "  \($0)" }
+                }
                 self.logRecon("centipede", "\(total) hops",
                               lines: self.crawlLines)
                 self.toasts?.show("Centipede home — "
@@ -271,8 +298,17 @@ extension Mouth {
             let hopStart = Date()
             if hop.blockStart { carried = nil }
             let payload: Data?
+            var probeName: String?
             if mode == "chain", !hop.blockStart, let soFar = carried {
                 payload = soFar
+            } else if smartSeed, let probe = probeFor(text) {
+                // A fresh hop (every hop in seed mode, each
+                // device's first door in chain mode) speaks the
+                // probe that matches its port, when the library
+                // has one — a real Redis PING beats a generic
+                // hello nobody answers.
+                payload = probe.data
+                probeName = probe.name
             } else {
                 payload = payloadFor(text)
             }
@@ -292,11 +328,17 @@ extension Mouth {
                 if let noted = self.lastReply, noted.at >= hopStart {
                     reply = noted.data
                 }
-                if let reply = reply { carried = reply }
+                if let reply = reply {
+                    carried = reply
+                    harvest(text, leg: leg, reply: reply)
+                }
+                let elapsed = Date().timeIntervalSince(hopStart)
                 trail("\(ok ? "✓" : "✗") hop \(hopNumber)/\(total) "
                       + "(\(leg)) \(text) · \(payload.count) B out"
+                      + (probeName.map { " · spoke \($0)" } ?? "")
                       + (reply.map { " · \($0.count) B back" }
-                         ?? " · no reply"))
+                         ?? " · no reply")
+                      + String(format: " · %.2fs", elapsed))
                 DispatchQueue.main.async { step() }
             }
             if text.hasPrefix("phone:") {
