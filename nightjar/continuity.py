@@ -24,10 +24,9 @@ MESSAGE_TYPES = {
     0x09: "AirPlay Target",
     0x0C: "Handoff",
     0x0D: "Tethering",
-    0x0E: "Nearby Action",
-    0x0F: "Nearby Info",
-    0x10: "Find My",
-    0x12: "Find My (accessory)",
+    0x0F: "Nearby Action",
+    0x10: "Nearby Info",
+    0x12: "Find My",
 }
 
 
@@ -142,6 +141,82 @@ def decode_ibeacon(message: ContinuityMessage) -> IBeaconState | None:
     )
 
 
+# --- Find My network broadcasts -------------------------------------------
+#
+# A Find My accessory (an AirTag, or a lost Apple device) does NOT use
+# the TLV chain. Its manufacturer payload is one fixed-format record,
+# documented byte-for-byte in the AirGuard paper (Heinrich et al.,
+# TU Darmstadt) and the PETS AirTag safety analysis:
+#
+#   byte 0      0x12  Find My network type
+#   byte 1      0x19  data length (25)
+#   byte 2      status (device class + battery)
+#   bytes 3-24  public key bytes (the key rotates; so does the address)
+#   byte 25     public key bits
+#   byte 26     hint (0x00)
+#
+# The status byte's documented AirTag values encode battery:
+FINDMY_STATUS_BATTERY = {
+    0x10: "full",
+    0x50: "medium",
+    0x90: "low",
+    0xD0: "very low",
+}
+
+
+@dataclass
+class FindMyState:
+    status: int
+    battery: str | None  # decoded for the documented AirTag values
+
+    def describe(self) -> str:
+        text = "Find My network broadcast"
+        if self.battery:
+            text += f", battery {self.battery}"
+        return text
+
+
+def parse_findmy(payload: bytes) -> FindMyState | None:
+    """Recognize a Find My accessory broadcast (not a TLV message)."""
+    if len(payload) < 27 or payload[0] != 0x12 or payload[1] != 0x19:
+        return None
+    status = payload[2]
+    return FindMyState(status=status,
+                       battery=FINDMY_STATUS_BATTERY.get(status))
+
+
+# --- Nearby Info ------------------------------------------------------------
+
+# The first byte of a Nearby Info value is a state/action code: what
+# the device is doing right now. Most codes are documented only
+# partially in public dissectors (furiousMAC/continuity, seemoo-lab);
+# 0x0A is the verified "watch worn & unlocked" code. Other codes are
+# reported numerically rather than guessed at.
+NEARBY_ACTION_LABELS = {
+    0x0A: "watch worn & unlocked",
+}
+
+
+@dataclass
+class NearbyInfoState:
+    action_code: int
+
+    @property
+    def action_label(self) -> str | None:
+        return NEARBY_ACTION_LABELS.get(self.action_code)
+
+    def describe(self) -> str:
+        if self.action_label:
+            return f"nearby state 0x{self.action_code:02X} ({self.action_label})"
+        return f"nearby state 0x{self.action_code:02X}"
+
+
+def decode_nearby_info(message: ContinuityMessage) -> NearbyInfoState | None:
+    if message.type_id != 0x10 or not message.value:
+        return None
+    return NearbyInfoState(action_code=message.value[0])
+
+
 @dataclass
 class Identification:
     """What one sighting's payloads say about the device behind it."""
@@ -159,6 +234,13 @@ class Identification:
 
 def identify_apple(payload: bytes) -> Identification:
     """Identify an Apple device from its Continuity payload."""
+    findmy = parse_findmy(payload)
+    if findmy is not None:
+        return Identification(
+            kind="Find My device (AirTag-class)",
+            details=[findmy.describe()],
+            messages=["Find My"],
+        )
     messages = parse_continuity(payload)
     names = [m.type_name for m in messages]
     details: list[str] = []
@@ -174,9 +256,10 @@ def identify_apple(payload: bytes) -> Identification:
             if beacon is not None:
                 kind = "iBeacon"
                 details.append(beacon.describe())
-    if kind == "Apple device":
-        if "Nearby Info" in names:
-            kind = "Apple device (Nearby Info)"
-        elif "Find My (accessory)" in names or "Find My" in names:
-            kind = "Apple Find My device"
+        elif message.type_id == 0x10:
+            nearby = decode_nearby_info(message)
+            if nearby is not None:
+                details.append(nearby.describe())
+    if kind == "Apple device" and "Nearby Info" in names:
+        kind = "Apple device (Nearby Info)"
     return Identification(kind=kind, details=details, messages=names)

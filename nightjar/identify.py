@@ -18,7 +18,9 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from .continuity import APPLE_COMPANY_ID, identify_apple, parse_continuity
+from .continuity import (
+    APPLE_COMPANY_ID, identify_apple, parse_continuity, parse_findmy,
+)
 from .registry import COMPANY_NAMES, Sighting
 
 MICROSOFT_COMPANY_ID = 0x0006
@@ -43,6 +45,8 @@ def _stable_fingerprint(sighting: Sighting) -> str | None:
     payload = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
     if payload is None:
         return None
+    if parse_findmy(payload) is not None:
+        return None  # Find My keys rotate by design; nothing stable to hash
     canonical = bytearray()
     for message in parse_continuity(payload):
         canonical.append(message.type_id)
@@ -92,6 +96,7 @@ class Identity:
     service_uuids: set[str] = field(default_factory=set)
     details: list[str] = field(default_factory=list)
     basis: str = "address"  # "address" | "payload fingerprint"
+    findmy: bool = False  # seen broadcasting in Find My accessory format
 
     @property
     def label(self) -> str:
@@ -104,9 +109,11 @@ class Identity:
         """Unnamed, and shaped like a standalone tracking tag."""
         if self.names:
             return False
+        if self.findmy:
+            return True
         if self.service_uuids & TRACKER_SERVICE_UUIDS:
             return True
-        return self.kind in ("Apple Find My device", "Tracker tag")
+        return self.kind in ("Find My device (AirTag-class)", "Tracker tag")
 
     def observe(self, sighting: Sighting, kind: str, details: list[str]):
         self.sightings += 1
@@ -118,6 +125,9 @@ class Identity:
             self.names.add(sighting.name)
         for cid in sighting.manufacturer_data:
             self.companies.add(COMPANY_NAMES.get(cid, f"0x{cid:04X}"))
+        apple = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
+        if apple is not None and parse_findmy(apple) is not None:
+            self.findmy = True
         self.service_uuids.update(u.lower() for u in sighting.service_uuids)
         # Keep the most specific kind seen: a product name beats a family.
         if self.kind in ("Unknown device", "Named device", "Apple device") \

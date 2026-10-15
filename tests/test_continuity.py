@@ -1,11 +1,20 @@
 import unittest
 
 from nightjar.continuity import (
-    decode_airpods, decode_ibeacon, identify_apple, parse_continuity,
+    decode_airpods, decode_ibeacon, decode_nearby_info, identify_apple,
+    parse_continuity, parse_findmy,
 )
 from nightjar.simulate import PROFILES
 
 APPLE = 0x004C
+
+
+def airtag_payload():
+    for profile in PROFILES:
+        data = profile.manufacturer_data.get(APPLE)
+        if data and data[0] == 0x12:
+            return data
+    raise AssertionError("simulate lost its AirTag profile")
 
 
 def airpods_payload():
@@ -50,6 +59,27 @@ class ContinuityTests(unittest.TestCase):
         ident = identify_apple(airpods_payload())
         self.assertEqual(ident.kind, "AirPods Pro")
         self.assertIn("Proximity Pairing", ident.messages)
+
+    def test_findmy_format_recognized(self):
+        state = parse_findmy(airtag_payload())
+        self.assertIsNotNone(state)
+        self.assertEqual(state.battery, "medium")  # status byte 0x50
+
+    def test_findmy_rejects_tlv_payloads(self):
+        self.assertIsNone(parse_findmy(airpods_payload()))
+        self.assertIsNone(parse_findmy(b"\x12\x19"))  # too short
+
+    def test_identify_apple_names_findmy(self):
+        ident = identify_apple(airtag_payload())
+        self.assertEqual(ident.kind, "Find My device (AirTag-class)")
+        self.assertIn("battery medium", ident.describe())
+
+    def test_nearby_info_state_code(self):
+        payload = bytes([0x10, 0x03, 0x0A, 0x00, 0x00])
+        (message,) = parse_continuity(payload)
+        self.assertEqual(message.type_name, "Nearby Info")
+        state = decode_nearby_info(message)
+        self.assertEqual(state.action_label, "watch worn & unlocked")
 
 
 if __name__ == "__main__":

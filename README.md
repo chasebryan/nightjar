@@ -32,12 +32,36 @@ Listen until you stop it:
 nightjar
 ```
 
-Listen for a minute, saving everything. Label the session with where
-you're listening — the analysis commands use labels as places:
+Listen for a minute, saving everything:
 
 ```sh
-nightjar scan --duration 60 --label home --log sightings.jsonl --out devices.json
+nightjar scan --duration 60 --log sightings.jsonl --out devices.json
 ```
+
+Sessions label themselves with where you're listening, detected from
+the Wi-Fi network the host is on (the analysis commands use labels as
+places). `--label home` overrides the detection when you want your own
+word for a place.
+
+Add `--live` for the radar: a full-screen view, strongest signals on
+top, each device with a trend arrow and a sparkline of its signal
+history, redrawn every second.
+
+## Watch
+
+`scan` answers when you stop it; `watch` speaks when something
+happens:
+
+```sh
+nightjar watch --log sightings.jsonl
+nightjar watch --webhook https://discord.com/api/webhooks/...
+```
+
+It alerts — on the console, and to a Discord webhook if one is
+configured (or the `NIGHTJAR_WEBHOOK_URL` environment variable) —
+when a new device appears after a two-minute warmup, and when a
+tracker-shaped device has travelled with the listener across several
+hours at close range. Each alert fires once per device.
 
 No Bluetooth hardware handy? Run against a fake neighbourhood —
 a few resident devices, a tracker tag, and one phone that rotates its
@@ -72,7 +96,9 @@ nightjar trackers --log sightings.jsonl
 ## Platform notes
 
 - **macOS** — works out of the box, but CoreBluetooth hides real MAC
-  addresses: devices appear under per-host UUIDs instead.
+  addresses: devices appear under per-host UUIDs instead. Wi-Fi-based
+  place detection may return a redacted SSID unless the terminal has
+  Location permission; a manual `--label` always works.
 - **Linux** — needs BlueZ; the process needs Bluetooth capability
   (run as root, or grant `CAP_NET_RAW`/`CAP_NET_ADMIN` to the Python
   binary).
@@ -87,6 +113,10 @@ nightjar trackers --log sightings.jsonl
    rich vein: nightjar decodes the Continuity message chain,
    including Proximity Pairing — an AirPods sighting resolves to its
    model, both buds' battery levels, and whether the lid is open.
+   Find My accessory broadcasts (an AirTag's fixed format, documented
+   in the AirGuard research) are recognized exactly, status and
+   battery included, and Nearby Info sightings report the device's
+   current state code.
    Rotating phones are re-identified by a fingerprint of the stable
    core of their broadcasts. The fingerprint is *epoch-scoped*: a
    phone rotates those bytes along with its address on a schedule,

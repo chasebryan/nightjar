@@ -30,10 +30,16 @@ _AIRPODS_VALUE = bytes(
 )
 _AIRPODS_PAYLOAD = bytes([0x07, len(_AIRPODS_VALUE)]) + _AIRPODS_VALUE
 
-# Nearby Info (0x0F): [type][len=17][status][device bytes...]
-_IPHONE_PAYLOAD = bytes([0x0F, 0x11, 0x10, 0x21, 0x8A, 0x3C, 0x51, 0x09,
+# Nearby Info (0x10): [type][len=17][state/action][device bytes...]
+_IPHONE_PAYLOAD = bytes([0x10, 0x11, 0x03, 0x21, 0x8A, 0x3C, 0x51, 0x09,
                          0xBE, 0x77, 0x02, 0xD4, 0x6F, 0x88, 0x1A, 0xC5,
                          0x49, 0xE0, 0x5B])
+
+# Find My accessory broadcast: NOT a TLV chain — the fixed format
+# [0x12][0x19][status][22 public-key bytes][key bits][hint].
+# Status 0x50 = battery medium, in the documented AirTag encoding.
+_AIRTAG_PAYLOAD = bytes([0x12, 0x19, 0x50]) + bytes(range(0x30, 0x46)) \
+    + bytes([0x00, 0x00])
 
 
 class _Profile:
@@ -65,9 +71,14 @@ PROFILES = [
         manufacturer_data={_SAMSUNG: bytes.fromhex("7500420001")},
     ),
     _Profile(
-        name=None, base_rssi=-58, weight=3,  # a tracker tag
+        name=None, base_rssi=-58, weight=3,  # a Tile-style tracker tag
         address="D4:61:0A:BE:37:52",
         service_uuids=["0000feed-0000-1000-8000-00805f9b34fb"],
+    ),
+    _Profile(
+        name=None, base_rssi=-70, weight=3,  # an AirTag, separated
+        address="E7:04:9B:12:6C:88",
+        manufacturer_data={_APPLE: _AIRTAG_PAYLOAD},
     ),
     _Profile(
         name="Surface Laptop", base_rssi=-66, weight=2,

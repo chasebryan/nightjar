@@ -81,6 +81,11 @@ class DeviceRecord:
     rssi_closest: int | None = None  # strongest RSSI = closest approach
     company_ids: set[int] = field(default_factory=set)
     service_uuids: set[str] = field(default_factory=set)
+    # (epoch, rssi) samples, newest last, capped — the raw material
+    # for trends, sparklines, and the live radar.
+    rssi_history: list = field(default_factory=list)
+
+    HISTORY_CAP = 240
 
     def observe(self, sighting: Sighting) -> None:
         self.sightings += 1
@@ -92,8 +97,31 @@ class DeviceRecord:
             self.rssi_last = sighting.rssi
             if self.rssi_closest is None or sighting.rssi > self.rssi_closest:
                 self.rssi_closest = sighting.rssi
+            self.rssi_history.append((sighting.seen_at, sighting.rssi))
+            if len(self.rssi_history) > self.HISTORY_CAP:
+                del self.rssi_history[: len(self.rssi_history) - self.HISTORY_CAP]
         self.company_ids.update(sighting.manufacturer_data.keys())
         self.service_uuids.update(sighting.service_uuids)
+
+    def trend(self) -> str | None:
+        """Approaching / receding / steady, from the RSSI history.
+
+        Compares the mean of the older half of samples with the
+        younger half; needs a handful of samples and a >3 dB move
+        before it claims a direction.
+        """
+        values = [rssi for _, rssi in self.rssi_history]
+        if len(values) < 6:
+            return None
+        mid = len(values) // 2
+        older = sum(values[:mid]) / mid
+        younger = sum(values[mid:]) / (len(values) - mid)
+        delta = younger - older
+        if delta > 3:
+            return "approaching"
+        if delta < -3:
+            return "receding"
+        return "steady"
 
     @property
     def companies(self) -> list[str]:

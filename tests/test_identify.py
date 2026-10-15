@@ -48,6 +48,16 @@ class IdentityTests(unittest.TestCase):
         self.assertTrue(tile.tracker_like)
         self.assertFalse(pods.tracker_like)
 
+    def test_findmy_identity_is_tracker_like(self):
+        airtag = next(p.manufacturer_data[APPLE] for p in PROFILES
+                      if p.manufacturer_data.get(APPLE, b"")[:1] == b"\x12")
+        resolver = IdentityResolver()
+        identity = resolver.observe(sighting(
+            "E7:04", 1000.0, manufacturer_data={APPLE: airtag}))
+        self.assertTrue(identity.findmy)
+        self.assertTrue(identity.tracker_like)
+        self.assertEqual(identity.kind, "Find My device (AirTag-class)")
+
     def test_kind_of_swift_pair(self):
         kind, _ = kind_of(sighting("CC:03", 1000.0, manufacturer_data={
             0x0006: bytes.fromhex("03060800")}))

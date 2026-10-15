@@ -23,6 +23,16 @@ class CliTests(unittest.TestCase):
             self.assertEqual(main(["report", "--log", log]), 0)
             self.assertEqual(main(["trackers", "--log", log]), 0)
 
+    def test_watch_simulated_run(self):
+        code = main(["watch", "--simulate", "--duration", "1",
+                     "--seed", "4", "--label", "home", "--quiet"])
+        self.assertEqual(code, 0)
+
+    def test_scan_live_mode_runs(self):
+        code = main(["scan", "--simulate", "--duration", "2",
+                     "--seed", "4", "--label", "home", "--live"])
+        self.assertEqual(code, 0)
+
     def test_bare_flags_default_to_scan(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = str(Path(tmp) / "devices.json")
