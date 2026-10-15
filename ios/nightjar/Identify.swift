@@ -40,6 +40,14 @@ struct Classification {
                                   trackerShaped: tracker, rotatingPhone: false)
         }
 
+        if let more = MoreDecoders.identify(sighting) {
+            return Classification(kind: more.kind, details: more.details,
+                                  rank: rankFor(specificity: more.specificity),
+                                  trackerShaped: more.trackerShaped,
+                                  rotatingPhone: more.rotatingPhone,
+                                  preferredLabel: more.preferredLabel)
+        }
+
         let service = Services.identify(serviceUUIDs: sighting.serviceUUIDs,
                                         serviceData: sighting.serviceData)
         if let service = service, service.specificity >= 2 {
