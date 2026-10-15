@@ -61,6 +61,17 @@ enum SessionStore {
         try? FileManager.default.removeItem(at: session.url)
     }
 
+    /// Delete every stored session except the one still
+    /// recording. Returns how many files went.
+    static func deleteAll(exceptLiveID liveID: String?) -> Int {
+        var deleted = 0
+        for session in list() where session.id != liveID {
+            delete(session)
+            deleted += 1
+        }
+        return deleted
+    }
+
     /// Parse the header (first line) and the footer (last line, if any).
     static func summary(for url: URL) -> SessionSummary? {
         guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
