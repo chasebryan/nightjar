@@ -829,14 +829,16 @@ final class Mouth: NSObject, ObservableObject {
                 logExchange("send", label, sent: framed.count,
                             reply: read ? replied : nil)
             }
-            completion?(didSend)
+            // The reply is noted BEFORE the completion fires:
+            // consumers of the completion (the centipede, above
+            // all) read the reply channel the moment it runs,
+            // and noting afterwards made every fast reply
+            // invisible to them. Same invariant the HTTP path
+            // already kept.
             if read {
                 if replied.isEmpty {
                     line("  (no reply)")
                 } else {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.toasts?.show("Reply received — \(replied.count) bytes")
-                    }
                     noteReply(label: label, data: replied)
                     line("  <- \(replied.count) byte reply")
                     for l in PayloadKit.hexdump(replied).components(separatedBy: "\n") {
@@ -845,8 +847,12 @@ final class Mouth: NSObject, ObservableObject {
                     if let text = PayloadKit.printableText(replied) {
                         line("  text: \(text)")
                     }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.toasts?.show("Reply received — \(replied.count) bytes")
+                    }
                 }
             }
+            completion?(didSend)
         }
         func receiveMore() {
             connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) {
