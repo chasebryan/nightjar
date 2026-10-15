@@ -1041,6 +1041,259 @@ final class Mouth: NSObject, ObservableObject {
         step()
     }
 
+    // MARK: Centipede
+
+    @Published var crawlBusy = false
+    @Published var crawlLines: [String] = []
+    @Published var crawlHomecoming: Data?
+    private var crawlGeneration = 0
+
+    /// Expand a centipede route into the flat list of stops it
+    /// will visit, in order. Each line of the route is one of:
+    ///   - any ordinary target (tcp://h:p, udp://, http(s)://…,
+    ///     phone:NAME)
+    ///   - a last-octet range (the expandRange syntax)
+    ///   - host:80,443,6379 — a port train across those ports
+    ///   - a bare host — a port train across the usual scan ports
+    /// Range-shaped lines that fail validation come back in
+    /// `invalid` so they are reported, never aimed at. Stops are
+    /// NOT deduplicated: a walk may visit the same door twice on
+    /// purpose.
+    static func expandRoute(_ lines: [String])
+        -> (stops: [String], invalid: [String])
+    {
+        var stops: [String] = []
+        var invalid: [String] = []
+        for entry in lines {
+            let text = entry.trimmingCharacters(in: .whitespaces)
+            if text.isEmpty || text.hasPrefix("#") { continue }
+            if let range = Mouth.expandRange(text) {
+                stops += range
+                continue
+            }
+            if Mouth.looksLikeRange(text) {
+                invalid.append(text)
+                continue
+            }
+            if text.hasPrefix("phone:")
+                || text.hasPrefix("http://")
+                || text.hasPrefix("https://")
+            {
+                stops.append(text)
+                continue
+            }
+            var scheme = "tcp"
+            var rest = text
+            if let split = text.range(of: "://") {
+                scheme = String(text[..<split.lowerBound])
+                rest = String(text[split.upperBound...])
+            }
+            guard let colon = rest.lastIndex(of: ":") else {
+                // A bare host: a train across the usual ports.
+                stops += ScanModel.topPorts.map {
+                    "\(scheme)://\(rest):\($0.0)"
+                }
+                continue
+            }
+            let host = String(rest[..<colon])
+            let portPart = String(rest[rest.index(after: colon)...])
+            if portPart.contains(",") {
+                let ports = portPart
+                    .split(separator: ",")
+                    .compactMap { Int($0.trimmingCharacters(
+                        in: .whitespaces)) }
+                    .filter { (1...65535).contains($0) }
+                if ports.isEmpty {
+                    invalid.append(text)
+                } else {
+                    stops += ports.map { "\(scheme)://\(host):\($0)" }
+                }
+            } else if let port = Int(portPart), (1...65535).contains(port) {
+                stops.append("\(scheme)://\(host):\(port)")
+            } else {
+                // Not a shape we unfold; let the hop itself judge
+                // it (parse failures are reported in the trail).
+                stops.append(text)
+            }
+        }
+        return (stops, invalid)
+    }
+
+    /// Walk a route one hop at a time. In "seed" mode every hop
+    /// sends the payload built for it; in "chain" mode each hop
+    /// after the first sends the previous hop's reply verbatim —
+    /// the payload evolves as it travels. With `returnLeg` the
+    /// creature then walks the same route backwards, and whatever
+    /// it carries at the end comes home: published as
+    /// `crawlHomecoming` and, when `homeTarget` is set, sent there
+    /// once. The phone performs every send on both legs; nothing
+    /// is installed, left running, or re-sent by any target.
+    func crawl(route rawLines: [String], mode: String,
+               returnLeg: Bool, homeTarget: String,
+               payloadFor: @escaping (String) -> Data?,
+               framing: String, method: String) {
+        guard !crawlBusy else { return }
+        let (stops, invalid) = Mouth.expandRoute(rawLines)
+        guard !stops.isEmpty else {
+            crawlLines = invalid.map { "✗ \($0) — invalid range" }
+            return
+        }
+        crawlGeneration += 1
+        let generation = crawlGeneration
+        var journey = stops
+        if returnLeg { journey += stops.reversed() }
+        let total = min(journey.count, 300)
+        journey = Array(journey.prefix(total))
+        crawlBusy = true
+        crawlHomecoming = nil
+        crawlLines = ["Centipede released — \(total) hop(s)"
+                      + (returnLeg ? ", out and back" : "")]
+        for text in invalid {
+            crawlLines.append("✗ \(text) — invalid range")
+        }
+        line("centipede: \(total) hops, mode \(mode)")
+        var index = 0
+        var carried: Data?
+        func trail(_ text: String) {
+            DispatchQueue.main.async { [weak self] in
+                self?.crawlLines.append(text)
+            }
+        }
+        func finishJourney() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.crawlBusy = false
+                self.crawlHomecoming = carried
+                self.crawlLines.append(
+                    "Home — carrying \(carried?.count ?? 0) byte(s)")
+                self.logRecon("centipede", "\(total) hops",
+                              lines: self.crawlLines)
+                self.toasts?.show("Centipede home — "
+                    + "\(carried?.count ?? 0) bytes back")
+            }
+            let home = homeTarget.trimmingCharacters(in: .whitespaces)
+            if !home.isEmpty, let payload = carried {
+                deliverHome(home: home, payload: payload,
+                            framing: framing, method: method)
+            }
+        }
+        func step() {
+            guard generation == crawlGeneration, index < journey.count
+            else {
+                if generation == crawlGeneration { finishJourney() }
+                return
+            }
+            let text = journey[index]
+            index += 1
+            let hopNumber = index
+            let leg = returnLeg && hopNumber > stops.count
+                ? "back" : "out"
+            let hopStart = Date()
+            let payload: Data?
+            if mode == "chain", hopNumber > 1, let soFar = carried {
+                payload = soFar
+            } else {
+                payload = payloadFor(text)
+            }
+            guard let payload = payload else {
+                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
+                      + "payload failed to build")
+                DispatchQueue.main.async { step() }
+                return
+            }
+            let report: (Bool) -> Void = { [weak self] ok in
+                guard let self = self else { return }
+                // This hop's reply, if it produced one: lastReply
+                // is written only by send paths (noteReply), and
+                // hops run strictly one at a time, so a timestamp
+                // at or after this hop's start is its answer.
+                var reply: Data?
+                if let noted = self.lastReply, noted.at >= hopStart {
+                    reply = noted.data
+                }
+                if let reply = reply { carried = reply }
+                trail("\(ok ? "✓" : "✗") hop \(hopNumber)/\(total) "
+                      + "(\(leg)) \(text) · \(payload.count) B out"
+                      + (reply.map { " · \($0.count) B back" }
+                         ?? " · no reply"))
+                DispatchQueue.main.async { step() }
+            }
+            if text.hasPrefix("phone:") {
+                sendToPhone(name: String(text.dropFirst(6)),
+                            payload: payload, framing: framing,
+                            read: true, timeout: 3, completion: report)
+                return
+            }
+            guard let parsed = try? SendTarget.parse(text) else {
+                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
+                      + "cannot parse target")
+                DispatchQueue.main.async { step() }
+                return
+            }
+            switch parsed {
+            case .http:
+                sendHTTP(target: parsed, payload: payload,
+                         framing: framing, method: method, timeout: 5,
+                         completion: report)
+            case .tcp, .udp:
+                sendNetwork(target: parsed, payload: payload,
+                            framing: framing, read: true, timeout: 3,
+                            completion: report)
+            default:
+                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
+                      + "not a network target")
+                DispatchQueue.main.async { step() }
+            }
+        }
+        step()
+    }
+
+    /// Stop a crawl between hops; the in-flight hop finishes on
+    /// its own timeout. Whatever was carried so far stays visible
+    /// in the trail.
+    func stopCrawl() {
+        crawlGeneration += 1
+        if crawlBusy {
+            crawlBusy = false
+            crawlLines.append("Stopped — called home early")
+            line("centipede: stopped by hand")
+        }
+    }
+
+    /// One final send: the homecoming payload, delivered to a
+    /// target the user named (their own server, another phone).
+    private func deliverHome(home: String, payload: Data,
+                             framing: String, method: String) {
+        let note: (Bool) -> Void = { [weak self] ok in
+            DispatchQueue.main.async {
+                self?.crawlLines.append(
+                    "\(ok ? "✓" : "✗") homecoming delivered to \(home)")
+            }
+        }
+        if home.hasPrefix("phone:") {
+            sendToPhone(name: String(home.dropFirst(6)),
+                        payload: payload, framing: framing,
+                        read: false, timeout: 3, completion: note)
+            return
+        }
+        guard let parsed = try? SendTarget.parse(home) else {
+            note(false)
+            return
+        }
+        switch parsed {
+        case .http:
+            sendHTTP(target: parsed, payload: payload,
+                     framing: framing, method: method, timeout: 5,
+                     completion: note)
+        case .tcp, .udp:
+            sendNetwork(target: parsed, payload: payload,
+                        framing: framing, read: false, timeout: 3,
+                        completion: note)
+        default:
+            note(false)
+        }
+    }
+
     // MARK: Timed delivery
 
     @Published var scheduleStatus: String?
