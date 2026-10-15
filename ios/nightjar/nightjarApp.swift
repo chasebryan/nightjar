@@ -26,6 +26,7 @@ struct NightjarApp: App {
                 .onChange(of: scenePhase) { phase in
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
+                        mouth.appBecameActive()
                         Task { await updater.checkIfDue() }
                     }
                 }
