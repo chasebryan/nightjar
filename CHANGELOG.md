@@ -28,6 +28,13 @@
   glitching, laughing skull (Chase's own, kept in the project
   as `centipede.gif`; the splash lasts the GIF's own ~2 s;
   tap to skip; a built-in fallback covers a missing asset).
+  Fixed: centipede hops could report "no reply" for servers
+  that answer and close fast (an HTTP/1.0 303, say) — the
+  reply was noted on a background queue while the published
+  last-reply value travelled via the main queue, and the
+  hop's completion could read the stale value first. Replies
+  are now mirrored synchronously under a lock, and the crawl
+  reads its per-hop answers through that mirror.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
