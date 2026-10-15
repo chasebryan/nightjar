@@ -36,6 +36,7 @@ struct DiscoveredService: Identifiable {
 /// answers, and a Bonjour sweep of the local network.
 final class ScanModel: ObservableObject {
     @Published private(set) var results: [PortResult] = []
+    @Published private(set) var lastScannedHost = ""
     @Published private(set) var scanning = false
     @Published private(set) var probedCount = 0
     @Published private(set) var totalCount = 0
@@ -75,7 +76,7 @@ final class ScanModel: ObservableObject {
         11211: "memcached stats",
     ]
 
-    private static let httpPorts: Set<Int> = [80, 8000, 8080, 8443, 8888, 9200]
+    private static let httpPorts: Set<Int> = [80, 8000, 8080, 8888, 9200]
 
     private let queue = DispatchQueue(label: "nightjar-scan",
                                       attributes: .concurrent)
@@ -84,7 +85,9 @@ final class ScanModel: ObservableObject {
 
     func scan(host: String, ports: [Int]) {
         let host = host.trimmingCharacters(in: .whitespaces)
-        guard !host.isEmpty, !scanning, !ports.isEmpty else { return }
+        guard !host.isEmpty, !scanning, !sweeping, !ports.isEmpty
+        else { return }
+        lastScannedHost = host
         scanning = true
         results = []
         probedCount = 0
@@ -117,25 +120,48 @@ final class ScanModel: ObservableObject {
 
     private func probe(host: String, port: Int,
                        done: @escaping (PortResult?) -> Void) {
-        guard let nwPort = NWEndpoint.Port(rawValue: UInt16(clamping: port))
+        guard (1...65535).contains(port),
+              let nwPort = NWEndpoint.Port(rawValue: UInt16(port))
         else { done(nil); return }
         let connection = NWConnection(host: NWEndpoint.Host(host),
                                       port: nwPort, using: .tcp)
+        let service = ScanModel.serviceNames[port] ?? ""
         let finishLock = NSLock()
         var finished = false
+        var wasReady = false
         let finish: (PortResult?) -> Void = { result in
             finishLock.lock()
-            defer { finishLock.unlock() }
-            guard !finished else { return }
+            if finished {
+                finishLock.unlock()
+                return
+            }
             finished = true
+            finishLock.unlock()
             connection.cancel()
             done(result)
+        }
+        func ready() -> Bool {
+            finishLock.lock()
+            defer { finishLock.unlock() }
+            return wasReady
+        }
+        // Connect deadline — it applies only until the connection
+        // is up. Once .ready fires the port IS open, and nothing
+        // that happens afterwards (a reset, a close, a slow
+        // banner) is allowed to un-open it. The previous shape —
+        // an unconditional 2.5s finish(nil) racing a 1.2s banner
+        // window — reported slow-connecting silent services
+        // (443, 445, 3389, 6379…) closed. That was the bug.
+        queue.asyncAfter(deadline: .now() + 2.5) {
+            if !ready() { finish(nil) }
         }
         connection.stateUpdateHandler = { [weak self] state in
             guard let self = self else { return }
             switch state {
             case .ready:
-                let service = ScanModel.serviceNames[port] ?? ""
+                finishLock.lock()
+                wasReady = true
+                finishLock.unlock()
                 func grab() {
                     connection.receive(minimumIncompleteLength: 1,
                                        maximumLength: 4096) { data, _, _, _ in
@@ -148,7 +174,8 @@ final class ScanModel: ObservableObject {
                         finish(PortResult(port: port, service: service,
                                           banner: banner))
                     }
-                    // Answers that say nothing still count as open.
+                    // Answers that say nothing still count as open:
+                    // the banner window ends the probe, successfully.
                     self.queue.asyncAfter(deadline: .now() + 1.2) {
                         finish(PortResult(port: port, service: service,
                                           banner: nil))
@@ -162,13 +189,15 @@ final class ScanModel: ObservableObject {
                     grab()
                 }
             case .failed, .cancelled:
-                finish(nil)
+                // A failure before connect = closed/filtered. A
+                // failure after .ready changes nothing: the open
+                // result is already owned by the banner paths.
+                if !ready() { finish(nil) }
             default:
                 break
             }
         }
         connection.start(queue: queue)
-        queue.asyncAfter(deadline: .now() + 2.5) { finish(nil) }
     }
 
     // MARK: Subnet sweep
@@ -209,9 +238,16 @@ final class ScanModel: ObservableObject {
             }
         }
         group.notify(queue: .main) { [weak self] in
-            self?.sweepHosts = found.sorted { $0.octet < $1.octet }
-            self?.sweeping = false
-            self?.sweepFinished()
+            guard let self = self else { return }
+            self.sweepHosts = found.sorted { $0.octet < $1.octet }
+            self.sweeping = false
+            let wasWatch = self.sweepIsWatch
+            self.sweepIsWatch = false
+            // Only a watch-cycle sweep feeds the observation
+            // chain; a manual sweep pressed mid-watch must not
+            // diff against the feed baseline or hijack its timer.
+            if wasWatch { self.sweepFinished() }
+            self.onSweepCompleted?(wasWatch)
         }
     }
 
@@ -225,6 +261,12 @@ final class ScanModel: ObservableObject {
 
     @Published private(set) var feed: [FeedEvent] = []
     @Published private(set) var watching = false
+    /// True while the in-flight sweep belongs to the watch chain.
+    private var sweepIsWatch = false
+    /// Set by ScanView: called on the main queue after every
+    /// sweep, with whether that sweep was a watch cycle (manual
+    /// completions toast, feed targets, and log; watch ones don't).
+    var onSweepCompleted: ((Bool) -> Void)?
     private var knownHosts: Set<String> = []
     private var knownServices: Set<String> = []
     private var baselineTaken = false
@@ -275,7 +317,25 @@ final class ScanModel: ObservableObject {
             }
         }
         knownServices = servicesNow
+        sweepIsWatch = true
         sweep(port: feedPort)
+        if !sweeping {
+            // The sweep refused to start (a manual scan is
+            // running, or there is no Wi-Fi address right now).
+            // Without this, the chain would end here silently —
+            // watching stays true and nothing ever fires again.
+            sweepIsWatch = false
+            appendFeed("cycle skipped — busy or off Wi-Fi; retrying")
+            scheduleNextWatchCycle()
+        }
+    }
+
+    private func scheduleNextWatchCycle() {
+        watchWork?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.watchCycle() }
+        watchWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20,
+                                      execute: item)
     }
 
     private func sweepFinished() {
@@ -294,10 +354,7 @@ final class ScanModel: ObservableObject {
                        + "on port \(feedPort)")
         }
         knownHosts = now
-        let item = DispatchWorkItem { [weak self] in self?.watchCycle() }
-        watchWork = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 20,
-                                      execute: item)
+        scheduleNextWatchCycle()
     }
 
     private func sweepProbe(host: String, port: Int,
@@ -1063,13 +1120,28 @@ struct ScanView: View {
     }
 
     private var portsToScan: [Int] {
-        let typed = customPorts
-            .split { !$0.isNumber }
-            .compactMap { Int($0) }
-            .filter { (1...65535).contains($0) }
+        // Comma/space separated ports, and ranges: "8000-8010"
+        // means the eleven ports, not ports 8000 and 8010.
+        var typed: [Int] = []
+        for token in customPorts.split(
+            whereSeparator: { $0 == "," || $0.isWhitespace }) {
+            if token.contains("-") {
+                let ends = token.split(separator: "-")
+                if ends.count == 2, let lo = Int(ends[0]),
+                   let hi = Int(ends[1]), lo >= 1, hi <= 65535,
+                   lo <= hi, hi - lo <= 512 {
+                    typed.append(contentsOf: lo...hi)
+                }
+            } else if let port = Int(token) {
+                typed.append(port)
+            }
+        }
         var seen = Set<Int>()
-        let unique = typed.filter { seen.insert($0).inserted }
-        return unique.isEmpty ? ScanModel.topPorts.map { $0.0 } : unique
+        let unique = typed
+            .filter { (1...65535).contains($0) }
+            .filter { seen.insert($0).inserted }
+        let capped = Array(unique.prefix(1024))
+        return capped.isEmpty ? ScanModel.topPorts.map { $0.0 } : capped
     }
 
     var body: some View {
@@ -1133,7 +1205,7 @@ struct ScanView: View {
                 }
 
                 Section(header: Text("Port scan · TCP connect")) {
-                    TextField("ports (blank = the usual 28)",
+                    TextField("ports or range (blank = the usual 28)",
                               text: $customPorts)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
@@ -1147,7 +1219,8 @@ struct ScanView: View {
                               : "Scan \(host.isEmpty ? "target" : host)",
                               systemImage: "scope")
                     }
-                    .disabled(model.scanning || host.isEmpty)
+                    .disabled(model.scanning || model.sweeping
+                              || host.isEmpty)
                     ForEach(model.results) { result in
                       Button { handoff(result) } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -1423,9 +1496,14 @@ struct ScanView: View {
                 if !scanning, model.totalCount > 0 {
                     toasts.show("Scan finished — \(model.results.count) "
                                 + "open of \(model.totalCount)")
-                    let base = host.trimmingCharacters(in: .whitespaces)
-                    mouth.lastScanTargets = model.results.map {
-                        "tcp://\(base):\($0.port)"
+                    // The host the scan actually ran against,
+                    // captured at start — not whatever the field
+                    // says now.
+                    let base = model.lastScannedHost
+                    if !model.results.isEmpty {
+                        mouth.lastScanTargets = model.results.map {
+                            "tcp://\(base):\($0.port)"
+                        }
                     }
                     mouth.logRecon("scan", base, lines: model.results.map {
                         "\($0.port) \($0.service)"
@@ -1433,8 +1511,14 @@ struct ScanView: View {
                     })
                 }
             }
-            .onChange(of: model.sweeping) { sweeping in
-                if !sweeping, !model.sweepHosts.isEmpty {
+            .onAppear {
+                // Sweep completion lives in the model now, so a
+                // watch-cycle sweep can be told apart from a manual
+                // one: only manual sweeps toast, feed the fan-out
+                // targets, and write a history entry.
+                model.onSweepCompleted = { wasWatch in
+                    guard !wasWatch, !model.sweepHosts.isEmpty
+                    else { return }
                     toasts.show("Sweep finished — "
                                 + "\(model.sweepHosts.count) host(s) "
                                 + "answer on \(sweepPort)")
@@ -1458,9 +1542,10 @@ struct ScanView: View {
 
     private func handoff(_ result: PortResult) {
         Haptics.select()
-        mouth.scanHandoffTarget =
-            "tcp://\(host.trimmingCharacters(in: .whitespaces)):"
-            + "\(result.port)"
+        let base = model.lastScannedHost.isEmpty
+            ? host.trimmingCharacters(in: .whitespaces)
+            : model.lastScannedHost
+        mouth.scanHandoffTarget = "tcp://\(base):\(result.port)"
         mouth.scanHandoffPayload = ScanModel.payloadByPort[result.port]
         tab = 1
     }
