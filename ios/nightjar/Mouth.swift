@@ -358,6 +358,11 @@ final class Mouth: NSObject, ObservableObject {
     @Published private(set) var nearbyPhones: [String] = []
     private var browser: NWBrowser?
 
+    /// Scan → Send handoff: an open port tapped in the Scan tab,
+    /// consumed by the Send tab when it appears.
+    @Published var scanHandoffTarget: String?
+    @Published var scanHandoffPayload: String?
+
     /// The most recent reply a send collected, for the Send tab's
     /// inline readout (the full trail still lives in the log).
     struct LastReply: Identifiable {
