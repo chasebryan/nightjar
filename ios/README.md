@@ -67,6 +67,18 @@ Below the steps, the Send tab keeps working:
   with a live countdown and a cancel button. Timers run while the
   app is open; iOS suspends background apps, and the section says
   so.
+- **Centipede.** A route, walked hop by hop: each line of the
+  route is a stop — a target, a range, `host:80,443` (a port
+  train), or a bare host (a train across the usual scan ports).
+  In **Chain** mode each hop sends the previous hop's reply, so
+  the payload evolves as it travels; **Seed** mode sends the
+  step-2 payload at every stop. *Return to sender* walks the
+  route back in reverse, and whatever the creature is carrying
+  at the end comes home — shown on a homecoming card, logged to
+  history, and optionally delivered once to a target you name.
+  A stop button calls it home early. Every send on both legs is
+  made by the phone; nothing is installed or left running on
+  any target.
 - **SnatchSteal.** The receive-side weapon: knock on the step-1
   target with the step-2 payload (or don't knock at all), then
   drain *everything* it sends back — until it closes, a 15-second
