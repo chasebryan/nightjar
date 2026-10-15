@@ -98,6 +98,33 @@ Look before you leap:
 
     nightjar send tcp://host:9000 --payload-hex deadbeef --xor 0x5a --gzip --dry-run
 
+## More transports (2.4)
+
+- `ws://host:port/path` / `wss://` — one WebSocket message per send;
+  `serve --ws PORT` listens (`pip install websockets`, in the tx extra).
+- `serial://DEVICE?baud=9600` — out a serial port, and
+  `serve --serial DEVICE --baud 9600` listens on one (`pyserial`, tx extra).
+  A payload ends at an idle gap, and the reply goes back down the wire.
+- Several targets fan out: `nightjar send tcp://a:1 tcp://b:2 --payload x`,
+  or comma-separated. The exit code is the worst target's.
+
+## Send tricks
+
+- `--expect TEXT` / `--expect-hex HEX` — read the reply and fail with
+  exit 1 unless it contains the needle. A one-line smoke test.
+- `--follow FILE` — send FILE's contents every time FILE changes.
+- `--replay rec.jsonl [--speed 2]` — re-send a `serve --out` recording
+  with its original timing (gaps capped at 10s; `--speed 0` = flat out).
+
+## Serve tricks
+
+- `--reply-mode echo` answers with the payload itself; `--reply-mode file
+  --reply-file canned.bin` answers from a file; default `static` is the
+  `--reply` text.
+- `--relay tcp://real-server:port` (with `--tcp PORT`) taps a connection:
+  clients talk to the real server through you, and both directions land
+  in the sink as `relay-c2s` / `relay-s2c`.
+
 ## What changed in the checkout
 
 - `nightjar/send.py` - new, the whole feature.
