@@ -419,6 +419,45 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    // MARK: Exchange history (persistent, exportable)
+
+    static var exchangesURL: URL {
+        FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("exchanges.jsonl")
+    }
+
+    private let exchangeQueue = DispatchQueue(label: "nightjar-exchanges")
+
+    /// One JSON line per exchange: what went where, how much came
+    /// back. The working record a scan or a send leaves behind.
+    func logExchange(_ kind: String, _ label: String, sent: Int,
+                     reply: Data?) {
+        var record: [String: Any] = [
+            "ts": Date().timeIntervalSince1970,
+            "kind": kind, "target": label, "sent": sent,
+        ]
+        if let reply = reply {
+            record["replyBytes"] = reply.count
+            record["replyHex"] = reply.prefix(48)
+                .map { String(format: "%02x", $0) }.joined()
+        }
+        guard let data = try? JSONSerialization.data(
+                withJSONObject: record),
+              var line = String(data: data, encoding: .utf8) else { return }
+        line += "\n"
+        exchangeQueue.async {
+            let url = Mouth.exchangesURL
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(Data(line.utf8))
+                try? handle.close()
+            } else {
+                try? line.write(to: url, atomically: true, encoding: .utf8)
+            }
+        }
+    }
+
     override init() {
         super.init()
         Mouth.shared = self
@@ -561,10 +600,15 @@ final class Mouth: NSObject, ObservableObject {
                      read: Bool, timeout: TimeInterval) {
         var replied = Data()
         var finished = false
+        var didSend = false
         func finish() {
             guard !finished else { return }
             finished = true
             connection.cancel()
+            if didSend {
+                logExchange("send", label, sent: framed.count,
+                            reply: read ? replied : nil)
+            }
             if read {
                 if replied.isEmpty {
                     line("  (no reply)")
@@ -605,6 +649,7 @@ final class Mouth: NSObject, ObservableObject {
                         finish()
                         return
                     }
+                    didSend = true
                     if read {
                         receiveMore()
                     } else {
@@ -688,6 +733,8 @@ final class Mouth: NSObject, ObservableObject {
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let reply = data ?? Data()
+            self?.logExchange("http", request.url?.absoluteString ?? "http",
+                              sent: body?.count ?? payload.count, reply: reply)
             self?.noteReply(label: "http", data: reply)
             self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
             self?.line("  HTTP \(status), \(reply.count) byte reply")
@@ -1050,6 +1097,9 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
                               type: withResponse ? .withResponse : .withoutResponse)
         line("wrote \(pending.payload.count) bytes to \(characteristic.uuid.uuidString) "
              + "on \(peripheral.name ?? peripheral.identifier.uuidString)")
+        logExchange("ble-write",
+                    peripheral.name ?? peripheral.identifier.uuidString,
+                    sent: pending.payload.count, reply: nil)
         uiSuccess("Payload written (\(pending.payload.count) bytes)")
         pendingWrite = nil
         centralManager?.cancelPeripheralConnection(peripheral)
@@ -1397,6 +1447,29 @@ final class PayloadBook: ObservableObject {
                      builtIn: true),
         SavedPayload(name: "Printer test page (TCP 9100)", source: "text",
                      text: "nightjar-hack says hello\r\n\u{0C}",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "SNMP get sysDescr (UDP 161)", source: "hex",
+                     text: "30 29 02 01 00 04 06 70 75 62 6c 69 63 a0 1c "
+                         + "02 04 00 00 04 d2 02 01 00 02 01 00 30 0e 30 0c "
+                         + "06 08 2b 06 01 02 01 01 01 00 05 00",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "SIP OPTIONS (UDP/TCP 5060)", source: "text",
+                     text: "OPTIONS sip:nightjar@127.0.0.1 SIP/2.0\r\n"
+                         + "Via: SIP/2.0/UDP 127.0.0.1;branch=z9hG4bK-nh\r\n"
+                         + "From: <sip:nightjar@127.0.0.1>;tag=1\r\n"
+                         + "To: <sip:nightjar@127.0.0.1>\r\n"
+                         + "Call-ID: 1@127.0.0.1\r\nCSeq: 1 OPTIONS\r\n"
+                         + "Content-Length: 0\r\n\r\n",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "Postgres SSLRequest (TCP 5432)", source: "hex",
+                     text: "00 00 00 08 04 d2 16 2f",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "HTTP OPTIONS (raw)", source: "text",
+                     text: "OPTIONS * HTTP/1.0\r\n\r\n",
                      xorKey: "", useGzip: false, framing: "raw",
                      builtIn: true),
     ]
