@@ -1,5 +1,5 @@
-#!/bin/bash
-# Manual APK pipeline used for the first shipped build (see README-ANDROID.md).
+# Standalone manual-build script for nightjar-hack Android (no Gradle).
+# Manual APK pipeline for nightjar-hack-android:
 # aapt2 (resources) + kotlinc (code) + d8 (dex) + zipalign + apksigner.
 set -u
 export JAVA_HOME=$HOME/jdk
@@ -31,6 +31,9 @@ for jar in "$DEPS"/libs/*.jar; do
     JARS="$JARS:$jar"
 done
 JARS=${JARS#:}
+# AAR-bundled runtime jars (AAR libs/*.jar) are part of the classpath too -
+# AGP dexes them; skipping them loses e.g. emoji2's flatbuffer classes.
+for bj in $(find "$DEPS/aars" -path "*/libs/*.jar"); do JARS="$JARS:$bj"; done
 echo "classpath jars: $(echo "$JARS" | tr ':' '\n' | wc -l)"
 
 # --- resources: app res + every AAR res tree ---
