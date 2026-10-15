@@ -18,6 +18,7 @@ enum Services {
         0x1811: "Alert Notification",
         0x1812: "Human Interface Device",
         0x1814: "Running Speed and Cadence",
+        0x1815: "Automation IO",
         0x1816: "Cycling Speed and Cadence",
         0x1818: "Cycling Power",
         0x1819: "Location and Navigation",
