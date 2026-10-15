@@ -51,8 +51,9 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 - **Local network permission.** The first listener (or LAN send)
   triggers iOS's local-network prompt; that's what
   `NSLocalNetworkUsageDescription` in `Support/Info.plist` is for.
-- **No app icon yet.** The icon set is empty, so Xcode warns and the
-  Home Screen shows a placeholder. Harmless; art welcome.
+- **App icon.** The icon is a photo of a great eared nightjar,
+  cropped square on the face. Its file (`IMG_1434.png`) lives in the
+  AppIcon set; the same PNG also sits at the repo root as uploaded.
 
 ## Install (sideload, same as upstream)
 
