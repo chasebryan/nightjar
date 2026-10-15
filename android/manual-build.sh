@@ -79,6 +79,14 @@ java -cp "$HOME/dl/kotlin-compiler-embeddable.jar:$DEPS/libs/org.jetbrains.kotli
     $(find "$PROJ/app/src/main/java" -name "*.kt") $R_SOURCES || exit 1
 echo "kotlinc OK"
 
+# --- generated R classes: kotlinc reads .java sources for symbols
+# but emits no bytecode for them; library code (e.g. Compose's
+# PoolingContainer) dereferences its own R at runtime, so compile
+# every generated R.java with javac, as AGP does ---
+"$JAVA_HOME/bin/javac" -encoding UTF-8 -cp "$ANDROID_JAR" \
+    -d "$OUT/classes" $(find "$OUT/gen" -name "*.java") || exit 1
+echo "javac R OK"
+
 # --- dex ---
 (cd "$OUT/classes" && "$JAVA_HOME/bin/jar" cf "$OUT/classes.jar" .) || exit 1
 "$BT/d8" --min-api 26 --lib "$ANDROID_JAR" \
