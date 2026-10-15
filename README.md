@@ -15,6 +15,22 @@ never sends data. It only listens to what is already being shouted
 ([one honest footnote](#passive-and-active-scanning) about the radio
 itself, below).
 
+## On your phone
+
+The listening post walks around, too. The `ios/` folder holds a native
+iOS companion: the same receive-only ears in your pocket, with a live
+"in earshot" list and session recording. It writes logs in the exact
+JSONL format the Python side reads, so a session captured on the phone
+feeds straight into `report` and `trackers` on the computer.
+
+<p align="center"><img src="docs/nightjar-ios.jpg" alt="nightjar running on an iPhone" width="320"></p>
+
+There is no App Store build. You install it the way it was built: open
+the project in Xcode, sign it with your own Apple ID, and sideload
+it — `ios/README.md` walks through it, including the honest caveats
+(iOS shows per-phone UUIDs instead of hardware addresses, and Apple's
+free signing expires after 7 days).
+
 ## Install
 
 ```
