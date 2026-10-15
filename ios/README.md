@@ -78,10 +78,14 @@ Below the steps, the Send tab keeps working:
   history, and optionally delivered once to a target you name.
   A stop button calls it home early. The route can be loaded
   from the Scan tab's hits, nearby phones, or the fan-out list —
-  or from its **built-in subnet sweep**, which knocks one port
-  across a /24 (32 at a time) and loads every answering host
-  into the route — the phone's own subnet by default, or any
-  /24 you name in the subnet field. **Per-device mode** gives
+  or from its **built-in discovery sweep**, which knocks a
+  short list of common ports (80, 443, 22, 445, 62078, 8080
+  by default, editable) across a /24 — 32 knocks at a time —
+  and loads every answering host into the route as a port
+  train over the ports it answered on. The phone's own subnet
+  is the default; any /24 can be named in the subnet field.
+  A *this phone* button adds the phone's own Serve endpoint
+  as a guaranteed-live first target. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
   chain resets at each device).
   Every send on both legs is made by the phone; nothing is
