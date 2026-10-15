@@ -203,7 +203,10 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
         lines = []
         collected = []
         verdict = ""
-        let session = URLSession(configuration: .ephemeral,
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 6
+        config.timeoutIntervalForResource = 8
+        let session = URLSession(configuration: config,
                                  delegate: self, delegateQueue: nil)
         self.session = session
         session.dataTask(with: url).resume()
