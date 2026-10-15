@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 2.5.0
+# nightjar-hack for iOS — 2.6.0
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -148,7 +148,17 @@ Below the steps, the Send tab keeps working:
   tools to ingest. **Trace & set up the Centipede** runs
   the trace and then loads every door it found as the
   Centipede's route — one port train per host — so the
-  map becomes a walk with no manual configuration.
+  map becomes a walk with no manual configuration. New in
+  2.6.0: the map (schema v2) and the logbook also file the
+  **Bluetooth devices the Listen tab heard** during the run
+  — passive sightings, never probed — and the whole
+  Send-side setup (scope, ports, rules, route) saves as a
+  named **preset** you can apply, share, and import. The
+  Listen tab itself decodes more of the air in 2.6.0 —
+  Xiaomi MiBeacon, BTHome v2, Govee, RuuviTag formats 3
+  and 5, AltBeacon, Swift Pair, Tile, SwitchBot, SmartTags
+  — so fewer rows read "unknown device". A trace export
+  opens beautifully in `tools/trace-view/` in the repo.
 - **SnatchSteal.** The receive-side weapon: knock on the step-1
   target with the step-2 payload (or don't knock at all), then
   drain *everything* it sends back — until it closes, a 15-second
