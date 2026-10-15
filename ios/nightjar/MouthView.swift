@@ -684,6 +684,18 @@ struct SendView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        Button {
+                            Haptics.tap()
+                            mouth.traceAutoCentipede = true
+                        } label: {
+                            Label(mouth.traceAutoCentipede
+                                  ? "Centipede setup armed for this trace"
+                                  : "Set up the Centipede from this trace",
+                                  systemImage: "arrow.triangle.2.circlepath")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(mouth.traceAutoCentipede)
                     } else {
                         Button {
                             Haptics.tap()
@@ -695,6 +707,23 @@ struct SendView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(mouth.crawlBusy || mouth.talkBusy)
+                        Button {
+                            Haptics.tap()
+                            mouth.traceAutoCentipede = true
+                            startTrace()
+                        } label: {
+                            Label("Trace & set up the Centipede",
+                                  systemImage: "arrow.triangle.2.circlepath")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(mouth.crawlBusy || mouth.talkBusy)
+                        Text("Runs the trace, then replaces the "
+                             + "Centipede's route with every door "
+                             + "it found — one port train per host, "
+                             + "ready to release. Nothing else to "
+                             + "configure.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     if let status = mouth.traceStatus {
                         Text(status)
@@ -728,6 +757,13 @@ struct SendView: View {
                         }
                         .font(.caption)
                     }
+                }
+                .onChange(of: mouth.traceCentipedeRoute) { route in
+                    guard let route = route else { return }
+                    centipedeRoute = route
+                    mouth.traceCentipedeRoute = nil
+                    openCentipede = true
+                    toasts.show("Centipede configured from the trace")
                 }
 
                 CollapsibleSection("Crosstalk", isOpen: $openTalk) {
