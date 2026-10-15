@@ -39,7 +39,15 @@ version (2.5.0), same six tabs, same engines.
     (`net.nosuchmachine.nightjar.network-trace`). A
     "Trace & set up the Centipede" button loads every
     door a trace finds into the Centipede's route
-    automatically when the run ends.
+    automatically when the run ends. In 2.6.0 the export
+    is schema v2: the Listen tab's BLE sightings are filed
+    in the map and the logbook (heard, never probed), and
+    the Send setup (scope, ports, rules, route) saves as
+    named presets — apply, share, import. The Listen
+    decoders (`Decoders.kt` + `MoreDecoders.kt`) also grew:
+    Xiaomi MiBeacon, BTHome v2, Govee, RuuviTag 3 + 5,
+    AltBeacon, strict Swift Pair, Tile, SwitchBot,
+    SmartThings Find — fewer "unknown device" rows.
   - `Engines.kt` — SnatchSteal, PayPlant (+ verify), timed
     delivery.
   - UI in Compose: boot splash, Jolly Roger backdrop, folding
