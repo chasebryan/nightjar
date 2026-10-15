@@ -440,6 +440,8 @@ struct ScanView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Scan")
             .onAppear { model.startDiscovery() }
             .onDisappear { model.stopDiscovery() }
