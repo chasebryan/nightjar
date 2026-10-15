@@ -41,6 +41,12 @@ struct SendView: View {
     @State private var customExpanded = false
     @State private var showLibrary = false
     @State private var showLog = false
+    @AppStorage("fanoutTargets") private var fanoutTargets = ""
+    @State private var showImporter = false
+
+    private var fanoutList: [String] {
+        fanoutTargets.split(separator: "\n").map(String.init)
+    }
 
     private var parsed: Result<SendTarget, Error> {
         Result { try SendTarget.parse(target) }
@@ -224,10 +230,95 @@ struct SendView: View {
                 }
 
                 stepThreeSection
+
+                Section(header: Text("Send to many")) {
+                    Text("One payload, a whole list of targets — typed, "
+                         + "pasted, imported from a file, or harvested "
+                         + "from the network by the Scan tab.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    TextEditor(text: $fanoutTargets)
+                        .font(.body.monospaced())
+                        .frame(minHeight: 96)
+                        .scrollContentBackground(.hidden)
+                    HStack {
+                        Button {
+                            Haptics.tap()
+                            fanoutTargets = (mouth.lastScanTargets
+                                + fanoutList)
+                                .joined(separator: "\n")
+                            toasts.show("Added \(mouth.lastScanTargets.count) "
+                                        + "target(s) from Scan")
+                        } label: {
+                            Label("From Scan (\(mouth.lastScanTargets.count))",
+                                  systemImage: "scope")
+                        }
+                        .disabled(mouth.lastScanTargets.isEmpty)
+                        Spacer()
+                        Button {
+                            Haptics.tap()
+                            fanoutTargets = (mouth.nearbyPhones
+                                    .map { "phone:\($0)" } + fanoutList)
+                                .joined(separator: "\n")
+                        } label: {
+                            Label("Phones (\(mouth.nearbyPhones.count))",
+                                  systemImage: "iphone")
+                        }
+                        .disabled(mouth.nearbyPhones.isEmpty)
+                        Spacer()
+                        Button {
+                            Haptics.tap()
+                            showImporter = true
+                        } label: {
+                            Label("Import", systemImage: "doc.badge.plus")
+                        }
+                    }
+                    .font(.caption)
+                    Button {
+                        Haptics.tap()
+                        if let data = build() {
+                            mouth.sendToMany(targets: fanoutList,
+                                             payload: data,
+                                             framing: framing,
+                                             method: method,
+                                             readReply: readReply)
+                        }
+                    } label: {
+                        Label(mouth.fanoutBusy
+                                ? "Sending…"
+                                : "Send payload to \(fanoutList.count) target(s)",
+                              systemImage: "paperplane.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(mouth.fanoutBusy || fanoutList.isEmpty)
+                    if mouth.fanoutBusy {
+                        ProgressView()
+                    }
+                    ForEach(mouth.fanoutLines, id: \.self) { line in
+                        Text(line).font(.caption.monospaced())
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Send")
+            .fileImporter(isPresented: $showImporter,
+                          allowedContentTypes: [.plainText, .text]) { result in
+                if case .success(let url) = result,
+                   url.startAccessingSecurityScopedResource() {
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let text = try? String(contentsOf: url,
+                                              encoding: .utf8) {
+                        let imported = text
+                            .split(whereSeparator: { $0 == "\n" || $0 == "," })
+                            .map { $0.trimmingCharacters(in: .whitespaces) }
+                            .filter { !$0.isEmpty }
+                        fanoutTargets = (imported + fanoutList)
+                            .joined(separator: "\n")
+                        toasts.show("Imported \(imported.count) target(s)")
+                    }
+                }
+            }
             .onAppear {
                 mouth.startBrowsing()
                 consumeScanHandoff()
