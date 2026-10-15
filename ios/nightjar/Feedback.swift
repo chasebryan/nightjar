@@ -1,3 +1,4 @@
+import CoreBluetooth
 import SwiftUI
 import UIKit
 
@@ -11,18 +12,37 @@ final class ToastCenter: ObservableObject {
     }
 
     @Published var current: Toast?
-    private var generation = 0
+    private var queue: [Toast] = []
+    private var draining = false
 
+    /// Enqueue, never overwrite: messages drain FIFO, each on
+    /// screen for ~2.2 s (errors ~4.5 s), carrying its own error
+    /// flag with it.
     func show(_ message: String, error: Bool = false) {
-        generation += 1
-        let mine = generation
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            current = Toast(message: message, isError: error)
+        queue.append(Toast(message: message, isError: error))
+        guard !draining else { return }
+        draining = true
+        displayNext()
+    }
+
+    private func displayNext() {
+        guard !queue.isEmpty else {
+            draining = false
+            return
         }
-        let dwell = error ? 4.5 : 2.8
+        let toast = queue.removeFirst()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            current = toast
+        }
+        let dwell = toast.isError ? 4.5 : 2.2
         DispatchQueue.main.asyncAfter(deadline: .now() + dwell) { [weak self] in
-            guard let self = self, self.generation == mine else { return }
-            withAnimation(.easeOut(duration: 0.3)) { self.current = nil }
+            guard let self = self else { return }
+            if self.queue.isEmpty {
+                withAnimation(.easeOut(duration: 0.3)) { self.current = nil }
+                self.draining = false
+            } else {
+                self.displayNext()
+            }
         }
     }
 }
@@ -122,23 +142,37 @@ struct BootView: View {
                      tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
-            out.append(BootLine(text: "[ ok ] wlan0     \(ip)/24",
+            out.append(BootLine(text: "[ ok ] net en0 \(ip)",
                                 tone: .ok))
         } else {
-            out.append(BootLine(text: "[ !! ] wlan0     down — no wi-fi",
-                                tone: .warn))
+            out.append(BootLine(text: "[ -- ] net no address yet",
+                                tone: .off))
         }
         out.append(BootLine(
             text: "[ ok ] library   \(book.items.count) payloads loaded",
             tone: .ok))
-        out.append(BootLine(text: "[ ok ] ble       radio standing by",
-                            tone: .ok))
+        switch CBManager.authorization {
+        case .allowedAlways:
+            out.append(BootLine(text: "[ ok ] ble permission granted",
+                                tone: .ok))
+        case .denied, .restricted:
+            out.append(BootLine(text: "[ !! ] ble permission denied",
+                                tone: .warn))
+        default:
+            out.append(BootLine(text: "[ -- ] ble permission not determined",
+                                tone: .off))
+        }
         out.append(stealthMode
             ? BootLine(text: "[ ok ] stealth   ON — unlisted, silent",
                        tone: .ok)
             : BootLine(text: "[ -- ] stealth   off", tone: .off))
-        out.append(BootLine(text: "[ ok ] backdrop  jolly roger",
-                            tone: .ok))
+        if UIImage(named: "AppBackground") != nil {
+            out.append(BootLine(text: "[ ok ] backdrop jolly roger",
+                                tone: .ok))
+        } else {
+            out.append(BootLine(text: "[ -- ] backdrop image missing",
+                                tone: .off))
+        }
         out.append(BootLine(text: "> systems nominal — welcome back",
                             tone: .cmd))
         return out
