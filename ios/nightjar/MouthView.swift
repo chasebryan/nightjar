@@ -50,6 +50,10 @@ struct SendView: View {
     @AppStorage("sectionOpen.fanout") private var openFanout = false
     @AppStorage("sectionOpen.timing") private var openTiming = false
     @AppStorage("sectionOpen.centipede") private var openCentipede = true
+    @AppStorage("sectionOpen.crosstalk") private var openTalk = false
+    @AppStorage("talkTargetA") private var talkA = ""
+    @AppStorage("talkTargetB") private var talkB = ""
+    @AppStorage("talkRounds") private var talkRounds = 4
     @AppStorage("sectionOpen.snatch") private var openSnatch = false
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
@@ -607,6 +611,93 @@ struct SendView: View {
                     }
                 }
 
+                CollapsibleSection("Crosstalk", isOpen: $openTalk) {
+                    Text("Patch two doors together and let them "
+                         + "talk: door A is knocked (its port's "
+                         + "probe when smart seed is on), its reply "
+                         + "is carried verbatim to B, B's reply back "
+                         + "to A — until silence, an echo, a repeat, "
+                         + "or the rounds run out. Any targets the "
+                         + "route parser accepts; a train or range "
+                         + "speaks through its first door.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    TextField("Door A — tcp://host:port, phone:Name, https://…",
+                              text: $talkA)
+                        .font(.callout.monospaced())
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                    TextField("Door B — the other door",
+                              text: $talkB)
+                        .font(.callout.monospaced())
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                    HStack {
+                        Button("Serve as A") { setServeDoor(a: true) }
+                        Button("Serve as B") { setServeDoor(a: false) }
+                        Button("Swap ⇄") {
+                            Haptics.tap()
+                            (talkA, talkB) = (talkB, talkA)
+                        }
+                    }
+                    .font(.caption)
+                    Stepper("Rounds: \(talkRounds)",
+                            value: $talkRounds, in: 1...12)
+                    if mouth.talkBusy {
+                        Button(role: .destructive) {
+                            mouth.stopTalk()
+                        } label: {
+                            Label("Hang up",
+                                  systemImage: "phone.down.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    } else {
+                        Button {
+                            Haptics.success()
+                            mouth.startTalk(
+                                a: talkA, b: talkB,
+                                rounds: talkRounds,
+                                seed: build(forTargetText: talkA)
+                                    ?? Data(),
+                                smartSeed: centipedeSmartSeed,
+                                probeFor: probeForTarget)
+                        } label: {
+                            Label("Start the conversation",
+                                  systemImage: "bubble.left.and.bubble.right.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(mouth.crawlBusy
+                                  || talkA.trimmingCharacters(
+                                        in: .whitespaces).isEmpty
+                                  || talkB.trimmingCharacters(
+                                        in: .whitespaces).isEmpty)
+                    }
+                    if !mouth.talkLines.isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(mouth.talkLines, id: \.self) { entry in
+                                Text(entry)
+                                    .font(.caption.monospaced())
+                            }
+                        }
+                    }
+                    if let last = mouth.talkHomecoming {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("The last word — \(last.count) bytes")
+                                .font(.caption.weight(.semibold))
+                            if let text = PayloadKit.printableText(last) {
+                                Text(text)
+                                    .font(.caption.monospaced())
+                                    .lineLimit(6)
+                            }
+                            Text(PayloadKit.hexdump(
+                                Data(last.prefix(128))))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 CollapsibleSection("SnatchSteal", isOpen: $openSnatch) {
                     Text("Knock on the step-1 target, then take "
                          + "everything it sends back — full drain, "
@@ -983,6 +1074,17 @@ struct SendView: View {
                 .joined(separator: "\n")
             toasts.show("Added \(found.count) host(s) from discovery")
         }
+    }
+
+    /// Put this phone's own Serve listener in a Crosstalk
+    /// door — the partner that's always in the room.
+    private func setServeDoor(a: Bool) {
+        guard let ip = Mouth.localIPAddress() else {
+            toasts.show("No Wi-Fi address on this phone", error: true)
+            return
+        }
+        if a { talkA = "tcp://\(ip):\(serveTcpPort)" }
+        else { talkB = "tcp://\(ip):\(serveTcpPort)" }
     }
 
     /// The one target guaranteed to be real: this phone itself.
