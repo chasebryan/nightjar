@@ -208,8 +208,13 @@ enum Drones {
         var messages: [Message] = []
         for i in 0..<count {
             let start = 3 + i * single
-            guard start + messageSize <= body.count else { break }
-            if let message = decodeMessage(Array(body[start..<(start + single)])) {
+            // The stride is attacker-controlled (a byte in the
+            // advertisement): never slice past the body, and a
+            // stride smaller than one message cannot hold one.
+            guard single >= messageSize,
+                  start + single <= body.count else { break }
+            if let message = decodeMessage(
+                Array(body[start..<(start + messageSize)])) {
                 messages.append(message)
             }
         }
