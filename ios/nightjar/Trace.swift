@@ -155,7 +155,7 @@ enum TraceAnalyzer {
         -> TraceAnalysis
     {
         let text = text(of: data)
-        let signature = Insecure.SHA256.hash(data: data)
+        let signature = SHA256.hash(data: data)
             .map { String(format: "%02x", $0) }.joined()
 
         let firstRaw = text.components(separatedBy: "\n").first ?? ""
@@ -778,8 +778,8 @@ extension Mouth {
             default: break
             }
         }
-        connection.start(queue: probeQueue)
-        probeQueue.asyncAfter(deadline: .now() + 1.0) {
+        connection.start(queue: self.probeQueue)
+        self.probeQueue.asyncAfter(deadline: .now() + 1.0) {
             finish(false)
         }
     }
@@ -821,7 +821,7 @@ extension Mouth {
             connection.cancel()
             completion(result)
         }
-        probeQueue.asyncAfter(deadline: .now() + 2.5) {
+        self.probeQueue.asyncAfter(deadline: .now() + 2.5) {
             if !ready() { finish(nil) }
         }
         connection.stateUpdateHandler = { state in
@@ -854,7 +854,7 @@ extension Mouth {
                         }
                     }
                     receiveMore()
-                    probeQueue.asyncAfter(deadline: .now() + 1.2) {
+                    self.probeQueue.asyncAfter(deadline: .now() + 1.2) {
                         finish(snapshot())
                     }
                 }
@@ -871,7 +871,7 @@ extension Mouth {
                 break
             }
         }
-        connection.start(queue: probeQueue)
+        connection.start(queue: self.probeQueue)
     }
 
     /// Resolve a Bonjour endpoint to its host and port by
@@ -908,8 +908,8 @@ extension Mouth {
                 break
             }
         }
-        connection.start(queue: probeQueue)
-        probeQueue.asyncAfter(deadline: .now() + 3) { finish(nil) }
+        connection.start(queue: self.probeQueue)
+        self.probeQueue.asyncAfter(deadline: .now() + 3) { finish(nil) }
     }
 
     /// One active-probe send, the centipede's talkSend shape:
@@ -1184,7 +1184,7 @@ extension Mouth {
                         analysis: analysis, probes: [name],
                         extraTags: tags, source: "trace-followup",
                         bonjourName: nil)
-                    traceNote("  ↳ follow-up \(name) → "
+                    self.traceNote("  ↳ follow-up \(name) → "
                         + "\(host):\(port) · \(reply.count) B back")
                     if !stop {
                         enqueueReferences(analysis.references,
@@ -1193,7 +1193,7 @@ extension Mouth {
                                           depth: depth)
                     }
                 } else {
-                    traceNote("  ↳ follow-up \(name) → "
+                    self.traceNote("  ↳ follow-up \(name) → "
                         + "\(host):\(port) · silence")
                 }
                 runFollowups(names: rest, host: host, port: port,
@@ -1262,7 +1262,7 @@ extension Mouth {
                     probes: probeName.map { [$0] } ?? [],
                     extraTags: tags, source: "trace",
                     bonjourName: nil)
-                traceNote("  \(host):\(port) — "
+                self.traceNote("  \(host):\(port) — "
                     + (analysis?.serviceHint
                        ?? ScanModel.serviceNames[port] ?? "open")
                     + (tags.isEmpty ? ""
@@ -1318,9 +1318,9 @@ extension Mouth {
                     continue
                 }
                 queuedDoors.insert(key)
-                traceProbe(host: host, port: port) { data in
+                self.traceProbe(host: host, port: port) { data in
                     work.async {
-                        guard gen == traceGeneration else { return }
+                        guard gen == self.traceGeneration else { return }
                         if let data = data {
                             processDoor(host: host, port: port,
                                         banner: data, depth: depth) {
@@ -1339,7 +1339,7 @@ extension Mouth {
         /// An empty worklist is the definition of done.
         func pump() {
             work.async {
-                guard gen == traceGeneration else { return }
+                guard gen == self.traceGeneration else { return }
                 guard !worklist.isEmpty else {
                     finishTrace()
                     return
@@ -1356,9 +1356,9 @@ extension Mouth {
                         return
                     }
                     queuedDoors.insert(key)
-                    traceProbe(host: host, port: port) { data in
+                    self.traceProbe(host: host, port: port) { data in
                         work.async {
-                            guard gen == traceGeneration
+                            guard gen == self.traceGeneration
                             else { return }
                             if let data = data {
                                 processDoor(host: host, port: port,
@@ -1379,7 +1379,7 @@ extension Mouth {
         func runDiscovery(done: @escaping () -> Void) {
             var round = 0
             func nextRound() {
-                guard gen == traceGeneration else { return }
+                guard gen == self.traceGeneration else { return }
                 if round >= discovery.count {
                     for host in discoveredHosts
                         .sorted(by: TraceBookStore.ipLess) {
@@ -1393,14 +1393,14 @@ extension Mouth {
                                 evidence: "answered on \(portsText)")
                         queueHost(host, depth: 0, source: "trace")
                     }
-                    traceNote("Discovery done — "
+                    self.traceNote("Discovery done — "
                         + "\(discoveredHosts.count) host(s) answered")
                     done()
                     return
                 }
                 let port = discovery[round]
                 round += 1
-                traceNote("Discovery — knocking port \(port) "
+                self.traceNote("Discovery — knocking port \(port) "
                     + "across \(base).0/24 "
                     + "(round \(round)/\(discovery.count))…")
                 let group = DispatchGroup()
@@ -1471,7 +1471,7 @@ extension Mouth {
                         }
                     }
                 }
-                browser.start(queue: probeQueue)
+                browser.start(queue: self.probeQueue)
                 bonjourBrowsers.append(browser)
             }
             work.asyncAfter(deadline: .now() + 5) {
@@ -1480,7 +1480,7 @@ extension Mouth {
         }
 
         func resolveBonjour() {
-            guard gen == traceGeneration else { return }
+            guard gen == self.traceGeneration else { return }
             bonjourBrowsers.forEach { $0.cancel() }
             bonjourBrowsers = []
             let items = Array(bonjourSeen.values)
@@ -1489,7 +1489,7 @@ extension Mouth {
                 maybeStartWorklist()
                 return
             }
-            traceNote("Bonjour — resolving \(items.count) "
+            self.traceNote("Bonjour — resolving \(items.count) "
                 + "service(s)…")
             let group = DispatchGroup()
             let gate = DispatchSemaphore(value: 8)
@@ -1505,7 +1505,7 @@ extension Mouth {
                         resolved in
                         if let (host, port) = resolved {
                             work.async {
-                                guard gen == traceGeneration
+                                guard gen == self.traceGeneration
                                 else { return }
                                 bonjourEntries.append(
                                     TraceBonjourEntry(
@@ -1556,7 +1556,7 @@ extension Mouth {
             guard discoveryDone, bonjourDone, !worklistStarted
             else { return }
             worklistStarted = true
-            traceNote("Profiling — \(queuedHosts.count) host(s) "
+            self.traceNote("Profiling — \(queuedHosts.count) host(s) "
                 + "on the frontier")
             pump()
         }
@@ -1565,7 +1565,7 @@ extension Mouth {
         /// run ended. Runs once, on the work queue, when the
         /// frontier runs dry.
         func finishTrace() {
-            guard gen == traceGeneration, !finishedFlag
+            guard gen == self.traceGeneration, !finishedFlag
             else { return }
             finishedFlag = true
             bonjourBrowsers.forEach { $0.cancel() }
