@@ -6,7 +6,9 @@ struct ContentView: View {
     @State private var tab = 0
 
     var body: some View {
-        TabView(selection: $tab) {
+        ZStack {
+            AppBackdrop()
+            TabView(selection: $tab) {
             ListenView(tab: $tab)
                 .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
@@ -34,6 +36,9 @@ struct ContentView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        }
+        .scrollContentBackground(.hidden)
+        .preferredColorScheme(.dark)
     }
 }
 
