@@ -79,8 +79,9 @@ Below the steps, the Send tab keeps working:
   A stop button calls it home early. The route can be loaded
   from the Scan tab's hits, nearby phones, or the fan-out list —
   or from its **built-in subnet sweep**, which knocks one port
-  across the phone's whole /24 (32 at a time) and loads every
-  answering host into the route. **Per-device mode** gives
+  across a /24 (32 at a time) and loads every answering host
+  into the route — the phone's own subnet by default, or any
+  /24 you name in the subnet field. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
   chain resets at each device).
   Every send on both legs is made by the phone; nothing is
