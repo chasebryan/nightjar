@@ -50,6 +50,13 @@ hex. Send-side settings persist like Serve's do.
 
 ## Also in the app
 
+- **The look.** The Jolly Roger flies behind everything: forms
+  and lists are transparent over the backdrop (dimmed slightly
+  for readability) and the app is pinned to dark appearance to
+  match. The image itself is an asset-catalog imageset named
+  `AppBackground`, added in Xcode — binaries can't ride the repo
+  connector, the same reason the app icon moved by hand. Until
+  the image is dropped in, the app just wears near-black.
 - **The Scan tab.** A pentester's pocket recon, for your own gear
   and engagements: a TCP connect scanner over the usual 28 ports
   (or your own list) with banner grabbing; a TLS certificate
