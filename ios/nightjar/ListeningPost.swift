@@ -214,6 +214,26 @@ final class ListeningPost: NSObject, ObservableObject {
             .filter { !rankedIDs.contains($0.id) }
             .sorted { ($0.rssiSmooth ?? -200)
                 > ($1.rssiSmooth ?? -200) }
+        // The trace borrows the ear's picture of the room:
+        // note the current registry (as plain values) so a
+        // finished trace can file the air alongside the
+        // wires. Collection itself is untouched — this only
+        // reads what publishRows already built.
+        BLESightings.note(ordered.map { row in
+            TraceBLEDevice(
+                id: row.id,
+                name: row.name ?? row.preferredLabel,
+                kind: row.kind,
+                vendor: row.makers.isEmpty ? nil
+                    : row.makers.sorted().joined(separator: ", "),
+                serviceUUIDs: row.serviceUUIDs,
+                rotatingAddress: row.rotatingAddress,
+                firstHeard: Date(timeIntervalSince1970: row.firstSeen),
+                lastHeard: Date(timeIntervalSince1970: row.lastSeen),
+                sightings: row.sightings,
+                closestRSSI: row.rssiClosest,
+                smoothedRSSI: row.rssiSmooth)
+        })
         rows = ordered
         deviceCount = devices.count
         sightingCount = sightingsSeen
