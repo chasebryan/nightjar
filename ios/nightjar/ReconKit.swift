@@ -319,12 +319,18 @@ final class Recon: NSObject, ObservableObject {
         }
         step(target: target, base: base, index: 1, count: count,
              mutations: mutations, read: read, timeout: timeout,
-             rng: &rng, token: token)
+             rng: rng, token: token)
     }
 
     private func step(target: SendTarget, base: Data, index: Int, count: Int,
                       mutations: Int, read: Bool, timeout: TimeInterval,
-                      rng: inout SplitMix64, token: Int) {
+                      rng: SplitMix64, token: Int) {
+        // The RNG travels by value: an inout parameter cannot be
+        // captured by the escaping exchange completion below, and
+        // SplitMix64 is a value type — each step mutates its own
+        // copy and hands the advanced state to the next step, so
+        // the draw sequence is the same continuous stream.
+        var rng = rng
         guard token == fuzzToken else { return }
         if index > count {
             fuzzing = false
@@ -348,7 +354,7 @@ final class Recon: NSObject, ObservableObject {
                 }
                 self.step(target: target, base: base, index: index + 1,
                           count: count, mutations: mutations, read: read,
-                          timeout: timeout, rng: &rng, token: token)
+                          timeout: timeout, rng: rng, token: token)
             }
         }
     }
