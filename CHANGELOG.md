@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.6.0 — 2026-10-15 — the cartographer
+
 - **Network Trace + adaptive Centipede + crawl logbook
   (iOS Send, mirrored in the Android port).** A new Send-tab
   section: name one /24 (blank = the phone's own) and start
@@ -98,6 +100,37 @@
   sparkline, first/last heard, dwell, sighting rate, the
   identifier — and the write-a-payload handoff as a button,
   not just a long-press.
+- **Trace schema v2: Bluetooth joins the map (both apps).**
+  A finished trace now files the Listen tab's BLE sightings
+  alongside the IP hosts — per-device entries (name, maker,
+  services, sighting count, closest and smoothed RSSI,
+  first/last heard) in the export's `bleDevices`, graph nodes
+  heard by the phone, and the crawl logbook, which keeps them
+  between runs. Sightings are passive: heard, never probed,
+  connected to, or written to. Android exports carry the same
+  `firstHeard`/`lastHeard` fields as iOS.
+- **Presets (both apps).** The whole Send-side setup — trace
+  scope, discovery and profile port sets, Bonjour, adaptive
+  rules, the Centipede route — saves under a name, applies in
+  one tap, and travels as a small JSON file: share it out,
+  import it on the other platform, same behavior.
+- **More decoders in Listen (both apps).** Full decoders for
+  Xiaomi MiBeacon, BTHome v2, and Govee thermometer
+  advertisements — real sensor readings, not just a name —
+  plus RuuviTag format 3 alongside 5, AltBeacon, and strict
+  Microsoft Swift Pair; recognition for Tile trackers,
+  SwitchBot, and Samsung SmartThings Find tags. Encrypted
+  MiBeacon and BTHome frames are named and flagged as
+  encrypted, never decrypted. Fewer "unknown device" rows.
+- **In the repo:** `tools/trace-view/` — a single-file, fully
+  offline viewer for trace exports (drop a trace JSON on it;
+  the file never leaves the machine) — and `tools/parity/` —
+  shared fixtures pinning what the Swift and Kotlin trace
+  engines provably do identically (rule parsing, reply
+  signatures, reference extraction), with generated tests for
+  both platforms. The rule parsers themselves were aligned to
+  match: strict keywords, port range 1–65535, CRLF-safe —
+  the same rule file now behaves the same on both phones.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
