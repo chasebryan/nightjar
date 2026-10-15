@@ -50,6 +50,25 @@ struct ToastView: View {
     }
 }
 
+/// The app's backdrop: the Jolly Roger over near-black, dimmed a
+/// touch so text stays readable. The image lives in the asset
+/// catalog as "AppBackground" — it is added in Xcode (binaries
+/// cannot ride the repo connector, same as the app icon was);
+/// until it lands, the app simply wears black.
+struct AppBackdrop: View {
+    var body: some View {
+        ZStack {
+            Color(white: 0.03)
+            Image("AppBackground")
+                .resizable()
+                .scaledToFill()
+            Rectangle().fill(Color.black.opacity(0.18))
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
 /// One place for every buzz, so buttons *feel* like they did something.
 enum Haptics {
     static func tap() {
