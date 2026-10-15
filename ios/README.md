@@ -32,7 +32,10 @@ and shares test vectors with it.
 ## Also in the app
 
 - **Payload library.** The Send tab saves named payloads (source,
-  transforms, framing included) and loads them back in one tap.
+  transforms, framing included) and loads them back in one tap. It
+  ships preloaded with built-ins (hello, ping, a JSON hello, a
+  Wake-on-LAN template, a raw HTTP GET, a 32-byte length test) —
+  deletable, restorable, and side by side with your own customs.
 - **Listen → Send.** Long-press a device in the Listen tab and choose
   "Write a payload…" — the Send tab opens with that device as the
   write target. The halves share the CoreBluetooth identifier only;
