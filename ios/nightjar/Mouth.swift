@@ -404,12 +404,38 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    /// Stealth: full function, no announcement. Listeners stop
+    /// advertising on Bonjour (reachable by address only, like the
+    /// CLI), and arrivals join the inbox silently — nothing banners,
+    /// pings, or pops without the user's explicit say-so. Persisted
+    /// in UserDefaults so the views and the engine share one switch.
+    var stealth: Bool {
+        get { UserDefaults.standard.bool(forKey: "stealthMode") }
+        set { UserDefaults.standard.set(newValue, forKey: "stealthMode") }
+    }
+
+    /// Flip stealth, restarting the listeners if they are running so
+    /// the Bonjour advertisement (or its absence) takes effect now.
+    func setStealth(_ on: Bool) {
+        stealth = on
+        line(on ? "stealth on: no Bonjour listing, silent arrivals"
+                : "stealth off")
+        if serveRunning, let params = lastServeParams {
+            startServe(tcpPort: params.tcp, udpPort: params.udp,
+                       httpPort: params.http, reply: params.reply,
+                       framing: params.framing)
+        }
+    }
+
+    private var lastServeParams: (tcp: Int?, udp: Int?, http: Int?,
+                                  reply: String, framing: String)?
+
     private func receive(transport: String, peer: String, data: Data) {
         DispatchQueue.main.async {
             self.inbox.insert(ReceivedPayload(at: Date(), transport: transport,
                                               peer: peer, data: data), at: 0)
             if self.inbox.count > 200 { self.inbox.removeLast(self.inbox.count - 200) }
-            if let text = PayloadKit.printableText(data) {
+            if !self.stealth, let text = PayloadKit.printableText(data) {
                 // Make it pop: a banner with the message itself, not
                 // just a row appearing in the inbox.
                 let content = UNMutableNotificationContent()
@@ -967,17 +993,21 @@ extension Mouth {
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
                     reply: String, framing: String) {
         stopServe()
+        lastServeParams = (tcpPort, udpPort, httpPort, reply, framing)
         serveReply = Data(reply.utf8)
         serveFraming = framing
         serveError = nil
         // Arrivals banner as notifications; ask while the user is
-        // already in "receive things" mode.
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: [.alert, .sound]) { _, _ in }
+        // already in "receive things" mode. In stealth, no dialogs:
+        // the ask waits for a non-stealth start.
+        if !stealth {
+            UNUserNotificationCenter.current().requestAuthorization(
+                options: [.alert, .sound]) { _, _ in }
+        }
         var started: [String] = []
         do {
             if let port = tcpPort {
-                listeners.append(try makeListener(port: port, params: .tcp, bonjour: true) { [weak self] conn in
+                listeners.append(try makeListener(port: port, params: .tcp, bonjour: !stealth) { [weak self] conn in
                     self?.handleStreamConnection(conn, transport: "tcp", http: false)
                 })
                 started.append("tcp://0.0.0.0:\(port)")
