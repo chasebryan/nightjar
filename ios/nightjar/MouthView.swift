@@ -170,6 +170,10 @@ struct SendView: View {
                 Button { load(item) } label: {
                     HStack {
                         Text(item.name).foregroundStyle(.primary)
+                        if item.builtIn {
+                            Text("built-in")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
                         Spacer()
                         Text("\(item.source) · \(item.text.count) ch")
                             .font(.caption).foregroundStyle(.secondary)
@@ -177,6 +181,9 @@ struct SendView: View {
                 }
             }
             .onDelete { book.remove(at: $0) }
+            if !book.missingBuiltIns.isEmpty {
+                Button("Restore built-ins") { book.restoreBuiltIns() }
+            }
         }
     }
 
