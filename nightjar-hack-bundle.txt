@@ -1,6 +1,6 @@
 # nightjar-hack — quickstart
 
-**2.5.0.** An overlay that gives the nightjar BLE listening post the
+**2.6.0.** An overlay that gives the nightjar BLE listening post the
 ability to send payloads out over the network and Bluetooth, without
 disturbing the receive-only scanning it was built around — and, in
 `ios/`, a full iOS app: the listening post, the mouth, and a pocket
@@ -1416,7 +1416,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-HACK_VERSION = "2.5.0"
+HACK_VERSION = "2.6.0"
 
 CLI = "nightjar/cli.py"
 PYPROJECT = "pyproject.toml"
@@ -1734,7 +1734,7 @@ Look before you leap:
   handler entries, and one honest sentence in the description.
 - `pyproject.toml` - an optional extra,
   `tx = ["bless>=0.2.0", "websockets>=12", "pyserial>=3.5"]`.
-- `nightjar/__init__.py` - version to `2.5.0`.
+- `nightjar/__init__.py` - version to `2.6.0`.
 
 No other file is touched. `apply_overlay.py --check` reports drift without
 writing anything.
@@ -1764,7 +1764,7 @@ implementation, and the app's feature manual is `ios/README.md`.
 ===== FILE: README-HACK.md =====
 # nightjar-hack — quickstart
 
-**2.5.0.** An overlay that gives the nightjar BLE listening post the
+**2.6.0.** An overlay that gives the nightjar BLE listening post the
 ability to send payloads out over the network and Bluetooth, without
 disturbing the receive-only scanning it was built around — and, in
 `ios/`, a full iOS app: the listening post, the mouth, and a pocket
