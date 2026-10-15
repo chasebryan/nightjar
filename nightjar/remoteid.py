@@ -411,8 +411,16 @@ def bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def describe(report: DroneReport, home: tuple[float, float] | None = None) -> str:
-    """One-line human summary, as the registry and alerts show it."""
+    """One-line human summary, as the registry and alerts show it.
+
+    e.g. "Drone (Remote ID): serial 1581F…, multirotor, airborne, alt 62 m,
+    8.4 m/s NE, height 41 m AGL, operator 210 m SE (live GPS)"
+    """
     parts: list[str] = []
+    if report.serial:
+        parts.append(f"serial {report.serial}")
+    if report.ua_type not in (None, 0):
+        parts.append(report.ua_type_name)
     loc = report.location
     if loc is not None:
         parts.append(loc.status_name)
@@ -443,5 +451,4 @@ def describe(report: DroneReport, home: tuple[float, float] | None = None) -> st
                          f"{sys.operator_longitude:.5f} ({sys.operator_location_name})")
     if report.self_id_text:
         parts.append(f"“{report.self_id_text}”")
-    head = f"Drone (Remote ID), {report.ua_type_name}"
-    return head + (": " + ", ".join(parts) if parts else "")
+    return "Drone (Remote ID)" + (": " + ", ".join(parts) if parts else "")

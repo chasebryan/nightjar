@@ -32,6 +32,8 @@ from .continuity import (
     parse_findmy,
 )
 from .registry import Sighting, SignalTrack, address_kind
+from .remoteid import DroneReport, parse_service_data, remoteid_value
+from .remoteid import describe as describe_drone
 from .services import TRACKER_SERVICE_UUIDS, identify_services, normalize_uuid
 from .vendors import identify_manufacturer
 
@@ -112,6 +114,17 @@ def kind_of(sighting: Sighting) -> tuple[str, list[str]]:
     return result.kind, result.details
 
 
+def remoteid_serial(sighting: Sighting) -> str | None:
+    """The drone serial a sighting broadcasts in a Basic ID, or None."""
+    value = remoteid_value(sighting.service_data)
+    if value is None:
+        return None
+    for message in parse_service_data(value):
+        if message.basic_id is not None and message.basic_id.is_serial:
+            return message.basic_id.uas_id
+    return None
+
+
 def _stable_fingerprint(sighting: Sighting) -> str | None:
     """Hash of the parts of a broadcast that don't change per packet.
 
@@ -162,9 +175,14 @@ class Identity:
     address_kinds: set[str] = field(default_factory=set)
     last_address: str = ""
     last_name: str | None = None
+    drone: DroneReport | None = None   # accumulated Remote ID across sightings
+    drone_serial: str | None = None    # its broadcast serial, once seen
 
     @property
     def label(self) -> str:
+        # A Remote ID serial is a licence plate — it wins over any local name.
+        if self.drone_serial:
+            return f"Drone {self.drone_serial}"
         if self.last_name:
             return self.last_name
         if self.names:
@@ -176,6 +194,8 @@ class Identity:
         """'Chase's iPhone (Apple device)' — or just the kind when unnamed."""
         if self.label == self.kind:
             return self.kind
+        if self.drone_serial:  # avoid "Drone X (Drone (Remote ID))"
+            return self.label
         return f"{self.label} ({self.kind})"
 
     @property
@@ -242,6 +262,18 @@ class Identity:
             self.kind, self.rank = kind, classification.rank
         if details:
             self.details = list(details)
+        # Accumulate Remote ID across the drone's message set, so the
+        # details line carries the fullest current picture (serial from a
+        # Basic ID, position from a Location, operator from a System).
+        value = remoteid_value(sighting.service_data)
+        if value is not None:
+            if self.drone is None:
+                self.drone = DroneReport()
+            for message in parse_service_data(value):
+                self.drone.ingest(message)
+            if self.drone.serial:
+                self.drone_serial = self.drone.serial
+            self.details = [describe_drone(self.drone)]
 
     def matches(self, query: str) -> bool:
         """Does a user-typed query name this identity?
@@ -294,6 +326,7 @@ class Identity:
             "tracker_like": self.tracker_like,
             "findmy_separated": self.findmy,
             "findmy_with_owner": self.findmy_with_owner,
+            "drone_serial": self.drone_serial,
             "rssi_last": self.rssi_last,
             "rssi_closest": self.rssi_closest,
             "rssi_median": self.signal.median(),
@@ -315,8 +348,19 @@ class IdentityResolver:
     def __init__(self) -> None:
         self._identities: dict[str, Identity] = {}
         self._address_keys: dict[str, str] = {}
+        self._address_serials: dict[str, str] = {}
 
     def _key_for(self, sighting: Sighting) -> tuple[str, str]:
+        # A Remote ID serial is a licence plate: it keys the device above
+        # address or fingerprint, and folds every address the drone rotates
+        # through. Before a Basic ID is seen, the address stands.
+        serial = remoteid_serial(sighting)
+        if serial is not None:
+            self._address_serials[sighting.address] = serial
+            return f"rid:{serial}", "remote id"
+        learned = self._address_serials.get(sighting.address)
+        if learned is not None:
+            return f"rid:{learned}", "remote id"
         known = self._address_keys.get(sighting.address)
         if known is not None:
             return known, self._identities[known].basis

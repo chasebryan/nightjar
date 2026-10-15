@@ -22,6 +22,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .remoteid import REMOTE_ID_UUID_16, report_from_service_data
+from .remoteid import describe as describe_drone
+
 SIG_BASE_SUFFIX = "-0000-1000-8000-00805f9b34fb"
 
 # Bluetooth SIG assigned 16-bit service UUIDs (GATT services) and the
@@ -74,6 +77,7 @@ SERVICE_NAMES: dict[int, str] = {
     0xFE95: "Xiaomi",
     0xFE9F: "Google",
     0xFEAA: "Eddystone",
+    0xFFFA: "Open Drone ID (Remote ID)",
     0xFEBE: "Bose",
     0xFEE0: "Huami",
     0xFEE7: "Tencent (WeChat)",
@@ -309,6 +313,13 @@ def identify_services(service_uuids: list[str],
         if short is not None:
             shorts[short] = normalize_uuid(uuid)
     data = {short_uuid(u): payload for u, payload in service_data.items()}
+
+    if REMOTE_ID_UUID_16 in shorts:
+        report = report_from_service_data(data.get(REMOTE_ID_UUID_16) or b"")
+        if report is not None:
+            return ServiceIdentification(
+                kind="Drone (Remote ID)", details=[describe_drone(report)],
+                tracker_shaped=False, specificity=3)
 
     if EDDYSTONE_UUID in shorts:
         frame = decode_eddystone(data.get(EDDYSTONE_UUID) or b"")

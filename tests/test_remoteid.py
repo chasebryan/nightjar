@@ -227,7 +227,9 @@ class ReportAndDescribeTests(unittest.TestCase):
     def test_describe(self):
         report = self._full_report()
         text = describe(report)
-        self.assertIn("Drone (Remote ID), helicopter/multirotor", text)
+        self.assertIn("Drone (Remote ID):", text)
+        self.assertIn("serial 12345678901234567890", text)
+        self.assertIn("helicopter/multirotor", text)
         self.assertIn("airborne", text)
         self.assertIn("alt 110 m", text)
         self.assertIn("height 80 m AGL", text)
