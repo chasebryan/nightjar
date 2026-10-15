@@ -41,6 +41,7 @@ fun CentipedeSection(
     var perDevice by prefBool(prefs, "centipedePerDevice", false)
     var smartSeed by prefBool(prefs, "centipedeSmartSeed", true)
     var homeTarget by prefString(prefs, "centipedeHome", "")
+    var rulesText by prefString(prefs, "traceRules", "")
     val crawl = app.crawl
     val busy by crawl.crawlBusy.collectAsState()
     val lines by crawl.crawlLines.collectAsState()
@@ -135,6 +136,29 @@ fun CentipedeSection(
             label = { Text("Deliver homecoming to (optional)") },
             modifier = Modifier.fillMaxWidth()
         )
+        OutlinedTextField(
+            value = rulesText,
+            onValueChange = { rulesText = it },
+            label = { Text("Adaptive rules — the harvest steers the walk") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = FontFamily.Monospace
+            )
+        )
+        Text(
+            "One rule per line; replies are matched as they land. " +
+                "Examples:\n" +
+                "# contains SSH => tag banner-grabbed\n" +
+                "# contains Redis => followup Redis PING (RESP)\n" +
+                "# port 9100 => followup Printer test page (TCP 9100)\n" +
+                "# contains 401 => stop\n" +
+                "followup sends the named library payload to the same " +
+                "door (its reply is harvested, never carried); tag " +
+                "labels the finding and the logbook; stop drops the " +
+                "carry. The same rules drive the Network trace below.",
+            style = MaterialTheme.typography.bodySmall
+        )
         if (busy) {
             Button(
                 onClick = { crawl.stopCrawl() },
@@ -158,7 +182,40 @@ fun CentipedeSection(
                         payloadFor = { text ->
                             buildForTarget(app, source, payloadText, xorKey, useGzip, text)
                         },
-                        framing = framing, method = method
+                        framing = framing, method = method,
+                        rules = TraceRule.parse(rulesText),
+                        payloadNamed = { name ->
+                            val item = app.book.items.value
+                                .firstOrNull { it.name == name }
+                            if (item == null) {
+                                null
+                            } else {
+                                try {
+                                    PayloadKit.build(
+                                        source = item.source,
+                                        text = if (item.source == "text") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        hex = if (item.source == "hex") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        b64 = if (item.source == "base64") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        xorSpec = item.xorKey,
+                                        useGzip = item.useGzip
+                                    )
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        }
                     )
                 },
                 enabled = !talkBusy && hopCount > 0,
@@ -186,6 +243,175 @@ fun CentipedeSection(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun NetworkTraceSection(app: NightjarApp) {
+    val prefs = rememberPrefs()
+    val open = prefBool(prefs, "sectionOpen.trace", false)
+    var scopeText by prefString(prefs, "traceScope", "")
+    var discoveryPorts by prefString(
+        prefs, "traceDiscoveryPorts", "80,443,22,445,1883,8080,8443,9100"
+    )
+    var profilePorts by prefString(prefs, "traceProfilePorts", "")
+    var useBonjour by prefBool(prefs, "traceBonjour", true)
+    var adaptive by prefBool(prefs, "traceAdaptive", true)
+    var rulesText by prefString(prefs, "traceRules", "")
+    val tracer = app.tracer
+    val busy by tracer.busy.collectAsState()
+    val lines by tracer.lines.collectAsState()
+    val status by tracer.status.collectAsState()
+    val export by tracer.latestExport.collectAsState()
+    val crawlBusy by app.crawl.crawlBusy.collectAsState()
+    val talkBusy by app.crawl.talkBusy.collectAsState()
+
+    CollapsibleSection("Network trace", open) {
+        Text(
+            "Map one /24 end to end: knock every address on the " +
+                "discovery ports, profile whatever answers, speak " +
+                "each open door's library protocol, and follow the " +
+                "in-scope addresses the replies themselves name — " +
+                "three hops deep — until the frontier is exhausted " +
+                "and the run stops on its own. Anything outside the " +
+                "scope is written down, never contacted. Every door " +
+                "is remembered in the logbook, and the run files a " +
+                "JSON map built for other tools to read.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedTextField(
+            value = scopeText,
+            onValueChange = { scopeText = it },
+            label = { Text("Scope (blank = this phone's /24)") },
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = FontFamily.Monospace
+            )
+        )
+        OutlinedTextField(
+            value = discoveryPorts,
+            onValueChange = { discoveryPorts = it },
+            label = { Text("Discovery ports — knocked on all 254 addresses") },
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = FontFamily.Monospace
+            )
+        )
+        OutlinedTextField(
+            value = profilePorts,
+            onValueChange = { profilePorts = it },
+            label = { Text("Profile ports (blank = the Scan tab's usual ports)") },
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontFamily = FontFamily.Monospace
+            )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Listen for Bonjour while tracing")
+            Switch(checked = useBonjour, onCheckedChange = { useBonjour = it })
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Adaptive rules steer the probes")
+            Switch(checked = adaptive, onCheckedChange = { adaptive = it })
+        }
+        if (adaptive) {
+            OutlinedTextField(
+                value = rulesText,
+                onValueChange = { rulesText = it },
+                label = { Text("Adaptive rules (shared with the Centipede)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = FontFamily.Monospace
+                )
+            )
+        }
+        if (busy) {
+            Button(
+                onClick = { tracer.stop() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Stop the trace") }
+        } else {
+            Button(
+                onClick = {
+                    tracer.start(
+                        scopeText = scopeText,
+                        discoveryPorts = discoveryPorts,
+                        profilePorts = profilePorts,
+                        includeBonjour = useBonjour,
+                        adaptive = adaptive,
+                        rules = TraceRule.parse(rulesText),
+                        probeFor = { text -> probeForTarget(app, text) },
+                        payloadNamed = { name ->
+                            val item = app.book.items.value
+                                .firstOrNull { it.name == name }
+                            if (item == null) {
+                                null
+                            } else {
+                                try {
+                                    PayloadKit.build(
+                                        source = item.source,
+                                        text = if (item.source == "text") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        hex = if (item.source == "hex") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        b64 = if (item.source == "base64") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        xorSpec = item.xorKey,
+                                        useGzip = item.useGzip
+                                    )
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                    )
+                },
+                enabled = !crawlBusy && !talkBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Trace the network") }
+        }
+        if (status.isNotEmpty()) {
+            Text(status, style = MaterialTheme.typography.bodySmall)
+        }
+        for (line in lines.takeLast(80)) MonoText(line)
+        export?.let { file ->
+            OutlinedButton(
+                onClick = { shareFile(app, file) },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Share the trace map (${file.name})") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { shareFile(app, app.traceStore.file) },
+                modifier = Modifier.weight(1f)
+            ) { Text("Share logbook") }
+            OutlinedButton(
+                onClick = {
+                    app.traceStore.clear()
+                    app.mouth.toast("Trace logbook cleared")
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text("Clear logbook") }
         }
     }
 }
