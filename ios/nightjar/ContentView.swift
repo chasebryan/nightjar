@@ -271,11 +271,29 @@ struct DeviceRowView: View {
 
 struct SessionsView: View {
     @EnvironmentObject private var post: ListeningPost
+    @EnvironmentObject private var toasts: ToastCenter
+    @Environment(\.editMode) private var editMode
     @State private var sessions: [SessionSummary] = []
+    @State private var selection = Set<String>()
+    @State private var showClearConfirm = false
+
+    private var deletable: [SessionSummary] {
+        sessions.filter { $0.id != post.session?.id }
+    }
+
+    private var totalSizeText: String {
+        ByteCountFormatter.string(
+            fromByteCount: Int64(sessions.reduce(0) { $0 + $1.fileSize }),
+            countStyle: .file)
+    }
+
+    private var selectedDeletableCount: Int {
+        deletable.filter { selection.contains($0.id) }.count
+    }
 
     var body: some View {
         NavigationStack {
-            List {
+            List(selection: $selection) {
                 if sessions.isEmpty {
                     Text("No sessions yet. Start one on the Listen tab; each session becomes "
                          + "a .jsonl file you can share to the Mac and feed to "
@@ -283,7 +301,17 @@ struct SessionsView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(sessions) { session in
-                    SessionRowView(session: session, isLive: post.session?.id == session.id)
+                    SessionRowView(
+                        session: session,
+                        isLive: post.session?.id == session.id,
+                        onDelete: post.session?.id == session.id ? nil : {
+                            SessionStore.delete(session)
+                            selection.remove(session.id)
+                            reload()
+                            toasts.show("Session deleted",
+                                        symbol: "trash")
+                        })
+                    .tag(session.id)
                 }
                 .onDelete { offsets in
                     for index in offsets where post.session?.id != sessions[index].id {
@@ -291,14 +319,77 @@ struct SessionsView: View {
                     }
                     reload()
                 }
+                if !deletable.isEmpty {
+                    Section {
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            showClearConfirm = true
+                        } label: {
+                            Label("Delete all sessions",
+                                  systemImage: "trash")
+                        }
+                    } footer: {
+                        Text("\(sessions.count) session"
+                             + "\(sessions.count == 1 ? "" : "s") · "
+                             + "\(totalSizeText) on this phone. Swipe "
+                             + "a row, long-press it, or use Edit to "
+                             + "pick several. The session recording "
+                             + "right now is never deleted.")
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Sessions")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { reload() } label: { Image(systemName: "arrow.clockwise") }
                 }
+                if editMode?.wrappedValue.isEditing == true,
+                   selectedDeletableCount > 0 {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button("Delete selected (\(selectedDeletableCount))",
+                               role: .destructive) {
+                            var gone = 0
+                            for session in deletable
+                            where selection.contains(session.id) {
+                                SessionStore.delete(session)
+                                gone += 1
+                            }
+                            selection = []
+                            reload()
+                            toasts.show("Deleted \(gone) session"
+                                        + "\(gone == 1 ? "" : "s")",
+                                        symbol: "trash")
+                        }
+                    }
+                }
+            }
+            .confirmationDialog(
+                "Delete all sessions?",
+                isPresented: $showClearConfirm,
+                titleVisibility: .visible) {
+                Button("Delete \(deletable.count) sessions "
+                       + "(\(totalSizeText))",
+                       role: .destructive) {
+                    let gone = SessionStore.deleteAll(
+                        exceptLiveID: post.session?.id)
+                    selection = []
+                    reload()
+                    toasts.show("Deleted \(gone) session"
+                                + "\(gone == 1 ? "" : "s")",
+                                symbol: "trash")
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(post.session != nil
+                     ? "The session recording right now is kept. "
+                       + "This cannot be undone."
+                     : "Every recorded session file is deleted. "
+                       + "This cannot be undone.")
             }
             .onAppear(perform: reload)
             .onChange(of: post.session?.id) { _ in reload() }
@@ -313,6 +404,7 @@ struct SessionsView: View {
 struct SessionRowView: View {
     let session: SessionSummary
     let isLive: Bool
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top) {
@@ -344,6 +436,16 @@ struct SessionRowView: View {
                     Image(systemName: "square.and.arrow.up")
                 }
                 .buttonStyle(.borderless)
+            }
+        }
+        .contextMenu {
+            if let onDelete {
+                Button(role: .destructive) {
+                    Haptics.tap()
+                    onDelete()
+                } label: {
+                    Label("Delete session", systemImage: "trash")
+                }
             }
         }
     }
