@@ -623,10 +623,12 @@ object Services {
         0x1827 to "Mesh Provisioning",
         0x1828 to "Mesh Proxy",
         0x184E to "Audio Stream Control (LE Audio)",
+        0x184F to "Broadcast Audio Scan (LE Audio)",
         0x1850 to "Published Audio Capabilities (LE Audio)",
         0x1852 to "Broadcast Audio Announcement (LE Audio)",
         0x1853 to "Common Audio (LE Audio)",
         0x1854 to "Hearing Access (LE Audio)",
+        0x1856 to "Public Broadcast Announcement (LE Audio)",
         0xFD3D to "SwitchBot",
         0xFCD2 to "BTHome",
         0xFFFA to "UAS Remote ID",
@@ -634,12 +636,18 @@ object Services {
         0xFD44 to "Apple (Find My accessory)",
         0xFD5A to "Samsung SmartThings Find",
         0xFD6F to "Exposure Notification",
+        0xFD77 to "Withings", 0xFD78 to "Withings",
+        0xFD79 to "Withings", 0xFD7A to "Withings",
+        0xFDF0 to "ASHA hearing aid",
         0xFE03 to "Amazon",
         0xFE07 to "Sonos",
         0xFE0F to "Signify (Philips Hue)",
+        0xFE24 to "August Home",
         0xFE2C to "Google Fast Pair",
+        0xFE33 to "Chipolo",
         0xFE59 to "Nordic DFU",
         0xFE61 to "Logitech",
+        0xFE65 to "Chipolo",
         0xFE95 to "Xiaomi",
         0xFE9F to "Google",
         0xFEAA to "Eddystone",
@@ -649,6 +657,7 @@ object Services {
         0xFED0 to "Apple", 0xFED1 to "Apple", 0xFED2 to "Apple",
         0xFED3 to "Apple", 0xFED4 to "Apple",
         0xFEE0 to "Huami",
+        0xFEE1 to "Huami",
         0xFEE7 to "Tencent (WeChat)",
         0xFEEC to "Tile",
         0xFEED to "Tile",
@@ -663,7 +672,9 @@ object Services {
     const val miBeacon: Int = 0xFE95
     const val btHome: Int = 0xFCD2
     const val switchBot: Int = 0xFD3D
+    const val asha: Int = 0xFDF0
     val tile: List<Int> = listOf(0xFEED, 0xFEEC)
+    val huami: List<Int> = listOf(0xFEE0, 0xFEE1)
 
     /** Full lowercase form of a short or long UUID string. */
     fun normalize(uuid: String): String {
@@ -952,6 +963,19 @@ object Services {
                 specificity = 2,
             )
         }
+        // ASHA hearing aids advertise Google's member service 0xFDF0
+        // (SIG assigned numbers list it to Google LLC; ASHA is
+        // Google's Audio Streaming for Hearing Aids GATT profile).
+        if (shorts.containsKey(asha)) {
+            return Identification(
+                kind = "Hearing aid (ASHA)",
+                details = listOf(
+                    "Audio Streaming for Hearing Aids (Google ASHA)"
+                ),
+                trackerShaped = false, rotatingPhone = false,
+                specificity = 2,
+            )
+        }
         // MiBeacon and BTHome carry real sensor readings in their
         // service data — decode them before the bare-name fallback.
         val miPayload = data[miBeacon]
@@ -967,6 +991,17 @@ object Services {
             if (ident != null) {
                 return ident
             }
+        }
+        // Huami wearables (Mi Band, Amazfit) advertise their member
+        // services 0xFEE0/0xFEE1, both SIG-assigned to Anhui Huami.
+        // Placed after the MiBeacon/BTHome decoders so a frame that
+        // actually decodes still wins over this recognition.
+        if (huami.any { shorts.containsKey(it) }) {
+            return Identification(
+                kind = "Mi Band / Amazfit", details = emptyList(),
+                trackerShaped = false, rotatingPhone = false,
+                specificity = 2,
+            )
         }
         if (shorts.containsKey(switchBot)) {
             return Identification(
@@ -1015,7 +1050,7 @@ object Vendors {
         0x0048 to "Marvell", 0x004C to "Apple", 0x0055 to "Plantronics",
         0x0056 to "Sony Ericsson", 0x0057 to "Harman", 0x0058 to "Vizio",
         0x0059 to "Nordic Semiconductor", 0x005C to "Belkin",
-        0x005D to "Realtek", 0x0065 to "HP", 0x0067 to "GN Audio (Jabra)",
+        0x005D to "Realtek", 0x0065 to "HP", 0x0067 to "GN Hearing",
         0x0068 to "General Motors", 0x006B to "Polar", 0x0075 to "Samsung",
         0x0076 to "Creative", 0x0078 to "Nike", 0x0082 to "Sennheiser",
         0x0087 to "Garmin", 0x0089 to "GN Hearing", 0x008A to "Jawbone",
@@ -1025,13 +1060,22 @@ object Vendors {
         0x00CC to "Beats", 0x00CD to "Microchip", 0x00CE to "Elgato",
         0x00D0 to "Dexcom", 0x00D2 to "Dialog Semiconductor", 0x00D6 to "Timex",
         0x00D7 to "Qualcomm Technologies", 0x00D9 to "Turtle Beach",
-        0x00E0 to "Google", 0x00E8 to "Lenovo", 0x0118 to "Radius Networks",
+        0x00E0 to "Google", 0x00E8 to "Lenovo",
+        0x0111 to "SteelSeries", 0x0118 to "Radius Networks",
         0x012D to "Sony", 0x0131 to "Cypress Semiconductor",
         0x0157 to "Huami (Zepp / Mi Band)", 0x0171 to "Amazon",
-        0x01AB to "Meta (Facebook)", 0x01DA to "Logitech", 0x027D to "Huawei",
+        0x018E to "Google", 0x01AB to "Meta (Facebook)",
+        0x01D1 to "August Home", 0x01DA to "Logitech", 0x027D to "Huawei",
         0x02E1 to "Victron Energy", 0x02E5 to "Espressif",
-        0x02FF to "Silicon Labs", 0x038F to "Xiaomi", 0x0499 to "Ruuvi",
-        0x0553 to "Nintendo", 0x05A7 to "Sonos", 0x0969 to "SwitchBot (Woan)",
+        0x02FF to "Silicon Labs", 0x038F to "Xiaomi",
+        0x03FF to "Withings", 0x0499 to "Ruuvi",
+        0x0553 to "Nintendo", 0x0600 to "iRobot",
+        0x05A7 to "Sonos", 0x08AA to "DJI", 0x08C3 to "Chipolo",
+        0x065A to "Marshall", 0x067C to "Tile", 0x068E to "Razer",
+        0x07C9 to "Skullcandy", 0x079A to "Oppo", 0x0837 to "vivo",
+        0x08A4 to "Realme", 0x09C6 to "Honor",
+        0x0CC2 to "Anker", 0x0CCB to "Nothing", 0x0CE9 to "JLab",
+        0x0969 to "SwitchBot (Woan)",
         0xFFFF to "(reserved / test)",
     )
 
