@@ -120,7 +120,11 @@ Below the steps, the Send tab keeps working:
   log sheet: what was probed, when, and what answered. The same
   sheet deletes the file outright (size shown, confirmation
   required); the send log and the Serve inbox clear from their
-  own buttons, as does the observation feed.
+  own buttons, as does the observation feed. The purist half's
+  recordings get the same treatment in the Sessions tab: a
+  storage total, swipe / long-press / Edit-mode multi-select
+  deletion, and a Delete-all that shows the count and size
+  first — the session recording right now is never deleted.
 - **Payload library.** The Send tab saves named payloads (source,
   transforms, framing included) and loads them back in one tap. It
   ships preloaded with built-ins: the basics (hello, ping, a JSON
