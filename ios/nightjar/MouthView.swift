@@ -8,6 +8,57 @@ import UniformTypeIdentifiers
 
 // MARK: - Send
 
+/// A saved Send-tab setup: the Network Trace's fields and
+/// the Centipede's route, named and kept together, so a
+/// configuration that worked can be recalled in one tap —
+/// or carried to the other phone as a JSON file.
+struct NJPreset: Codable, Identifiable {
+    var id: String
+    var name: String
+    var traceScope: String
+    var traceDiscoveryPorts: String
+    var traceProfilePorts: String
+    var traceBonjour: Bool
+    var traceAdaptive: Bool
+    var traceRules: String
+    var centipedeRoute: String
+}
+
+/// The preset shelf: a JSON array in UserDefaults, plus
+/// the temp file the share sheet hands out.
+enum NJPresetStore {
+    static let key = "njPresets.v1"
+
+    static func load() -> [NJPreset] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decoded = try? JSONDecoder()
+                .decode([NJPreset].self, from: data)
+        else { return [] }
+        return decoded
+    }
+
+    static func save(_ presets: [NJPreset]) {
+        if let data = try? JSONEncoder().encode(presets) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    static func exportURL(_ presets: [NJPreset]) -> URL? {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+        guard let data = try? encoder.encode(presets)
+        else { return nil }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nightjar-presets.json")
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
+}
+
 struct SendView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
@@ -73,6 +124,11 @@ struct SendView: View {
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
     @State private var showCentipedeSplash = false
+    @State private var presets: [NJPreset] = NJPresetStore.load()
+    @State private var selectedPresetID = ""
+    @State private var presetNameDraft = ""
+    @State private var showPresetImporter = false
+    @State private var presetExportURL: URL?
     @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
     @AppStorage("serveTcpPort") private var serveTcpPort = "9000"
@@ -640,6 +696,61 @@ struct SendView: View {
                          + "the /24 are written into the report, "
                          + "never contacted.")
                         .font(.caption).foregroundStyle(.secondary)
+                    Text("Presets")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .onAppear { refreshPresetExport() }
+                    if !presets.isEmpty {
+                        Picker("Preset", selection: $selectedPresetID) {
+                            Text("Choose…").tag("")
+                            ForEach(presets) { preset in
+                                Text(preset.name).tag(preset.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        HStack {
+                            Button("Apply preset") {
+                                Haptics.tap()
+                                applySelectedPreset()
+                            }
+                            .disabled(selectedPresetID.isEmpty)
+                            Button("Delete", role: .destructive) {
+                                Haptics.tap()
+                                deleteSelectedPreset()
+                            }
+                            .disabled(selectedPresetID.isEmpty)
+                        }
+                        .font(.caption)
+                    }
+                    HStack {
+                        TextField("New preset name",
+                                  text: $presetNameDraft)
+                            .font(.body.monospaced())
+                        Button("Save current") {
+                            Haptics.tap()
+                            saveCurrentPreset()
+                        }
+                        .disabled(presetNameDraft
+                            .trimmingCharacters(
+                                in: .whitespaces).isEmpty)
+                    }
+                    .font(.caption)
+                    HStack {
+                        if let url = presetExportURL {
+                            ShareLink(item: url) {
+                                Label("Share presets",
+                                      systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        Button {
+                            Haptics.tap()
+                            showPresetImporter = true
+                        } label: {
+                            Label("Import presets",
+                                  systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .font(.caption)
                     TextField("Scope — blank = this phone's /24",
                               text: $traceScope)
                         .textInputAutocapitalization(.never)
@@ -764,6 +875,10 @@ struct SendView: View {
                     mouth.traceCentipedeRoute = nil
                     openCentipede = true
                     toasts.show("Centipede configured from the trace")
+                }
+                .fileImporter(isPresented: $showPresetImporter,
+                              allowedContentTypes: [.json]) { result in
+                    importPresets(result)
                 }
 
                 CollapsibleSection("Crosstalk", isOpen: $openTalk) {
@@ -1305,6 +1420,100 @@ struct SendView: View {
         Array(Set(text.split(separator: ",")
             .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             .filter { (1...65535).contains($0) })).sorted()
+    }
+
+    /// The preset the picker is pointing at, if any.
+    private var selectedPreset: NJPreset? {
+        presets.first { $0.id == selectedPresetID }
+    }
+
+    private func refreshPresetExport() {
+        presetExportURL = NJPresetStore.exportURL(presets)
+    }
+
+    /// A preset recalls the whole setup: the trace fields
+    /// and the Centipede's route alike.
+    private func applySelectedPreset() {
+        guard let preset = selectedPreset else { return }
+        traceScope = preset.traceScope
+        traceDiscoveryPorts = preset.traceDiscoveryPorts
+        traceProfilePorts = preset.traceProfilePorts
+        traceBonjour = preset.traceBonjour
+        traceAdaptive = preset.traceAdaptive
+        traceRules = preset.traceRules
+        centipedeRoute = preset.centipedeRoute
+        toasts.show("Preset applied — \(preset.name)")
+    }
+
+    /// Save the fields as they stand. A name already on
+    /// the shelf is overwritten in place (kept id), so
+    /// fixing a preset doesn't fork it.
+    private func saveCurrentPreset() {
+        let name = presetNameDraft
+            .trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let snapshot = NJPreset(
+            id: presets.first { $0.name == name }?.id
+                ?? UUID().uuidString,
+            name: name,
+            traceScope: traceScope,
+            traceDiscoveryPorts: traceDiscoveryPorts,
+            traceProfilePorts: traceProfilePorts,
+            traceBonjour: traceBonjour,
+            traceAdaptive: traceAdaptive,
+            traceRules: traceRules,
+            centipedeRoute: centipedeRoute)
+        if let index = presets.firstIndex {
+            $0.id == snapshot.id } {
+            presets[index] = snapshot
+        } else {
+            presets.append(snapshot)
+        }
+        NJPresetStore.save(presets)
+        selectedPresetID = snapshot.id
+        presetNameDraft = ""
+        refreshPresetExport()
+        toasts.show("Preset saved — \(name)")
+    }
+
+    private func deleteSelectedPreset() {
+        guard let preset = selectedPreset else { return }
+        presets.removeAll { $0.id == preset.id }
+        NJPresetStore.save(presets)
+        selectedPresetID = ""
+        refreshPresetExport()
+        toasts.show("Preset deleted — \(preset.name)")
+    }
+
+    /// Import merges by id: a preset already on the shelf
+    /// is replaced by the imported telling, new ones join.
+    private func importPresets(_ result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer {
+            if scoped {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        guard let data = try? Data(contentsOf: url),
+              let incoming = try? JSONDecoder()
+                .decode([NJPreset].self, from: data)
+        else {
+            toasts.show("That file is not a presets file",
+                        error: true)
+            return
+        }
+        for preset in incoming {
+            if let index = presets.firstIndex {
+                $0.id == preset.id } {
+                presets[index] = preset
+            } else {
+                presets.append(preset)
+            }
+        }
+        NJPresetStore.save(presets)
+        refreshPresetExport()
+        toasts.show("Imported \(incoming.count) preset(s)")
     }
 
     /// Release a Network Trace with the section's settings.
