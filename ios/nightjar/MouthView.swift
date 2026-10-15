@@ -52,9 +52,48 @@ struct SendView: View {
     @AppStorage("plantTopic") private var plantTopic = "nightjar/plant"
     @AppStorage("plantKey") private var plantKey = "nightjar:plant"
     @AppStorage("plantValue") private var plantValue = "planted by nightjar-hack"
+    /// The most recent plant: which service, under what key/topic,
+    /// at which target. Verify reads this, not the form's current
+    /// values, so editing the form after planting can't misdirect it.
+    @State private var lastPlant: (service: String, key: String, target: String)?
+
+    private var verifyPlantLabel: String {
+        guard let last = lastPlant else {
+            return "Verify — plant something first"
+        }
+        if last.service != "redis" {
+            return "Verify — only Redis plants can be checked"
+        }
+        return "Verify — GET '\(last.key)' back"
+    }
 
     private var fanoutList: [String] {
         fanoutTargets.split(separator: "\n").map(String.init)
+    }
+
+    /// How many targets the fan-out runner will actually attempt:
+    /// the same expansion `sendToMany` runs — ranges expand, blanks,
+    /// comments and duplicates drop, capped at 300. A range-shaped
+    /// line that expands to nothing is an invalid range: the runner
+    /// reports it as a failed entry, so it never counts here (and is
+    /// never treated as a literal hostname).
+    private var fanoutExpandedCount: Int {
+        var expanded: [String] = []
+        for entry in fanoutList {
+            let text = entry.trimmingCharacters(in: .whitespaces)
+            if let range = Mouth.expandRange(text) {
+                expanded += range
+            } else if Mouth.looksLikeRange(text) {
+                continue
+            } else {
+                expanded.append(text)
+            }
+        }
+        var seen = Set<String>()
+        return expanded
+            .filter { !$0.isEmpty && !$0.hasPrefix("#")
+                      && seen.insert($0).inserted }
+            .prefix(300).count
     }
 
     private var parsed: Result<SendTarget, Error> {
@@ -71,11 +110,25 @@ struct SendView: View {
         return true
     }
 
-    /// The exact bytes a send would emit right now, for the preview.
+    /// The destination a step-3 send would use right now: a picked
+    /// phone wins over the typed address.
+    private var effectiveTargetText: String {
+        phoneSelection.map { "phone:\($0)" } ?? target
+    }
+
+    /// The exact bytes a send would emit right now, for the preview:
+    /// built through the same path `build(forTargetText:)` uses —
+    /// substitution against the current effective target (text source
+    /// only; hex/base64 sources skip substitution) — with the step-3
+    /// framing applied, just as the network send applies it.
     private var previewData: Data? {
-        try? PayloadKit.build(source: source, text: payloadText,
-                              hex: payloadHex, b64: payloadB64,
-                              xorSpec: xorKey, useGzip: useGzip)
+        guard let built = try? PayloadKit.build(
+            source: source,
+            text: PayloadKit.substitute(payloadText,
+                                        targetText: effectiveTargetText),
+            hex: payloadHex, b64: payloadB64,
+            xorSpec: xorKey, useGzip: useGzip) else { return nil }
+        return PayloadKit.frame(built, framing: framing)
     }
 
     @ViewBuilder private var lastReplyView: some View {
@@ -286,7 +339,7 @@ struct SendView: View {
                         Haptics.tap()
                         guard build() != nil else { return }
                         withTiming(label: "fan-out to "
-                                         + "\(fanoutList.count) target(s)") {
+                                         + "\(fanoutExpandedCount) target(s)") {
                             mouth.sendToMany(
                                 targets: fanoutList,
                                 payloadFor: { build(forTargetText: $0) },
@@ -296,7 +349,7 @@ struct SendView: View {
                     } label: {
                         Label(mouth.fanoutBusy
                                 ? "Sending…"
-                                : "Send payload to \(fanoutList.count) target(s)",
+                                : "Send payload to \(fanoutExpandedCount) target(s)",
                               systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
@@ -434,15 +487,15 @@ struct SendView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    if plantKind == "redis" {
-                        Button {
-                            Haptics.tap()
-                            verifyPlant()
-                        } label: {
-                            Label("Verify — GET the key back",
-                                  systemImage: "checkmark.circle")
-                        }
+                    Button {
+                        Haptics.tap()
+                        verifyPlant()
+                    } label: {
+                        Label(verifyPlantLabel,
+                              systemImage: "checkmark.circle")
                     }
+                    .disabled(lastPlant == nil
+                              || lastPlant?.service != "redis")
                     Text("Targets step 1 (tcp://host:port — the "
                          + "broker or store's port). Replies land "
                          + "in the readout under step 3.")
@@ -543,6 +596,7 @@ struct SendView: View {
                     Haptics.tap()
                     withTiming(label: "send to \(phone)") {
                         if let data = build() {
+                            noteTargetUsed("phone:\(phone)")
                             mouth.sendToPhone(name: phone, payload: data,
                                               framing: framing, read: readReply,
                                               timeout: 5)
@@ -709,14 +763,14 @@ struct SendView: View {
     /// ({{host}}, {{port}}, {{target}}, {{scheme}}) against it.
     private func build(forTargetText targetText: String) -> Data? {
         do {
+            // Only the text source substitutes templates against the
+            // target; hex/base64 sources go out exactly as typed.
             return try PayloadKit.build(
                 source: source,
                 text: PayloadKit.substitute(payloadText,
                                             targetText: targetText),
-                hex: PayloadKit.substitute(payloadHex,
-                                           targetText: targetText),
-                b64: PayloadKit.substitute(payloadB64,
-                                           targetText: targetText),
+                hex: payloadHex,
+                b64: payloadB64,
                 xorSpec: xorKey, useGzip: useGzip)
         } catch {
             showError = error.localizedDescription
@@ -769,7 +823,9 @@ struct SendView: View {
         book.add(SavedPayload(name: trimmed, source: source, text: text,
                               xorKey: xorKey, useGzip: useGzip,
                               framing: framing))
-        selectedPayloadID = book.items.last?.id
+        // add() replaces a same-name entry in place, so the saved
+        // payload is not necessarily the last row — select by name.
+        selectedPayloadID = book.items.first { $0.name == trimmed }?.id
         toasts.show("Saved '\(trimmed)' to the library")
     }
 
@@ -780,6 +836,10 @@ struct SendView: View {
     }
 
     private func snatch() {
+        // Clear the previous haul at launch, before the run — a
+        // failed attempt must not display what an earlier one took.
+        mouth.snatchResult = nil
+        mouth.snatchBytes = 0
         let probe = snatchKnock ? build() : nil
         if snatchKnock, probe == nil { return }
         if let phone = phoneSelection {
@@ -793,49 +853,63 @@ struct SendView: View {
     }
 
     private func plant() {
-        guard case .success(let value) = parsed else {
-            toasts.show("PayPlant needs a tcp:// or udp:// target "
-                        + "in step 1", error: true)
+        // Plants are TCP protocols — every other scheme (udp and
+        // http included) is rejected outright.
+        guard case .success(let value) = parsed,
+              case .tcp(let host, let port, _) = value else {
+            toasts.show("PayPlant needs a tcp:// target in step 1 — "
+                        + "plants are TCP protocols", error: true)
             return
         }
-        switch value {
-        case .tcp, .udp:
-            break
-        default:
-            toasts.show("PayPlant needs a tcp:// or udp:// target "
-                        + "in step 1", error: true)
-            return
+        let plantedTarget = target
+        // No success toast until the send completion returns.
+        let report: (Bool) -> Void = { ok in
+            DispatchQueue.main.async {
+                if ok {
+                    toasts.show("Planted in \(plantedTarget)")
+                } else {
+                    toasts.show("Could not plant in \(plantedTarget)",
+                                error: true)
+                }
+            }
         }
-        let data: Data
         switch plantKind {
         case "redis":
-            data = PayloadKit.redisCommand(
-                ["SET", plantKey, plantValue])
+            lastPlant = (service: "redis", key: plantKey,
+                         target: plantedTarget)
+            mouth.sendNetwork(
+                target: value,
+                payload: PayloadKit.redisCommand(
+                    ["SET", plantKey, plantValue]),
+                framing: "raw", read: true, timeout: 5,
+                completion: report)
         case "memcached":
-            data = PayloadKit.memcachedSet(key: plantKey,
-                                           value: plantValue)
+            lastPlant = (service: "memcached", key: plantKey,
+                         target: plantedTarget)
+            mouth.sendNetwork(
+                target: value,
+                payload: PayloadKit.memcachedSet(key: plantKey,
+                                                 value: plantValue),
+                framing: "raw", read: true, timeout: 5,
+                completion: report)
         default:
-            data = PayloadKit.mqttConnect(clientID: "nightjar-hack")
-                + PayloadKit.mqttPublish(topic: plantTopic,
-                                         payload: Data(plantValue.utf8),
-                                         retain: true)
+            lastPlant = (service: "mqtt", key: plantTopic,
+                         target: plantedTarget)
+            mouth.plantMQTT(host: host, port: port, topic: plantTopic,
+                            payload: Data(plantValue.utf8),
+                            completion: report)
         }
-        mouth.sendNetwork(target: value, payload: data, framing: "raw",
-                          read: true, timeout: 5)
-        toasts.show("Planted in \(target)")
     }
 
     private func verifyPlant() {
-        guard case .success(let value) = parsed else { return }
-        switch value {
-        case .tcp, .udp:
-            break
-        default:
-            return
-        }
+        // Reads the recorded plant — its key and its target — not
+        // whatever the form happens to hold now.
+        guard let last = lastPlant, last.service == "redis",
+              let value = try? SendTarget.parse(last.target),
+              case .tcp = value else { return }
         mouth.sendNetwork(target: value,
                           payload: PayloadKit.redisCommand(
-                            ["GET", plantKey]),
+                            ["GET", last.key]),
                           framing: "raw", read: true, timeout: 5)
     }
 
@@ -846,6 +920,7 @@ struct SendView: View {
         guard let handed = mouth.scanHandoffTarget else { return }
         mouth.scanHandoffTarget = nil
         target = handed
+        noteTargetUsed(handed)
         phoneSelection = nil
         if let name = mouth.scanHandoffPayload,
            let item = book.items.first(where: { $0.name == name }) {
@@ -868,8 +943,12 @@ struct SendView: View {
         xorKey = item.xorKey
         useGzip = item.useGzip
         framing = item.framing
-        selectedPayloadID = item.id
         customExpanded = false
+        // Last, in the same synchronous block: the selection is set
+        // only once every field it describes is in place, and
+        // suppressClear is released on the next main-queue turn,
+        // after this block (and its onChange deliveries) completes.
+        selectedPayloadID = item.id
         DispatchQueue.main.async { suppressClear = false }
         toasts.show("Loaded '\(item.name)' — ready in step 3")
     }
@@ -970,7 +1049,6 @@ struct MouthLogSheet: View {
     @EnvironmentObject private var mouth: Mouth
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
-    @State private var historyDeleted = false
 
     var body: some View {
         NavigationStack {
@@ -997,8 +1075,7 @@ struct MouthLogSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
-                if !historyDeleted,
-                   FileManager.default.fileExists(
+                if FileManager.default.fileExists(
                     atPath: Mouth.exchangesURL.path) {
                     ToolbarItem(placement: .bottomBar) {
                         ShareLink(item: Mouth.exchangesURL) {
@@ -1026,7 +1103,6 @@ struct MouthLogSheet: View {
                           ?? "history"),
                        role: .destructive) {
                     mouth.deleteExchangeHistory()
-                    historyDeleted = true
                     Haptics.success()
                 }
                 Button("Cancel", role: .cancel) { }
