@@ -19,9 +19,12 @@ struct ContentView: View {
             SessionsView()
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
                 .tag(3)
+            ScanView()
+                .tabItem { Label("Scan", systemImage: "scope") }
+                .tag(4)
             AboutView()
                 .tabItem { Label("About", systemImage: "info.circle") }
-                .tag(4)
+                .tag(5)
         }
         .onChange(of: tab) { _ in Haptics.select() }
         .overlay(alignment: .top) {
