@@ -42,6 +42,17 @@ struct SendView: View {
     @State private var showLibrary = false
     @State private var showLog = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
+    @AppStorage("centipedeRoute") private var centipedeRoute = ""
+    @AppStorage("centipedeMode") private var centipedeMode = "chain"
+    @AppStorage("centipedeReturn") private var centipedeReturn = true
+    @State private var centipedeHome = ""
+    private var centipedeLines: [String] {
+        centipedeRoute.split(separator: "\n").map(String.init)
+    }
+    private var centipedeHopCount: Int {
+        let (stops, _) = Mouth.expandRoute(centipedeLines)
+        return min(centipedeReturn ? stops.count * 2 : stops.count, 300)
+    }
     @State private var showImporter = false
     @AppStorage("timingMode") private var timingMode = "now"
     @AppStorage("timingDelay") private var timingDelay = "30"
@@ -411,6 +422,83 @@ struct SendView: View {
                          + "suspends background apps, so a scheduled "
                          + "send waits for the app to be on screen.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Section(header: Text("Centipede")) {
+                    Text("A route, walked hop by hop. Each line is a "
+                         + "stop: a target, a range, host:80,443 (a "
+                         + "port train), or a bare host (a train "
+                         + "across the usual ports). Chain sends each "
+                         + "hop the previous hop's reply; Seed sends "
+                         + "the step-2 payload everywhere. The phone "
+                         + "makes every send, out and back — nothing "
+                         + "is left behind on any target.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    TextEditor(text: $centipedeRoute)
+                        .font(.body.monospaced())
+                        .frame(minHeight: 96)
+                        .scrollContentBackground(.hidden)
+                    Picker("Mode", selection: $centipedeMode) {
+                        Text("Chain").tag("chain")
+                        Text("Seed").tag("seed")
+                    }
+                    .pickerStyle(.segmented)
+                    Toggle("Return to sender (walk the route back)",
+                           isOn: $centipedeReturn)
+                    TextField("Deliver homecoming to (optional)",
+                              text: $centipedeHome)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .font(.body.monospaced())
+                    if mouth.crawlBusy {
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            mouth.stopCrawl()
+                        } label: {
+                            Label("Stop the centipede",
+                                  systemImage: "stop.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    } else {
+                        Button {
+                            Haptics.tap()
+                            guard build() != nil else { return }
+                            mouth.crawl(
+                                route: centipedeLines,
+                                mode: centipedeMode,
+                                returnLeg: centipedeReturn,
+                                homeTarget: centipedeHome,
+                                payloadFor: { build(forTargetText: $0) },
+                                framing: framing, method: method)
+                        } label: {
+                            Label("Release the centipede "
+                                  + "(\(centipedeHopCount) hop(s))",
+                                  systemImage: "ant.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(centipedeLines.isEmpty)
+                    }
+                    ForEach(mouth.crawlLines, id: \.self) { trailLine in
+                        Text(trailLine).font(.caption.monospaced())
+                    }
+                    if let home = mouth.crawlHomecoming {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("What it brought home — "
+                                 + "\(home.count) bytes")
+                                .font(.caption.weight(.semibold))
+                            if let text = PayloadKit.printableText(home) {
+                                Text(text)
+                                    .font(.caption.monospaced())
+                                    .lineLimit(6)
+                            }
+                            Text(PayloadKit.hexdump(
+                                Data(home.prefix(128))))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section(header: Text("SnatchSteal")) {
