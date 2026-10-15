@@ -33,9 +33,12 @@ and shares test vectors with it.
 
 - **Payload library.** The Send tab saves named payloads (source,
   transforms, framing included) and loads them back in one tap. It
-  ships preloaded with built-ins (hello, ping, a JSON hello, a
-  Wake-on-LAN template, a raw HTTP GET, a 32-byte length test) —
-  deletable, restorable, and side by side with your own customs.
+  ships preloaded with built-ins: the basics (hello, ping, a JSON
+  hello, a Wake-on-LAN template, a raw HTTP GET, a 32-byte length
+  test) plus real protocol first words — a DNS query, an NTP time
+  request, Redis PING, memcached stats, SMTP EHLO, an MQTT CONNECT,
+  a Modbus read, a CoAP GET, and a raw printer test page. Deletable,
+  restorable, and side by side with your own customs.
 - **Listen → Send.** Long-press a device in the Listen tab and choose
   "Write a payload…" — the Send tab opens with that device as the
   write target. The halves share the CoreBluetooth identifier only;
