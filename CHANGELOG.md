@@ -22,6 +22,8 @@
   harvest list (homecoming card + history); trail lines carry
   per-hop round-trip times. (The crawl/discovery code also
   moved from Mouth.swift into a new Crawl.swift extension.)
+  The Send tab's feature sections now fold open and shut from
+  their headers, with the open set remembered between launches.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
