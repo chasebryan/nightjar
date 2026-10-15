@@ -96,10 +96,11 @@ extension View {
     func appThemed() -> some View { modifier(AppThemed()) }
 }
 
-/// Cold-boot sequence: the Jolly Roger behind a terminal log
-/// that types itself line by line — and every line is true: this
-/// device, this network, this library, this stealth state. Fades
-/// into the app after ~2 seconds; a tap skips it.
+/// Boot splash, OS-style: black screen, the Jolly Roger as the
+/// machine's emblem, a wordmark, and a boot log that types itself
+/// line by line over a progress bar — and every line is true:
+/// this device, this network, this library, this stealth state.
+/// Fades into the app after ~2 seconds; a tap skips it.
 struct BootView: View {
     let onDone: () -> Void
 
@@ -152,13 +153,33 @@ struct BootView: View {
         }
     }
 
+    private var progress: CGFloat {
+        lines.isEmpty ? 0 : CGFloat(shown) / CGFloat(lines.count)
+    }
+
     var body: some View {
         ZStack {
-            AppBackdrop()
-            Color.black.opacity(0.42).ignoresSafeArea()
-            VStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 0) {
                 Spacer()
-                VStack(alignment: .leading, spacing: 6) {
+                Image("AppBackground")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 216, height: 216)
+                    .clipped()
+                    .overlay(Rectangle().stroke(
+                        Color.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black, radius: 18, y: 8)
+                Text("nightjar-hack")
+                    .font(.system(.title3, design: .monospaced)
+                          .weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.top, 20)
+                Text("IOS BUILD · FIELD UNIT")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Color(white: 0.45))
+                    .padding(.top, 4)
+                VStack(alignment: .leading, spacing: 5) {
                     ForEach(0..<min(shown, lines.count), id: \.self) { i in
                         Text(lines[i].text)
                             .font(.system(.footnote, design: .monospaced))
@@ -169,9 +190,24 @@ struct BootView: View {
                         .foregroundStyle(color(.ok))
                         .opacity(cursorOn ? 1 : 0)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 22)
-                .padding(.bottom, 120)
+                .frame(width: 300, height: 168, alignment: .topLeading)
+                .padding(.top, 30)
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.12))
+                        .frame(height: 3)
+                    Rectangle()
+                        .fill(color(.ok))
+                        .frame(width: 300 * progress, height: 3)
+                        .animation(.easeOut(duration: 0.25), value: shown)
+                }
+                .frame(width: 300)
+                .padding(.top, 14)
+                Spacer()
+                Text("TAP TO SKIP")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Color(white: 0.35))
+                    .padding(.bottom, 26)
             }
         }
         .contentShape(Rectangle())
