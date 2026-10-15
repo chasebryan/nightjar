@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 
 struct SendView: View {
     @EnvironmentObject private var mouth: Mouth
+    @StateObject private var book = PayloadBook()
+    @State private var libraryName = ""
     @State private var target = "tcp://127.0.0.1:9000"
     @State private var source = "text"
     @State private var payloadText = "hello"
@@ -76,7 +78,11 @@ struct SendView: View {
                     }
                 }
 
+                handoffSection
+
                 actionSection
+
+                librarySection
 
                 Section(header: Text("Log")) {
                     if mouth.sendLines.isEmpty {
@@ -98,6 +104,74 @@ struct SendView: View {
                 Text(showError ?? "")
             }
         }
+    }
+
+    @ViewBuilder private var handoffSection: some View {
+        if let label = mouth.pendingWriteLabel {
+            Section(header: Text("From Listen")) {
+                Text("Write this payload to \(label)? It was picked in "
+                     + "the Listen tab — same write as a picked device.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    if let data = build() { mouth.writeHandoff(payload: data) }
+                } label: {
+                    Label("Write to \(label)", systemImage: "paperplane.fill")
+                }
+                Button("Dismiss", role: .cancel) { mouth.clearPendingWrite() }
+            }
+        }
+    }
+
+    private var librarySection: some View {
+        Section(header: Text("Library")) {
+            HStack {
+                TextField("Name this payload", text: $libraryName)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                Button("Save") { saveToLibrary() }
+                    .disabled(libraryName.trimmingCharacters(
+                        in: .whitespaces).isEmpty)
+            }
+            if book.items.isEmpty {
+                Text("Saved payloads live here — your greatest hits, "
+                     + "one tap to load.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(book.items) { item in
+                Button { load(item) } label: {
+                    HStack {
+                        Text(item.name).foregroundStyle(.primary)
+                        Spacer()
+                        Text("\(item.source) · \(item.text.count) ch")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .onDelete { book.remove(at: $0) }
+        }
+    }
+
+    private func saveToLibrary() {
+        let name = libraryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let text = source == "text" ? payloadText
+            : source == "hex" ? payloadHex : payloadB64
+        book.add(SavedPayload(name: name, source: source, text: text,
+                              xorKey: xorKey, useGzip: useGzip,
+                              framing: framing))
+        libraryName = ""
+    }
+
+    private func load(_ item: SavedPayload) {
+        source = item.source
+        switch item.source {
+        case "hex": payloadHex = item.text
+        case "base64": payloadB64 = item.text
+        default: payloadText = item.text
+        }
+        xorKey = item.xorKey
+        useGzip = item.useGzip
+        framing = item.framing
     }
 
     @ViewBuilder private var actionSection: some View {
