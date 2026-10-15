@@ -11,21 +11,27 @@ struct ContentView: View {
             AppBackdrop()
             TabView(selection: $tab) {
             ListenView(tab: $tab)
+                .appThemed()
                 .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
             SendView()
+                .appThemed()
                 .tabItem { Label("Send", systemImage: "paperplane") }
                 .tag(1)
             ServeView()
+                .appThemed()
                 .tabItem { Label("Serve", systemImage: "tray.and.arrow.down") }
                 .tag(2)
             SessionsView()
+                .appThemed()
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
                 .tag(3)
             ScanView()
+                .appThemed()
                 .tabItem { Label("Scan", systemImage: "scope") }
                 .tag(4)
             AboutView()
+                .appThemed()
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(5)
         }
