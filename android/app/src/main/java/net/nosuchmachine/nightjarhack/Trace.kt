@@ -20,6 +20,7 @@ import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -34,9 +35,11 @@ import kotlin.coroutines.resume
 /// door spoken to in its library protocol, and every in-scope
 /// endpoint a reply names followed (three hops deep) — until
 /// the frontier is exhausted. References outside the scope are
-/// written down, never contacted. Connect/banner/protocol
-/// recon only: no exploitation, no credentials, nothing runs
-/// in the background.
+/// written down, never contacted. The listening post's
+/// Bluetooth sightings ride along in the map as passive
+/// "heard" nodes. Connect/banner/protocol recon only: no
+/// exploitation, no credentials, nothing runs in the
+/// background.
 
 // MARK: Adaptive rules
 
@@ -77,15 +80,17 @@ data class TraceRule(
                 var matchText: String? = null
                 val lhsLower = lhs.lowercase()
                 when {
-                    lhsLower.startsWith("contains") -> {
-                        val needle = lhs.substring("contains".length)
+                    lhsLower.startsWith("contains ") -> {
+                        val needle = lhs.substring("contains ".length)
                             .trim().lowercase()
                         if (needle.isEmpty()) continue
                         matchText = needle
                     }
-                    lhsLower.startsWith("port") -> {
-                        matchPort = lhs.substring("port".length)
+                    lhsLower.startsWith("port ") -> {
+                        val n = lhs.substring("port ".length)
                             .trim().toIntOrNull() ?: continue
+                        if (n !in 1..65535) continue
+                        matchPort = n
                     }
                     else -> continue
                 }
@@ -93,17 +98,17 @@ data class TraceRule(
                 val action: Action
                 val actionValue: String
                 when {
-                    rhsLower == "stop" || rhsLower.startsWith("stop") -> {
+                    rhsLower == "stop" -> {
                         action = Action.STOP
                         actionValue = ""
                     }
-                    rhsLower.startsWith("followup") -> {
+                    rhsLower.startsWith("followup ") -> {
                         action = Action.FOLLOWUP
-                        actionValue = rhs.substring("followup".length).trim()
+                        actionValue = rhs.substring("followup ".length).trim()
                     }
-                    rhsLower.startsWith("tag") -> {
+                    rhsLower.startsWith("tag ") -> {
                         action = Action.TAG
-                        actionValue = rhs.substring("tag".length).trim()
+                        actionValue = rhs.substring("tag ".length).trim()
                     }
                     else -> continue
                 }
@@ -290,6 +295,11 @@ class TraceBookStore(context: Context) {
         if (parsed.optJSONObject("hosts") == null) {
             parsed.put("hosts", JSONObject())
         }
+        // Books written before the BLE merge have no array;
+        // they load fine and gain one on the next save.
+        if (parsed.optJSONArray("bleDevices") == null) {
+            parsed.put("bleDevices", JSONArray())
+        }
         return parsed
     }
 
@@ -440,6 +450,88 @@ class TraceBookStore(context: Context) {
         val (host, port) = hostPortOf(targetText) ?: return
         addTag(host, port, tag)
     }
+
+    /// Fold one trace's Bluetooth sightings into the book,
+    /// merged by device id: the earliest first-heard and the
+    /// latest last-heard win, counts and closest approach keep
+    /// their maxima, names come from the freshest sighting,
+    /// and service UUIDs union. Sightings are passive — the
+    /// book remembers radios it heard, nothing more.
+    fun mergeBleDevices(devices: List<TraceBLEDevice>) {
+        if (devices.isEmpty()) return
+        synchronized(lock) {
+            val array = root.optJSONArray("bleDevices") ?: JSONArray()
+            if (root.optJSONArray("bleDevices") == null) {
+                root.put("bleDevices", array)
+            }
+            val byId = mutableMapOf<String, JSONObject>()
+            for (i in 0 until array.length()) {
+                val entry = array.optJSONObject(i) ?: continue
+                byId[entry.optString("id")] = entry
+            }
+            for (device in devices) {
+                val existing = byId[device.id]
+                if (existing == null) {
+                    val entry = device.toJson()
+                    array.put(entry)
+                    byId[device.id] = entry
+                } else {
+                    existing.put(
+                        "firstSeenMs",
+                        minOf(
+                            existing.optLong("firstSeenMs", device.firstSeenMs),
+                            device.firstSeenMs
+                        )
+                    )
+                    existing.put(
+                        "lastSeenMs",
+                        maxOf(
+                            existing.optLong("lastSeenMs", device.lastSeenMs),
+                            device.lastSeenMs
+                        )
+                    )
+                    existing.put(
+                        "sightings",
+                        maxOf(existing.optInt("sightings"), device.sightings)
+                    )
+                    val closest = listOfNotNull(
+                        if (existing.has("closestRssi")) {
+                            existing.optInt("closestRssi")
+                        } else {
+                            null
+                        },
+                        device.closestRssi
+                    ).maxOrNull()
+                    if (closest != null) existing.put("closestRssi", closest)
+                    device.smoothedRssi?.let {
+                        existing.put("smoothedRssi", it)
+                    }
+                    if (device.name.isNotEmpty()) {
+                        existing.put("name", device.name)
+                    }
+                    if (device.vendor.isNotEmpty()) {
+                        existing.put("vendor", device.vendor)
+                    }
+                    existing.put(
+                        "rotatingAddress",
+                        existing.optBoolean("rotatingAddress") ||
+                            device.rotatingAddress
+                    )
+                    val services = existing.optJSONArray("serviceUuids")
+                        ?: JSONArray()
+                    val known = mutableSetOf<String>()
+                    for (i in 0 until services.length()) {
+                        known.add(services.optString(i))
+                    }
+                    for (uuid in device.serviceUuids) {
+                        if (known.add(uuid)) services.put(uuid)
+                    }
+                    existing.put("serviceUuids", services)
+                }
+            }
+            saveLocked()
+        }
+    }
 }
 
 /// Logbook before/after diff, in the export's shape.
@@ -495,12 +587,50 @@ internal fun traceDiff(before: JSONObject, after: JSONObject): JSONObject {
         .put("changedServices", changed)
 }
 
+// MARK: Bluetooth sightings
+
+/// One Bluetooth device as the Listen tab knows it, reduced
+/// to what the trace map files: identity, maker, services,
+/// when it was heard and how close it came. Heard passively
+/// by the listening post — the trace never probes, connects
+/// to, or writes to a radio.
+data class TraceBLEDevice(
+    val id: String,
+    val name: String,
+    val vendor: String,
+    val serviceUuids: List<String>,
+    val rotatingAddress: Boolean,
+    val firstSeenMs: Long,
+    val lastSeenMs: Long,
+    val sightings: Int,
+    val closestRssi: Int?,
+    val smoothedRssi: Double?
+)
+
+/// One device as export/logbook JSON (the same shape both
+/// places, so a consumer learns it once).
+internal fun TraceBLEDevice.toJson(): JSONObject {
+    val json = JSONObject()
+    json.put("id", id)
+    json.put("name", name)
+    json.put("vendor", vendor)
+    json.put("serviceUuids", JSONArray(serviceUuids))
+    json.put("rotatingAddress", rotatingAddress)
+    json.put("firstSeenMs", firstSeenMs)
+    json.put("lastSeenMs", lastSeenMs)
+    json.put("sightings", sightings)
+    closestRssi?.let { json.put("closestRssi", it) }
+    smoothedRssi?.let { json.put("smoothedRssi", it) }
+    return json
+}
+
 // MARK: The tracer
 
 class NetworkTracer(
     private val appContext: Context,
     private val mouth: Mouth,
-    private val store: TraceBookStore
+    private val store: TraceBookStore,
+    private val bleProvider: () -> List<TraceBLEDevice> = { emptyList() }
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val scanner = PortScanner()
@@ -621,12 +751,23 @@ class NetworkTracer(
             if (gen == generation || stoppedFor == gen) {
                 val after = store.snapshot()
                 val finishedAt = System.currentTimeMillis() / 1000.0
+                // The radio half of the map: whatever the
+                // listening post has heard lately joins the
+                // export and the logbook. Passive sightings —
+                // nothing here was probed.
+                val bleSnapshot = try {
+                    bleProvider()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                store.mergeBleDevices(bleSnapshot)
                 val export = run.buildExport(
                     includeBonjour = includeBonjour,
                     stoppedEarly = stoppedEarly,
                     fatal = fatal,
                     finishedAt = finishedAt,
-                    diff = traceDiff(before, after)
+                    diff = traceDiff(before, after),
+                    bleDevices = bleSnapshot
                 )
                 var exportFile: File? = null
                 try {
@@ -657,6 +798,12 @@ class NetworkTracer(
                         " · exported ${it.name}"
                     } ?: "")
                 )
+                if (bleSnapshot.isNotEmpty()) {
+                    note(
+                        "Bluetooth — ${bleSnapshot.size} device(s) " +
+                            "heard by the Listen tab, filed in the map"
+                    )
+                }
                 if (this@NetworkTracer.autoCentipede) {
                     this@NetworkTracer.autoCentipede = false
                     val routeLines = mutableListOf<String>()
@@ -1152,11 +1299,12 @@ class NetworkTracer(
             stoppedEarly: Boolean,
             fatal: String?,
             finishedAt: Double,
-            diff: JSONObject
+            diff: JSONObject,
+            bleDevices: List<TraceBLEDevice> = emptyList()
         ): JSONObject {
             val export = JSONObject()
             export.put("schema", "net.nosuchmachine.nightjar.network-trace")
-            export.put("schemaVersion", 1)
+            export.put("schemaVersion", 2)
             export.put("kind", "trace-run")
             export.put("generatedAt", finishedAt)
 
@@ -1181,6 +1329,7 @@ class NetworkTracer(
             summary.put("services", doorCount)
             summary.put("probes", probeCount)
             summary.put("references", refCount)
+            summary.put("bleDevices", bleDevices.size)
             summary.put("externalReferences", externalRefs.size)
             summary.put("durationSeconds", finishedAt - startedAt)
             export.put("summary", summary)
@@ -1238,9 +1387,61 @@ class NetworkTracer(
                 edgeJson.put("kind", "reference")
                 edges.put(edgeJson)
             }
+            // The phone roots the radio half of the graph:
+            // each Bluetooth sighting hangs off it on a "heard"
+            // edge. Passive — no BLE device here was probed,
+            // connected to, or written to.
+            if (bleDevices.isNotEmpty()) {
+                val phoneId = ownIP ?: "phone"
+                nodes.put(
+                    JSONObject()
+                        .put("id", phoneId)
+                        .put("kind", "phone")
+                )
+                for (device in bleDevices) {
+                    val nodeId = "ble:${device.id}"
+                    val node = JSONObject()
+                    node.put("id", nodeId)
+                    node.put("kind", "ble")
+                    node.put("label", device.name)
+                    nodes.put(node)
+                    val evidence = StringBuilder(
+                        "${device.sightings} sighting(s)"
+                    )
+                    device.closestRssi?.let {
+                        evidence.append(", closest $it dBm")
+                    }
+                    if (device.vendor.isNotEmpty()) {
+                        evidence.append(", ").append(device.vendor)
+                    }
+                    edges.put(
+                        JSONObject()
+                            .put("from", phoneId)
+                            .put("to", nodeId)
+                            .put("kind", "heard")
+                            .put("evidence", evidence.toString())
+                    )
+                }
+            }
             export.put("hosts", hostsArray)
             export.put("nodes", nodes)
             export.put("edges", edges)
+
+            val bleArray = JSONArray()
+            val isoUtc = SimpleDateFormat(
+                "yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US
+            ).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            for (device in bleDevices) {
+                val entry = device.toJson()
+                entry.put(
+                    "firstHeard", isoUtc.format(Date(device.firstSeenMs))
+                )
+                entry.put(
+                    "lastHeard", isoUtc.format(Date(device.lastSeenMs))
+                )
+                bleArray.put(entry)
+            }
+            export.put("bleDevices", bleArray)
 
             val bonjourArray = JSONArray()
             for (entry in bonjour) {
@@ -1271,6 +1472,10 @@ class NetworkTracer(
                             "banner-grabbed.",
                         "One /24 scope — referenced addresses outside " +
                             "it are recorded, never contacted.",
+                        "Bluetooth devices in the map are passive " +
+                            "Listen-tab sightings: heard, never probed, " +
+                            "connected to, or written to. A radio that " +
+                            "stays silent leaves no sighting.",
                         "Foreground only: the trace runs while the app " +
                             "is open, and stops when you stop it."
                     )
