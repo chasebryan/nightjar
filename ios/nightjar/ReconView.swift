@@ -3,6 +3,7 @@ import Network
 import NetworkExtension
 import Security
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Connect scanner + Bonjour sweep
 
@@ -579,7 +580,7 @@ enum DNSKit {
         }
     }
 
-    private static func ipv6(_ bytes: [UInt8]) -> String {
+    static func ipv6(_ bytes: [UInt8]) -> String {
         var groups: [Int] = []
         for i in stride(from: 0, to: 16, by: 2) {
             groups.append((Int(bytes[i]) << 8) | Int(bytes[i + 1]))
@@ -666,6 +667,282 @@ final class DNSModel: ObservableObject {
     }
 }
 
+// MARK: - Pcap dissector
+
+/// A libpcap reader and protocol dissector: takes apart capture
+/// files recorded on your own machines (tcpdump -w) and prints
+/// them in plain text — the app's own decoder, on-device.
+/// Ethernet, Linux cooked, raw IP and BSD loopback link types;
+/// IPv4/IPv6, TCP, UDP, ICMP, ARP. Classic .pcap only (not
+/// pcapng).
+enum PcapKit {
+    private struct Reader {
+        let data: Data
+        let swap: Bool
+        func u16(_ i: Int) -> Int {
+            let a = Int(data[i]), b = Int(data[i + 1])
+            return swap ? (b << 8) | a : (a << 8) | b
+        }
+        func u32(_ i: Int) -> Int {
+            let v = (0..<4).map { Int(data[i + $0]) }
+            return swap ? (v[3] << 24) | (v[2] << 16) | (v[1] << 8) | v[0]
+                        : (v[0] << 24) | (v[1] << 16) | (v[2] << 8) | v[3]
+        }
+    }
+
+    static func dissect(_ data: Data, name: String)
+        -> (summary: [String], lines: [String])? {
+        guard data.count >= 24 else { return nil }
+        let head = [UInt8](data.prefix(4))
+        let swap: Bool
+        let nano: Bool
+        switch head {
+        case [0xa1, 0xb2, 0xc3, 0xd4]: swap = false; nano = false
+        case [0xd4, 0xc3, 0xb2, 0xa1]: swap = true; nano = false
+        case [0xa1, 0xb2, 0x3c, 0x4d]: swap = false; nano = true
+        case [0x4d, 0x3c, 0xb2, 0xa1]: swap = true; nano = true
+        default: return nil
+        }
+        let reader = Reader(data: data, swap: swap)
+        let linktype = reader.u32(20)
+        var pos = 24
+        var lines: [String] = []
+        var tally: [String: Int] = [:]
+        var totalBytes = 0
+        var firstTs: Double?
+        var lastTs: Double = 0
+        var count = 0
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        while pos + 16 <= data.count, count < 500 {
+            let sec = reader.u32(pos)
+            let frac = reader.u32(pos + 4)
+            let incl = reader.u32(pos + 8)
+            guard incl >= 0, pos + 16 + incl <= data.count else { break }
+            let packet = data[(pos + 16)..<(pos + 16 + incl)]
+            pos += 16 + incl
+            count += 1
+            totalBytes += incl
+            let ts = Double(sec) + Double(frac) / (nano ? 1e9 : 1e6)
+            if firstTs == nil { firstTs = ts }
+            lastTs = ts
+            let stamp = formatter.string(
+                from: Date(timeIntervalSince1970: ts))
+                + String(format: ".%06d", nano ? frac / 1000 : frac)
+            let decoded = decodePacket(packet, linktype: linktype)
+            tally[decoded.proto, default: 0] += 1
+            lines.append("#\(count) \(stamp)  \(decoded.text)")
+            if let preview = decoded.preview {
+                lines.append("    \(preview)")
+            }
+        }
+        guard count > 0 else { return nil }
+        var summary = ["\(name) — \(count) packet(s), \(totalBytes) bytes"]
+        if let first = firstTs {
+            summary.append("span "
+                + String(format: "%.2f", lastTs - first)
+                + "s · linktype \(linktype)")
+        }
+        summary.append(tally.sorted { $0.key < $1.key }
+            .map { "\($0.key) \($0.value)" }.joined(separator: " · "))
+        if count == 500 {
+            summary.append("showing the first 500 packets")
+        }
+        return (summary, lines)
+    }
+
+    private static func mac(_ bytes: [UInt8]) -> String {
+        bytes.map { String(format: "%02x", $0) }.joined(separator: ":")
+    }
+
+    private static func ipv4(_ bytes: ArraySlice<UInt8>) -> String {
+        bytes.map(String.init).joined(separator: ".")
+    }
+
+    private static func preview(of payload: Data.SubSequence) -> String? {
+        guard !payload.isEmpty else { return nil }
+        let slice = Data(payload.prefix(96))
+        if let text = PayloadKit.printableText(slice) {
+            let oneLine = text.components(separatedBy: .newlines)
+                .joined(separator: " ")
+            return String(oneLine.prefix(90))
+        }
+        return "hex " + slice.prefix(24)
+            .map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func decodePacket(_ packet: Data.SubSequence,
+                                     linktype: Int)
+        -> (proto: String, text: String, preview: String?) {
+        let bytes = [UInt8](packet)
+        switch linktype {
+        case 1: // Ethernet
+            guard bytes.count >= 14 else {
+                return ("short", "truncated ethernet frame", nil)
+            }
+            var ethertype = (Int(bytes[12]) << 8) | Int(bytes[13])
+            var offset = 14
+            if ethertype == 0x8100, bytes.count >= 18 {
+                ethertype = (Int(bytes[16]) << 8) | Int(bytes[17])
+                offset = 18
+            }
+            switch ethertype {
+            case 0x0800:
+                return decodeIPv4(bytes, offset)
+            case 0x86dd:
+                return decodeIPv6(bytes, offset)
+            case 0x0806:
+                return decodeARP(bytes, offset)
+            default:
+                return ("eth", "ethertype 0x"
+                    + String(format: "%04x", ethertype)
+                    + "  \(mac(Array(bytes[6..<12]))) → "
+                    + "\(mac(Array(bytes[0..<6])))", nil)
+            }
+        case 113: // Linux cooked capture
+            guard bytes.count >= 16 else {
+                return ("short", "truncated cooked frame", nil)
+            }
+            let proto = (Int(bytes[14]) << 8) | Int(bytes[15])
+            switch proto {
+            case 0x0800: return decodeIPv4(bytes, 16)
+            case 0x86dd: return decodeIPv6(bytes, 16)
+            case 0x0806: return decodeARP(bytes, 16)
+            default: return ("eth", "cooked ethertype 0x"
+                + String(format: "%04x", proto), nil)
+            }
+        case 101: // raw IP
+            guard let first = bytes.first else {
+                return ("short", "empty packet", nil)
+            }
+            return first >> 4 == 6 ? decodeIPv6(bytes, 0)
+                                   : decodeIPv4(bytes, 0)
+        case 0: // BSD loopback
+            guard bytes.count >= 5 else {
+                return ("short", "truncated loopback frame", nil)
+            }
+            return bytes[4] >> 4 == 6 ? decodeIPv6(bytes, 4)
+                                      : decodeIPv4(bytes, 4)
+        default:
+            return ("link \(linktype)",
+                    "\(bytes.count) bytes (linktype \(linktype) "
+                    + "not decoded)", nil)
+        }
+    }
+
+    private static func decodeIPv4(_ bytes: [UInt8], _ o: Int)
+        -> (proto: String, text: String, preview: String?) {
+        guard bytes.count >= o + 20 else {
+            return ("IPv4", "truncated IPv4 packet", nil)
+        }
+        let ihl = Int(bytes[o] & 0x0f) * 4
+        guard ihl >= 20, bytes.count >= o + ihl else {
+            return ("IPv4", "bad IPv4 header length", nil)
+        }
+        let total = (Int(bytes[o + 2]) << 8) | Int(bytes[o + 3])
+        let protoNum = Int(bytes[o + 9])
+        let src = ipv4(bytes[(o + 12)..<(o + 16)])
+        let dst = ipv4(bytes[(o + 16)..<(o + 20)])
+        let end = total > 0 ? min(bytes.count, o + total) : bytes.count
+        return decodeTransport(bytes, protoNum, src, dst,
+                               from: o + ihl, to: end, v6: false)
+    }
+
+    private static func decodeIPv6(_ bytes: [UInt8], _ o: Int)
+        -> (proto: String, text: String, preview: String?) {
+        guard bytes.count >= o + 40 else {
+            return ("IPv6", "truncated IPv6 packet", nil)
+        }
+        let payloadLen = (Int(bytes[o + 4]) << 8) | Int(bytes[o + 5])
+        let next = Int(bytes[o + 6])
+        let src = DNSKit.ipv6(Array(bytes[(o + 8)..<(o + 24)]))
+        let dst = DNSKit.ipv6(Array(bytes[(o + 24)..<(o + 40)]))
+        let end = payloadLen > 0 ? min(bytes.count, o + 40 + payloadLen)
+                                 : bytes.count
+        return decodeTransport(bytes, next, src, dst,
+                               from: o + 40, to: end, v6: true)
+    }
+
+    private static func decodeTransport(_ bytes: [UInt8], _ protoNum: Int,
+                                        _ src: String, _ dst: String,
+                                        from: Int, to: Int, v6: Bool)
+        -> (proto: String, text: String, preview: String?) {
+        let family = v6 ? "IPv6" : "IPv4"
+        switch protoNum {
+        case 6:
+            guard bytes.count >= from + 20 else {
+                return ("TCP", "\(src) → \(dst) TCP (truncated)", nil)
+            }
+            let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
+            let dport = (Int(bytes[from + 2]) << 8) | Int(bytes[from + 3])
+            let headerLen = Int(bytes[from + 12] >> 4) * 4
+            let flags = bytes[from + 13]
+            var names: [String] = []
+            if flags & 0x01 != 0 { names.append("FIN") }
+            if flags & 0x02 != 0 { names.append("SYN") }
+            if flags & 0x04 != 0 { names.append("RST") }
+            if flags & 0x08 != 0 { names.append("PSH") }
+            if flags & 0x10 != 0 { names.append("ACK") }
+            if flags & 0x20 != 0 { names.append("URG") }
+            let payloadStart = from + max(20, headerLen)
+            let payload: ArraySlice<UInt8> = payloadStart < to
+                ? bytes[payloadStart..<to] : []
+            return ("TCP",
+                    "\(src):\(sport) → \(dst):\(dport)  TCP "
+                    + "[\(names.joined(separator: ","))] "
+                    + "len \(payload.count)",
+                    preview(of: Data(payload)))
+        case 17:
+            guard bytes.count >= from + 8 else {
+                return ("UDP", "\(src) → \(dst) UDP (truncated)", nil)
+            }
+            let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
+            let dport = (Int(bytes[from + 2]) << 8) | Int(bytes[from + 3])
+            let payload: ArraySlice<UInt8> = from + 8 < to
+                ? bytes[(from + 8)..<to] : []
+            return ("UDP",
+                    "\(src):\(sport) → \(dst):\(dport)  UDP "
+                    + "len \(payload.count)",
+                    preview(of: Data(payload)))
+        case 1, 58:
+            guard bytes.count >= from + 2 else {
+                return ("ICMP", "\(src) → \(dst) ICMP", nil)
+            }
+            let type = Int(bytes[from])
+            let names = protoNum == 58
+                ? [129: "echo reply", 1: "destination unreachable",
+                   128: "echo request", 3: "time exceeded"]
+                : [0: "echo reply", 3: "destination unreachable",
+                   8: "echo request", 11: "time exceeded"]
+            return ("ICMP",
+                    "\(src) → \(dst)  ICMP "
+                    + (names[type] ?? "type \(type)"), nil)
+        default:
+            return (family,
+                    "\(src) → \(dst)  \(family) protocol \(protoNum)",
+                    nil)
+        }
+    }
+
+    private static func decodeARP(_ bytes: [UInt8], _ o: Int)
+        -> (proto: String, text: String, preview: String?) {
+        guard bytes.count >= o + 28 else {
+            return ("ARP", "truncated ARP packet", nil)
+        }
+        let op = (Int(bytes[o + 6]) << 8) | Int(bytes[o + 7])
+        let senderIP = ipv4(bytes[(o + 14)..<(o + 18)])
+        let senderMAC = mac(Array(bytes[(o + 8)..<(o + 14)]))
+        let targetIP = ipv4(bytes[(o + 24)..<(o + 28)])
+        if op == 1 {
+            return ("ARP", "ARP who-has \(targetIP) tell \(senderIP)", nil)
+        }
+        if op == 2 {
+            return ("ARP", "ARP \(targetIP) is-at \(senderMAC)", nil)
+        }
+        return ("ARP", "ARP op \(op) \(senderIP) → \(targetIP)", nil)
+    }
+}
+
 // MARK: - Scan tab
 
 struct ScanView: View {
@@ -682,6 +959,9 @@ struct ScanView: View {
     @State private var dnsType = "A"
     @State private var sweepPort = "80"
     @State private var ssid: String?
+    @State private var pcapSummary: [String] = []
+    @State private var pcapLines: [String] = []
+    @State private var showPcapImporter = false
 
     private var lanPrefix: String? {
         guard let ip = Mouth.localIPAddress() else { return nil }
@@ -935,6 +1215,31 @@ struct ScanView: View {
                     }
                 }
 
+                Section(header: Text("Capture dissector")) {
+                    Text("Capture on your own gear — tcpdump -w — "
+                         + "then dissect the file here, in plain "
+                         + "text, with the app's own decoder. "
+                         + "Classic .pcap only, not pcapng.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        Haptics.tap()
+                        showPcapImporter = true
+                    } label: {
+                        Label("Import a .pcap file",
+                              systemImage: "doc.badge.magnifyingglass")
+                    }
+                    ForEach(pcapSummary, id: \.self) { line in
+                        Text(line)
+                            .font(.caption.weight(.semibold))
+                    }
+                    ForEach(Array(pcapLines.enumerated()),
+                            id: \.offset) { _, line in
+                        Text(line)
+                            .font(.caption2.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
+
                 Section {
                     Text("Connect scans only — iOS gives apps no raw "
                          + "sockets, so no SYN scans and no UDP scans. "
@@ -951,6 +1256,26 @@ struct ScanView: View {
                 NEHotspotNetwork.fetchCurrent { network in
                     DispatchQueue.main.async { ssid = network?.ssid }
                 }
+            }
+            .fileImporter(isPresented: $showPcapImporter,
+                          allowedContentTypes: [.data]) { result in
+                guard case .success(let url) = result,
+                      url.startAccessingSecurityScopedResource()
+                else { return }
+                defer { url.stopAccessingSecurityScopedResource() }
+                guard let data = try? Data(contentsOf: url),
+                      let decoded = PcapKit.dissect(
+                        data, name: url.lastPathComponent) else {
+                    toasts.show("That file is not a libpcap capture",
+                                error: true)
+                    return
+                }
+                pcapSummary = decoded.summary
+                pcapLines = decoded.lines
+                mouth.logRecon("pcap", url.lastPathComponent,
+                               lines: decoded.summary
+                                      + Array(decoded.lines.prefix(100)))
+                toasts.show("Dissected \(url.lastPathComponent)")
             }
             .onDisappear { model.stopDiscovery() }
             .onChange(of: model.scanning) { scanning in
