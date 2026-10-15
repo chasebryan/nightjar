@@ -78,6 +78,24 @@ struct AppBackdrop: View {
     }
 }
 
+/// The themed-screen recipe, applied per tab: transparent scroll
+/// backgrounds AND the backdrop painted behind that very screen.
+/// (Painting it only behind the TabView is not enough — on
+/// current iOS the tab container fills its own frame opaquely,
+/// so an ancestor's backdrop never shows through. Behind each
+/// tab's own root, with its list transparent, it does.)
+struct AppThemed: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
+    }
+}
+
+extension View {
+    func appThemed() -> some View { modifier(AppThemed()) }
+}
+
 /// One place for every buzz, so buttons *feel* like they did something.
 enum Haptics {
     static func tap() {
