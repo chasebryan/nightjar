@@ -37,6 +37,7 @@ Dependencies
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import base64
 import binascii
@@ -45,6 +46,7 @@ import gzip
 import hashlib
 import http.server
 import json
+import os
 import socket
 import ssl
 import sys
@@ -54,6 +56,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 DEFAULT_COMPANY_ID = 0xFFFF
@@ -248,6 +251,21 @@ def parse_target(raw: str) -> Target:
 
     if scheme in ("http", "https"):
         return Target(scheme, host=rest, raw=raw)
+    if scheme in ("ws", "wss"):
+        return Target("ws", host=rest, tls=(scheme == "wss"), raw=raw)
+    if scheme == "serial":
+        device, _, query = rest.partition("?")
+        if not device:
+            raise SendError(f"serial:// needs a device, got {raw!r}")
+        baud = 115200
+        for pair in query.split("&"):
+            key, _, value = pair.partition("=")
+            if key == "baud" and value:
+                try:
+                    baud = int(value)
+                except ValueError as exc:
+                    raise SendError(f"bad baud in {raw!r}") from exc
+        return Target("serial", address=device, port=baud, raw=raw)
     if scheme in ("ble", "adv", "advertise"):
         return Target("ble", raw=raw)
     if scheme in ("ble-gatt", "gatt", "peripheral"):
@@ -457,10 +475,12 @@ class Sink:
     """Where received payloads land: the console, a JSONL file, or both."""
 
     def __init__(self, *, out: str | None = None, as_json: bool = False,
-                 reply: bytes = b"", quiet: bool = False) -> None:
+                 reply: bytes = b"", quiet: bool = False,
+                 reply_fn=None) -> None:
         self.out = out
         self.as_json = as_json
         self.reply = reply
+        self.reply_fn = reply_fn  # callable(bytes) -> bytes, beats `reply`
         self.quiet = quiet
         self.count = 0
         self._lock = threading.Lock()
@@ -488,7 +508,60 @@ class Sink:
                     "ts": time.time(), "transport": transport, "peer": peer,
                     "bytes": len(data), "payload_hex": data.hex(),
                     "payload_b64": base64.b64encode(data).decode("ascii")}) + "\n")
+        if self.reply_fn is not None:
+            return self.reply_fn(data)
         return self.reply
+
+
+def send_ws(target: Target, data: bytes, *, read: bool = False,
+            timeout: float = 5.0) -> SendResult:
+    """One WebSocket message (and optionally one reply message)."""
+    try:
+        from websockets.sync.client import connect as ws_connect
+    except ImportError as exc:
+        raise SendError("websocket sends need the websockets package: "
+                        "pip install websockets (or the tx extra)") from exc
+    scheme = "wss" if target.tls else "ws"
+    uri = f"{scheme}://{target.host}"
+    try:
+        with ws_connect(uri, open_timeout=timeout) as conn:
+            conn.send(data)
+            reply = b""
+            if read:
+                got = conn.recv(timeout=timeout)
+                reply = got.encode("utf-8") if isinstance(got, str) else got
+            return SendResult(transport="ws", target=target.raw,
+                              sent=len(data), reply=reply)
+    except OSError:
+        raise
+    except Exception as exc:  # websockets raises a zoo of error types
+        raise SendError(f"websocket to {uri}: {exc}") from exc
+
+
+def _serial_port():
+    try:
+        import serial
+    except ImportError as exc:
+        raise SendError("serial transports need pyserial: "
+                        "pip install pyserial (or the tx extra)") from exc
+    return serial
+
+
+def send_serial(target: Target, data: bytes, *, read: bool = False,
+                timeout: float = 5.0) -> SendResult:
+    serial = _serial_port()
+    try:
+        with serial.Serial(target.address, target.port or 115200,
+                           timeout=timeout) as port:
+            port.write(data)
+            port.flush()
+            reply = port.read(65536) if read else b""
+            return SendResult(transport="serial", target=target.raw,
+                              sent=len(data), reply=reply)
+    except SendError:
+        raise
+    except Exception as exc:
+        raise OSError(f"serial {target.address}: {exc}") from exc
 
 
 def _tcp_conn(conn, addr, sink: Sink, framing: str) -> None:
@@ -603,6 +676,131 @@ def serve_http(host: str, port: int, sink: Sink, *,
         httpd.server_close()
 
 
+def serve_ws(host: str, port: int, sink: Sink, *, framing: str = "raw",
+             stop: threading.Event | None = None, banner: bool = True) -> None:
+    try:
+        from websockets.sync.server import serve as ws_serve
+    except ImportError as exc:
+        raise SendError("websocket serving needs the websockets package: "
+                        "pip install websockets (or the tx extra)") from exc
+
+    def handler(conn) -> None:
+        peer = f"{conn.remote_address[0]}:{conn.remote_address[1]}"
+        try:
+            for message in conn:
+                data = (message.encode("utf-8") if isinstance(message, str)
+                        else message)
+                reply = sink("ws", peer, unframe(data, framing))
+                if reply:
+                    conn.send(reply)
+        except Exception:
+            pass  # the peer went away mid-conversation; the sink has the data
+
+    server = ws_serve(handler, host, port)
+    if banner:
+        print(f"  ws   listening on ws://{host}:{port}/", file=sys.stderr,
+              flush=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        while not (stop and stop.is_set()):
+            time.sleep(0.2)
+    finally:
+        server.shutdown()
+
+
+def serve_serial(device: str, baud: int, sink: Sink, *,
+                 stop: threading.Event | None = None,
+                 banner: bool = True) -> None:
+    serial = _serial_port()
+    try:
+        port = serial.Serial(device, baud, timeout=0.5)
+    except Exception as exc:
+        raise OSError(f"serial {device}: {exc}") from exc
+    if banner:
+        print(f"  serial listening on {device} @ {baud}", file=sys.stderr,
+              flush=True)
+    buffer = bytearray()
+    try:
+        while not (stop and stop.is_set()):
+            chunk = port.read(4096)
+            if chunk:
+                buffer += chunk
+                continue
+            if buffer:
+                # An idle gap ends the payload, like the TCP read timeout.
+                reply = sink("serial", device, bytes(buffer))
+                buffer = bytearray()
+                if reply:
+                    port.write(reply)
+    finally:
+        port.close()
+
+
+def serve_relay_tcp(host: str, port: int, upstream: Target, sink: Sink, *,
+                    stop: threading.Event | None = None,
+                    banner: bool = True) -> None:
+    """Listen, and relay every connection to an upstream TCP target,
+    sinking both directions: a tap between a client and its server."""
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind((host, port))
+    srv.listen(16)
+    srv.settimeout(0.5)
+    if banner:
+        print(f"  relay listening on {host}:{port} -> "
+              f"{upstream.host}:{upstream.port}", file=sys.stderr, flush=True)
+    try:
+        while not (stop and stop.is_set()):
+            try:
+                conn, addr = srv.accept()
+            except socket.timeout:
+                continue
+            threading.Thread(target=_relay_conn, args=(conn, addr, upstream, sink),
+                             daemon=True).start()
+    finally:
+        srv.close()
+
+
+def _relay_conn(client, addr, upstream: Target, sink: Sink) -> None:
+    peer = f"{addr[0]}:{addr[1]}"
+    try:
+        remote = socket.create_connection((upstream.host, upstream.port),
+                                          timeout=10)
+    except OSError:
+        client.close()
+        return
+
+    def pump(source, dest, label: str) -> None:
+        try:
+            while True:
+                data = source.recv(65536)
+                if not data:
+                    break
+                sink(label, peer, data)
+                dest.sendall(data)
+        except OSError:
+            pass
+        finally:
+            try:
+                dest.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+
+    threads = [
+        threading.Thread(target=pump, args=(client, remote, "relay-c2s"),
+                         daemon=True),
+        threading.Thread(target=pump, args=(remote, client, "relay-s2c"),
+                         daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    client.close()
+    remote.close()
+
+
 # --- command entry points ----------------------------------------------------
 
 def _headers(args) -> dict:
@@ -642,6 +840,12 @@ def do_send(target: Target, payload: Payload, args) -> SendResult:
         return send_http(target, payload.data, method=args.method,
                          headers=_headers(args), timeout=args.timeout,
                          framing=args.framing, meta=meta)
+    if target.scheme == "ws":
+        return send_ws(target, frame(payload.data, args.framing, meta),
+                       read=args.read, timeout=args.timeout)
+    if target.scheme == "serial":
+        return send_serial(target, payload.data,
+                           read=args.read, timeout=args.timeout)
     if target.scheme == "ble-write":
         return send_ble_write(target, payload.data, char_uuid=args.char,
                               timeout=args.timeout)
@@ -668,7 +872,19 @@ def _send_ble_peripheral(target: Target, payload: Payload, args) -> int:
     return 0
 
 
+def _expected_bytes(args) -> bytes | None:
+    if getattr(args, "expect_hex", None):
+        try:
+            return bytes.fromhex(args.expect_hex.replace(":", "").replace(" ", ""))
+        except ValueError as exc:
+            raise SendError(f"bad --expect-hex: {exc}") from exc
+    if getattr(args, "expect", None):
+        return args.expect.encode("utf-8")
+    return None
+
+
 def _send_loop(target: Target, payload: Payload, args) -> int:
+    expected = _expected_bytes(args)
     repeats = max(0, args.repeat)
     started = time.time()
     count = 0
@@ -685,6 +901,14 @@ def _send_loop(target: Target, payload: Payload, args) -> int:
             print(json.dumps(result.to_dict()), flush=True)
         else:
             _report(result, count)
+        if expected is not None:
+            if expected in (result.reply or b""):
+                if not args.json:
+                    print("  expect: ok")
+            else:
+                print("nightjar: reply did not contain the expected bytes",
+                      file=sys.stderr)
+                return 1
         if repeats and count >= repeats:
             break
         if args.duration and (time.time() - started) >= args.duration:
@@ -697,34 +921,168 @@ def _send_loop(target: Target, payload: Payload, args) -> int:
     return 0
 
 
-def cmd_send(args) -> int:
+def _follow_loop(target: Target, path: str, args) -> int:
+    """Send a file's contents every time the file changes."""
+    print(f"nightjar send: watching {path} - Ctrl-C to stop.",
+          file=sys.stderr, flush=True)
+    last_mtime: float | None = None
+    started = time.time()
+    sent = 0
     try:
-        target = parse_target(args.target)
-        payload = build_payload(args)
+        while True:
+            try:
+                mtime = os.path.getmtime(path)
+            except OSError:
+                mtime = None
+            if mtime is not None and mtime != last_mtime:
+                last_mtime = mtime
+                shot = argparse.Namespace(**vars(args))
+                shot.payload_file = path
+                shot.payload = shot.payload_hex = shot.payload_b64 = None
+                shot.duration = None  # one shot per change, not a burst
+                shot.repeat = 0
+                try:
+                    code = _send_loop(target, build_payload(shot), shot)
+                except SendError as exc:
+                    print(f"nightjar: {exc}", file=sys.stderr)
+                    code = 2
+                if code != 0:
+                    return code
+                sent += 1
+            if args.duration and (time.time() - started) >= args.duration:
+                break
+            time.sleep(max(0.05, min(args.interval, 0.5)))
+    except KeyboardInterrupt:
+        pass
+    print(f"{sent} payload(s) sent from {path}")
+    return 0
+
+
+def _replay(target: Target, path: str, args) -> int:
+    """Re-send a serve --out recording, with its timing (scaled)."""
+    records: list[tuple[float, bytes]] = []
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        print(f"nightjar: cannot read replay file: {exc}", file=sys.stderr)
+        return 2
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+            if record.get("payload_b64"):
+                data = base64.b64decode(record["payload_b64"])
+            elif record.get("payload_hex"):
+                data = bytes.fromhex(record["payload_hex"])
+            elif record.get("payload"):
+                data = base64.b64decode(record["payload"])
+            else:
+                continue
+        except (ValueError, KeyError):
+            continue
+        records.append((float(record.get("ts") or 0), data))
+    if not records:
+        print(f"nightjar: no payloads found in {path}", file=sys.stderr)
+        return 2
+    speed = getattr(args, "speed", 1.0) or 0
+    previous: float | None = None
+    try:
+        for stamp, data in records:
+            if previous is not None and speed > 0:
+                gap = min(10.0, max(0.0, stamp - previous) / speed)
+                if gap:
+                    time.sleep(gap)
+            previous = stamp
+            payload = Payload(data=data, encoding="replay", source=path)
+            shot = argparse.Namespace(**vars(args))
+            shot.duration = None  # one shot per record, not a burst
+            shot.repeat = 0
+            code = _send_loop(target, payload, shot)
+            if code != 0:
+                return code
+    except KeyboardInterrupt:
+        pass
+    print(f"replayed {len(records)} payload(s) from {path}")
+    return 0
+
+
+def cmd_send(args) -> int:
+    raw_targets = args.target if isinstance(args.target, list) else [args.target]
+    raws: list[str] = []
+    for item in raw_targets:
+        raws.extend(part for part in (p.strip() for p in item.split(",")) if part)
+    try:
+        targets = [parse_target(raw) for raw in raws]
+    except SendError as exc:
+        print(f"nightjar: {exc}", file=sys.stderr)
+        return 2
+    if getattr(args, "expect", None) or getattr(args, "expect_hex", None):
+        args.read = True
+
+    single = len(targets) == 1
+    try:
+        payload = None if (args.replay or getattr(args, "follow", None)) \
+            else build_payload(args)
     except SendError as exc:
         print(f"nightjar: {exc}", file=sys.stderr)
         return 2
 
-    if args.dry_run:
-        print(json.dumps({
-            "target": target.raw, "scheme": target.scheme,
-            "bytes": len(payload), "encoding": payload.encoding,
-            "sha1": payload.sha1, "framing": args.framing}, indent=2))
-        print(hexdump(payload.data))
-        return 0
-
-    try:
-        if target.scheme in ("ble", "ble-gatt"):
-            return _send_ble_peripheral(target, payload, args)
-        return _send_loop(target, payload, args)
-    except (SendError, OSError) as exc:
-        print(f"nightjar: {exc}", file=sys.stderr)
-        return 2
+    worst = 0
+    for target in targets:
+        try:
+            if args.replay:
+                code = _replay(target, args.replay, args)
+            elif args.dry_run:
+                print(json.dumps({
+                    "target": target.raw, "scheme": target.scheme,
+                    "bytes": len(payload), "encoding": payload.encoding,
+                    "sha1": payload.sha1, "framing": args.framing}, indent=2))
+                print(hexdump(payload.data))
+                code = 0
+            elif getattr(args, "follow", None):
+                if not single:
+                    print("nightjar: --follow takes exactly one target",
+                          file=sys.stderr)
+                    return 2
+                code = _follow_loop(target, args.follow, args)
+            elif target.scheme in ("ble", "ble-gatt"):
+                if not single:
+                    print("nightjar: BLE targets cannot be fanned out",
+                          file=sys.stderr)
+                    return 2
+                code = _send_ble_peripheral(target, payload, args)
+            else:
+                code = _send_loop(target, payload, args)
+        except (SendError, OSError) as exc:
+            print(f"nightjar: {exc}", file=sys.stderr)
+            code = 2
+        worst = max(worst, code)
+        if code == 2 and not single:
+            continue
+    return worst
 
 
 def cmd_serve(args) -> int:
+    reply_fn = None
+    mode = getattr(args, "reply_mode", "static")
+    if mode == "echo":
+        reply_fn = lambda data: data  # noqa: E731 - a responder, not a helper
+    elif mode == "file":
+        if not getattr(args, "reply_file", None):
+            print("nightjar: --reply-mode file needs --reply-file",
+                  file=sys.stderr)
+            return 2
+        try:
+            blob = Path(args.reply_file).read_bytes()
+        except OSError as exc:
+            print(f"nightjar: cannot read reply file: {exc}", file=sys.stderr)
+            return 2
+        reply_fn = lambda data, blob=blob: blob  # noqa: E731
     sink = Sink(out=args.out, as_json=args.json,
-                reply=(args.reply or "").encode("utf-8"), quiet=args.quiet)
+                reply=(args.reply or "").encode("utf-8"), quiet=args.quiet,
+                reply_fn=reply_fn)
     stop = threading.Event()
     threads: list[threading.Thread] = []
     started: list[str] = []
@@ -734,14 +1092,34 @@ def cmd_serve(args) -> int:
         def runner() -> None:
             try:
                 fn(*fn_args, **{**fn_kwargs, "stop": stop})
-            except OSError as exc:
+            except (OSError, SendError) as exc:
                 errors.append(f"{fn.__name__}: {exc}")
                 stop.set()
         threads.append(threading.Thread(target=runner, daemon=True))
 
-    if args.tcp is None and args.udp is None and args.http is None and not args.ble:
+    relay_upstream = None
+    if getattr(args, "relay", None):
+        try:
+            relay_upstream = parse_target(args.relay)
+        except SendError as exc:
+            print(f"nightjar: {exc}", file=sys.stderr)
+            return 2
+        if relay_upstream.scheme != "tcp":
+            print("nightjar: --relay target must be tcp://", file=sys.stderr)
+            return 2
+        if args.tcp is None:
+            print("nightjar: --relay needs --tcp PORT to listen on",
+                  file=sys.stderr)
+            return 2
+    if (args.tcp is None and args.udp is None and args.http is None
+            and not args.ble and getattr(args, "ws", None) is None
+            and not getattr(args, "serial", None)):
         args.tcp = 9000
-    if args.tcp is not None:
+    if args.tcp is not None and relay_upstream is not None:
+        spawn(serve_relay_tcp, args.host, args.tcp, relay_upstream, sink)
+        started.append(
+            f"relay tcp://{args.host}:{args.tcp} -> {relay_upstream.raw}")
+    elif args.tcp is not None:
         spawn(serve_tcp, args.host, args.tcp, sink, framing=args.framing)
         started.append(f"tcp://{args.host}:{args.tcp}")
     if args.udp is not None:
@@ -750,6 +1128,12 @@ def cmd_serve(args) -> int:
     if args.http is not None:
         spawn(serve_http, args.host, args.http, sink)
         started.append(f"http://{args.host}:{args.http}/")
+    if getattr(args, "ws", None) is not None:
+        spawn(serve_ws, args.host, args.ws, sink, framing=args.framing)
+        started.append(f"ws://{args.host}:{args.ws}")
+    if getattr(args, "serial", None):
+        spawn(serve_serial, args.serial, args.baud, sink)
+        started.append(f"serial://{args.serial}")
     if args.ble:
         started.append("ble-gatt")
 
@@ -806,10 +1190,11 @@ def cmd_serve(args) -> int:
 
 def add_send_args(parser) -> None:
     parser.add_argument(
-        "target", metavar="TARGET",
+        "target", metavar="TARGET", nargs="+",
         help="tcp://host:port, udp://host:port, tcp+tls://host:port, "
-             "http(s)://url, ble://, ble-gatt://, ble-write://ADDR, a bare MAC, "
-             "or name:DEVICE")
+             "http(s)://url, ws(s)://url, serial://DEVICE?baud=N, ble://, "
+             "ble-gatt://, ble-write://ADDR, a bare MAC, or name:DEVICE; "
+             "several targets (space or comma separated) fan the payload out")
     src = parser.add_argument_group("payload")
     src.add_argument("--payload", metavar="TEXT", help="payload as text")
     src.add_argument("--payload-hex", metavar="HEX", help="payload as hex bytes")
@@ -830,6 +1215,11 @@ def add_send_args(parser) -> None:
                      help="HTTP header; repeatable")
     net.add_argument("--read", action="store_true",
                      help="wait for a reply (tcp/udp)")
+    net.add_argument("--expect", metavar="TEXT",
+                     help="fail (exit 1) unless the reply contains TEXT; "
+                          "implies --read")
+    net.add_argument("--expect-hex", metavar="HEX",
+                     help="like --expect, with the needle as hex bytes")
     net.add_argument("--timeout", type=float, default=5.0, metavar="SECONDS")
 
     ble = parser.add_argument_group("bluetooth")
@@ -847,6 +1237,12 @@ def add_send_args(parser) -> None:
     loop.add_argument("--interval", type=float, default=1.0, metavar="SECONDS")
     loop.add_argument("--duration", type=float, default=None, metavar="SECONDS",
                       help="keep going for SECONDS (0 or unset = once / until Ctrl-C)")
+    loop.add_argument("--follow", metavar="FILE",
+                      help="send FILE's contents every time FILE changes")
+    loop.add_argument("--replay", metavar="FILE",
+                      help="re-send a serve --out recording, with its timing")
+    loop.add_argument("--speed", type=float, default=1.0, metavar="X",
+                      help="replay speed multiplier (0 = as fast as possible)")
 
     parser.add_argument("--dry-run", action="store_true",
                         help="show the payload and target, send nothing")
@@ -860,6 +1256,14 @@ def add_serve_args(parser) -> None:
     parser.add_argument("--tcp", type=int, default=None, metavar="PORT")
     parser.add_argument("--udp", type=int, default=None, metavar="PORT")
     parser.add_argument("--http", type=int, default=None, metavar="PORT")
+    parser.add_argument("--ws", type=int, default=None, metavar="PORT",
+                        help="WebSocket listener (needs websockets)")
+    parser.add_argument("--serial", metavar="DEVICE",
+                        help="serial listener on DEVICE (needs pyserial)")
+    parser.add_argument("--baud", type=int, default=115200, metavar="N")
+    parser.add_argument("--relay", metavar="TARGET",
+                        help="relay the --tcp listener to an upstream "
+                             "tcp:// target, logging both directions")
     parser.add_argument("--ble", action="store_true",
                         help="also accept BLE GATT writes (needs bless)")
     parser.add_argument("--name", default=DEFAULT_ADV_NAME)
@@ -869,6 +1273,12 @@ def add_serve_args(parser) -> None:
                         help="how tcp payloads are framed")
     parser.add_argument("--reply", metavar="TEXT",
                         help="answer every payload with TEXT")
+    parser.add_argument("--reply-mode", choices=("static", "echo", "file"),
+                        default="static",
+                        help="static: --reply text; echo: the payload itself; "
+                             "file: the contents of --reply-file")
+    parser.add_argument("--reply-file", metavar="FILE",
+                        help="reply source for --reply-mode file")
     parser.add_argument("--out", metavar="FILE",
                         help="append every payload to FILE as JSON lines")
     parser.add_argument("--duration", type=float, default=None, metavar="SECONDS")
@@ -882,4 +1292,5 @@ __all__ = [
     "build_payload", "parse_target", "frame", "unframe", "hexdump",
     "add_send_args", "add_serve_args", "cmd_send", "cmd_serve",
     "run_ble_peripheral", "send_ble_write", "send_http", "send_tcp", "send_udp",
+    "send_ws", "send_serial", "serve_ws", "serve_serial", "serve_relay_tcp",
 ]
