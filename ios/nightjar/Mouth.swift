@@ -1090,6 +1090,8 @@ final class Mouth: NSObject, ObservableObject {
     @Published var traceLines: [String] = []
     @Published var traceStatus: String?
     @Published var traceLatestExport: URL?
+    @Published var traceCentipedeRoute: String?
+    var traceAutoCentipede = false
     var traceGeneration = 0
 
     // The trace engine — the /24 mapping run, its adaptive
