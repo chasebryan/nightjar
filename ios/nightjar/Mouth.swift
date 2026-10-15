@@ -2,6 +2,7 @@ import Compression
 import CoreBluetooth
 import Foundation
 import Network
+import UserNotifications
 
 /// The mouth: everything in nightjar-hack that transmits. A port of
 /// `nightjar/send.py`'s semantics to what iOS allows an app to do.
@@ -353,6 +354,8 @@ final class Mouth: NSObject, ObservableObject {
     @Published private(set) var writeScanning = false
     @Published var pendingWriteID: UUID?
     @Published var pendingWriteLabel: String?
+    @Published private(set) var nearbyPhones: [String] = []
+    private var browser: NWBrowser?
 
     /// The live instance, so App Intents (Shortcuts/Siri) can send.
     static weak var shared: Mouth?
@@ -360,6 +363,7 @@ final class Mouth: NSObject, ObservableObject {
     override init() {
         super.init()
         Mouth.shared = self
+        UNUserNotificationCenter.current().delegate = self
     }
 
     struct WriteTarget: Identifiable {
@@ -385,6 +389,7 @@ final class Mouth: NSObject, ObservableObject {
 
     static let serviceUUID = CBUUID(string: "FFF0")
     static let charUUID = CBUUID(string: "FFF1")
+    static let bonjourType = "_nightjar._tcp"
 
     private func line(_ text: String) {
         DispatchQueue.main.async {
@@ -398,6 +403,17 @@ final class Mouth: NSObject, ObservableObject {
             self.inbox.insert(ReceivedPayload(at: Date(), transport: transport,
                                               peer: peer, data: data), at: 0)
             if self.inbox.count > 200 { self.inbox.removeLast(self.inbox.count - 200) }
+            if let text = PayloadKit.printableText(data) {
+                // Make it pop: a banner with the message itself, not
+                // just a row appearing in the inbox.
+                let content = UNMutableNotificationContent()
+                content.title = "nightjar-hack · \(transport) from \(peer)"
+                content.body = text
+                content.sound = .default
+                UNUserNotificationCenter.current().add(
+                    UNNotificationRequest(identifier: UUID().uuidString,
+                                          content: content, trigger: nil))
+            }
         }
     }
 
@@ -431,6 +447,26 @@ final class Mouth: NSObject, ObservableObject {
             return
         }
         let connection = NWConnection(host: NWEndpoint.Host(host), port: endpointPort, using: params)
+        run(connection, label: target.raw, framed: framed, read: read,
+            timeout: timeout)
+    }
+
+    /// Send to a nearby phone by name — Bonjour resolves the address,
+    /// so nobody has to go digging through Settings for an IP.
+    func sendToPhone(name: String, payload: Data, framing: String,
+                     read: Bool, timeout: TimeInterval) {
+        let framed = PayloadKit.frame(payload, framing: framing)
+        let endpoint = NWEndpoint.service(name: name, type: Mouth.bonjourType,
+                                          domain: nil, interface: nil)
+        run(NWConnection(to: endpoint, using: .tcp),
+            label: "phone \(name)", framed: framed, read: read,
+            timeout: timeout)
+    }
+
+    /// One stream connection: send `framed`, optionally collect a
+    /// reply until the peer closes or the deadline passes.
+    private func run(_ connection: NWConnection, label: String, framed: Data,
+                     read: Bool, timeout: TimeInterval) {
         var replied = Data()
         var finished = false
         func finish() {
@@ -465,7 +501,7 @@ final class Mouth: NSObject, ObservableObject {
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                self?.line("sent \(framed.count) bytes over \(target.raw)")
+                self?.line("sent \(framed.count) bytes over \(label)")
                 connection.send(content: framed, completion: .contentProcessed { error in
                     if let error = error {
                         self?.line("nightjar: send failed: \(error.localizedDescription)")
@@ -487,6 +523,32 @@ final class Mouth: NSObject, ObservableObject {
         }
         connection.start(queue: queue)
         queue.asyncAfter(deadline: .now() + timeout + 2) { finish() }
+    }
+
+    // MARK: Bonjour discovery of other phones
+
+    /// Watch for other phones serving nightjar-hack on the local
+    /// network. Their TCP listener advertises `_nightjar._tcp`; the
+    /// names listed here are what the Send tab offers as one-tap
+    /// targets.
+    func startBrowsing() {
+        guard browser == nil else { return }
+        let browser = NWBrowser(
+            for: .bonjour(type: Mouth.bonjourType, domain: nil),
+            using: NWParameters())
+        browser.browseResultsChangedHandler = { [weak self] results, _ in
+            let names = results.compactMap { result -> String? in
+                if case .service(let name, _, _, _) = result.endpoint {
+                    return name
+                }
+                return nil
+            }
+            DispatchQueue.main.async {
+                self?.nearbyPhones = names.sorted()
+            }
+        }
+        browser.start(queue: queue)
+        self.browser = browser
     }
 
     // MARK: HTTP send
@@ -856,10 +918,14 @@ extension Mouth {
         serveReply = Data(reply.utf8)
         serveFraming = framing
         serveError = nil
+        // Arrivals banner as notifications; ask while the user is
+        // already in "receive things" mode.
+        UNUserNotificationCenter.current().requestAuthorization(
+            options: [.alert, .sound]) { _, _ in }
         var started: [String] = []
         do {
             if let port = tcpPort {
-                listeners.append(try makeListener(port: port, params: .tcp) { [weak self] conn in
+                listeners.append(try makeListener(port: port, params: .tcp, bonjour: true) { [weak self] conn in
                     self?.handleStreamConnection(conn, transport: "tcp", http: false)
                 })
                 started.append("tcp://0.0.0.0:\(port)")
@@ -899,12 +965,17 @@ extension Mouth {
         DispatchQueue.main.async { self.serveRunning = false }
     }
 
-    private func makeListener(port: Int, params: NWParameters,
+    private func makeListener(port: Int, params: NWParameters, bonjour: Bool = false,
                               onConnection: @escaping (NWConnection) -> Void) throws -> NWListener {
         guard let endpoint = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else {
             throw MouthError.message("bad port \(port)")
         }
         let listener = try NWListener(using: params, on: endpoint)
+        if bonjour {
+            // Other phones find this one by name — no IP addresses.
+            listener.service = NWListener.Service(
+                name: nil, type: Mouth.bonjourType, domain: nil)
+        }
         listener.newConnectionHandler = onConnection
         listener.stateUpdateHandler = { [weak self] state in
             if case .failed(let error) = state {
@@ -1080,5 +1151,15 @@ final class PayloadBook: ObservableObject {
         if let data = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(data, forKey: key)
         }
+    }
+}
+
+extension Mouth: UNUserNotificationCenterDelegate {
+    /// Banner + sound even while the app is in the foreground, so an
+    /// arriving payload pops instead of silently joining the inbox.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification)
+        async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }
