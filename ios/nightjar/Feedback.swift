@@ -349,14 +349,15 @@ struct GIFPlayerView: UIViewRepresentable {
     func updateUIView(_ view: UIImageView, context: Context) {}
 }
 
-/// The drumroll: three seconds of glitching, laughing skull
-/// over the whole screen when the centipede is released (tap
-/// to skip). The GIF comes from a "Centipede" data asset or a
-/// centipede.gif file dropped into the project; without either,
-/// a built-in flicker card stands in, so the app is never
-/// broken by a missing flourish. The crawl itself starts the
-/// moment Release is tapped — the splash is pure theatre
-/// laid over its first hops.
+/// The drumroll: a glitching, laughing skull over the whole
+/// screen when the centipede is released (tap to skip). The
+/// GIF comes from a "Centipede" data asset or a centipede.gif
+/// file in the bundle, and the splash stays up for the GIF's
+/// own duration (plus a beat); without a GIF, a built-in
+/// flicker card stands in for 3 s, so the app is never broken
+/// by a missing flourish. The crawl itself starts the moment
+/// Release is tapped — the splash is pure theatre laid over
+/// its first hops.
 struct CentipedeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
@@ -370,6 +371,15 @@ struct CentipedeSplashView: View {
             return try? Data(contentsOf: url)
         }
         return nil
+    }
+
+    /// How long the splash stays: the GIF's own play length
+    /// plus a breath, clamped sane; 3 s for the fallback card.
+    private var splashSeconds: Double {
+        guard let data = gifData,
+              let image = UIImage.animatedGIF(data: data)
+        else { return 3.0 }
+        return min(max(image.duration + 0.3, 1.5), 6.0)
     }
 
     var body: some View {
@@ -401,7 +411,8 @@ struct CentipedeSplashView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + splashSeconds) {
                 isShown = false
             }
         }
