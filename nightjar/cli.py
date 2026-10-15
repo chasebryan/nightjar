@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
 import sys
@@ -535,7 +536,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _never_crash_on_a_glyph() -> None:
+    """The reports use sparklines and arrows; a console that can't draw
+    them should show a placeholder, not kill the run."""
+    for stream in (sys.stdout, sys.stderr):
+        encoding = (getattr(stream, "encoding", None) or "").lower().replace("-", "")
+        if encoding != "utf8" and hasattr(stream, "reconfigure"):
+            with contextlib.suppress(Exception):  # exotic streams: leave them be
+                stream.reconfigure(errors="replace")
+
+
 def main(argv=None) -> int:
+    _never_crash_on_a_glyph()
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or (argv[0] not in COMMANDS and argv[0] not in GLOBAL_FLAGS):
         argv = ["scan", *argv]  # bare `nightjar` means "start listening"

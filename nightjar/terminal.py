@@ -20,7 +20,10 @@ def enable_ansi() -> bool:
     try:
         import ctypes
 
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        windll = getattr(ctypes, "windll", None)
+        if windll is None:
+            return False
+        kernel32 = windll.kernel32
         handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
         mode = ctypes.c_uint32()
         if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
