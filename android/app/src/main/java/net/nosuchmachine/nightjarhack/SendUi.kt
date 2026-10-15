@@ -351,6 +351,8 @@ fun SendTab(app: NightjarApp) {
                 CentipedeSection(app, source, payloadText, xorKey, useGzip,
                     framing, method) { showSplash = true }
             }
+            // Network trace
+            item { NetworkTraceSection(app) }
             // Crosstalk
             item { CrosstalkSection(app, source, payloadText, xorKey, useGzip) }
             // SnatchSteal
