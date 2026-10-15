@@ -11,7 +11,7 @@ struct SendView: View {
     @EnvironmentObject private var mouth: Mouth
     @StateObject private var book = PayloadBook()
     @State private var libraryName = ""
-    @State private var target = "tcp://127.0.0.1:9000"
+    @AppStorage("sendTarget") private var target = "tcp://127.0.0.1:9000"
     @State private var source = "text"
     @State private var payloadText = "hello"
     @State private var payloadHex = "68 65 6c 6c 6f"
@@ -42,6 +42,34 @@ struct SendView: View {
                             .font(.caption).foregroundStyle(.red)
                     case .success(let value):
                         Text(describe(value)).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+
+                if !mouth.nearbyPhones.isEmpty {
+                    Section(header: Text("Nearby phones")) {
+                        ForEach(mouth.nearbyPhones, id: \.self) { name in
+                            Button {
+                                if let data = build() {
+                                    mouth.sendToPhone(
+                                        name: name, payload: data,
+                                        framing: framing, read: readReply,
+                                        timeout: 5)
+                                }
+                            } label: {
+                                HStack {
+                                    Label(name, systemImage: "iphone")
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text("Send here")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        Text("Phones on this Wi-Fi running nightjar-hack "
+                             + "with serving started — tap a name, no "
+                             + "address to look up. Uses the payload below.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
 
@@ -98,6 +126,7 @@ struct SendView: View {
                 }
             }
             .navigationTitle("Send")
+            .onAppear { mouth.startBrowsing() }
             .alert("Could not build the payload", isPresented: .constant(showError != nil)) {
                 Button("OK") { showError = nil }
             } message: {
@@ -315,14 +344,14 @@ struct SendView: View {
 
 struct ServeView: View {
     @EnvironmentObject private var mouth: Mouth
-    @State private var useTCP = true
-    @State private var tcpPort = "9000"
-    @State private var useUDP = false
-    @State private var udpPort = "9001"
-    @State private var useHTTP = false
-    @State private var httpPort = "8080"
-    @State private var reply = "ack"
-    @State private var framing = "raw"
+    @AppStorage("serveUseTCP") private var useTCP = true
+    @AppStorage("serveTcpPort") private var tcpPort = "9000"
+    @AppStorage("serveUseUDP") private var useUDP = false
+    @AppStorage("serveUdpPort") private var udpPort = "9001"
+    @AppStorage("serveUseHTTP") private var useHTTP = false
+    @AppStorage("serveHttpPort") private var httpPort = "8080"
+    @AppStorage("serveReply") private var reply = "ack"
+    @AppStorage("serveFraming") private var framing = "raw"
 
     var body: some View {
         NavigationStack {
@@ -330,7 +359,9 @@ struct ServeView: View {
                 Section(header: Text("Listeners"),
                         footer: Text("Foreground only: iOS suspends listeners "
                                      + "when the app leaves the screen. First use "
-                                     + "asks for local-network permission.")) {
+                                     + "asks for local-network permission. While "
+                                     + "TCP serving is on, other phones find this "
+                                     + "one by name — no IP addresses.")) {
                     Toggle("TCP", isOn: $useTCP)
                     if useTCP {
                         TextField("TCP port", text: $tcpPort)
