@@ -54,6 +54,20 @@ struct SendView: View {
     @AppStorage("talkTargetA") private var talkA = ""
     @AppStorage("talkTargetB") private var talkB = ""
     @AppStorage("talkRounds") private var talkRounds = 4
+    @AppStorage("sectionOpen.trace") private var openTrace = false
+    @AppStorage("traceScope") private var traceScope = ""
+    @AppStorage("traceDiscoveryPorts") private var traceDiscoveryPorts = "80,443,22,445,1883,8080,8443,9100"
+    @AppStorage("traceProfilePorts") private var traceProfilePorts = ""
+    @AppStorage("traceBonjour") private var traceBonjour = true
+    @AppStorage("traceAdaptive") private var traceAdaptive = true
+    @AppStorage("traceRules") private var traceRules =
+        "# Rules — one per line. They steer the trace and\n"
+        + "# the centipede: followup sends the named library\n"
+        + "# payload to the same door, tag files a label,\n"
+        + "# stop leaves the reply where it lies.\n"
+        + "# contains nginx => tag web\n"
+        + "# contains Redis => followup Redis PING (RESP)\n"
+        + "# port 22 => tag ssh"
     @AppStorage("sectionOpen.snatch") private var openSnatch = false
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
@@ -572,7 +586,9 @@ struct SendView: View {
                                 smartSeed: centipedeSmartSeed,
                                 probeFor: probeForTarget,
                                 payloadFor: { build(forTargetText: $0) },
-                                framing: framing, method: method)
+                                framing: framing, method: method,
+                                rules: TraceRule.parse(traceRules),
+                                payloadNamed: payloadNamed)
                             showCentipedeSplash = true
                         } label: {
                             Label("Release the centipede "
@@ -608,6 +624,108 @@ struct SendView: View {
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.secondary)
                         }
+                    }
+                }
+
+                CollapsibleSection("Network Trace", isOpen: $openTrace) {
+                    Text("Map one whole /24: every address is "
+                         + "knocked, every answering host profiled "
+                         + "door by door, and every endpoint a "
+                         + "banner or reply mentions is followed "
+                         + "(three hops deep) until nothing new is "
+                         + "left — then it stops on its own and "
+                         + "files a trace JSON. Foreground only, "
+                         + "stoppable anytime. Endpoints outside "
+                         + "the /24 are written into the report, "
+                         + "never contacted.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    TextField("Scope — blank = this phone's /24",
+                              text: $traceScope)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .font(.body.monospaced())
+                    HStack {
+                        Text("Discovery ports")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("80,443,…",
+                                  text: $traceDiscoveryPorts)
+                            .keyboardType(.numbersAndPunctuation)
+                            .font(.body.monospaced())
+                    }
+                    HStack {
+                        Text("Profile ports")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("blank = usual ports",
+                                  text: $traceProfilePorts)
+                            .keyboardType(.numbersAndPunctuation)
+                            .font(.body.monospaced())
+                    }
+                    Toggle("Listen for Bonjour while tracing",
+                           isOn: $traceBonjour)
+                    Toggle("Adaptive — let the rules below steer",
+                           isOn: $traceAdaptive)
+                    Text("Rules (shared with the Centipede)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextEditor(text: $traceRules)
+                        .font(.caption.monospaced())
+                        .frame(minHeight: 72)
+                        .scrollContentBackground(.hidden)
+                    if mouth.traceBusy {
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            mouth.stopNetworkTrace()
+                        } label: {
+                            Label("Stop the trace",
+                                  systemImage: "stop.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    } else {
+                        Button {
+                            Haptics.tap()
+                            startTrace()
+                        } label: {
+                            Label("Start network trace",
+                                  systemImage: "point.3.connected.trianglepath.dotted")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(mouth.crawlBusy || mouth.talkBusy)
+                    }
+                    if let status = mouth.traceStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(mouth.traceLines, id: \.self) { traceLine in
+                        Text(traceLine).font(.caption.monospaced())
+                    }
+                    if let export = mouth.traceLatestExport {
+                        ShareLink(item: export) {
+                            Label("Download trace JSON",
+                                  systemImage: "square.and.arrow.up")
+                        }
+                        .font(.caption)
+                    }
+                    if FileManager.default.fileExists(
+                        atPath: TraceBookStore.logbookURL.path) {
+                        ShareLink(item: TraceBookStore.logbookURL) {
+                            Label("Download the crawl logbook",
+                                  systemImage: "book.closed")
+                        }
+                        .font(.caption)
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            TraceBookStore.shared.clear()
+                            toasts.show("Logbook cleared")
+                        } label: {
+                            Label("Clear logbook",
+                                  systemImage: "trash")
+                        }
+                        .font(.caption)
                     }
                 }
 
@@ -1126,6 +1244,52 @@ struct SendView: View {
                 xorSpec: item.xorKey, useGzip: item.useGzip)
         else { return nil }
         return (data, name)
+    }
+
+    /// A library payload by its name, built — the follow-up
+    /// rules' ammunition for both the trace and the centipede.
+    /// Nil when no item carries that name (or it fails to
+    /// build): a rule naming a deleted payload simply never
+    /// fires.
+    private func payloadNamed(_ name: String) -> Data? {
+        guard let item = book.items.first(where: { $0.name == name })
+        else { return nil }
+        return try? PayloadKit.build(
+            source: item.source,
+            text: item.source == "text" ? item.text : "",
+            hex: item.source == "hex" ? item.text : "",
+            b64: item.source == "base64" ? item.text : "",
+            xorSpec: item.xorKey, useGzip: item.useGzip)
+    }
+
+    /// "80, 443, 22" → [22, 80, 443]: valid ports only,
+    /// deduplicated, in order.
+    private func parsePortList(_ text: String) -> [Int] {
+        Array(Set(text.split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { (1...65535).contains($0) })).sorted()
+    }
+
+    /// Release a Network Trace with the section's settings.
+    private func startTrace() {
+        let discovery = parsePortList(traceDiscoveryPorts)
+        guard !discovery.isEmpty else {
+            toasts.show("Give at least one discovery port",
+                        error: true)
+            return
+        }
+        let profileText = traceProfilePorts
+            .trimmingCharacters(in: .whitespaces)
+        mouth.startNetworkTrace(
+            scopeText: traceScope,
+            discoveryPorts: discovery,
+            profilePorts: profileText.isEmpty
+                ? [] : parsePortList(traceProfilePorts),
+            includeBonjour: traceBonjour,
+            adaptive: traceAdaptive,
+            rules: TraceRule.parse(traceRules),
+            probeFor: probeForTarget,
+            payloadNamed: payloadNamed)
     }
 
     private func build(forTargetText targetText: String) -> Data? {
