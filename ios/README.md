@@ -92,7 +92,11 @@ Below the steps, the Send tab keeps working:
   round-trip time. The Send tab's feature sections — Send to
   many, Timed delivery, Centipede, SnatchSteal, PayPlant —
   fold open and shut from their headers, and the tab remembers
-  which ones you left open.
+  which ones you left open. Releasing the centipede plays a
+  three-second full-screen flourish — a glitching, laughing
+  skull (the `centipede.gif` in this repo, animated from the
+  artwork; tap to skip) — while the walk's first hops run
+  underneath.
   A *this phone* button adds the phone's own Serve endpoint
   as a guaranteed-live first target. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
