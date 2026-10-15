@@ -1204,19 +1204,93 @@ struct SavedPayload: Codable, Identifiable, Equatable {
     var xorKey: String
     var useGzip: Bool
     var framing: String
+    var builtIn: Bool = false
+
+    init(id: UUID = UUID(), name: String, source: String, text: String,
+         xorKey: String, useGzip: Bool, framing: String,
+         builtIn: Bool = false) {
+        self.id = id
+        self.name = name
+        self.source = source
+        self.text = text
+        self.xorKey = xorKey
+        self.useGzip = useGzip
+        self.framing = framing
+        self.builtIn = builtIn
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, source, text, xorKey, useGzip, framing, builtIn
+    }
+
+    init(from decoder: Decoder) throws {
+        let box = try decoder.container(keyedBy: CodingKeys.self)
+        id = try box.decode(UUID.self, forKey: .id)
+        name = try box.decode(String.self, forKey: .name)
+        source = try box.decode(String.self, forKey: .source)
+        text = try box.decode(String.self, forKey: .text)
+        xorKey = try box.decode(String.self, forKey: .xorKey)
+        useGzip = try box.decode(Bool.self, forKey: .useGzip)
+        framing = try box.decode(String.self, forKey: .framing)
+        // Older saves predate the flag; absence means "custom".
+        builtIn = try box.decodeIfPresent(Bool.self, forKey: .builtIn)
+            ?? false
+    }
 }
 
 /// The Send tab's payload library: named payloads kept in UserDefaults.
+/// Ships with a starter set of built-ins; anything the user saves is a
+/// custom entry next to them, and built-ins can be restored if deleted.
 final class PayloadBook: ObservableObject {
     @Published private(set) var items: [SavedPayload] = []
     private let key = "payloadBook.v1"
+
+    static let builtIns: [SavedPayload] = [
+        SavedPayload(name: "hello", source: "text", text: "hello",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "ping", source: "text", text: "ping",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "JSON hello", source: "text",
+                     text: "{\"hello\":\"nightjar\"}",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "Wake-on-LAN (edit the MAC)", source: "hex",
+                     text: "ff ff ff ff ff ff "
+                         + String(repeating: "00 11 22 33 44 55 ", count: 16),
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "HTTP GET / (raw)", source: "hex",
+                     text: "47 45 54 20 2f 20 48 54 54 50 2f 31 2e 30 0d 0a 0d 0a",
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+        SavedPayload(name: "32 x A (length test)", source: "text",
+                     text: String(repeating: "A", count: 32),
+                     xorKey: "", useGzip: false, framing: "raw",
+                     builtIn: true),
+    ]
 
     init() {
         if let data = UserDefaults.standard.data(forKey: key),
            let decoded = try? JSONDecoder().decode([SavedPayload].self,
                                                    from: data) {
             items = decoded
+        } else {
+            items = PayloadBook.builtIns
+            persist()
         }
+    }
+
+    var missingBuiltIns: [SavedPayload] {
+        PayloadBook.builtIns.filter { seed in
+            !items.contains { $0.builtIn && $0.name == seed.name }
+        }
+    }
+
+    func restoreBuiltIns() {
+        items.insert(contentsOf: missingBuiltIns, at: 0)
+        persist()
     }
 
     func add(_ item: SavedPayload) {
