@@ -23,7 +23,7 @@ iOS companion: the same receive-only ears in your pocket, with a live
 JSONL format the Python side reads, so a session captured on the phone
 feeds straight into `report` and `trackers` on the computer.
 
-<p align="center"><img src="docs/nightjar-ios.jpg" alt="nightjar running on an iPhone" width="320"></p>
+<p align="center"><img src="nightjar-ios.jpg" alt="nightjar running on an iPhone" width="320"></p>
 
 There is no App Store build. You install it the way it was built: open
 the project in Xcode, sign it with your own Apple ID, and sideload
