@@ -52,6 +52,14 @@ and shares test vectors with it.
   the arm persists across relaunches (peripheral state restoration),
   and a write to it lands in the inbox and banners like any arrival.
   That makes the BLE route the "always set up" one.
+- **Stealth mode** (Serve tab). Full function, no announcement:
+  the TCP listener drops its Bonjour listing (reachable by IP
+  address only, like the CLI — which never listed itself anywhere),
+  arrivals go to the inbox silently, and even the notification
+  permission ask is deferred. Toggling it while serving restarts
+  the listeners so it takes effect immediately. BLE hosting still
+  advertises, because a thing that cannot be found cannot be
+  connected to.
 
 ## Honest platform limits
 
