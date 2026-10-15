@@ -1309,7 +1309,7 @@ final class PayloadBook: ObservableObject {
                      xorKey: "", useGzip: false, framing: "raw",
                      builtIn: true),
         SavedPayload(name: "Printer test page (TCP 9100)", source: "text",
-                     text: "nightjar-hack says hello\r\n\f",
+                     text: "nightjar-hack says hello\r\n\u{0C}",
                      xorKey: "", useGzip: false, framing: "raw",
                      builtIn: true),
     ]
