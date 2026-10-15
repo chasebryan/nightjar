@@ -1046,6 +1046,7 @@ final class Mouth: NSObject, ObservableObject {
     @Published var crawlBusy = false
     @Published var crawlLines: [String] = []
     @Published var crawlHomecoming: Data?
+    @Published var crawlFindings: [String] = []
     var crawlGeneration = 0
 
     // The crawl engine — route expansion, the walk
