@@ -47,6 +47,7 @@ struct SendView: View {
     @AppStorage("centipedeReturn") private var centipedeReturn = true
     @AppStorage("centipedePerDevice") private var centipedePerDevice = false
     @State private var centipedeHome = ""
+    @State private var centipedeSweepPort = "6379"
     private var centipedeLines: [String] {
         centipedeRoute.split(separator: "\n").map(String.init)
     }
@@ -476,6 +477,32 @@ struct SendView: View {
                         .disabled(fanoutList.isEmpty)
                     }
                     .font(.caption)
+                    HStack {
+                        Text("Sweep port")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("6379", text: $centipedeSweepPort)
+                            .keyboardType(.numberPad)
+                            .font(.body.monospaced())
+                            .frame(width: 64)
+                        Spacer()
+                        Button {
+                            Haptics.tap()
+                            sweepIntoRoute()
+                        } label: {
+                            Label(mouth.crawlSweepBusy
+                                    ? "Sweeping…"
+                                    : "Sweep this subnet",
+                                  systemImage: "dot.radiowaves.left.and.right")
+                        }
+                        .disabled(mouth.crawlSweepBusy)
+                    }
+                    .font(.caption)
+                    if let status = mouth.crawlSweepStatus {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Picker("Mode", selection: $centipedeMode) {
                         Text("Chain").tag("chain")
                         Text("Seed").tag("seed")
@@ -890,6 +917,24 @@ struct SendView: View {
 
     /// Build the payload for one destination, resolving templates
     /// ({{host}}, {{port}}, {{target}}, {{scheme}}) against it.
+    /// The Centipede's built-in feeder: sweep the phone's /24 on
+    /// the chosen port and load every answering host into the
+    /// route as a ready-to-walk target.
+    private func sweepIntoRoute() {
+        guard let port = Int(centipedeSweepPort),
+              (1...65535).contains(port) else {
+            toasts.show("Sweep port must be 1–65535", error: true)
+            return
+        }
+        mouth.sweepSubnet(port: port) { hosts in
+            guard !hosts.isEmpty else { return }
+            centipedeRoute = (hosts.map { "tcp://\($0):\(port)" }
+                              + centipedeLines)
+                .joined(separator: "\n")
+            toasts.show("Added \(hosts.count) host(s) from the sweep")
+        }
+    }
+
     private func build(forTargetText targetText: String) -> Data? {
         do {
             // Only the text source substitutes templates against the
