@@ -47,8 +47,9 @@ struct SendView: View {
     @AppStorage("centipedeReturn") private var centipedeReturn = true
     @AppStorage("centipedePerDevice") private var centipedePerDevice = false
     @State private var centipedeHome = ""
-    @State private var centipedeSweepPort = "6379"
+    @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
+    @AppStorage("serveTcpPort") private var serveTcpPort = "9000"
     private var centipedeLines: [String] {
         centipedeRoute.split(separator: "\n").map(String.init)
     }
@@ -484,14 +485,12 @@ struct SendView: View {
                         .autocorrectionDisabled(true)
                         .font(.body.monospaced())
                     HStack {
-                        Text("Sweep port")
+                        Text("Sweep ports")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("6379", text: $centipedeSweepPort)
-                            .keyboardType(.numberPad)
+                        TextField("80,443,…", text: $centipedeSweepPort)
+                            .keyboardType(.numbersAndPunctuation)
                             .font(.body.monospaced())
-                            .frame(width: 64)
-                        Spacer()
                         Button {
                             Haptics.tap()
                             sweepIntoRoute()
@@ -509,6 +508,20 @@ struct SendView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    Text("Discovery knocks the listed ports on every "
+                         + "address; each answering host joins the "
+                         + "route as a port train over the ports it "
+                         + "answered on.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button {
+                        Haptics.tap()
+                        addThisPhone()
+                    } label: {
+                        Label("Add this phone's Serve as a target",
+                              systemImage: "iphone")
+                    }
+                    .font(.caption)
                     Picker("Mode", selection: $centipedeMode) {
                         Text("Chain").tag("chain")
                         Text("Seed").tag("seed")
@@ -923,22 +936,45 @@ struct SendView: View {
 
     /// Build the payload for one destination, resolving templates
     /// ({{host}}, {{port}}, {{target}}, {{scheme}}) against it.
-    /// The Centipede's built-in feeder: sweep the phone's /24 on
-    /// the chosen port and load every answering host into the
-    /// route as a ready-to-walk target.
+    /// The Centipede's built-in feeder: discovery-knock the
+    /// listed ports across the chosen /24 and load every
+    /// answering host into the route as a port train over the
+    /// ports it answered on.
     private func sweepIntoRoute() {
-        guard let port = Int(centipedeSweepPort),
-              (1...65535).contains(port) else {
-            toasts.show("Sweep port must be 1–65535", error: true)
+        let ports = centipedeSweepPort
+            .split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { (1...65535).contains($0) }
+        guard !ports.isEmpty, ports.count <= 16 else {
+            toasts.show("Give 1–16 sweep ports, comma-separated",
+                        error: true)
             return
         }
-        mouth.sweepSubnet(port: port, target: centipedeSweepTarget) { hosts in
-            guard !hosts.isEmpty else { return }
-            centipedeRoute = (hosts.map { "tcp://\($0):\(port)" }
-                              + centipedeLines)
+        mouth.discoverSubnet(ports: ports,
+                             target: centipedeSweepTarget) { found in
+            guard !found.isEmpty else { return }
+            let newLines = found.map { entry in
+                "tcp://\(entry.host):"
+                    + entry.ports.map(String.init).joined(separator: ",")
+            }
+            centipedeRoute = (newLines + centipedeLines)
                 .joined(separator: "\n")
-            toasts.show("Added \(hosts.count) host(s) from the sweep")
+            toasts.show("Added \(found.count) host(s) from discovery")
         }
+    }
+
+    /// The one target guaranteed to be real: this phone itself.
+    /// Adds its own Serve endpoint to the route — start Serve,
+    /// release the centipede, and watch the walk knock on your
+    /// own listener and carry its reply home.
+    private func addThisPhone() {
+        guard let ip = Mouth.localIPAddress() else {
+            toasts.show("No Wi-Fi address on this phone", error: true)
+            return
+        }
+        centipedeRoute = (["tcp://\(ip):\(serveTcpPort)"] + centipedeLines)
+            .joined(separator: "\n")
+        toasts.show("Added this phone — start Serve, then release")
     }
 
     private func build(forTargetText targetText: String) -> Data? {
