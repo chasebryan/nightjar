@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Centipede (iOS Send).** A route walked hop by hop: each
+  route line is a target, a range, `host:80,443` (a port train),
+  or a bare host (a train across the usual ports). Chain mode
+  feeds each hop the previous hop's reply; Seed mode sends the
+  same payload everywhere. *Return to sender* walks the route
+  back in reverse; the final carried payload comes home to a
+  homecoming card, the history, and — optionally — one delivery
+  to a target you name. The phone makes every send on both legs.
+
 ## 2.5.0 — 2026-10-15 — the pocket release
 
 ### Landed before tagging — the audit fix rounds
