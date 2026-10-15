@@ -588,6 +588,8 @@ struct LibrarySheet: View {
                 }
             }
             .searchable(text: $query, prompt: "Search payloads")
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Payload library")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -616,6 +618,8 @@ struct MouthLogSheet: View {
                     Text(line).font(.caption.monospaced())
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Mouth log")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
