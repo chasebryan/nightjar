@@ -31,6 +31,15 @@ final class MoreDecodersTests: XCTestCase {
     private let fd3d = "0000fd3d-0000-1000-8000-00805f9b34fb"
     private let fd5a = "0000fd5a-0000-1000-8000-00805f9b34fb"
     private let feed = "0000feed-0000-1000-8000-00805f9b34fb"
+    private let fee0 = "0000fee0-0000-1000-8000-00805f9b34fb"
+    private let fee1 = "0000fee1-0000-1000-8000-00805f9b34fb"
+    private let fdf0 = "0000fdf0-0000-1000-8000-00805f9b34fb"
+    private let fe24 = "0000fe24-0000-1000-8000-00805f9b34fb"
+    private let fe2c = "0000fe2c-0000-1000-8000-00805f9b34fb"
+    private let fd77 = "0000fd77-0000-1000-8000-00805f9b34fb"
+    private let fe65 = "0000fe65-0000-1000-8000-00805f9b34fb"
+    private let uuid184f = "0000184f-0000-1000-8000-00805f9b34fb"
+    private let uuid1856 = "00001856-0000-1000-8000-00805f9b34fb"
 
     // MARK: - Xiaomi MiBeacon
 
@@ -220,6 +229,127 @@ final class MoreDecodersTests: XCTestCase {
     /// A bare FD3D UUID with no service data is not claimed here.
     func testSwitchBotUUIDOnlyNotClaimed() {
         XCTAssertNil(MoreDecoders.identify(sighting(services: [fd3d])))
+    }
+
+    // MARK: - Round 2: Huami and ASHA services
+
+    /// Both Huami member services earn the family label — 0xFEE0 is
+    /// the Mi Band service, 0xFEE1 its companion — whether they show
+    /// up as advertised UUIDs or with service data attached.
+    func testHuamiServices() {
+        for services in [[fee0], [fee1]] {
+            let s = sighting(services: services)
+            let hit = MoreDecoders.identify(s)
+            XCTAssertEqual(hit?.kind, "Mi Band / Amazfit")
+            XCTAssertEqual(hit?.specificity, 2)
+            XCTAssertEqual(Classification.classify(s).kind, "Mi Band / Amazfit")
+        }
+        let withData = sighting(serviceData: [fee1: [0x00]])
+        XCTAssertEqual(MoreDecoders.identify(withData)?.kind, "Mi Band / Amazfit")
+    }
+
+    /// A decodable MiBeacon frame outranks the bare Huami services:
+    /// the same sighting carrying both gets the product name.
+    func testHuamiYieldsToMiBeacon() {
+        let frame = hexBytes("40505b052a041002d700061002c7010a10015a")
+        let s = sighting(services: [fee0], serviceData: [fe95: frame])
+        XCTAssertEqual(MoreDecoders.identify(s)?.kind,
+                       "Xiaomi Mijia temperature/humidity sensor 2")
+    }
+
+    /// ASHA (0xFDF0) is Google's hearing-aid streaming service; only
+    /// hearing aids advertise it.
+    func testASHAHearingAid() {
+        let s = sighting(services: [fdf0])
+        let hit = MoreDecoders.identify(s)
+        XCTAssertEqual(hit?.kind, "Hearing aid (ASHA)")
+        XCTAssertEqual(hit?.details,
+                       ["Audio Streaming for Hearing Aids (Google ASHA)"])
+        XCTAssertEqual(Classification.classify(s).kind, "Hearing aid (ASHA)")
+    }
+
+    // MARK: - Round 2: the late recognition floor
+
+    /// The floor answers ONLY through lateIdentify: the early step
+    /// must stay silent for these sightings, or it would pre-empt
+    /// Services' decoders and Vendors in the chain.
+    func testFloorCompanies() {
+        let cases: [(UInt16, String, Bool)] = [
+            (0x03FF, "Withings device", false),
+            (0x0600, "iRobot device", false),
+            (0x08AA, "DJI device", false),
+            (0x08C3, "Chipolo device", true),
+            (0x067C, "Tile device", true),
+            (0x01D1, "August Home device", false),
+        ]
+        for (company, kind, tracker) in cases {
+            let s = sighting(manufacturer: [company: [0x01, 0x02]])
+            XCTAssertNil(MoreDecoders.identify(s), "early step must pass on 0x\(String(company, radix: 16))")
+            let hit = MoreDecoders.lateIdentify(s)
+            XCTAssertEqual(hit?.kind, kind)
+            XCTAssertEqual(hit?.specificity, 1)
+            XCTAssertEqual(hit?.trackerShaped, tracker)
+            XCTAssertEqual(Classification.classify(s).kind, kind)
+        }
+    }
+
+    /// A floor company in the manufacturer data must not cost the
+    /// device a better service decode: Services answers Fast Pair at
+    /// specificity 2, long before the floor is consulted.
+    func testFloorDoesNotShadowFastPair() {
+        let s = sighting(manufacturer: [0x03FF: [0x01]], services: [fe2c])
+        XCTAssertEqual(Classification.classify(s).kind, "Fast Pair device (Google)")
+    }
+
+    /// Nor may the floor override Vendors: with a Garmin company ID
+    /// alongside a floor ID, Vendors' family answer stands.
+    func testFloorDoesNotShadowVendors() {
+        let s = sighting(manufacturer: [0x0087: [0x00], 0x03FF: [0x00]])
+        XCTAssertEqual(Classification.classify(s).kind, "Garmin device")
+    }
+
+    /// Member-service names the Services table lacks, in its own
+    /// fallback form: August's lock service, the two LE Audio
+    /// services, and the Withings/Chipolo ranges.
+    func testLateServiceNames() {
+        let cases: [(String, String)] = [
+            (fe24, "Device advertising August Home"),
+            (uuid184f, "Device advertising Broadcast Audio Scan (LE Audio)"),
+            (uuid1856, "Device advertising Public Broadcast Announcement (LE Audio)"),
+            (fd77, "Device advertising Withings"),
+            (fe65, "Device advertising Chipolo"),
+        ]
+        for (uuid, kind) in cases {
+            let s = sighting(services: [uuid])
+            XCTAssertEqual(MoreDecoders.lateIdentify(s)?.kind, kind)
+            XCTAssertEqual(Classification.classify(s).kind, kind)
+        }
+    }
+
+    /// A SIG company the floor does not list stays unknown — the
+    /// floor is a table, not a heuristic. (0x009B is an automotive
+    /// supplier, verified present in the SIG list and absent here.)
+    func testUnlistedCompanyStaysUnknown() {
+        let s = sighting(manufacturer: [0x009B: [0x01]])
+        XCTAssertNil(MoreDecoders.lateIdentify(s))
+        XCTAssertEqual(Classification.classify(s).kind, "Unknown device")
+    }
+
+    /// Targets the existing tables already cover, pinned so round 2
+    /// is never mistaken for their source: Vendors' family labels for
+    /// Amazon, Nintendo and Garmin manufacturer data.
+    func testExistingFamilyCoveragePinned() {
+        let cases: [(UInt16, String)] = [
+            (0x0171, "Amazon device"),
+            (0x0553, "Nintendo controller"),
+            (0x0087, "Garmin device"),
+        ]
+        for (company, kind) in cases {
+            let s = sighting(manufacturer: [company: [0x00]])
+            XCTAssertNil(MoreDecoders.identify(s))
+            XCTAssertNil(MoreDecoders.lateIdentify(s))
+            XCTAssertEqual(Classification.classify(s).kind, kind)
+        }
     }
 
     // MARK: - Already covered elsewhere
