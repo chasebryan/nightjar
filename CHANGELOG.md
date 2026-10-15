@@ -66,6 +66,10 @@ no new commands this round; its docs were overhauled with the rest.
 - **Data control**: the log sheet deletes the exchange-history
   file (size shown, confirmation required); send log, Serve
   inbox and observation feed each clear from their own buttons.
+  The Sessions tab manages the listening post's recordings the
+  same way — storage total, swipe / long-press / multi-select
+  deletion, and a confirmed Delete-all; the live session is
+  always protected.
 - **About** carries an authorized-use statement: a testing
   instrument for devices and networks you own or are engaged in
   writing to test.
