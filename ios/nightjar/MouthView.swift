@@ -969,6 +969,8 @@ struct LibrarySheet: View {
 struct MouthLogSheet: View {
     @EnvironmentObject private var mouth: Mouth
     @Environment(\.dismiss) private var dismiss
+    @State private var showDeleteConfirm = false
+    @State private var historyDeleted = false
 
     var body: some View {
         NavigationStack {
@@ -995,7 +997,8 @@ struct MouthLogSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
-                if FileManager.default.fileExists(
+                if !historyDeleted,
+                   FileManager.default.fileExists(
                     atPath: Mouth.exchangesURL.path) {
                     ToolbarItem(placement: .bottomBar) {
                         ShareLink(item: Mouth.exchangesURL) {
@@ -1003,7 +1006,35 @@ struct MouthLogSheet: View {
                                   systemImage: "square.and.arrow.up")
                         }
                     }
+                    ToolbarItem(placement: .bottomBar) {
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            showDeleteConfirm = true
+                        } label: {
+                            Label("Delete history",
+                                  systemImage: "trash")
+                        }
+                    }
                 }
+            }
+            .confirmationDialog(
+                "Delete the exchange history?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible) {
+                Button("Delete "
+                       + (Mouth.exchangeHistoryDescription()
+                          ?? "history"),
+                       role: .destructive) {
+                    mouth.deleteExchangeHistory()
+                    historyDeleted = true
+                    Haptics.success()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("The .jsonl holding every send, scan, sweep, "
+                     + "DNS lookup, snatch, and dissection is "
+                     + "deleted from this phone. This cannot be "
+                     + "undone.")
             }
         }
     }
