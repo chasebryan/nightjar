@@ -320,14 +320,13 @@ extension Mouth {
             }
             let report: (Bool) -> Void = { [weak self] ok in
                 guard let self = self else { return }
-                // This hop's reply, if it produced one: lastReply
-                // is written only by send paths (noteReply), and
-                // hops run strictly one at a time, so a timestamp
-                // at or after this hop's start is its answer.
-                var reply: Data?
-                if let noted = self.lastReply, noted.at >= hopStart {
-                    reply = noted.data
-                }
+                // This hop's reply, if it produced one — read
+                // through the synchronous mirror (replyData):
+                // the @Published lastReply publishes via the main
+                // queue and can lag the very completion firing
+                // here, which fast-closing servers (an HTTP/1.0
+                // answer-and-close) reliably outrun.
+                let reply = self.replyData(since: hopStart)
                 if let reply = reply {
                     carried = reply
                     harvest(text, leg: leg, reply: reply)
