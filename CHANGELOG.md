@@ -122,9 +122,10 @@ no new commands this round; its docs were overhauled with the rest.
 ### Docs
 
 README.md, HACKER.md and ios/README.md rewritten for the full
-feature set; this changelog started. `nightjar-hack.zip` is a
-convenience archive refreshed by hand in the web UI; the
-single-file build and the bundle are regenerated from source.
+feature set; this changelog started. The stale `nightjar-hack.zip`
+convenience archive was removed from the repo before tagging —
+releases carry GitHub's own source archives; the single-file
+build and the bundle are regenerated from source.
 
 ## 2.4.0 — 2026-10-15
 
