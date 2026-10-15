@@ -317,6 +317,13 @@ Identification is from broadcast metadata only — no connection, ever.
   Ruuvi environmental sensors (temperature, humidity, pressure), and
   a curated table of makers by company id and of well-known service
   UUIDs for everything else.
+- **Drones (Remote ID)** — the digital licence plate drones broadcast
+  under the FAA rule (ASTM F3411 / Open Drone ID), service data 0xFFFA:
+  the aircraft's serial and type, its live position, altitude, heading
+  and speed, and the operator's position. A drone keys on its serial, so
+  it stays one identity across address changes, and `show` reconstructs
+  its flight track. The bit packing is verified against the reference
+  decoder, opendroneid-core-c. See [Drones](#drones).
 
 Rotating phones are re-identified by a fingerprint of the stable core
 of their broadcasts. The fingerprint is *epoch-scoped*: a phone
@@ -327,6 +334,47 @@ every identity honestly. Where the radio says so (Linux, Windows), the
 address type itself is recorded: a resolvable private address is one
 that will rotate.
 
+## Drones
+
+A drone flying over broadcasts a Remote ID "licence plate" the same way
+nightjar hears everything else, so it simply shows up — in the live
+radar, the summary, `report`, and (if you're watching) as an alert:
+
+```
+nightjar watch --home 45.5121,-122.6587      # your position, opt-in
+...
+ALERT 21:14:03  Drone overhead: Drone (Remote ID): serial 1581F…, multirotor,
+                airborne, alt 60 m, 8.0 m/s NE, height 41 m AGL, operator 210 m N (takeoff point)
+```
+
+`--home LAT,LON` (or `$NIGHTJAR_HOME`) is opt-in and never written into
+any device's log; it only turns the operator coordinates the drone
+broadcasts into a distance and bearing from you. Without it, the
+operator's raw coordinates are shown.
+
+Because a Remote ID serial is a permanent identifier, a drone stays one
+identity across the addresses it rotates through, and `show` reconstructs
+the flight from the log:
+
+```
+nightjar show "Drone" sightings.jsonl --home 45.5121,-122.6587
+...
+  flight track:
+    351 positions, 2026-10-12 08:04 → 2026-10-13 21:14
+    max altitude 60 m (geodetic)
+    20:19:55  45.53864,-122.96248  alt 60 m, 8.0 m/s S
+    …
+    operator 210 m N (takeoff point)
+```
+
+Try it with no hardware: `nightjar demo` flies a synthetic survey drone
+over the house, and `nightjar watch --simulate` will alert on it.
+
+nightjar logs a drone's position and its operator's position as broadcast
+fields, like any other sighting — and stops there. It builds no
+pilot-tracking on top; the pattern-of-life and tracker analysis treat a
+drone as a device, nothing more.
+
 ## The log
 
 JSON Lines, one file per post (append-only) or per session. A run
@@ -334,7 +382,7 @@ writes a header, a sighting per advertisement, any alerts, and a
 footer:
 
 ```json
-{"type": "session", "session_id": "61523c0f1d29", "label": "home", "label_source": "manual", "post": "mac", "started_at": 1792028551.45, "scan_mode": "passive", "format": 1, "nightjar_version": "2.1.0"}
+{"type": "session", "session_id": "61523c0f1d29", "label": "home", "label_source": "manual", "post": "mac", "started_at": 1792028551.45, "scan_mode": "passive", "format": 1, "nightjar_version": "2.2.0"}
 {"type": "sighting", "seen_at": 1792028551.85, "address": "C1:2A:9D:44:10:7E", "name": "AirPods Pro", "rssi": -43, "manufacturer_data": {"76": "0719010e202a9807..."}, "service_uuids": [], "tx_power": null, "service_data": {"0000feaa-...": "40..."}, "address_type": "random"}
 {"type": "alert", "seen_at": 1792028701.03, "kind": "new-device", "text": "New device appeared: ...", "identity_key": "fp:0b3f1aaf321f", "label": "...", "device_kind": "...", "address": "...", "data": {}}
 {"type": "session_end", "session_id": "61523c0f1d29", "ended_at": 1792028555.52, "sightings": 11}
@@ -386,6 +434,8 @@ skipped and counted rather than fatal.
    because a tag that follows you is in one place at a time. ✅
 8. **It thinks in places** — `anomalies`: the regular that didn't show,
    the newcomer at an odd hour. Absence is as loud as presence. ✅
+9. **Drones** — decode the Remote ID licence plate aircraft broadcast
+   over BLE: what it is, where it is, where its operator stands. ✅
 
 ## Scope
 

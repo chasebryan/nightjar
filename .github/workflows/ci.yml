@@ -36,3 +36,5 @@ jobs:
           nightjar report ci.jsonl demo.jsonl --json > /dev/null
           nightjar trackers demo.jsonl
           nightjar anomalies demo.jsonl
+          nightjar show "Drone" demo.jsonl --home 45.5,-122.9
+          nightjar watch --simulate --duration 3 --seed 1 --warmup 0 --quiet

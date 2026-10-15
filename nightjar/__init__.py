@@ -5,4 +5,4 @@ never transmits data. It only listens to what devices are already
 broadcasting and turns the noise into a registry of who is around.
 """
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"

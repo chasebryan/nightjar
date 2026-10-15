@@ -100,7 +100,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("scan", out.getvalue())
         self.assertIn("trackers", out.getvalue())
         self.assertNotIn("--simulate", out.getvalue())  # top-level, not scan's help
-        self.assertEqual(__version__, "2.1.0")
+        self.assertEqual(__version__, "2.2.0")
 
     def test_demo_command(self):
         with tempfile.TemporaryDirectory() as tmp:

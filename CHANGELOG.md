@@ -1,5 +1,41 @@
 # Changelog
 
+## 2.2.0
+
+### Drones (Remote ID)
+
+nightjar now reads the digital licence plate drones broadcast. Under the
+FAA's Remote ID rule (ASTM F3411 / Open Drone ID), most camera drones
+must broadcast what they are, where they are, and where their operator is
+standing — and one mandated transport is a plain BLE advertisement, the
+stream nightjar already listens to. Public by design, the drone of ADS-B.
+
+- A new `nightjar/remoteid.py` decodes service data 0xFFFA: Basic ID
+  (serial, aircraft type), Location (status, lat/lon to 1e-7, baro/geo
+  altitude, height, direction, speed, timestamp), System (operator
+  position, area, class), Self ID, Operator ID, Authentication count,
+  and Message Pack. The bit packing is verified against the reference
+  encoder/decoder, opendroneid-core-c, and its canonical test values.
+- Kind `Drone (Remote ID)`. A Remote ID serial is a stable identity by
+  design, so a drone's identity keys on its serial (basis "remote id")
+  above address or fingerprint, folding every address it rotates through;
+  the label becomes `Drone <serial>`, with the Self-ID text in the
+  details and a live state line (status, altitude, speed, height,
+  operator).
+- `watch` gains a `drone` alert, once per drone per session, on first
+  airborne with a known serial (presence fallback otherwise).
+- `--home LAT,LON` (opt-in, never logged) turns the broadcast operator
+  coordinates into a distance and bearing from you, in alerts and `show`.
+- `show` on a drone prints its flight track: positions over time, max
+  altitude, waypoints, operator position(s).
+- The simulator and `demo` include a clearly-synthetic multicopter
+  (serial `1581FTEST000001`) flying a survey circle, so `report`,
+  `trackers`, `show` and `watch` all have a drone to work with.
+
+Receive-only and no new dependencies, like everything else. Drone and
+operator positions are logged like any other sighting field; the project
+builds no pilot-tracking on top of them.
+
 ## 2.1.0
 
 Many ears, one brain — and a post that notices when the pattern breaks.
