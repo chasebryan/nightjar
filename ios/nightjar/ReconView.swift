@@ -25,7 +25,9 @@ struct DiscoveredService: Identifiable {
     let type: String
     let label: String
     let name: String
-    let endpoint: NWEndpoint
+    // Module-qualified: importing NetworkExtension alongside
+    // Network makes the bare NWEndpoint ambiguous to the compiler.
+    let endpoint: Network.NWEndpoint
 }
 
 /// Recon within what iOS allows an app: TCP connect scans (no raw
