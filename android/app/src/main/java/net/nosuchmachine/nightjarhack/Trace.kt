@@ -514,6 +514,21 @@ class NetworkTracer(
     private val _latestExport = MutableStateFlow<File?>(null)
     val latestExport: StateFlow<File?> = _latestExport
 
+    private val _centipedeRoute = MutableStateFlow<String?>(null)
+    val centipedeRoute: StateFlow<String?> = _centipedeRoute
+
+    @Volatile
+    var autoCentipede = false
+        private set
+
+    fun armCentipede() {
+        autoCentipede = true
+    }
+
+    fun clearCentipedeRoute() {
+        _centipedeRoute.value = null
+    }
+
     @Volatile
     private var generation = 0
     @Volatile
@@ -541,7 +556,8 @@ class NetworkTracer(
         adaptive: Boolean,
         rules: List<TraceRule>,
         probeFor: (String) -> Pair<ByteArray, String>?,
-        payloadNamed: (String) -> ByteArray?
+        payloadNamed: (String) -> ByteArray?,
+        autoCentipede: Boolean = false
     ) {
         if (_busy.value) return
         val base = traceBase(scopeText)
@@ -562,6 +578,7 @@ class NetworkTracer(
         generation += 1
         val gen = generation
         stoppedFor = -1
+        this.autoCentipede = autoCentipede
         _busy.value = true
         _lines.value = emptyList()
         val run = Run(
@@ -640,6 +657,38 @@ class NetworkTracer(
                         " · exported ${it.name}"
                     } ?: "")
                 )
+                if (this@NetworkTracer.autoCentipede) {
+                    this@NetworkTracer.autoCentipede = false
+                    val routeLines = mutableListOf<String>()
+                    var loaded = 0
+                    val sortedHosts = run.hosts.values.sortedBy {
+                        it.ip.substringAfterLast('.').toIntOrNull() ?: 0
+                    }
+                    for (host in sortedHosts) {
+                        if (loaded >= 300) break
+                        val ports = host.services.keys
+                            .filter { it > 0 }.sorted()
+                        if (ports.isEmpty()) continue
+                        val take = ports.take(300 - loaded)
+                        routeLines += host.ip + ":" +
+                            take.joinToString(",")
+                        loaded += take.size
+                    }
+                    if (routeLines.isNotEmpty()) {
+                        _centipedeRoute.value =
+                            routeLines.joinToString("\n")
+                        note(
+                            "→ Centipede configured — $loaded door(s) " +
+                                "on ${routeLines.size} host(s) loaded " +
+                                "as its route"
+                        )
+                    } else {
+                        note(
+                            "→ Centipede setup — the trace found no " +
+                                "open doors to load"
+                        )
+                    }
+                }
                 mouth.logRecon("network-trace", "$base.0/24", _lines.value)
                 _busy.value = false
             }
