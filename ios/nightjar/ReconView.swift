@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import NetworkExtension
 import Security
 import SwiftUI
 
@@ -24,6 +25,7 @@ struct DiscoveredService: Identifiable {
     let type: String
     let label: String
     let name: String
+    let endpoint: NWEndpoint
 }
 
 /// Recon within what iOS allows an app: TCP connect scans (no raw
@@ -258,7 +260,8 @@ final class ScanModel: ObservableObject {
                 let mine: [DiscoveredService] = results.compactMap { result in
                     if case .service(let name, _, _, _) = result.endpoint {
                         return DiscoveredService(type: type, label: label,
-                                                 name: name)
+                                                 name: name,
+                                                 endpoint: result.endpoint)
                     }
                     return nil
                 }
@@ -274,6 +277,41 @@ final class ScanModel: ObservableObject {
             browser.start(queue: queue)
             browsers.append(browser)
         }
+    }
+
+    /// Resolve a discovered Bonjour service to its IP and port by
+    /// opening one connection and reading where it landed — the
+    /// address the announcement itself never shows.
+    func resolve(_ service: DiscoveredService,
+                 done: @escaping ((String, Int)?) -> Void) {
+        let connection = NWConnection(to: service.endpoint, using: .tcp)
+        let finishLock = NSLock()
+        var finished = false
+        let finish: ((String, Int)?) -> Void = { resolved in
+            finishLock.lock()
+            defer { finishLock.unlock() }
+            guard !finished else { return }
+            finished = true
+            connection.cancel()
+            done(resolved)
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                if let path = connection.currentPath,
+                   case .hostPort(let host, let port) = path.remoteEndpoint {
+                    finish(("\(host)", Int(port.rawValue)))
+                } else {
+                    finish(nil)
+                }
+            case .failed, .cancelled:
+                finish(nil)
+            default:
+                break
+            }
+        }
+        connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + 3) { finish(nil) }
     }
 
     func stopDiscovery() {
@@ -641,6 +679,14 @@ struct ScanView: View {
     @State private var dnsName = ""
     @State private var dnsType = "A"
     @State private var sweepPort = "80"
+    @State private var ssid: String?
+
+    private var lanPrefix: String? {
+        guard let ip = Mouth.localIPAddress() else { return nil }
+        let parts = ip.split(separator: ".")
+        guard parts.count == 4 else { return nil }
+        return parts.dropLast().joined(separator: ".")
+    }
 
     private var portsToScan: [Int] {
         let typed = customPorts
@@ -655,6 +701,52 @@ struct ScanView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section(header: Text("This network")) {
+                    if let ip = Mouth.localIPAddress(),
+                       let prefix = lanPrefix {
+                        if let ssid = ssid {
+                            HStack {
+                                Text("Wi-Fi").foregroundStyle(.secondary)
+                                Spacer()
+                                Text(ssid)
+                            }
+                        }
+                        HStack {
+                            Text("Your IP").foregroundStyle(.secondary)
+                            Spacer()
+                            Text(ip).font(.body.monospaced())
+                        }
+                        HStack {
+                            Text("Subnet").foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(prefix).0/24")
+                                .font(.body.monospaced())
+                        }
+                        Button {
+                            Haptics.tap()
+                            host = "\(prefix).1"
+                            toasts.show("Scan target set to the "
+                                        + "likely gateway")
+                        } label: {
+                            HStack {
+                                Text("Likely gateway")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(prefix).1")
+                                    .font(.body.monospaced())
+                                Image(systemName: "scope")
+                                    .font(.caption)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text("Not on Wi-Fi — join a network and the "
+                             + "recon tools wake up.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section(header: Text("Target")) {
                     TextField("hostname or IP", text: $host)
                         .textInputAutocapitalization(.never)
@@ -818,12 +910,26 @@ struct ScanView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     ForEach(model.discovered) { service in
-                        HStack {
-                            Text(service.name).lineLimit(1)
-                            Spacer()
-                            Text(service.label)
-                                .font(.caption).foregroundStyle(.secondary)
+                        Button { resolveTapped(service) } label: {
+                            HStack {
+                                Text(service.name).lineLimit(1)
+                                Spacer()
+                                Text(service.label)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "paperplane.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .foregroundStyle(.primary)
                         }
+                        .buttonStyle(.plain)
+                    }
+                    if !model.discovered.isEmpty {
+                        Text("Tap a service to resolve it to an "
+                             + "address and load it into Send.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -838,7 +944,12 @@ struct ScanView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Scan")
-            .onAppear { model.startDiscovery() }
+            .onAppear {
+                model.startDiscovery()
+                NEHotspotNetwork.fetchCurrent { network in
+                    DispatchQueue.main.async { ssid = network?.ssid }
+                }
+            }
             .onDisappear { model.stopDiscovery() }
             .onChange(of: model.scanning) { scanning in
                 if !scanning, model.totalCount > 0 {
@@ -848,6 +959,10 @@ struct ScanView: View {
                     mouth.lastScanTargets = model.results.map {
                         "tcp://\(base):\($0.port)"
                     }
+                    mouth.logRecon("scan", base, lines: model.results.map {
+                        "\($0.port) \($0.service)"
+                        + ($0.banner.map { " — \($0)" } ?? "")
+                    })
                 }
             }
             .onChange(of: model.sweeping) { sweeping in
@@ -858,6 +973,16 @@ struct ScanView: View {
                     mouth.lastScanTargets = model.sweepHosts.map {
                         "tcp://\($0.ip):\($0.port)"
                     }
+                    mouth.logRecon("sweep", "port \(sweepPort)",
+                                   lines: model.sweepHosts.map {
+                                       "\($0.ip):\($0.port) open"
+                                   })
+                }
+            }
+            .onChange(of: dns.querying) { querying in
+                if !querying, !dns.lines.isEmpty {
+                    mouth.logRecon("dns", "\(dnsName) \(dnsType)",
+                                   lines: dns.lines)
                 }
             }
         }
@@ -870,6 +995,25 @@ struct ScanView: View {
             + "\(result.port)"
         mouth.scanHandoffPayload = ScanModel.payloadByPort[result.port]
         tab = 1
+    }
+
+    private func resolveTapped(_ service: DiscoveredService) {
+        Haptics.select()
+        model.resolve(service) { resolved in
+            DispatchQueue.main.async {
+                guard let resolved = resolved else {
+                    toasts.show("Could not resolve \(service.name)",
+                                error: true)
+                    return
+                }
+                let ip = resolved.0
+                let port = resolved.1
+                mouth.scanHandoffTarget = "tcp://\(ip):\(port)"
+                mouth.scanHandoffPayload =
+                    ScanModel.payloadByPort[port]
+                tab = 1
+            }
+        }
     }
 
     private func sweepHandoff(_ found: SweepHost) {
