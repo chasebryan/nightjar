@@ -713,9 +713,13 @@ def cmd_send(args) -> int:
         print(hexdump(payload.data))
         return 0
 
-    if target.scheme in ("ble", "ble-gatt"):
-        return _send_ble_peripheral(target, payload, args)
-    return _send_loop(target, payload, args)
+    try:
+        if target.scheme in ("ble", "ble-gatt"):
+            return _send_ble_peripheral(target, payload, args)
+        return _send_loop(target, payload, args)
+    except (SendError, OSError) as exc:
+        print(f"nightjar: {exc}", file=sys.stderr)
+        return 2
 
 
 def cmd_serve(args) -> int:
