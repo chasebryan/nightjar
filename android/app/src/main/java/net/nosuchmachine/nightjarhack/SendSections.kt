@@ -16,6 +16,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -266,6 +267,15 @@ fun NetworkTraceSection(app: NightjarApp) {
     val export by tracer.latestExport.collectAsState()
     val crawlBusy by app.crawl.crawlBusy.collectAsState()
     val talkBusy by app.crawl.talkBusy.collectAsState()
+    var centipedeRoute by prefString(prefs, "centipedeRoute", "")
+    val pendingRoute by tracer.centipedeRoute.collectAsState()
+    LaunchedEffect(pendingRoute) {
+        val route = pendingRoute
+        if (route != null) {
+            centipedeRoute = route
+            tracer.clearCentipedeRoute()
+        }
+    }
 
     CollapsibleSection("Network trace", open) {
         Text(
@@ -341,6 +351,19 @@ fun NetworkTraceSection(app: NightjarApp) {
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Stop the trace") }
+            OutlinedButton(
+                onClick = { tracer.armCentipede() },
+                enabled = !tracer.autoCentipede,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    if (tracer.autoCentipede) {
+                        "Centipede setup armed for this trace"
+                    } else {
+                        "Set up the Centipede from this trace"
+                    }
+                )
+            }
         } else {
             Button(
                 onClick = {
@@ -389,6 +412,61 @@ fun NetworkTraceSection(app: NightjarApp) {
                 enabled = !crawlBusy && !talkBusy,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Trace the network") }
+            OutlinedButton(
+                onClick = {
+                    tracer.start(
+                        scopeText = scopeText,
+                        discoveryPorts = discoveryPorts,
+                        profilePorts = profilePorts,
+                        includeBonjour = useBonjour,
+                        adaptive = adaptive,
+                        rules = TraceRule.parse(rulesText),
+                        probeFor = { text -> probeForTarget(app, text) },
+                        payloadNamed = { name ->
+                            val item = app.book.items.value
+                                .firstOrNull { it.name == name }
+                            if (item == null) {
+                                null
+                            } else {
+                                try {
+                                    PayloadKit.build(
+                                        source = item.source,
+                                        text = if (item.source == "text") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        hex = if (item.source == "hex") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        b64 = if (item.source == "base64") {
+                                            item.text
+                                        } else {
+                                            ""
+                                        },
+                                        xorSpec = item.xorKey,
+                                        useGzip = item.useGzip
+                                    )
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        },
+                        autoCentipede = true
+                    )
+                },
+                enabled = !crawlBusy && !talkBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Trace & set up the Centipede") }
+            Text(
+                "Runs the trace, then replaces the Centipede's " +
+                    "route with every door it found \u2014 one port " +
+                    "train per host, ready to release. Nothing " +
+                    "else to configure.",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
         if (status.isNotEmpty()) {
             Text(status, style = MaterialTheme.typography.bodySmall)
