@@ -133,7 +133,10 @@ object Crawl {
 /// The crawl engine: the centipede walk and Crosstalk, on the
 /// mouth's reply channel. A port of Crawl.swift; the state is
 /// published as flows for the Compose UI.
-class CrawlEngine(private val mouth: Mouth, private val serve: Serve) {
+class CrawlEngine(
+    private val mouth: Mouth, private val serve: Serve,
+    private val traceStore: TraceBookStore? = null
+) {
 
     private val _crawlBusy = MutableStateFlow(false)
     val crawlBusy: StateFlow<Boolean> = _crawlBusy
@@ -208,7 +211,9 @@ class CrawlEngine(private val mouth: Mouth, private val serve: Serve) {
         perDevice: Boolean, homeTarget: String, smartSeed: Boolean,
         probeFor: (String) -> Pair<ByteArray, String>?,
         payloadFor: (String) -> ByteArray?,
-        framing: String, method: String
+        framing: String, method: String,
+        rules: List<TraceRule> = emptyList(),
+        payloadNamed: (String) -> ByteArray? = { null }
     ) {
         if (_crawlBusy.value || _talkBusy.value) return
         val (journeyAll, freshStarts) = Crawl.expandJourney(route, perDevice, returnLeg)
@@ -257,12 +262,88 @@ class CrawlEngine(private val mouth: Mouth, private val serve: Serve) {
                 val reply = if (ok) mouth.replyData(hopStart) else null
                 val elapsed = (System.currentTimeMillis() - hopStart) / 1000.0
                 if (reply != null) {
-                    carried = reply
+                    traceStore?.record(text, reply, "centipede")
+                    // Adaptive rules: the reply is read before
+                    // it is carried on. Tags annotate the
+                    // finding, a stop drops the carry, and the
+                    // first matching followup buys one extra
+                    // knock on this same door.
+                    var tagNote = ""
+                    var ruleStopped = false
+                    var followupRule: TraceRule? = null
+                    if (rules.isNotEmpty()) {
+                        val parsedTarget = try {
+                            SendTarget.parse(text)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        val targetPort = when (parsedTarget) {
+                            is SendTarget.Tcp -> parsedTarget.port
+                            is SendTarget.Udp -> parsedTarget.port
+                            is SendTarget.Http ->
+                                if (parsedTarget.url.port >= 0) {
+                                    parsedTarget.url.port
+                                } else if (parsedTarget.https) {
+                                    443
+                                } else {
+                                    80
+                                }
+                            else -> -1
+                        }
+                        val haystack =
+                            (PayloadKit.printableText(reply) ?: "").lowercase()
+                        for (rule in rules) {
+                            if (!rule.matches(targetPort, haystack)) continue
+                            when (rule.action) {
+                                TraceRule.Action.TAG -> {
+                                    tagNote += " [tag: ${rule.actionValue}]"
+                                    traceStore?.addTagForTarget(
+                                        text, rule.actionValue
+                                    )
+                                }
+                                TraceRule.Action.STOP -> ruleStopped = true
+                                TraceRule.Action.FOLLOWUP -> {
+                                    if (followupRule == null) {
+                                        followupRule = rule
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    carried = if (ruleStopped) null else reply
                     val summary = replySummary(reply)
-                    val finding = "$text ($leg) — $summary"
+                    val finding = "$text ($leg) — $summary" + tagNote +
+                        (if (ruleStopped) " [rule: stop]" else "")
                     findings.add(finding)
                     withContext(Dispatchers.Main) {
                         _crawlFindings.value = findings.toList()
+                    }
+                    val pendingFollowup = followupRule
+                    if (pendingFollowup != null) {
+                        val named = payloadNamed(pendingFollowup.actionValue)
+                        if (named != null) {
+                            val followStart = System.currentTimeMillis()
+                            val followOk = hopSend(text, named, framing, method)
+                            if (crawlGeneration != gen) break
+                            val followReply = if (followOk) {
+                                mouth.replyData(followStart)
+                            } else {
+                                null
+                            }
+                            if (followReply != null) {
+                                traceStore?.record(
+                                    text, followReply, "centipede-followup"
+                                )
+                                findings.add(
+                                    "$text ($leg) — follow-up " +
+                                        "(${pendingFollowup.actionValue}) — " +
+                                        replySummary(followReply)
+                                )
+                                withContext(Dispatchers.Main) {
+                                    _crawlFindings.value = findings.toList()
+                                }
+                            }
+                        }
                     }
                 }
                 withContext(Dispatchers.Main) {
