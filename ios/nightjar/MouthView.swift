@@ -228,7 +228,13 @@ struct SendView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Send")
-            .onAppear { mouth.startBrowsing() }
+            .onAppear {
+                mouth.startBrowsing()
+                consumeScanHandoff()
+            }
+            .onChange(of: mouth.scanHandoffTarget) { _ in
+                consumeScanHandoff()
+            }
             .onChange(of: payloadText) { _ in unselectIfEditing() }
             .onChange(of: payloadHex) { _ in unselectIfEditing() }
             .onChange(of: payloadB64) { _ in unselectIfEditing() }
@@ -493,6 +499,24 @@ struct SendView: View {
     /// except while `load` itself is doing the editing.
     private func unselectIfEditing() {
         if !suppressClear { selectedPayloadID = nil }
+    }
+
+    /// Scan → Send handoff: an open port tapped in the Scan tab
+    /// arrives as a target (and, where one fits, the library probe
+    /// that speaks the port's language).
+    private func consumeScanHandoff() {
+        guard let handed = mouth.scanHandoffTarget else { return }
+        mouth.scanHandoffTarget = nil
+        target = handed
+        phoneSelection = nil
+        if let name = mouth.scanHandoffPayload,
+           let item = book.items.first(where: { $0.name == name }) {
+            mouth.scanHandoffPayload = nil
+            load(item)
+        } else {
+            mouth.scanHandoffPayload = nil
+            toasts.show("From Scan: \(handed) is set in step 1")
+        }
     }
 
     private func load(_ item: SavedPayload) {
