@@ -57,12 +57,21 @@ struct ToastView: View {
 /// until it lands, the app simply wears black.
 struct AppBackdrop: View {
     var body: some View {
-        ZStack {
-            Color(white: 0.03)
-            Image("AppBackground")
-                .resizable()
-                .scaledToFill()
-            Rectangle().fill(Color.black.opacity(0.18))
+        // GeometryReader pins the backdrop to exactly the size it
+        // is offered. A bare scaledToFill image inside a ZStack
+        // reports its natural size (1320x2855!) and blows the
+        // whole layout out to match — frame + clip keep it tame.
+        GeometryReader { geo in
+            ZStack {
+                Color(white: 0.03)
+                Image("AppBackground")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                Rectangle().fill(Color.black.opacity(0.18))
+            }
+            .ignoresSafeArea()
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
