@@ -1,0 +1,494 @@
+{
+ "bleDevices": [
+  {
+   "closestRSSI": -41,
+   "firstHeard": "2026-10-15T13:58:11Z",
+   "id": "E4:11:9A:02:77:C1",
+   "lastHeard": "2026-10-15T14:11:47Z",
+   "name": "AirPods Pro",
+   "rotatingAddress": false,
+   "serviceUUIDs": [
+    "FE2C"
+   ],
+   "sightings": 212,
+   "smoothedRSSI": -52.4,
+   "vendor": "Apple"
+  },
+  {
+   "closestRSSI": -63,
+   "firstHeard": "2026-10-15T14:01:03Z",
+   "id": "D8:02:C3:5B:19:6E",
+   "lastHeard": "2026-10-15T14:10:58Z",
+   "name": "Tile Slim",
+   "rotatingAddress": true,
+   "serviceUUIDs": [
+    "FEED"
+   ],
+   "sightings": 87,
+   "smoothedRSSI": -70.1,
+   "vendor": "Tile"
+  },
+  {
+   "closestRSSI": -48,
+   "firstHeard": "2026-10-15T13:47:29Z",
+   "id": "F1:7D:44:90:AB:02",
+   "lastHeard": "2026-10-15T14:12:01Z",
+   "name": "Mi Band 8",
+   "rotatingAddress": true,
+   "serviceUUIDs": [
+    "FEE0",
+    "180D"
+   ],
+   "sightings": 340,
+   "smoothedRSSI": -57.8,
+   "vendor": "Xiaomi"
+  }
+ ],
+ "bonjour": [
+  {
+   "host": "192.168.4.30",
+   "label": "Printer",
+   "name": "Brother HL-L2390DW",
+   "port": 631,
+   "type": "_ipp._tcp"
+  },
+  {
+   "host": "192.168.4.10",
+   "label": "HTTP",
+   "name": "DiskStation",
+   "port": 5000,
+   "type": "_http._tcp"
+  }
+ ],
+ "diff": {
+  "changedServices": [
+   "192.168.4.1:80"
+  ],
+  "missingHosts": [
+   "192.168.4.99"
+  ],
+  "missingServices": [
+   "192.168.4.10:21"
+  ],
+  "newHosts": [
+   "192.168.4.50"
+  ],
+  "newServices": [
+   "192.168.4.50:554",
+   "192.168.4.20:1883"
+  ]
+ },
+ "edges": [
+  {
+   "evidence": "_ipp._tcp \u2014 Brother HL-L2390DW",
+   "from": "phone",
+   "kind": "bonjour",
+   "port": 631,
+   "to": "host:192.168.4.30"
+  },
+  {
+   "evidence": "_http._tcp \u2014 DiskStation",
+   "from": "phone",
+   "kind": "bonjour",
+   "port": 5000,
+   "to": "host:192.168.4.10"
+  },
+  {
+   "evidence": "plug's HTTP reply names broker 192.168.4.20:1883",
+   "from": "host:192.168.4.40",
+   "kind": "references",
+   "port": 1883,
+   "to": "host:192.168.4.20"
+  }
+ ],
+ "externalReferences": [
+  {
+   "evidence": "Location header in the 303 reply from 192.168.4.1:80 \u2014 recorded, never contacted",
+   "host": "blocked.eero.com",
+   "port": 443,
+   "url": "https://blocked.eero.com/"
+  }
+ ],
+ "generatedAt": "2026-10-15T14:12:07Z",
+ "hosts": [
+  {
+   "firstSeen": "2026-10-14T02:31:10Z",
+   "ip": "192.168.4.1",
+   "lastSeen": "2026-10-15T14:10:02Z",
+   "services": [
+    {
+     "bannerFirstLine": "HTTP/1.0 303 See Other",
+     "firstSeen": "2026-10-14T02:31:10Z",
+     "lastSeen": "2026-10-15T14:10:02Z",
+     "notes": [
+      "Location: https://blocked.eero.com/"
+     ],
+     "port": 80,
+     "probesUsed": [
+      "HTTP GET / (raw)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "HTTP/1.0 303 See Other\r\nLocation: https://blocked.eero.com/\r\nContent-Length: 0",
+     "serviceName": "HTTP",
+     "signature": "9f2c41aa07b3d58e1c6f04a2b87d3e55c0194f6a8b2d7e3091f5a6c4b8d2e701",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 4
+    },
+    {
+     "bannerFirstLine": "TLS handshake (no banner)",
+     "firstSeen": "2026-10-14T02:31:12Z",
+     "lastSeen": "2026-10-15T14:10:03Z",
+     "notes": [],
+     "port": 443,
+     "probesUsed": [],
+     "proto": "tcp",
+     "replyPreview": "",
+     "serviceName": "HTTPS",
+     "signature": "51bd08e2f7a94c1d83b6e05f2a719c4d8e3b6a5091f27c4d8e5b6a7091f2c3d405",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 4
+    }
+   ],
+   "sources": [
+    "trace",
+    "centipede"
+   ],
+   "tags": [
+    "gateway",
+    "web"
+   ],
+   "timesSeen": 4
+  },
+  {
+   "firstSeen": "2026-10-14T02:31:15Z",
+   "ip": "192.168.4.10",
+   "lastSeen": "2026-10-15T14:10:21Z",
+   "services": [
+    {
+     "bannerFirstLine": "SMB2 negotiation response",
+     "firstSeen": "2026-10-14T02:31:15Z",
+     "lastSeen": "2026-10-15T14:10:20Z",
+     "notes": [],
+     "port": 445,
+     "probesUsed": [],
+     "proto": "tcp",
+     "replyPreview": "",
+     "serviceName": "SMB",
+     "signature": "aa04c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07",
+     "tags": [],
+     "timesSeen": 4
+    },
+    {
+     "bannerFirstLine": "HTTP/1.1 200 OK",
+     "firstSeen": "2026-10-14T02:31:16Z",
+     "lastSeen": "2026-10-15T14:10:21Z",
+     "notes": [
+      "Server: nginx",
+      "title: DiskStation - DiskStation"
+     ],
+     "port": 5000,
+     "probesUsed": [
+      "HTTP GET / (raw)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "HTTP/1.1 200 OK\r\nServer: nginx\r\n<title>DiskStation - DiskStation</title>",
+     "serviceName": "HTTP",
+     "signature": "c81f3b925e07d4a6aa04c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 4
+    }
+   ],
+   "sources": [
+    "trace",
+    "bonjour"
+   ],
+   "tags": [
+    "nas"
+   ],
+   "timesSeen": 4
+  },
+  {
+   "firstSeen": "2026-10-14T02:31:19Z",
+   "ip": "192.168.4.20",
+   "lastSeen": "2026-10-15T14:10:44Z",
+   "services": [
+    {
+     "bannerFirstLine": "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3",
+     "firstSeen": "2026-10-14T02:31:19Z",
+     "lastSeen": "2026-10-15T14:10:40Z",
+     "notes": [],
+     "port": 22,
+     "probesUsed": [],
+     "proto": "tcp",
+     "replyPreview": "SSH-2.0-OpenSSH_9.2p1 Debian-2+deb12u3",
+     "serviceName": "SSH",
+     "signature": "3b925e07d4a6c81f04c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6",
+     "tags": [
+      "ssh"
+     ],
+     "timesSeen": 4
+    },
+    {
+     "bannerFirstLine": "MQTT CONNACK (session present: 0, return code: 0)",
+     "firstSeen": "2026-10-15T14:10:44Z",
+     "lastSeen": "2026-10-15T14:10:44Z",
+     "notes": [],
+     "port": 1883,
+     "probesUsed": [
+      "MQTT CONNECT (client: nightjar)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "",
+     "serviceName": "MQTT",
+     "signature": "925e07d4a6c81f3b04c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6c8",
+     "tags": [],
+     "timesSeen": 1
+    }
+   ],
+   "sources": [
+    "trace"
+   ],
+   "tags": [
+    "shell",
+    "mqtt-broker"
+   ],
+   "timesSeen": 4
+  },
+  {
+   "firstSeen": "2026-10-14T02:31:22Z",
+   "ip": "192.168.4.30",
+   "lastSeen": "2026-10-15T14:11:05Z",
+   "services": [
+    {
+     "bannerFirstLine": "HTTP/1.1 200 OK",
+     "firstSeen": "2026-10-14T02:31:22Z",
+     "lastSeen": "2026-10-15T14:11:05Z",
+     "notes": [
+      "Server: Brother/1.0"
+     ],
+     "port": 631,
+     "probesUsed": [
+      "HTTP GET / (raw)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "HTTP/1.1 200 OK\r\nServer: Brother/1.0\r\n<title>Brother HL-L2390DW</title>",
+     "serviceName": "IPP",
+     "signature": "5e07d4a6c81f3b9204c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 4
+    },
+    {
+     "bannerFirstLine": "",
+     "firstSeen": "2026-10-14T02:31:23Z",
+     "lastSeen": "2026-10-15T14:11:04Z",
+     "notes": [],
+     "port": 9100,
+     "probesUsed": [
+      "Printer test page (TCP 9100)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "",
+     "serviceName": "JetDirect",
+     "signature": "07d4a6c81f3b925e04c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6c",
+     "tags": [],
+     "timesSeen": 4
+    }
+   ],
+   "sources": [
+    "trace",
+    "bonjour"
+   ],
+   "tags": [
+    "printer"
+   ],
+   "timesSeen": 4
+  },
+  {
+   "firstSeen": "2026-10-14T02:31:26Z",
+   "ip": "192.168.4.40",
+   "lastSeen": "2026-10-15T14:11:31Z",
+   "services": [
+    {
+     "bannerFirstLine": "HTTP/1.1 200 OK",
+     "firstSeen": "2026-10-14T02:31:26Z",
+     "lastSeen": "2026-10-15T14:11:31Z",
+     "notes": [
+      "Server: ESP8266",
+      "names broker 192.168.4.20:1883"
+     ],
+     "port": 80,
+     "probesUsed": [
+      "HTTP GET / (raw)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "HTTP/1.1 200 OK\r\nServer: ESP8266\r\n{\"state\":\"on\",\"broker\":\"192.168.4.20:1883\"}",
+     "serviceName": "HTTP",
+     "signature": "d4a6c81f3b925e0704c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 3
+    }
+   ],
+   "sources": [
+    "trace"
+   ],
+   "tags": [
+    "iot",
+    "web"
+   ],
+   "timesSeen": 3
+  },
+  {
+   "firstSeen": "2026-10-15T14:11:52Z",
+   "ip": "192.168.4.50",
+   "lastSeen": "2026-10-15T14:11:58Z",
+   "services": [
+    {
+     "bannerFirstLine": "HTTP/1.1 401 Unauthorized",
+     "firstSeen": "2026-10-15T14:11:52Z",
+     "lastSeen": "2026-10-15T14:11:52Z",
+     "notes": [
+      "WWW-Authenticate: Digest realm=\"IPCamera\""
+     ],
+     "port": 80,
+     "probesUsed": [
+      "HTTP GET / (raw)"
+     ],
+     "proto": "tcp",
+     "replyPreview": "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Digest realm=\"IPCamera\"",
+     "serviceName": "HTTP",
+     "signature": "a6c81f3b925e07d404c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6",
+     "tags": [
+      "web"
+     ],
+     "timesSeen": 1
+    },
+    {
+     "bannerFirstLine": "RTSP/1.0 200 OK",
+     "firstSeen": "2026-10-15T14:11:58Z",
+     "lastSeen": "2026-10-15T14:11:58Z",
+     "notes": [],
+     "port": 554,
+     "probesUsed": [],
+     "proto": "tcp",
+     "replyPreview": "RTSP/1.0 200 OK\r\nCSeq: 1\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY",
+     "serviceName": "RTSP",
+     "signature": "c81f3b925e07d4a604c6d81f3b925e07d4a6c81f3b925e07d4a6c81f3b925e07d4a6c",
+     "tags": [],
+     "timesSeen": 1
+    }
+   ],
+   "sources": [
+    "trace"
+   ],
+   "tags": [
+    "camera"
+   ],
+   "timesSeen": 1
+  }
+ ],
+ "kind": "trace-run",
+ "limitations": [
+  "TCP connect only \u2014 no ICMP, ARP, or UDP discovery; a host that drops every probe can stay invisible.",
+  "Silent or drop-firewalled hosts are missed; an empty map is not proof an empty network.",
+  "BLE devices are heard from the Listen registry, never probed by the trace.",
+  "References outside the traced /24 are recorded, never contacted."
+ ],
+ "nodes": [
+  {
+   "id": "phone",
+   "kind": "phone",
+   "label": "this phone"
+  },
+  {
+   "id": "host:192.168.4.1",
+   "kind": "host",
+   "label": "192.168.4.1"
+  },
+  {
+   "id": "host:192.168.4.10",
+   "kind": "host",
+   "label": "192.168.4.10"
+  },
+  {
+   "id": "host:192.168.4.20",
+   "kind": "host",
+   "label": "192.168.4.20"
+  },
+  {
+   "id": "host:192.168.4.30",
+   "kind": "host",
+   "label": "192.168.4.30"
+  },
+  {
+   "id": "host:192.168.4.40",
+   "kind": "host",
+   "label": "192.168.4.40"
+  },
+  {
+   "id": "host:192.168.4.50",
+   "kind": "host",
+   "label": "192.168.4.50"
+  }
+ ],
+ "run": {
+  "base": "192.168.4",
+  "finishedAt": "2026-10-15T14:12:03Z",
+  "id": "7E3A51C2-9B4D-4F0A-A6E1-2C8D5B907F31",
+  "scope": "192.168.4.0/24",
+  "settings": {
+   "adaptive": true,
+   "discoveryPorts": [
+    80,
+    443,
+    22,
+    445,
+    1883,
+    8080,
+    8443,
+    9100
+   ],
+   "includeBonjour": true,
+   "profilePorts": [
+    22,
+    80,
+    443,
+    445,
+    631,
+    1883,
+    5000,
+    554,
+    8080,
+    8443,
+    9100
+   ],
+   "ruleCount": 3
+  },
+  "startedAt": "2026-10-15T14:09:41Z",
+  "stopReason": "frontier exhausted"
+ },
+ "schema": "net.nosuchmachine.nightjar.network-trace",
+ "schemaVersion": 2,
+ "summary": {
+  "activeProbes": 11,
+  "bleDevices": 3,
+  "bonjourServices": 2,
+  "changedServices": 1,
+  "doorsOpen": 11,
+  "externalReferences": 1,
+  "followups": 1,
+  "hostsProfiled": 6,
+  "hostsSeen": 6,
+  "newHosts": 1,
+  "newServices": 2
+ }
+}
