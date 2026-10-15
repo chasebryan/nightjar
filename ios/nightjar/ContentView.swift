@@ -35,6 +35,10 @@ struct ContentView: View {
                 .appThemed()
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(5)
+            ReconBenchView(tab: $tab)
+                .appThemed()
+                .tabItem { Label("Recon", systemImage: "target") }
+                .tag(6)
         }
         .onChange(of: tab) { _ in Haptics.select() }
         .overlay(alignment: .top) {

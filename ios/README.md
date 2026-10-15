@@ -340,3 +340,25 @@ the Swift is written in a Linux VM with no Xcode in it, so the
 first build of a given change may surface a small, local error;
 the fix follows in the next commit, and the burn-down so far has
 never taken more than two rounds.
+
+## Recon (2.7.0)
+
+A **Recon** tab, beside Send and Serve: knock, connect, fuzz, over a
+library of wire-exact protocol first words.
+
+- **Knock** — every port the library can name, each knocked with the
+  protocol that port expects. A star means the reply carried the
+  protocol's own tell, so the port is *identified*, not merely open.
+  Tap a hit to load it into Send.
+- **Connect** — a console against one target, with hexdump rendering
+  for binary replies.
+- **Fuzz** — seven mutators, a reproducible seed, a reply digest per
+  round.
+- **Library** — 105 probes over 78 TCP and 14 UDP ports, with one
+  button to add every one to the payload library so they are sendable
+  by hand from the Send tab too.
+
+The Listen tab is untouched: the ear still never connects. The same
+library is mirrored into the Python CLI (`nightjar send --preset`,
+`nightjar knock`) for parity, and the manual is
+[HACKER-RECON.md](../HACKER-RECON.md).
