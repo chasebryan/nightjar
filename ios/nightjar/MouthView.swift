@@ -1690,14 +1690,29 @@ struct SendView: View {
 
     /// Scan → Send handoff: an open port tapped in the Scan tab
     /// arrives as a target (and, where one fits, the library probe
-    /// that speaks the port's language).
+    /// that speaks the port's language). A Recon handoff may also
+    /// carry the probe's wire bytes as hex; those load directly as
+    /// a custom hex payload, library or no library.
     private func consumeScanHandoff() {
         guard let handed = mouth.scanHandoffTarget else { return }
         mouth.scanHandoffTarget = nil
         target = handed
         noteTargetUsed(handed)
         phoneSelection = nil
-        if let name = mouth.scanHandoffPayload,
+        if let hex = mouth.scanHandoffHex {
+            mouth.scanHandoffHex = nil
+            mouth.scanHandoffPayload = nil
+            suppressClear = true
+            source = "hex"
+            payloadHex = hex
+            selectedPayloadID = nil
+            customExpanded = false
+            // Same discipline as load(_:): the programmatic edit is
+            // released on the next main-queue turn, after this block
+            // (and its onChange deliveries) completes.
+            DispatchQueue.main.async { suppressClear = false }
+            toasts.show("Probe bytes loaded — ready in step 3")
+        } else if let name = mouth.scanHandoffPayload,
            let item = book.items.first(where: { $0.name == name }) {
             mouth.scanHandoffPayload = nil
             load(item)
