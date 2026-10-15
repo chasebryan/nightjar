@@ -1406,6 +1406,100 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    // MARK: Centipede subnet sweep
+
+    @Published var crawlSweepBusy = false
+    @Published var crawlSweepStatus: String?
+    private let probeQueue = DispatchQueue(
+        label: "net.nosuchmachine.nightjarhack.probes",
+        attributes: .concurrent)
+
+    /// Knock one port across the phone's whole Wi-Fi /24 and
+    /// hand back every host that answered, in numeric order —
+    /// the Scan tab sweep's discipline (32 at a time, 1 s
+    /// deadline), feeding the centipede's route. The phone's own
+    /// address is skipped.
+    func sweepSubnet(port: Int, completion: @escaping ([String]) -> Void) {
+        guard !crawlSweepBusy, (1...65535).contains(port) else {
+            completion([])
+            return
+        }
+        guard let own = Mouth.localIPAddress() else {
+            crawlSweepStatus = "No Wi-Fi address to sweep from"
+            completion([])
+            return
+        }
+        let parts = own.split(separator: ".")
+        guard parts.count == 4 else {
+            crawlSweepStatus = "No Wi-Fi address to sweep from"
+            completion([])
+            return
+        }
+        let base = parts.dropLast().joined(separator: ".")
+        crawlSweepBusy = true
+        crawlSweepStatus = "Sweeping \(base).0/24 on port \(port)…"
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var hits: [Int] = []
+        DispatchQueue.global().async { [weak self] in
+            guard let self = self else { return }
+            let gate = DispatchSemaphore(value: 32)
+            for octet in 1...254 {
+                let host = "\(base).\(octet)"
+                if host == own { continue }
+                gate.wait()
+                group.enter()
+                self.probe(host: host, port: port) { open in
+                    if open {
+                        lock.lock()
+                        hits.append(octet)
+                        lock.unlock()
+                    }
+                    gate.signal()
+                    group.leave()
+                }
+            }
+            group.notify(queue: .main) { [weak self] in
+                self?.crawlSweepBusy = false
+                let hosts = hits.sorted().map { "\(base).\($0)" }
+                self?.crawlSweepStatus = hosts.isEmpty
+                    ? "Sweep done — nothing answered on port \(port)"
+                    : "Sweep done — \(hosts.count) host(s) answered "
+                      + "on port \(port)"
+                completion(hosts)
+            }
+        }
+    }
+
+    /// One connect knock with a 1 s deadline; the completion
+    /// fires exactly once with whether the port answered.
+    private func probe(host: String, port: Int,
+                       completion: @escaping (Bool) -> Void) {
+        let conn = NWConnection(
+            host: NWEndpoint.Host(host),
+            port: NWEndpoint.Port(rawValue: UInt16(port)) ?? .any,
+            using: .tcp)
+        let lock = NSLock()
+        var done = false
+        func finish(_ open: Bool) {
+            lock.lock()
+            if done { lock.unlock(); return }
+            done = true
+            lock.unlock()
+            conn.cancel()
+            completion(open)
+        }
+        conn.stateUpdateHandler = { state in
+            switch state {
+            case .ready: finish(true)
+            case .failed, .cancelled: finish(false)
+            default: break
+            }
+        }
+        conn.start(queue: probeQueue)
+        probeQueue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
+    }
+
     // MARK: Timed delivery
 
     @Published var scheduleStatus: String?
