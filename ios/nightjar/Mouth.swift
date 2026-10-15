@@ -179,6 +179,95 @@ enum PayloadKit {
 
     // MARK: Framing (mirrors frame/unframe in send.py)
 
+    /// Payload templating: {{target}}, {{host}}, {{port}}, {{ip}}
+    /// and {{scheme}} are replaced per destination, so one payload
+    /// can address each target it is sent to — callbacks, Host
+    /// headers, self-referential probes. Runs on the raw source
+    /// text before hex/base64 decoding, so templates work in every
+    /// source mode.
+    static func substitute(_ raw: String, targetText: String) -> String {
+        var host = "", port = "", scheme = ""
+        if targetText.hasPrefix("phone:") {
+            host = String(targetText.dropFirst(6))
+            scheme = "phone"
+        } else if let parsed = try? SendTarget.parse(targetText) {
+            switch parsed {
+            case .tcp(let h, let p, let tls):
+                host = h; port = "\(p)"; scheme = tls ? "tcp+tls" : "tcp"
+            case .udp(let h, let p):
+                host = h; port = "\(p)"; scheme = "udp"
+            case .http(let url, let https):
+                host = url.host ?? ""
+                port = url.port.map(String.init) ?? (https ? "443" : "80")
+                scheme = https ? "https" : "http"
+            default:
+                break
+            }
+        }
+        var out = raw
+        for (token, value) in [("{{target}}", targetText),
+                               ("{{host}}", host), ("{{ip}}", host),
+                               ("{{port}}", port), ("{{scheme}}", scheme)] {
+            out = out.replacingOccurrences(of: token, with: value)
+        }
+        return out
+    }
+
+    // MARK: PayPlant builders — payloads a target service stores
+
+    private static func mqttRemainingLength(_ value: Int) -> Data {
+        var data = Data()
+        var n = value
+        repeat {
+            var byte = UInt8(n % 128)
+            n /= 128
+            if n > 0 { byte |= 0x80 }
+            data.append(byte)
+        } while n > 0
+        return data
+    }
+
+    static func mqttConnect(clientID: String) -> Data {
+        var body = Data()
+        body.append(contentsOf: [0x00, 0x04])
+        body.append(contentsOf: "MQTT".utf8)
+        body.append(contentsOf: [0x04, 0x02, 0x00, 0x3C])
+        body.append(UInt8(clientID.utf8.count >> 8))
+        body.append(UInt8(clientID.utf8.count & 0xff))
+        body.append(contentsOf: clientID.utf8)
+        var packet = Data([0x10])
+        packet += mqttRemainingLength(body.count)
+        packet += body
+        return packet
+    }
+
+    /// A QoS 0 PUBLISH. With retain set, the broker keeps the
+    /// message and hands it to every future subscriber — the plant.
+    static func mqttPublish(topic: String, payload: Data,
+                            retain: Bool) -> Data {
+        var body = Data()
+        body.append(UInt8(topic.utf8.count >> 8))
+        body.append(UInt8(topic.utf8.count & 0xff))
+        body.append(contentsOf: topic.utf8)
+        body += payload
+        var packet = Data([retain ? 0x31 : 0x30])
+        packet += mqttRemainingLength(body.count)
+        packet += body
+        return packet
+    }
+
+    static func redisCommand(_ parts: [String]) -> Data {
+        var out = "*\(parts.count)\r\n"
+        for part in parts {
+            out += "$\(part.utf8.count)\r\n\(part)\r\n"
+        }
+        return Data(out.utf8)
+    }
+
+    static func memcachedSet(key: String, value: String) -> Data {
+        Data("set \(key) 0 0 \(value.utf8.count)\r\n\(value)\r\n".utf8)
+    }
+
     static func frame(_ data: Data, framing: String) -> Data {
         switch framing {
         case "len":
@@ -444,7 +533,7 @@ final class Mouth: NSObject, ObservableObject {
         ]
         if let reply = reply {
             record["replyBytes"] = reply.count
-            record["replyHex"] = reply.prefix(48)
+            record["replyHex"] = reply.prefix(kind == "snatch" ? 512 : 48)
                 .map { String(format: "%02x", $0) }.joined()
         }
         guard let data = try? JSONSerialization.data(
@@ -494,6 +583,7 @@ final class Mouth: NSObject, ObservableObject {
     private var pendingWrite: (peripheral: CBPeripheral, payload: Data)?
     private var listeners: [NWListener] = []
     private var serveReply: Data = Data()
+    private var serveEcho = false
     private var serveFraming = "raw"
 
     static let serviceUUID = CBUUID(string: "FFF0")
@@ -527,12 +617,13 @@ final class Mouth: NSObject, ObservableObject {
         if serveRunning, let params = lastServeParams {
             startServe(tcpPort: params.tcp, udpPort: params.udp,
                        httpPort: params.http, reply: params.reply,
-                       framing: params.framing)
+                       framing: params.framing, echo: params.echo)
         }
     }
 
     private var lastServeParams: (tcp: Int?, udp: Int?, http: Int?,
-                                  reply: String, framing: String)?
+                                  reply: String, framing: String,
+                                  echo: Bool)?
 
     private func receive(transport: String, peer: String, data: Data) {
         DispatchQueue.main.async {
@@ -551,6 +642,13 @@ final class Mouth: NSObject, ObservableObject {
                                           content: content, trigger: nil))
             }
         }
+    }
+
+    /// Recon results join the same exportable history as payload
+    /// exchanges — one file tells the whole session.
+    func logRecon(_ kind: String, _ label: String, lines: [String]) {
+        logExchange(kind, label, sent: 0,
+                    reply: Data(lines.joined(separator: "\n").utf8))
     }
 
     func clearSendLog() { sendLines = [] }
@@ -688,23 +786,55 @@ final class Mouth: NSObject, ObservableObject {
     /// tab scan or sweep, offered in the Send tab's fan-out section.
     @Published var lastScanTargets: [String] = []
 
-    /// Send the same payload to every target in the list, one at a
-    /// time. Entries use the Send tab's syntax — tcp://, udp://,
-    /// tcp+tls://, http(s):// — or phone:NAME for a nearby phone.
-    /// Targets can come from anywhere: typed, pasted, imported from
-    /// a file, or straight off the network via the Scan tab.
-    func sendToMany(targets rawTargets: [String], payload: Data,
+    /// Expand a last-octet range entry — "192.168.1.10-40:6379" or
+    /// "tcp://192.168.1.10-40:6379" — into individual targets.
+    static func expandRange(_ text: String) -> [String]? {
+        let split = text.components(separatedBy: "://")
+        let scheme = split.count == 2 ? split[0] + "://" : "tcp://"
+        let rest = split.count == 2 ? split[1] : text
+        guard let colon = rest.lastIndex(of: ":") else { return nil }
+        let hostPart = rest[..<colon]
+        guard let port = Int(String(rest[rest.index(after: colon)...])),
+              (1...65535).contains(port) else { return nil }
+        let octets = hostPart.split(separator: ".")
+        guard octets.count == 4 else { return nil }
+        let ends = octets[3].split(separator: "-")
+        guard ends.count == 2, let lo = Int(String(ends[0])),
+              let hi = Int(String(ends[1])),
+              (0...255).contains(lo), (0...255).contains(hi),
+              lo < hi, hi - lo <= 255 else { return nil }
+        let base = octets[0...2].joined(separator: ".") + "."
+        return (lo...hi).map { "\(scheme)\(base)\($0):\(port)" }
+    }
+
+    /// Send one payload to every target in the list, one at a time.
+    /// Entries use the Send tab's syntax — tcp://, udp://,
+    /// tcp+tls://, http(s):// — or phone:NAME for a nearby phone,
+    /// or a last-octet range. Targets can come from anywhere:
+    /// typed, pasted, imported from a file, or straight off the
+    /// network via the Scan tab. The payload is built per target,
+    /// so templates ({{host}} and friends) resolve per destination.
+    func sendToMany(targets rawTargets: [String],
+                    payloadFor: @escaping (String) -> Data?,
                     framing: String, method: String, readReply: Bool) {
+        var expanded: [String] = []
+        for entry in rawTargets {
+            let text = entry.trimmingCharacters(in: .whitespaces)
+            if let range = Mouth.expandRange(text) {
+                expanded += range
+            } else {
+                expanded.append(text)
+            }
+        }
         var seen = Set<String>()
-        let targets = rawTargets
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+        let targets = expanded
             .filter { !$0.isEmpty && !$0.hasPrefix("#")
                       && seen.insert($0).inserted }
-            .prefix(40)
+            .prefix(300)
         guard !targets.isEmpty, !fanoutBusy else { return }
         fanoutBusy = true
         fanoutLines = ["Fanning out to \(targets.count) target(s)…"]
-        line("fan-out: \(payload.count) bytes to \(targets.count) targets")
+        line("fan-out: one payload to \(targets.count) targets")
         var index = 0
         var sentCount = 0
         func step() {
@@ -730,6 +860,11 @@ final class Mouth: NSObject, ObservableObject {
                         "\(ok ? "✓" : "✗") \(text)")
                 }
                 step()
+            }
+            guard let payload = payloadFor(text) else {
+                line("fan-out: payload failed to build for \(text)")
+                report(false)
+                return
             }
             if text.hasPrefix("phone:") {
                 sendToPhone(name: String(text.dropFirst(6)),
@@ -758,6 +893,199 @@ final class Mouth: NSObject, ObservableObject {
             }
         }
         step()
+    }
+
+    // MARK: Timed delivery
+
+    @Published var scheduleStatus: String?
+    private var scheduleItems: [DispatchWorkItem] = []
+    private var scheduleTimer: Timer?
+    private var schedDeadline: Date?
+    private var schedInterval: TimeInterval?
+    private var schedRounds = 1
+    private var schedFired = 0
+    private var schedLabel = ""
+
+    /// Fire an action after a delay, or repeatedly on an interval
+    /// for a set number of rounds. Runs while the app is open —
+    /// iOS suspends background apps, and the UI says so.
+    func schedule(after delay: TimeInterval, every interval: TimeInterval?,
+                  rounds: Int, label: String, action: @escaping () -> Void) {
+        cancelSchedule()
+        schedLabel = label
+        schedInterval = interval
+        schedRounds = interval == nil ? 1 : max(1, rounds)
+        schedFired = 0
+        line("timed: \(label) — first fire in \(Int(delay))s"
+             + (interval != nil
+                ? ", then every \(Int(interval!))s × \(schedRounds)" : ""))
+        func arm(after wait: TimeInterval) {
+            schedDeadline = Date().addingTimeInterval(wait)
+            refreshScheduleStatus()
+            let item = DispatchWorkItem { [weak self] in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.schedFired += 1
+                    self.line("timed: firing \(label) — round "
+                              + "\(self.schedFired)/\(self.schedRounds)")
+                    action()
+                    if self.schedFired < self.schedRounds,
+                       let interval = self.schedInterval {
+                        arm(after: interval)
+                    } else {
+                        let doneLabel = label
+                        self.cancelSchedule()
+                        self.toasts?.show(
+                            "Timed delivery finished — \(doneLabel)")
+                    }
+                }
+            }
+            scheduleItems.append(item)
+            DispatchQueue.global().asyncAfter(deadline: .now() + wait,
+                                              execute: item)
+        }
+        scheduleTimer = Timer.scheduledTimer(
+            withTimeInterval: 1, repeats: true) { [weak self] _ in
+                self?.refreshScheduleStatus()
+            }
+        arm(after: delay)
+    }
+
+    func cancelSchedule() {
+        scheduleItems.forEach { $0.cancel() }
+        scheduleItems = []
+        scheduleTimer?.invalidate()
+        scheduleTimer = nil
+        schedDeadline = nil
+        if Thread.isMainThread {
+            scheduleStatus = nil
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.scheduleStatus = nil
+            }
+        }
+    }
+
+    private func refreshScheduleStatus() {
+        guard let deadline = schedDeadline else { return }
+        let secs = max(0, Int(deadline.timeIntervalSinceNow.rounded()))
+        scheduleStatus = "Timed · \(schedLabel) · round "
+            + "\(schedFired + 1)/\(schedRounds) in \(secs)s"
+    }
+
+    // MARK: SnatchSteal
+
+    @Published var snatchBusy = false
+    @Published var snatchBytes = 0
+    @Published var snatchResult: (label: String, data: Data)?
+
+    /// The receive-side weapon: knock (optionally, with a probe
+    /// payload), then take everything the target sends back until
+    /// it closes, goes quiet past the cap, or 64 KB is in the bag.
+    /// The haul is kept on the result card and written to history.
+    func snatch(target: SendTarget, probe: Data?, framing: String) {
+        switch target {
+        case .tcp(let host, let port, let tls):
+            guard let nwPort = NWEndpoint.Port(
+                    rawValue: UInt16(clamping: port)) else { return }
+            let params = tls ? NWParameters(tls: NWProtocolTLS.Options())
+                             : .tcp
+            snatchRun(NWConnection(host: NWEndpoint.Host(host),
+                                   port: nwPort, using: params),
+                      label: target.raw, probe: probe, framing: framing)
+        case .udp(let host, let port):
+            guard let nwPort = NWEndpoint.Port(
+                    rawValue: UInt16(clamping: port)) else { return }
+            snatchRun(NWConnection(host: NWEndpoint.Host(host),
+                                   port: nwPort, using: .udp),
+                      label: target.raw, probe: probe, framing: framing)
+        case .http(let url, let https):
+            let host = url.host ?? ""
+            let port = url.port ?? (https ? 443 : 80)
+            snatch(target: .tcp(host: host, port: port, tls: https),
+                   probe: probe, framing: framing)
+        default:
+            toasts?.show("SnatchSteal needs a network target",
+                         error: true)
+        }
+    }
+
+    func snatchPhone(name: String, probe: Data?, framing: String) {
+        let endpoint = NWEndpoint.service(name: name,
+                                          type: Mouth.bonjourType,
+                                          domain: "local.", interface: nil)
+        snatchRun(NWConnection(to: endpoint, using: .tcp),
+                  label: "phone \(name)", probe: probe, framing: framing)
+    }
+
+    private func snatchRun(_ connection: NWConnection, label: String,
+                           probe: Data?, framing: String) {
+        guard !snatchBusy else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.snatchBusy = true
+            self?.snatchBytes = 0
+            self?.snatchResult = nil
+        }
+        var loot = Data()
+        var finished = false
+        let finishLock = NSLock()
+        func finish() {
+            finishLock.lock()
+            defer { finishLock.unlock() }
+            guard !finished else { return }
+            finished = true
+            connection.cancel()
+            let captured = loot
+            DispatchQueue.main.async { [weak self] in
+                self?.snatchBusy = false
+                self?.snatchResult = (label: label, data: captured)
+                self?.logExchange("snatch", label,
+                                  sent: probe?.count ?? 0, reply: captured)
+                self?.toasts?.show(
+                    captured.isEmpty ? "Snatch came back empty"
+                                     : "Snatched \(captured.count) bytes",
+                    error: captured.isEmpty)
+            }
+        }
+        func drain() {
+            connection.receive(minimumIncompleteLength: 1,
+                               maximumLength: 65536) {
+                data, _, isComplete, error in
+                if let data = data, !data.isEmpty {
+                    loot += data
+                    let count = loot.count
+                    DispatchQueue.main.async { [weak self] in
+                        self?.snatchBytes = count
+                    }
+                    if count >= 65536 { finish(); return }
+                }
+                if isComplete || error != nil {
+                    finish()
+                } else {
+                    drain()
+                }
+            }
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                if let probe = probe {
+                    let framed = PayloadKit.frame(probe, framing: framing)
+                    connection.send(content: framed,
+                                    completion: .contentProcessed { _ in
+                                        drain()
+                                    })
+                } else {
+                    drain()
+                }
+            case .failed:
+                finish()
+            default:
+                break
+            }
+        }
+        connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + 15) { finish() }
     }
 
     // MARK: Bonjour discovery of other phones
@@ -1220,10 +1548,11 @@ extension Mouth {
     /// when one is set. Foreground only — iOS suspends listeners when
     /// the app leaves the screen.
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
-                    reply: String, framing: String) {
+                    reply: String, framing: String, echo: Bool = false) {
         stopServe()
-        lastServeParams = (tcpPort, udpPort, httpPort, reply, framing)
+        lastServeParams = (tcpPort, udpPort, httpPort, reply, framing, echo)
         serveReply = Data(reply.utf8)
+        serveEcho = echo
         serveFraming = framing
         serveError = nil
         // Arrivals banner as notifications; ask while the user is
@@ -1324,7 +1653,8 @@ extension Mouth {
             if http {
                 let body = Self.httpBody(buffer)
                 receive(transport: "http", peer: peer, data: body)
-                let payload = serveReply.isEmpty ? Data("ok\n".utf8) : serveReply
+                let payload = serveEcho ? body
+                    : (serveReply.isEmpty ? Data("ok\n".utf8) : serveReply)
                 let head = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n"
                     + "Content-Length: \(payload.count)\r\nConnection: close\r\n\r\n"
                 connection.send(content: Data(head.utf8) + payload,
@@ -1332,8 +1662,9 @@ extension Mouth {
             } else {
                 let data = PayloadKit.unframe(buffer, framing: serveFraming)
                 receive(transport: transport, peer: peer, data: data)
-                if !serveReply.isEmpty {
-                    connection.send(content: serveReply,
+                let answer = serveEcho ? data : serveReply
+                if !answer.isEmpty {
+                    connection.send(content: answer,
                                     completion: .contentProcessed { _ in connection.cancel() })
                 } else {
                     connection.cancel()
@@ -1377,8 +1708,9 @@ extension Mouth {
                 if let data = data, !data.isEmpty {
                     let unframed = PayloadKit.unframe(data, framing: self.serveFraming)
                     self.receive(transport: "udp", peer: "\(connection.endpoint)", data: unframed)
-                    if !self.serveReply.isEmpty {
-                        connection.send(content: self.serveReply,
+                    let answer = self.serveEcho ? unframed : self.serveReply
+                    if !answer.isEmpty {
+                        connection.send(content: answer,
                                         completion: .contentProcessed { _ in })
                     }
                 }
