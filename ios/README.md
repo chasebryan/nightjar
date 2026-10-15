@@ -29,6 +29,18 @@ its status, altitude, speed and its operator's broadcast position in
 the details. The decoder is a Swift port of `nightjar/remoteid.py`
 and shares test vectors with it.
 
+## Also in the app
+
+- **Payload library.** The Send tab saves named payloads (source,
+  transforms, framing included) and loads them back in one tap.
+- **Listen → Send.** Long-press a device in the Listen tab and choose
+  "Write a payload…" — the Send tab opens with that device as the
+  write target. The halves share the CoreBluetooth identifier only;
+  the listener's radio state is untouched.
+- **Shortcuts.** A "Send a payload" action for Shortcuts and Siri
+  sends a text payload to a tcp/udp/http target without opening the
+  app (BLE targets need the app's UI, and the action says so).
+
 ## Honest platform limits
 
 iOS is not Linux with a fruit logo. What differs from the CLI, and why:
