@@ -10,6 +10,9 @@
   back in reverse; the final carried payload comes home to a
   homecoming card, the history, and — optionally — one delivery
   to a target you name. The phone makes every send on both legs.
+  The route loads from Scan hits, nearby phones, or the fan-out
+  list, and per-device mode gives every device in the list its
+  own walk, the chain resetting at each device.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
