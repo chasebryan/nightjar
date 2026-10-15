@@ -96,10 +96,119 @@ extension View {
     func appThemed() -> some View { modifier(AppThemed()) }
 }
 
+/// Cold-boot sequence: the Jolly Roger behind a terminal log
+/// that types itself line by line — and every line is true: this
+/// device, this network, this library, this stealth state. Fades
+/// into the app after ~2 seconds; a tap skips it.
+struct BootView: View {
+    let onDone: () -> Void
+
+    @StateObject private var book = PayloadBook()
+    @AppStorage("stealthMode") private var stealthMode = false
+    @State private var shown = 0
+    @State private var cursorOn = true
+
+    private struct BootLine {
+        let text: String
+        let tone: Tone
+        enum Tone { case cmd, ok, warn, off }
+    }
+
+    private var lines: [BootLine] {
+        var out: [BootLine] = [
+            BootLine(text: "> nightjar-hack // ios", tone: .cmd),
+            BootLine(text: "[ ok ] host      \(UIDevice.current.name)",
+                     tone: .ok),
+        ]
+        if let ip = Mouth.localIPAddress() {
+            out.append(BootLine(text: "[ ok ] wlan0     \(ip)/24",
+                                tone: .ok))
+        } else {
+            out.append(BootLine(text: "[ !! ] wlan0     down — no wi-fi",
+                                tone: .warn))
+        }
+        out.append(BootLine(
+            text: "[ ok ] library   \(book.items.count) payloads loaded",
+            tone: .ok))
+        out.append(BootLine(text: "[ ok ] ble       radio standing by",
+                            tone: .ok))
+        out.append(stealthMode
+            ? BootLine(text: "[ ok ] stealth   ON — unlisted, silent",
+                       tone: .ok)
+            : BootLine(text: "[ -- ] stealth   off", tone: .off))
+        out.append(BootLine(text: "[ ok ] backdrop  jolly roger",
+                            tone: .ok))
+        out.append(BootLine(text: "> systems nominal — welcome back",
+                            tone: .cmd))
+        return out
+    }
+
+    private func color(_ tone: BootLine.Tone) -> Color {
+        switch tone {
+        case .cmd: return Color(white: 0.92)
+        case .ok: return Color(red: 0.35, green: 1.0, blue: 0.45)
+        case .warn: return Color(red: 1.0, green: 0.72, blue: 0.25)
+        case .off: return Color(white: 0.55)
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            AppBackdrop()
+            Color.black.opacity(0.42).ignoresSafeArea()
+            VStack {
+                Spacer()
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(0..<min(shown, lines.count), id: \.self) { i in
+                        Text(lines[i].text)
+                            .font(.system(.footnote, design: .monospaced))
+                            .foregroundStyle(color(lines[i].tone))
+                    }
+                    Text("▊")
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundStyle(color(.ok))
+                        .opacity(cursorOn ? 1 : 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 120)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { onDone() }
+        .task {
+            let blink = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 420_000_000)
+                    cursorOn.toggle()
+                }
+            }
+            for _ in lines.indices {
+                try? await Task.sleep(
+                    nanoseconds: UInt64.random(in: 110_000_000...210_000_000))
+                if Task.isCancelled { blink.cancel(); return }
+                shown += 1
+                Haptics.tick()
+            }
+            try? await Task.sleep(nanoseconds: 550_000_000)
+            blink.cancel()
+            if Task.isCancelled { return }
+            Haptics.success()
+            onDone()
+        }
+    }
+}
+
 /// One place for every buzz, so buttons *feel* like they did something.
 enum Haptics {
     static func tap() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    /// The boot sequence's per-line keystroke.
+    static func tick() {
+        UIImpactFeedbackGenerator(style: .rigid)
+            .impactOccurred(intensity: 0.3)
     }
 
     static func select() {
