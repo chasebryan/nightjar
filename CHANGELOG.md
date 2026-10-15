@@ -38,6 +38,18 @@
   under a lock.) finish() now notes and logs the reply
   first, completion last — the invariant the HTTP send path
   already kept.
+  New: **Crosstalk** in the Send tab. Two doors — any targets
+  the route parser accepts (TCP, UDP, TLS, HTTP(S), phones;
+  trains and ranges speak through their first door) — are
+  patched together: A is knocked with its port's probe (smart
+  seed) or the step-2 payload, its reply is carried verbatim
+  to B, B's reply back to A, for up to 12 rounds, ending on
+  silence, a verbatim echo, or a repeated reply. One-tap
+  buttons seat the phone's own Serve at either door. The
+  transcript (timings + reply summaries) is shown live,
+  logged to history, and the last word is carded like a
+  homecoming. The centipede and Crosstalk refuse to run at
+  the same time — they share the reply channel.
 
 ## 2.5.0 — 2026-10-15 — the pocket release
 
