@@ -107,6 +107,8 @@ struct ListenView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("nightjar-hack")
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
         }
@@ -280,6 +282,8 @@ struct SessionsView: View {
                     reload()
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Sessions")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -458,6 +462,8 @@ struct AboutView: View {
                     .disabled(updater.checking)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("About")
         }
     }
