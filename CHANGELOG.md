@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — the audit fix rounds (2026-10-15)
+## 2.5.0 — 2026-10-15 — the pocket release
+
+### Landed before tagging — the audit fix rounds
 
 A full theoretical audit of the iOS app (every tab, every
 transport, every parser, checked against what each claims to do)
@@ -29,9 +31,10 @@ and a boot log whose status lines are now actually checked
 (backdrop asset present, BLE permission, real interface
 address). The CLI is untouched; its 41 tests still pass.
 
-## 2.5.0 — 2026-10-15 — the pocket release
+### The pocket release proper
 
-*Release notes for the GitHub release: this entry, verbatim.*
+*Release notes for the GitHub release: this whole 2.5.0 entry,
+verbatim.*
 
 The iOS app grows from a merged companion into a full field unit,
 and the overlay version moves to 2.5.0 to mark it. The CLI gains
