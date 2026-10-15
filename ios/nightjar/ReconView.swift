@@ -211,7 +211,93 @@ final class ScanModel: ObservableObject {
         group.notify(queue: .main) { [weak self] in
             self?.sweepHosts = found.sorted { $0.octet < $1.octet }
             self?.sweeping = false
+            self?.sweepFinished()
         }
+    }
+
+    // MARK: Observation feed
+
+    struct FeedEvent: Identifiable {
+        let id = UUID()
+        let at = Date()
+        let text: String
+    }
+
+    @Published private(set) var feed: [FeedEvent] = []
+    @Published private(set) var watching = false
+    private var knownHosts: Set<String> = []
+    private var knownServices: Set<String> = []
+    private var baselineTaken = false
+    private var watchWork: DispatchWorkItem?
+    private var feedPort = 80
+
+    /// The network, narrated: re-sweep the /24 on a relaxed
+    /// interval and stream the changes — hosts answering, hosts
+    /// going dark, Bonjour services appearing and vanishing —
+    /// into a scrolling feed. Built only from what the phone can
+    /// observe itself: connect knocks and announcements.
+    func startWatch(port: Int) {
+        guard !watching else { return }
+        watching = true
+        feedPort = port
+        baselineTaken = false
+        knownServices = Set(discovered.map { "\($0.name)|\($0.type)" })
+        appendFeed("watch started — sweeping port \(port) "
+                   + "across the /24")
+        watchCycle()
+    }
+
+    func stopWatch() {
+        guard watching else { return }
+        watching = false
+        watchWork?.cancel()
+        appendFeed("watch stopped")
+    }
+
+    func clearFeed() { feed = [] }
+
+    private func appendFeed(_ text: String) {
+        feed.insert(FeedEvent(text: text), at: 0)
+        if feed.count > 200 { feed.removeLast(feed.count - 200) }
+    }
+
+    private func watchCycle() {
+        guard watching else { return }
+        let servicesNow = Set(discovered.map { "\($0.name)|\($0.type)" })
+        if baselineTaken {
+            for service in servicesNow.subtracting(knownServices).sorted() {
+                appendFeed("Bonjour up: "
+                           + service.components(separatedBy: "|")[0])
+            }
+            for service in knownServices.subtracting(servicesNow).sorted() {
+                appendFeed("Bonjour down: "
+                           + service.components(separatedBy: "|")[0])
+            }
+        }
+        knownServices = servicesNow
+        sweep(port: feedPort)
+    }
+
+    private func sweepFinished() {
+        guard watching else { return }
+        let now = Set(sweepHosts.map { "\($0.ip):\($0.port)" })
+        if baselineTaken {
+            for host in now.subtracting(knownHosts).sorted() {
+                appendFeed("host answering: \(host)")
+            }
+            for host in knownHosts.subtracting(now).sorted() {
+                appendFeed("host dark: \(host)")
+            }
+        } else {
+            baselineTaken = true
+            appendFeed("baseline: \(now.count) host(s) answering "
+                       + "on port \(feedPort)")
+        }
+        knownHosts = now
+        let item = DispatchWorkItem { [weak self] in self?.watchCycle() }
+        watchWork = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20,
+                                      execute: item)
     }
 
     private func sweepProbe(host: String, port: Int,
@@ -946,6 +1032,12 @@ enum PcapKit {
 // MARK: - Scan tab
 
 struct ScanView: View {
+    static let feedClock: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
     @Binding var tab: Int
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var mouth: Mouth
@@ -1130,6 +1222,55 @@ struct ScanView: View {
                          + "into Send; the list also feeds the Send "
                          + "tab's fan-out. Hosts that drop the knock "
                          + "stay invisible — that's connect scanning.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section(header: Text("Observation feed")) {
+                    if model.watching {
+                        Button(role: .destructive) {
+                            Haptics.tap()
+                            model.stopWatch()
+                            mouth.logRecon(
+                                "feed", "watch session",
+                                lines: model.feed.reversed()
+                                    .map { $0.text })
+                        } label: {
+                            Label("Stop watching",
+                                  systemImage: "eye.slash")
+                        }
+                    } else {
+                        Button {
+                            Haptics.tap()
+                            model.startWatch(port: Int(sweepPort) ?? 80)
+                        } label: {
+                            Label("Watch this network "
+                                  + "(port \(sweepPort))",
+                                  systemImage: "eye")
+                        }
+                        .disabled(model.sweeping || model.scanning)
+                    }
+                    if !model.feed.isEmpty {
+                        Button("Clear feed", role: .destructive) {
+                            Haptics.tap()
+                            model.clearFeed()
+                        }
+                        .font(.caption)
+                    }
+                    ForEach(model.feed) { event in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(Self.feedClock.string(from: event.at))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                            Text(event.text)
+                                .font(.caption)
+                        }
+                    }
+                    Text("While watching, the /24 is re-swept on "
+                         + "the sweep port and Bonjour is diffed — "
+                         + "joinings, leavings, openings stream in "
+                         + "here. Only what this phone can observe "
+                         + "itself; nothing is intercepted.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
