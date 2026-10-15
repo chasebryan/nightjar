@@ -1,4 +1,5 @@
 import CoreBluetooth
+import ImageIO
 import SwiftUI
 import UIKit
 
@@ -291,5 +292,118 @@ enum Haptics {
 
     static func error() {
         UINotificationFeedbackGenerator().notificationOccurred(.error)
+    }
+}
+
+
+// MARK: Centipede release splash
+
+extension UIImage {
+    /// Decode an animated GIF's frames and delays the ImageIO
+    /// way, so a bundled .gif plays as authored.
+    static func animatedGIF(data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData, nil) else { return nil }
+        let count = CGImageSourceGetCount(source)
+        guard count > 1 else { return UIImage(data: data) }
+        var frames: [UIImage] = []
+        var total = 0.0
+        for i in 0..<count {
+            guard let cg = CGImageSourceCreateImageAtIndex(
+                source, i, nil) else { continue }
+            var delay = 0.1
+            if let props = CGImageSourceCopyPropertiesAtIndex(
+                source, i, nil) as? [String: Any],
+               let gif = props[kCGImagePropertyGIFDictionary
+                               as String] as? [String: Any] {
+                delay = (gif[kCGImagePropertyGIFUnclampedDelayTime
+                             as String] as? Double)
+                    ?? (gif[kCGImagePropertyGIFDelayTime
+                            as String] as? Double)
+                    ?? 0.1
+            }
+            total += max(delay, 0.02)
+            frames.append(UIImage(cgImage: cg))
+        }
+        guard !frames.isEmpty else { return nil }
+        return UIImage.animatedImage(with: frames, duration: total)
+    }
+}
+
+/// A full-bleed GIF player (UIImageView under the hood).
+struct GIFPlayerView: UIViewRepresentable {
+    let data: Data
+
+    func makeUIView(context: Context) -> UIImageView {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFill
+        view.clipsToBounds = true
+        view.backgroundColor = .black
+        if let image = UIImage.animatedGIF(data: data) {
+            view.image = image
+            view.startAnimating()
+        }
+        return view
+    }
+
+    func updateUIView(_ view: UIImageView, context: Context) {}
+}
+
+/// The drumroll: three seconds of glitching, laughing skull
+/// over the whole screen when the centipede is released (tap
+/// to skip). The GIF comes from a "Centipede" data asset or a
+/// centipede.gif file dropped into the project; without either,
+/// a built-in flicker card stands in, so the app is never
+/// broken by a missing flourish. The crawl itself starts the
+/// moment Release is tapped — the splash is pure theatre
+/// laid over its first hops.
+struct CentipedeSplashView: View {
+    @Binding var isShown: Bool
+    @State private var flicker = false
+
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "Centipede") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "centipede",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "ant.fill")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.teal)
+                    Text("CENTIPEDE RELEASED")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isShown = false }
+        .onAppear {
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                isShown = false
+            }
+        }
     }
 }
