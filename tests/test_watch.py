@@ -4,6 +4,7 @@ import threading
 import unittest
 from unittest import mock
 
+from nightjar.remoteid import APP_CODE_ODID, REMOTE_ID_UUID
 from nightjar.watch import (
     Alert,
     AlertDispatcher,
@@ -14,6 +15,12 @@ from nightjar.watch import (
 )
 
 from .helpers import AIRTAG_SEPARATED, AIRTAG_WITH_OWNER, APPLE, BASE, TILE_UUID, sighting
+from .test_remoteid import CORE_C_BASIC, CORE_C_LOCATION, CORE_C_SYSTEM
+
+
+def drone_sighting(address, when, message, *, rssi=-55):
+    return sighting(address, when, rssi=rssi,
+                    service_data={REMOTE_ID_UUID: bytes([APP_CODE_ODID, 0]) + message})
 
 
 class AlertEngineTests(unittest.TestCase):
@@ -81,6 +88,43 @@ class AlertEngineTests(unittest.TestCase):
             alerts += engine.observe(sighting("D4:61", BASE + offset, **tag))
         self.assertEqual(alerts, [])
         self.assertEqual(len(engine.observe(sighting("AA:00", BASE + 3800, name="Other"))), 1)
+
+
+class DroneAlertTests(unittest.TestCase):
+    def test_airborne_drone_with_serial_alerts_once(self):
+        engine = AlertEngine(alert_new=False, warmup_seconds=0)
+        # Basic ID first (serial known), then Location (airborne) -> alert.
+        self.assertEqual(engine.observe(drone_sighting("DR:01", BASE, CORE_C_BASIC)), [])
+        alerts = engine.observe(drone_sighting("DR:01", BASE + 1, CORE_C_LOCATION))
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0].kind, "drone")
+        self.assertIn("serial 12345678901234567890", alerts[0].text)
+        self.assertTrue(alerts[0].data["airborne"])
+        # ...and does not fire again.
+        self.assertEqual(engine.observe(drone_sighting("DR:01", BASE + 2, CORE_C_LOCATION)), [])
+
+    def test_home_gives_operator_bearing(self):
+        engine = AlertEngine(alert_new=False, warmup_seconds=0, home=(45.5375, -122.9655))
+        engine.observe(drone_sighting("DR:02", BASE, CORE_C_BASIC))
+        engine.observe(drone_sighting("DR:02", BASE + 1, CORE_C_SYSTEM))
+        alerts = engine.observe(drone_sighting("DR:02", BASE + 2, CORE_C_LOCATION))
+        self.assertTrue(alerts)
+        self.assertRegex(alerts[0].text, r"operator \d+ m [NSEW]+")
+
+    def test_presence_alert_without_serial(self):
+        # A drone whose Basic ID we never catch: presence alone, after a few
+        # sightings, is worth one alert.
+        engine = AlertEngine(alert_new=False, warmup_seconds=0)
+        alerts = []
+        for i in range(AlertEngine.DRONE_PRESENCE_SIGHTINGS):
+            alerts += engine.observe(drone_sighting("DR:03", BASE + i, CORE_C_LOCATION))
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0].kind, "drone")
+
+    def test_ignored_drone_is_silent(self):
+        engine = AlertEngine(alert_new=False, warmup_seconds=0, ignore=["12345678901234567890"])
+        engine.observe(drone_sighting("DR:04", BASE, CORE_C_BASIC))
+        self.assertEqual(engine.observe(drone_sighting("DR:04", BASE + 1, CORE_C_LOCATION)), [])
 
 
 class WebhookTests(unittest.TestCase):

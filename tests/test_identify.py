@@ -181,8 +181,10 @@ class IdentityTests(unittest.TestCase):
         for _ in range(300):
             resolver.observe(random_sighting(rng))
         # Profiles with rotating addresses number in the dozens by address,
-        # but identities stay one per profile.
-        self.assertLessEqual(len(resolver), len(PROFILES))
+        # but identities stay roughly one per profile. The +1 allows the
+        # drone's brief pre-serial orphan (a Location heard before its first
+        # Basic ID keys by address until the serial arrives).
+        self.assertLessEqual(len(resolver), len(PROFILES) + 1)
         by_signal = resolver.by_signal()
         self.assertEqual(len(by_signal), len(resolver))
 

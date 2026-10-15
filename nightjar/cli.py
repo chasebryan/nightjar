@@ -121,6 +121,24 @@ def _add_listen_args(parser) -> None:
         metavar="ADDRESS|NAME",
         help="your own devices (address prefix or name), never alerted on; "
              "repeatable, also $NIGHTJAR_IGNORE")
+    parser.add_argument(
+        "--home", metavar="LAT,LON", default=os.environ.get("NIGHTJAR_HOME"),
+        help="your own position, opt-in: turns a drone's broadcast operator "
+             "coordinates into a distance and bearing from you. Never logged "
+             "into any device's record. Also $NIGHTJAR_HOME")
+
+
+def _parse_home(value: str | None):
+    """'45.54,-122.96' → (lat, lon), or None. Invalid input is ignored."""
+    if not value:
+        return None
+    try:
+        lat, lon = (float(part) for part in value.split(",", 1))
+    except (ValueError, TypeError):
+        return None
+    if -90 <= lat <= 90 and -180 <= lon <= 180:
+        return (lat, lon)
+    return None
 
 
 def _add_log_args(parser) -> None:
@@ -239,7 +257,8 @@ def _listen(args, *, watching: bool) -> int:
             tracker_min_span=args.tracker_min_minutes * 60.0,
             tracker_min_hours=args.tracker_min_hours,
             tracker_min_rssi=args.tracker_min_rssi,
-            ignore=args.ignore)
+            ignore=args.ignore,
+            home=_parse_home(args.home))
         alerter = WebhookAlerter(args.webhook, fmt=args.webhook_format)
         dispatcher = AlertDispatcher([alerter] if alerter.url else [])
     live = getattr(args, "live", False)
@@ -481,6 +500,67 @@ def _format_show(pattern: IdentityPattern) -> str:
     return "\n".join(lines)
 
 
+def _drone_track(sessions: list[Session], key: str):
+    """Re-walk the logs for one drone identity: its positions and operators."""
+    from .identify import IdentityResolver
+    from .remoteid import parse_service_data, remoteid_value
+    resolver = IdentityResolver()
+    track = []       # (seen_at, Location)
+    operators: dict[tuple, object] = {}
+    for session in sessions:
+        for sighting in session.sightings:
+            identity = resolver.observe(sighting)
+            if identity.key != key:
+                continue
+            value = remoteid_value(sighting.service_data)
+            if value is None:
+                continue
+            for message in parse_service_data(value):
+                if message.location is not None and message.location.latitude is not None:
+                    track.append((sighting.seen_at, message.location))
+                sysm = message.system
+                if sysm is not None and sysm.operator_latitude is not None \
+                        and sysm.operator_longitude is not None:
+                    operators[(round(sysm.operator_latitude, 6),
+                               round(sysm.operator_longitude, 6))] = sysm
+    return track, operators
+
+
+def _format_drone_track(track, operators, home) -> str:
+    from .remoteid import bearing, compass, haversine
+    lines = ["  flight track:"]
+    if not track:
+        lines.append("    (no positions decoded)")
+    else:
+        alts = [loc.altitude_geo for _, loc in track if loc.altitude_geo is not None]
+        lines.append(f"    {len(track)} positions, "
+                     f"{fmt_local(track[0][0])} → {fmt_local(track[-1][0])}")
+        if alts:
+            lines.append(f"    max altitude {max(alts):.0f} m (geodetic)")
+        step = max(1, len(track) // 6)
+        for seen, loc in track[::step][:6]:
+            alt = loc.altitude_geo if loc.altitude_geo is not None else loc.altitude_baro
+            move = ""
+            if loc.speed_h is not None and loc.direction is not None:
+                move = f", {loc.speed_h:.1f} m/s {compass(loc.direction)}"
+            lines.append(
+                f"    {time.strftime('%H:%M:%S', time.localtime(seen))}  "
+                f"{loc.latitude:.5f},{loc.longitude:.5f}  "
+                f"alt {alt:.0f} m{move}" if alt is not None else
+                f"    {time.strftime('%H:%M:%S', time.localtime(seen))}  "
+                f"{loc.latitude:.5f},{loc.longitude:.5f}{move}")
+    for (lat, lon), sysm in operators.items():
+        if home is not None:
+            dist = haversine(home[0], home[1], lat, lon)
+            brg = bearing(home[0], home[1], lat, lon)
+            lines.append(f"    operator {dist:.0f} m {compass(brg)} "
+                         f"({sysm.operator_location_name})")
+        else:
+            lines.append(f"    operator {lat:.5f},{lon:.5f} "
+                         f"({sysm.operator_location_name})")
+    return "\n".join(lines)
+
+
 def _cmd_show(args) -> int:
     loaded = _load(args)
     if loaded is None:
@@ -494,7 +574,15 @@ def _cmd_show(args) -> int:
     if args.json:
         _emit_json({"query": args.query, "matches": [p.to_dict() for p in patterns]})
         return 0
-    print("\n\n".join(_format_show(p) for p in patterns))
+    home = _parse_home(getattr(args, "home", None))
+    blocks = []
+    for pattern in patterns:
+        text = _format_show(pattern)
+        if pattern.identity.drone is not None:
+            track, operators = _drone_track(sessions, pattern.identity.key)
+            text += "\n" + _format_drone_track(track, operators, home)
+        blocks.append(text)
+    print("\n\n".join(blocks))
     return 0
 
 
@@ -579,6 +667,8 @@ def build_parser() -> argparse.ArgumentParser:
     show = sub.add_parser("show", help="everything the logs know about one device")
     show.add_argument("query", metavar="QUERY",
                       help="an address (or prefix), a name, a kind, or an identity key")
+    show.add_argument("--home", metavar="LAT,LON", default=os.environ.get("NIGHTJAR_HOME"),
+                      help="your position, to show a drone operator's distance and bearing")
     _add_log_args(show)
 
     anomalies = sub.add_parser(

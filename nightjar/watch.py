@@ -31,6 +31,7 @@ from statistics import median
 
 from .identify import Identity, IdentityResolver
 from .registry import Sighting
+from .remoteid import describe as describe_drone
 
 WEBHOOK_FORMATS = ("discord", "slack", "ntfy", "json")
 
@@ -180,12 +181,17 @@ class AlertDispatcher:
 class AlertEngine:
     """Decides, sighting by sighting, what is worth interrupting for."""
 
+    # How many sightings of a drone without a usable Location before
+    # presence alone is worth one alert (airborne alerts fire at once).
+    DRONE_PRESENCE_SIGHTINGS = 4
+
     def __init__(self, *, alert_new: bool = True,
                  warmup_seconds: float = 120.0,
                  tracker_min_span: float = 45 * 60.0,
                  tracker_min_hours: int = 2,
                  tracker_min_rssi: int = -80,
                  ignore: list[str] | None = None,
+                 home: tuple[float, float] | None = None,
                  resolver: IdentityResolver | None = None):
         self.alert_new = alert_new
         self.warmup_seconds = warmup_seconds
@@ -193,11 +199,14 @@ class AlertEngine:
         self.tracker_min_hours = tracker_min_hours
         self.tracker_min_rssi = tracker_min_rssi
         self.ignore = list(ignore or [])
+        self.home = home
         self._resolver = resolver or IdentityResolver()
         self._started_at: float | None = None
         self._known: set[str] = set()
         self._tracker_alerted: set[str] = set()
         self._tracker_stats: dict[str, dict] = {}
+        self._drone_alerted: set[str] = set()
+        self._drone_seen: dict[str, int] = {}
 
     @property
     def resolver(self) -> IdentityResolver:
@@ -257,4 +266,27 @@ class AlertEngine:
                           "hours": len(stats["hours"]),
                           "rssi_median": level,
                           "addresses": sorted(identity.addresses)}))
+
+        if identity.drone is not None and identity.key not in self._drone_alerted \
+                and not self._ignored(identity):
+            seen = self._drone_seen.get(identity.key, 0) + 1
+            self._drone_seen[identity.key] = seen
+            airborne = identity.drone.airborne
+            # Airborne + a known serial is the trigger (so the alert can name
+            # the drone, and a pre-serial address orphan doesn't double-fire);
+            # if a serial or Location never arrives, presence alone is worth
+            # one alert once the drone has been heard a few times.
+            if (airborne and identity.drone_serial) \
+                    or seen >= self.DRONE_PRESENCE_SIGHTINGS:
+                self._drone_alerted.add(identity.key)
+                lead = "Drone overhead" if airborne else "Drone nearby"
+                alerts.append(Alert(
+                    kind="drone",
+                    text=f"{lead}: {describe_drone(identity.drone, home=self.home)}",
+                    seen_at=sighting.seen_at, identity_key=identity.key,
+                    label=identity.label, device_kind=identity.kind,
+                    address=sighting.address,
+                    data={"serial": identity.drone_serial,
+                          "airborne": airborne,
+                          "ua_type": identity.drone.ua_type_name}))
         return alerts

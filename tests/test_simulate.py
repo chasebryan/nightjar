@@ -48,6 +48,32 @@ class SimulateTests(unittest.TestCase):
             self.assertIn(expected, kinds)
 
 
+class DroneSimTests(unittest.TestCase):
+    def test_drone_resolves_to_its_serial(self):
+        rng = random.Random(5)
+        resolver = IdentityResolver()
+        for i in range(400):
+            resolver.observe(random_sighting(rng, now=BASE + i * 0.5))
+        drones = [d for d in resolver if d.drone_serial]
+        self.assertTrue(drones)
+        self.assertEqual(drones[0].drone_serial, "1581FTEST000001")
+        self.assertEqual(drones[0].kind, "Drone (Remote ID)")
+        self.assertFalse(drones[0].tracker_like)
+
+    def test_demo_registers_the_drone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "drone.jsonl")
+            write_demo_log(path, days=2, seed=7)
+            sessions = load_log([path]).sessions
+            patterns = [p for p in analyze(sessions) if p.identity.drone_serial]
+            self.assertEqual(len(patterns), 1)  # one clean drone, no orphan
+            drone = patterns[0].identity
+            self.assertEqual(drone.label, "Drone 1581FTEST000001")
+            self.assertEqual(drone.basis, "remote id")
+            self.assertIn("helicopter/multirotor", drone.details[0])
+            self.assertIn("airborne", drone.details[0])
+
+
 class DemoLogTests(unittest.TestCase):
     def test_demo_log_tells_its_story(self):
         with tempfile.TemporaryDirectory() as tmp:

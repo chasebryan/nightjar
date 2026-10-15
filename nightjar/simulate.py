@@ -21,13 +21,16 @@ listener goes — so `report` and `trackers` have something to find.
 from __future__ import annotations
 
 import json
+import math
 import random
+import struct
 import time
 import uuid
 from dataclasses import dataclass, field
 
 from . import __version__
 from .registry import Sighting
+from .remoteid import APP_CODE_ODID, REMOTE_ID_UUID
 
 _APPLE = 0x004C
 _MICROSOFT = 0x0006
@@ -76,6 +79,75 @@ _RUUVI_PAYLOAD = (bytes([0x05]) + (4500).to_bytes(2, "big")
                   + bytes([0x12, 0x00, 0x2A]) + bytes([0xC1, 0x02, 0x03, 0x04, 0x05, 0x06]))
 
 
+# --- A clearly-synthetic drone broadcasting Open Drone ID (Remote ID) ------
+# Fictional serial, obviously a test unit. A multicopter flying a slow
+# circle a few hundred metres out at ~60 m, operator standing at the edge.
+_DRONE_SERIAL = "1581FTEST000001"
+_DRONE_ADDRESS = "DE:0D:1D:7E:57:01"
+_DRONE_CENTRE = (45.53830, -122.96500)     # the circle's centre
+_DRONE_OPERATOR = (45.54010, -122.96520)   # where the operator stands
+
+
+def _odid_wrap(message: bytes, counter: int) -> dict[str, bytes]:
+    return {REMOTE_ID_UUID: bytes([APP_CODE_ODID, counter & 0xFF]) + message}
+
+
+def _odid_basic_id() -> bytes:
+    return (bytes([0x02, (1 << 4) | 2])  # Basic ID / v2; serial, multirotor
+            + _DRONE_SERIAL.encode().ljust(20, b"\x00") + bytes(3))
+
+
+def _odid_location(now: float) -> bytes:
+    angle = (now / 20.0) % (2 * math.pi)  # ~125 s circle
+    radius_deg = 0.0018                    # ~200 m
+    lat = _DRONE_CENTRE[0] + radius_deg * math.cos(angle)
+    lon = (_DRONE_CENTRE[1]
+           + radius_deg * math.sin(angle) / math.cos(math.radians(_DRONE_CENTRE[0])))
+    heading = int(math.degrees(angle + math.pi / 2)) % 360  # tangent to the circle
+    ew = 1 if heading >= 180 else 0
+    dir_raw = heading - 180 if ew else heading
+    flags = (2 << 4) | (1 << 2) | (ew << 1)  # airborne, height AGL
+    return (bytes([0x12, flags, dir_raw, int(8.0 / 0.25)])  # ~8 m/s
+            + struct.pack("<b", 4)                           # +2 m/s climb
+            + struct.pack("<i", round(lat * 1e7))
+            + struct.pack("<i", round(lon * 1e7))
+            + struct.pack("<H", (58 + 1000) * 2)        # baro alt 58 m
+            + struct.pack("<H", (60 + 1000) * 2)        # geo alt 60 m
+            + struct.pack("<H", (41 + 1000) * 2)        # height 41 m AGL
+            + bytes([0, 0])
+            + struct.pack("<H", int((now % 3600) * 10) & 0xFFFF)
+            + bytes([0, 0]))
+
+
+def _odid_system() -> bytes:
+    return (bytes([0x42, 0x00])  # System / v2; operator location = takeoff point
+            + struct.pack("<i", round(_DRONE_OPERATOR[0] * 1e7))
+            + struct.pack("<i", round(_DRONE_OPERATOR[1] * 1e7))
+            + struct.pack("<H", 1) + bytes([5])              # 1 area, radius 50 m
+            + struct.pack("<H", (80 + 1000) * 2)        # ceiling 80 m
+            + struct.pack("<H", (10 + 1000) * 2)        # floor 10 m
+            + bytes([0x00])
+            + struct.pack("<H", (15 + 1000) * 2)        # operator alt 15 m
+            + struct.pack("<I", 100_000_000) + bytes([0]))
+
+
+def _odid_self_id() -> bytes:
+    return bytes([0x32, 0x00]) + b"Survey flight".ljust(23, b"\x00")
+
+
+def _drone_service_data(now: float, index: int) -> dict[str, bytes]:
+    """Cycle the message set so a session accumulates the whole picture."""
+    if index % 6 == 1 or index % 6 == 3 or index % 6 == 5:
+        message = _odid_location(now)
+    elif index % 6 == 0:
+        message = _odid_basic_id()
+    elif index % 6 == 2:
+        message = _odid_system()
+    else:  # index % 6 == 4
+        message = _odid_self_id()
+    return _odid_wrap(message, index)
+
+
 @dataclass
 class _Profile:
     name: str | None
@@ -87,6 +159,7 @@ class _Profile:
     service_data: dict[str, bytes] = field(default_factory=dict)
     rotates: bool = False
     address_type: str | None = None
+    drone: bool = False
 
 
 PROFILES = [
@@ -152,6 +225,10 @@ PROFILES = [
         manufacturer_data={_RUUVI: _RUUVI_PAYLOAD},
         address_type="random",
     ),
+    _Profile(
+        name=None, base_rssi=-64, weight=2,  # a drone overhead (Remote ID)
+        address=_DRONE_ADDRESS, drone=True, address_type="random",
+    ),
 ]
 
 
@@ -162,9 +239,15 @@ def _random_address(rng: random.Random) -> str:
 
 
 def _sighting_from(profile: _Profile, rng: random.Random, now: float,
-                   address: str | None = None, rssi: int | None = None) -> Sighting:
+                   address: str | None = None, rssi: int | None = None,
+                   drone_index: int | None = None) -> Sighting:
     if address is None:
         address = _random_address(rng) if profile.rotates else profile.address
+    if profile.drone:
+        idx = rng.randrange(6) if drone_index is None else drone_index
+        service_data = _drone_service_data(now, idx)
+    else:
+        service_data = dict(profile.service_data)
     return Sighting(
         address=address or _random_address(rng),
         name=profile.name,
@@ -172,7 +255,7 @@ def _sighting_from(profile: _Profile, rng: random.Random, now: float,
         manufacturer_data=dict(profile.manufacturer_data),
         service_uuids=list(profile.service_uuids),
         seen_at=now,
-        service_data=dict(profile.service_data),
+        service_data=service_data,
         address_type=profile.address_type,
     )
 
@@ -272,6 +355,13 @@ def _demo_residents(rng: random.Random) -> list[_Resident]:
                           rotates=True, address_type="random"),
                   places=("home", "office"), interval=(60, 150),
                   rotate_per_day=True, presence=0.95, late_start=0.0),
+        # A drone flying a survey circle over the house, mid-session
+        # (arrives ~45% in, leaves ~70% in — a ~25% window).
+        _Resident(profile(name=None, base_rssi=-62, weight=1,
+                          address=_DRONE_ADDRESS, drone=True,
+                          address_type="random"),
+                  places=("home",), interval=(8, 20),
+                  presence=0.70, late_start=0.45),
     ]
 
 
@@ -318,11 +408,14 @@ def write_demo_log(path: str, *, days: int = 2, seed: int | None = None,
                     t = s_start + resident.late_start * span + rng.uniform(0, 30)
                     leave_at = s_start + span * resident.presence + rng.uniform(-60, 60)
                     drift = 0
+                    drone_index = 0
                     while t < min(s_end, leave_at):
                         drift = max(-8, min(8, drift + rng.randint(-2, 2)))
                         rssi = profile.base_rssi + drift + rng.randint(-3, 3)
-                        events.append(_sighting_from(profile, rng, t,
-                                                     address=fixed, rssi=rssi))
+                        events.append(_sighting_from(
+                            profile, rng, t, address=fixed, rssi=rssi,
+                            drone_index=drone_index if profile.drone else None))
+                        drone_index += 1
                         t += rng.uniform(*resident.interval)
                 events.sort(key=lambda s: s.seen_at)
                 for sighting in events:
