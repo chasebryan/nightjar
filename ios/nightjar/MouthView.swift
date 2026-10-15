@@ -60,14 +60,15 @@ struct SendView: View {
     @AppStorage("traceProfilePorts") private var traceProfilePorts = ""
     @AppStorage("traceBonjour") private var traceBonjour = true
     @AppStorage("traceAdaptive") private var traceAdaptive = true
-    @AppStorage("traceRules") private var traceRules =
-        "# Rules — one per line. They steer the trace and\n"
-        + "# the centipede: followup sends the named library\n"
-        + "# payload to the same door, tag files a label,\n"
-        + "# stop leaves the reply where it lies.\n"
-        + "# contains nginx => tag web\n"
-        + "# contains Redis => followup Redis PING (RESP)\n"
-        + "# port 22 => tag ssh"
+    @AppStorage("traceRules") private var traceRules = """
+        # Rules — one per line. They steer the trace and
+        # the centipede: followup sends the named library
+        # payload to the same door, tag files a label,
+        # stop leaves the reply where it lies.
+        # contains nginx => tag web
+        # contains Redis => followup Redis PING (RESP)
+        # port 22 => tag ssh
+        """
     @AppStorage("sectionOpen.snatch") private var openSnatch = false
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
