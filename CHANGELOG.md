@@ -30,7 +30,12 @@
   only, no ICMP/ARP, a silent or drop-firewalled host can
   still hide) — in a versioned schema
   (`net.nosuchmachine.nightjar.network-trace`) meant to be
-  ingested by other tools.
+  ingested by other tools. A **Trace & set up the
+  Centipede** button closes the loop: run the trace and,
+  when it ends, every door it found is loaded into the
+  Centipede as its route — one port train per host, ready
+  to release, no manual configuration. (It can also be
+  armed mid-trace.)
 - **Centipede (iOS Send).** A route walked hop by hop: each
   route line is a target, a range, `host:80,443` (a port train),
   or a bare host (a train across the usual ports). Chain mode
