@@ -5,6 +5,7 @@ import UIKit
 struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @State private var tab = 0
+    @State private var showBoot = true
 
     var body: some View {
         ZStack {
@@ -43,6 +44,15 @@ struct ContentView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+            if showBoot {
+                BootView {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        showBoot = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(20)
+            }
         }
         .scrollContentBackground(.hidden)
         .preferredColorScheme(.dark)
