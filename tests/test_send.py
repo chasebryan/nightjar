@@ -343,3 +343,205 @@ def test_bundle_embeds_current_send_py():
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# --- the 2.4 additions: ws/serial, expect, fan-out, responders, relay ---
+
+import base64
+
+
+class EchoSink:
+    def __init__(self):
+        self.records = []
+
+    def __call__(self, transport, peer, data):
+        self.records.append((transport, peer, data))
+        return data
+
+
+def _wait_tcp(port, tries=50):
+    for _ in range(tries):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+                return
+        except OSError:
+            time.sleep(0.1)
+    raise RuntimeError("port never opened")
+
+
+def test_parse_ws_and_serial_targets():
+    target = send.parse_target("ws://example.com:8765/feed")
+    assert (target.scheme, target.host, target.tls) == \
+        ("ws", "example.com:8765/feed", False)
+    target = send.parse_target("wss://example.com/socket")
+    assert target.tls is True
+    target = send.parse_target("serial:///dev/ttyUSB0?baud=9600")
+    assert (target.scheme, target.address, target.port) == \
+        ("serial", "/dev/ttyUSB0", 9600)
+    target = send.parse_target("serial://COM3")
+    assert target.port == 115200  # the default baud
+
+
+def test_sink_reply_fn_beats_static_reply():
+    sink = send.Sink(reply=b"static", reply_fn=lambda data: data.upper())
+    assert sink("tcp", "peer", b"abc") == b"ABC"
+
+
+def test_cmd_send_fanout_two_targets():
+    stops = []
+    ports = []
+    for _ in range(2):
+        port = free_port()
+        stop, _ = start_server(send.serve_tcp, port, EchoSink())
+        stops.append(stop)
+        ports.append(port)
+    try:
+        code = send.cmd_send(send_namespace(
+            f"tcp://127.0.0.1:{ports[0]}", f"tcp://127.0.0.1:{ports[1]}",
+            "--payload", "both", "--expect", "both"))
+    finally:
+        for stop in stops:
+            stop.set()
+    assert code == 0
+
+
+def test_cmd_send_expect_miss_exits_1():
+    port = free_port()
+    stop, _ = start_server(send.serve_tcp, port, EchoSink())
+    try:
+        code = send.cmd_send(send_namespace(
+            f"tcp://127.0.0.1:{port}", "--payload", "ping",
+            "--expect", "pong"))
+    finally:
+        stop.set()
+    assert code == 1
+
+
+def test_cmd_serve_reply_file_mode(tmp_path):
+    canned = tmp_path / "canned.bin"
+    canned.write_bytes(b"from-a-file")
+    port = free_port()
+    args = serve_namespace("--tcp", str(port), "--duration", "1.5",
+                           "--reply-mode", "file",
+                           "--reply-file", str(canned), "--quiet")
+    thread = threading.Thread(target=send.cmd_serve, args=(args,),
+                              daemon=True)
+    thread.start()
+    _wait_tcp(port)
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
+        conn.sendall(b"whatever")
+        reply = conn.recv(64)
+    thread.join(timeout=5)
+    assert reply == b"from-a-file"
+
+
+def test_cmd_serve_relay_tap(tmp_path):
+    upstream = free_port()
+    stop, _ = start_server(send.serve_tcp, upstream, EchoSink())
+    front = free_port()
+    log = tmp_path / "relay.jsonl"
+    args = serve_namespace("--tcp", str(front), "--duration", "2",
+                           "--relay", f"tcp://127.0.0.1:{upstream}",
+                           "--out", str(log), "--quiet")
+    thread = threading.Thread(target=send.cmd_serve, args=(args,),
+                              daemon=True)
+    thread.start()
+    try:
+        _wait_tcp(front)
+        with socket.create_connection(("127.0.0.1", front), timeout=5) as conn:
+            conn.sendall(b"through")
+            assert conn.recv(64) == b"through"  # upstream's echo, relayed
+    finally:
+        stop.set()
+    thread.join(timeout=6)
+    records = [json.loads(line) for line in log.read_text().splitlines()]
+    kinds = {r["transport"] for r in records}
+    assert {"relay-c2s", "relay-s2c"} <= kinds
+
+
+def test_cmd_send_replay(tmp_path):
+    records = []
+    now = 1_700_000_000.0
+    for i, blob in enumerate([b"one", b"two"]):
+        records.append({
+            "ts": now + i * 0.05, "transport": "tcp", "peer": "x",
+            "bytes": len(blob),
+            "payload_b64": base64.b64encode(blob).decode("ascii")})
+    log = tmp_path / "rec.jsonl"
+    log.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+    recorder = EchoSink()
+    port = free_port()
+    stop, _ = start_server(send.serve_tcp, port, recorder)
+    try:
+        code = send.cmd_send(send_namespace(
+            f"tcp://127.0.0.1:{port}", "--replay", str(log), "--speed", "0"))
+        deadline = time.time() + 3
+        while len(recorder.records) < 2 and time.time() < deadline:
+            time.sleep(0.05)
+    finally:
+        stop.set()
+    assert code == 0
+    assert [r[2] for r in recorder.records] == [b"one", b"two"]
+
+
+def test_ws_round_trip():
+    pytest.importorskip("websockets")
+    port = free_port()
+    sink = send.Sink(quiet=True, reply_fn=lambda data: data)
+    stop, _ = start_server(send.serve_ws, port, sink)
+    try:
+        target = send.parse_target(f"ws://127.0.0.1:{port}/")
+        deadline = time.time() + 5
+        while True:
+            try:
+                result = send.send_ws(target, b"echo-me", read=True,
+                                      timeout=2)
+                break
+            except Exception:
+                if time.time() > deadline:
+                    raise
+                time.sleep(0.2)
+        assert result.reply == b"echo-me"
+    finally:
+        stop.set()
+
+
+def test_serial_round_trip_via_pty():
+    pytest.importorskip("serial")
+    import os
+    import pty
+    import select
+    master1, slave1 = pty.openpty()
+    master2, slave2 = pty.openpty()
+    pumping = threading.Event()
+    pumping.set()
+
+    def pump():
+        while pumping.is_set():
+            ready, _, _ = select.select([master1, master2], [], [], 0.1)
+            for fd in ready:
+                try:
+                    data = os.read(fd, 4096)
+                except OSError:
+                    data = b""
+                if data:
+                    os.write(master2 if fd == master1 else master1, data)
+
+    bridge = threading.Thread(target=pump, daemon=True)
+    bridge.start()
+    stop = threading.Event()
+    sink = send.Sink(quiet=True, reply_fn=lambda data: data)
+    server = threading.Thread(
+        target=send.serve_serial,
+        args=(os.ttyname(slave1), 9600, sink),
+        kwargs={"stop": stop}, daemon=True)
+    server.start()
+    try:
+        target = send.parse_target(
+            f"serial://{os.ttyname(slave2)}?baud=9600")
+        result = send.send_serial(target, b"loopback", read=True,
+                                  timeout=5)
+        assert result.reply == b"loopback"
+    finally:
+        stop.set()
+        pumping.clear()
