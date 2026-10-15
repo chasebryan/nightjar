@@ -180,9 +180,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
   the app says so.
 - **No raw sockets, ever.** No SYN scans, no UDP scans, no ARP
   anything, no packet injection or capture from the app itself —
-  captures are made on real machines and dissected here. Load
-  flooding, deauthentication, spoofing, and covert implants were
-  considered and refused; see CHANGELOG.md.
+  captures are made on real machines and dissected here.
 - **No manufacturer-data stamping.** Python's `ble://` also writes the
   payload into manufacturer data; iOS gives apps no API to set
   manufacturer data in an advertisement. The payload rides in
