@@ -360,6 +360,25 @@ final class Mouth: NSObject, ObservableObject {
     /// The live instance, so App Intents (Shortcuts/Siri) can send.
     static weak var shared: Mouth?
 
+    /// Set by the app: where in-app popup narration goes.
+    weak var toasts: ToastCenter?
+
+    /// Narrate an event as a fading in-app popup (+ a buzz).
+    func ui(_ message: String, error: Bool = false) {
+        DispatchQueue.main.async { [weak self] in
+            self?.toasts?.show(message, error: error)
+            if error { Haptics.error() }
+        }
+    }
+
+    /// Narrate a success (popup + the success buzz).
+    func uiSuccess(_ message: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.toasts?.show(message)
+            Haptics.success()
+        }
+    }
+
     override init() {
         super.init()
         Mouth.shared = self
@@ -418,6 +437,7 @@ final class Mouth: NSObject, ObservableObject {
     /// the Bonjour advertisement (or its absence) takes effect now.
     func setStealth(_ on: Bool) {
         stealth = on
+        ui(on ? "Stealth on — unlisted, silent arrivals" : "Stealth off")
         line(on ? "stealth on: no Bonjour listing, silent arrivals"
                 : "stealth off")
         if serveRunning, let params = lastServeParams {
@@ -509,6 +529,9 @@ final class Mouth: NSObject, ObservableObject {
                 if replied.isEmpty {
                     line("  (no reply)")
                 } else {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.toasts?.show("Reply received — \(replied.count) bytes")
+                    }
                     line("  <- \(replied.count) byte reply")
                     for l in PayloadKit.hexdump(replied).components(separatedBy: "\n") {
                         line(l)
@@ -537,17 +560,20 @@ final class Mouth: NSObject, ObservableObject {
                 connection.send(content: framed, completion: .contentProcessed { error in
                     if let error = error {
                         self?.line("nightjar: send failed: \(error.localizedDescription)")
+                        self?.ui("Send failed: \(error.localizedDescription)", error: true)
                         finish()
                         return
                     }
                     if read {
                         receiveMore()
                     } else {
+                        self?.uiSuccess("Sent \(framed.count) bytes to \(label)")
                         finish()
                     }
                 })
             case .failed(let error):
                 self?.line("nightjar: \(error.localizedDescription)")
+                self?.ui(error.localizedDescription, error: true)
                 finish()
             default:
                 break
@@ -613,10 +639,12 @@ final class Mouth: NSObject, ObservableObject {
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             if let error = error {
                 self?.line("nightjar: \(error.localizedDescription)")
+                self?.ui("HTTP send failed: \(error.localizedDescription)", error: true)
                 return
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let reply = data ?? Data()
+            self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
             self?.line("  HTTP \(status), \(reply.count) byte reply")
             if !reply.isEmpty {
                 for l in PayloadKit.hexdump(reply).components(separatedBy: "\n") {
@@ -686,11 +714,13 @@ final class Mouth: NSObject, ObservableObject {
         beaconOn = true
         _ = ensurePeripheral()
         refreshAdvertising()
+        ui("Beacon on — the payload is on the air")
     }
 
     func stopBeacon() {
         wantBeacon = false
         beaconOn = false
+        ui("Beacon off")
         if gattHostOn {
             refreshAdvertising()
         } else {
@@ -706,6 +736,7 @@ final class Mouth: NSObject, ObservableObject {
         UserDefaults.standard.set(payload, forKey: "gattArm.payload")
         UserDefaults.standard.set(name, forKey: "gattArm.name")
         let manager = ensurePeripheral()
+        ui("GATT host armed — writes land in the Serve inbox")
         if gattCharacteristic == nil {
             let characteristic = CBMutableCharacteristic(
                 type: Mouth.charUUID, properties: [.read, .write, .notify],
@@ -722,6 +753,7 @@ final class Mouth: NSObject, ObservableObject {
     func stopGattHost() {
         gattArmOn = false
         gattHostOn = false
+        ui("GATT host off")
         peripheralManager?.removeAllServices()
         gattCharacteristic = nil
         if wantBeacon {
@@ -785,6 +817,7 @@ final class Mouth: NSObject, ObservableObject {
         writeScanning = false
         pendingWrite = (target.peripheral, payload)
         line("connecting to \(target.name ?? target.id.uuidString)…")
+        ui("Writing to \(target.name ?? "device")…")
         manager.connect(target.peripheral, options: nil)
     }
 
@@ -970,6 +1003,7 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
                               type: withResponse ? .withResponse : .withoutResponse)
         line("wrote \(pending.payload.count) bytes to \(characteristic.uuid.uuidString) "
              + "on \(peripheral.name ?? peripheral.identifier.uuidString)")
+        uiSuccess("Payload written (\(pending.payload.count) bytes)")
         pendingWrite = nil
         centralManager?.cancelPeripheralConnection(peripheral)
     }
@@ -978,6 +1012,7 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
                     error: Error?) {
         if let error = error {
             line("nightjar: write failed: \(error.localizedDescription)")
+            ui("Write failed: \(error.localizedDescription)", error: true)
         }
     }
 }
@@ -1028,23 +1063,28 @@ extension Mouth {
             stopServe()
             DispatchQueue.main.async {
                 self.serveError = "nightjar: \(error.localizedDescription)"
+                self.ui("Serving failed: \(error.localizedDescription)", error: true)
             }
             return
         }
         if started.isEmpty {
             DispatchQueue.main.async {
                 self.serveError = "nightjar: no listener selected"
+                self.ui("No listener selected", error: true)
             }
             return
         }
         DispatchQueue.main.async { self.serveRunning = true }
+        ui("Serving: \(started.joined(separator: ", "))")
         line("serve: \(started.joined(separator: ", ")) — foreground only")
     }
 
     func stopServe() {
+        let wasRunning = serveRunning
         for listener in listeners { listener.cancel() }
         listeners = []
         DispatchQueue.main.async { self.serveRunning = false }
+        if wasRunning { ui("Stopped serving") }
     }
 
     private func makeListener(port: Int, params: NWParameters, bonjour: Bool = false,
