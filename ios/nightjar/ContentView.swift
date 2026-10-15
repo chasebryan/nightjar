@@ -393,7 +393,7 @@ struct SessionsView: View {
         SessionStore.delete(session)
         selection.remove(session.id)
         reload()
-        toasts.show("Session deleted", symbol: "trash")
+        toasts.show("Session deleted")
     }
 
     private func deleteSelected() {
@@ -405,7 +405,7 @@ struct SessionsView: View {
         selection = []
         reload()
         toasts.show("Deleted \(gone) session"
-                    + "\(gone == 1 ? "" : "s")", symbol: "trash")
+                    + "\(gone == 1 ? "" : "s")")
     }
 
     private func deleteAll() {
@@ -413,7 +413,7 @@ struct SessionsView: View {
         selection = []
         reload()
         toasts.show("Deleted \(gone) session"
-                    + "\(gone == 1 ? "" : "s")", symbol: "trash")
+                    + "\(gone == 1 ? "" : "s")")
     }
 }
 
