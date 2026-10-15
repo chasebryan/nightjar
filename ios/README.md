@@ -145,7 +145,10 @@ Below the steps, the Send tab keeps working:
   exports a downloadable JSON map (hosts, services, a
   node/edge graph, the diff against the logbook, and a
   limitations block) in a versioned schema for other
-  tools to ingest.
+  tools to ingest. **Trace & set up the Centipede** runs
+  the trace and then loads every door it found as the
+  Centipede's route — one port train per host — so the
+  map becomes a walk with no manual configuration.
 - **SnatchSteal.** The receive-side weapon: knock on the step-1
   target with the step-2 payload (or don't knock at all), then
   drain *everything* it sends back — until it closes, a 15-second
