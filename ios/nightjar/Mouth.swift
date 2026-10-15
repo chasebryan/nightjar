@@ -364,6 +364,12 @@ final class Mouth: NSObject, ObservableObject {
         super.init()
         Mouth.shared = self
         UNUserNotificationCenter.current().delegate = self
+        if UserDefaults.standard.bool(forKey: "gattArm.on") {
+            // A GATT host was left armed: recreating the manager (with
+            // its restore identifier) is what lets the saved arm —
+            // and any iOS relaunch-for-Bluetooth — take effect.
+            _ = ensurePeripheral()
+        }
     }
 
     struct WriteTarget: Identifiable {
@@ -598,9 +604,43 @@ final class Mouth: NSObject, ObservableObject {
 
     private func ensurePeripheral() -> CBPeripheralManager {
         if let manager = peripheralManager { return manager }
-        let manager = CBPeripheralManager(delegate: self, queue: nil)
+        // The restore identifier is what lets iOS relaunch the app for
+        // a Bluetooth event after the system has killed it.
+        let manager = CBPeripheralManager(
+            delegate: self, queue: nil,
+            options: [CBPeripheralManagerOptionRestoreIdentifierKey:
+                        "net.nosuchmachine.nightjarhack.peripheral"])
         peripheralManager = manager
         return manager
+    }
+
+    // The GATT host, unlike the socket listeners, is allowed to live
+    // in the background — so it can be *armed once* and left. The arm
+    // (and the payload it hosts) persists; the host re-arms itself on
+    // radio power-on, on state restoration, and on foregrounding.
+    private var gattArmOn: Bool {
+        get { UserDefaults.standard.bool(forKey: "gattArm.on") }
+        set { UserDefaults.standard.set(newValue, forKey: "gattArm.on") }
+    }
+
+    private func rearmGattHostIfNeeded() {
+        guard !gattHostOn, gattArmOn else { return }
+        let payload = UserDefaults.standard.data(forKey: "gattArm.payload")
+            ?? Data()
+        let name = UserDefaults.standard.string(forKey: "gattArm.name")
+            ?? "nightjar-post"
+        line("re-arming the GATT host (it was left on)")
+        startGattHost(payload: payload, name: name)
+    }
+
+    /// Called when the app comes to the foreground.
+    func appBecameActive() {
+        guard gattArmOn, !gattHostOn else { return }
+        let manager = ensurePeripheral()
+        if manager.state == .poweredOn {
+            rearmGattHostIfNeeded()
+        }
+        // Otherwise didUpdateState re-arms when the radio reports in.
     }
 
     // The beacon/host functions are called from the views (main queue)
@@ -636,6 +676,9 @@ final class Mouth: NSObject, ObservableObject {
         gattPayload = payload
         beaconName = name
         gattHostOn = true
+        gattArmOn = true
+        UserDefaults.standard.set(payload, forKey: "gattArm.payload")
+        UserDefaults.standard.set(name, forKey: "gattArm.name")
         let manager = ensurePeripheral()
         if gattCharacteristic == nil {
             let characteristic = CBMutableCharacteristic(
@@ -651,6 +694,7 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func stopGattHost() {
+        gattArmOn = false
         gattHostOn = false
         peripheralManager?.removeAllServices()
         gattCharacteristic = nil
@@ -789,8 +833,16 @@ final class Mouth: NSObject, ObservableObject {
 // MARK: - Peripheral manager delegate (beacon / GATT host)
 
 extension Mouth: CBPeripheralManagerDelegate {
+    func peripheralManager(_ peripheral: CBPeripheralManager,
+                           willRestoreState dict: [String: Any]) {
+        // iOS relaunched the app for a Bluetooth event; the saved arm
+        // replays in peripheralManagerDidUpdateState, which follows.
+        line("bluetooth state restored — re-arming what was left on")
+    }
+
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
+            rearmGattHostIfNeeded()
             if wantBeacon || gattHostOn {
                 refreshAdvertising()
             }
