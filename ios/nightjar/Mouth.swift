@@ -1414,28 +1414,50 @@ final class Mouth: NSObject, ObservableObject {
         label: "net.nosuchmachine.nightjarhack.probes",
         attributes: .concurrent)
 
-    /// Knock one port across the phone's whole Wi-Fi /24 and
-    /// hand back every host that answered, in numeric order —
-    /// the Scan tab sweep's discipline (32 at a time, 1 s
-    /// deadline), feeding the centipede's route. The phone's own
-    /// address is skipped.
-    func sweepSubnet(port: Int, completion: @escaping ([String]) -> Void) {
+    /// The /24 base ("192.168.2") a sweep target names: blank
+    /// means the phone's own subnet; otherwise any address in
+    /// the target /24 (192.168.2.15), its base (192.168.2.0), a
+    /// bare base (192.168.2), or any of those with a /24 suffix.
+    /// The sweep is always the /24 around the address. Nil when
+    /// the text doesn't parse.
+    static func sweepBase(_ target: String, ownIP: String?) -> String? {
+        let text = target.trimmingCharacters(in: .whitespaces)
+        let source = text.isEmpty ? (ownIP ?? "") : text
+        let noPrefix = source.split(separator: "/").first
+            .map(String.init) ?? source
+        let parts = noPrefix.split(separator: ".")
+        guard parts.count == 3 || parts.count == 4 else { return nil }
+        var octets: [Int] = []
+        for part in parts {
+            guard let value = Int(part), (0...255).contains(value)
+            else { return nil }
+            octets.append(value)
+        }
+        return octets.prefix(3).map(String.init).joined(separator: ".")
+    }
+
+    /// Knock one port across a /24 — the phone's own Wi-Fi
+    /// subnet, or the subnet named by `target` — and hand back
+    /// every host that answered, in numeric order: the Scan tab
+    /// sweep's discipline (32 at a time, 1 s deadline), feeding
+    /// the centipede's route. The phone's own address is skipped
+    /// when it falls inside the swept range.
+    func sweepSubnet(port: Int, target: String,
+                     completion: @escaping ([String]) -> Void) {
         guard !crawlSweepBusy, (1...65535).contains(port) else {
             completion([])
             return
         }
-        guard let own = Mouth.localIPAddress() else {
-            crawlSweepStatus = "No Wi-Fi address to sweep from"
+        let own = Mouth.localIPAddress()
+        guard let base = Mouth.sweepBase(target, ownIP: own) else {
+            crawlSweepStatus =
+                target.trimmingCharacters(in: .whitespaces).isEmpty
+                ? "No Wi-Fi address to sweep from"
+                : "Couldn't read that subnet — use the "
+                  + "192.168.2.0/24 form"
             completion([])
             return
         }
-        let parts = own.split(separator: ".")
-        guard parts.count == 4 else {
-            crawlSweepStatus = "No Wi-Fi address to sweep from"
-            completion([])
-            return
-        }
-        let base = parts.dropLast().joined(separator: ".")
         crawlSweepBusy = true
         crawlSweepStatus = "Sweeping \(base).0/24 on port \(port)…"
         let group = DispatchGroup()
@@ -1446,7 +1468,7 @@ final class Mouth: NSObject, ObservableObject {
             let gate = DispatchSemaphore(value: 32)
             for octet in 1...254 {
                 let host = "\(base).\(octet)"
-                if host == own { continue }
+                if let own = own, host == own { continue }
                 gate.wait()
                 group.enter()
                 self.probe(host: host, port: port) { open in
