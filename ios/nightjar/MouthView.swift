@@ -46,6 +46,7 @@ struct SendView: View {
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
     @AppStorage("centipedeReturn") private var centipedeReturn = true
     @AppStorage("centipedePerDevice") private var centipedePerDevice = false
+    @AppStorage("centipedeSmartSeed") private var centipedeSmartSeed = true
     @State private var centipedeHome = ""
     @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
@@ -531,6 +532,8 @@ struct SendView: View {
                            isOn: $centipedeReturn)
                     Toggle("Every device in the list gets its own walk",
                            isOn: $centipedePerDevice)
+                    Toggle("Smart seed — speak each port's protocol",
+                           isOn: $centipedeSmartSeed)
                     TextField("Deliver homecoming to (optional)",
                               text: $centipedeHome)
                         .textInputAutocapitalization(.never)
@@ -556,6 +559,8 @@ struct SendView: View {
                                 returnLeg: centipedeReturn,
                                 perDevice: centipedePerDevice,
                                 homeTarget: centipedeHome,
+                                smartSeed: centipedeSmartSeed,
+                                probeFor: probeForTarget,
                                 payloadFor: { build(forTargetText: $0) },
                                 framing: framing, method: method)
                         } label: {
@@ -569,6 +574,13 @@ struct SendView: View {
                     }
                     ForEach(mouth.crawlLines, id: \.self) { trailLine in
                         Text(trailLine).font(.caption.monospaced())
+                    }
+                    if !mouth.crawlFindings.isEmpty {
+                        Text("Harvest — what the doors said")
+                            .font(.caption.weight(.semibold))
+                        ForEach(mouth.crawlFindings, id: \.self) { finding in
+                            Text(finding).font(.caption.monospaced())
+                        }
                     }
                     if let home = mouth.crawlHomecoming {
                         VStack(alignment: .leading, spacing: 4) {
@@ -975,6 +987,33 @@ struct SendView: View {
         centipedeRoute = (["tcp://\(ip):\(serveTcpPort)"] + centipedeLines)
             .joined(separator: "\n")
         toasts.show("Added this phone — start Serve, then release")
+    }
+
+    /// The smart seed: for a TCP/UDP target whose port has a
+    /// library probe (the Scan tab's port map), the probe's
+    /// built bytes and its name — or nil, when the port has no
+    /// probe and the step-2 payload should speak instead.
+    private func probeForTarget(_ targetText: String)
+        -> (data: Data, name: String)?
+    {
+        guard let parsed = try? SendTarget.parse(targetText) else {
+            return nil
+        }
+        let port: Int
+        switch parsed {
+        case .tcp(_, let p, _), .udp(_, let p): port = p
+        default: return nil
+        }
+        guard let name = ScanModel.payloadByPort[port],
+              let item = book.items.first(where: { $0.name == name }),
+              let data = try? PayloadKit.build(
+                source: item.source,
+                text: item.source == "text" ? item.text : "",
+                hex: item.source == "hex" ? item.text : "",
+                b64: item.source == "base64" ? item.text : "",
+                xorSpec: item.xorKey, useGzip: item.useGzip)
+        else { return nil }
+        return (data, name)
     }
 
     private func build(forTargetText targetText: String) -> Data? {
