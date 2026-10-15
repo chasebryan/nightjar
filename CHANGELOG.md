@@ -106,19 +106,6 @@ no new commands this round; its docs were overhauled with the rest.
   instrument for devices and networks you own or are engaged in
   writing to test.
 
-### Considered and refused (the boundaries are features)
-
-- **HULK / HTTP flooding** — denial of service is not recon.
-- **ARP poisoning / traffic interception feeds** — also
-  impossible from an iOS app (no raw sockets, no link-layer
-  access), and a man-in-the-middle on other people's traffic
-  regardless of framing. The observation feed watches what the
-  phone can see for itself.
-- **A planted packet-capture implant** — a wiretap on a target
-  device that exfiltrates traffic to its planter. Same shelf.
-- **Wi-Fi deauth / evil twin / handshake cracking** — impossible
-  on iOS and aimed at other people's networks besides.
-
 ### Docs
 
 README.md, HACKER.md and ios/README.md rewritten for the full
