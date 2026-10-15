@@ -60,6 +60,7 @@ class IdentityPattern:
     sessions_present: int = 0
     days_present: int = 0
     labels: set[str] = field(default_factory=set)
+    posts: set[str] = field(default_factory=set)  # which ears heard it
     presence_seconds: float = 0.0  # sum of per-session first-to-last span
     hour_histogram: dict[int, int] = field(default_factory=dict)
     weekday_histogram: dict[int, int] = field(default_factory=dict)
@@ -119,6 +120,7 @@ class IdentityPattern:
             "days_present": self.days_present,
             "days": sorted(self.days),
             "labels": sorted(self.labels),
+            "posts": sorted(self.posts),
             "presence_seconds": self.presence_seconds,
             "average_presence_seconds": self.average_presence_seconds,
             "hour_histogram": {str(h): n for h, n in sorted(self.hour_histogram.items())},
@@ -169,6 +171,8 @@ def analyze(sessions: list[Session]) -> list[IdentityPattern]:
             pattern.presences.append(presence)
             if session.label:
                 pattern.labels.add(session.label)
+            if session.post:
+                pattern.posts.add(session.post)
     for pattern in patterns.values():
         pattern.days_present = len(pattern.days)
     return sorted(patterns.values(), key=lambda p: -p.identity.sightings)
@@ -189,9 +193,12 @@ def format_report(sessions: list[Session],
             + f", {total} sightings, {len(patterns)} devices")
     if starts and ends:
         head += f", {fmt_local(min(starts))} to {fmt_local(max(ends))}"
+    posts = sorted({s.post for s in sessions if s.post})
     lines = [head]
     if labels:
         lines.append("places: " + ", ".join(labels))
+    if posts:
+        lines.append("posts: " + ", ".join(posts))
     lines += [
         "",
         f"{'DEVICE':<28} {'KIND':<30} {'SEEN':>5} {'SESS':>4} {'DAYS':>4}  "
@@ -209,6 +216,8 @@ def format_report(sessions: list[Session],
             notes.append("Find My, with owner")
         if pattern.labels:
             notes.append("@" + ",".join(sorted(pattern.labels)))
+        if len(pattern.posts) > 1:
+            notes.append("heard by " + ",".join(sorted(pattern.posts)))
         median = pattern.rssi_median
         lines.append(
             f"{truncate(ident.label, 28):<28} {truncate(ident.kind, 30):<30} "

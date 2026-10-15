@@ -83,6 +83,11 @@ word for a place; `NIGHTJAR_LABEL` and `NIGHTJAR_LOG` in the
 environment set standing defaults for a post that always runs in the
 same spot.
 
+`--post NAME` names *which ear* this is — the Mac, the phone, a sniffer
+by the door — as distinct from the *place* it's in. One listener needs
+no post; several do, and that's where [fusion](#many-ears) comes in.
+Defaults to the hostname, or `$NIGHTJAR_POST`.
+
 Add `--live` for the radar: a full-screen view, strongest signals on
 top, each device with its range band, trend arrow, how long since it
 was last heard, and a sparkline of its signal history, redrawn every
@@ -180,6 +185,63 @@ nightjar show "D4:61" sightings.jsonl
 nightjar show airpods logs/
 ```
 
+And what broke the pattern — a regular that normally shows at this hour
+and didn't, or a never-seen device arriving when the place is normally
+quiet. Absence is as loud as presence:
+
+```
+nightjar anomalies logs/
+nightjar anomalies logs/ --observation-days 1 --json
+```
+
+`anomalies` splits the logs into a baseline (what's normal) and a recent
+window (what just happened, `--observation-days`), and raises **missing
+regulars** and **new-at-odd-hour** arrivals. It's analysis over logs,
+not a live alarm — run it after a session, or on a schedule (cron, a
+launchd timer). It stays silent when there's too little history to know
+what's normal, and never judges a device whose identity rotates across
+epochs, because it can't honestly match one to the day before.
+
+## Many ears
+
+One listener is one ear. Point several at your own space — the Mac
+indoors, the phone in your pocket, a sniffer by the door — give each a
+`--post` name, and the logs fuse into one picture. `report` shows which
+posts heard each device; `trackers` gains a sense it can't have from a
+single ear:
+
+```
+nightjar trackers mac.jsonl phone.jsonl       # logs from two posts
+nightjar report ~/nightjar/*.jsonl
+```
+
+The payoff is **exoneration**. A tag that is genuinely following you is
+in exactly one place at a time — yours. So when two posts at two
+different places hear one device *within the same moment*, it cannot be
+a single object riding along: it's infrastructure broadcasting widely,
+or two different tags. `trackers` clears it, in a "Cleared by fusion"
+section, instead of flagging it:
+
+```
+Cleared by fusion (1):
+
+  Tile tracker — 14 sightings
+    - heard at home (mac) and office (phone) within the same moment —
+      it can't be one tag travelling with you
+```
+
+A tag carried from place to place *in sequence* — home in the morning,
+office by noon — still has the following shape, and is still a suspect.
+Logs without posts behave exactly as before; fusion only adds evidence,
+never removes the old.
+
+The simplest way to feed many posts into one brain: have each write to a
+shared folder (an iCloud Drive folder the Mac watches, say) and point
+the analysis commands at the folder. The [iOS companion](ios/README.md)
+writes the same format with its own post name, and cheap leaf nodes (an
+ESP32-class sniffer) can append to the same log as long as they match
+the [log contract](#the-log).
+
 ### How a suspect is scored
 
 An identity is a *candidate* only if it is tracker-shaped: unnamed,
@@ -272,7 +334,7 @@ writes a header, a sighting per advertisement, any alerts, and a
 footer:
 
 ```json
-{"type": "session", "session_id": "61523c0f1d29", "label": "home", "label_source": "manual", "started_at": 1792028551.45, "scan_mode": "passive", "format": 1, "nightjar_version": "2.0.0"}
+{"type": "session", "session_id": "61523c0f1d29", "label": "home", "label_source": "manual", "post": "mac", "started_at": 1792028551.45, "scan_mode": "passive", "format": 1, "nightjar_version": "2.1.0"}
 {"type": "sighting", "seen_at": 1792028551.85, "address": "C1:2A:9D:44:10:7E", "name": "AirPods Pro", "rssi": -43, "manufacturer_data": {"76": "0719010e202a9807..."}, "service_uuids": [], "tx_power": null, "service_data": {"0000feaa-...": "40..."}, "address_type": "random"}
 {"type": "alert", "seen_at": 1792028701.03, "kind": "new-device", "text": "New device appeared: ...", "identity_key": "fp:0b3f1aaf321f", "label": "...", "device_kind": "...", "address": "...", "data": {}}
 {"type": "session_end", "session_id": "61523c0f1d29", "ended_at": 1792028555.52, "sightings": 11}
@@ -281,7 +343,8 @@ footer:
 `manufacturer_data` keys are company ids as decimal strings, values
 the payload without the company id, lowercase hex; `service_data` is
 keyed by full lowercase UUID. `service_data`, `address_type`,
-`scan_mode` and the footer are nightjar 2 additions — logs from 1.x
+`scan_mode` and the footer are nightjar 2 additions, and `post` (which
+ear heard it) is a 2.1 addition — all optional. Logs from 1.x and 2.0
 (and from the [iOS companion](ios/README.md)) load unchanged, headerless
 0.1 logs are split into sessions on gaps, and a corrupt line is
 skipped and counted rather than fatal.
@@ -318,6 +381,11 @@ skipped and counted rather than fatal.
    with the evidence shown. ✅
 6. **The post stands guard** — `watch` mode with once-per-device
    alerts to the console, the log and a webhook. ✅
+7. **Many ears, one brain** — several posts around one space, fused
+   into one picture; a device heard at two places at once is cleared,
+   because a tag that follows you is in one place at a time. ✅
+8. **It thinks in places** — `anomalies`: the regular that didn't show,
+   the newcomer at an odd hour. Absence is as loud as presence. ✅
 
 ## Scope
 

@@ -32,10 +32,12 @@ class SessionLog:
     and a footer when the run ends cleanly.
     """
 
-    def __init__(self, path: str, *, label: str | None, label_source: str | None):
+    def __init__(self, path: str, *, label: str | None, label_source: str | None,
+                 post: str | None = None):
         self.path = path
         self.label = label
         self.label_source = label_source
+        self.post = post
         self.session_id = uuid.uuid4().hex[:12]
         self.started_at: float | None = None
         self.sightings = 0
@@ -50,7 +52,7 @@ class SessionLog:
             return
         self._fh = open(self.path, "a", encoding="utf-8")  # noqa: SIM115 - lives across a run
         self.started_at = time.time()
-        self._write({
+        header = {
             "type": "session",
             "session_id": self.session_id,
             "label": self.label,
@@ -59,7 +61,10 @@ class SessionLog:
             "scan_mode": scan_mode,
             "format": LOG_FORMAT_VERSION,
             "nightjar_version": __version__,
-        })
+        }
+        if self.post:
+            header["post"] = self.post
+        self._write(header)
 
     def _write(self, record: dict) -> None:
         if self._fh is None:

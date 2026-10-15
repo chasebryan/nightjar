@@ -24,6 +24,12 @@ import time
 from collections import deque
 
 from . import __version__
+from .anomaly import (
+    MIN_BASELINE_SESSIONS,
+    find_anomalies,
+    format_anomalies,
+    split_baseline,
+)
 from .history import LoadReport, Session, filter_sessions, load_log
 from .live import render_live
 from .patterns import IdentityPattern, analyze, format_report
@@ -41,10 +47,15 @@ from .simulate import write_demo_log
 from .terminal import AlternateScreen
 from .terminal import size as terminal_size
 from .text import fmt_hours, fmt_local, sparkline
-from .trackers import DEFAULT_MIN_RSSI, SUSPECT_THRESHOLD, find_suspects, format_suspects
+from .trackers import (
+    DEFAULT_MIN_RSSI,
+    SUSPECT_THRESHOLD,
+    analyze_trackers,
+    format_tracker_report,
+)
 from .watch import WEBHOOK_FORMATS, AlertDispatcher, AlertEngine, WebhookAlerter
 
-COMMANDS = ("scan", "watch", "report", "trackers", "show", "demo")
+COMMANDS = ("scan", "watch", "report", "trackers", "show", "anomalies", "demo")
 GLOBAL_FLAGS = ("-h", "--help", "-V", "--version")
 
 
@@ -63,6 +74,10 @@ def _add_listen_args(parser) -> None:
         "--label", metavar="PLACE",
         help="label this session with where you are listening; "
              "default: $NIGHTJAR_LABEL, else detected from the Wi-Fi network")
+    parser.add_argument(
+        "--post", metavar="NAME", default=os.environ.get("NIGHTJAR_POST"),
+        help="name this listening post (the ear, not the place: 'mac', "
+             "'phone', 'front-door'); default: $NIGHTJAR_POST, else the hostname")
     parser.add_argument(
         "--live", action="store_true",
         help="show the live radar instead of discovery lines")
@@ -137,12 +152,27 @@ def _resolve_place(args) -> tuple[str | None, str | None]:
     return (place, "wifi") if place else (None, None)
 
 
-def _banner(args, label, mode, watching=False) -> str:
+def _resolve_post(args) -> str | None:
+    """Which ear this is: --post / $NIGHTJAR_POST, else the short hostname."""
+    post = getattr(args, "post", None)
+    if post:
+        return post
+    try:
+        import socket
+
+        host = socket.gethostname().split(".")[0].strip()
+        return host or None
+    except Exception:
+        return None
+
+
+def _banner(args, label, mode, watching=False, post=None) -> str:
     where_mode = ("simulated neighbourhood" if args.simulate
                   else f"Bluetooth radio, {mode} scan")
     where = f" @ {label}" if label else ""
+    ear = f" [{post}]" if post else ""
     verb = "watching" if watching else "listening"
-    return f"nightjar {verb} ({where_mode}{where}) — Ctrl-C to stop."
+    return f"nightjar {verb} ({where_mode}{where}){ear} — Ctrl-C to stop."
 
 
 def _scan_kwargs(args) -> dict:
@@ -196,8 +226,9 @@ def _load(args) -> tuple[list[Session], LoadReport] | None:
 
 def _listen(args, *, watching: bool) -> int:
     label, label_source = _resolve_place(args)
-    log = SessionLog(args.log, label=label, label_source=label_source) \
-        if args.log else None
+    post_name = _resolve_post(args)
+    log = SessionLog(args.log, label=label, label_source=label_source,
+                     post=post_name) if args.log else None
     engine = None
     dispatcher = None
     alerter = None
@@ -244,14 +275,16 @@ def _listen(args, *, watching: bool) -> int:
         post.started(outcome.mode)
         if args.json:
             _emit_json({"event": "start", "mode": outcome.mode, "label": label,
-                        "label_source": label_source, "notes": outcome.notes,
+                        "label_source": label_source, "post": post_name,
+                        "notes": outcome.notes,
                         "session_id": log.session_id if log else None,
                         "started_at": post.started_at})
             return
         for note in outcome.notes:
             print(f"nightjar: {note}", file=sys.stderr, flush=True)
         if screen is None:
-            print(_banner(args, label, outcome.mode, watching=watching), flush=True)
+            print(_banner(args, label, outcome.mode, watching=watching,
+                          post=post_name), flush=True)
             if alerter is not None and alerter.url:
                 print(f"alerts will also post to the {alerter.format} webhook.",
                       flush=True)
@@ -294,7 +327,8 @@ def _listen(args, *, watching: bool) -> int:
 
     summary = summary_dict(
         post.registry, post.resolver, scan_mode=post.scan_mode,
-        label=label, label_source=label_source, started_at=post.started_at,
+        label=label, label_source=label_source, post=post_name,
+        started_at=post.started_at,
         ended_at=time.time(), alerts=[a.to_dict() for a in post.alerts],
         session_id=log.session_id if log else None, log=args.log)
     if args.json:
@@ -359,15 +393,35 @@ def _cmd_trackers(args) -> int:
     if loaded is None:
         return 1
     sessions, _ = loaded
-    suspects = find_suspects(sessions, min_sessions=args.min_sessions,
-                             min_span_hours=args.min_span_hours,
-                             min_rssi=args.min_rssi, ignore=args.ignore,
-                             threshold=args.threshold)
+    report = analyze_trackers(sessions, min_sessions=args.min_sessions,
+                              min_span_hours=args.min_span_hours,
+                              min_rssi=args.min_rssi, ignore=args.ignore,
+                              threshold=args.threshold)
     if args.json:
-        _emit_json({"sessions": len(sessions),
-                    "suspects": [s.to_dict() for s in suspects]})
+        _emit_json({"sessions": len(sessions), **report.to_dict()})
         return 0
-    print(format_suspects(suspects))
+    print(format_tracker_report(report))
+    return 0
+
+
+def _cmd_anomalies(args) -> int:
+    loaded = _load(args)
+    if loaded is None:
+        return 1
+    sessions, _ = loaded
+    baseline, observation = split_baseline(
+        sessions, observation_days=args.observation_days)
+    anomalies = find_anomalies(sessions, baseline=baseline, observation=observation)
+    had_baseline = len(baseline) >= MIN_BASELINE_SESSIONS and bool(observation)
+    if args.json:
+        _emit_json({
+            "baseline_sessions": len(baseline),
+            "observation_sessions": len(observation),
+            "had_baseline": had_baseline,
+            "anomalies": [a.to_dict() for a in anomalies],
+        })
+        return 0
+    print(format_anomalies(anomalies, had_baseline=had_baseline))
     return 0
 
 
@@ -454,7 +508,7 @@ def _cmd_demo(args) -> int:
     print()
     print(format_report(sessions, analyze(sessions)))
     print()
-    print(format_suspects(find_suspects(sessions)))
+    print(format_tracker_report(analyze_trackers(sessions)))
     return 0
 
 
@@ -527,6 +581,14 @@ def build_parser() -> argparse.ArgumentParser:
                       help="an address (or prefix), a name, a kind, or an identity key")
     _add_log_args(show)
 
+    anomalies = sub.add_parser(
+        "anomalies", help="what broke the pattern: missing regulars, odd-hour arrivals")
+    _add_log_args(anomalies)
+    anomalies.add_argument(
+        "--observation-days", type=float, default=1.0, metavar="DAYS",
+        help="treat sessions in the last DAYS as 'what just happened', "
+             "the rest as the baseline (default 1)")
+
     demo = sub.add_parser("demo", help="write a multi-day demo log and analyze it")
     demo.add_argument("--out", default="nightjar-demo.jsonl", metavar="FILE")
     demo.add_argument("--days", type=int, default=2)
@@ -559,6 +621,7 @@ def main(argv=None) -> int:
         "report": _cmd_report,
         "trackers": _cmd_trackers,
         "show": _cmd_show,
+        "anomalies": _cmd_anomalies,
         "demo": _cmd_demo,
     }
     return handlers[args.command](args)

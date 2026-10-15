@@ -63,6 +63,18 @@ final class ListeningPost: NSObject, ObservableObject {
 
     var isListening: Bool { return session != nil }
 
+    /// This post's name, for the log header — which ear heard it. The user
+    /// sets it on the About tab (so the Mac's fusion can tell the phone
+    /// apart from the Mac); defaults to "phone".
+    static func postName() -> String? {
+        let stored = UserDefaults.standard.string(forKey: "postName")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let stored = stored, !stored.isEmpty {
+            return stored
+        }
+        return "phone"
+    }
+
     // MARK: - Session control
 
     func start(label rawLabel: String) {
@@ -80,7 +92,7 @@ final class ListeningPost: NSObject, ObservableObject {
             lastError = "Could not create the log file: \(error.localizedDescription)"
             return
         }
-        writer.append(JSONL.object([
+        var header: [(String, String)] = [
             ("type", JSONL.string("session")),
             ("session_id", JSONL.string(id)),
             ("label", JSONL.optionalString(label)),
@@ -89,7 +101,11 @@ final class ListeningPost: NSObject, ObservableObject {
             ("scan_mode", JSONL.string("active")),
             ("format", "1"),
             ("nightjar_version", JSONL.string("ios-\(AppInfo.version)")),
-        ]))
+        ]
+        if let post = Self.postName() {
+            header.append(("post", JSONL.string(post)))
+        }
+        writer.append(JSONL.object(header))
         writer.flush()
         self.writer = writer
 

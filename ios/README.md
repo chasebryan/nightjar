@@ -37,9 +37,17 @@ Zero third-party dependencies, so it builds clean for sideloading.
   tab).
 - **Keep the screen awake** while listening (About tab; on by default),
   because foreground sessions hear the most.
+- **Post name** (About tab, default "phone"): names this ear in every
+  session, so the Mac's fusion can tell your phone apart from your other
+  posts. Written as `"post"` in the session header.
+- **Update banner**: the app checks GitHub Releases and, when a newer
+  version is tagged, shows a banner (and an About-tab row) linking to the
+  release. It's honest that a sideloaded build can't install its own
+  update — you re-run from Xcode — and your logs survive the rebuild.
+  With no releases published, or offline, it shows nothing.
 
-Out of scope, on purpose: no analysis UI, no accounts, no networking,
-no notifications.
+Out of scope, on purpose: no analysis UI, no accounts, no networking
+beyond the release check, no notifications.
 
 ## Install (sideloading with a free Apple ID)
 
@@ -157,8 +165,10 @@ ios/
     Services.swift             service UUID/data decoders (port of nightjar/services.py)
     Vendors.swift              Microsoft, Ruuvi, company table (port of vendors.py)
     Identify.swift             classification and the live-list row model
+    UpdateChecker.swift        GitHub Releases check and version compare
     Assets.xcassets            icon and accent colour
   nightjarTests/
     DecoderTests.swift         decoder vectors shared with the Python tests
     LogFormatTests.swift       the log contract, byte for byte
+    UpdateCheckerTests.swift   version comparison and release parsing
 ```

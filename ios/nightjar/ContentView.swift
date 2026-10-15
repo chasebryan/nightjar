@@ -18,6 +18,7 @@ struct ContentView: View {
 
 struct ListenView: View {
     @EnvironmentObject private var post: ListeningPost
+    @EnvironmentObject private var updater: UpdateChecker
     @State private var label = ""
     @State private var now = Date().timeIntervalSince1970
 
@@ -26,6 +27,11 @@ struct ListenView: View {
     var body: some View {
         NavigationStack {
             List {
+                if let release = updater.available {
+                    Section {
+                        UpdateBanner(release: release)
+                    }
+                }
                 Section {
                     statusRow
                     if let session = post.session {
@@ -121,6 +127,29 @@ struct ListenView: View {
     private func elapsed(since start: TimeInterval) -> String {
         let seconds = Int(max(0, now - start))
         return String(format: "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+    }
+}
+
+struct UpdateBanner: View {
+    let release: UpdateChecker.Release
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Update available — \(release.name)", systemImage: "arrow.down.circle.fill")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+            Text("A newer nightjar is out. A sideloaded app can't update "
+                 + "itself — open the project in Xcode and press Run to rebuild. "
+                 + "Your logs are kept.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Link(destination: release.url) {
+                Label("View release", systemImage: "arrow.up.right.square")
+                    .font(.callout)
+            }
+            .padding(.top, 2)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -273,11 +302,27 @@ struct SessionRowView: View {
 // MARK: - About
 
 struct AboutView: View {
+    @EnvironmentObject private var updater: UpdateChecker
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
+    @AppStorage("postName") private var postName = "phone"
 
     var body: some View {
         NavigationStack {
             List {
+                Section(header: Text("This post"),
+                        footer: Text("The name of this ear, written into every session. "
+                                     + "The Mac's fusion uses it to tell your phone apart "
+                                     + "from your other posts — give each one its own name.")) {
+                    HStack {
+                        Text("Post name")
+                        Spacer()
+                        TextField("phone", text: $postName)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section(header: Text("Listening")) {
                     Toggle("Keep the screen awake while listening", isOn: $keepScreenAwake)
                     Text("Foreground sessions hear everything. In the background iOS only "
@@ -307,6 +352,26 @@ struct AboutView: View {
                     Text("nightjar for iOS \(AppInfo.version) · log format 1")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if let release = updater.available {
+                        Link(destination: release.url) {
+                            Label("Update available — \(release.name)",
+                                  systemImage: "arrow.up.right.square")
+                        }
+                    }
+                    Button {
+                        Task { await updater.check() }
+                    } label: {
+                        HStack {
+                            Text("Check for updates")
+                            Spacer()
+                            if updater.checking {
+                                ProgressView()
+                            } else if updater.available == nil, updater.lastChecked != nil {
+                                Text("up to date").foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .disabled(updater.checking)
                 }
             }
             .navigationTitle("About")
@@ -315,5 +380,7 @@ struct AboutView: View {
 }
 
 #Preview {
-    ContentView().environmentObject(ListeningPost())
+    ContentView()
+        .environmentObject(ListeningPost())
+        .environmentObject(UpdateChecker())
 }

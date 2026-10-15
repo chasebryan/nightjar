@@ -1,5 +1,45 @@
 # Changelog
 
+## 2.1.0
+
+Many ears, one brain — and a post that notices when the pattern breaks.
+
+### Fusion (many posts)
+- A session now carries a **post**: which ear heard it (the Mac, the
+  phone, a sniffer by the door), separate from the *place* it was in.
+  `--post NAME` / `$NIGHTJAR_POST` on `scan` and `watch` (default: the
+  hostname); the iOS app writes its configurable post name. Logs from
+  1.x and 2.0 load unchanged (no post).
+- `report` shows which posts heard each device; `trackers` reports which
+  posts a suspect was heard by.
+- **Simultaneity exoneration**: when two posts at two different places
+  hear one device within the same moment, it can't be a single tag
+  riding with you — `trackers` now *clears* it, in a "Cleared by fusion"
+  section, instead of flagging it. A tag carried from place to place in
+  sequence is still a suspect. Postless logs behave exactly as 2.0.
+- Loader gains `default_post` and `post_by_path`, so logs that never
+  named a post can still be assigned one at read time.
+
+### Anomalies (it thinks in places)
+- New `nightjar anomalies <logs>` command: splits history into a
+  baseline and a recent window and raises two things —
+  **missing regulars** (a device normally here at this hour, in this
+  place, that didn't show) and **new-at-odd-hour** arrivals (a
+  never-seen, stable-identity device turning up when the place is
+  normally quiet). `--observation-days`, `--json`.
+- Honest by construction: it stays silent with too little baseline, and
+  never judges a device whose identity rotates across epochs (it can't
+  be matched day to day — the stitching problem, left unsolved on
+  purpose).
+
+### iOS
+- An **update banner**: the app checks GitHub Releases and, when a newer
+  version is tagged, shows a banner linking to it — honest that a
+  sideloaded build can't self-install and must be re-run from Xcode.
+  Manual "Check for updates" on the About tab.
+- A settable **post name** (About tab) written into every session, so
+  the Mac's fusion can tell the phone apart from the other posts.
+
 ## 2.0.0
 
 The identity release. Summaries, the radar and the alerts now think

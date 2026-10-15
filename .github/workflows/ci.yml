@@ -31,7 +31,8 @@ jobs:
         shell: bash
         run: |
           nightjar --version
-          nightjar demo --out demo.jsonl --days 1 --seed 1
-          nightjar scan --simulate --duration 2 --seed 1 --label ci --log ci.jsonl --quiet
+          nightjar demo --out demo.jsonl --days 4 --seed 1
+          nightjar scan --simulate --duration 2 --seed 1 --label ci --post ci-runner --log ci.jsonl --quiet
           nightjar report ci.jsonl demo.jsonl --json > /dev/null
           nightjar trackers demo.jsonl
+          nightjar anomalies demo.jsonl
