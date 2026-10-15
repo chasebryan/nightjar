@@ -44,6 +44,22 @@ final class ScanModel: ObservableObject {
     static let serviceNames: [Int: String] =
         Dictionary(uniqueKeysWithValues: topPorts)
 
+    /// Open port -> the library probe that speaks its language,
+    /// for the Scan -> Send handoff.
+    static let payloadByPort: [Int: String] = [
+        25: "SMTP EHLO",
+        53: "DNS query — example.com (UDP 53)",
+        80: "HTTP GET / (raw)",
+        502: "Modbus read coils (TCP 502)",
+        161: "SNMP get sysDescr (UDP 161)",
+        1883: "MQTT CONNECT (client: nightjar)",
+        5060: "SIP OPTIONS (UDP/TCP 5060)",
+        5432: "Postgres SSLRequest (TCP 5432)",
+        6379: "Redis PING (RESP)",
+        9100: "Printer test page (TCP 9100)",
+        11211: "memcached stats",
+    ]
+
     private static let httpPorts: Set<Int> = [80, 8000, 8080, 8443, 8888, 9200]
 
     private let queue = DispatchQueue(label: "nightjar-scan",
@@ -326,15 +342,221 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
     }
 }
 
+
+// MARK: - DNS toolkit
+
+/// Real DNS over UDP: build a query, parse the answer — name
+/// compression and all — the structured version of the library's
+/// hand-rolled DNS seed.
+enum DNSKit {
+    static func buildQuery(name: String, type: UInt16) -> Data {
+        var data = Data()
+        let id = UInt16.random(in: 0...UInt16.max)
+        data.append(UInt8(id >> 8))
+        data.append(UInt8(id & 0xff))
+        data.append(contentsOf: [0x01, 0x00])              // RD
+        data.append(contentsOf: [0x00, 0x01])              // QDCOUNT 1
+        data.append(contentsOf: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        for label in name.split(separator: ".") where !label.isEmpty {
+            data.append(UInt8(clamping: label.count))
+            data.append(contentsOf: label.utf8)
+        }
+        data.append(0)
+        data.append(UInt8(type >> 8))
+        data.append(UInt8(type & 0xff))
+        data.append(contentsOf: [0x00, 0x01])              // IN
+        return data
+    }
+
+    static func readName(_ data: Data, _ offset: inout Int) -> String {
+        var labels: [String] = []
+        var pos = offset
+        var next = offset
+        var jumped = false
+        var steps = 0
+        while pos < data.count, steps < 128 {
+            steps += 1
+            let len = Int(data[pos])
+            if len == 0 {
+                if !jumped { next = pos + 1 }
+                break
+            }
+            if len & 0xC0 == 0xC0, pos + 1 < data.count {
+                if !jumped { next = pos + 2 }
+                jumped = true
+                pos = ((len & 0x3F) << 8) | Int(data[pos + 1])
+                continue
+            }
+            let end = pos + 1 + len
+            guard end <= data.count else { break }
+            labels.append(String(decoding: data[(pos + 1)..<end],
+                                 as: UTF8.self))
+            pos = end
+            if !jumped { next = end }
+        }
+        offset = next
+        return labels.joined(separator: ".")
+    }
+
+    static func parseAnswers(_ data: Data) -> [String] {
+        func u16(_ i: Int) -> Int { (Int(data[i]) << 8) | Int(data[i + 1]) }
+        func u32(_ i: Int) -> Int { (u16(i) << 16) | u16(i + 2) }
+        guard data.count >= 12 else { return ["short response"] }
+        let qd = u16(4), an = u16(6)
+        var pos = 12
+        for _ in 0..<qd {
+            _ = readName(data, &pos)
+            pos += 4
+        }
+        var lines: [String] = []
+        for _ in 0..<an {
+            let name = readName(data, &pos)
+            guard pos + 10 <= data.count else { break }
+            let type = u16(pos), ttl = u32(pos + 4), rdlen = u16(pos + 8)
+            let rstart = pos + 10
+            guard rstart + rdlen <= data.count else { break }
+            lines.append("\(name) · \(typeName(type)) · ttl \(ttl)")
+            lines.append("  " + formatRdata(data, type: type,
+                                            start: rstart, length: rdlen))
+            pos = rstart + rdlen
+        }
+        return lines.isEmpty ? ["no records in the answer"] : lines
+    }
+
+    private static func formatRdata(_ data: Data, type: Int,
+                                    start: Int, length: Int) -> String {
+        let bytes = [UInt8](data[start..<(start + length)])
+        switch type {
+        case 1 where bytes.count == 4:
+            return bytes.map(String.init).joined(separator: ".")
+        case 28 where bytes.count == 16:
+            return ipv6(bytes)
+        case 2, 5:
+            var off = start
+            return readName(data, &off)
+        case 15:
+            guard bytes.count > 2 else { return "?" }
+            let pref = (Int(bytes[0]) << 8) | Int(bytes[1])
+            var off = start + 2
+            return "\(pref) \(readName(data, &off))"
+        case 16:
+            var parts: [String] = []
+            var i = 0
+            while i < bytes.count {
+                let len = Int(bytes[i])
+                i += 1
+                guard i + len <= bytes.count else { break }
+                parts.append(String(decoding: bytes[i..<(i + len)],
+                                    as: UTF8.self))
+                i += len
+            }
+            return parts.joined(separator: " ")
+        default:
+            return bytes.map { String(format: "%02x", $0) }.joined()
+        }
+    }
+
+    private static func ipv6(_ bytes: [UInt8]) -> String {
+        var groups: [Int] = []
+        for i in stride(from: 0, to: 16, by: 2) {
+            groups.append((Int(bytes[i]) << 8) | Int(bytes[i + 1]))
+        }
+        var bestStart = -1, bestLen = 0, runStart = -1, runLen = 0
+        for (i, g) in groups.enumerated() {
+            if g == 0 {
+                if runStart < 0 { runStart = i; runLen = 1 } else { runLen += 1 }
+                if runLen > bestLen { bestLen = runLen; bestStart = runStart }
+            } else {
+                runStart = -1; runLen = 0
+            }
+        }
+        guard bestLen >= 2 else {
+            return groups.map { String($0, radix: 16) }.joined(separator: ":")
+        }
+        let left = groups[..<bestStart]
+            .map { String($0, radix: 16) }.joined(separator: ":")
+        let right = groups[(bestStart + bestLen)...]
+            .map { String($0, radix: 16) }.joined(separator: ":")
+        return left + "::" + right
+    }
+
+    static func typeName(_ type: Int) -> String {
+        [1: "A", 2: "NS", 5: "CNAME", 15: "MX", 16: "TXT", 28: "AAAA"][type]
+            ?? "type \(type)"
+    }
+}
+
+final class DNSModel: ObservableObject {
+    @Published var lines: [String] = []
+    @Published var querying = false
+
+    func lookup(name: String, typeName: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !querying else { return }
+        let code: UInt16 = ["A": 1, "AAAA": 28, "MX": 15, "NS": 2,
+                            "CNAME": 5, "TXT": 16][typeName] ?? 1
+        querying = true
+        lines = []
+        let connection = NWConnection(host: "1.1.1.1", port: 53, using: .udp)
+        let lock = NSLock()
+        var done = false
+        let finish: ([String]) -> Void = { [weak self] result in
+            lock.lock()
+            let already = done
+            done = true
+            lock.unlock()
+            guard !already else { return }
+            connection.cancel()
+            DispatchQueue.main.async {
+                self?.lines = result
+                self?.querying = false
+            }
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                connection.send(
+                    content: DNSKit.buildQuery(name: trimmed, type: code),
+                    completion: .contentProcessed { _ in
+                        connection.receive(minimumIncompleteLength: 12,
+                                           maximumLength: 4096) {
+                            data, _, _, error in
+                            if let data = data, data.count >= 12 {
+                                finish(DNSKit.parseAnswers(data))
+                            } else {
+                                finish(["no answer ("
+                                        + (error?.localizedDescription
+                                           ?? "empty reply") + ")"])
+                            }
+                        }
+                    })
+            case .failed(let error):
+                finish(["query failed: \(error.localizedDescription)"])
+            default:
+                break
+            }
+        }
+        connection.start(queue: DispatchQueue(label: "nightjar-dns"))
+        DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+            finish(["timed out — no answer from 1.1.1.1"])
+        }
+    }
+}
+
 // MARK: - Scan tab
 
 struct ScanView: View {
+    @Binding var tab: Int
     @EnvironmentObject private var toasts: ToastCenter
+    @EnvironmentObject private var mouth: Mouth
     @StateObject private var model = ScanModel()
     @StateObject private var tls = TLSInspector()
+    @StateObject private var dns = DNSModel()
     @State private var host = ""
     @State private var customPorts = ""
     @State private var tlsPort = "443"
+    @State private var dnsName = ""
+    @State private var dnsType = "A"
 
     private var portsToScan: [Int] {
         let typed = customPorts
@@ -377,6 +599,7 @@ struct ScanView: View {
                     }
                     .disabled(model.scanning || host.isEmpty)
                     ForEach(model.results) { result in
+                      Button { handoff(result) } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
                                 Text("\(result.port)")
@@ -394,6 +617,15 @@ struct ScanView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .foregroundStyle(.primary)
+                      }
+                      .buttonStyle(.plain)
+                    }
+                    if !model.results.isEmpty {
+                        Text("Tap an open port to load it — and the "
+                             + "library probe that speaks its language — "
+                             + "into the Send tab.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     if !model.scanning, model.totalCount > 0,
                        model.results.isEmpty {
@@ -417,6 +649,40 @@ struct ScanView: View {
                     ForEach(tls.lines, id: \.self) { line in
                         Text(line).font(.caption.monospaced())
                     }
+                }
+
+                Section(header: Text("DNS lookup")) {
+                    HStack {
+                        TextField("domain", text: $dnsName)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .onSubmit { lookupTapped() }
+                        Picker("Record", selection: $dnsType) {
+                            ForEach(["A", "AAAA", "MX", "NS", "CNAME",
+                                     "TXT"], id: \.self) { type in
+                                Text(type).tag(type)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    Button {
+                        lookupTapped()
+                    } label: {
+                        Label(dns.querying ? "Asking 1.1.1.1…"
+                                           : "Look up",
+                              systemImage: "magnifyingglass")
+                    }
+                    .disabled(dns.querying || dnsName.isEmpty)
+                    ForEach(dns.lines, id: \.self) { line in
+                        Text(line)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                    Text("A real query over UDP, answers parsed "
+                         + "locally — the grown-up version of the "
+                         + "library's DNS seed.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section(header: Text("On this Wi-Fi · Bonjour")) {
@@ -455,5 +721,19 @@ struct ScanView: View {
                 }
             }
         }
+    }
+
+    private func handoff(_ result: PortResult) {
+        Haptics.select()
+        mouth.scanHandoffTarget =
+            "tcp://\(host.trimmingCharacters(in: .whitespaces)):"
+            + "\(result.port)"
+        mouth.scanHandoffPayload = ScanModel.payloadByPort[result.port]
+        tab = 1
+    }
+
+    private func lookupTapped() {
+        Haptics.tap()
+        dns.lookup(name: dnsName, typeName: dnsType)
     }
 }
