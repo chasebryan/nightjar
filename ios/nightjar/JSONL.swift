@@ -71,6 +71,11 @@ final class JSONLWriter {
     private var buffer = ""
     private(set) var linesWritten = 0
 
+    /// Every touch of the file handle funnels through this serial
+    /// queue, so a flush from the ticker can never interleave with
+    /// an append-driven flush or a close from another thread.
+    private let queue = DispatchQueue(label: "nightjar.jsonl.writer")
+
     init(url: URL) {
         self.url = url
     }
@@ -81,32 +86,45 @@ final class JSONLWriter {
         }
         let handle = try FileHandle(forWritingTo: url)
         handle.seekToEndOfFile()
-        self.handle = handle
+        queue.sync { self.handle = handle }
     }
 
     func append(_ line: String) {
-        buffer += line
-        buffer += "\n"
-        linesWritten += 1
-        if buffer.utf8.count > 16_384 {
-            flush()
+        // On the queue too: the buffer is shared state, not just
+        // the handle — mutating it here while a flush reads it
+        // there would be the same race with extra steps.
+        queue.sync {
+            buffer += line
+            buffer += "\n"
+            linesWritten += 1
+            if buffer.utf8.count > 16_384 {
+                flushLocked()
+            }
         }
     }
 
-    func flush() {
+    /// Write the buffer out. Must already be on `queue` — the
+    /// public entry points below are the ones that hop onto it.
+    private func flushLocked() {
         guard let handle = handle, !buffer.isEmpty else { return }
         if let data = buffer.data(using: .utf8) {
-            handle.write(data)
+            try? handle.write(contentsOf: data)
         }
         buffer = ""
     }
 
+    func flush() {
+        queue.sync { flushLocked() }
+    }
+
     func close() {
-        flush()
-        if let handle = handle {
-            handle.synchronizeFile()
-            handle.closeFile()
+        queue.sync {
+            flushLocked()
+            if let handle = handle {
+                try? handle.synchronize()
+                try? handle.close()
+            }
+            handle = nil
         }
-        handle = nil
     }
 }
