@@ -53,6 +53,7 @@ struct SendView: View {
     @AppStorage("sectionOpen.snatch") private var openSnatch = false
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
+    @State private var showCentipedeSplash = false
     @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
     @AppStorage("serveTcpPort") private var serveTcpPort = "9000"
@@ -568,6 +569,7 @@ struct SendView: View {
                                 probeFor: probeForTarget,
                                 payloadFor: { build(forTargetText: $0) },
                                 framing: framing, method: method)
+                            showCentipedeSplash = true
                         } label: {
                             Label("Release the centipede "
                                   + "(\(centipedeHopCount) hop(s))",
@@ -750,6 +752,9 @@ struct SendView: View {
             }
             .sheet(isPresented: $showLog) {
                 MouthLogSheet()
+            }
+            .fullScreenCover(isPresented: $showCentipedeSplash) {
+                CentipedeSplashView(isShown: $showCentipedeSplash)
             }
             .alert("Could not build the payload", isPresented: .constant(showError != nil)) {
                 Button("OK") { showError = nil }
