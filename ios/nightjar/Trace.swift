@@ -75,23 +75,23 @@ struct TraceRule {
     static func parse(_ text: String) -> [TraceRule] {
         var rules: [TraceRule] = []
         for rawLine in text.components(separatedBy: "\n") {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
             if line.isEmpty || line.hasPrefix("#") { continue }
             guard let arrow = line.range(of: "=>") else { continue }
             let lhs = String(line[..<arrow.lowerBound])
-                .trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             let rhs = String(line[arrow.upperBound...])
-                .trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             let lhsLower = lhs.lowercased()
             let matcher: Matcher
             if lhsLower.hasPrefix("contains ") {
                 let needle = String(lhs.dropFirst("contains ".count))
-                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !needle.isEmpty else { continue }
                 matcher = .contains(needle.lowercased())
             } else if lhsLower.hasPrefix("port ") {
                 let digits = String(lhs.dropFirst("port ".count))
-                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard let n = Int(digits), (1...65535).contains(n)
                 else { continue }
                 matcher = .port(n)
@@ -104,12 +104,12 @@ struct TraceRule {
                 action = .stop
             } else if rhsLower.hasPrefix("followup ") {
                 let name = String(rhs.dropFirst("followup ".count))
-                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { continue }
                 action = .followup(payloadName: name)
             } else if rhsLower.hasPrefix("tag ") {
                 let label = String(rhs.dropFirst("tag ".count))
-                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !label.isEmpty else { continue }
                 action = .tag(label)
             } else {
@@ -317,6 +317,84 @@ enum TraceAnalyzer {
     }
 }
 
+// MARK: - BLE sightings (the Listen registry, borrowed)
+
+/// One Bluetooth device as the trace files it: a passive
+/// sighting from the Listen tab's registry — heard by this
+/// phone, never probed, never connected to. The trace
+/// borrows the ear's picture of the room so one map holds
+/// the wires and the air.
+struct TraceBLEDevice: Codable, Equatable {
+    var id: String
+    var name: String?
+    var kind: String
+    var vendor: String?
+    var serviceUUIDs: [String]
+    var rotatingAddress: Bool
+    var firstHeard: Date
+    var lastHeard: Date
+    var sightings: Int
+    var closestRSSI: Int?
+    var smoothedRSSI: Double?
+
+    /// Two tellings of the same device, combined: the
+    /// earliest first-hearing and the latest last-hearing
+    /// stand, counts and closest approach take the max,
+    /// services union, and name/vendor/kind/smoothed
+    /// strength come from whichever telling heard it last.
+    static func merged(_ old: TraceBLEDevice,
+                       _ new: TraceBLEDevice) -> TraceBLEDevice {
+        var result = old
+        result.firstHeard = min(old.firstHeard, new.firstHeard)
+        result.lastHeard = max(old.lastHeard, new.lastHeard)
+        result.sightings = max(old.sightings, new.sightings)
+        if let a = old.closestRSSI, let b = new.closestRSSI {
+            result.closestRSSI = max(a, b)
+        } else {
+            result.closestRSSI = new.closestRSSI ?? old.closestRSSI
+        }
+        result.rotatingAddress = old.rotatingAddress
+            || new.rotatingAddress
+        for uuid in new.serviceUUIDs
+        where !result.serviceUUIDs.contains(uuid) {
+            if result.serviceUUIDs.count < 16 {
+                result.serviceUUIDs.append(uuid)
+            }
+        }
+        if new.lastHeard >= old.lastHeard {
+            if let name = new.name { result.name = name }
+            if let vendor = new.vendor { result.vendor = vendor }
+            if let smooth = new.smoothedRSSI {
+                result.smoothedRSSI = smooth
+            }
+            result.kind = new.kind
+        }
+        return result
+    }
+}
+
+/// The hand-off point between the ear and the trace: the
+/// listening post notes its current registry here every
+/// time it publishes rows, and a trace reads the latest
+/// picture when its run finishes. A lock and value types —
+/// the two sides never share mutable state.
+enum BLESightings {
+    private static var latest: [TraceBLEDevice] = []
+    private static let lock = NSLock()
+
+    static func note(_ devices: [TraceBLEDevice]) {
+        lock.lock()
+        latest = devices
+        lock.unlock()
+    }
+
+    static func snapshot() -> [TraceBLEDevice] {
+        lock.lock()
+        defer { lock.unlock() }
+        return latest
+    }
+}
+
 // MARK: - The logbook
 
 /// One door's dossier in the logbook: what it is, what it
@@ -370,10 +448,32 @@ final class TraceBookStore {
     private let queue = DispatchQueue(
         label: "net.nosuchmachine.nightjarhack.tracebook")
     private var hosts: [String: TraceHostDossier] = [:]
+    private var bleDevices: [String: TraceBLEDevice] = [:]
     private var loaded = false
 
     private struct BookFile: Codable {
         var hosts: [TraceHostDossier]
+        var bleDevices: [TraceBLEDevice] = []
+
+        enum CodingKeys: String, CodingKey {
+            case hosts, bleDevices
+        }
+
+        init(hosts: [TraceHostDossier],
+             bleDevices: [TraceBLEDevice] = []) {
+            self.hosts = hosts
+            self.bleDevices = bleDevices
+        }
+
+        /// Books written before BLE joined the logbook have
+        /// no bleDevices key; they must still open.
+        init(from decoder: Decoder) throws {
+            let box = try decoder.container(keyedBy: CodingKeys.self)
+            hosts = try box.decode([TraceHostDossier].self,
+                                   forKey: .hosts)
+            bleDevices = try box.decodeIfPresent(
+                [TraceBLEDevice].self, forKey: .bleDevices) ?? []
+        }
     }
 
     private static var encoder: JSONEncoder {
@@ -406,12 +506,19 @@ final class TraceBookStore {
               let decoded = try? TraceBookStore.decoder
                 .decode(BookFile.self, from: data) else { return }
         for host in decoded.hosts { hosts[host.ip] = host }
+        for device in decoded.bleDevices {
+            bleDevices[device.id] = device
+        }
     }
 
     private func save() {
-        let book = BookFile(hosts: hosts.values.sorted {
-            TraceBookStore.ipLess($0.ip, $1.ip)
-        })
+        let book = BookFile(
+            hosts: hosts.values.sorted {
+                TraceBookStore.ipLess($0.ip, $1.ip)
+            },
+            bleDevices: bleDevices.values.sorted {
+                $0.id < $1.id
+            })
         guard let data = try? TraceBookStore.encoder.encode(book)
         else { return }
         try? data.write(to: TraceBookStore.logbookURL,
@@ -550,10 +657,40 @@ final class TraceBookStore {
         allDossiers().filter { $0.ip.hasPrefix(base + ".") }
     }
 
+    /// File a batch of BLE sightings — the trace finish
+    /// hands over the Listen registry's latest picture —
+    /// merged by device id, the same discipline as hosts.
+    func mergeBLE(_ devices: [TraceBLEDevice]) {
+        guard !devices.isEmpty else { return }
+        queue.sync {
+            loadIfNeeded()
+            for device in devices {
+                if let old = bleDevices[device.id] {
+                    bleDevices[device.id] =
+                        TraceBLEDevice.merged(old, device)
+                } else {
+                    bleDevices[device.id] = device
+                }
+            }
+            save()
+        }
+    }
+
+    /// Every BLE device the book knows, first-heard first.
+    func allBLEDevices() -> [TraceBLEDevice] {
+        queue.sync {
+            loadIfNeeded()
+            return bleDevices.values.sorted {
+                $0.firstHeard < $1.firstHeard
+            }
+        }
+    }
+
     /// Forget everything: the in-memory book and the file.
     func clear() {
         queue.sync {
             hosts = [:]
+            bleDevices = [:]
             loaded = true
             try? FileManager.default
                 .removeItem(at: TraceBookStore.logbookURL)
@@ -637,6 +774,7 @@ struct TraceExport: Codable {
     var nodes: [TraceNode]
     var edges: [TraceEdge]
     var bonjour: [TraceBonjourEntry]
+    var bleDevices: [TraceBLEDevice]
     var externalReferences: [TraceExternalReference]
     var diff: TraceDiff
     var limitations: [String]
@@ -649,8 +787,10 @@ struct TraceExport: Codable {
             + "knocked TCP ports is invisible to a trace.",
         "Hosts behind a firewall that drops (rather than "
             + "refuses) probes can be missed.",
-        "Bluetooth and BLE are not part of a trace; the Listen "
-            + "tab covers the air.",
+        "BLE devices on the map are passive sightings from "
+            + "the Listen registry — heard by this phone, "
+            + "never probed or connected to. If Listen was "
+            + "not running, the air is simply absent.",
         "References are followed at most 3 hops from a "
             + "discovered host, and only inside the traced /24.",
     ]
@@ -1576,9 +1716,33 @@ extension Mouth {
                                         after: after,
                                         seenHosts: seenHosts,
                                         seenServices: seenDoorKeys)
+            // The air joins the map: whatever the Listen
+            // registry currently holds is filed as passive
+            // sightings — a node per device, an edge from
+            // this phone saying how loud it heard it — and
+            // merged into the logbook's BLE pages.
+            let bleSnapshot = BLESightings.snapshot()
+            for device in bleSnapshot {
+                let nodeID = "ble:\(device.id)"
+                addNode(TraceNode(
+                    id: nodeID, kind: "ble",
+                    label: device.name
+                        ?? String(device.id.prefix(8)),
+                    ip: nil, port: nil))
+                var evidence = "BLE"
+                if let smooth = device.smoothedRSSI {
+                    evidence += " · \(Int(smooth.rounded())) dBm smoothed"
+                } else if let closest = device.closestRSSI {
+                    evidence += " · closest \(closest) dBm"
+                }
+                evidence += " · ×\(device.sightings) sightings"
+                addEdge(from: phoneNodeID, to: nodeID,
+                        kind: "heard", evidence: evidence)
+            }
+            TraceBookStore.shared.mergeBLE(bleSnapshot)
             let export = TraceExport(
                 schema: "net.nosuchmachine.nightjar.network-trace",
-                schemaVersion: 1,
+                schemaVersion: 2,
                 kind: "trace-run",
                 generatedAt: Date(),
                 run: TraceRunInfo(
@@ -1598,6 +1762,7 @@ extension Mouth {
                     "activeProbes": probeCount,
                     "followups": followupCount,
                     "bonjourServices": bonjourEntries.count,
+                    "bleDevices": bleSnapshot.count,
                     "externalReferences": externalRefs.count,
                     "newHosts": diff.newHosts.count,
                     "newServices": diff.newServices.count,
@@ -1607,6 +1772,7 @@ extension Mouth {
                 nodes: nodes,
                 edges: edges,
                 bonjour: bonjourEntries,
+                bleDevices: bleSnapshot,
                 externalReferences: externalRefs,
                 diff: diff,
                 limitations: TraceExport.limitations)
