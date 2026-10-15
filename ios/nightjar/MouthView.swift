@@ -247,7 +247,9 @@ struct SendView: View {
                     .disableAutocorrection(true)
                 Text("Hosts service FFF0 with characteristic FFF1 holding "
                      + "the payload: readable, writable, notifiable. Writes "
-                     + "from a central land in the Serve inbox.")
+                     + "from a central land in the Serve inbox. Once started "
+                     + "it stays armed — it keeps hosting in the background "
+                     + "and re-arms after a relaunch. Stop it here to disarm.")
                     .font(.caption).foregroundStyle(.secondary)
                 if mouth.gattHostOn {
                     Button(role: .destructive) { mouth.stopGattHost() } label: {
