@@ -225,6 +225,8 @@ struct SendView: View {
 
                 stepThreeSection
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Send")
             .onAppear { mouth.startBrowsing() }
             .onChange(of: payloadText) { _ in unselectIfEditing() }
@@ -798,6 +800,8 @@ struct ServeView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Serve")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
