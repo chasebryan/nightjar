@@ -36,7 +36,10 @@ version (2.5.0), same six tabs, same engines.
     (`contains X => followup/tag/stop`) shared with the
     Centipede, the persistent crawl logbook, and the
     versioned JSON trace export
-    (`net.nosuchmachine.nightjar.network-trace`).
+    (`net.nosuchmachine.nightjar.network-trace`). A
+    "Trace & set up the Centipede" button loads every
+    door a trace finds into the Centipede's route
+    automatically when the run ends.
   - `Engines.kt` — SnatchSteal, PayPlant (+ verify), timed
     delivery.
   - UI in Compose: boot splash, Jolly Roger backdrop, folding
