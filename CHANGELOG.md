@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased — the audit fix rounds (2026-10-15)
+
+A full theoretical audit of the iOS app (every tab, every
+transport, every parser, checked against what each claims to do)
+followed by two fix rounds. The headline: **the port scan was
+broken by a timer race** — open-ness is now latched the moment a
+connection succeeds, so silent services on slow connects report
+truthfully. Also fixed, among ~45 findings: the observation feed
+silently dying when a watch sweep was refused; serve state
+desync (stale listeners flipping the global Serving flag,
+pre-Stop peers landing in the inbox, live-edited reply config
+answering for a running serve — now generation-tracked and
+snapshotted); HTTP serve (request-line parsing, HEAD without a
+body, chunked bodies, idle timeouts); the timed-delivery cancel
+race; fan-out counting HTTP 4xx/5xx as success; PayPlant
+claiming success before the plant landed (MQTT plants now do a
+real CONNACK handshake, and Verify reads the plant, not the
+form); SnatchSteal's soft 64 KB cap and missing idle timeout;
+a crafted-BLE-advertisement crash in the drone Message Pack
+parser; DNS answers accepted without a transaction-ID check;
+the pcap dissector's ARP pairing and Ethernet-padding inventions;
+corrupt session logs becoming invisible and undeletable;
+PayloadBook wiping customs on a bad decode; BLE beacon/host
+state claimed before the radio confirmed it; the byte preview
+ignoring templating and framing while calling itself exact;
+and a boot log whose status lines are now actually checked
+(backdrop asset present, BLE permission, real interface
+address). The CLI is untouched; its 41 tests still pass.
+
 ## 2.5.0 — 2026-10-15 — the pocket release
 
 *Release notes for the GitHub release: this entry, verbatim.*
