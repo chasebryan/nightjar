@@ -11,10 +11,10 @@ final class PayloadBookTests: XCTestCase {
                              xorSpec: item.xorKey, useGzip: item.useGzip)
     }
 
-    func testFifteenBuiltIns() {
-        XCTAssertEqual(PayloadBook.builtIns.count, 15)
+    func testBuiltInsCount() {
+        XCTAssertEqual(PayloadBook.builtIns.count, 19)
         XCTAssertTrue(PayloadBook.builtIns.allSatisfy { $0.builtIn })
-        XCTAssertEqual(Set(PayloadBook.builtIns.map { $0.name }).count, 15)
+        XCTAssertEqual(Set(PayloadBook.builtIns.map { $0.name }).count, 19)
     }
 
     func testEveryBuiltInBuilds() throws {
@@ -58,6 +58,16 @@ final class PayloadBookTests: XCTestCase {
         let data = try bytes(of: mqtt)
         XCTAssertEqual(data[0], 0x10)                 // CONNECT packet
         XCTAssertEqual(Int(data[1]), data.count - 2) // remaining length
+    }
+
+    func testSNMPGetShape() throws {
+        let snmp = try XCTUnwrap(PayloadBook.builtIns.first {
+            $0.name.hasPrefix("SNMP")
+        })
+        let data = try bytes(of: snmp)
+        XCTAssertEqual(data.count, 43)
+        XCTAssertEqual(data[0], 0x30)                 // SEQUENCE
+        XCTAssertEqual(Int(data[1]), data.count - 2)  // whole message
     }
 
     func testLegacySaveDecodesAsCustom() throws {
