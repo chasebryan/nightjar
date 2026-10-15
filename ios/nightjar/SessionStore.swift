@@ -57,8 +57,14 @@ enum SessionStore {
         return summaries.sorted { $0.startedAt > $1.startedAt }
     }
 
-    static func delete(_ session: SessionSummary) {
-        try? FileManager.default.removeItem(at: session.url)
+    @discardableResult
+    static func delete(_ session: SessionSummary) -> Bool {
+        do {
+            try FileManager.default.removeItem(at: session.url)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Delete every stored session except the one still
@@ -66,17 +72,30 @@ enum SessionStore {
     static func deleteAll(exceptLiveID liveID: String?) -> Int {
         var deleted = 0
         for session in list() where session.id != liveID {
-            delete(session)
-            deleted += 1
+            if delete(session) {
+                deleted += 1
+            }
         }
         return deleted
     }
 
+    /// A log whose header won't parse still gets listed, so the
+    /// user can see (and delete or share) a file we cannot read.
+    private static func fallbackSummary(for url: URL, fileSize size: Int) -> SessionSummary {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        return SessionSummary(id: "file:\(url.lastPathComponent)", url: url,
+                              label: "(unreadable log)", startedAt: modified,
+                              endedAt: nil, sightings: nil, fileSize: size)
+    }
+
     /// Parse the header (first line) and the footer (last line, if any).
     static func summary(for url: URL) -> SessionSummary? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
-        defer { handle.closeFile() }
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            return fallbackSummary(for: url, fileSize: size)
+        }
+        defer { handle.closeFile() }
 
         let head = handle.readData(ofLength: 4096)
         guard let headText = String(data: head, encoding: .utf8),
@@ -86,7 +105,7 @@ enum SessionStore {
               header["type"] as? String == "session",
               let sessionID = header["session_id"] as? String,
               let startedAt = header["started_at"] as? Double else {
-            return nil
+            return fallbackSummary(for: url, fileSize: size)
         }
 
         var endedAt: TimeInterval?
@@ -118,12 +137,27 @@ enum SessionStore {
     }
 
     /// Count sighting lines in an unfinished log (one that has no footer).
+    /// Streamed in 64 KB chunks — a long session's log is never
+    /// loaded whole — carrying the incomplete tail of each chunk
+    /// into the next, so a line (or its prefix) split across a
+    /// chunk boundary still counts exactly once.
     static func countSightings(in url: URL) -> Int {
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return 0 }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return 0 }
+        defer { try? handle.close() }
+        let prefix = Data("{\"type\": \"sighting\"".utf8)
         var count = 0
-        text.enumerateLines { line, _ in
-            if line.hasPrefix("{\"type\": \"sighting\"") { count += 1 }
+        var pending = Data()
+        while true {
+            let chunk = handle.readData(ofLength: 65_536)
+            if chunk.isEmpty { break }
+            pending.append(chunk)
+            while let newline = pending.firstIndex(of: UInt8(0x0A)) {
+                let line = pending[pending.startIndex..<newline]
+                if line.starts(with: prefix) { count += 1 }
+                pending = Data(pending[pending.index(after: newline)...])
+            }
         }
+        if pending.starts(with: prefix) { count += 1 }
         return count
     }
 }
