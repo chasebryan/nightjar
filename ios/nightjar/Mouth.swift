@@ -1084,6 +1084,18 @@ final class Mouth: NSObject, ObservableObject {
     @Published var talkHomecoming: Data?
     var talkGeneration = 0
 
+    // MARK: Network trace
+
+    @Published var traceBusy = false
+    @Published var traceLines: [String] = []
+    @Published var traceStatus: String?
+    @Published var traceLatestExport: URL?
+    var traceGeneration = 0
+
+    // The trace engine — the /24 mapping run, its adaptive
+    // rules and the shared crawl logbook — lives in
+    // Trace.swift, an extension on Mouth like the crawl's.
+
     // The crawl engine — route expansion, the walk
     // itself, chain/seed modes, the return leg, home
     // delivery — lives in Crawl.swift, an extension
