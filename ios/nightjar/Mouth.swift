@@ -563,7 +563,8 @@ final class Mouth: NSObject, ObservableObject {
     // MARK: Network send (tcp / udp / tls)
 
     func sendNetwork(target: SendTarget, payload: Data, framing: String,
-                     read: Bool, timeout: TimeInterval) {
+                     read: Bool, timeout: TimeInterval,
+                     completion: ((Bool) -> Void)? = nil) {
         let framed = PayloadKit.frame(payload, framing: framing)
         let params: NWParameters
         let host: String
@@ -576,33 +577,37 @@ final class Mouth: NSObject, ObservableObject {
             host = h; port = p
             params = .udp
         default:
+            completion?(false)
             return
         }
         guard let endpointPort = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else {
             line("nightjar: bad port \(port)")
+            completion?(false)
             return
         }
         let connection = NWConnection(host: NWEndpoint.Host(host), port: endpointPort, using: params)
         run(connection, label: target.raw, framed: framed, read: read,
-            timeout: timeout)
+            timeout: timeout, completion: completion)
     }
 
     /// Send to a nearby phone by name — Bonjour resolves the address,
     /// so nobody has to go digging through Settings for an IP.
     func sendToPhone(name: String, payload: Data, framing: String,
-                     read: Bool, timeout: TimeInterval) {
+                     read: Bool, timeout: TimeInterval,
+                     completion: ((Bool) -> Void)? = nil) {
         let framed = PayloadKit.frame(payload, framing: framing)
         let endpoint = NWEndpoint.service(name: name, type: Mouth.bonjourType,
                                           domain: "local.", interface: nil)
         run(NWConnection(to: endpoint, using: .tcp),
             label: "phone \(name)", framed: framed, read: read,
-            timeout: timeout)
+            timeout: timeout, completion: completion)
     }
 
     /// One stream connection: send `framed`, optionally collect a
     /// reply until the peer closes or the deadline passes.
     private func run(_ connection: NWConnection, label: String, framed: Data,
-                     read: Bool, timeout: TimeInterval) {
+                     read: Bool, timeout: TimeInterval,
+                     completion: ((Bool) -> Void)? = nil) {
         var replied = Data()
         var finished = false
         var didSend = false
@@ -614,6 +619,7 @@ final class Mouth: NSObject, ObservableObject {
                 logExchange("send", label, sent: framed.count,
                             reply: read ? replied : nil)
             }
+            completion?(didSend)
             if read {
                 if replied.isEmpty {
                     line("  (no reply)")
@@ -674,6 +680,86 @@ final class Mouth: NSObject, ObservableObject {
         queue.asyncAfter(deadline: .now() + timeout + 2) { finish() }
     }
 
+    // MARK: Fan-out (one payload, many targets)
+
+    @Published var fanoutBusy = false
+    @Published var fanoutLines: [String] = []
+    /// Target strings ("tcp://host:port") from the most recent Scan
+    /// tab scan or sweep, offered in the Send tab's fan-out section.
+    @Published var lastScanTargets: [String] = []
+
+    /// Send the same payload to every target in the list, one at a
+    /// time. Entries use the Send tab's syntax — tcp://, udp://,
+    /// tcp+tls://, http(s):// — or phone:NAME for a nearby phone.
+    /// Targets can come from anywhere: typed, pasted, imported from
+    /// a file, or straight off the network via the Scan tab.
+    func sendToMany(targets rawTargets: [String], payload: Data,
+                    framing: String, method: String, readReply: Bool) {
+        var seen = Set<String>()
+        let targets = rawTargets
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#")
+                      && seen.insert($0).inserted }
+            .prefix(40)
+        guard !targets.isEmpty, !fanoutBusy else { return }
+        fanoutBusy = true
+        fanoutLines = ["Fanning out to \(targets.count) target(s)…"]
+        line("fan-out: \(payload.count) bytes to \(targets.count) targets")
+        var index = 0
+        var sentCount = 0
+        func step() {
+            if index >= targets.count {
+                let total = targets.count
+                let sent = sentCount
+                DispatchQueue.main.async { [weak self] in
+                    self?.fanoutBusy = false
+                    self?.fanoutLines.append(
+                        "Done — \(sent)/\(total) sent")
+                    self?.toasts?.show(
+                        "Fan-out done: \(sent)/\(total) sent",
+                        error: sent == 0)
+                }
+                return
+            }
+            let text = targets[index]
+            index += 1
+            let report: (Bool) -> Void = { [weak self] ok in
+                if ok { sentCount += 1 }
+                DispatchQueue.main.async {
+                    self?.fanoutLines.append(
+                        "\(ok ? "✓" : "✗") \(text)")
+                }
+                step()
+            }
+            if text.hasPrefix("phone:") {
+                sendToPhone(name: String(text.dropFirst(6)),
+                            payload: payload, framing: framing,
+                            read: readReply, timeout: 3,
+                            completion: report)
+                return
+            }
+            guard let parsed = try? SendTarget.parse(text) else {
+                line("fan-out: cannot parse target \(text)")
+                report(false)
+                return
+            }
+            switch parsed {
+            case .http:
+                sendHTTP(target: parsed, payload: payload,
+                         framing: framing, method: method, timeout: 5,
+                         completion: report)
+            case .tcp, .udp:
+                sendNetwork(target: parsed, payload: payload,
+                            framing: framing, read: readReply,
+                            timeout: 3, completion: report)
+            default:
+                line("fan-out: \(text) is not a network target — skipped")
+                report(false)
+            }
+        }
+        step()
+    }
+
     // MARK: Bonjour discovery of other phones
 
     /// Watch for other phones serving nightjar-hack on the local
@@ -706,8 +792,12 @@ final class Mouth: NSObject, ObservableObject {
     // MARK: HTTP send
 
     func sendHTTP(target: SendTarget, payload: Data, framing: String, method: String,
-                  timeout: TimeInterval) {
-        guard case .http(let url, _) = target else { return }
+                  timeout: TimeInterval,
+                  completion: ((Bool) -> Void)? = nil) {
+        guard case .http(let url, _) = target else {
+            completion?(false)
+            return
+        }
         var finalURL = url
         var body: Data? = nil
         if method == "GET" || method == "HEAD" {
@@ -734,10 +824,12 @@ final class Mouth: NSObject, ObservableObject {
             if let error = error {
                 self?.line("nightjar: \(error.localizedDescription)")
                 self?.ui("HTTP send failed: \(error.localizedDescription)", error: true)
+                completion?(false)
                 return
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let reply = data ?? Data()
+            completion?(true)
             self?.logExchange("http", request.url?.absoluteString ?? "http",
                               sent: body?.count ?? payload.count, reply: reply)
             self?.noteReply(label: "http", data: reply)
