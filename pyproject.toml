@@ -4,17 +4,70 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nightjar"
-version = "1.1.0"
-description = "A passive Bluetooth Low Energy listening post: collect advertisements, build a device registry, learn the pattern of life."
+dynamic = ["version"]
+description = "A passive Bluetooth Low Energy listening post: collect advertisements, build a device registry, learn the pattern of life, catch the tag that follows you."
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.10"
+keywords = ["bluetooth", "ble", "scanner", "airtag", "tracker", "continuity", "osint"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Networking :: Monitoring",
+]
 dependencies = [
     "bleak>=0.22",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pytest>=8",
+]
+
+[project.urls]
+Homepage = "https://github.com/chasebryan/nightjar"
+Issues = "https://github.com/chasebryan/nightjar/issues"
+Changelog = "https://github.com/chasebryan/nightjar/blob/main/CHANGELOG.md"
 
 [project.scripts]
 nightjar = "nightjar.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["nightjar*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "nightjar.__version__" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "SIM", "I", "N", "C4", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # the reports use real arrows and dashes on purpose
+
+[tool.ruff.lint.isort]
+known-first-party = ["nightjar"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

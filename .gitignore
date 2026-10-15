@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# nightjar output
+*.jsonl
+*.ndjson
+devices.json
+nightjar-demo.jsonl
+
+# Xcode / iOS companion
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/DerivedData/
+ios/**/.DS_Store
+.DS_Store

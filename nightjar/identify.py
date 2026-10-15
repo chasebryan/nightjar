@@ -11,6 +11,11 @@ also rotates the volatile bytes of its broadcasts, so correlation is
 strong inside a rotation epoch and fades across epochs. That fade is
 Apple's privacy design working as intended — nightjar reports what it
 can support, and labels the confidence honestly.
+
+Classification — *what kind of thing is this* — draws on every channel
+a broadcast has: Apple's Continuity chain, other makers' manufacturer
+data, and the service UUIDs and service data that beacons, earbuds
+and tracker tags speak through.
 """
 
 from __future__ import annotations
@@ -18,19 +23,93 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
+from .companies import company_name
 from .continuity import (
-    APPLE_COMPANY_ID, identify_apple, parse_continuity, parse_findmy,
+    APPLE_COMPANY_ID,
+    FindMyState,
+    identify_apple,
+    parse_continuity,
+    parse_findmy,
 )
-from .registry import COMPANY_NAMES, Sighting
+from .registry import Sighting, SignalTrack, address_kind
+from .services import TRACKER_SERVICE_UUIDS, identify_services, normalize_uuid
+from .vendors import identify_manufacturer
 
-MICROSOFT_COMPANY_ID = 0x0006
-SAMSUNG_COMPANY_ID = 0x0075
+__all__ = [
+    "TRACKER_SERVICE_UUIDS",
+    "Classification",
+    "Identity",
+    "IdentityResolver",
+    "classify",
+    "kind_of",
+]
 
-# Service UUIDs advertised by standalone tracker tags.
-TRACKER_SERVICE_UUIDS = {
-    "0000feed-0000-1000-8000-00805f9b34fb",  # Tile
-    "0000fd5a-0000-1000-8000-00805f9b34fb",  # Samsung SmartThings Finding
-}
+# Specificity ranks: how far a kind narrows the device down. A more
+# specific kind always replaces a less specific one; equally specific
+# kinds keep the first seen, so identities don't flap between labels.
+RANK_UNKNOWN = 0
+RANK_FAMILY = 10       # "Apple device", "Samsung device"
+RANK_FAMILY_HINT = 15  # "Apple device (Nearby Info)"
+RANK_SUBFAMILY = 20    # "Apple Watch", "Windows laptop"
+RANK_PRODUCT = 30      # "AirPods Pro", "Tile tracker", "RuuviTag sensor"
+
+_CONTINUITY_RANK = {1: RANK_FAMILY, 2: RANK_SUBFAMILY, 3: RANK_PRODUCT}
+_SERVICE_RANK = {1: RANK_FAMILY, 2: RANK_SUBFAMILY, 3: RANK_PRODUCT}
+
+
+@dataclass
+class Classification:
+    """What one sighting says about the device behind it."""
+
+    kind: str = "Unknown device"
+    details: list[str] = field(default_factory=list)
+    rank: int = RANK_UNKNOWN
+    tracker_shaped: bool = False   # shaped like a standalone tag
+    rotating_phone: bool = False   # a phone/wearable rotating by design
+    findmy: FindMyState | None = None
+    messages: list[str] = field(default_factory=list)
+
+
+def classify(sighting: Sighting) -> Classification:
+    """Best classification of one sighting, from all its signals."""
+    apple = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
+    if apple:
+        ident = identify_apple(apple)
+        tracker = ident.findmy is not None and ident.findmy.separated
+        rank = _CONTINUITY_RANK.get(ident.specificity, RANK_FAMILY)
+        if ident.kind == "Apple device (Nearby Info)":
+            rank = RANK_FAMILY_HINT
+        return Classification(kind=ident.kind, details=list(ident.details),
+                              rank=rank, tracker_shaped=tracker,
+                              findmy=ident.findmy, messages=ident.messages)
+
+    service = identify_services(sighting.service_uuids, sighting.service_data)
+    if service is not None and service.specificity >= 2:
+        return Classification(
+            kind=service.kind, details=list(service.details),
+            rank=_SERVICE_RANK[service.specificity],
+            tracker_shaped=service.tracker_shaped,
+            rotating_phone=service.rotating_phone)
+
+    vendor = identify_manufacturer(sighting.manufacturer_data)
+    if vendor is not None:
+        rank = {1: RANK_FAMILY, 2: RANK_SUBFAMILY, 3: RANK_PRODUCT}[
+            min(3, max(1, vendor.specificity))]
+        return Classification(kind=vendor.kind, details=list(vendor.details),
+                              rank=rank)
+
+    if service is not None:
+        return Classification(kind=service.kind, details=list(service.details),
+                              rank=RANK_FAMILY)
+    if sighting.name:
+        return Classification(kind="Named device")
+    return Classification()
+
+
+def kind_of(sighting: Sighting) -> tuple[str, list[str]]:
+    """Best (kind, details) for one sighting — the classic view."""
+    result = classify(sighting)
+    return result.kind, result.details
 
 
 def _stable_fingerprint(sighting: Sighting) -> str | None:
@@ -38,9 +117,9 @@ def _stable_fingerprint(sighting: Sighting) -> str | None:
 
     For Apple payloads, volatile bytes are masked per message type:
     Proximity Pairing carries battery nibbles and a lid counter that
-    change constantly, so only its constant prefix and model bytes
-    count. Other messages hash whole — they repeat verbatim within a
-    rotation epoch in real captures.
+    change constantly, so only its prefix and model bytes count. Other
+    messages hash whole — they repeat verbatim within a rotation epoch
+    in real captures.
     """
     payload = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
     if payload is None:
@@ -51,34 +130,12 @@ def _stable_fingerprint(sighting: Sighting) -> str | None:
     for message in parse_continuity(payload):
         canonical.append(message.type_id)
         if message.type_id == 0x07:  # Proximity Pairing
-            canonical += message.value[:4]
+            canonical += message.value[:3]
         else:
             canonical += message.value
     if not canonical:
         return None
     return hashlib.sha1(bytes(canonical)).hexdigest()[:12]
-
-
-def kind_of(sighting: Sighting) -> tuple[str, list[str]]:
-    """Best (kind, details) for one sighting, from all its signals."""
-    details: list[str] = []
-    payload = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
-    if payload:
-        ident = identify_apple(payload)
-        return ident.kind, ident.details
-    ms = sighting.manufacturer_data.get(MICROSOFT_COMPANY_ID)
-    if ms is not None:
-        if ms[:1] == b"\x03":
-            return "Windows device (Swift Pair)", details
-        return "Microsoft device", details
-    if SAMSUNG_COMPANY_ID in sighting.manufacturer_data:
-        return "Samsung device", details
-    lowered = {u.lower() for u in sighting.service_uuids}
-    if lowered & TRACKER_SERVICE_UUIDS:
-        return "Tracker tag", details
-    if sighting.name:
-        return "Named device", details
-    return "Unknown device", details
 
 
 @dataclass
@@ -95,77 +152,222 @@ class Identity:
     companies: set[str] = field(default_factory=set)
     service_uuids: set[str] = field(default_factory=set)
     details: list[str] = field(default_factory=list)
-    basis: str = "address"  # "address" | "payload fingerprint"
-    findmy: bool = False  # seen broadcasting in Find My accessory format
+    basis: str = "address"  # "address" | "payload fingerprint" | "name + fingerprint"
+    findmy: bool = False            # ever seen in the Find My separated format
+    findmy_with_owner: bool = False  # ever seen in the short "with owner" format
+    tracker_shaped: bool = False    # ever classified as tag-shaped
+    rotating_phone: bool = False    # ever classified as a rotating phone
+    rank: int = RANK_UNKNOWN
+    signal: SignalTrack = field(default_factory=SignalTrack)
+    address_kinds: set[str] = field(default_factory=set)
+    last_address: str = ""
+    last_name: str | None = None
 
     @property
     def label(self) -> str:
+        if self.last_name:
+            return self.last_name
         if self.names:
             return sorted(self.names)[0]
         return self.kind
 
     @property
+    def headline(self) -> str:
+        """'Chase's iPhone (Apple device)' — or just the kind when unnamed."""
+        if self.label == self.kind:
+            return self.kind
+        return f"{self.label} ({self.kind})"
+
+    @property
     def tracker_like(self) -> bool:
-        """Unnamed, and shaped like a standalone tracking tag."""
-        if self.names:
+        """Unnamed, and shaped like a standalone tracking tag.
+
+        A Find My accessory still riding with its owner is not a tag
+        following anyone, and a rotating phone is not a tag at all.
+        """
+        if self.names or self.rotating_phone:
             return False
         if self.findmy:
             return True
         if self.service_uuids & TRACKER_SERVICE_UUIDS:
             return True
-        return self.kind in ("Find My device (AirTag-class)", "Tracker tag")
+        return self.tracker_shaped
 
-    def observe(self, sighting: Sighting, kind: str, details: list[str]):
+    @property
+    def rotates(self) -> bool:
+        """More than one address, or an address the radio says rotates."""
+        return (len(self.addresses) > 1
+                or "random resolvable" in self.address_kinds
+                or "random non-resolvable" in self.address_kinds)
+
+    def rotation_note(self) -> str | None:
+        """'7 addresses (rotates)', 'private address (rotates)', or None."""
+        if len(self.addresses) > 1:
+            return f"{len(self.addresses)} addresses (rotates)"
+        if "random resolvable" in self.address_kinds \
+                or "random non-resolvable" in self.address_kinds:
+            return "private address (rotates)"
+        return None
+
+    def observe(self, sighting: Sighting, kind: str, details: list[str],
+                classification: Classification | None = None) -> None:
+        if classification is None:
+            classification = classify(sighting)
         self.sightings += 1
         if self.first_seen == 0.0 or sighting.seen_at < self.first_seen:
             self.first_seen = sighting.seen_at
         self.last_seen = max(self.last_seen, sighting.seen_at)
         self.addresses.add(sighting.address)
+        self.last_address = sighting.address
         if sighting.name:
             self.names.add(sighting.name)
+            self.last_name = sighting.name
         for cid in sighting.manufacturer_data:
-            self.companies.add(COMPANY_NAMES.get(cid, f"0x{cid:04X}"))
-        apple = sighting.manufacturer_data.get(APPLE_COMPANY_ID)
-        if apple is not None and parse_findmy(apple) is not None:
-            self.findmy = True
-        self.service_uuids.update(u.lower() for u in sighting.service_uuids)
+            self.companies.add(company_name(cid))
+        if classification.findmy is not None:
+            if classification.findmy.separated:
+                self.findmy = True
+            else:
+                self.findmy_with_owner = True
+        self.tracker_shaped = self.tracker_shaped or classification.tracker_shaped
+        self.rotating_phone = self.rotating_phone or classification.rotating_phone
+        self.service_uuids.update(normalize_uuid(u) for u in sighting.service_uuids)
+        self.service_uuids.update(normalize_uuid(u) for u in sighting.service_data)
+        kind_label = address_kind(sighting.address, sighting.address_type)
+        if kind_label:
+            self.address_kinds.add(kind_label)
+        self.signal.observe(sighting.seen_at, sighting.rssi)
         # Keep the most specific kind seen: a product name beats a family.
-        if self.kind in ("Unknown device", "Named device", "Apple device") \
-                or (self.kind == "Apple device (Nearby Info)"
-                    and kind not in ("Apple device", "Unknown device")):
-            self.kind = kind
+        if classification.rank > self.rank or self.rank == RANK_UNKNOWN:
+            self.kind, self.rank = kind, classification.rank
         if details:
-            self.details = details
+            self.details = list(details)
+
+    def matches(self, query: str) -> bool:
+        """Does a user-typed query name this identity?
+
+        Matches the identity key exactly, an address by prefix, or a
+        name / kind / label by substring — all case-insensitively.
+        """
+        q = query.strip().lower()
+        if not q:
+            return False
+        if q == self.key.lower():
+            return True
+        if any(a.lower().startswith(q) for a in self.addresses):
+            return True
+        haystack = [self.label, self.kind, *self.names]
+        return any(q in h.lower() for h in haystack if h)
+
+    # Signal views, mirroring DeviceRecord so renderers can treat both alike.
+    @property
+    def rssi_last(self) -> int | None:
+        return self.signal.last
+
+    @property
+    def rssi_closest(self) -> int | None:
+        return self.signal.closest
+
+    @property
+    def rssi_history(self) -> list[tuple[float, int]]:
+        return self.signal.history
+
+    def trend(self) -> str | None:
+        return self.signal.trend()
+
+    def to_dict(self) -> dict:
+        return {
+            "key": self.key,
+            "label": self.label,
+            "kind": self.kind,
+            "basis": self.basis,
+            "first_seen": self.first_seen,
+            "last_seen": self.last_seen,
+            "sightings": self.sightings,
+            "addresses": sorted(self.addresses),
+            "address_kinds": sorted(self.address_kinds),
+            "rotates": self.rotates,
+            "names": sorted(self.names),
+            "companies": sorted(self.companies),
+            "service_uuids": sorted(self.service_uuids),
+            "details": list(self.details),
+            "tracker_like": self.tracker_like,
+            "findmy_separated": self.findmy,
+            "findmy_with_owner": self.findmy_with_owner,
+            "rssi_last": self.rssi_last,
+            "rssi_closest": self.rssi_closest,
+            "rssi_median": self.signal.median(),
+            "trend": self.trend(),
+        }
 
 
 class IdentityResolver:
-    """Groups a stream of sightings (in time order) into identities."""
+    """Groups a stream of sightings (in time order) into identities.
+
+    Keys: a payload fingerprint when the broadcast has a stable core
+    (so rotating addresses fold together), the name plus fingerprint
+    when the device also announces a name, and the bare address when
+    there is nothing better. An address, once assigned to an identity,
+    sticks to it — a device that sometimes answers with its name and
+    sometimes doesn't is still one device.
+    """
 
     def __init__(self) -> None:
         self._identities: dict[str, Identity] = {}
+        self._address_keys: dict[str, str] = {}
+
+    def _key_for(self, sighting: Sighting) -> tuple[str, str]:
+        known = self._address_keys.get(sighting.address)
+        if known is not None:
+            return known, self._identities[known].basis
+        fingerprint = _stable_fingerprint(sighting)
+        if fingerprint is not None and sighting.name:
+            return f"nfp:{sighting.name}|{fingerprint}", "name + fingerprint"
+        if fingerprint is not None:
+            return f"fp:{fingerprint}", "payload fingerprint"
+        return f"addr:{sighting.address}", "address"
 
     def observe(self, sighting: Sighting) -> Identity:
-        fingerprint = _stable_fingerprint(sighting)
-        if fingerprint is not None and not sighting.name:
-            key, basis = f"fp:{fingerprint}", "payload fingerprint"
-        else:
-            key, basis = f"addr:{sighting.address}", "address"
+        key, basis = self._key_for(sighting)
         identity = self._identities.get(key)
         if identity is None:
             identity = Identity(key=key, basis=basis,
                                 first_seen=sighting.seen_at)
             self._identities[key] = identity
-        kind, details = kind_of(sighting)
-        identity.observe(sighting, kind, details)
+        self._address_keys.setdefault(sighting.address, key)
+        classification = classify(sighting)
+        identity.observe(sighting, classification.kind, classification.details,
+                         classification)
         return identity
 
     def get(self, key: str) -> Identity | None:
         return self._identities.get(key)
+
+    def for_address(self, address: str) -> Identity | None:
+        key = self._address_keys.get(address)
+        return self._identities.get(key) if key else None
 
     @property
     def identities(self) -> list[Identity]:
         return sorted(self._identities.values(),
                       key=lambda i: -i.sightings)
 
+    def by_signal(self) -> list[Identity]:
+        """Loudest first, most recent breaking ties."""
+        return sorted(
+            self._identities.values(),
+            key=lambda i: (i.rssi_last is None, -(i.rssi_last or 0),
+                           -i.last_seen),
+        )
+
     def __len__(self) -> int:
         return len(self._identities)
+
+    def __iter__(self):
+        return iter(self._identities.values())
+
+    def to_dict(self) -> dict:
+        return {
+            "identities": [i.to_dict() for i in self.identities],
+            "identity_count": len(self),
+        }
