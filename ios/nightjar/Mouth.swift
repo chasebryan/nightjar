@@ -1077,6 +1077,13 @@ final class Mouth: NSObject, ObservableObject {
     @Published var crawlFindings: [String] = []
     var crawlGeneration = 0
 
+    // MARK: Crosstalk
+
+    @Published var talkBusy = false
+    @Published var talkLines: [String] = []
+    @Published var talkHomecoming: Data?
+    var talkGeneration = 0
+
     // The crawl engine — route expansion, the walk
     // itself, chain/seed modes, the return leg, home
     // delivery — lives in Crawl.swift, an extension
