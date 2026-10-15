@@ -257,20 +257,69 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
         session.finishTasksAndInvalidate()
     }
 
+    /// Validity window, read straight out of the certificate's
+    /// DER: SecCertificateCopyValues and the X.509 OID constants
+    /// are macOS-only, so an iOS inspector walks the ASN.1 itself —
+    /// certificate → tbsCertificate → [0] version → serial →
+    /// signature → issuer → validity { notBefore, notAfter }.
+    /// (This walk was verified against openssl's own date output
+    /// on a real certificate before it shipped.)
     private func validity(of cert: SecCertificate) -> String? {
-        let keys = [kSecOIDX509V1ValidityNotBefore,
-                    kSecOIDX509V1ValidityNotAfter] as CFArray
-        guard let dict = SecCertificateCopyValues(cert, keys, nil)
-                as NSDictionary? else { return nil }
-        func date(_ key: CFString) -> String? {
-            guard let entry = dict.object(forKey: key) as? NSDictionary,
-                  let value = entry.object(forKey: kSecPropertyKeyValue)
-                    as? Date else { return nil }
-            return value.formatted(date: .abbreviated, time: .omitted)
+        let der = [UInt8](SecCertificateCopyData(cert) as Data)
+
+        func tlv(_ offset: Int) -> (tag: UInt8, start: Int, end: Int)? {
+            guard offset + 2 <= der.count else { return nil }
+            var length = Int(der[offset + 1])
+            var header = 2
+            if length & 0x80 != 0 {
+                let count = length & 0x7F
+                guard count >= 1, count <= 4,
+                      offset + 2 + count <= der.count else { return nil }
+                length = 0
+                for i in 0..<count {
+                    length = (length << 8) | Int(der[offset + 2 + i])
+                }
+                header = 2 + count
+            }
+            let start = offset + header
+            guard start + length <= der.count else { return nil }
+            return (der[offset], start, start + length)
         }
-        guard let from = date(kSecOIDX509V1ValidityNotBefore),
-              let to = date(kSecOIDX509V1ValidityNotAfter) else { return nil }
-        return "\(from) → \(to)"
+
+        guard let outer = tlv(0), outer.tag == 0x30,
+              let tbs = tlv(outer.start), tbs.tag == 0x30
+        else { return nil }
+        var pos = tbs.start
+        guard let first = tlv(pos) else { return nil }
+        if first.tag == 0xA0 { pos = first.end }        // [0] version
+        for _ in 0..<3 {                                 // serial, signature, issuer
+            guard let element = tlv(pos) else { return nil }
+            pos = element.end
+        }
+        guard let window = tlv(pos), window.tag == 0x30,
+              let notBefore = tlv(window.start),
+              let notAfter = tlv(notBefore.end),
+              let from = derTime(tag: notBefore.tag,
+                                 der[notBefore.start..<notBefore.end]),
+              let to = derTime(tag: notAfter.tag,
+                               der[notAfter.start..<notAfter.end])
+        else { return nil }
+        return "\(from.formatted(date: .abbreviated, time: .omitted)) → "
+            + to.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func derTime(tag: UInt8, _ bytes: ArraySlice<UInt8>) -> Date? {
+        guard let text = String(bytes: [UInt8](bytes), encoding: .ascii)
+        else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = tag == 0x17
+            ? "yyMMddHHmmss'Z'" : "yyyyMMddHHmmss'Z'"
+        if let date = formatter.date(from: text) { return date }
+        formatter.dateFormat = tag == 0x17
+            ? "yyMMddHHmm'Z'" : "yyyyMMddHHmmss.SSS'Z'"
+        return formatter.date(from: text)
     }
 }
 
