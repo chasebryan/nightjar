@@ -1,9 +1,11 @@
-# nightjar-hack for iOS
+# nightjar-hack for iOS — 2.5.0
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
 `chasebryan/nightjar` (`ios/` there) — **plus the mouth**: the send and
-serve payload tools from nightjar-hack, as native iOS tabs.
+serve payload tools from nightjar-hack, as native iOS tabs — **plus a
+recon bench**: the Scan tab, a pentester's pocket kit for your own
+gear and your written engagements.
 
 - **Listen** (the purist half) — copied from upstream nightjar and
   unchanged where it counts: `ListeningPost` still only ever calls
@@ -18,9 +20,9 @@ serve payload tools from nightjar-hack, as native iOS tabs.
   base64. Transforms: XOR, gzip. Framing: raw, len-prefix, JSON
   envelope. Replies are shown as hexdumps, like the CLI.
 - **Serve** — payloads in, like `nightjar serve`: TCP, UDP and HTTP
-  listeners with an optional reply, an inbox of everything received
-  (shareable as JSONL), plus GATT writes that arrive while the Send
-  tab is hosting a characteristic.
+  listeners with a fixed or echo reply, an inbox of everything
+  received (shareable as JSONL), plus GATT writes that arrive while
+  the Send tab is hosting a characteristic.
 
 New in this build, from nightjar 2.2: **drone detection**. The Listen
 tab decodes FAA Remote ID broadcasts (Open Drone ID over BLE,
@@ -48,27 +50,77 @@ name other phones see (or, in stealth, the exact `tcp://` address
 you're reachable at), and inbox rows long-press to copy as text or
 hex. Send-side settings persist like Serve's do.
 
+Below the steps, the Send tab keeps working:
+
+- **Send to many.** One payload, a whole list of targets — typed or
+  pasted, imported from a .txt/.csv, harvested from the Scan tab, or
+  expanded from a range like `192.168.1.10-40:6379` (up to 300).
+  Fires sequentially with per-target ✓/✗ results; every exchange
+  is logged like a single send. Nearby phones join the list as
+  `phone:NAME` entries.
+- **Templating.** `{{host}}`, `{{port}}`, `{{ip}}`, `{{target}}` and
+  `{{scheme}}` in any payload source resolve per destination before
+  the bytes are built — in fan-out, each target gets a payload
+  addressed to itself.
+- **Timed delivery.** Fire after a delay, or repeat every N
+  seconds for X rounds, for both the step-3 send and fan-out —
+  with a live countdown and a cancel button. Timers run while the
+  app is open; iOS suspends background apps, and the section says
+  so.
+- **SnatchSteal.** The receive-side weapon: knock on the step-1
+  target with the step-2 payload (or don't knock at all), then
+  drain *everything* it sends back — until it closes, a 15-second
+  cap, or 64 KB in the bag. The haul lands on a loot card (bytes,
+  text, hexdump) and in the history.
+- **PayPlant.** Leave a payload living on a target: an MQTT
+  **retained** publish (the broker serves it to every future
+  subscriber), a Redis `SET`, or a memcached `set` — wire formats
+  built byte-exact in `PayloadKit`. Redis plants get a one-tap
+  Verify that `GET`s the key back. It plants only where a service
+  is built to store what you hand it; there is no mode that
+  installs software on a machine running nothing cooperative.
+
 ## Also in the app
 
-- **The look.** The Jolly Roger flies behind everything: forms
-  and lists are transparent over the backdrop (dimmed slightly
-  for readability) and the app is pinned to dark appearance to
-  match. The image itself is an asset-catalog imageset named
-  `AppBackground`, added in Xcode — binaries can't ride the repo
-  connector, the same reason the app icon moved by hand. Until
-  the image is dropped in, the app just wears near-black.
-- **The Scan tab.** A pentester's pocket recon, for your own gear
-  and engagements: a TCP connect scanner over the usual 28 ports
-  (or your own list) with banner grabbing; a TLS certificate
-  inspector that reads the chain out of a real handshake (system
-  trust verdict, subjects, validity windows); and a Bonjour sweep
-  listing what the Wi-Fi announces — SSH, printers, AirPlay, MQTT,
-  other nightjar phones. Connect scans only: iOS gives apps no
-  raw sockets, so no SYN or UDP scans and no monitor mode — the
-  Send tab remains the UDP tool. Every send and reply is also
-  written to a persistent exchange history (`exchanges.jsonl`),
-  exportable from the mouth log sheet: what was probed, when, and
-  what answered.
+- **The look — and the boot.** The Jolly Roger flies behind
+  everything: forms and lists are transparent over the backdrop
+  (dimmed slightly for readability) and the app is pinned to dark
+  appearance to match. The image itself is an asset-catalog
+  imageset named `AppBackground`, added in Xcode — binaries can't
+  ride the repo connector, the same reason the app icon moved by
+  hand. And it boots like an OS: black splash, the flag as an
+  emblem card over the wordmark, and a terminal boot log that
+  types itself over a progress bar — every line true (this device,
+  this Wi-Fi address, this library's real payload count, this
+  stealth state), tap to skip, fading into the app in ~2 seconds.
+- **The Scan tab.** A "This network" panel (SSID where iOS offers
+  it, your IP, the /24, a one-tap likely-gateway target); a TCP
+  connect scanner over the usual 28 ports (or your own list) with
+  banner grabbing; a **subnet sweep** that knocks on one port
+  across all 254 addresses; an **observation feed** that re-sweeps
+  on an interval and streams the diffs — hosts answering, hosts
+  going dark, Bonjour services appearing and vanishing — into a
+  timestamped timeline; a TLS certificate inspector that reads the
+  chain out of a real handshake (system trust verdict, subjects,
+  validity windows parsed out of the certificate DER by hand,
+  because iOS exposes no API for them); a **DNS toolkit** that
+  sends a real query over UDP and parses the answers locally (A,
+  AAAA, MX, NS, CNAME, TXT); a Bonjour sweep whose rows **resolve
+  to IP:port on tap**; and a **pcap dissector** that takes apart
+  classic `.pcap` files recorded on your own machines (Ethernet,
+  IPv4/IPv6, TCP flags, UDP, ICMP, ARP, payload previews) in
+  plain text. Tapping any open port — from a scan or a sweep —
+  loads it, plus the library probe that speaks its language,
+  straight into the Send tab. Connect scans only: iOS gives apps
+  no raw sockets, so no SYN or UDP scans and no monitor mode —
+  the Send tab remains the UDP tool.
+- **History, and deleting it.** Every send, reply, scan, sweep,
+  DNS lookup, snatch and dissection is written to a persistent
+  exchange history (`exchanges.jsonl`), exportable from the mouth
+  log sheet: what was probed, when, and what answered. The same
+  sheet deletes the file outright (size shown, confirmation
+  required); the send log and the Serve inbox clear from their
+  own buttons, as does the observation feed.
 - **Payload library.** The Send tab saves named payloads (source,
   transforms, framing included) and loads them back in one tap. It
   ships preloaded with built-ins: the basics (hello, ping, a JSON
@@ -106,6 +158,9 @@ hex. Send-side settings persist like Serve's do.
   the listeners so it takes effect immediately. BLE hosting still
   advertises, because a thing that cannot be found cannot be
   connected to.
+- **Authorized use** (About tab). The app is a testing instrument
+  for devices and networks you own, or that you are engaged in
+  writing to test; the About tab carries the statement in full.
 
 ## Honest platform limits
 
@@ -114,9 +169,16 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 - **Foreground only for the mouth.** iOS suspends an app's listeners
   and advertisements when it leaves the screen, and a Personal Team
   build gets no say in it. Beacons and servers stop being reachable
-  in the background. The Listen tab keeps its background hearing
-  (state restoration + the tracker-service list), exactly like
-  upstream — the two halves have different physics and the app says so.
+  in the background (the BLE GATT arm above is the one exception —
+  the OS wakes the app for writes). The Listen tab keeps its
+  background hearing (state restoration + the tracker-service list),
+  exactly like upstream — the two halves have different physics and
+  the app says so.
+- **No raw sockets, ever.** No SYN scans, no UDP scans, no ARP
+  anything, no packet injection or capture from the app itself —
+  captures are made on real machines and dissected here. Load
+  flooding, deauthentication, spoofing, and covert implants were
+  considered and refused; see CHANGELOG.md.
 - **No manufacturer-data stamping.** Python's `ble://` also writes the
   payload into manufacturer data; iOS gives apps no API to set
   manufacturer data in an advertisement. The payload rides in
@@ -124,6 +186,9 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
   Keep beacons small (~20 bytes); iOS advertisement space is tight.
 - **No MAC addresses.** iOS hides them, for sending as for listening:
   `ble-write://AA:BB:…` becomes "scan and tap the device" here.
+- **SSID is best-effort.** Reading the Wi-Fi name needs an
+  entitlement a sideloaded build may not carry; where iOS withholds
+  it, the "This network" panel simply omits the row.
 - **First tap on "Scan for devices"** may report Bluetooth is not
   ready while the radio warms up; tap again.
 - **Local network permission.** The first listener (or LAN send)
@@ -163,12 +228,21 @@ project keep working):
   by its serial.
 - `nightjar/Drones.swift` — the Remote ID decoder (new).
 - `nightjar/Mouth.swift`, `MouthView.swift` — the mouth: payload
-  construction, transports, listeners, and the Send/Serve tabs (new).
+  construction, transports, listeners, fan-out, scheduling,
+  snatching, planting, and the Send/Serve tabs (new).
+- `nightjar/ReconView.swift` — the Scan tab: scanner, sweep, feed,
+  TLS and DNS tools, Bonjour resolution, pcap dissector (new).
+- `nightjar/Feedback.swift` — the narration toasts, the haptics,
+  the Jolly Roger backdrop, and the boot splash (new).
 - `nightjarTests/` — upstream decoder/log tests, plus `DroneTests`
-  (vectors shared in spirit with `tests/test_remoteid.py`) and
-  `HackTests` (payloads, framing, target parsing).
+  (vectors shared in spirit with `tests/test_remoteid.py`),
+  `HackTests` (payloads, framing, target parsing) and
+  `PayloadBookTests` (the library, its built-ins and their shapes).
 
-Not compiled on a Mac before first commit — the code was written
-against the upstream app's patterns and reviewed, but Xcode is the
-compiler of record. If the first build argues, the errors will be
-small and local; the architecture is upstream's.
+The app is built and run on a real iPhone from this repo,
+continuously — the features above are described from the running
+build, not from intentions. Xcode remains the compiler of record:
+the Swift is written in a Linux VM with no Xcode in it, so the
+first build of a given change may surface a small, local error;
+the fix follows in the next commit, and the burn-down so far has
+never taken more than two rounds.
