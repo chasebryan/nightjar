@@ -33,7 +33,24 @@ class NightjarApp : Application() {
         ble = BleMouth(this, mouth)
         engines = Engines(mouth)
         scanner = PortScanner()
-        tracer = NetworkTracer(this, mouth, traceStore)
+        tracer = NetworkTracer(this, mouth, traceStore) {
+            // The trace's radio half: the listening post's
+            // current rows, reduced to map facts at finish.
+            post.rows.value.map { row ->
+                TraceBLEDevice(
+                    id = row.id,
+                    name = row.label,
+                    vendor = row.makers.sorted().joinToString(", "),
+                    serviceUuids = row.serviceUUIDs,
+                    rotatingAddress = row.rotatingAddress,
+                    firstSeenMs = (row.firstSeen * 1000).toLong(),
+                    lastSeenMs = (row.lastSeen * 1000).toLong(),
+                    sightings = row.sightings,
+                    closestRssi = row.rssiClosest,
+                    smoothedRssi = row.rssiSmooth
+                )
+            }
+        }
         mouth.bleArrivalHandler = { from, data ->
             serve.injectBleArrival(from, data)
         }
