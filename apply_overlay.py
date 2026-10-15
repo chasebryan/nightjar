@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-HACK_VERSION = "2.4.0"
+HACK_VERSION = "2.5.0"
 
 CLI = "nightjar/cli.py"
 PYPROJECT = "pyproject.toml"
