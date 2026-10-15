@@ -313,8 +313,7 @@ struct ServeView: View {
                                 .foregroundStyle(.tertiary).lineLimit(1)
                             Text(PayloadKit.hexdump(item.data))
                                 .font(.caption2.monospaced()).foregroundStyle(.secondary)
-                            if let text = String(data: item.data, encoding: .utf8),
-                               !text.isEmpty, text.allSatisfy({ $0.isPrint || $0.isNewline }) {
+                            if let text = PayloadKit.printableText(item.data) {
                                 Text(text).font(.caption)
                             }
                         }
