@@ -212,7 +212,9 @@ extension Mouth {
                smartSeed: Bool,
                probeFor: @escaping (String) -> (data: Data, name: String)?,
                payloadFor: @escaping (String) -> Data?,
-               framing: String, method: String) {
+               framing: String, method: String,
+               rules: [TraceRule] = [],
+               payloadNamed: ((String) -> Data?)? = nil) {
         guard !crawlBusy, !talkBusy else { return }
         let (hops, invalid) = Mouth.expandJourney(
             route: rawLines, perDevice: perDevice,
@@ -242,7 +244,10 @@ extension Mouth {
                 self?.crawlLines.append(text)
             }
         }
-        func harvest(_ text: String, leg: String, reply: Data) {
+        func harvest(_ text: String, leg: String, reply: Data,
+                     tags: [String] = [],
+                     source: String = "centipede",
+                     recordTarget: String? = nil) {
             let preview: String
             if let spoken = PayloadKit.printableText(reply),
                let first = spoken.split(separator: "\n").first {
@@ -257,6 +262,14 @@ extension Mouth {
             DispatchQueue.main.async { [weak self] in
                 self?.crawlFindings.append(finding)
             }
+            // What a door said is worth keeping after the walk
+            // moves on: file it in the shared logbook, under
+            // the target that was actually aimed at (a
+            // follow-up's display text names the rule, which
+            // is not a parsable target).
+            TraceBookStore.shared.record(
+                targetText: recordTarget ?? text, reply: reply,
+                source: source, extraTags: tags)
         }
         func finishJourney() {
             DispatchQueue.main.async { [weak self] in
@@ -327,18 +340,96 @@ extension Mouth {
                 // here, which fast-closing servers (an HTTP/1.0
                 // answer-and-close) reliably outrun.
                 let reply = self.replyData(since: hopStart)
+                // The adaptive rules judge the reply before
+                // anything is done with it: tags are filed with
+                // the finding, a stop means the reply is NOT
+                // carried onward, and the first follow-up rule
+                // earns one extra word with this door — sent
+                // before the walk steps on, and harvested like
+                // any other reply, but it never replaces what
+                // the chain is carrying.
+                var followName: String?
+                var ruleNote = ""
                 if let reply = reply {
-                    carried = reply
-                    harvest(text, leg: leg, reply: reply)
+                    var tags: [String] = []
+                    var stopCarry = false
+                    if !rules.isEmpty {
+                        var targetPort = -1
+                        if let parsed = try? SendTarget.parse(text) {
+                            switch parsed {
+                            case .tcp(_, let p, _),
+                                 .udp(_, let p):
+                                targetPort = p
+                            case .http(let url, let https):
+                                targetPort = url.port
+                                    ?? (https ? 443 : 80)
+                            default:
+                                break
+                            }
+                        }
+                        let replyText = TraceAnalyzer.text(of: reply)
+                        for rule in rules
+                        where rule.matches(text: replyText,
+                                           port: targetPort) {
+                            switch rule.action {
+                            case .tag(let label):
+                                if !tags.contains(label) {
+                                    tags.append(label)
+                                }
+                            case .stop:
+                                stopCarry = true
+                            case .followup(let name):
+                                if followName == nil {
+                                    followName = name
+                                }
+                            }
+                        }
+                    }
+                    carried = stopCarry ? nil : reply
+                    harvest(text, leg: leg, reply: reply, tags: tags)
+                    if !tags.isEmpty {
+                        trail("  ↳ tagged: "
+                              + tags.joined(separator: ", "))
+                    }
+                    if stopCarry {
+                        ruleNote = " · rule: stop — reply left here"
+                    }
                 }
                 let elapsed = Date().timeIntervalSince(hopStart)
-                trail("\(ok ? "✓" : "✗") hop \(hopNumber)/\(total) "
-                      + "(\(leg)) \(text) · \(payload.count) B out"
-                      + (probeName.map { " · spoke \($0)" } ?? "")
-                      + (reply.map { " · \($0.count) B back" }
-                         ?? " · no reply")
-                      + String(format: " · %.2fs", elapsed))
-                DispatchQueue.main.async { step() }
+                let trailLine = "\(ok ? "✓" : "✗") "
+                    + "hop \(hopNumber)/\(total) "
+                    + "(\(leg)) \(text) · \(payload.count) B out"
+                    + (probeName.map { " · spoke \($0)" } ?? "")
+                    + (reply.map { " · \($0.count) B back" }
+                       ?? " · no reply")
+                    + String(format: " · %.2fs", elapsed)
+                    + ruleNote
+                guard let name = followName,
+                      let followPayload = payloadNamed?(name)
+                else {
+                    trail(trailLine)
+                    DispatchQueue.main.async { step() }
+                    return
+                }
+                let followStart = Date()
+                self.talkSend(text: text, payload: followPayload) {
+                    _ in
+                    guard generation == self.crawlGeneration
+                    else { return }
+                    var note = " · follow-up: \(name)"
+                    if let followReply = self.replyData(
+                        since: followStart) {
+                        harvest("\(text) (follow-up: \(name))",
+                                leg: leg, reply: followReply,
+                                source: "centipede-followup",
+                                recordTarget: text)
+                        note += " · \(followReply.count) B back"
+                    } else {
+                        note += " · silence"
+                    }
+                    trail(trailLine + note)
+                    DispatchQueue.main.async { step() }
+                }
             }
             if text.hasPrefix("phone:") {
                 sendToPhone(name: String(text.dropFirst(6)),
