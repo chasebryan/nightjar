@@ -287,6 +287,12 @@ struct SessionsView: View {
             countStyle: .file)
     }
 
+    private var deletableSizeText: String {
+        ByteCountFormatter.string(
+            fromByteCount: Int64(deletable.reduce(0) { $0 + $1.fileSize }),
+            countStyle: .file)
+    }
+
     private var selectedDeletableCount: Int {
         deletable.filter { selection.contains($0.id) }.count
     }
@@ -357,7 +363,7 @@ struct SessionsView: View {
                 isPresented: $showClearConfirm,
                 titleVisibility: .visible) {
                 Button("Delete \(deletable.count) sessions "
-                       + "(\(totalSizeText))",
+                       + "(\(deletableSizeText))",
                        role: .destructive) {
                     deleteAll()
                 }
@@ -390,10 +396,14 @@ struct SessionsView: View {
     }
 
     private func deleteOne(_ session: SessionSummary) {
-        SessionStore.delete(session)
+        let removed = SessionStore.delete(session)
         selection.remove(session.id)
         reload()
-        toasts.show("Session deleted")
+        if removed {
+            toasts.show("Session deleted")
+        } else {
+            toasts.show("Could not delete session", error: true)
+        }
     }
 
     private func deleteSelected() {
@@ -595,6 +605,9 @@ struct AboutView: View {
                             Spacer()
                             if updater.checking {
                                 ProgressView()
+                            } else if updater.noReleasesYet {
+                                Text("no releases published yet")
+                                    .foregroundStyle(.secondary)
                             } else if updater.available == nil, updater.lastChecked != nil {
                                 Text("up to date").foregroundStyle(.secondary)
                             }
@@ -615,4 +628,5 @@ struct AboutView: View {
         .environmentObject(ListeningPost())
         .environmentObject(UpdateChecker())
         .environmentObject(Mouth())
+        .environmentObject(ToastCenter())
 }
