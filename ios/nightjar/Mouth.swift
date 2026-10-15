@@ -1119,6 +1119,114 @@ final class Mouth: NSObject, ObservableObject {
         return (stops, invalid)
     }
 
+    /// One hop of a crawl: where it goes, which leg it belongs
+    /// to, and whether the chain resets there (a fresh device
+    /// starting its own walk in per-device mode).
+    struct CrawlHop {
+        let text: String
+        let leg: String
+        let blockStart: Bool
+    }
+
+    /// Build the full journey for a crawl. One-journey mode: the
+    /// route's stops, then (with `returnLeg`) the same stops in
+    /// reverse. Per-device mode: every route line is a device and
+    /// each device gets its own out-and-back walk — a range line
+    /// contributes one single-door device per expanded target.
+    static func expandJourney(route rawLines: [String],
+                              perDevice: Bool, returnLeg: Bool)
+        -> (hops: [CrawlHop], invalid: [String])
+    {
+        if !perDevice {
+            let (stops, bad) = expandRoute(rawLines)
+            var hops = stops.map {
+                CrawlHop(text: $0, leg: "out", blockStart: false)
+            }
+            if !hops.isEmpty {
+                hops[0] = CrawlHop(text: hops[0].text, leg: "out",
+                                   blockStart: true)
+            }
+            if returnLeg {
+                hops += stops.reversed().map {
+                    CrawlHop(text: $0, leg: "back", blockStart: false)
+                }
+            }
+            return (hops, bad)
+        }
+        var hops: [CrawlHop] = []
+        var invalid: [String] = []
+        for entry in rawLines {
+            let text = entry.trimmingCharacters(in: .whitespaces)
+            if text.isEmpty || text.hasPrefix("#") { continue }
+            let devices: [String]
+            if let range = Mouth.expandRange(text) {
+                devices = range
+            } else if Mouth.looksLikeRange(text) {
+                invalid.append(text)
+                continue
+            } else {
+                devices = [text]
+            }
+            for device in devices {
+                let walk = deviceWalk(device)
+                var block = walk.map {
+                    CrawlHop(text: $0, leg: "out", blockStart: false)
+                }
+                if returnLeg {
+                    block += walk.reversed().map {
+                        CrawlHop(text: $0, leg: "back",
+                                 blockStart: false)
+                    }
+                }
+                if !block.isEmpty {
+                    block[0] = CrawlHop(text: block[0].text,
+                                        leg: "out", blockStart: true)
+                    hops += block
+                }
+            }
+        }
+        return (hops, invalid)
+    }
+
+    /// One device's outward walk in per-device mode: a phone or a
+    /// URL is a single stop; a host with an explicit single port
+    /// is that one door; `host:80,443` is a train over those
+    /// ports; a bare host is a train across the usual ports.
+    static func deviceWalk(_ device: String) -> [String] {
+        if device.hasPrefix("phone:") || device.hasPrefix("http://")
+            || device.hasPrefix("https://")
+        {
+            return [device]
+        }
+        var scheme = "tcp"
+        var rest = device
+        if let split = device.range(of: "://") {
+            scheme = String(device[..<split.lowerBound])
+            rest = String(device[split.upperBound...])
+        }
+        guard let colon = rest.lastIndex(of: ":") else {
+            return ScanModel.topPorts.map { "\(scheme)://\(rest):\($0.0)" }
+        }
+        let host = String(rest[..<colon])
+        let portPart = String(rest[rest.index(after: colon)...])
+        if portPart.contains(",") {
+            let ports = portPart
+                .split(separator: ",")
+                .compactMap { Int($0.trimmingCharacters(
+                    in: .whitespaces)) }
+                .filter { (1...65535).contains($0) }
+            return ports.map { "\(scheme)://\(host):\($0)" }
+        }
+        return [device]
+    }
+
+    /// How many hops a crawl of this route would make (capped).
+    static func journeyCount(route rawLines: [String],
+                             perDevice: Bool, returnLeg: Bool) -> Int {
+        min(expandJourney(route: rawLines, perDevice: perDevice,
+                          returnLeg: returnLeg).hops.count, 300)
+    }
+
     /// Walk a route one hop at a time. In "seed" mode every hop
     /// sends the payload built for it; in "chain" mode each hop
     /// after the first sends the previous hop's reply verbatim —
@@ -1126,28 +1234,31 @@ final class Mouth: NSObject, ObservableObject {
     /// creature then walks the same route backwards, and whatever
     /// it carries at the end comes home: published as
     /// `crawlHomecoming` and, when `homeTarget` is set, sent there
-    /// once. The phone performs every send on both legs; nothing
+    /// once. In per-device mode every route line is a device that
+    /// gets its own walk, and the chain resets at each device.
+    /// The phone performs every send on both legs; nothing
     /// is installed, left running, or re-sent by any target.
     func crawl(route rawLines: [String], mode: String,
-               returnLeg: Bool, homeTarget: String,
+               returnLeg: Bool, perDevice: Bool, homeTarget: String,
                payloadFor: @escaping (String) -> Data?,
                framing: String, method: String) {
         guard !crawlBusy else { return }
-        let (stops, invalid) = Mouth.expandRoute(rawLines)
-        guard !stops.isEmpty else {
+        let (hops, invalid) = Mouth.expandJourney(
+            route: rawLines, perDevice: perDevice,
+            returnLeg: returnLeg)
+        guard !hops.isEmpty else {
             crawlLines = invalid.map { "✗ \($0) — invalid range" }
             return
         }
         crawlGeneration += 1
         let generation = crawlGeneration
-        var journey = stops
-        if returnLeg { journey += stops.reversed() }
-        let total = min(journey.count, 300)
-        journey = Array(journey.prefix(total))
+        let total = min(hops.count, 300)
+        let journey = Array(hops.prefix(total))
         crawlBusy = true
         crawlHomecoming = nil
         crawlLines = ["Centipede released — \(total) hop(s)"
-                      + (returnLeg ? ", out and back" : "")]
+                      + (returnLeg ? ", out and back" : "")
+                      + (perDevice ? ", per device" : "")]
         for text in invalid {
             crawlLines.append("✗ \(text) — invalid range")
         }
@@ -1183,14 +1294,15 @@ final class Mouth: NSObject, ObservableObject {
                 if generation == crawlGeneration { finishJourney() }
                 return
             }
-            let text = journey[index]
+            let hop = journey[index]
             index += 1
             let hopNumber = index
-            let leg = returnLeg && hopNumber > stops.count
-                ? "back" : "out"
+            let text = hop.text
+            let leg = hop.leg
             let hopStart = Date()
+            if hop.blockStart { carried = nil }
             let payload: Data?
-            if mode == "chain", hopNumber > 1, let soFar = carried {
+            if mode == "chain", !hop.blockStart, let soFar = carried {
                 payload = soFar
             } else {
                 payload = payloadFor(text)
