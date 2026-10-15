@@ -1463,8 +1463,7 @@ struct SendView: View {
             traceAdaptive: traceAdaptive,
             traceRules: traceRules,
             centipedeRoute: centipedeRoute)
-        if let index = presets.firstIndex {
-            $0.id == snapshot.id } {
+        if let index = presets.firstIndex(where: { $0.id == snapshot.id }) {
             presets[index] = snapshot
         } else {
             presets.append(snapshot)
@@ -1504,8 +1503,7 @@ struct SendView: View {
             return
         }
         for preset in incoming {
-            if let index = presets.firstIndex {
-                $0.id == preset.id } {
+            if let index = presets.firstIndex(where: { $0.id == preset.id }) {
                 presets[index] = preset
             } else {
                 presets.append(preset)
