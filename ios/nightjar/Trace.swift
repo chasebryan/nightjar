@@ -1611,6 +1611,37 @@ extension Mouth {
                 diff: diff,
                 limitations: TraceExport.limitations)
             let url = TraceExportWriter.write(export)
+            // Armed from the Send tab: turn the map into a
+            // Centipede route — one port train per host,
+            // capped where a journey caps (300 doors).
+            var centipedeArmed = false
+            var centipedeRoute: String? = nil
+            var loadedDoors = 0
+            var loadedHosts = 0
+            if self.traceAutoCentipede {
+                centipedeArmed = true
+                self.traceAutoCentipede = false
+                var lines: [String] = []
+                let sortedHosts = after.sorted { a, b in
+                    (Int(a.ip.split(separator: ".").last ?? "") ?? 0)
+                        < (Int(b.ip.split(separator: ".").last ?? "") ?? 0)
+                }
+                for host in sortedHosts {
+                    let ports = Array(Set(host.services.map(\.port)))
+                        .filter { $0 > 0 }.sorted()
+                    if ports.isEmpty { continue }
+                    let room = 300 - loadedDoors
+                    if room <= 0 { break }
+                    let take = Array(ports.prefix(room))
+                    lines.append(host.ip + ":"
+                        + take.map(String.init).joined(separator: ","))
+                    loadedDoors += take.count
+                    loadedHosts += 1
+                }
+                if !lines.isEmpty {
+                    centipedeRoute = lines.joined(separator: "\n")
+                }
+            }
             let statusText = "Frontier exhausted — "
                 + "\(seenHosts.count) host(s), \(doorCount) door(s), "
                 + "\(probeCount) probe(s)"
@@ -1627,6 +1658,18 @@ extension Mouth {
                 if let url = url {
                     self.traceLines.append("Trace written — "
                         + url.lastPathComponent)
+                }
+                if centipedeArmed {
+                    if let route = centipedeRoute {
+                        self.traceCentipedeRoute = route
+                        self.traceLines.append(
+                            "Centipede configured — \(loadedDoors) door(s) "
+                            + "on \(loadedHosts) host(s) loaded as its route")
+                    } else {
+                        self.traceLines.append(
+                            "Centipede setup — the trace found no "
+                            + "open doors to load")
+                    }
                 }
                 self.logRecon("network-trace", "\(base).0/24",
                               lines: self.traceLines)
