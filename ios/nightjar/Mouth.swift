@@ -213,6 +213,22 @@ enum PayloadKit {
         return data
     }
 
+    /// The data as displayable text, when it decodes as UTF-8 and holds
+    /// nothing but printable characters, whitespace and newlines —
+    /// else nil (callers show the hexdump instead).
+    static func printableText(_ data: Data) -> String? {
+        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else {
+            return nil
+        }
+        let bad = CharacterSet.controlCharacters
+            .subtracting(CharacterSet.newlines)
+            .subtracting(CharacterSet(charactersIn: "\t"))
+        if text.unicodeScalars.contains(where: { bad.contains($0) }) {
+            return nil
+        }
+        return text
+    }
+
     /// Same layout as send.py's hexdump: offset, spaced hex, glyphs.
     static func hexdump(_ data: Data, width: Int = 16) -> String {
         if data.isEmpty { return "    (empty)" }
@@ -419,8 +435,7 @@ final class Mouth: NSObject, ObservableObject {
                     for l in PayloadKit.hexdump(replied).components(separatedBy: "\n") {
                         line(l)
                     }
-                    if let text = String(data: replied, encoding: .utf8),
-                       !text.isEmpty, text.allSatisfy({ $0.isPrint || $0.isNewline }) {
+                    if let text = PayloadKit.printableText(replied) {
                         line("  text: \(text)")
                     }
                 }
