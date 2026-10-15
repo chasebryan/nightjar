@@ -124,6 +124,28 @@ Below the steps, the Send tab keeps working:
   chain resets at each device).
   Every send on both legs is made by the phone; nothing is
   installed or left running on any target.
+- **Network Trace.** The Centipede's map-making mode. Name
+  one /24 (blank = this phone's) and start a foreground
+  trace: every address is knocked on the discovery ports,
+  every answering host is profiled across the usual ports
+  with banners grabbed, every open door is spoken to with
+  its library probe, and every endpoint a banner or reply
+  *references* — an IP:port in a page, a redirect target —
+  is queued and explored in turn, three levels deep, until
+  the frontier is exhausted and the trace stops itself.
+  References outside the named /24 are recorded as leads
+  and never contacted; Bonjour services join the map.
+  **Adaptive rules** steer the trace and ordinary walks
+  alike — `contains Redis => followup Redis PING (RESP)`,
+  `contains HTTP => tag web`, `contains SSH => stop`: a
+  follow-up sends a second, chosen probe to the same door,
+  a tag sticks to the device's dossier, and stop keeps
+  that reply out of the chain. All of it feeds a persistent
+  **crawl logbook** of per-host dossiers, and each trace
+  exports a downloadable JSON map (hosts, services, a
+  node/edge graph, the diff against the logbook, and a
+  limitations block) in a versioned schema for other
+  tools to ingest.
 - **SnatchSteal.** The receive-side weapon: knock on the step-1
   target with the step-2 payload (or don't knock at all), then
   drain *everything* it sends back — until it closes, a 15-second
