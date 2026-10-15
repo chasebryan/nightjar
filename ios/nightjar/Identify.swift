@@ -84,6 +84,13 @@ struct DeviceRow: Identifiable {
     var lastSeen: TimeInterval
     var sightings: Int = 0
     var makers: Set<String> = []
+    /// Exponentially smoothed RSSI — the stable strength the
+    /// list orders by, so positions reflect the perimeter
+    /// instead of per-packet jitter.
+    var rssiSmooth: Double?
+    var txPowerLast: Int?
+    var serviceUUIDs: [String] = []
+    var rotatingAddress: Bool = false
 
     static let historyCap = 24
 
@@ -102,6 +109,11 @@ struct DeviceRow: Identifiable {
         if let rssi = sighting.rssi {
             rssiLast = rssi
             rssiClosest = max(rssiClosest ?? rssi, rssi)
+            if let smooth = rssiSmooth {
+                rssiSmooth = smooth + 0.35 * (Double(rssi) - smooth)
+            } else {
+                rssiSmooth = Double(rssi)
+            }
             rssiHistory.append(rssi)
             if rssiHistory.count > DeviceRow.historyCap {
                 rssiHistory.removeFirst(rssiHistory.count - DeviceRow.historyCap)
@@ -109,6 +121,11 @@ struct DeviceRow: Identifiable {
         }
         for company in sighting.manufacturerData.keys {
             makers.insert(Vendors.companyName(company))
+        }
+        if let tx = sighting.txPower { txPowerLast = tx }
+        for uuid in sighting.serviceUUIDs
+        where !serviceUUIDs.contains(uuid) {
+            if serviceUUIDs.count < 16 { serviceUUIDs.append(uuid) }
         }
         let classification = Classification.classify(sighting)
         if classification.rank >= rank || rank == Classification.rankUnknown {
@@ -122,6 +139,8 @@ struct DeviceRow: Identifiable {
             details = classification.details
         }
         trackerShaped = trackerShaped || classification.trackerShaped
+        rotatingAddress = rotatingAddress
+            || classification.rotatingPhone
     }
 
     /// What to call it: the advertised name, else a label the broadcast
@@ -155,6 +174,24 @@ struct DeviceRow: Identifiable {
         if rssi >= -70 { return "near" }
         if rssi >= -85 { return "far" }
         return "faint"
+    }
+
+    /// Rough range from the smoothed RSSI and the advertised
+    /// transmit power (free-space falloff) — a guide for the
+    /// eye, not a measurement. Devices that don't advertise
+    /// TX power are read against the usual −59 dBm reference.
+    var distanceMeters: Double? {
+        guard let smooth = rssiSmooth else { return nil }
+        let tx = Double(txPowerLast ?? -59)
+        return pow(10, (tx - smooth) / 20)
+    }
+
+    /// How long the device has been in earshot this session.
+    var dwell: TimeInterval { return max(0, lastSeen - firstSeen) }
+
+    var sightingsPerMinute: Double {
+        guard dwell >= 10 else { return 0 }
+        return Double(sightings) / (dwell / 60)
     }
 
     func age(now: TimeInterval) -> TimeInterval { return max(0, now - lastSeen) }
