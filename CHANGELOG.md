@@ -24,8 +24,9 @@
   moved from Mouth.swift into a new Crawl.swift extension.)
   The Send tab's feature sections now fold open and shut from
   their headers, with the open set remembered between launches.
-  Releasing the centipede plays a ~3 s full-screen GIF (a
-  glitching, laughing skull, animated from supplied artwork;
+  Releasing the centipede plays a full-screen GIF — a
+  glitching, laughing skull (Chase's own, kept in the project
+  as `centipede.gif`; the splash lasts the GIF's own ~2 s;
   tap to skip; a built-in fallback covers a missing asset).
 
 ## 2.5.0 — 2026-10-15 — the pocket release
