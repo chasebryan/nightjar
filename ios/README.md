@@ -12,7 +12,18 @@ gear and your written engagements.
   `scanForPeripherals`/`stopScan`. It never connects, pairs or
   transmits, and it shares no radio state with the transmitting half.
   Sessions are the same JSONL format; they feed the same
-  `nightjar report` / `nightjar trackers` on the Mac.
+  `nightjar report` / `nightjar trackers` on the Mac. The live list
+  is calmer and richer than a raw feed: ordering follows an
+  exponentially smoothed RSSI, re-ranked every 5 s with a 3 dB
+  challenge margin, so devices hold their positions and drift
+  with the perimeter instead of dancing on per-packet jitter
+  (contents still refresh every second). Rows carry the range
+  band, a rough distance estimate (from TX power and the
+  smoothed signal), sighting counts, closest-ever RSSI and a
+  rotating-address flag, and tapping a device opens its full
+  file — every decoded detail, maker, signal history sparkline,
+  first/last heard, dwell and rate, advertised services, and the
+  identifier, with the write-a-payload handoff a tap away.
 - **Send** — payloads out, like `nightjar send`: TCP, UDP, TLS-wrapped
   TCP, HTTP(S) (any method, payload-in-query for GET/HEAD), BLE
   advertisement beacons, a hosted GATT characteristic, and BLE writes
