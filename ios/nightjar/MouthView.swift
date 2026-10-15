@@ -627,6 +627,15 @@ struct MouthLogSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+                if FileManager.default.fileExists(
+                    atPath: Mouth.exchangesURL.path) {
+                    ToolbarItem(placement: .bottomBar) {
+                        ShareLink(item: Mouth.exchangesURL) {
+                            Label("Export exchange history (.jsonl)",
+                                  systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
             }
         }
     }
