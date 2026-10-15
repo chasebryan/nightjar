@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "ruleCases": [
+    {
+      "name": "followup-basic",
+      "input": "contains Redis => followup Redis PING (RESP)",
+      "expected": [
+        {
+          "matcher": {
+            "contains": "redis"
+          },
+          "action": {
+            "followup": "Redis PING (RESP)"
+          }
+        }
+      ],
+      "matchTests": [
+        {
+          "text": "Redis 7.2",
+          "port": 6379,
+          "matches": [
+            true
+          ]
+        },
+        {
+          "text": "memcached",
+          "port": 6379,
+          "matches": [
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mixed-block",
+      "input": "# house rules\n\ncontains nginx => tag web\nport 22 => tag ssh\ncontains openssh => stop\n",
+      "expected": [
+        {
+          "matcher": {
+            "contains": "nginx"
+          },
+          "action": {
+            "tag": "web"
+          }
+        },
+        {
+          "matcher": {
+            "port": 22
+          },
+          "action": {
+            "tag": "ssh"
+          }
+        },
+        {
+          "matcher": {
+            "contains": "openssh"
+          },
+          "action": {
+            "stop": true
+          }
+        }
+      ],
+      "matchTests": [
+        {
+          "text": "nginx/1.24",
+          "port": 80,
+          "matches": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "text": "OpenSSH_9.3",
+          "port": 22,
+          "matches": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "text": "OpenSSH_9.3",
+          "port": 80,
+          "matches": [
+            false,
+            false,
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "garbage-rejected",
+      "input": "hello world\ncontains => followup\n=> tag x\nport abc => tag y\ncontains x => frobnicate y\ncontains x => followup",
+      "expected": [],
+      "matchTests": []
+    },
+    {
+      "name": "keyword-case-needle-lowered-label-kept",
+      "input": "Contains NGINX => TAG Web",
+      "expected": [
+        {
+          "matcher": {
+            "contains": "nginx"
+          },
+          "action": {
+            "tag": "Web"
+          }
+        }
+      ],
+      "matchTests": [
+        {
+          "text": "nginx",
+          "port": 80,
+          "matches": [
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "whitespace-tolerant",
+      "input": "  contains   ssh   =>   tag   shell  ",
+      "expected": [
+        {
+          "matcher": {
+            "contains": "ssh"
+          },
+          "action": {
+            "tag": "shell"
+          }
+        }
+      ],
+      "matchTests": []
+    },
+    {
+      "name": "comments-and-blanks-only",
+      "input": "# nothing here\n\n   \n#contains x => tag y\n",
+      "expected": [],
+      "matchTests": []
+    },
+    {
+      "name": "port-and-contains",
+      "input": "port 6379 => followup Redis PING (RESP)\ncontains redis => tag cache",
+      "expected": [
+        {
+          "matcher": {
+            "port": 6379
+          },
+          "action": {
+            "followup": "Redis PING (RESP)"
+          }
+        },
+        {
+          "matcher": {
+            "contains": "redis"
+          },
+          "action": {
+            "tag": "cache"
+          }
+        }
+      ],
+      "matchTests": [
+        {
+          "text": "Redis version 7",
+          "port": 6379,
+          "matches": [
+            true,
+            true
+          ]
+        },
+        {
+          "text": "Redis",
+          "port": 6380,
+          "matches": [
+            false,
+            true
+          ]
+        },
+        {
+          "text": "memcached",
+          "port": 6379,
+          "matches": [
+            true,
+            false
+          ]
+        },
+        {
+          "text": "",
+          "port": 80,
+          "matches": [
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "duplicates-preserved-in-order",
+      "input": "contains a => tag one\ncontains a => tag two",
+      "expected": [
+        {
+          "matcher": {
+            "contains": "a"
+          },
+          "action": {
+            "tag": "one"
+          }
+        },
+        {
+          "matcher": {
+            "contains": "a"
+          },
+          "action": {
+            "tag": "two"
+          }
+        }
+      ],
+      "matchTests": [
+        {
+          "text": "a",
+          "port": 1,
+          "matches": [
+            true,
+            true
+          ]
+        },
+        {
+          "text": "b",
+          "port": 1,
+          "matches": [
+            false,
+            false
+          ]
+        }
+      ]
+    }
+  ],
+  "analyzeCases": [
+    {
+      "name": "http-200-server-title-refs",
+      "host": "192.168.4.20",
+      "port": 80,
+      "dataText": "HTTP/1.1 200 OK\r\nServer: nginx/1.24.0\r\nContent-Type: text/html\r\n\r\n<html><head><title>Router Admin</title></head><body>See http://192.168.4.2:8080/ui and 192.168.4.1</body></html>",
+      "expected": {
+        "signature": "45ef56228d4e3a8a32a6b895a2c8e5cf8eca07c254e3ead7091ed774c3c1ca3d",
+        "firstLine": "HTTP/1.1 200 OK",
+        "serviceHint": "HTTP",
+        "references": [
+          {
+            "host": "192.168.4.2",
+            "port": 8080
+          },
+          {
+            "host": "192.168.4.1",
+            "port": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "http-303-location-hostname",
+      "host": "192.168.4.20",
+      "port": 80,
+      "dataText": "HTTP/1.0 303 See Other\r\nLocation: http://blocked.eero.com/\r\n\r\n",
+      "expected": {
+        "signature": "f76146c4c71f7c42fe5674c5a566746cae80a3eaec26a6ffbcaf8bbf27fbf3e3",
+        "firstLine": "HTTP/1.0 303 See Other",
+        "serviceHint": "HTTP",
+        "references": [
+          {
+            "host": "blocked.eero.com",
+            "port": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "ssh-banner",
+      "host": "192.168.4.5",
+      "port": 22,
+      "dataText": "SSH-2.0-OpenSSH_9.3p1\r\n",
+      "expected": {
+        "signature": "d85e5e9e20afda597f609a02cc155b2dbde6b4ae4d47f100cb5c73abdeb6b5b3",
+        "firstLine": "SSH-2.0-OpenSSH_9.3p1",
+        "serviceHint": "SSH",
+        "references": []
+      }
+    },
+    {
+      "name": "redis-pong",
+      "host": "192.168.4.5",
+      "port": 6379,
+      "dataText": "+PONG\r\n",
+      "expected": {
+        "signature": "64c2f2c744321d052076467905a0561f91e9a6de4e84441addbcc549cd71095c",
+        "firstLine": "+PONG",
+        "serviceHint": "Redis",
+        "references": []
+      }
+    },
+    {
+      "name": "redis-noauth",
+      "host": "192.168.4.5",
+      "port": 6379,
+      "dataText": "-NOAUTH Authentication required.\r\n",
+      "expected": {
+        "signature": "687fe317d52ae737ff6c8e08cf67a473bc0f71a3a6279129fd77c8de85eeb730",
+        "firstLine": "-NOAUTH Authentication required.",
+        "serviceHint": "Redis",
+        "references": []
+      }
+    },
+    {
+      "name": "smtp-220-esmtp",
+      "host": "192.168.4.6",
+      "port": 2525,
+      "dataText": "220 mail.example.com ESMTP Postfix\r\n",
+      "expected": {
+        "signature": "561422a427da7c443365fb99572754961ccfa7459a936da5d06203998cc23b9d",
+        "firstLine": "220 mail.example.com ESMTP Postfix",
+        "serviceHint": "SMTP",
+        "references": []
+      }
+    },
+    {
+      "name": "ftp-220",
+      "host": "192.168.4.6",
+      "port": 21,
+      "dataText": "220 ftp.example.com FTP server (vsFTPd 3.0.5) ready\r\n",
+      "expected": {
+        "signature": "e088e48916a5f7ca4c66109424f3f8c68f87abea46658e88a600c2739d507e22",
+        "firstLine": "220 ftp.example.com FTP server (vsFTPd 3.0.5) ready",
+        "serviceHint": "FTP",
+        "references": []
+      }
+    },
+    {
+      "name": "http-401-auth",
+      "host": "192.168.4.7",
+      "port": 8080,
+      "dataText": "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"cam\"\r\nServer: Boa/0.94\r\n\r\n",
+      "expected": {
+        "signature": "4a45528339c5ec60255f272ee9e2093ab107a8453131f98dc2abdaa797af8e02",
+        "firstLine": "HTTP/1.1 401 Unauthorized",
+        "serviceHint": "HTTP",
+        "references": []
+      }
+    },
+    {
+      "name": "reference-extraction",
+      "host": "192.168.4.30",
+      "port": 49152,
+      "dataText": "peers: 10.0.0.5:1883, 10.0.0.6; bad 999.10.0.1, worse 10.0.0.256; dup 10.0.0.5:1883",
+      "expected": {
+        "signature": "12f5bdbf37eab4230ea4e84434e16193aedb185c06d06ee06f992f97dfd49ccb",
+        "firstLine": "peers: 10.0.0.5:1883, 10.0.0.6; bad 999.10.0.1, worse 10.0.0.256; dup 10.0.0.5:1883",
+        "serviceHint": null,
+        "references": [
+          {
+            "host": "10.0.0.5",
+            "port": 1883
+          },
+          {
+            "host": "10.0.0.6",
+            "port": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown-banner-unmapped-port",
+      "host": "192.168.4.30",
+      "port": 40000,
+      "dataText": "HELLO this is a door\r\n",
+      "expected": {
+        "signature": "715b5df546e288be35ba987f66e22741fdab36a976c210db3695c352957e6b1d",
+        "firstLine": "HELLO this is a door",
+        "serviceHint": null,
+        "references": []
+      }
+    },
+    {
+      "name": "pop3-ok-on-110",
+      "host": "192.168.4.8",
+      "port": 110,
+      "dataText": "+OK POP3 server ready\r\n",
+      "expected": {
+        "signature": "b0a691992194525ba46559456e8b40ce62ae2a07a548e08543c1e58dafec036e",
+        "firstLine": "+OK POP3 server ready",
+        "serviceHint": "POP3",
+        "references": []
+      }
+    }
+  ]
+}
