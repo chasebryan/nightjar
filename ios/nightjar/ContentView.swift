@@ -396,6 +396,19 @@ struct AboutView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
+                Section(header: Text("Authorized use")) {
+                    Text("nightjar-hack is a testing instrument for "
+                         + "devices and networks you own, or that "
+                         + "you are engaged in writing to test. Aim "
+                         + "everything it sends, scans, plants, or "
+                         + "records only at targets you are "
+                         + "authorized for. You are responsible for "
+                         + "your authorization; the author is not "
+                         + "responsible for misuse against devices "
+                         + "or networks you were not authorized to "
+                         + "test.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section(header: Text("This post"),
                         footer: Text("The name of this ear, written into every session. "
                                      + "The Mac's fusion uses it to tell your phone apart "
