@@ -65,7 +65,9 @@ struct ListenView: View {
                                     Button {
                                         if let id = UUID(uuidString: row.id) {
                                             mouth.requestWrite(
-                                                to: id, label: row.preferredLabel)
+                                                to: id,
+                                                label: row.preferredLabel
+                                                    ?? row.kind)
                                             tab = 1
                                         }
                                     } label: {
