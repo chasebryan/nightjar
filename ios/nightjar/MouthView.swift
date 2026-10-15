@@ -354,10 +354,28 @@ struct ServeView: View {
     @AppStorage("serveHttpPort") private var httpPort = "8080"
     @AppStorage("serveReply") private var reply = "ack"
     @AppStorage("serveFraming") private var framing = "raw"
+    @AppStorage("stealthMode") private var stealthMode = false
+
+    private var stealthBinding: Binding<Bool> {
+        Binding(get: { stealthMode },
+                set: { mouth.setStealth($0); stealthMode = $0 })
+    }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section(header: Text("Stealth"),
+                        footer: Text("Everything keeps working, quietly: "
+                                     + "this phone stops listing itself on "
+                                     + "the Wi-Fi (no Bonjour — reachable "
+                                     + "by IP address only), and arrivals "
+                                     + "slip into the inbox with no banners "
+                                     + "or sounds. BLE hosting must still "
+                                     + "advertise to be reachable; that is "
+                                     + "radio physics, not a setting.")) {
+                    Toggle("Stealth mode", isOn: stealthBinding)
+                }
+
                 Section(header: Text("Listeners"),
                         footer: Text("Foreground only: iOS suspends listeners "
                                      + "when the app leaves the screen. First use "
