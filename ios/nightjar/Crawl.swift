@@ -213,7 +213,7 @@ extension Mouth {
                probeFor: @escaping (String) -> (data: Data, name: String)?,
                payloadFor: @escaping (String) -> Data?,
                framing: String, method: String) {
-        guard !crawlBusy else { return }
+        guard !crawlBusy, !talkBusy else { return }
         let (hops, invalid) = Mouth.expandJourney(
             route: rawLines, perDevice: perDevice,
             returnLeg: returnLeg)
@@ -554,4 +554,181 @@ extension Mouth {
         probeQueue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
     }
 
+}
+
+// MARK: - Crosstalk
+
+extension Mouth {
+
+    /// Patch two doors together and let them talk. Door A is
+    /// knocked with the opener (its port's probe when smart
+    /// seed is on, else the step-2 payload); A's reply is
+    /// carried verbatim to B, B's reply back to A, alternating
+    /// until a side falls silent, echoes the words straight
+    /// back, or repeats itself — or the rounds run out. The
+    /// transcript lives in `talkLines` and history; the last
+    /// word lands in `talkHomecoming`. Doors are anything the
+    /// route parser accepts (TCP, UDP, TLS, HTTP(S), phones);
+    /// a train, range, or bare host speaks through its first
+    /// door. Every leg is sent by the phone, one at a time.
+    func startTalk(a aText: String, b bText: String,
+                   rounds: Int, seed: Data, smartSeed: Bool,
+                   probeFor: @escaping (String)
+                       -> (data: Data, name: String)?) {
+        guard !talkBusy, !crawlBusy else { return }
+        let doorA = Mouth.expandRoute([aText]).stops.first
+        let doorB = Mouth.expandRoute([bText]).stops.first
+        talkGeneration += 1
+        let gen = talkGeneration
+        talkLines = []
+        talkHomecoming = nil
+        guard let doorA = doorA, let doorB = doorB else {
+            talkLines = ["✗ Both doors must be targets the route "
+                         + "parser accepts — tcp://, udp://, "
+                         + "http(s)://, phone:NAME, a train, "
+                         + "a range."]
+            return
+        }
+        talkBusy = true
+        let opener: Data
+        var openerNote = ""
+        if smartSeed, let probe = probeFor(doorA) {
+            opener = probe.data
+            openerNote = " · spoke \(probe.name)"
+        } else {
+            opener = seed
+        }
+        talkLines.append("Crosstalk — \(doorA) ⇄ \(doorB), "
+                         + "up to \(rounds) round(s)")
+        line("crosstalk: \(doorA) ⇄ \(doorB)")
+
+        var legsLeft = max(1, rounds) * 2
+        var exchanges = 0
+        var carriedBytes = 0
+        var lastByDoor: [String: Data] = [:]
+
+        func finish(_ why: String, lastWord: Data?) {
+            guard talkGeneration == gen else { return }
+            talkBusy = false
+            talkHomecoming = lastWord
+            talkLines.append(why)
+            line("crosstalk: \(why)")
+            logRecon("crosstalk", "\(doorA) ⇄ \(doorB)",
+                     lines: talkLines)
+        }
+
+        func leg(to door: String, from other: String,
+                 message: Data, note: String) {
+            guard talkGeneration == gen else { return }
+            guard legsLeft > 0 else {
+                finish("Rounds done — \(exchanges) exchange(s), "
+                       + "\(carriedBytes) byte(s) carried",
+                       lastWord: message)
+                return
+            }
+            legsLeft -= 1
+            let started = Date()
+            talkSend(text: door, payload: message) { ok in
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self,
+                          self.talkGeneration == gen else { return }
+                    let reply = ok ? self.replyData(since: started)
+                                   : nil
+                    let secs = String(format: "%.2f",
+                        Date().timeIntervalSince(started))
+                    guard let reply = reply, !reply.isEmpty else {
+                        self.talkLines.append(
+                            "→ \(door) · \(message.count) B out"
+                            + "\(note) · silence · \(secs)s")
+                        finish("\(door) had nothing to say — "
+                               + "conversation over after "
+                               + "\(exchanges) exchange(s)",
+                               lastWord: nil)
+                        return
+                    }
+                    exchanges += 1
+                    carriedBytes += reply.count
+                    self.talkLines.append(
+                        "→ \(door) · \(message.count) B out\(note)"
+                        + " · \(reply.count) B back · \(secs)s")
+                    self.talkLines.append(
+                        "   \(Mouth.talkSummary(reply))")
+                    if reply == message {
+                        finish("\(door) echoed the words straight "
+                               + "back — loop; conversation over",
+                               lastWord: reply)
+                        return
+                    }
+                    if lastByDoor[door] == reply {
+                        finish("\(door) repeated itself — loop; "
+                               + "conversation over",
+                               lastWord: reply)
+                        return
+                    }
+                    lastByDoor[door] = reply
+                    leg(to: other, from: door, message: reply,
+                        note: "")
+                }
+            }
+        }
+        leg(to: doorA, from: doorB, message: opener,
+            note: openerNote)
+    }
+
+    /// Stop a conversation between legs; the in-flight leg
+    /// finishes on its own timeout.
+    func stopTalk() {
+        talkGeneration += 1
+        if talkBusy {
+            talkBusy = false
+            talkLines.append("Stopped — hung up on them both")
+            line("crosstalk: stopped by hand")
+        }
+    }
+
+    /// One conversational leg: send `payload` to the door
+    /// named by `text` and report whether it went out; the
+    /// reply is read through the reply mirror, exactly as the
+    /// crawl reads its hops.
+    private func talkSend(text: String, payload: Data,
+                          completion: @escaping (Bool) -> Void) {
+        if text.hasPrefix("phone:") {
+            sendToPhone(name: String(text.dropFirst(6)),
+                        payload: payload, framing: "raw",
+                        read: true, timeout: 3,
+                        completion: completion)
+            return
+        }
+        guard let parsed = try? SendTarget.parse(text) else {
+            completion(false)
+            return
+        }
+        switch parsed {
+        case .http:
+            sendHTTP(target: parsed, payload: payload,
+                     framing: "raw", method: "POST", timeout: 5,
+                     completion: completion)
+        case .tcp, .udp:
+            sendNetwork(target: parsed, payload: payload,
+                        framing: "raw", read: true, timeout: 3,
+                        completion: completion)
+        default:
+            completion(false)
+        }
+    }
+
+    /// A short printable summary of a reply for the
+    /// transcript: its first printable line, else a byte
+    /// count and a hex head.
+    static func talkSummary(_ data: Data) -> String {
+        if let text = PayloadKit.printableText(data) {
+            let first = text.components(separatedBy: "\n").first
+                ?? text
+            return String(first.prefix(70))
+        }
+        let hex = data.prefix(8)
+            .map { String(format: "%02x", $0) }
+            .joined(separator: " ")
+        return "\(data.count) B · \(hex)"
+    }
 }
