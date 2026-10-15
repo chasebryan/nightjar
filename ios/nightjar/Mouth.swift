@@ -479,9 +479,12 @@ final class Mouth: NSObject, ObservableObject {
     private var browser: NWBrowser?
 
     /// Scan → Send handoff: an open port tapped in the Scan tab,
-    /// consumed by the Send tab when it appears.
+    /// consumed by the Send tab when it appears. The Recon tab uses
+    /// the same channel: target + library name, plus the probe's
+    /// wire bytes as hex when they should ride along directly.
     @Published var scanHandoffTarget: String?
     @Published var scanHandoffPayload: String?
+    @Published var scanHandoffHex: String?
 
     /// The most recent reply a send collected, for the Send tab's
     /// inline readout (the full trail still lives in the log).
