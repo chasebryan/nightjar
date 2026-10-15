@@ -15,8 +15,67 @@ struct SendPayloadIntent: AppIntent {
     @Parameter(title: "Payload")
     var payload: String
 
+    /// The send did not complete — reported honestly instead of a
+    /// blanket success for a fire-and-forget send.
+    private enum SendError: Error, LocalizedError {
+        case sendFailed(String)
+        var errorDescription: String? {
+            switch self {
+            case .sendFailed(let target):
+                return "nightjar-hack could not send to \(target)."
+            }
+        }
+    }
+
     func perform() async throws -> some IntentResult {
-        try Mouth.sendFromShortcut(targetText: target, payloadText: payload)
+        guard let mouth = Mouth.shared else {
+            throw Mouth.ShortcutError.appNotRunning
+        }
+        let parsed = try SendTarget.parse(target)
+        switch parsed {
+        case .tcp, .udp, .http:
+            break
+        default:
+            // The honest BLE refusal: those targets need the app.
+            throw Mouth.ShortcutError.needsTheApp
+        }
+        // Build the payload the way the Send form does, using its
+        // persisted settings (the @AppStorage keys in MouthView):
+        // the payload source, and — for the sends below — the
+        // framing, HTTP method and read-reply choices. Only the
+        // text source substitutes templates against the target;
+        // hex/base64 sources go out exactly as given.
+        let defaults = UserDefaults.standard
+        let source = defaults.string(forKey: "sendSource") ?? "text"
+        let framing = defaults.string(forKey: "sendFraming") ?? "raw"
+        let method = defaults.string(forKey: "sendMethod") ?? "POST"
+        let readReply = defaults.object(forKey: "sendReadReply")
+            as? Bool ?? true
+        let data = try PayloadKit.build(
+            source: source,
+            text: PayloadKit.substitute(payload, targetText: target),
+            hex: payload, b64: payload,
+            xorSpec: "", useGzip: false)
+        // Await the send's own completion — success is claimed only
+        // when the send actually reports it.
+        let sent = await withCheckedContinuation { continuation in
+            let report: (Bool) -> Void = { ok in
+                continuation.resume(returning: ok)
+            }
+            switch parsed {
+            case .http:
+                mouth.sendHTTP(target: parsed, payload: data,
+                               framing: framing, method: method,
+                               timeout: 10, completion: report)
+            case .tcp, .udp:
+                mouth.sendNetwork(target: parsed, payload: data,
+                                  framing: framing, read: readReply,
+                                  timeout: 5, completion: report)
+            default:
+                report(false)
+            }
+        }
+        guard sent else { throw SendError.sendFailed(target) }
         return .result()
     }
 }
