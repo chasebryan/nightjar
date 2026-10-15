@@ -89,7 +89,10 @@ Below the steps, the Send tab keeps working:
   GET) instead of the generic payload; every reply the walk
   hears is kept in a **harvest** list on the homecoming card
   and in the history, and each trail line carries its hop's
-  round-trip time.
+  round-trip time. The Send tab's feature sections — Send to
+  many, Timed delivery, Centipede, SnatchSteal, PayPlant —
+  fold open and shut from their headers, and the tab remembers
+  which ones you left open.
   A *this phone* button adds the phone's own Serve endpoint
   as a guaranteed-live first target. **Per-device mode** gives
   every device in the list its own out-and-back walk (the
