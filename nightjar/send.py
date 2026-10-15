@@ -728,11 +728,16 @@ def cmd_serve(args) -> int:
     stop = threading.Event()
     threads: list[threading.Thread] = []
     started: list[str] = []
+    errors: list[str] = []
 
     def spawn(fn, *fn_args, **fn_kwargs) -> None:
-        threads.append(threading.Thread(target=fn, args=fn_args,
-                                        kwargs={**fn_kwargs, "stop": stop},
-                                        daemon=True))
+        def runner() -> None:
+            try:
+                fn(*fn_args, **{**fn_kwargs, "stop": stop})
+            except OSError as exc:
+                errors.append(f"{fn.__name__}: {exc}")
+                stop.set()
+        threads.append(threading.Thread(target=runner, daemon=True))
 
     if args.tcp is None and args.udp is None and args.http is None and not args.ble:
         args.tcp = 9000
@@ -751,7 +756,7 @@ def cmd_serve(args) -> int:
     for thread in threads:
         thread.start()
     time.sleep(0.15)
-    if not args.json:
+    if not args.json and not errors:
         print(f"nightjar serve: {', '.join(started)} - Ctrl-C to stop.",
               file=sys.stderr, flush=True)
 
@@ -768,15 +773,28 @@ def cmd_serve(args) -> int:
                 print(f"nightjar: {exc}", file=sys.stderr)
                 return 1
         elif args.duration:
-            time.sleep(args.duration)
+            deadline = time.time() + args.duration
+            while time.time() < deadline and not stop.is_set():
+                time.sleep(0.2)
         else:
-            while True:
-                time.sleep(0.4)
+            while not stop.is_set():
+                time.sleep(0.2)
     except KeyboardInterrupt:
         pass
     finally:
         stop.set()
-        time.sleep(0.3)
+        # A connection handler sinks its payload only once the read ends
+        # (EOF or its 2s timeout), so give in-flight handlers a grace
+        # window to finish instead of exiting from under them.
+        grace_deadline = time.time() + 2.5
+        while time.time() < grace_deadline:
+            if not any(t is not threading.current_thread() and t.is_alive()
+                       and t not in threads for t in threading.enumerate()):
+                break
+            time.sleep(0.1)
+    if errors:
+        print(f"nightjar: {errors[0]}", file=sys.stderr)
+        return 2
     if not args.json:
         print(f"\nreceived {sink.count} payload(s).")
         if args.out:
