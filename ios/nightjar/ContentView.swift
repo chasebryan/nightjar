@@ -2,6 +2,7 @@ import Combine
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject private var toasts: ToastCenter
     @State private var tab = 0
 
     var body: some View {
@@ -22,6 +23,14 @@ struct ContentView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(4)
         }
+        .onChange(of: tab) { _ in Haptics.select() }
+        .overlay(alignment: .top) {
+            if let toast = toasts.current {
+                ToastView(toast: toast)
+                    .padding(.top, 6)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
     }
 }
 
@@ -32,6 +41,7 @@ struct ListenView: View {
     @EnvironmentObject private var post: ListeningPost
     @EnvironmentObject private var updater: UpdateChecker
     @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var toasts: ToastCenter
     @State private var label = ""
     @State private var now = Date().timeIntervalSince1970
 
@@ -64,10 +74,13 @@ struct ListenView: View {
                                 .contextMenu {
                                     Button {
                                         if let id = UUID(uuidString: row.id) {
-                                            mouth.requestWrite(
-                                                to: id,
-                                                label: row.preferredLabel
-                                                    ?? row.kind)
+                                            let name = row.preferredLabel
+                                                ?? row.kind
+                                            mouth.requestWrite(to: id,
+                                                               label: name)
+                                            Haptics.select()
+                                            toasts.show("Write target set: "
+                                                + "\(name) — Send tab")
                                             tab = 1
                                         }
                                     } label: {
@@ -104,6 +117,7 @@ struct ListenView: View {
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
         Button {
+            Haptics.tap()
             post.start(label: label)
         } label: {
             Label("Start listening", systemImage: "play.circle.fill")
@@ -126,6 +140,7 @@ struct ListenView: View {
             Spacer()
         }
         Button(role: .destructive) {
+            Haptics.tap()
             post.stop()
         } label: {
             Label("Stop and save", systemImage: "stop.circle.fill")
