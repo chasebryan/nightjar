@@ -95,7 +95,11 @@ struct ListenView: View {
                                 .foregroundStyle(.secondary)
                         }
                         ForEach(post.rows) { row in
-                            DeviceRowView(row: row, now: now)
+                            NavigationLink {
+                                DeviceDetailView(row: row, tab: $tab)
+                            } label: {
+                                DeviceRowView(row: row, now: now)
+                            }
                                 .contextMenu {
                                     Button {
                                         if let id = UUID(uuidString: row.id) {
@@ -243,7 +247,7 @@ struct DeviceRowView: View {
                 Text(row.trendArrow).font(.callout)
             }
             HStack {
-                Text(row.name == nil ? row.rangeBand : "\(row.kind) · \(row.rangeBand)")
+                Text(subtitle)
                     .lineLimit(1)
                 Spacer()
                 Text(age)
@@ -254,6 +258,7 @@ struct DeviceRowView: View {
             if let detail = row.details.first {
                 Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
             }
+            Text(metaLine).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
             Text(row.id).font(.caption2.monospaced()).foregroundStyle(.tertiary).lineLimit(1)
         }
         .opacity(quiet ? 0.45 : 1)
@@ -264,6 +269,207 @@ struct DeviceRowView: View {
         if seconds < 60 { return "\(seconds)s ago" }
         if seconds < 3600 { return "\(seconds / 60)m ago" }
         return "\(seconds / 3600)h \(seconds / 60 % 60)m ago"
+    }
+
+    /// Kind (when there is a name to headline instead) · the
+    /// perimeter band · the rough range, when it can be read.
+    private var subtitle: String {
+        var parts: [String] = []
+        if row.name != nil { parts.append(row.kind) }
+        parts.append(row.rangeBand)
+        if let d = row.distanceMeters {
+            parts.append(d < 10
+                ? String(format: "≈%.1f m", d)
+                : String(format: "≈%.0f m", d))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// The quiet facts: how often it has spoken, the closest
+    /// it ever came, and whether its address rotates.
+    private var metaLine: String {
+        var parts = ["×\(row.sightings) heard"]
+        if let closest = row.rssiClosest {
+            parts.append("closest \(closest) dBm")
+        }
+        if row.rotatingAddress { parts.append("rotating address") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// Everything the post knows about one device, on one page —
+/// the row is the headline, this is the file. Reads the live
+/// row from the post each render, so the numbers keep moving
+/// while you watch.
+struct DeviceDetailView: View {
+    let row: DeviceRow
+    @Binding var tab: Int
+    @EnvironmentObject private var post: ListeningPost
+    @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var toasts: ToastCenter
+    @State private var now = Date().timeIntervalSince1970
+
+    private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var live: DeviceRow {
+        post.rows.first { $0.id == row.id } ?? row
+    }
+
+    var body: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(live.label).font(.title3.weight(.semibold))
+                    Text(live.kind).foregroundStyle(.secondary)
+                    if live.trackerShaped {
+                        Label("Tracker-shaped — separated Find My broadcasts",
+                              systemImage: "tag.fill")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                    if live.rotatingAddress {
+                        Label("Rotating address — a phone-style private address",
+                              systemImage: "arrow.triangle.2.circlepath")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Section("Heard as") {
+                if live.details.isEmpty {
+                    Text("No decoded details — the broadcast carried "
+                         + "nothing the decoders read.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(live.details, id: \.self) { detail in
+                    Text(detail).font(.callout)
+                }
+                if !live.makers.isEmpty {
+                    LabeledContent("Maker",
+                                   value: live.makers.sorted()
+                                       .joined(separator: ", "))
+                }
+            }
+            Section("Signal") {
+                LabeledContent("Last",
+                               value: live.rssiLast.map { "\($0) dBm" } ?? "—")
+                LabeledContent("Smoothed",
+                               value: live.rssiSmooth.map {
+                                   String(format: "%.0f dBm", $0) } ?? "—")
+                LabeledContent("Closest ever",
+                               value: live.rssiClosest.map { "\($0) dBm" } ?? "—")
+                LabeledContent("TX power",
+                               value: live.txPowerLast.map { "\($0) dBm" }
+                                   ?? "not advertised")
+                LabeledContent("Estimated range", value: rangeText)
+                LabeledContent("Trend", value: live.trend ?? "—")
+                sparkline
+            }
+            Section("Timing") {
+                LabeledContent("First heard",
+                               value: clockTime(live.firstSeen))
+                LabeledContent("Last heard",
+                               value: clockTime(live.lastSeen))
+                LabeledContent("Age", value: ageText)
+                LabeledContent("Dwell", value: durationText(live.dwell))
+                LabeledContent("Sightings", value: "\(live.sightings)")
+                if live.sightingsPerMinute > 0 {
+                    LabeledContent("Rate",
+                                   value: String(format: "%.1f / min",
+                                                 live.sightingsPerMinute))
+                }
+            }
+            if !live.serviceUUIDs.isEmpty {
+                Section("Services advertised") {
+                    ForEach(live.serviceUUIDs, id: \.self) { uuid in
+                        Text(shortUUID(uuid))
+                            .font(.caption.monospaced())
+                    }
+                }
+            }
+            Section("Identifier") {
+                Text(live.id)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                Text("iOS shows a per-host UUID, never the MAC. "
+                     + "A rotating-address device returns under a "
+                     + "new one when its address rolls.")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Section {
+                Button {
+                    if let id = UUID(uuidString: live.id) {
+                        let name = live.preferredLabel ?? live.kind
+                        mouth.requestWrite(to: id, label: name)
+                        Haptics.select()
+                        toasts.show("Write target set: \(name) — Send tab")
+                        tab = 1
+                    }
+                } label: {
+                    Label("Write a payload…", systemImage: "paperplane")
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background { AppBackdrop() }
+        .navigationTitle("Device")
+        .navigationBarTitleDisplayMode(.inline)
+        .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
+    }
+
+    private var sparkline: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("RSSI history — last \(live.rssiHistory.count) sightings")
+                .font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .bottom, spacing: 1.5) {
+                ForEach(Array(live.rssiHistory.enumerated()),
+                        id: \.offset) { _, value in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.accentColor)
+                        .frame(width: 6,
+                               height: max(2, CGFloat(value + 100)
+                                            / 60 * 32))
+                }
+            }
+            .frame(height: 34, alignment: .bottom)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var rangeText: String {
+        guard let d = live.distanceMeters else { return "—" }
+        let text = d < 10
+            ? String(format: "≈%.1f m", d)
+            : String(format: "≈%.0f m", d)
+        return "\(text) (\(live.rangeBand))"
+    }
+
+    private var ageText: String {
+        let seconds = Int(live.age(now: now))
+        if seconds < 60 { return "\(seconds)s ago" }
+        if seconds < 3600 { return "\(seconds / 60)m ago" }
+        return "\(seconds / 3600)h \(seconds / 60 % 60)m ago"
+    }
+
+    private func clockTime(_ t: TimeInterval) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        return formatter.string(from: Date(timeIntervalSince1970: t))
+    }
+
+    private func durationText(_ d: TimeInterval) -> String {
+        let s = Int(d)
+        if s < 60 { return "\(s)s" }
+        if s < 3600 { return "\(s / 60)m \(s % 60)s" }
+        return "\(s / 3600)h \(s / 60 % 60)m"
+    }
+
+    /// SIG 128-bit UUIDs spell as their short 0xXXXX form.
+    private func shortUUID(_ uuid: String) -> String {
+        if uuid.count == 36, uuid.hasPrefix("0000"),
+           uuid.hasSuffix(sigBaseSuffix) {
+            return "0x" + String(uuid.dropFirst(4).prefix(4))
+                .uppercased()
+        }
+        return uuid
     }
 }
 
