@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+- **Network Trace + adaptive Centipede + crawl logbook
+  (iOS Send, mirrored in the Android port).** A new Send-tab
+  section: name one /24 (blank = the phone's own) and start
+  a foreground trace that walks until its frontier is
+  exhausted — every address knocked on the discovery ports,
+  every answering host profiled across the usual ports with
+  banners grabbed, every open door spoken to with its
+  library probe, and every endpoint a banner or reply
+  references (an IP:port in a page, a redirect target)
+  queued and explored in turn, three levels deep. Endpoints
+  referenced outside the named /24 are recorded as leads
+  and never contacted. Bonjour services found along the way
+  join the map. One rule syntax now steers both the trace
+  and ordinary Centipede walks — `contains Redis =>
+  followup Redis PING (RESP)`, `contains HTTP => tag web`,
+  `contains SSH => stop` — a follow-up fires a second,
+  chosen probe at the same door, tags stick to the dossier,
+  and `stop` keeps that reply out of the chain. Every walk
+  and trace feeds a persistent **crawl logbook**: per-host
+  dossiers (first/last seen, services, banners, reply
+  signatures, tags) kept between launches. Each trace
+  writes a downloadable JSON map — hosts, services, a
+  node/edge graph, Bonjour finds, external references, the
+  diff against the logbook (new/vanished hosts, changed
+  banners), and an honest limitations block (TCP-connect
+  only, no ICMP/ARP, a silent or drop-firewalled host can
+  still hide) — in a versioned schema
+  (`net.nosuchmachine.nightjar.network-trace`) meant to be
+  ingested by other tools.
 - **Centipede (iOS Send).** A route walked hop by hop: each
   route line is a target, a range, `host:80,443` (a port train),
   or a bare host (a train across the usual ports). Chain mode
