@@ -47,6 +47,11 @@ struct SendView: View {
     @AppStorage("centipedeReturn") private var centipedeReturn = true
     @AppStorage("centipedePerDevice") private var centipedePerDevice = false
     @AppStorage("centipedeSmartSeed") private var centipedeSmartSeed = true
+    @AppStorage("sectionOpen.fanout") private var openFanout = false
+    @AppStorage("sectionOpen.timing") private var openTiming = false
+    @AppStorage("sectionOpen.centipede") private var openCentipede = true
+    @AppStorage("sectionOpen.snatch") private var openSnatch = false
+    @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
     @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
@@ -310,7 +315,7 @@ struct SendView: View {
 
                 stepThreeSection
 
-                Section(header: Text("Send to many")) {
+                CollapsibleSection("Send to many", isOpen: $openFanout) {
                     Text("One payload, a whole list of targets — typed, "
                          + "pasted, imported from a file, or harvested "
                          + "from the network by the Scan tab.")
@@ -380,7 +385,7 @@ struct SendView: View {
                     }
                 }
 
-                Section(header: Text("Timed delivery")) {
+                CollapsibleSection("Timed delivery", isOpen: $openTiming) {
                     Picker("When", selection: $timingMode) {
                         Text("Now").tag("now")
                         Text("After a delay").tag("delay")
@@ -430,7 +435,7 @@ struct SendView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
-                Section(header: Text("Centipede")) {
+                CollapsibleSection("Centipede", isOpen: $openCentipede) {
                     Text("A route, walked hop by hop. Each line is a "
                          + "stop: a target, a range, host:80,443 (a "
                          + "port train), or a bare host (a train "
@@ -600,7 +605,7 @@ struct SendView: View {
                     }
                 }
 
-                Section(header: Text("SnatchSteal")) {
+                CollapsibleSection("SnatchSteal", isOpen: $openSnatch) {
                     Text("Knock on the step-1 target, then take "
                          + "everything it sends back — full drain, "
                          + "not the scanner's polite banner peek. "
@@ -638,7 +643,7 @@ struct SendView: View {
                     }
                 }
 
-                Section(header: Text("PayPlant")) {
+                CollapsibleSection("PayPlant", isOpen: $openPlant) {
                     Text("Leave a payload living on the target: a "
                          + "service that stores things keeps yours "
                          + "until someone comes to collect. Verify "
@@ -1561,5 +1566,47 @@ struct ServeView: View {
             .appendingPathComponent("nightjar-hack-inbox.jsonl")
         try? (mouth.inboxJSONL + "\n").write(to: url, atomically: true, encoding: .utf8)
         return url
+    }
+}
+
+
+/// A Form section whose header is a tappable menu title: tap
+/// to open or fold away the whole feature, chevron showing the
+/// way. The open state is the caller's (persisted), so the Send
+/// tab remembers which tools you keep out and which you keep
+/// folded — the tab opens as a menu, not a scroll marathon.
+private struct CollapsibleSection<Content: View>: View {
+    let title: String
+    @Binding var isOpen: Bool
+    @ViewBuilder var content: () -> Content
+
+    init(_ title: String, isOpen: Binding<Bool>,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self._isOpen = isOpen
+        self.content = content
+    }
+
+    var body: some View {
+        Section {
+            if isOpen { content() }
+        } header: {
+            Button {
+                Haptics.tap()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isOpen.toggle()
+                }
+            } label: {
+                HStack {
+                    Text(title)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .rotationEffect(.degrees(isOpen ? 0 : -90))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
