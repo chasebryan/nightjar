@@ -494,11 +494,33 @@ final class Mouth: NSObject, ObservableObject {
 
     @Published private(set) var lastReply: LastReply?
 
+    private let replyLock = NSLock()
+    private var lastReplySync: LastReply?
+
     private func noteReply(label: String, data: Data) {
         guard !data.isEmpty else { return }
+        let noted = LastReply(label: label, data: data, at: Date())
+        // Mirror synchronously, publish for the UI after: engines
+        // that read a hop's reply from its completion (the
+        // centipede) run on the send queues and must not race
+        // the @Published value's trip through the main queue.
+        replyLock.lock()
+        lastReplySync = noted
+        replyLock.unlock()
         DispatchQueue.main.async { [weak self] in
-            self?.lastReply = LastReply(label: label, data: data, at: Date())
+            self?.lastReply = noted
         }
+    }
+
+    /// The freshest noted reply at or after `date`, read
+    /// synchronously — the centipede's per-hop answer channel.
+    func replyData(since date: Date) -> Data? {
+        replyLock.lock()
+        defer { replyLock.unlock() }
+        guard let noted = lastReplySync, noted.at >= date else {
+            return nil
+        }
+        return noted.data
     }
 
     /// This phone's LAN IPv4 (en0), for "reachable at tcp://…" lines.
