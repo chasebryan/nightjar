@@ -2,6 +2,7 @@ import Compression
 import CoreBluetooth
 import Foundation
 import Network
+import UIKit
 import UserNotifications
 
 /// The mouth: everything in nightjar-hack that transmits. A port of
@@ -357,6 +358,45 @@ final class Mouth: NSObject, ObservableObject {
     @Published private(set) var nearbyPhones: [String] = []
     private var browser: NWBrowser?
 
+    /// The most recent reply a send collected, for the Send tab's
+    /// inline readout (the full trail still lives in the log).
+    struct LastReply: Identifiable {
+        let id = UUID()
+        let label: String
+        let data: Data
+        let at: Date
+    }
+
+    @Published private(set) var lastReply: LastReply?
+
+    private func noteReply(label: String, data: Data) {
+        guard !data.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.lastReply = LastReply(label: label, data: data, at: Date())
+        }
+    }
+
+    /// This phone's LAN IPv4 (en0), for "reachable at tcp://…" lines.
+    static func localIPAddress() -> String? {
+        var result: String?
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return nil }
+        defer { freeifaddrs(head) }
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            let flags = Int32(ptr.pointee.ifa_flags)
+            guard (flags & IFF_UP) != 0, (flags & IFF_LOOPBACK) == 0,
+                  let addr = ptr.pointee.ifa_addr,
+                  addr.pointee.sa_family == UInt8(AF_INET),
+                  String(cString: ptr.pointee.ifa_name) == "en0"
+            else { continue }
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            getnameinfo(addr, socklen_t(addr.pointee.sa_len), &host,
+                        socklen_t(host.count), nil, 0, NI_NUMERICHOST)
+            result = String(cString: host)
+        }
+        return result
+    }
+
     /// The live instance, so App Intents (Shortcuts/Siri) can send.
     static weak var shared: Mouth?
 
@@ -532,6 +572,7 @@ final class Mouth: NSObject, ObservableObject {
                     DispatchQueue.main.async { [weak self] in
                         self?.toasts?.show("Reply received — \(replied.count) bytes")
                     }
+                    noteReply(label: label, data: replied)
                     line("  <- \(replied.count) byte reply")
                     for l in PayloadKit.hexdump(replied).components(separatedBy: "\n") {
                         line(l)
@@ -595,9 +636,12 @@ final class Mouth: NSObject, ObservableObject {
             for: .bonjour(type: Mouth.bonjourType, domain: nil),
             using: NWParameters())
         browser.browseResultsChangedHandler = { [weak self] results, _ in
+            let mine = UIDevice.current.name
             let names = results.compactMap { result -> String? in
                 if case .service(let name, _, _, _) = result.endpoint {
-                    return name
+                    // A phone that serves and browses sees itself;
+                    // you cannot send to yourself from the list.
+                    return name == mine ? nil : name
                 }
                 return nil
             }
@@ -644,6 +688,7 @@ final class Mouth: NSObject, ObservableObject {
             }
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let reply = data ?? Data()
+            self?.noteReply(label: "http", data: reply)
             self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
             self?.line("  HTTP \(status), \(reply.count) byte reply")
             if !reply.isEmpty {
@@ -795,6 +840,7 @@ final class Mouth: NSObject, ObservableObject {
         }
         guard centralManager?.state == .poweredOn else {
             line("nightjar: Bluetooth is not ready for the write scan")
+            ui("Bluetooth is not ready for the write scan", error: true)
             return
         }
         writeTargets = []
@@ -811,6 +857,7 @@ final class Mouth: NSObject, ObservableObject {
     func write(to target: WriteTarget, payload: Data) {
         guard let manager = centralManager, manager.state == .poweredOn else {
             line("nightjar: Bluetooth is not ready")
+            ui("Bluetooth is not ready — give it a second", error: true)
             return
         }
         manager.stopScan()
