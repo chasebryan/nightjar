@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nightjar-hack — Network Trace viewer</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#12161f; --panel2:#171c28; --line:#232b3a;
+    --ink:#d7dde6; --dim:#8b94a3; --faint:#5b6475;
+    --teal:#39c5a5; --violet:#b18cff; --amber:#e0a83c; --green:#4cc38a;
+    --red:#e06c5c; --blue:#6ea8fe; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--blue)}
+  code,.mono{font-family:var(--mono)}
+  header.top{padding:14px 20px;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:var(--panel)}
+  header.top h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  header.top h1 .sub{color:var(--dim);font-weight:400;font-size:12.5px;margin-left:8px}
+  .grow{flex:1}
+  button,.filebtn{font:inherit;font-size:13px;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:7px;padding:7px 13px;cursor:pointer}
+  button:hover,.filebtn:hover{border-color:var(--teal);color:#fff}
+  input[type=file]{display:none}
+  #drop{position:fixed;inset:0;background:rgba(8,12,18,.88);display:none;
+    align-items:center;justify-content:center;z-index:50;pointer-events:none}
+  #drop .box{border:2px dashed var(--teal);border-radius:14px;padding:48px 64px;
+    font-size:19px;color:var(--teal);font-family:var(--mono)}
+  #drop.on{display:flex}
+  main{padding:16px 20px 40px;max-width:1560px;margin:0 auto}
+  #empty{border:1px dashed var(--line);border-radius:12px;padding:44px 30px;
+    text-align:center;color:var(--dim);margin-top:26px}
+  #empty .big{font-size:16px;color:var(--ink);margin-bottom:6px}
+  .runhead{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:baseline;margin:4px 0 12px}
+  .runhead .scope{font-family:var(--mono);font-size:19px;color:#fff}
+  .runhead .meta{color:var(--dim);font-size:13px}
+  .runhead .meta b{color:var(--ink);font-weight:600}
+  .badge{font-family:var(--mono);font-size:11px;border:1px solid var(--line);
+    border-radius:20px;padding:1px 9px;color:var(--dim)}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:5px 11px;font-size:12.5px;color:var(--dim)}
+  .chip b{color:#fff;font-family:var(--mono);font-weight:600;margin-right:5px}
+  .cols{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .mapwrap{flex:3 1 560px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:10px}
+  .mapwrap svg{width:100%;height:auto;display:block}
+  .side{flex:1 1 300px;display:flex;flex-direction:column;gap:16px;min-width:280px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .card h3{margin:0 0 9px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim)}
+  .card ul{margin:0;padding-left:17px}
+  .card li{margin:3px 0;word-break:break-word}
+  .card .none{color:var(--dim);font-style:italic}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--dim);
+    padding:6px 4px 2px}
+  .legend .sw{display:inline-block;width:10px;height:10px;border-radius:50%;
+    margin-right:5px;vertical-align:-1px}
+  .legend .ln{display:inline-block;width:16px;height:0;border-top:2px solid;
+    margin-right:5px;vertical-align:3px}
+  section.hosts{margin-top:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:6px 15px 12px}
+  section.hosts h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--dim);margin:12px 0 6px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;vertical-align:top;padding:8px 8px;border-top:1px solid var(--line)}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);border-top:none}
+  tr.newhost td{background:rgba(76,195,138,.07)}
+  tr.flash td{background:rgba(57,197,165,.18);transition:background .3s}
+  td.ip{font-family:var(--mono);white-space:nowrap;color:#fff}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:11px;padding:0 8px;margin:1px 2px 1px 0;color:var(--ink)}
+  .door{margin:2px 0;font-size:13px}
+  .door .pp{font-family:var(--mono);color:var(--teal)}
+  .door .svc{color:#fff}
+  .door .ban{color:var(--dim);font-family:var(--mono);font-size:12px}
+  .door .probe{color:var(--dim);font-size:11.5px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 5px 1px 0}
+  .dot.amber{background:var(--amber)} .dot.green{background:var(--green)}
+  .pill{font-size:10.5px;font-family:var(--mono);border-radius:9px;padding:0 7px;margin-left:7px}
+  .pill.new{background:rgba(76,195,138,.16);color:var(--green);border:1px solid rgba(76,195,138,.4)}
+  .seen{color:var(--dim);font-size:12.5px;white-space:nowrap}
+  .seen b{color:var(--ink);font-weight:600}
+  .ext{font-family:var(--mono);font-size:12.5px}
+  .warn{color:var(--amber)}
+  .err{background:rgba(224,108,92,.12);border:1px solid rgba(224,108,92,.5);
+    border-radius:10px;padding:12px 15px;margin:14px 0;color:#f0b8ae;display:none}
+  footer{color:var(--dim);font-size:12px;padding:0 20px 26px;max-width:1560px;margin:0 auto}
+  svg text{user-select:none}
+  svg .hostnode{cursor:pointer}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>🗺️ Network Trace viewer <span class="sub">nightjar-hack · reads <span class="mono">net.nosuchmachine.nightjar.network-trace</span> exports · runs fully offline</span></h1>
+  <div class="grow"></div>
+  <button id="sampleBtn" type="button">Load the sample trace</button>
+  <label class="filebtn" for="file">Open a trace JSON…</label>
+  <input type="file" id="file" accept=".json,application/json">
+</header>
+
+<div id="drop"><div class="box">drop the trace JSON to map it</div></div>
+
+<main>
+  <div class="err" id="err"></div>
+
+  <div id="empty">
+    <div class="big">No trace loaded.</div>
+    Drag &amp; drop a <span class="mono">nightjar-trace-*.json</span> export anywhere on this page,
+    or use <b>Open a trace JSON…</b> above.<br>
+    Everything is parsed locally in your browser — the file never leaves this machine.
+  </div>
+
+  <div id="view" style="display:none">
+    <div class="runhead" id="runhead"></div>
+    <div class="chips" id="chips"></div>
+
+    <div class="cols">
+      <div class="mapwrap">
+        <div id="map"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="side" id="side"></div>
+    </div>
+
+    <section class="hosts">
+      <h2>Hosts &amp; doors</h2>
+      <table>
+        <thead><tr><th>Host</th><th>Doors (open services)</th><th>Tags</th><th>Seen</th></tr></thead>
+        <tbody id="hostrows"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+
+<footer>
+  Map edges: <span class="mono">references</span> = a banner/reply named the other endpoint ·
+  <span class="mono">bonjour</span> = announced on the LAN ·
+  spokes to the phone are implied (the phone profiled every host) and drawn faint.
+  Hover any dot, node, or line for the evidence behind it.
+</footer>
+
+<script>
+"use strict";
+/* nightjar-hack Network Trace viewer.
+   Parses a trace export locally and draws it. Defensive throughout:
+   a missing field means "absent", never an exception. */
+
+var $ = function (id) { return document.getElementById(id); };
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function arr(x) { return Array.isArray(x) ? x : []; }
+function obj(x) { return x && typeof x === "object" ? x : {}; }
+function str(x) { return x == null ? "" : String(x); }
+function num(x, d) { var n = Number(x); return isFinite(n) ? n : (d || 0); }
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return str(iso);
+  return d.toLocaleString([], { month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit" });
+}
+function fmtClock(iso) {
+  if (!iso) return "";
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+/* ---------- loading ---------- */
+
+function fail(msg) {
+  var e = $("err");
+  e.textContent = msg;
+  e.style.display = "block";
+}
+function clearFail() { $("err").style.display = "none"; }
+
+function loadText(text, name) {
+  clearFail();
+  var t;
+  try { t = JSON.parse(text); }
+  catch (ex) { fail("That file is not valid JSON (" + ex.message + ")."); return; }
+  if (!t || typeof t !== "object") { fail("That JSON is not a trace export."); return; }
+  if (t.schema && t.schema !== "net.nosuchmachine.nightjar.network-trace") {
+    fail("Heads up: schema is \"" + t.schema + "\", not a nightjar network " +
+         "trace — rendering what I can anyway.");
+  }
+  try { render(t); }
+  catch (ex) { fail("Rendering failed: " + ex.message); return; }
+  $("empty").style.display = "none";
+  $("view").style.display = "block";
+  document.title = "Trace " + str(obj(t.run).scope || name || "") + " — nightjar-hack";
+}
+
+$("file").addEventListener("change", function (ev) {
+  var f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  var r = new FileReader();
+  r.onload = function () { loadText(String(r.result || ""), f.name); };
+  r.readAsText(f);
+  ev.target.value = "";
+});
+
+["dragenter", "dragover"].forEach(function (ev) {
+  window.addEventListener(ev, function (e) {
+    e.preventDefault();
+    if (e.dataTransfer) $("drop").classList.add("on");
+  });
+});
+["dragleave", "drop"].forEach(function (ev) {
+  window.addEventListener(ev, function (e) {
+    e.preventDefault();
+    if (ev === "dragleave" && e.relatedTarget) return;
+    $("drop").classList.remove("on");
+  });
+});
+window.addEventListener("drop", function (e) {
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  var r = new FileReader();
+  r.onload = function () { loadText(String(r.result || ""), f.name); };
+  r.readAsText(f);
+});
+
+$("sampleBtn").addEventListener("click", function () {
+  fetch("sample-trace.json").then(function (res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.text();
+  }).then(function (text) {
+    loadText(text, "sample-trace.json");
+  }).catch(function () {
+    /* file:// or missing sibling: hide the offer rather than nag. */
+    $("sampleBtn").style.display = "none";
+    fail("The sample trace could not be fetched (browsers block it from " +
+         "file://). Serve this folder over http — e.g. " +
+         "`python3 -m http.server` — or just drop a real trace JSON here.");
+  });
+});
+
+/* ---------- rendering ---------- */
+
+var SUMMARY_ORDER = ["hostsSeen", "hostsProfiled", "doorsOpen", "services",
+  "activeProbes", "followups", "bonjourServices", "externalReferences",
+  "newHosts", "newServices", "changedServices", "missingHosts", "bleDevices"];
+
+function render(t) {
+  var run = obj(t.run), s = obj(t.summary), d = obj(t.diff);
+  var hosts = arr(t.hosts), ble = arr(t.bleDevices);
+
+  /* header */
+  var settings = obj(run.settings);
+  var bits = [];
+  bits.push('<span class="scope">' + esc(run.scope || run.base || "unknown scope") + "</span>");
+  if (run.startedAt) bits.push('<span class="meta">ran <b>' + esc(fmtTime(run.startedAt)) +
+    "</b> " + esc(fmtClock(run.startedAt)) + (run.finishedAt ? " → " + esc(fmtClock(run.finishedAt)) : "") + "</span>");
+  if (run.stopReason) bits.push('<span class="meta">ended: <b>' + esc(run.stopReason) + "</b></span>");
+  if (settings && Object.keys(settings).length) {
+    var sp = [];
+    if (arr(settings.discoveryPorts).length) sp.push("knock " + arr(settings.discoveryPorts).join(","));
+    if (arr(settings.profilePorts).length) sp.push("profile " + arr(settings.profilePorts).length + " ports");
+    if (settings.includeBonjour) sp.push("bonjour");
+    if (settings.adaptive) sp.push("adaptive ×" + num(settings.ruleCount));
+    if (sp.length) bits.push('<span class="meta">' + esc(sp.join(" · ")) + "</span>");
+  }
+  bits.push('<span class="badge">schema v' + esc(t.schemaVersion == null ? "?" : t.schemaVersion) + "</span>");
+  if (t.generatedAt) bits.push('<span class="badge">exported ' + esc(fmtTime(t.generatedAt)) + "</span>");
+  if (run.id) bits.push('<span class="badge">' + esc(run.id) + "</span>");
+  $("runhead").innerHTML = bits.join("");
+
+  /* summary chips: declared order first, then any extras */
+  var chips = [], seen = {};
+  SUMMARY_ORDER.forEach(function (k) {
+    if (s[k] != null) { chips.push([k, s[k]]); seen[k] = 1; }
+  });
+  Object.keys(s).forEach(function (k) { if (!seen[k]) chips.push([k, s[k]]); });
+  if (!chips.length) {
+    chips = [["hosts", hosts.length],
+             ["doors", hosts.reduce(function (a, h) { return a + arr(h.services).length; }, 0)]];
+    if (ble.length) chips.push(["bleDevices", ble.length]);
+  }
+  $("chips").innerHTML = chips.map(function (c) {
+    return '<span class="chip"><b>' + esc(c[1]) + "</b>" + esc(c[0]) + "</span>";
+  }).join("");
+
+  renderMap(t, hosts, ble);
+  renderHosts(hosts, d);
+  renderSide(t, hosts, ble, d);
+}
+
+/* ----- the SVG map ----- */
+
+var KIND_COLORS = { references: "#e0a83c", reference: "#e0a83c",
+  bonjour: "#39c5a5", heard: "#6ea8fe", profiled: "#3a465a", discovered: "#3a465a" };
+
+function renderMap(t, hosts, ble) {
+  var W = 1000, CX = 500, CY = 500;
+  var hostR = ble.length ? 288 : 322, bleR = 442;
+  var pos = {}, i, a;
+
+  pos.phone = { x: CX, y: CY, kind: "phone", label: "this phone" };
+
+  hosts.forEach(function (h, i2) {
+    a = -Math.PI / 2 + i2 * 2 * Math.PI / Math.max(hosts.length, 1);
+    pos["host:" + h.ip] = { x: CX + hostR * Math.cos(a), y: CY + hostR * Math.sin(a),
+      kind: "host", ip: h.ip, a: a };
+  });
+  /* Nodes the export names but no dossier covers still get a seat. */
+  arr(t.nodes).forEach(function (n) {
+    if (!n || !n.id || pos[n.id]) return;
+    if (n.kind === "host") {
+      var ip = str(n.label || n.id.replace(/^host:/, ""));
+      a = -Math.PI / 2 + Object.keys(pos).length * 2.399; /* golden angle */
+      pos[n.id] = { x: CX + hostR * Math.cos(a), y: CY + hostR * Math.sin(a),
+        kind: "host", ip: ip, a: a };
+    }
+  });
+  ble.forEach(function (b, i2) {
+    a = -Math.PI / 2 + (i2 + 0.5) * 2 * Math.PI / Math.max(ble.length, 1);
+    pos["ble:" + (b.id || i2)] = { x: CX + bleR * Math.cos(a), y: CY + bleR * Math.sin(a),
+      kind: "ble", ble: b };
+  });
+
+  function resolve(id) {
+    if (!id) return null;
+    return pos[id] || pos["host:" + id] || null;
+  }
+
+  var out = [];
+  out.push('<svg viewBox="0 0 1000 1000" role="img" aria-label="network map">');
+  out.push('<circle cx="500" cy="500" r="' + hostR + '" fill="none" stroke="#1b2230" stroke-dasharray="3 6"/>');
+  if (ble.length) out.push('<circle cx="500" cy="500" r="' + bleR + '" fill="none" stroke="#241d33" stroke-dasharray="3 6"/>');
+
+  /* faint spokes: the phone profiled every host on the ring */
+  hosts.forEach(function (h) {
+    var p = pos["host:" + h.ip];
+    out.push('<line x1="500" y1="500" x2="' + p.x.toFixed(1) + '" y2="' + p.y.toFixed(1) +
+      '" stroke="#232b3a" stroke-width="1"/>');
+  });
+
+  /* evidence edges from the export */
+  arr(t.edges).forEach(function (e) {
+    if (!e) return;
+    var f = resolve(e.from), g = resolve(e.to);
+    if (!f || !g || f === g) return;
+    var col = KIND_COLORS[e.kind] || "#4a5568";
+    out.push('<line x1="' + f.x.toFixed(1) + '" y1="' + f.y.toFixed(1) +
+      '" x2="' + g.x.toFixed(1) + '" y2="' + g.y.toFixed(1) +
+      '" stroke="' + col + '" stroke-width="2" opacity="0.75"><title>' +
+      esc((e.kind || "edge") + ": " + (e.from || "") + " → " + (e.to || "") +
+        (e.port ? ":" + e.port : "") + (e.evidence ? " — " + e.evidence : "")) +
+      "</title></line>");
+  });
+
+  /* service dots around each host */
+  hosts.forEach(function (h) {
+    var p = pos["host:" + h.ip], svcs = arr(h.services);
+    svcs.forEach(function (sv, j) {
+      var sa = p.a + (j - (svcs.length - 1) / 2) * 0.42;
+      var dx = p.x + 42 * Math.cos(sa), dy = p.y + 42 * Math.sin(sa);
+      out.push('<circle cx="' + dx.toFixed(1) + '" cy="' + dy.toFixed(1) + '" r="6.5" ' +
+        'fill="#39c5a5" stroke="#0b0e13" stroke-width="1.5"><title>' +
+        esc(h.ip + ":" + sv.port + "/" + (sv.proto || "tcp") + " " +
+          (sv.serviceName || "") + (sv.bannerFirstLine ? " — " + sv.bannerFirstLine : "")) +
+        "</title></circle>");
+    });
+  });
+
+  /* BLE devices on the outer ring */
+  ble.forEach(function (b, i2) {
+    var p = pos["ble:" + (b.id || i2)];
+    var tip = (b.name || b.id || "BLE device") + (b.vendor ? " · " + b.vendor : "") +
+      (b.sightings != null ? " · ×" + b.sightings + " heard" : "") +
+      (b.smoothedRSSI != null ? " · ≈" + Math.round(b.smoothedRSSI) + " dBm" : "") +
+      (b.rotatingAddress ? " · rotating address" : "");
+    out.push('<g><circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="15" ' +
+      'fill="#241a3d" stroke="#b18cff" stroke-width="1.6"><title>' + esc(tip) + "</title></circle>" +
+      '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 4).toFixed(1) + '" text-anchor="middle" ' +
+      'font-size="13" fill="#b18cff">ᛒ</text>' +
+      '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 32).toFixed(1) + '" text-anchor="middle" ' +
+      'font-size="11.5" fill="#8b94a3">' + esc(trunc(b.name || b.vendor || "BLE", 16)) + "</text></g>");
+  });
+
+  /* host nodes */
+  hosts.forEach(function (h) {
+    var p = pos["host:" + h.ip], doors = arr(h.services).length;
+    out.push('<g class="hostnode" data-ip="' + esc(h.ip) + '">' +
+      '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="25" ' +
+      'fill="#12291f" stroke="#39c5a5" stroke-width="1.8"><title>' +
+      esc(h.ip + " — " + doors + " door(s)" + (arr(h.tags).length ? " · tags: " + arr(h.tags).join(", ") : "")) +
+      "</title></circle>" +
+      '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 5).toFixed(1) + '" text-anchor="middle" ' +
+      'font-size="15" fill="#d7dde6">⬢</text>' +
+      '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 44).toFixed(1) + '" text-anchor="middle" ' +
+      'font-family="var(--mono)" font-size="13.5" fill="#fff">' + esc(h.ip) + "</text>" +
+      '<text x="' + p.x.toFixed(1) + '" y="' + (p.y + 60).toFixed(1) + '" text-anchor="middle" ' +
+      'font-size="11.5" fill="#8b94a3">' + doors + (doors === 1 ? " door" : " doors") + "</text></g>");
+  });
+
+  /* the phone, center */
+  out.push('<g><circle cx="500" cy="500" r="31" fill="#2a1608" stroke="#e0a83c" stroke-width="2">' +
+    "<title>the phone that ran the trace</title></circle>" +
+    '<text x="500" y="506" text-anchor="middle" font-size="17">📱</text>' +
+    '<text x="500" y="548" text-anchor="middle" font-size="12" fill="#8b94a3">this phone</text></g>');
+
+  out.push("</svg>");
+  $("map").innerHTML = out.join("");
+
+  /* legend */
+  var lg = ['<span><span class="sw" style="background:#39c5a5"></span>host / service</span>',
+    '<span><span class="sw" style="background:#e0a83c"></span>this phone</span>',
+    '<span><span class="ln" style="border-color:#e0a83c"></span>references</span>',
+    '<span><span class="ln" style="border-color:#39c5a5"></span>bonjour</span>'];
+  if (ble.length) lg.push('<span><span class="sw" style="background:#b18cff"></span>BLE (outer ring)</span>');
+  $("legend").innerHTML = lg.join("");
+
+  /* click a host node → jump to its table row */
+  Array.prototype.forEach.call(document.querySelectorAll(".hostnode"), function (g) {
+    g.addEventListener("click", function () {
+      var row = $("hostrow-" + g.getAttribute("data-ip"));
+      if (!row) return;
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      row.classList.add("flash");
+      setTimeout(function () { row.classList.remove("flash"); }, 1200);
+    });
+  });
+}
+
+function trunc(s, n) { s = str(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+/* ----- hosts table ----- */
+
+function renderHosts(hosts, d) {
+  var newHosts = {}, changed = {}, newSvc = {};
+  arr(d.newHosts).forEach(function (x) { newHosts[str(x)] = 1; });
+  arr(d.changedServices).forEach(function (x) { changed[str(x)] = 1; });
+  arr(d.newServices).forEach(function (x) { newSvc[str(x)] = 1; });
+
+  if (!hosts.length) {
+    $("hostrows").innerHTML = '<tr><td colspan="4" class="none" style="color:var(--dim)">' +
+      "No host dossiers in this export.</td></tr>";
+    return;
+  }
+  $("hostrows").innerHTML = hosts.map(function (h) {
+    var doors = arr(h.services).map(function (sv) {
+      var key = h.ip + ":" + sv.port;
+      var dot = changed[key] ? '<span class="dot amber" title="changed since the previous trace"></span>'
+        : newSvc[key] ? '<span class="dot green" title="new since the previous trace"></span>' : "";
+      var probes = arr(sv.probesUsed).length ?
+        ' <span class="probe">probes: ' + esc(arr(sv.probesUsed).join(", ")) + "</span>" : "";
+      var notes = arr(sv.notes).length ?
+        ' <span class="probe">' + esc(arr(sv.notes).join(" · ")) + "</span>" : "";
+      return '<div class="door">' + dot + '<span class="pp">' + esc(sv.port) + "/" +
+        esc(sv.proto || "tcp") + '</span> <span class="svc">' + esc(sv.serviceName || "?") +
+        "</span>" + (sv.bannerFirstLine ? ' <span class="ban">' + esc(trunc(sv.bannerFirstLine, 72)) + "</span>" : "") +
+        probes + notes + "</div>";
+    }).join("");
+    var tags = arr(h.tags).concat(
+      arr(h.services).reduce(function (a, sv) { return a.concat(arr(sv.tags)); }, [])
+    ).filter(function (v, i2, a) { return a.indexOf(v) === i2; });
+    var seen = "<b>×" + num(h.timesSeen, 1) + "</b> seen<br>" +
+      esc(fmtTime(h.firstSeen)) + " →<br>" + esc(fmtTime(h.lastSeen)) +
+      (arr(h.sources).length ? "<br>" + esc(arr(h.sources).join(", ")) : "");
+    return '<tr id="hostrow-' + esc(h.ip) + '"' + (newHosts[h.ip] ? ' class="newhost"' : "") + ">" +
+      '<td class="ip">' + esc(h.ip) + (newHosts[h.ip] ? '<span class="pill new">NEW</span>' : "") + "</td>" +
+      "<td>" + (doors || '<span style="color:var(--dim)">no open doors filed</span>') + "</td>" +
+      "<td>" + (tags.length ? tags.map(function (tg) {
+        return '<span class="tag">' + esc(tg) + "</span>"; }).join("") :
+        '<span style="color:var(--dim)">—</span>') + "</td>" +
+      '<td class="seen">' + seen + "</td></tr>";
+  }).join("");
+}
+
+/* ----- side lists ----- */
+
+function cardList(title, items, renderItem, emptyText) {
+  var body = items.length ? "<ul>" + items.map(renderItem).join("") + "</ul>"
+    : '<div class="none">' + esc(emptyText) + "</div>";
+  return '<div class="card"><h3>' + esc(title) + "</h3>" + body + "</div>";
+}
+
+function renderSide(t, hosts, ble, d) {
+  var cards = [];
+
+  cards.push(cardList("Bonjour — announced on the LAN", arr(t.bonjour), function (b) {
+    b = obj(b);
+    return "<li><b>" + esc(b.name || "?") + "</b> " +
+      '<span style="color:var(--dim)">' + esc(b.label || b.type || "") + "</span>" +
+      (b.host ? '<br><span class="mono" style="font-size:12.5px">' + esc(b.host) +
+        (b.port ? ":" + esc(b.port) : "") + "</span>" : "") + "</li>";
+  }, "none heard during this trace"));
+
+  cards.push(cardList("External references — recorded, never contacted",
+    arr(t.externalReferences), function (r) {
+      if (typeof r === "string") return '<li class="ext">' + esc(r) + "</li>";
+      r = obj(r);
+      var head = r.host ? esc(r.host) + (r.port ? ":" + esc(r.port) : "") :
+        esc(r.url || r.text || JSON.stringify(r));
+      var sub = [r.url && r.host ? r.url : "", r.evidence || r.sourceText || r.via || ""]
+        .filter(Boolean).join(" — ");
+      return '<li class="ext">' + head + (sub ? '<br><span style="color:var(--dim)">' +
+        esc(sub) + "</span>" : "") + "</li>";
+    }, "no out-of-scope references were recorded"));
+
+  var diffBits = [];
+  function diffList(label, items, cls) {
+    if (!arr(items).length) return;
+    diffBits.push("<li><b>" + esc(label) + ':</b> ' +
+      arr(items).map(function (x) {
+        return '<span class="mono" style="font-size:12.5px">' + esc(x) + "</span>";
+      }).join(", ") + "</li>");
+  }
+  diffList("new hosts", d.newHosts);
+  diffList("missing hosts", d.missingHosts);
+  diffList("new services", d.newServices);
+  diffList("missing services", d.missingServices);
+  diffList("changed services", d.changedServices);
+  cards.push('<div class="card"><h3>Diff vs the logbook</h3>' +
+    (diffBits.length ? "<ul>" + diffBits.join("") + "</ul>" :
+      '<div class="none">no differences recorded</div>') + "</div>");
+
+  if (ble.length) {
+    cards.push(cardList("BLE devices — heard, never probed", ble, function (b) {
+      b = obj(b);
+      var meta = [b.vendor || "", b.sightings != null ? "×" + b.sightings + " heard" : "",
+        b.smoothedRSSI != null ? "≈" + Math.round(b.smoothedRSSI) + " dBm" : "",
+        b.closestRSSI != null ? "closest " + Math.round(b.closestRSSI) + " dBm" : "",
+        b.rotatingAddress ? "rotating address" : ""].filter(Boolean).join(" · ");
+      return "<li><b>" + esc(b.name || b.id || "BLE device") + "</b>" +
+        (meta ? '<br><span style="color:var(--dim)">' + esc(meta) + "</span>" : "") +
+        (arr(b.serviceUUIDs).length ? '<br><span class="mono" style="font-size:11.5px;color:var(--dim)">' +
+          esc(arr(b.serviceUUIDs).join(" ")) + "</span>" : "") + "</li>";
+    }, ""));
+  }
+
+  cards.push(cardList("Limitations — in the export's own words", arr(t.limitations),
+    function (x) { return "<li>" + esc(x) + "</li>"; },
+    "none stated"));
+
+  $("side").innerHTML = cards.join("");
+}
+</script>
+</body>
+</html>
