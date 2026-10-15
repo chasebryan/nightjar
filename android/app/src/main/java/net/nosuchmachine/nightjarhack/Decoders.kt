@@ -609,6 +609,7 @@ object Services {
         0x1811 to "Alert Notification",
         0x1812 to "Human Interface Device",
         0x1814 to "Running Speed and Cadence",
+        0x1815 to "Automation IO",
         0x1816 to "Cycling Speed and Cadence",
         0x1818 to "Cycling Power",
         0x1819 to "Location and Navigation",
@@ -627,6 +628,7 @@ object Services {
         0x1853 to "Common Audio (LE Audio)",
         0x1854 to "Hearing Access (LE Audio)",
         0xFD3D to "SwitchBot",
+        0xFCD2 to "BTHome",
         0xFFFA to "UAS Remote ID",
         0xFD43 to "Apple",
         0xFD44 to "Apple (Find My accessory)",
@@ -658,6 +660,9 @@ object Services {
     const val eddystone: Int = 0xFEAA
     const val exposureNotification: Int = 0xFD6F
     const val smartThingsFind: Int = 0xFD5A
+    const val miBeacon: Int = 0xFE95
+    const val btHome: Int = 0xFCD2
+    const val switchBot: Int = 0xFD3D
     val tile: List<Int> = listOf(0xFEED, 0xFEEC)
 
     /** Full lowercase form of a short or long UUID string. */
@@ -947,6 +952,29 @@ object Services {
                 specificity = 2,
             )
         }
+        // MiBeacon and BTHome carry real sensor readings in their
+        // service data — decode them before the bare-name fallback.
+        val miPayload = data[miBeacon]
+        if (miPayload != null) {
+            val ident = MiBeacon.decode(miPayload)
+            if (ident != null) {
+                return ident
+            }
+        }
+        val btPayload = data[btHome]
+        if (btPayload != null) {
+            val ident = BtHome.decode(btPayload)
+            if (ident != null) {
+                return ident
+            }
+        }
+        if (shorts.containsKey(switchBot)) {
+            return Identification(
+                kind = "SwitchBot", details = emptyList(),
+                trackerShaped = false, rotatingPhone = false,
+                specificity = 2,
+            )
+        }
         val named = shorts.keys.mapNotNull { serviceNames[it] }
             .toSet().sorted()
         if (named.isNotEmpty()) {
@@ -970,6 +998,9 @@ object Services {
 object Vendors {
     const val microsoft: Int = 0x0006
     const val ruuvi: Int = 0x0499
+    const val altBeacon: Int = 0xBEAC
+    const val altBeaconWireOrder: Int = 0xACBE
+    const val govee: Int = 0xEC88
 
     val companyNames: Map<Int, String> = mapOf(
         0x0000 to "Ericsson", 0x0001 to "Nokia", 0x0002 to "Intel",
@@ -1038,6 +1069,25 @@ object Vendors {
     fun decodeMicrosoft(payload: ByteArray): Identification? {
         if (payload.isEmpty()) return null
         val first = payload.u(0)
+        // The documented Swift Pair beacon carries the fixed prefix
+        // 03 00 80 ahead of the device's display name; gate on all
+        // three bytes so other 0x03-led Microsoft payloads keep the
+        // generic handling below.
+        if (first == 0x03 && payload.size >= 3 &&
+            payload.u(1) == 0x00 && payload.u(2) == 0x80
+        ) {
+            val details = mutableListOf("in pairing mode (Swift Pair)")
+            val nameBytes = payload.copyOfRange(3, payload.size)
+            val name = decodeUtf8Strict(nameBytes)
+                ?.trim { it == '\u0000' || it.isWhitespace() }
+            if (!name.isNullOrEmpty()) {
+                details.add("announces itself as '$name'")
+            }
+            return Identification(
+                kind = "Microsoft Swift Pair", details = details,
+                specificity = 2,
+            )
+        }
         if (first == 0x03 && payload.size >= 3) {
             val details = mutableListOf("in pairing mode (Swift Pair)")
             val nameBytes = payload.copyOfRange(3, payload.size)
@@ -1066,10 +1116,39 @@ object Vendors {
         )
     }
 
-    // MARK: Ruuvi RAWv2
+    // MARK: Ruuvi RAWv2 (format 5) and RAWv1 (format 3)
 
     fun decodeRuuvi(payload: ByteArray): String? {
-        if (payload.size < 24 || payload.u(0) != 0x05) return null
+        if (payload.isEmpty()) return null
+        return when (payload.u(0)) {
+            0x05 -> decodeRuuviV5(payload)
+            0x03 -> decodeRuuviV3(payload)
+            else -> null
+        }
+    }
+
+    /**
+     * Format 3 (RAWv1): humidity u8 ×0.5 %, temperature as a sign bit
+     * plus whole degrees and a hundredths byte, pressure u16 offset
+     * by 50000 Pa, acceleration (not surfaced), battery u16 mV.
+     */
+    private fun decodeRuuviV3(payload: ByteArray): String? {
+        if (payload.size < 14) return null
+        val humidity = payload.u(1) * 0.5
+        val tempByte = payload.u(2)
+        var temperature = (tempByte and 0x7F) + payload.u(3) * 0.01
+        if (tempByte and 0x80 != 0) temperature = -temperature
+        val pressure = (payload.u(4) shl 8) or payload.u(5)
+        val battery = (payload.u(12) shl 8) or payload.u(13)
+        return "RuuviTag: " +
+            "%.2f °C".format(temperature) + ", " +
+            "%.1f%% RH".format(humidity) + ", " +
+            "%.1f hPa".format((pressure + 50000) / 100.0) + ", " +
+            "battery $battery mV"
+    }
+
+    private fun decodeRuuviV5(payload: ByteArray): String? {
+        if (payload.size < 24) return null
         val tempRaw = ((payload.u(1) shl 8) or payload.u(2))
             .toShort().toInt()
         val humRaw = (payload.u(3) shl 8) or payload.u(4)
@@ -1118,6 +1197,18 @@ object Vendors {
                 kind = "Ruuvi device", details = emptyList(),
                 specificity = 2,
             )
+        }
+        val altPayload = manufacturerData[altBeacon]
+            ?: manufacturerData[altBeaconWireOrder]
+        if (altPayload != null) {
+            val ident = AltBeacon.decode(altPayload)
+            if (ident != null) {
+                return ident
+            }
+        }
+        val goveePayload = manufacturerData[govee]
+        if (goveePayload != null) {
+            return Govee.decode(goveePayload)
         }
         for (company in manufacturerData.keys.sorted()) {
             val family = familyByCompany[company]
