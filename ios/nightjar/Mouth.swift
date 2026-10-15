@@ -644,6 +644,23 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    static func exchangeHistoryDescription() -> String? {
+        guard let attrs = try? FileManager.default.attributesOfItem(
+                atPath: exchangesURL.path),
+              let size = attrs[.size] as? Int else { return nil }
+        return ByteCountFormatter.string(fromByteCount: Int64(size),
+                                         countStyle: .file)
+    }
+
+    /// Delete the persistent exchange history file outright. The
+    /// next exchange starts a fresh one.
+    func deleteExchangeHistory() {
+        exchangeQueue.sync {
+            try? FileManager.default.removeItem(at: Mouth.exchangesURL)
+        }
+        line("exchange history deleted")
+    }
+
     /// Recon results join the same exportable history as payload
     /// exchanges — one file tells the whole session.
     func logRecon(_ kind: String, _ label: String, lines: [String]) {
