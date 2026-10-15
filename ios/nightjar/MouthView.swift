@@ -48,6 +48,7 @@ struct SendView: View {
     @AppStorage("centipedePerDevice") private var centipedePerDevice = false
     @State private var centipedeHome = ""
     @State private var centipedeSweepPort = "6379"
+    @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
     private var centipedeLines: [String] {
         centipedeRoute.split(separator: "\n").map(String.init)
     }
@@ -477,6 +478,11 @@ struct SendView: View {
                         .disabled(fanoutList.isEmpty)
                     }
                     .font(.caption)
+                    TextField("Subnet to sweep — blank = this phone's",
+                              text: $centipedeSweepTarget)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .font(.body.monospaced())
                     HStack {
                         Text("Sweep port")
                             .font(.caption)
@@ -926,7 +932,7 @@ struct SendView: View {
             toasts.show("Sweep port must be 1–65535", error: true)
             return
         }
-        mouth.sweepSubnet(port: port) { hosts in
+        mouth.sweepSubnet(port: port, target: centipedeSweepTarget) { hosts in
             guard !hosts.isEmpty else { return }
             centipedeRoute = (hosts.map { "tcp://\($0):\(port)" }
                               + centipedeLines)
