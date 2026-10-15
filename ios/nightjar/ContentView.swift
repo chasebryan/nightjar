@@ -26,7 +26,7 @@ struct ContentView: View {
                 .appThemed()
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
                 .tag(3)
-            ScanView()
+            ScanView(tab: $tab)
                 .appThemed()
                 .tabItem { Label("Scan", systemImage: "scope") }
                 .tag(4)
