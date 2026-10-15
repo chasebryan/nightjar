@@ -80,6 +80,12 @@ final class ScanModel: ObservableObject {
 
     private let queue = DispatchQueue(label: "nightjar-scan",
                                       attributes: .concurrent)
+    /// NWConnection starts and their deadline timers live here,
+    /// NOT on `queue`: the scan/sweep workers block `queue` on
+    /// their semaphores, so a connection started there could be
+    /// starved behind its own gating.
+    private let connectionQueue = DispatchQueue(
+        label: "nightjar-scan-connections")
     private let lock = NSLock()
     private var browsers: [NWBrowser] = []
 
@@ -152,7 +158,7 @@ final class ScanModel: ObservableObject {
         // an unconditional 2.5s finish(nil) racing a 1.2s banner
         // window — reported slow-connecting silent services
         // (443, 445, 3389, 6379…) closed. That was the bug.
-        queue.asyncAfter(deadline: .now() + 2.5) {
+        connectionQueue.asyncAfter(deadline: .now() + 2.5) {
             if !ready() { finish(nil) }
         }
         connection.stateUpdateHandler = { [weak self] state in
@@ -176,7 +182,7 @@ final class ScanModel: ObservableObject {
                     }
                     // Answers that say nothing still count as open:
                     // the banner window ends the probe, successfully.
-                    self.queue.asyncAfter(deadline: .now() + 1.2) {
+                    self.connectionQueue.asyncAfter(deadline: .now() + 1.2) {
                         finish(PortResult(port: port, service: service,
                                           banner: nil))
                     }
@@ -197,7 +203,7 @@ final class ScanModel: ObservableObject {
                 break
             }
         }
-        connection.start(queue: queue)
+        connection.start(queue: connectionQueue)
     }
 
     // MARK: Subnet sweep
@@ -207,8 +213,9 @@ final class ScanModel: ObservableObject {
     /// port scan — a host with that port closed or firewalled to
     /// drops stays invisible, and the UI says so.
     func sweep(port: Int) {
-        guard !sweeping, !scanning,
+        guard !sweeping, !scanning, (1...65535).contains(port),
               let own = Mouth.localIPAddress() else { return }
+        let generation = sweepGeneration
         let parts = own.split(separator: ".")
         guard parts.count == 4 else { return }
         let prefix = parts.dropLast().joined(separator: ".") + "."
@@ -239,8 +246,15 @@ final class ScanModel: ObservableObject {
         }
         group.notify(queue: .main) { [weak self] in
             guard let self = self else { return }
-            self.sweepHosts = found.sorted { $0.octet < $1.octet }
             self.sweeping = false
+            // A sweep stopWatch() superseded while it was in
+            // flight is stale: it publishes nothing and fires no
+            // callbacks — it only clears `sweeping`, above.
+            guard generation == self.sweepGeneration else {
+                self.sweepIsWatch = false
+                return
+            }
+            self.sweepHosts = found.sorted { $0.octet < $1.octet }
             let wasWatch = self.sweepIsWatch
             self.sweepIsWatch = false
             // Only a watch-cycle sweep feeds the observation
@@ -263,6 +277,9 @@ final class ScanModel: ObservableObject {
     @Published private(set) var watching = false
     /// True while the in-flight sweep belongs to the watch chain.
     private var sweepIsWatch = false
+    /// Bumped by stopWatch(); a sweep that started under an older
+    /// generation is stale by the time it finishes.
+    private var sweepGeneration = 0
     /// Set by ScanView: called on the main queue after every
     /// sweep, with whether that sweep was a watch cycle (manual
     /// completions toast, feed targets, and log; watch ones don't).
@@ -290,6 +307,7 @@ final class ScanModel: ObservableObject {
     }
 
     func stopWatch() {
+        sweepGeneration += 1
         guard watching else { return }
         watching = false
         watchWork?.cancel()
@@ -359,7 +377,8 @@ final class ScanModel: ObservableObject {
 
     private func sweepProbe(host: String, port: Int,
                             done: @escaping (Bool) -> Void) {
-        guard let nwPort = NWEndpoint.Port(rawValue: UInt16(clamping: port))
+        guard (1...65535).contains(port),
+              let nwPort = NWEndpoint.Port(rawValue: UInt16(port))
         else { done(false); return }
         let connection = NWConnection(host: NWEndpoint.Host(host),
                                       port: nwPort, using: .tcp)
@@ -383,8 +402,8 @@ final class ScanModel: ObservableObject {
                 break
             }
         }
-        connection.start(queue: queue)
-        queue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
+        connection.start(queue: connectionQueue)
+        connectionQueue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
     }
 
     // MARK: Bonjour sweep
@@ -524,7 +543,14 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
             }
         }
         collected = out
-        completionHandler(.useCredential, URLCredential(trust: trust))
+        // Accept the server credential only if a certificate
+        // chain was actually captured to inspect; with no chain
+        // there is nothing verified to hand back, so cancel.
+        if chain.isEmpty {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+        } else {
+            completionHandler(.useCredential, URLCredential(trust: trust))
+        }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
@@ -590,8 +616,15 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
               let to = derTime(tag: notAfter.tag,
                                der[notAfter.start..<notAfter.end])
         else { return nil }
-        return "\(from.formatted(date: .abbreviated, time: .omitted)) → "
-            + to.formatted(date: .abbreviated, time: .omitted)
+        // The DER times are GMT (derTime parses them as GMT), so
+        // render them in GMT too — Date.formatted would use the
+        // phone's local timezone and shift the dates.
+        let display = DateFormatter()
+        display.locale = Locale(identifier: "en_US_POSIX")
+        display.timeZone = TimeZone(secondsFromGMT: 0)
+        display.dateFormat = "MMM d, yyyy"
+        return "\(display.string(from: from)) → "
+            + display.string(from: to)
     }
 
     private func derTime(tag: UInt8, _ bytes: ArraySlice<UInt8>) -> Date? {
@@ -617,15 +650,23 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
 /// hand-rolled DNS seed.
 enum DNSKit {
     static func buildQuery(name: String, type: UInt16) -> Data {
+        buildQuery(name: name, type: type,
+                   id: UInt16.random(in: 0...UInt16.max))
+    }
+
+    /// The caller picks (and keeps) the transaction ID so the
+    /// response can be checked against it.
+    static func buildQuery(name: String, type: UInt16,
+                           id: UInt16) -> Data {
         var data = Data()
-        let id = UInt16.random(in: 0...UInt16.max)
         data.append(UInt8(id >> 8))
         data.append(UInt8(id & 0xff))
         data.append(contentsOf: [0x01, 0x00])              // RD
         data.append(contentsOf: [0x00, 0x01])              // QDCOUNT 1
         data.append(contentsOf: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
         for label in name.split(separator: ".") where !label.isEmpty {
-            data.append(UInt8(clamping: label.count))
+            // The length prefix counts wire bytes, not Characters.
+            data.append(UInt8(clamping: label.utf8.count))
             data.append(contentsOf: label.utf8)
         }
         data.append(0)
@@ -636,26 +677,40 @@ enum DNSKit {
     }
 
     static func readName(_ data: Data, _ offset: inout Int) -> String {
+        readName(data, &offset, limit: data.count)
+    }
+
+    /// Reads a (possibly compressed) name, never stepping past
+    /// `limit` — RDATA callers pass the end of their RDLENGTH
+    /// window so a name cannot run on into the next record.
+    static func readName(_ data: Data, _ offset: inout Int,
+                         limit: Int) -> String {
         var labels: [String] = []
         var pos = offset
         var next = offset
         var jumped = false
         var steps = 0
-        while pos < data.count, steps < 128 {
+        let bound = min(limit, data.count)
+        while pos < bound, steps < 128 {
             steps += 1
             let len = Int(data[pos])
             if len == 0 {
                 if !jumped { next = pos + 1 }
                 break
             }
-            if len & 0xC0 == 0xC0, pos + 1 < data.count {
+            if len & 0xC0 == 0xC0 {
+                // A pointer is two bytes; a trailing lone byte is
+                // malformed — stop instead of reading past it.
+                guard pos + 1 < bound else { break }
                 if !jumped { next = pos + 2 }
                 jumped = true
                 pos = ((len & 0x3F) << 8) | Int(data[pos + 1])
                 continue
             }
+            // Reserved label types (0x40 / 0x80) end the name.
+            if len & 0xC0 != 0 { break }
             let end = pos + 1 + len
-            guard end <= data.count else { break }
+            guard end <= bound else { break }
             labels.append(String(decoding: data[(pos + 1)..<end],
                                  as: UTF8.self))
             pos = end
@@ -665,10 +720,23 @@ enum DNSKit {
         return labels.joined(separator: ".")
     }
 
+    /// True only for a response (QR=1) to the query with this
+    /// transaction ID — anything else on the socket is not ours.
+    static func isResponse(_ data: Data, to id: UInt16) -> Bool {
+        guard data.count >= 4 else { return false }
+        let txid = (UInt16(data[0]) << 8) | UInt16(data[1])
+        return txid == id && data[2] & 0x80 != 0
+    }
+
     static func parseAnswers(_ data: Data) -> [String] {
         func u16(_ i: Int) -> Int { (Int(data[i]) << 8) | Int(data[i + 1]) }
         func u32(_ i: Int) -> Int { (u16(i) << 16) | u16(i + 2) }
         guard data.count >= 12 else { return ["short response"] }
+        let rcode = Int(data[3]) & 0x0F
+        if rcode == 3 { return ["NXDOMAIN — the name does not exist"] }
+        if rcode != 0 {
+            return ["DNS error — the server answered with RCODE \(rcode)"]
+        }
         let qd = u16(4), an = u16(6)
         var pos = 12
         for _ in 0..<qd {
@@ -700,12 +768,12 @@ enum DNSKit {
             return ipv6(bytes)
         case 2, 5:
             var off = start
-            return readName(data, &off)
+            return readName(data, &off, limit: start + length)
         case 15:
             guard bytes.count > 2 else { return "?" }
             let pref = (Int(bytes[0]) << 8) | Int(bytes[1])
             var off = start + 2
-            return "\(pref) \(readName(data, &off))"
+            return "\(pref) \(readName(data, &off, limit: start + length))"
         case 16:
             var parts: [String] = []
             var i = 0
@@ -779,24 +847,62 @@ final class DNSModel: ObservableObject {
                 self?.querying = false
             }
         }
+        // One transaction ID for the query and its single retry,
+        // so a response can be verified against it.
+        let queryID = UInt16.random(in: 0...UInt16.max)
+        let query = DNSKit.buildQuery(name: trimmed, type: code,
+                                      id: queryID)
+        var attempts = 0
+        let isDone: () -> Bool = {
+            lock.lock()
+            defer { lock.unlock() }
+            return done
+        }
+        // Closure variables rather than nested functions: each
+        // re-invokes itself from inside escaping completions.
+        var armReceive: (() -> Void)!
+        var sendQuery: (() -> Void)!
+        armReceive = {
+            connection.receive(minimumIncompleteLength: 12,
+                               maximumLength: 4096) {
+                data, _, _, error in
+                if let data = data, data.count >= 12 {
+                    // Stray or spoofed datagrams are not the
+                    // answer: only our TXID with QR=1 counts, and
+                    // anything else just re-arms the wait.
+                    guard DNSKit.isResponse(data, to: queryID) else {
+                        if !isDone() { armReceive() }
+                        return
+                    }
+                    finish(DNSKit.parseAnswers(data))
+                } else {
+                    finish(["no answer ("
+                            + (error?.localizedDescription
+                               ?? "empty reply") + ")"])
+                }
+            }
+        }
+        sendQuery = {
+            attempts += 1
+            let attempt = attempts
+            connection.send(content: query,
+                            completion: .contentProcessed { _ in
+                                armReceive()
+                            })
+            // One retry on timeout; the second timeout is final.
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                guard !isDone(), attempt == attempts else { return }
+                if attempt < 2 {
+                    sendQuery()
+                } else {
+                    finish(["timed out — no answer from 1.1.1.1"])
+                }
+            }
+        }
         connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
-                connection.send(
-                    content: DNSKit.buildQuery(name: trimmed, type: code),
-                    completion: .contentProcessed { _ in
-                        connection.receive(minimumIncompleteLength: 12,
-                                           maximumLength: 4096) {
-                            data, _, _, error in
-                            if let data = data, data.count >= 12 {
-                                finish(DNSKit.parseAnswers(data))
-                            } else {
-                                finish(["no answer ("
-                                        + (error?.localizedDescription
-                                           ?? "empty reply") + ")"])
-                            }
-                        }
-                    })
+                sendQuery()
             case .failed(let error):
                 finish(["query failed: \(error.localizedDescription)"])
             default:
@@ -804,9 +910,6 @@ final class DNSModel: ObservableObject {
             }
         }
         connection.start(queue: DispatchQueue(label: "nightjar-dns"))
-        DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-            finish(["timed out — no answer from 1.1.1.1"])
-        }
     }
 }
 
@@ -879,7 +982,13 @@ enum PcapKit {
                 lines.append("    \(preview)")
             }
         }
-        guard count > 0 else { return nil }
+        // The global header was valid, so this IS a libpcap
+        // capture — one with no complete records in it. Say so
+        // instead of falling through to "not a libpcap capture".
+        guard count > 0 else {
+            let empty = "0 packets — the capture is empty or truncated"
+            return (["\(name) — \(empty)"], [empty])
+        }
         var summary = ["\(name) — \(count) packet(s), \(totalBytes) bytes"]
         if let first = firstTs {
             summary.append("span "
@@ -986,7 +1095,9 @@ enum PcapKit {
         let protoNum = Int(bytes[o + 9])
         let src = ipv4(bytes[(o + 12)..<(o + 16)])
         let dst = ipv4(bytes[(o + 16)..<(o + 20)])
-        let end = total > 0 ? min(bytes.count, o + total) : bytes.count
+        // The logical end is the header's total length, not the
+        // captured frame: Ethernet padding past it is not data.
+        let end = min(bytes.count, o + total)
         return decodeTransport(bytes, protoNum, src, dst,
                                from: o + ihl, to: end, v6: false)
     }
@@ -1000,8 +1111,8 @@ enum PcapKit {
         let next = Int(bytes[o + 6])
         let src = DNSKit.ipv6(Array(bytes[(o + 8)..<(o + 24)]))
         let dst = DNSKit.ipv6(Array(bytes[(o + 24)..<(o + 40)]))
-        let end = payloadLen > 0 ? min(bytes.count, o + 40 + payloadLen)
-                                 : bytes.count
+        // Likewise bounded by the payload length, padding excluded.
+        let end = min(bytes.count, o + 40 + payloadLen)
         return decodeTransport(bytes, next, src, dst,
                                from: o + 40, to: end, v6: true)
     }
@@ -1013,7 +1124,7 @@ enum PcapKit {
         let family = v6 ? "IPv6" : "IPv4"
         switch protoNum {
         case 6:
-            guard bytes.count >= from + 20 else {
+            guard to >= from + 20 else {
                 return ("TCP", "\(src) → \(dst) TCP (truncated)", nil)
             }
             let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
@@ -1036,7 +1147,7 @@ enum PcapKit {
                     + "len \(payload.count)",
                     preview(of: Data(payload)))
         case 17:
-            guard bytes.count >= from + 8 else {
+            guard to >= from + 8 else {
                 return ("UDP", "\(src) → \(dst) UDP (truncated)", nil)
             }
             let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
@@ -1048,7 +1159,7 @@ enum PcapKit {
                     + "len \(payload.count)",
                     preview(of: Data(payload)))
         case 1, 58:
-            guard bytes.count >= from + 2 else {
+            guard to >= from + 2 else {
                 return ("ICMP", "\(src) → \(dst) ICMP", nil)
             }
             let type = Int(bytes[from])
@@ -1069,6 +1180,18 @@ enum PcapKit {
 
     private static func decodeARP(_ bytes: [UInt8], _ o: Int)
         -> (proto: String, text: String, preview: String?) {
+        guard bytes.count >= o + 8 else {
+            return ("ARP", "truncated ARP packet", nil)
+        }
+        // The fixed offsets below are only the Ethernet/IPv4
+        // layout; anything else gets a generic line instead of a
+        // confident misdecode.
+        let htype = (Int(bytes[o]) << 8) | Int(bytes[o + 1])
+        let ptype = (Int(bytes[o + 2]) << 8) | Int(bytes[o + 3])
+        guard htype == 1, ptype == 0x0800,
+              bytes[o + 4] == 6, bytes[o + 5] == 4 else {
+            return ("ARP", "ARP (unusual layout)", nil)
+        }
         guard bytes.count >= o + 28 else {
             return ("ARP", "truncated ARP packet", nil)
         }
@@ -1080,7 +1203,7 @@ enum PcapKit {
             return ("ARP", "ARP who-has \(targetIP) tell \(senderIP)", nil)
         }
         if op == 2 {
-            return ("ARP", "ARP \(targetIP) is-at \(senderMAC)", nil)
+            return ("ARP", "ARP \(senderIP) is-at \(senderMAC)", nil)
         }
         return ("ARP", "ARP op \(op) \(senderIP) → \(targetIP)", nil)
     }
@@ -1561,7 +1684,10 @@ struct ScanView: View {
                 }
                 let ip = resolved.0
                 let port = resolved.1
-                mouth.scanHandoffTarget = "tcp://\(ip):\(port)"
+                // A tcp:// URL needs an IPv6 literal bracketed.
+                let target = ip.contains(":") && !ip.hasPrefix("[")
+                    ? "[\(ip)]" : ip
+                mouth.scanHandoffTarget = "tcp://\(target):\(port)"
                 mouth.scanHandoffPayload =
                     ScanModel.payloadByPort[port]
                 tab = 1
