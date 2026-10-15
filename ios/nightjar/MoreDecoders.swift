@@ -19,6 +19,24 @@ import Foundation
 ///   "Phone (Exposure Notification)" — a phone, not a beacon — so it is
 ///   not relabelled here.
 ///
+/// Round 2 (signature recognition for the nameless remainder):
+/// - In `identify`: Huami services (0xFEE0/0xFEE1) and the ASHA hearing
+///   aid service (0xFDF0), both verified against the SIG assigned
+///   numbers and Google's published ASHA specification.
+/// - In `lateIdentify` — a second hook the chain consults only after
+///   Vendors and the Services decoders have passed, so it can never
+///   shadow a real decode (a DJI drone's Remote ID answer included):
+///   a company-ID floor for SIG-verified makers Vendors' table lacks,
+///   plus member-service names in exactly the form Services' own
+///   fallback produces.
+/// - Deliberately NOT claimed, after verification: Google 0xFE2C is
+///   shared by Fast Pair and Nearby Share with no published byte that
+///   separates them, so Services' Fast Pair answer stands; Samsung
+///   0x0075 and Sony 0x012D advertisement layouts are not publicly
+///   documented well enough to gate on (their battery/state data is
+///   connection-oriented), so the Vendors family labels stand; and
+///   Fitbit has no SIG company identifier at all.
+///
 /// Sample advertisements for every decoder live in
 /// `nightjarTests/MoreDecodersTests.swift`.
 enum MoreDecoders {
@@ -28,6 +46,9 @@ enum MoreDecoders {
 
     static let xiaomiService: UInt16 = 0xFE95
     static let btHomeService: UInt16 = 0xFCD2
+    static let huamiService: UInt16 = 0xFEE0
+    static let huamiAltService: UInt16 = 0xFEE1
+    static let ashaService: UInt16 = 0xFDF0
     static let tileServices: [UInt16] = [0xFEED, 0xFEEC]
     static let smartTagService: UInt16 = 0xFD5A
     static let switchBotService: UInt16 = 0xFD3D
@@ -62,6 +83,25 @@ enum MoreDecoders {
         if let payload = serviceData(sighting, btHomeService),
            let hit = decodeBTHome(payload) {
             return hit
+        }
+        // Huami's two member services (SIG assigned numbers): 0xFEE0 is
+        // the Mi Band service, 0xFEE1 its companion. This sits after the
+        // MiBeacon attempt above, so a band whose FE95 frame decodes
+        // still gets its product name; the bare services earn the
+        // family label instead of Services' "Device advertising Huami".
+        if advertises(sighting, huamiService) || advertises(sighting, huamiAltService) {
+            return Services.Identification(kind: "Mi Band / Amazfit", details: [],
+                                           trackerShaped: false, rotatingPhone: false,
+                                           specificity: 2)
+        }
+        // ASHA — Google's Audio Streaming for Hearing Aids service
+        // (0xFDF0, Google's published ASHA specification). Only hearing
+        // aids advertise it.
+        if advertises(sighting, ashaService) {
+            return Services.Identification(kind: "Hearing aid (ASHA)",
+                                           details: ["Audio Streaming for Hearing Aids (Google ASHA)"],
+                                           trackerShaped: false, rotatingPhone: false,
+                                           specificity: 2)
         }
         for uuid in tileServices where advertises(sighting, uuid) {
             return Services.Identification(kind: "Tile tracker", details: [],
@@ -462,5 +502,70 @@ enum MoreDecoders {
     private static func luxText(_ value: Double) -> String {
         if value >= 100 { return String(format: "%.0f lx", value) }
         return String(format: "%.2f lx", value)
+    }
+
+    // MARK: - Round 2: the late recognition floor
+
+    /// Company IDs verified against the Bluetooth SIG assigned-numbers
+    /// list that Vendors' company table does not carry (Vendors is a
+    /// protected upstream file, so the additions live here). SIG
+    /// assignees, checked 2026-10: 0x03FF Withings, 0x0600 iRobot
+    /// Corporation, 0x08AA SZ DJI Technology, 0x08C3 Chipolo,
+    /// 0x067C Tile Inc., 0x01D1 August Home, 0x018E Google LLC,
+    /// 0x0111 Steelseries, 0x065A Marshall Group, 0x068E Razer,
+    /// 0x07C9 Skullcandy, 0x0CC2 Anker Innovations, 0x0CE9 JLab Audio,
+    /// 0x0CCB Nothing Technology, 0x079A Oppo, 0x0837 vivo,
+    /// 0x08A4 Realme, 0x09C6 Honor Device. Kinds follow Vendors' own
+    /// fallback shape, "<maker> device".
+    static let floorCompanies: [UInt16: String] = [
+        0x03FF: "Withings", 0x0600: "iRobot", 0x08AA: "DJI",
+        0x08C3: "Chipolo", 0x067C: "Tile", 0x01D1: "August Home",
+        0x018E: "Google", 0x0111: "SteelSeries", 0x065A: "Marshall",
+        0x068E: "Razer", 0x07C9: "Skullcandy", 0x0CC2: "Anker",
+        0x0CE9: "JLab", 0x0CCB: "Nothing", 0x079A: "Oppo",
+        0x0837: "vivo", 0x08A4: "Realme", 0x09C6: "Honor",
+    ]
+
+    /// Member-service names in the exact form Services' own table
+    /// would produce ("Device advertising <name>"), for services the
+    /// protected Services table lacks: August Home's 0xFE24 (SIG
+    /// member list), the LE Audio services 0x184F and 0x1856 (SIG
+    /// GATT list), and the Withings (0xFD77–0xFD7A) and Chipolo
+    /// (0xFE33, 0xFE65) member ranges.
+    static let lateServiceNames: [UInt16: String] = [
+        0xFE24: "August Home",
+        0x184F: "Broadcast Audio Scan (LE Audio)",
+        0x1856: "Public Broadcast Announcement (LE Audio)",
+        0xFD77: "Withings", 0xFD78: "Withings",
+        0xFD79: "Withings", 0xFD7A: "Withings",
+        0xFE33: "Chipolo", 0xFE65: "Chipolo",
+    ]
+
+    /// The chain's last resort before "unknown": consulted only after
+    /// Continuity, `identify`, Services and Vendors have all passed,
+    /// so nothing here can shadow a better answer. Maker first (the
+    /// chain's Vendors-before-Services-names precedence), then any
+    /// late service names, mirroring Services' sorted-and-joined form.
+    static func lateIdentify(_ sighting: Sighting) -> Services.Identification? {
+        for company in sighting.manufacturerData.keys.sorted() {
+            if let maker = floorCompanies[company] {
+                let tracker = company == 0x08C3 || company == 0x067C
+                return Services.Identification(kind: maker + " device", details: [],
+                                               trackerShaped: tracker,
+                                               rotatingPhone: false, specificity: 1)
+            }
+        }
+        var shorts = Set<UInt16>()
+        for uuid in sighting.serviceUUIDs + Array(sighting.serviceData.keys) {
+            if let value = Services.short(uuid) { shorts.insert(value) }
+        }
+        let named = Set(shorts.compactMap { lateServiceNames[$0] }).sorted()
+        if !named.isEmpty {
+            return Services.Identification(
+                kind: "Device advertising " + named.joined(separator: ", "),
+                details: [], trackerShaped: false, rotatingPhone: false,
+                specificity: 1)
+        }
+        return nil
     }
 }
