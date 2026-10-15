@@ -130,11 +130,23 @@ Look before you leap:
 - `nightjar/send.py` - new, the whole feature.
 - `nightjar/cli.py` - an import, two names in `COMMANDS`, two subparsers, two
   handler entries, and one honest sentence in the description.
-- `pyproject.toml` - an optional extra, `tx = ["bless>=0.2.0"]`.
-- `nightjar/__init__.py` - version to `2.3.0`.
+- `pyproject.toml` - an optional extra,
+  `tx = ["bless>=0.2.0", "websockets>=12", "pyserial>=3.5"]`.
+- `nightjar/__init__.py` - version to `2.5.0`.
 
 No other file is touched. `apply_overlay.py --check` reports drift without
 writing anything.
+
+## The iOS app
+
+`ios/` carries the same ideas as a native app: upstream nightjar's
+listening post (with its Remote ID drone decoder), the mouth as
+Send/Serve tabs, and a Scan tab of recon tools — connect scanner,
+subnet sweep, observation feed, TLS inspector, DNS toolkit, pcap
+dissector — plus fan-out, timed delivery, templating, SnatchSteal
+and PayPlant on the send side. The Swift is a hand port, not
+generated from send.py; this CLI remains the reference
+implementation, and the app's feature manual is `ios/README.md`.
 
 ## Notes
 
