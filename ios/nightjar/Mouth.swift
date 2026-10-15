@@ -489,7 +489,7 @@ final class Mouth: NSObject, ObservableObject {
                      read: Bool, timeout: TimeInterval) {
         let framed = PayloadKit.frame(payload, framing: framing)
         let endpoint = NWEndpoint.service(name: name, type: Mouth.bonjourType,
-                                          domain: nil, interface: nil)
+                                          domain: "local.", interface: nil)
         run(NWConnection(to: endpoint, using: .tcp),
             label: "phone \(name)", framed: framed, read: read,
             timeout: timeout)
