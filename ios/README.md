@@ -29,6 +29,19 @@ its status, altitude, speed and its operator's broadcast position in
 the details. The decoder is a Swift port of `nightjar/remoteid.py`
 and shares test vectors with it.
 
+## How the Send tab flows
+
+Three numbered steps, in order: **1 · Destination** (a nearby phone
+by name, or a typed target), **2 · Payload** (the library as a
+scrollable dropdown sheet — search, tap to load, swipe to delete,
+save-your-current at the bottom — with a collapsed custom builder
+underneath), **3 · Send** (one big button that names its target).
+The mouth's log lives behind the scroll-icon button in the corner,
+not in the form. Everything narrates itself: sends, replies,
+failures, listener starts, and toggles raise a small popup that
+explains what just happened and fades on its own, and every button
+and selection buzzes under your thumb.
+
 ## Also in the app
 
 - **Payload library.** The Send tab saves named payloads (source,
