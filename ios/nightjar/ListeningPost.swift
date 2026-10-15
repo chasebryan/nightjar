@@ -270,6 +270,12 @@ extension ListeningPost: CBCentralManagerDelegate {
         if central.state == .poweredOn {
             resumeInterruptedSessionIfAny()
             scan()
+        } else if session != nil {
+            // The radio left .poweredOn mid-session: the scan is
+            // gone, so finalize the log through the normal end
+            // path (footer, close, Forget) instead of leaving a
+            // session that claims to still be recording.
+            stop()
         }
     }
 
