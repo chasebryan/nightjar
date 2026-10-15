@@ -1,28 +1,41 @@
 package net.nosuchmachine.nightjarhack
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 @Composable
 fun CentipedeSection(
@@ -248,6 +261,75 @@ fun CentipedeSection(
     }
 }
 
+/// One saved Network trace configuration — the section's
+/// fields plus the Centipede route it sets up. Presets live
+/// as a JSON array in the "njPresets" preference, so the
+/// whole set shares and imports as one small file.
+private data class TracePreset(
+    val id: String,
+    val name: String,
+    val traceScope: String,
+    val traceDiscoveryPorts: String,
+    val traceProfilePorts: String,
+    val traceBonjour: Boolean,
+    val traceAdaptive: Boolean,
+    val traceRules: String,
+    val centipedeRoute: String
+) {
+    fun toJson(): JSONObject {
+        val json = JSONObject()
+        json.put("id", id)
+        json.put("name", name)
+        json.put("traceScope", traceScope)
+        json.put("traceDiscoveryPorts", traceDiscoveryPorts)
+        json.put("traceProfilePorts", traceProfilePorts)
+        json.put("traceBonjour", traceBonjour)
+        json.put("traceAdaptive", traceAdaptive)
+        json.put("traceRules", traceRules)
+        json.put("centipedeRoute", centipedeRoute)
+        return json
+    }
+
+    companion object {
+        fun fromJson(json: JSONObject): TracePreset? {
+            val id = json.optString("id")
+            val name = json.optString("name")
+            if (id.isEmpty() || name.isEmpty()) return null
+            return TracePreset(
+                id = id,
+                name = name,
+                traceScope = json.optString("traceScope"),
+                traceDiscoveryPorts = json.optString("traceDiscoveryPorts"),
+                traceProfilePorts = json.optString("traceProfilePorts"),
+                traceBonjour = json.optBoolean("traceBonjour", true),
+                traceAdaptive = json.optBoolean("traceAdaptive", true),
+                traceRules = json.optString("traceRules"),
+                centipedeRoute = json.optString("centipedeRoute")
+            )
+        }
+    }
+}
+
+private fun parseTracePresets(text: String): List<TracePreset> {
+    val out = mutableListOf<TracePreset>()
+    try {
+        val array = JSONArray(text)
+        for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.let { json ->
+                TracePreset.fromJson(json)?.let { out.add(it) }
+            }
+        }
+    } catch (_: Exception) {
+    }
+    return out
+}
+
+private fun tracePresetsJson(presets: List<TracePreset>): String {
+    val array = JSONArray()
+    for (preset in presets) array.put(preset.toJson())
+    return array.toString()
+}
+
 @Composable
 fun NetworkTraceSection(app: NightjarApp) {
     val prefs = rememberPrefs()
@@ -274,6 +356,67 @@ fun NetworkTraceSection(app: NightjarApp) {
         if (route != null) {
             centipedeRoute = route
             tracer.clearCentipedeRoute()
+        }
+    }
+
+    // Presets: whole configurations (trace fields + the
+    // Centipede route) under one name, in "njPresets".
+    val context = LocalContext.current
+    var presets by remember {
+        mutableStateOf(parseTracePresets(prefs.string("njPresets", "[]")))
+    }
+    var selectedPresetId by remember { mutableStateOf<String?>(null) }
+    var presetMenuOpen by remember { mutableStateOf(false) }
+    var saveDialogOpen by remember { mutableStateOf(false) }
+    var savePresetName by remember { mutableStateOf("") }
+    val selectedPreset = presets.firstOrNull { it.id == selectedPresetId }
+
+    fun persistPresets(list: List<TracePreset>) {
+        presets = list
+        prefs.put("njPresets", tracePresetsJson(list))
+    }
+
+    fun applyPreset(preset: TracePreset) {
+        scopeText = preset.traceScope
+        discoveryPorts = preset.traceDiscoveryPorts
+        profilePorts = preset.traceProfilePorts
+        useBonjour = preset.traceBonjour
+        adaptive = preset.traceAdaptive
+        rulesText = preset.traceRules
+        centipedeRoute = preset.centipedeRoute
+        selectedPresetId = preset.id
+        app.mouth.toast("Preset applied — ${preset.name}")
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val text = context.contentResolver.openInputStream(uri)
+                    ?.bufferedReader()?.readText() ?: ""
+                val imported = parseTracePresets(text)
+                if (imported.isEmpty()) {
+                    app.mouth.toast("No presets in that file", error = true)
+                } else {
+                    val merged = presets.toMutableList()
+                    for (preset in imported) {
+                        val index = merged.indexOfFirst {
+                            it.id == preset.id
+                        }
+                        if (index >= 0) merged[index] = preset
+                        else merged.add(preset)
+                    }
+                    persistPresets(merged)
+                    app.mouth.toast(
+                        "Imported ${imported.size} preset(s)"
+                    )
+                }
+            } catch (e: Exception) {
+                app.mouth.toast(
+                    "Import failed: ${e.message}", error = true
+                )
+            }
         }
     }
 
@@ -341,6 +484,140 @@ fun NetworkTraceSection(app: NightjarApp) {
                 textStyle = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace
                 )
+            )
+        }
+        Text(
+            "Presets — whole configurations, route included",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { presetMenuOpen = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(selectedPreset?.name ?: "Choose a preset")
+                }
+                DropdownMenu(
+                    expanded = presetMenuOpen,
+                    onDismissRequest = { presetMenuOpen = false }
+                ) {
+                    if (presets.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("No presets saved yet") },
+                            onClick = { presetMenuOpen = false }
+                        )
+                    }
+                    for (preset in presets) {
+                        DropdownMenuItem(
+                            text = { Text(preset.name) },
+                            onClick = {
+                                applyPreset(preset)
+                                presetMenuOpen = false
+                            }
+                        )
+                    }
+                }
+            }
+            OutlinedButton(onClick = {
+                savePresetName = selectedPreset?.name ?: ""
+                saveDialogOpen = true
+            }) { Text("Save current") }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    selectedPreset?.let { preset ->
+                        persistPresets(
+                            presets.filter { it.id != preset.id }
+                        )
+                        selectedPresetId = null
+                        app.mouth.toast(
+                            "Preset deleted — ${preset.name}"
+                        )
+                    }
+                },
+                enabled = selectedPreset != null,
+                modifier = Modifier.weight(1f)
+            ) { Text("Delete") }
+            OutlinedButton(
+                onClick = {
+                    try {
+                        val file = File(
+                            context.cacheDir, "nightjar-presets.json"
+                        )
+                        file.writeText(tracePresetsJson(presets))
+                        shareFile(app, file)
+                    } catch (e: Exception) {
+                        app.mouth.toast(
+                            "Share failed: ${e.message}", error = true
+                        )
+                    }
+                },
+                enabled = presets.isNotEmpty(),
+                modifier = Modifier.weight(1f)
+            ) { Text("Share") }
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("*/*")) },
+                modifier = Modifier.weight(1f)
+            ) { Text("Import") }
+        }
+        if (saveDialogOpen) {
+            AlertDialog(
+                onDismissRequest = { saveDialogOpen = false },
+                title = { Text("Save preset") },
+                text = {
+                    OutlinedTextField(
+                        value = savePresetName,
+                        onValueChange = { savePresetName = it },
+                        label = { Text("Preset name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val name = savePresetName.trim()
+                        if (name.isNotEmpty()) {
+                            val sameName = presets.firstOrNull {
+                                it.name == name
+                            }
+                            val preset = TracePreset(
+                                id = sameName?.id
+                                    ?: java.util.UUID.randomUUID()
+                                        .toString(),
+                                name = name,
+                                traceScope = scopeText,
+                                traceDiscoveryPorts = discoveryPorts,
+                                traceProfilePorts = profilePorts,
+                                traceBonjour = useBonjour,
+                                traceAdaptive = adaptive,
+                                traceRules = rulesText,
+                                centipedeRoute = centipedeRoute
+                            )
+                            persistPresets(
+                                if (sameName != null) {
+                                    presets.map {
+                                        if (it.id == preset.id) preset
+                                        else it
+                                    }
+                                } else {
+                                    presets + preset
+                                }
+                            )
+                            selectedPresetId = preset.id
+                            app.mouth.toast("Preset saved — $name")
+                        }
+                        saveDialogOpen = false
+                    }) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { saveDialogOpen = false }
+                    ) { Text("Cancel") }
+                }
             )
         }
         if (busy) {
