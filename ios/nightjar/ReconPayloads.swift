@@ -262,13 +262,16 @@ enum ReconPayloads {
     static func syslogLine() -> Data { Data("<14>nightjar speaking syslog\r\n".utf8) }
 
     static func wireguardInit() -> Data {
-        Data([0x01, 0x00, 0x00, 0x00])
-            + Data(repeating: 0x11, count: 4)
-            + Data(repeating: 0x22, count: 32)
-            + Data(repeating: 0x33, count: 48)
-            + Data(repeating: 0x44, count: 28)
-            + Data(repeating: 0x55, count: 16)
-            + Data(repeating: 0x00, count: 16)
+        // Accumulated statement by statement: the one-expression
+        // Data + Data chain defeats the type checker.
+        var data = Data([0x01, 0x00, 0x00, 0x00])
+        data += Data(repeating: 0x11, count: 4)
+        data += Data(repeating: 0x22, count: 32)
+        data += Data(repeating: 0x33, count: 48)
+        data += Data(repeating: 0x44, count: 28)
+        data += Data(repeating: 0x55, count: 16)
+        data += Data(repeating: 0x00, count: 16)
+        return data
     }
 
     static func mqttConnect(_ clientID: String = "nightjar") -> Data {
@@ -432,15 +435,18 @@ enum ReconPayloads {
 
     static func sipOptions(_ user: String = "nightjar",
                            _ host: String = "127.0.0.1") -> Data {
-        Data(("OPTIONS sip:\(user)@\(host) SIP/2.0\r\n"
-              + "Via: SIP/2.0/UDP \(host):5060;branch=z9hG4bKnj\r\n"
-              + "Max-Forwards: 70\r\n"
-              + "From: <sip:\(user)@\(host)>;tag=nj\r\n"
-              + "To: <sip:\(user)@\(host)>\r\n"
-              + "Call-ID: nightjar@\(host)\r\n"
-              + "CSeq: 1 OPTIONS\r\n"
-              + "Contact: <sip:\(user)@\(host)>\r\n"
-              + "Content-Length: 0\r\n\r\n").utf8)
+        // Appended line by line: the one-expression concatenation
+        // defeats the type checker.
+        var text = "OPTIONS sip:\(user)@\(host) SIP/2.0\r\n"
+        text += "Via: SIP/2.0/UDP \(host):5060;branch=z9hG4bKnj\r\n"
+        text += "Max-Forwards: 70\r\n"
+        text += "From: <sip:\(user)@\(host)>;tag=nj\r\n"
+        text += "To: <sip:\(user)@\(host)>\r\n"
+        text += "Call-ID: nightjar@\(host)\r\n"
+        text += "CSeq: 1 OPTIONS\r\n"
+        text += "Contact: <sip:\(user)@\(host)>\r\n"
+        text += "Content-Length: 0\r\n\r\n"
+        return Data(text.utf8)
     }
 
     static func rtspOptions() -> Data {
