@@ -32,15 +32,21 @@ and shares test vectors with it.
 ## How the Send tab flows
 
 Three numbered steps, in order: **1 · Destination** (a nearby phone
-by name, or a typed target), **2 · Payload** (the library as a
-scrollable dropdown sheet — search, tap to load, swipe to delete,
-save-your-current at the bottom — with a collapsed custom builder
-underneath), **3 · Send** (one big button that names its target).
-The mouth's log lives behind the scroll-icon button in the corner,
-not in the form. Everything narrates itself: sends, replies,
+by name — never your own phone, which is filtered out — or a typed
+target, with your recent addresses one tap away), **2 · Payload**
+(the library as a scrollable dropdown sheet — search, tap to load,
+swipe to delete, save-your-current at the bottom — with a collapsed
+custom builder underneath, and a live preview of the exact bytes
+about to go out), **3 · Send** (one big button that names its
+target, and the last reply printed right under it the moment it
+lands). The mouth's log lives behind the scroll-icon button in the
+corner, not in the form. Everything narrates itself: sends, replies,
 failures, listener starts, and toggles raise a small popup that
 explains what just happened and fades on its own, and every button
-and selection buzzes under your thumb.
+and selection buzzes under your thumb. The Serve tab tells you the
+name other phones see (or, in stealth, the exact `tcp://` address
+you're reachable at), and inbox rows long-press to copy as text or
+hex. Send-side settings persist like Serve's do.
 
 ## Also in the app
 
