@@ -84,9 +84,7 @@ optional `tx` extra, and only if you ask for it.
 
 It is a testing instrument for devices and networks you own, or
 that you are engaged in writing to test — the app carries the same
-statement in its About tab. Deauth, flooding, spoofing, and covert
-implants were considered for it and refused, on purpose; the
-boundaries are part of the design, and CHANGELOG.md keeps the list.
+statement in its About tab.
 
 ## Uninstall
 
@@ -1850,9 +1848,7 @@ optional `tx` extra, and only if you ask for it.
 
 It is a testing instrument for devices and networks you own, or
 that you are engaged in writing to test — the app carries the same
-statement in its About tab. Deauth, flooding, spoofing, and covert
-implants were considered for it and refused, on purpose; the
-boundaries are part of the design, and CHANGELOG.md keeps the list.
+statement in its About tab.
 
 ## Uninstall
 
