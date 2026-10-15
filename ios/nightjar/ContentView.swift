@@ -2,18 +2,25 @@ import Combine
 import SwiftUI
 
 struct ContentView: View {
+    @State private var tab = 0
+
     var body: some View {
-        TabView {
-            ListenView()
+        TabView(selection: $tab) {
+            ListenView(tab: $tab)
                 .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
+                .tag(0)
             SendView()
                 .tabItem { Label("Send", systemImage: "paperplane") }
+                .tag(1)
             ServeView()
                 .tabItem { Label("Serve", systemImage: "tray.and.arrow.down") }
+                .tag(2)
             SessionsView()
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
+                .tag(3)
             AboutView()
                 .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(4)
         }
     }
 }
@@ -21,8 +28,10 @@ struct ContentView: View {
 // MARK: - Listen
 
 struct ListenView: View {
+    @Binding var tab: Int
     @EnvironmentObject private var post: ListeningPost
     @EnvironmentObject private var updater: UpdateChecker
+    @EnvironmentObject private var mouth: Mouth
     @State private var label = ""
     @State private var now = Date().timeIntervalSince1970
 
@@ -52,6 +61,18 @@ struct ListenView: View {
                         }
                         ForEach(post.rows) { row in
                             DeviceRowView(row: row, now: now)
+                                .contextMenu {
+                                    Button {
+                                        if let id = UUID(uuidString: row.id) {
+                                            mouth.requestWrite(
+                                                to: id, label: row.preferredLabel)
+                                            tab = 1
+                                        }
+                                    } label: {
+                                        Label("Write a payload…",
+                                              systemImage: "paperplane")
+                                    }
+                                }
                         }
                     }
                 }
