@@ -43,6 +43,15 @@ struct SendView: View {
     @State private var showLog = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @State private var showImporter = false
+    @AppStorage("timingMode") private var timingMode = "now"
+    @AppStorage("timingDelay") private var timingDelay = "30"
+    @AppStorage("timingInterval") private var timingInterval = "10"
+    @AppStorage("timingRounds") private var timingRounds = "5"
+    @State private var snatchKnock = true
+    @AppStorage("plantKind") private var plantKind = "mqtt"
+    @AppStorage("plantTopic") private var plantTopic = "nightjar/plant"
+    @AppStorage("plantKey") private var plantKey = "nightjar:plant"
+    @AppStorage("plantValue") private var plantValue = "planted by nightjar-hack"
 
     private var fanoutList: [String] {
         fanoutTargets.split(separator: "\n").map(String.init)
@@ -275,12 +284,14 @@ struct SendView: View {
                     .font(.caption)
                     Button {
                         Haptics.tap()
-                        if let data = build() {
-                            mouth.sendToMany(targets: fanoutList,
-                                             payload: data,
-                                             framing: framing,
-                                             method: method,
-                                             readReply: readReply)
+                        guard build() != nil else { return }
+                        withTiming(label: "fan-out to "
+                                         + "\(fanoutList.count) target(s)") {
+                            mouth.sendToMany(
+                                targets: fanoutList,
+                                payloadFor: { build(forTargetText: $0) },
+                                framing: framing, method: method,
+                                readReply: readReply)
                         }
                     } label: {
                         Label(mouth.fanoutBusy
@@ -297,6 +308,145 @@ struct SendView: View {
                     ForEach(mouth.fanoutLines, id: \.self) { line in
                         Text(line).font(.caption.monospaced())
                     }
+                }
+
+                Section(header: Text("Timed delivery")) {
+                    Picker("When", selection: $timingMode) {
+                        Text("Now").tag("now")
+                        Text("After a delay").tag("delay")
+                        Text("Repeat").tag("repeat")
+                    }
+                    .pickerStyle(.segmented)
+                    if timingMode == "delay" {
+                        HStack {
+                            Text("Fire in (seconds)")
+                                .foregroundStyle(.secondary)
+                            TextField("30", text: $timingDelay)
+                                .keyboardType(.numberPad)
+                                .font(.body.monospaced())
+                        }
+                    }
+                    if timingMode == "repeat" {
+                        HStack {
+                            Text("Every (seconds)")
+                                .foregroundStyle(.secondary)
+                            TextField("10", text: $timingInterval)
+                                .keyboardType(.numberPad)
+                                .font(.body.monospaced())
+                        }
+                        HStack {
+                            Text("Rounds")
+                                .foregroundStyle(.secondary)
+                            TextField("5", text: $timingRounds)
+                                .keyboardType(.numberPad)
+                                .font(.body.monospaced())
+                        }
+                    }
+                    if let status = mouth.scheduleStatus {
+                        HStack {
+                            Text(status).font(.caption.monospaced())
+                            Spacer()
+                            Button("Cancel") {
+                                Haptics.tap()
+                                mouth.cancelSchedule()
+                            }
+                            .font(.caption)
+                        }
+                    }
+                    Text("Applies to the step-3 send and to fan-out. "
+                         + "Timers run while the app is open — iOS "
+                         + "suspends background apps, so a scheduled "
+                         + "send waits for the app to be on screen.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Section(header: Text("SnatchSteal")) {
+                    Text("Knock on the step-1 target, then take "
+                         + "everything it sends back — full drain, "
+                         + "not the scanner's polite banner peek. "
+                         + "The haul is saved to history.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("Knock first (the step-2 payload)",
+                           isOn: $snatchKnock)
+                    Button {
+                        Haptics.tap()
+                        snatch()
+                    } label: {
+                        Label(mouth.snatchBusy
+                                ? "Snatching… \(mouth.snatchBytes) bytes so far"
+                                : "Snatch from \(phoneSelection ?? target)",
+                              systemImage: "hand.raised.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(mouth.snatchBusy)
+                    if let result = mouth.snatchResult {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(result.label) — \(result.data.count) bytes")
+                                .font(.caption.weight(.semibold))
+                            if let text = PayloadKit.printableText(result.data) {
+                                Text(text)
+                                    .font(.caption.monospaced())
+                                    .lineLimit(6)
+                            }
+                            Text(PayloadKit.hexdump(result.data)
+                                    .components(separatedBy: "\n")
+                                    .prefix(6).joined(separator: "\n"))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section(header: Text("PayPlant")) {
+                    Text("Leave a payload living on the target: a "
+                         + "service that stores things keeps yours "
+                         + "until someone comes to collect. Verify "
+                         + "with SnatchSteal or the Redis GET check.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Picker("Plant in", selection: $plantKind) {
+                        Text("MQTT retained").tag("mqtt")
+                        Text("Redis SET").tag("redis")
+                        Text("memcached set").tag("memcached")
+                    }
+                    .pickerStyle(.segmented)
+                    if plantKind == "mqtt" {
+                        TextField("Topic", text: $plantTopic)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .font(.body.monospaced())
+                    } else {
+                        TextField("Key", text: $plantKey)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .font(.body.monospaced())
+                    }
+                    TextField("Value", text: $plantValue)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                        .font(.body.monospaced())
+                    Button {
+                        Haptics.tap()
+                        plant()
+                    } label: {
+                        Label("Plant it in \(target)",
+                              systemImage: "leaf.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    if plantKind == "redis" {
+                        Button {
+                            Haptics.tap()
+                            verifyPlant()
+                        } label: {
+                            Label("Verify — GET the key back",
+                                  systemImage: "checkmark.circle")
+                        }
+                    }
+                    Text("Targets step 1 (tcp://host:port — the "
+                         + "broker or store's port). Replies land "
+                         + "in the readout under step 3.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -391,10 +541,12 @@ struct SendView: View {
                 Toggle("Read a reply", isOn: $readReply)
                 Button {
                     Haptics.tap()
-                    if let data = build() {
-                        mouth.sendToPhone(name: phone, payload: data,
-                                          framing: framing, read: readReply,
-                                          timeout: 5)
+                    withTiming(label: "send to \(phone)") {
+                        if let data = build() {
+                            mouth.sendToPhone(name: phone, payload: data,
+                                              framing: framing, read: readReply,
+                                              timeout: 5)
+                        }
                     }
                 } label: {
                     Label("Send to \(phone)", systemImage: "paperplane.fill")
@@ -418,7 +570,9 @@ struct SendView: View {
                     Toggle("Read a reply", isOn: $readReply)
                     Button {
                         Haptics.tap()
-                        sendNetwork(value)
+                        withTiming(label: "send to \(target)") {
+                            sendNetwork(value)
+                        }
                     } label: {
                         Label("Send to \(target)", systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
@@ -549,13 +703,46 @@ struct SendView: View {
         }
     }
 
-    private func build() -> Data? {
+    private func build() -> Data? { build(forTargetText: target) }
+
+    /// Build the payload for one destination, resolving templates
+    /// ({{host}}, {{port}}, {{target}}, {{scheme}}) against it.
+    private func build(forTargetText targetText: String) -> Data? {
         do {
-            return try PayloadKit.build(source: source, text: payloadText, hex: payloadHex,
-                                        b64: payloadB64, xorSpec: xorKey, useGzip: useGzip)
+            return try PayloadKit.build(
+                source: source,
+                text: PayloadKit.substitute(payloadText,
+                                            targetText: targetText),
+                hex: PayloadKit.substitute(payloadHex,
+                                           targetText: targetText),
+                b64: PayloadKit.substitute(payloadB64,
+                                           targetText: targetText),
+                xorSpec: xorKey, useGzip: useGzip)
         } catch {
             showError = error.localizedDescription
             return nil
+        }
+    }
+
+    /// Route a send through the Timed delivery settings: fire now,
+    /// after the delay, or on the repeat interval.
+    private func withTiming(label: String,
+                            _ action: @escaping () -> Void) {
+        switch timingMode {
+        case "delay":
+            let secs = Double(timingDelay) ?? 30
+            mouth.schedule(after: secs, every: nil, rounds: 1,
+                           label: label, action: action)
+            toasts.show("Scheduled: \(label) in \(Int(secs))s")
+        case "repeat":
+            let secs = Double(timingInterval) ?? 10
+            let rounds = Int(timingRounds) ?? 5
+            mouth.schedule(after: secs, every: secs, rounds: rounds,
+                           label: label, action: action)
+            toasts.show("Repeating: \(label) every \(Int(secs))s "
+                        + "× \(rounds)")
+        default:
+            action()
         }
     }
 
@@ -590,6 +777,66 @@ struct SendView: View {
     /// except while `load` itself is doing the editing.
     private func unselectIfEditing() {
         if !suppressClear { selectedPayloadID = nil }
+    }
+
+    private func snatch() {
+        let probe = snatchKnock ? build() : nil
+        if snatchKnock, probe == nil { return }
+        if let phone = phoneSelection {
+            mouth.snatchPhone(name: phone, probe: probe, framing: framing)
+        } else if case .success(let value) = parsed {
+            mouth.snatch(target: value, probe: probe, framing: framing)
+        } else {
+            toasts.show("SnatchSteal needs a target in step 1",
+                        error: true)
+        }
+    }
+
+    private func plant() {
+        guard case .success(let value) = parsed else {
+            toasts.show("PayPlant needs a tcp:// or udp:// target "
+                        + "in step 1", error: true)
+            return
+        }
+        switch value {
+        case .tcp, .udp:
+            break
+        default:
+            toasts.show("PayPlant needs a tcp:// or udp:// target "
+                        + "in step 1", error: true)
+            return
+        }
+        let data: Data
+        switch plantKind {
+        case "redis":
+            data = PayloadKit.redisCommand(
+                ["SET", plantKey, plantValue])
+        case "memcached":
+            data = PayloadKit.memcachedSet(key: plantKey,
+                                           value: plantValue)
+        default:
+            data = PayloadKit.mqttConnect(clientID: "nightjar-hack")
+                + PayloadKit.mqttPublish(topic: plantTopic,
+                                         payload: Data(plantValue.utf8),
+                                         retain: true)
+        }
+        mouth.sendNetwork(target: value, payload: data, framing: "raw",
+                          read: true, timeout: 5)
+        toasts.show("Planted in \(target)")
+    }
+
+    private func verifyPlant() {
+        guard case .success(let value) = parsed else { return }
+        switch value {
+        case .tcp, .udp:
+            break
+        default:
+            return
+        }
+        mouth.sendNetwork(target: value,
+                          payload: PayloadKit.redisCommand(
+                            ["GET", plantKey]),
+                          framing: "raw", read: true, timeout: 5)
     }
 
     /// Scan → Send handoff: an open port tapped in the Scan tab
@@ -774,6 +1021,7 @@ struct ServeView: View {
     @AppStorage("serveUseHTTP") private var useHTTP = false
     @AppStorage("serveHttpPort") private var httpPort = "8080"
     @AppStorage("serveReply") private var reply = "ack"
+    @AppStorage("serveReplyMode") private var replyMode = "static"
     @AppStorage("serveFraming") private var framing = "raw"
     @AppStorage("stealthMode") private var stealthMode = false
     @State private var showLog = false
@@ -823,6 +1071,10 @@ struct ServeView: View {
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
+                    Picker("Reply mode", selection: $replyMode) {
+                        Text("Fixed reply").tag("static")
+                        Text("Echo what arrived").tag("echo")
+                    }
                     Picker("Framing", selection: $framing) {
                         Text("raw").tag("raw")
                         Text("len prefix").tag("len")
@@ -938,7 +1190,8 @@ struct ServeView: View {
         mouth.startServe(tcpPort: useTCP ? Int(tcpPort) : nil,
                          udpPort: useUDP ? Int(udpPort) : nil,
                          httpPort: useHTTP ? Int(httpPort) : nil,
-                         reply: reply, framing: framing)
+                         reply: reply, framing: framing,
+                         echo: replyMode == "echo")
     }
 
     private func inboxFile() -> URL {
