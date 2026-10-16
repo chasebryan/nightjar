@@ -361,6 +361,19 @@ final class KnockChat: ObservableObject {
     /// A message that arrived by light (Blink). Like sound
     /// and proximity, the medium is one-way — no ACK rides a
     /// QR frame back.
+    /// A time capsule, ground open. It arrives whenever the
+    /// grinding finished — the lock set the schedule, so the
+    /// thread simply keeps what the past sent forward.
+    func receiveCapsule(text: String) {
+        append(ChatMessage(id: UUID().uuidString, peer: "capsule",
+                           outgoing: false, text: text,
+                           when: Date(), state: "received",
+                           hash: nil, suite: nil))
+        purge()
+        Journal.log("knocktalk", "capsule",
+                    "a time capsule opened and was filed")
+    }
+
     func receiveBlink(text: String) {
         append(ChatMessage(id: UUID().uuidString, peer: "blink",
                            outgoing: false, text: text,
