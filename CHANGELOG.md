@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **EMCON (iOS).** A tripwire knock is logged once: late bytes
+  beat the silent-knock timer instead of writing a second row,
+  and a burst from the same source and port folds into one row
+  with a count. The log shares out as readable text; JSON stays
+  in Documents. The exposure score lists the weights behind the
+  band (GATT, beacon, Serve, device name, recon hits, Bonjour).
+  Home turf can be unmarked. Off turf, with EMCON off, one tap
+  goes dark — it does not engage by itself. The drill names the
+  services that went quiet and the ones still showing. Probe
+  fingerprints prefer the closest library match, so a short
+  prefix can't steal the name. Prefix checks use
+  `Data.starts(with:)`, which is the method `Data` actually has.
+
 ## 2.6.0 — 2026-10-15 — the cartographer
 
 - **Network Trace + adaptive Centipede + crawl logbook

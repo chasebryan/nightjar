@@ -13,7 +13,7 @@ struct EmconView: View {
     @AppStorage("emconCheckWifi") private var checkWifi = false
     @AppStorage("emconCheckBluetooth") private var checkBluetooth = false
 
-    private var score: (value: Int, band: String) {
+    private var score: Emcon.Score {
         Emcon.score(gattHostOn: mouth.gattHostOn,
                     beaconOn: mouth.beaconOn,
                     serveRunning: mouth.serveRunning,
@@ -78,11 +78,35 @@ struct EmconView: View {
                  + "what the last knock and audit actually found. "
                  + "Run the drill for the full picture.")
                 .font(.caption).foregroundStyle(.secondary)
+            if !score.parts.isEmpty {
+                Text("Why \(score.band):")
+                    .font(.caption.weight(.semibold))
+                ForEach(score.parts) { part in
+                    HStack {
+                        Text(part.label).font(.caption)
+                        Spacer()
+                        Text("+\(part.points)")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(scoreColor)
+                    }
+                }
+                if score.capped {
+                    Text("Parts sum past 100 — the score stops there.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
             if emcon.isAway, !emcon.active {
                 Label("Off home turf — this network is not your "
                       + "marked home. Going dark is advised.",
                       systemImage: "exclamationmark.shield")
                     .font(.callout).foregroundStyle(.orange)
+                Button {
+                    Haptics.tap()
+                    goDark()
+                } label: {
+                    Label("Go dark now", systemImage: "shield.slash")
+                }
+                .buttonStyle(.borderedProminent)
             }
             if emcon.active {
                 Button(role: .destructive) {
@@ -93,18 +117,22 @@ struct EmconView: View {
                 } label: {
                     Label("Stand down EMCON", systemImage: "shield")
                 }
-            } else {
+            } else if !emcon.isAway {
                 Button {
                     Haptics.tap()
-                    emcon.activate(mouth: mouth)
-                    toasts.show("EMCON active — emissions silenced, "
-                                + "tripwire armed.")
+                    goDark()
                 } label: {
                     Label("Go dark", systemImage: "shield.slash")
                 }
                 .buttonStyle(.borderedProminent)
             }
         }
+    }
+
+    private func goDark() {
+        emcon.activate(mouth: mouth)
+        toasts.show("EMCON active — emissions silenced, "
+                    + "tripwire armed.")
     }
 
     private var scoreColor: Color {
@@ -135,10 +163,9 @@ struct EmconView: View {
                 ProgressView()
             } else if let before = emcon.drillBefore,
                       let after = emcon.drillAfter {
-                let gone = silenced(before: before, after: after)
-                let still = after.exposures.count
-                    + after.announcers.count
-                if gone.isEmpty, still == 0 {
+                let gone = Emcon.silenced(before: before, after: after)
+                let still = Emcon.stillShowing(after)
+                if gone.isEmpty, still.isEmpty {
                     Text("Before and after agree: nothing was "
                          + "exposed in the first place.")
                         .font(.callout).foregroundStyle(.secondary)
@@ -146,17 +173,27 @@ struct EmconView: View {
                     if !gone.isEmpty {
                         Text("Silenced by going dark:")
                             .font(.callout.weight(.semibold))
-                        ForEach(gone, id: \.self) { line in
-                            Text("— \(line)").font(.callout)
+                        ForEach(Array(gone.enumerated()), id: \.offset) { item in
+                            Text("— \(item.element)").font(.callout)
                         }
+                    } else if !still.isEmpty {
+                        Text("Nothing went quiet.")
+                            .font(.callout).foregroundStyle(.secondary)
                     }
-                    Text(still == 0
-                         ? "Nothing survived the drill. The second "
-                           + "scan found a clean device."
-                         : "\(still) exposure(s) survived — they "
-                           + "belong to the OS, not the app. The "
-                           + "hardening list below is how those die.")
-                        .font(.callout).foregroundStyle(.secondary)
+                    if still.isEmpty {
+                        Text("Nothing survived the drill. The second "
+                             + "scan found a clean device.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    } else {
+                        Text("Still showing:")
+                            .font(.callout.weight(.semibold))
+                        ForEach(Array(still.enumerated()), id: \.offset) { item in
+                            Text("— \(item.element)").font(.callout)
+                        }
+                        Text("These belong to the OS, not the app. "
+                             + "The hardening list below is how those die.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
                 }
             } else {
                 Text("One tap: full knock and Bonjour audit, then "
@@ -165,19 +202,6 @@ struct EmconView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-    }
-
-    private func silenced(before: Emcon.Snapshot,
-                          after: Emcon.Snapshot) -> [String] {
-        let afterPorts = Set(after.exposures.map { $0.id })
-        let afterAds = Set(after.announcers.map { $0.id })
-        var lines = before.exposures
-            .filter { !afterPorts.contains($0.id) }
-            .map { "\($0.host):\($0.port) \($0.service)" }
-        lines += before.announcers
-            .filter { !afterAds.contains($0.id) }
-            .map { "\($0.label): \($0.name)" }
-        return lines
     }
 
     // MARK: - emissions
@@ -358,7 +382,9 @@ struct EmconView: View {
                 ForEach(emcon.events) { event in
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(event.source) → \(event.proto)"
-                             + "/\(event.port)")
+                             + "/\(event.port)"
+                             + (event.repeatCount > 1
+                                ? " ×\(event.repeatCount)" : ""))
                             .font(.callout.weight(.semibold))
                         Text(event.verdict)
                             .font(.caption)
@@ -367,6 +393,13 @@ struct EmconView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                ShareLink(item: Emcon.tripwireReportURL) {
+                    Label("Share the log",
+                          systemImage: "square.and.arrow.up")
+                }
+                Text("Readable text. The same log is kept as JSON "
+                     + "in Documents. The tripwire never replies.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button(role: .destructive) {
                     emcon.clearEvents()
                 } label: {
@@ -403,6 +436,15 @@ struct EmconView: View {
                 } label: {
                     Label("Mark this network as home",
                           systemImage: "house")
+                }
+            }
+            if emcon.homeSubnet != nil {
+                Button(role: .destructive) {
+                    Haptics.tap()
+                    emcon.unmarkHome()
+                    toasts.show("Home turf unmarked.")
+                } label: {
+                    Label("Unmark home", systemImage: "house.slash")
                 }
             }
             checklistRow($checkName,
