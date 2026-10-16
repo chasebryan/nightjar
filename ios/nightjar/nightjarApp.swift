@@ -34,6 +34,9 @@ struct NightjarApp: App {
                         Conductor.onHoneydrop(emcon: emcon,
                                               peer: peer)
                     }
+                    Journal.onEvent = { event in
+                        emcon.steward.consume(event)
+                    }
                 }
 #if !STORE_BUILD
                 .task {
