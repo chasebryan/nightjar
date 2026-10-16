@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="net.nosuchmachine.nightjarhack"
-    android:versionCode="260"
-    android:versionName="2.6.0">
-
-    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Listening (BLE scan) -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />

@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/chasebryan/nightjar-hack",
+  "sourceCommit": "e4ad8758dbf5cdf2d250fdd73372d2416014c93f",
+  "sourceHasTrackedChanges": false,
+  "applicationId": "net.nosuchmachine.nightjarhack",
+  "versionName": "3.0.0",
+  "versionCode": 300,
+  "sha256": "1315d10210117a4e5eded9d11c292c5f72739823ca71fc42ae637e1c18fdbd46",
+  "buildCommand": "./gradlew --no-daemon testReleaseUnitTest assembleRelease",
+  "gradle": "8.7",
+  "androidGradlePlugin": "8.5.2",
+  "kotlin": "2.0.20",
+  "minSdk": 26,
+  "targetSdk": 34
+}
