@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftUI
 
@@ -22,6 +23,12 @@ struct NightEvent: Identifiable, Codable {
     var module: String
     var kind: String
     var text: String
+    /// Seal chain: `p` names the previous sealed line's hash,
+    /// `h` is this line's SHA-256 (over the line carrying `p`
+    /// but not `h`). Nil on lines written before the chain
+    /// existed — history is not rewritten to look sealed.
+    var p: String? = nil
+    var h: String? = nil
 }
 
 enum Journal {
@@ -45,10 +52,16 @@ enum Journal {
     }()
 
     static func log(_ module: String, _ kind: String, _ text: String) {
-        let event = NightEvent(id: UUID().uuidString, when: Date(),
-                               module: module, kind: kind, text: text)
         queue.async {
+            if !chainLoaded { loadChainTail() }
+            var event = NightEvent(id: UUID().uuidString, when: Date(),
+                                   module: module, kind: kind,
+                                   text: text)
+            event.p = lastHash
+            guard let body = try? encoder.encode(event) else { return }
+            event.h = sha256Hex(body)
             guard let data = try? encoder.encode(event) else { return }
+            lastHash = event.h
             var line = data
             line.append(contentsOf: [0x0A])
             let url = fileURL
@@ -60,6 +73,76 @@ enum Journal {
                 try? line.write(to: url, options: .atomic)
             }
         }
+    }
+
+    // MARK: - seal chain
+
+    /// Every line names the hash of the sealed line before it,
+    /// so the log is a chain: alter, reorder, or remove a
+    /// sealed line and verification breaks at exactly that
+    /// line. (Cutting lines off the END leaves nothing pointing
+    /// forward to miss them — no chain can prove a negative
+    /// about its own tail, and this one doesn't claim to.)
+    private static var lastHash: String?
+    private static var chainLoaded = false
+
+    private static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func loadChainTail() {
+        chainLoaded = true
+        guard let data = try? Data(contentsOf: fileURL),
+              let text = String(data: data, encoding: .utf8)
+        else { return }
+        for line in text.split(separator: "\n").reversed() {
+            if let event = try? decoder.decode(
+                NightEvent.self, from: Data(line.utf8)),
+               let h = event.h {
+                lastHash = h
+                return
+            }
+        }
+    }
+
+    struct ChainReport {
+        var sealed: Int
+        var legacy: Int
+        var brokenLine: Int?
+    }
+
+    static func verifyChain() -> ChainReport {
+        guard let data = try? Data(contentsOf: fileURL),
+              let text = String(data: data, encoding: .utf8)
+        else { return ChainReport(sealed: 0, legacy: 0,
+                                  brokenLine: nil) }
+        var prev: String?
+        var sealed = 0
+        var legacy = 0
+        var lineNo = 0
+        for raw in text.split(separator: "\n",
+                              omittingEmptySubsequences: false) {
+            lineNo += 1
+            if raw.isEmpty { continue }
+            guard let event = try? decoder.decode(
+                NightEvent.self, from: Data(raw.utf8)) else {
+                return ChainReport(sealed: sealed, legacy: legacy,
+                                   brokenLine: lineNo)
+            }
+            guard let h = event.h else { legacy += 1; continue }
+            var body = event
+            body.h = nil
+            guard let encoded = try? encoder.encode(body),
+                  sha256Hex(encoded) == h, event.p == prev else {
+                return ChainReport(sealed: sealed, legacy: legacy,
+                                   brokenLine: lineNo)
+            }
+            sealed += 1
+            prev = h
+        }
+        return ChainReport(sealed: sealed, legacy: legacy,
+                           brokenLine: nil)
     }
 
     /// Newest first, capped — the view's working set.
@@ -81,9 +164,47 @@ enum Journal {
 
 struct NightLogView: View {
     @State private var events: [NightEvent] = []
+    @State private var report: Journal.ChainReport?
+
+    private var reportText: String? {
+        guard let report = report else { return nil }
+        if let broken = report.brokenLine {
+            return "Chain broken at line \(broken) — a sealed "
+                + "line was altered, reordered, or removed "
+                + "there. \(report.sealed) sealed lines verified "
+                + "before the break."
+        }
+        return "Chain intact: \(report.sealed) sealed lines "
+            + "verify, in order."
+            + (report.legacy > 0
+                ? " \(report.legacy) older lines predate the "
+                    + "chain and are unsealed."
+                : "")
+    }
 
     var body: some View {
         List {
+            if !events.isEmpty {
+                Section(header: Text("Seal chain"),
+                        footer: Text("Each new line names the "
+                            + "hash of the sealed line before "
+                            + "it. Verification proves no sealed "
+                            + "line was altered, reordered, or "
+                            + "removed from the middle of the "
+                            + "log.")) {
+                    Button {
+                        report = Journal.verifyChain()
+                    } label: {
+                        Label("Verify the chain",
+                              systemImage: "checkmark.seal")
+                    }
+                    if let reportText = reportText {
+                        Text(reportText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
             if events.isEmpty {
                 Text("Nothing journaled yet. Serve arrivals, tripwire "
                      + "knocks, EMCON posture changes, sparring runs "
@@ -105,9 +226,14 @@ struct NightLogView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Text(event.text).font(.callout)
-                    Text(event.when.formatted(
-                        date: .abbreviated, time: .omitted))
-                        .font(.caption2).foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Text(event.when.formatted(
+                            date: .abbreviated, time: .omitted))
+                        if let h = event.h {
+                            Text("· sealed " + String(h.prefix(10)))
+                        }
+                    }
+                    .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             if !events.isEmpty {
