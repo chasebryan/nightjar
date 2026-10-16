@@ -157,6 +157,10 @@ final class Emcon: ObservableObject {
     @Published private(set) var events: [TripEvent] = []
 
     private var listeners: [NWListener] = []
+    /// Which listener holds which port — the escalation needs
+    /// to hand ONE port to the canary without dropping the rest.
+    private var listenerPorts: [ObjectIdentifier:
+                                 (port: Int, udp: Bool)] = [:]
     private var sweep: BonjourSweep?
     private let tripQueue = DispatchQueue(label: "nightjar.emcon.tripwire")
     private let saveQueue = DispatchQueue(label: "nightjar.emcon.save")
@@ -180,6 +184,7 @@ final class Emcon: ObservableObject {
     weak var mouth: Mouth?
     private var vaultTimer: Timer?
     private var vaultStartedServe = false
+    private var vaultStartedCanary = false
 
     init() {
         active = UserDefaults.standard.bool(forKey: Self.activeKey)
@@ -750,6 +755,8 @@ final class Emcon: ObservableObject {
             }
             listener.start(queue: tripQueue)
             listeners.append(listener)
+            listenerPorts[ObjectIdentifier(listener)] =
+                (port, udp)
             return true
         } catch {
             return false
@@ -759,10 +766,35 @@ final class Emcon: ObservableObject {
     func stopTripwire() {
         for listener in listeners { listener.cancel() }
         listeners = []
+        listenerPorts = [:]
         watched = []
         watchedUDP = []
         unwatched = []
         tripwireOn = false
+    }
+
+    /// Give one TCP port up (the canary is taking it), or take
+    /// it back (the escalation ended). The rest of the wire
+    /// never notices.
+    private func releasePort(_ port: Int) {
+        for (id, tag) in listenerPorts
+            where tag.port == port && !tag.udp {
+            if let index = listeners.firstIndex(
+                where: { ObjectIdentifier($0) == id }) {
+                listeners[index].cancel()
+                listeners.remove(at: index)
+            }
+            listenerPorts.removeValue(forKey: id)
+        }
+        watched.removeAll { $0 == port }
+    }
+
+    private func rebindPort(_ port: Int) {
+        guard tripwireOn, !watched.contains(port) else { return }
+        if bind(port: port, udp: false) {
+            watched.append(port)
+            watched.sort()
+        }
     }
 
     func clearEvents() {
@@ -902,7 +934,112 @@ final class Emcon: ObservableObject {
                         "\(labeled) → \(proto)/\(port) — \(verdict)")
             self.knockEngine.note(source: labeled, port: port,
                                   proto: proto, verdict: verdict)
+            self.maybeEscalate(source: labeled, port: port,
+                               proto: proto, verdict: verdict,
+                               mine: mine)
         }
+    }
+
+    // MARK: - escalation (answer in character)
+
+    /// The perimeter's second reflex, when the operator arms
+    /// it: a knock the tripwire can fingerprint as a real
+    /// protocol stops meeting silence. The tripwire hands the
+    /// knocked port to the matching canary persona for ten
+    /// minutes — honeydrop included, per the Serve tab's
+    /// settings — then takes the port back. A port that has
+    /// escalated cools down for half an hour before it can
+    /// escalate again, so a persistent prober meets a rhythm,
+    /// not a loop.
+    @Published private(set) var escalation:
+        (persona: String, port: Int, until: Date)?
+    private var escalationTimer: Timer?
+    private var escalationCooldown: [Int: Date] = [:]
+
+    static var escalationArmed: Bool {
+        UserDefaults.standard.bool(forKey: "emconEscalation")
+    }
+
+    static func persona(forVerdict verdict: String) -> String? {
+        let text = verdict.lowercased()
+        if text.contains("ssh") { return "ssh" }
+        if text.contains("mqtt") { return "mqtt" }
+        if text.contains("smtp") { return "smtp" }
+        if text.contains("http") { return "http" }
+        return nil
+    }
+
+    private func maybeEscalate(source: String, port: Int,
+                               proto: String, verdict: String,
+                               mine: Bool) {
+        guard Self.escalationArmed, proto == "TCP", !mine,
+              tripwireOn, escalation == nil,
+              let mouth = mouth,
+              mouth.canary.runningPersona == nil,
+              let persona = Self.persona(forVerdict: verdict)
+        else { return }
+        if let until = escalationCooldown[port], until > Date() {
+            return
+        }
+        releasePort(port)
+        let defaults = UserDefaults.standard
+        func raiseCanary() {
+            mouth.canary.start(
+                mouth: mouth, persona: persona, port: port,
+                honeydrop: defaults.bool(
+                    forKey: "canaryHoneydrop"),
+                drop: defaults.string(forKey: "canaryDrop") ?? "")
+        }
+        raiseCanary()
+        let until = Date().addingTimeInterval(600)
+        escalation = (persona, port, until)
+        escalationTimer?.invalidate()
+        escalationTimer = Timer.scheduledTimer(
+            withTimeInterval: 600, repeats: false) { [weak self] _ in
+            self?.endEscalation()
+        }
+        Journal.log("emcon", "escalation",
+                    "\(persona) knock from \(source) on \(port) "
+                    + "— answered in character for 10 minutes")
+        // Listener teardown is asynchronous (the self-scan saga
+        // taught that): the canary's first bind can lose the
+        // race against the tripwire's dying socket. Check, retry
+        // once, and if the port still won't take, give it back
+        // rather than leave it unwatched under a false flag.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            [weak self] in
+            guard let self = self, self.escalation != nil,
+                  mouth.canary.runningPersona == nil
+            else { return }
+            raiseCanary()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                [weak self] in
+                guard let self = self, self.escalation != nil,
+                      mouth.canary.runningPersona == nil
+                else { return }
+                Journal.log("emcon", "escalation",
+                            "the hand-off to the canary failed "
+                            + "— port \(port) stays on the wire")
+                self.endEscalation()
+            }
+        }
+    }
+
+    func endEscalation() {
+        escalationTimer?.invalidate()
+        escalationTimer = nil
+        guard let current = escalation else { return }
+        escalation = nil
+        escalationCooldown[current.port] =
+            Date().addingTimeInterval(1800)
+        if let mouth = mouth,
+           mouth.canary.runningPersona == current.persona {
+            mouth.canary.stop()
+        }
+        rebindPort(current.port)
+        Journal.log("emcon", "escalation",
+                    "escalation over — tripwire re-armed on "
+                    + "\(current.port)")
     }
 
     // MARK: - sequence engine outputs
@@ -963,6 +1100,36 @@ final class Emcon: ObservableObject {
         ["ssh", "tls", "mqtt"]
     private static let vaultComboKey = "emconVaultCombo"
 
+    /// What the combination DOES when spoken. The vault began
+    /// as a one-trick door (a hidden Serve for sixty seconds);
+    /// it is a macro trigger now — the combination stays the
+    /// key, the action is the operator's choice.
+    @Published private(set) var vaultAction = "serve"
+    private static let vaultActionKey = "emconVaultAction"
+    static let vaultActions = ["serve", "emcon", "burn", "canary"]
+
+    static func vaultActionLabel(_ action: String) -> String {
+        switch action {
+        case "emcon": return "Raise EMCON"
+        case "burn": return "Burn Knocktalk threads now"
+        case "canary": return "Raise the canary (60 s)"
+        default: return "Open hidden Serve (60 s)"
+        }
+    }
+
+    func reloadVaultAction() {
+        let stored = UserDefaults.standard
+            .string(forKey: Self.vaultActionKey) ?? "serve"
+        vaultAction = Self.vaultActions.contains(stored)
+            ? stored : "serve"
+    }
+
+    func setVaultAction(_ action: String) {
+        UserDefaults.standard.set(action,
+                                  forKey: Self.vaultActionKey)
+        reloadVaultAction()
+    }
+
     func reloadVaultCombination() {
         let stored = UserDefaults.standard
             .string(forKey: Self.vaultComboKey)?
@@ -971,6 +1138,7 @@ final class Emcon: ObservableObject {
             ? stored : ["ssh", "tls", "mqtt"]
         vaultCombo = combo
         knockEngine.vaultCombination = combo
+        reloadVaultAction()
     }
 
     func setVaultDigit(_ index: Int, _ digit: String) {
@@ -982,11 +1150,13 @@ final class Emcon: ObservableObject {
         reloadVaultCombination()
     }
 
-    /// The combination was spoken: a hidden Serve — raised from
-    /// the Serve tab's own saved settings — stands open for sixty
-    /// seconds, then seals itself. If Serve was already running
-    /// on the operator's own orders, the vault changes nothing
-    /// and claims nothing.
+    /// The combination was spoken: fire the chosen macro.
+    /// Timed macros (Serve, canary) ride the vault's sixty
+    /// seconds and are stood back down at the seal — and only
+    /// if the vault itself raised them; anything the operator
+    /// already had running on their own orders is left exactly
+    /// as it was. Instant macros (raise EMCON, burn) simply
+    /// happen; the open window is their refractory period.
     func openVault(source: String) {
         guard vaultOpenUntil == nil else { return }
         vaultOpenUntil = Date().addingTimeInterval(60)
@@ -995,15 +1165,49 @@ final class Emcon: ObservableObject {
             withTimeInterval: 60, repeats: false) { [weak self] _ in
             self?.sealVault()
         }
-        if let mouth = mouth, !mouth.serveRunning {
-            mouth.startServeFromSettings()
-            vaultStartedServe = mouth.serveRunning
+        var detail = ""
+        switch vaultAction {
+        case "emcon":
+            if let mouth = mouth, !active {
+                activate(mouth: mouth)
+                detail = " — EMCON raised"
+            } else {
+                detail = " — EMCON already up"
+            }
+        case "burn":
+            chat.burnNow()
+            detail = " — Knocktalk threads burned"
+        case "canary":
+            if let mouth = mouth,
+               mouth.canary.runningPersona == nil {
+                let defaults = UserDefaults.standard
+                let persona = defaults.string(
+                    forKey: "canaryPersona") ?? "ssh"
+                let port = Int(defaults.string(
+                    forKey: "canaryPort") ?? "")
+                    ?? CanaryHost.defaultPort(persona)
+                mouth.canary.start(
+                    mouth: mouth, persona: persona, port: port,
+                    honeydrop: defaults.bool(
+                        forKey: "canaryHoneydrop"),
+                    drop: defaults.string(
+                        forKey: "canaryDrop") ?? "")
+                vaultStartedCanary = true
+                detail = " — canary raised for the window"
+            } else {
+                detail = " — canary already up"
+            }
+        default:
+            if let mouth = mouth, !mouth.serveRunning {
+                mouth.startServeFromSettings()
+                vaultStartedServe = mouth.serveRunning
+                detail = vaultStartedServe
+                    ? " — hidden Serve raised" : ""
+            }
         }
         Journal.log("emcon", "vault",
-                    "combination spoken by \(source) — vault open "
-                    + "for 60 seconds"
-                    + (vaultStartedServe
-                       ? ", hidden Serve raised" : ""))
+                    "combination spoken by \(source) — macro: "
+                    + Self.vaultActionLabel(vaultAction) + detail)
     }
 
     func sealVault() {
@@ -1015,6 +1219,10 @@ final class Emcon: ObservableObject {
             mouth.stopServe()
         }
         vaultStartedServe = false
+        if vaultStartedCanary, let mouth = mouth {
+            mouth.canary.stop()
+        }
+        vaultStartedCanary = false
         Journal.log("emcon", "vault", "vault sealed")
     }
 
