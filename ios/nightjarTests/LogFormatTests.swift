@@ -65,7 +65,7 @@ final class LogFormatTests: XCTestCase {
                             1760000001.25)
         XCTAssertNotEqual(timestamp, german)
 
-        let encoded = Data("{\\"ts\\": \(timestamp)}".utf8)
+        let encoded = Data("{\"ts\": \(timestamp)}".utf8)
         let decoded = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         XCTAssertEqual(decoded["ts"] as? Double, 1760000001.25)
