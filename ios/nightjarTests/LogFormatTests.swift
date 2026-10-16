@@ -55,6 +55,22 @@ final class LogFormatTests: XCTestCase {
         XCTAssertEqual(JSONL.hex([0x00, 0xAB, 0xFF]), "00abff")
     }
 
+    func testTimestampIsALocaleIndependentJSONNumber() throws {
+        let timestamp = JSONL.seconds(1760000001.25)
+        XCTAssertEqual(timestamp, "1760000001.250")
+
+        // Device locales can substitute commas and grouping separators,
+        // neither of which is legal in an unquoted JSON number.
+        let german = String(format: "%.3f", locale: Locale(identifier: "de_DE"),
+                            1760000001.25)
+        XCTAssertNotEqual(timestamp, german)
+
+        let encoded = Data("{\\"ts\\": \(timestamp)}".utf8)
+        let decoded = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(decoded["ts"] as? Double, 1760000001.25)
+    }
+
     func testUUIDSpelling() {
         XCTAssertEqual(CBUUIDTestHelper.spell("FEED"), "0000feed-0000-1000-8000-00805f9b34fb")
         XCTAssertEqual(CBUUIDTestHelper.spell("0000FEAA-0000-1000-8000-00805F9B34FB"),
