@@ -28,14 +28,17 @@ struct ContentView: View {
                 .appThemed()
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
                 .tag(3)
-            ScanView(tab: $tab)
-                .appThemed()
-                .tabItem { Label("Scan", systemImage: "scope") }
-                .tag(4)
+            // Declaration order is the More list's order:
+            // About heads it — it is the app's identity and its
+            // options hub. Tags are unchanged by position.
             AboutView()
                 .appThemed()
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(5)
+            ScanView(tab: $tab)
+                .appThemed()
+                .tabItem { Label("Scan", systemImage: "scope") }
+                .tag(4)
             ReconBenchView(tab: $tab)
                 .appThemed()
                 .tabItem { Label("Recon", systemImage: "target") }
@@ -83,7 +86,9 @@ struct ContentView: View {
 struct ListenView: View {
     @Binding var tab: Int
     @EnvironmentObject private var post: ListeningPost
+#if !STORE_BUILD
     @EnvironmentObject private var updater: UpdateChecker
+#endif
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @State private var label = ""
@@ -94,11 +99,13 @@ struct ListenView: View {
     var body: some View {
         NavigationStack {
             List {
+#if !STORE_BUILD
                 if let release = updater.available {
                     Section {
                         UpdateBanner(release: release)
                     }
                 }
+#endif
                 Section {
                     statusRow
                     if let session = post.session {
@@ -222,6 +229,7 @@ struct ListenView: View {
     }
 }
 
+#if !STORE_BUILD
 struct UpdateBanner: View {
     let release: UpdateChecker.Release
 
@@ -244,6 +252,7 @@ struct UpdateBanner: View {
         .padding(.vertical, 2)
     }
 }
+#endif
 
 struct DeviceRowView: View {
     let row: DeviceRow
@@ -734,7 +743,9 @@ struct SessionRowView: View {
 // MARK: - About
 
 struct AboutView: View {
+#if !STORE_BUILD
     @EnvironmentObject private var updater: UpdateChecker
+#endif
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
@@ -744,6 +755,57 @@ struct AboutView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section(header: Text("The unpure build")) {
+                    Text("This is nightjar-hack: the listening post from nightjar, "
+                         + "plus a mouth. The Listen tab is the purist half — it scans "
+                         + "and logs advertisements and never connects, pairs or sends, "
+                         + "exactly like the upstream app. The Send and Serve tabs are "
+                         + "the hack half: they transmit, but only when you press their "
+                         + "buttons, to targets you type. The two halves share no radio "
+                         + "state; the ear stays pure, the mouth is a different organ.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Send and Serve work while the app is on screen. iOS does not "
+                         + "let a sideloaded app hold listeners or advertisements open "
+                         + "in the background, so a beacon or server stops being "
+                         + "reachable when you leave the app — the Listen tab keeps "
+                         + "its background hearing, the mouth does not.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Section(header: Text("Version")) {
+                    Text("nightjar-hack for iOS \(AppInfo.version) · log format 1")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Link(destination: URL(string: "https://github.com/chasebryan/nightjar-hack/blob/main/PRIVACY.md")!) {
+                        Label("Privacy Policy", systemImage: "hand.raised")
+                    }
+#if !STORE_BUILD
+                    if let release = updater.available {
+                        Link(destination: release.url) {
+                            Label("Update available — \(release.name)",
+                                  systemImage: "arrow.up.right.square")
+                        }
+                    }
+                    Button {
+                        Task { await updater.check() }
+                    } label: {
+                        HStack {
+                            Text("Check for updates")
+                            Spacer()
+                            if updater.checking {
+                                ProgressView()
+                            } else if updater.noReleasesYet {
+                                Text("no releases published yet")
+                                    .foregroundStyle(.secondary)
+                            } else if updater.available == nil, updater.lastChecked != nil {
+                                Text("up to date").foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .disabled(updater.checking)
+#endif
+                }
                 Section(header: Text("Backdrop")) {
                     if let flag = UIImage(named: "AppBackground") {
                         Text("Jolly Roger: loaded "
@@ -808,58 +870,12 @@ struct AboutView: View {
                         Text("Reset all settings to sane defaults")
                     }
                 }
-                Section(header: Text("The unpure build")) {
-                    Text("This is nightjar-hack: the listening post from nightjar, "
-                         + "plus a mouth. The Listen tab is the purist half — it scans "
-                         + "and logs advertisements and never connects, pairs or sends, "
-                         + "exactly like the upstream app. The Send and Serve tabs are "
-                         + "the hack half: they transmit, but only when you press their "
-                         + "buttons, to targets you type. The two halves share no radio "
-                         + "state; the ear stays pure, the mouth is a different organ.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text("Send and Serve work while the app is on screen. iOS does not "
-                         + "let a sideloaded app hold listeners or advertisements open "
-                         + "in the background, so a beacon or server stops being "
-                         + "reachable when you leave the app — the Listen tab keeps "
-                         + "its background hearing, the mouth does not.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
                 Section(header: Text("Getting logs to the Mac")) {
                     Text("Each session is a JSON Lines file in Files › On My iPhone › "
                          + "nightjar › sessions, and shareable from the Sessions tab. On "
                          + "the Mac: nightjar report <file> and nightjar trackers <file>.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                }
-                Section(header: Text("Version")) {
-                    Text("nightjar-hack for iOS \(AppInfo.version) · log format 1")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    if let release = updater.available {
-                        Link(destination: release.url) {
-                            Label("Update available — \(release.name)",
-                                  systemImage: "arrow.up.right.square")
-                        }
-                    }
-                    Button {
-                        Task { await updater.check() }
-                    } label: {
-                        HStack {
-                            Text("Check for updates")
-                            Spacer()
-                            if updater.checking {
-                                ProgressView()
-                            } else if updater.noReleasesYet {
-                                Text("no releases published yet")
-                                    .foregroundStyle(.secondary)
-                            } else if updater.available == nil, updater.lastChecked != nil {
-                                Text("up to date").foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .disabled(updater.checking)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -882,7 +898,9 @@ struct AboutView: View {
 #Preview {
     ContentView()
         .environmentObject(ListeningPost())
+#if !STORE_BUILD
         .environmentObject(UpdateChecker())
+#endif
         .environmentObject(Mouth())
         .environmentObject(ToastCenter())
 }
