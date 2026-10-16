@@ -133,21 +133,21 @@ final class CanaryHost: ObservableObject {
         if !dropText.isEmpty { return Data(dropText.utf8) }
         switch persona {
         case "http":
-            return Data(("APP_ENV=production\n"
-                + "DB_HOST=db.internal\n"
-                + "DB_NAME=app\n"
-                + "DB_USER=backup_svc\n"
-                + "BACKUP_DIR=/var/backups/nightly\n"
-                + "BACKUP_FILE=db_dump_2026-10-15.sql.gz\n")
-                .utf8)
+            var text = "APP_ENV=production\n"
+            text += "DB_HOST=db.internal\n"
+            text += "DB_NAME=app\n"
+            text += "DB_USER=backup_svc\n"
+            text += "BACKUP_DIR=/var/backups/nightly\n"
+            text += "BACKUP_FILE=db_dump_2026-10-15.sql.gz\n"
+            return Data(text.utf8)
         case "mqtt":
             return Data(("{\"site\":\"home\",\"config\":"
                 + "\"rev 41\",\"backup\":\"nas.internal:445\"}")
                 .utf8)
         case "smtp":
-            return Data("archive copy: "
-                + "https://mail.example.org/archive/2026/10/"
-                + "msg-4471".utf8)
+            let text = "archive copy: https://mail.example.org"
+                + "/archive/2026/10/msg-4471"
+            return Data(text.utf8)
         default:
             return Data()
         }
@@ -352,9 +352,8 @@ final class CanaryHost: ObservableObject {
                 if line.hasPrefix("EHLO")
                     || line.hasPrefix("HELO") {
                     send(connection, Data(
-                        "250-mail.example.org\r\n"
-                        + "250-PIPELINING\r\n"
-                        + "250 8BITMIME\r\n".utf8))
+                        "250-mail.example.org\r\n250-PIPELINING\r\n250 8BITMIME\r\n"
+                            .utf8))
                 } else if line.hasPrefix("MAIL FROM") {
                     send(connection, Data("250 2.1.0 Ok\r\n".utf8))
                 } else if line.hasPrefix("RCPT TO") {
