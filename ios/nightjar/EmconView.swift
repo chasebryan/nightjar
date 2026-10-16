@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// EMCON tab: the device's own exposure, itemized and shut down.
-/// See Emcon.swift for the engine and the honest limits.
+/// EMCON tab: the device's own exposure — scored, itemized, and
+/// shut down. See Emcon.swift for the engine and the honest limits.
 struct EmconView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
@@ -13,11 +13,23 @@ struct EmconView: View {
     @AppStorage("emconCheckWifi") private var checkWifi = false
     @AppStorage("emconCheckBluetooth") private var checkBluetooth = false
 
+    private var score: (value: Int, band: String) {
+        Emcon.score(gattHostOn: mouth.gattHostOn,
+                    beaconOn: mouth.beaconOn,
+                    serveRunning: mouth.serveRunning,
+                    stealth: mouth.stealth,
+                    deviceName: emcon.deviceName,
+                    exposureCount: emcon.exposures.count,
+                    announcerCount: emcon.announcers.count)
+    }
+
     var body: some View {
         List {
             statusSection
+            drillSection
             emissionsSection
             selfReconSection
+            auditSection
             tripwireSection
             hardeningSection
             Section {
@@ -33,11 +45,11 @@ struct EmconView: View {
         .onAppear { emcon.restoreIfNeeded() }
     }
 
-    // MARK: - status
+    // MARK: - status + score
 
     private var statusSection: some View {
         Section {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 Image(systemName: emcon.active
                       ? "shield.slash.fill" : "shield")
                     .font(.title)
@@ -52,6 +64,25 @@ struct EmconView: View {
                            + "its own name.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                Spacer()
+                VStack(spacing: 0) {
+                    Text("\(score.value)")
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(scoreColor)
+                    Text(score.band)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(scoreColor)
+                }
+            }
+            Text("Exposure score — live emissions weigh most, then "
+                 + "what the last knock and audit actually found. "
+                 + "Run the drill for the full picture.")
+                .font(.caption).foregroundStyle(.secondary)
+            if emcon.isAway, !emcon.active {
+                Label("Off home turf — this network is not your "
+                      + "marked home. Going dark is advised.",
+                      systemImage: "exclamationmark.shield")
+                    .font(.callout).foregroundStyle(.orange)
             }
             if emcon.active {
                 Button(role: .destructive) {
@@ -74,6 +105,79 @@ struct EmconView: View {
                 .buttonStyle(.borderedProminent)
             }
         }
+    }
+
+    private var scoreColor: Color {
+        switch score.value {
+        case 0: return .green
+        case 1...15: return .mint
+        case 16...40: return .yellow
+        case 41...70: return .orange
+        default: return .red
+        }
+    }
+
+    // MARK: - the drill
+
+    private var drillSection: some View {
+        Section(header: Text("The drill")) {
+            Button {
+                Haptics.tap()
+                emcon.runDrill(mouth: mouth)
+            } label: {
+                Label(emcon.drilling
+                      ? "Running the drill…"
+                      : "Prove it — scan, go dark, scan again",
+                      systemImage: "checklist")
+            }
+            .disabled(emcon.drilling || emcon.scanning || emcon.auditing)
+            if emcon.drilling {
+                ProgressView()
+            } else if let before = emcon.drillBefore,
+                      let after = emcon.drillAfter {
+                let gone = silenced(before: before, after: after)
+                let still = after.exposures.count
+                    + after.announcers.count
+                if gone.isEmpty, still == 0 {
+                    Text("Before and after agree: nothing was "
+                         + "exposed in the first place.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    if !gone.isEmpty {
+                        Text("Silenced by going dark:")
+                            .font(.callout.weight(.semibold))
+                        ForEach(gone, id: \.self) { line in
+                            Text("— \(line)").font(.callout)
+                        }
+                    }
+                    Text(still == 0
+                         ? "Nothing survived the drill. The second "
+                           + "scan found a clean device."
+                         : "\(still) exposure(s) survived — they "
+                           + "belong to the OS, not the app. The "
+                           + "hardening list below is how those die.")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("One tap: full knock and Bonjour audit, then "
+                     + "EMCON engages, then both run again and the "
+                     + "difference is read out here.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func silenced(before: Emcon.Snapshot,
+                          after: Emcon.Snapshot) -> [String] {
+        let afterPorts = Set(after.exposures.map { $0.id })
+        let afterAds = Set(after.announcers.map { $0.id })
+        var lines = before.exposures
+            .filter { !afterPorts.contains($0.id) }
+            .map { "\($0.host):\($0.port) \($0.service)" }
+        lines += before.announcers
+            .filter { !afterAds.contains($0.id) }
+            .map { "\($0.label): \($0.name)" }
+        return lines
     }
 
     // MARK: - emissions
@@ -139,10 +243,10 @@ struct EmconView: View {
                 Label(emcon.scanning ? "Knocking…" : "Knock myself",
                       systemImage: "target")
             }
-            .disabled(emcon.scanning)
+            .disabled(emcon.scanning || emcon.drilling)
             if emcon.scanning {
                 ProgressView()
-            } else if let at = emcon.lastScanAt {
+            } else if emcon.lastScanAt != nil {
                 if emcon.exposures.isEmpty {
                     Text("Nothing answered on any probed port, on "
                          + "loopback or the LAN address. From out "
@@ -164,15 +268,61 @@ struct EmconView: View {
                         }
                     }
                 }
-                Text("Last scan "
-                     + at.formatted(date: .omitted, time: .shortened)
-                     + ". ★ = the reply carried the service's own tell.")
+                Text("★ = the reply carried the service's own tell.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 Text("Runs Recon's own knock against this phone — "
                      + "every registry port, loopback and LAN "
                      + "address, each port spoken to in its own "
                      + "protocol.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Bonjour audit
+
+    private var auditSection: some View {
+        Section(header: Text("Announcements — Bonjour audit")) {
+            Button {
+                Haptics.tap()
+                emcon.runBonjourAudit()
+            } label: {
+                Label(emcon.auditing
+                      ? "Listening…"
+                      : "Audit what this device announces",
+                      systemImage: "antenna.radiowaves.left.and.right")
+            }
+            .disabled(emcon.auditing || emcon.drilling)
+            if emcon.auditing {
+                ProgressView()
+            } else if emcon.lastAuditAt != nil {
+                if emcon.announcers.isEmpty {
+                    Text("Heard \(emcon.heardCount) announcement(s) "
+                         + "on this network — none of them is this "
+                         + "device. mDNS has nothing of yours.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    ForEach(emcon.announcers) { ad in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(ad.label) — \(ad.name)")
+                                .font(.callout.weight(.semibold))
+                            Text(ad.why + " · \(ad.type)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Text("These are the OS's own megaphones — "
+                         + "AirPlay and friends. EMCON can't switch "
+                         + "them off; the hardening list is where "
+                         + "they die (name, AirDrop).")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Browses the LAN the way the Scan tab does and "
+                     + "flags every announcement that is this "
+                     + "device — by name, or by resolving to this "
+                     + "phone's address.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -186,7 +336,8 @@ struct EmconView: View {
                 Text("Listeners")
                 Spacer()
                 Text(emcon.tripwireOn
-                     ? "\(emcon.watched.count) ports watched"
+                     ? "\(emcon.watched.count) TCP + "
+                       + "\(emcon.watchedUDP.count) UDP watched"
                      : "off")
                     .font(.callout).foregroundStyle(.secondary)
             }
@@ -200,12 +351,14 @@ struct EmconView: View {
                 Text("Nobody has knocked. When someone runs these "
                      + "probes against this phone, it lands here — "
                      + "source, port, and which first words they "
-                     + "used. The tripwire never replies.")
+                     + "used. The log persists across launches. The "
+                     + "tripwire never replies.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(emcon.events) { event in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(event.source) → :\(event.port)")
+                        Text("\(event.source) → \(event.proto)"
+                             + "/\(event.port)")
                             .font(.callout.weight(.semibold))
                         Text(event.verdict)
                             .font(.caption)
@@ -227,6 +380,31 @@ struct EmconView: View {
 
     private var hardeningSection: some View {
         Section(header: Text("Hardening — the OS half")) {
+            HStack {
+                Text("This network")
+                Spacer()
+                Text(emcon.currentSubnet.map { "\($0).0/24" }
+                     ?? "not on Wi-Fi")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            HStack {
+                Text("Home turf")
+                Spacer()
+                Text(emcon.homeSubnet.map { "\($0).0/24" } ?? "unmarked")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            if emcon.currentSubnet != nil,
+               emcon.currentSubnet != emcon.homeSubnet {
+                Button {
+                    Haptics.tap()
+                    emcon.markHome()
+                    toasts.show("Marked — EMCON will warn you off "
+                                + "home turf.")
+                } label: {
+                    Label("Mark this network as home",
+                          systemImage: "house")
+                }
+            }
             checklistRow($checkName,
                          "Rename this device to something generic",
                          detail: "Settings → General → About → Name. "
