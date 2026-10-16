@@ -6,29 +6,20 @@
 
 **3.0.0 — the ventriloquist.**
 
-nightjar-hack began as an overlay that taught the nightjar BLE
-listening post to talk. It is its own project now: a Python CLI
-(`send` / `serve`) and a full iOS app — the listening post, the
-mouth, a recon bench, a defensive posture tab, and Knocktalk,
-encrypted messaging carried by knock order alone.
+nightjar-hack began as an overlay that taught the nightjar
+BLE listening post to talk. It is its own project now, and
+its flagship is the iOS app: the listening post, the mouth,
+a recon bench, a defensive posture tab, and Knocktalk —
+encrypted messaging carried by knock order alone. A Python
+CLI carries the same mouth to the desktop, and an Android
+port follows the flagship on a staggered schedule (see
+[Android](#android)).
 
-## Android download
+## The flagship: the iOS app
 
-[**Download the v3.0.0 Android APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
-
-On the release page itself, the file hides at the very
-bottom of the notes under **Assets** — the link above
-skips the scrolling and downloads it directly.
-
-Android 8.0+; open the APK on your phone to install. This packages the existing
-six-tab Android port; the iOS-only EMCON and Knocktalk features are not yet
-ported. If replacing the old v2.6.0 debug-signed APK, export your data before
-uninstalling it: v3.0.0 starts a new release signing key. See
-[Android install/build notes](android/README.md) for details.
-
-## The iOS app
-
-Nine tabs, one instrument. Build and install notes live in
+Nine tabs, one instrument. This is where nightjar-hack is
+developed, and the standard everything else is measured
+against. Build and install notes live in
 [ios/README.md](ios/README.md).
 
 - **Listen** — the purist half: receive-only BLE, sessions in
@@ -119,7 +110,7 @@ Deeper build notes live in
 
 ## 60 seconds (the CLI)
 
-    # 1. get the upstream repo (nothing was uploaded; just clone)
+    # 1. get the upstream repo
     git clone https://github.com/chasebryan/nightjar
     cd nightjar
 
@@ -161,11 +152,47 @@ If you would rather not unzip anything, use
 nightjar-hack-single.py: it writes the same files into the
 checkout and then calls apply_overlay.py.
 
+## Android
+
+The flagship, carried to Android — a port of the iOS app,
+released on the staggered schedule below.
+
+[**Download the v3.0.0 Android APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
+
+On the release page itself, the file hides at the very
+bottom of the notes under **Assets** — the link above
+downloads it directly.
+
+Android 8.0+; open the APK on your phone to install. If
+replacing the old v2.6.0 debug-signed APK, export your
+data before uninstalling it: v3.0.0 starts a new release
+signing key. Build and install notes live in
+[android/README.md](android/README.md).
+
+### Release schedule
+
+iOS is the flagship. It is developed continuously, and
+every feature lands there first. Android is packaged at
+full numbered releases: when the flagship cuts a new
+major number, an APK is built to mirror that release —
+equal quality, the same form. Between those releases the
+Android app holds at its packaged version while iOS moves
+ahead; the stagger is deliberate, so the port is always a
+finished mirror of a finished flagship, never a rough
+draft of one still moving.
+
+The current package is v3.0.0: the six foundation tabs
+(Listen, Send, Serve, Scan, Sessions, About) over the
+shared decoder bench. The mirror overhaul now underway
+brings the port to the flagship's full standard for the
+next full numbered release.
+
 ## Documents
 
 - [HACKER.md](HACKER.md) — the CLI manual
 - [HACKER-RECON.md](HACKER-RECON.md) — the Recon bench
 - [ios/README.md](ios/README.md) — building the iOS app
+- [android/README.md](android/README.md) — the Android port
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, when
 - [PRIVACY.md](PRIVACY.md) — what the app collects (nothing)
 
