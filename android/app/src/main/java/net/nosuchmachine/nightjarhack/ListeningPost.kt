@@ -227,6 +227,10 @@ class ListeningPost(private val context: Context) {
         }
         _isListening.value = true
         _lastError.value = null
+        Journal.log(
+            "listen", "session",
+            "listening started — ${session.label ?: "unlabeled"}"
+        )
         startTicker()
     }
 
@@ -245,8 +249,12 @@ class ListeningPost(private val context: Context) {
         } catch (_: Exception) {
         }
         writer = null
+        val wasListening = _isListening.value
         _isListening.value = false
         _session.value = null
+        if (wasListening) {
+            Journal.log("listen", "session", "listening stopped")
+        }
     }
 
     private fun record(result: ScanResult) {
