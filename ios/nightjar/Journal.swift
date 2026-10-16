@@ -162,6 +162,92 @@ enum Journal {
     }
 }
 
+/// The morning brief: the sealed log distilled to the lines
+/// worth reading first. A ledger answers "what happened, in
+/// order, provably"; the brief answers "what matters" — the
+/// last twelve hours, counted by kind, with the narrative
+/// lines quoted whole.
+enum MorningBrief {
+    static let window: TimeInterval = 12 * 3600
+
+    static func lines(events: [NightEvent],
+                      now: Date = Date()) -> [String] {
+        let recent = events.filter {
+            now.timeIntervalSince($0.when) <= window
+        }
+        guard !recent.isEmpty else { return [] }
+        func count(_ module: String, _ kind: String) -> Int {
+            recent.filter { $0.module == module && $0.kind == kind }
+                .count
+        }
+        func latest(_ module: String, _ kind: String) -> NightEvent? {
+            recent.filter { $0.module == module && $0.kind == kind }
+                .max { $0.when < $1.when }
+        }
+        var out: [String] = []
+        let knocks = count("emcon", "knock")
+        if knocks > 0 {
+            out.append("\(knocks) knock(s) on the tripwire.")
+        }
+        let drops = count("canary", "honeydrop")
+        if drops > 0 {
+            out.append("\(drops) honeydrop(s) TAKEN — someone "
+                       + "reached for the prize.")
+        }
+        if let dh = latest("emcon", "deadhand"),
+           dh.text.contains("FELL") {
+            out.append("The dead hand fell: " + dh.text)
+        }
+        if let c = latest("emcon", "conductor") {
+            let n = count("emcon", "conductor")
+            out.append("The conductor fired \(n) time(s). "
+                       + "Latest: " + c.text)
+        }
+        if let s = latest("emcon", "sense") {
+            out.append("Second sense: " + s.text)
+        }
+        let deviations = count("emcon", "hometurf")
+        if deviations > 0 {
+            out.append("\(deviations) deviation(s) from the "
+                       + "learned home pattern.")
+        }
+        let drift = count("dossier", "drift")
+        if drift > 0 {
+            out.append("\(drift) dossier drift report(s) — a "
+                       + "watched address changed its story.")
+        }
+        let capsules = count("knocktalk", "capsule")
+        if capsules > 0 {
+            out.append("\(capsules) time capsule(s) opened.")
+        }
+        let flares = count("listen", "flare")
+        if flares > 0 {
+            out.append("\(flares) flare sighting(s) — a paired "
+                       + "operator was in radio range.")
+        }
+        if let m = latest("emcon", "maneuvers") {
+            out.append("Maneuvers: " + m.text)
+        }
+        let spars = count("emcon", "spar")
+        if spars > 0 {
+            out.append("\(spars) self-sparring run(s) against "
+                       + "your own Serve.")
+        }
+        return out
+    }
+
+    static func text(events: [NightEvent],
+                     now: Date = Date()) -> String {
+        let ls = lines(events: events, now: now)
+        guard !ls.isEmpty else {
+            return "The morning brief: a quiet twelve hours. "
+                + "Nothing knocked that mattered."
+        }
+        return "The morning brief — the last twelve hours:\n"
+            + ls.map { "· " + $0 }.joined(separator: "\n")
+    }
+}
+
 struct NightLogView: View {
     @State private var events: [NightEvent] = []
     @State private var report: Journal.ChainReport?
@@ -185,6 +271,28 @@ struct NightLogView: View {
     var body: some View {
         List {
             if !events.isEmpty {
+                let brief = MorningBrief.lines(events: events)
+                Section(header: Text("The morning brief"),
+                        footer: Text("The last twelve hours, "
+                            + "distilled from the sealed log "
+                            + "below — counts and headlines; the "
+                            + "proof stays in the ledger.")) {
+                    if brief.isEmpty {
+                        Text("A quiet twelve hours. Nothing "
+                             + "knocked that mattered.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(brief, id: \.self) { line in
+                            Text(line).font(.callout)
+                        }
+                        ShareLink(item: MorningBrief.text(
+                            events: events)) {
+                            Label("Share the brief",
+                                  systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
                 Section(header: Text("Seal chain"),
                         footer: Text("Each new line names the "
                             + "hash of the sealed line before "
