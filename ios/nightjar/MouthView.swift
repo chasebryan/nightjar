@@ -2010,6 +2010,8 @@ struct ServeView: View {
                     }
                 }
 
+                CanarySectionView(host: mouth.canary)
+
                 Section(header: Text("Inbox")) {
                     if mouth.inbox.isEmpty {
                         Text("Nothing received yet.")
