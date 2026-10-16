@@ -280,6 +280,12 @@ struct DeviceRowView: View {
                 if row.trackerShaped {
                     Image(systemName: "tag.fill").font(.caption).foregroundStyle(.orange)
                 }
+                if row.flare {
+                    Image(systemName: "flame.fill")
+                        .font(.caption).foregroundStyle(.yellow)
+                        .accessibilityLabel(
+                            "Flare: a paired operator is near")
+                }
                 Spacer()
                 Text(row.rssiLast.map { "\($0) dBm" } ?? "? dBm")
                     .font(.callout.monospacedDigit())
