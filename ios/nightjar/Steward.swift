@@ -83,7 +83,10 @@ final class Steward: ObservableObject {
         "The steward has not taken a shift yet."
     @Published private(set) var mirrorLine = ""
     @Published private(set) var proposals: [Proposal] = []
-    @Published private(set) var orders: [WatchOrder] = []
+    /// The one collection the section edits in place
+    /// (bindings, append, removeAll) — hence a public setter,
+    /// where its siblings are written only through methods.
+    @Published var orders: [WatchOrder] = []
     @Published private(set) var cases: [Case] = []
 
     private var watches: [Watch] = []
