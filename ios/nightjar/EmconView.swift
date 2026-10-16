@@ -50,7 +50,7 @@ struct EmconView: View {
             emcon.restoreIfNeeded()
             emcon.mouth = mouth
         }
-        .onChange(of: spar.fuzzing) { _, now in
+        .onChange(of: spar.fuzzing) { now in
             if !now, sparWasFuzzing {
                 Journal.log("emcon", "spar",
                             (sparSummary ?? "sparring run")
