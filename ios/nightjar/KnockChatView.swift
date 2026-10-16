@@ -9,11 +9,17 @@ import SwiftUI
 struct KnockChatView: View {
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var chat: KnockChat
+    @EnvironmentObject private var mouth: Mouth
     @State private var newPeer = ""
     @State private var openedPeer: String?
     @State private var navActive = false
     @State private var keyDraft = ""
     @State private var keyHex: String?
+    @StateObject private var chirpSender = ChirpSender()
+    @StateObject private var chirpListener = ChirpListener()
+    @State private var chirpDraft = ""
+    @StateObject private var brushVisitor = BrushVisitor()
+    @State private var brushDraft = ""
 
     var body: some View {
         NavigationStack {
@@ -41,6 +47,8 @@ struct KnockChatView: View {
                 }
                 suiteSection
                 relaySection
+                chirpSection
+                brushSection
                 threadsSection
                 retentionSection
             }
@@ -58,6 +66,35 @@ struct KnockChatView: View {
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
                 chat.purge()
+                chirpListener.onPayload = { data in
+                    guard let key = KnockKeyStore.key
+                    else { return false }
+                    for suite in [Knocktalk.suiteChaCha,
+                                  Knocktalk.suiteAESGCM] {
+                        if let text = Knocktalk.open(
+                            sealed: data, key: key, suite: suite) {
+                            chat.receiveChirp(text: text)
+                            return true
+                        }
+                    }
+                    return false
+                }
+                brushVisitor.onPayload = { data in
+                    guard let key = KnockKeyStore.key
+                    else { return false }
+                    for suite in [Knocktalk.suiteChaCha,
+                                  Knocktalk.suiteAESGCM] {
+                        if let text = Knocktalk.open(
+                            sealed: data, key: key, suite: suite) {
+                            chat.receiveBrush(text: text)
+                            Journal.log(
+                                "brush", "pickup",
+                                "drop opened — \(text.count) chars")
+                            return true
+                        }
+                    }
+                    return false
+                }
             }
         }
     }
@@ -195,6 +232,132 @@ struct KnockChatView: View {
         }
         .onChange(of: relayBox) { _ in
             chat.refreshRelayPolling()
+        }
+    }
+
+    private var chirpTooLong: Bool {
+        chirpDraft.utf8.count + 28 > ChirpModem.maxPayload
+    }
+
+    private var chirpSection: some View {
+        Section(header: Text("Chirp — messages by sound"),
+                footer: Text("The same sealed box as a knock, "
+                    + "sung as tones: speaker to microphone, "
+                    + "no network, no radio — it works in "
+                    + "airplane mode. Short messages only "
+                    + "(sound is a narrow pipe), and keep this "
+                    + "tab open while listening. Heard chirps "
+                    + "land in a thread named chirp.")) {
+            if let key = KnockKeyStore.key {
+                HStack {
+                    TextField("sing a short message",
+                              text: $chirpDraft)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button("Sing") {
+                        if let sealed = try? Knocktalk.seal(
+                            chirpDraft, key: key,
+                            suite: chat.sendSuite) {
+                            chirpSender.sing(payload: sealed)
+                            chirpDraft = ""
+                        }
+                    }
+                    .disabled(chirpDraft.isEmpty || chirpTooLong
+                              || chirpSender.singing)
+                }
+                if chirpTooLong {
+                    Text("Too long for sound — chirps carry "
+                         + "about 90 characters.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                if chirpSender.singing {
+                    ProgressView(value: chirpSender.progress)
+                    Button("Stop singing") { chirpSender.stop() }
+                }
+                Button(chirpListener.listening
+                       ? "Stop listening" : "Listen for a chirp") {
+                    if chirpListener.listening {
+                        chirpListener.stop()
+                    } else {
+                        chirpListener.start()
+                    }
+                }
+                if chirpListener.listening
+                    || chirpListener.status != "idle" {
+                    Text(chirpListener.status)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Set up a pairing key above — chirps are "
+                     + "sealed with it, exactly like knocks.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var brushTooLong: Bool {
+        brushDraft.utf8.count + 28 > Knocktalk.maxSealedBytes
+    }
+
+    private var brushSection: some View {
+        Section(header: Text("Brush pass — the proximity drop"),
+                footer: Text("Leave a drop: seal a short "
+                    + "message and arm this phone's GATT host "
+                    + "with it. Anyone in Bluetooth range can "
+                    + "read the sealed bytes; only the pairing "
+                    + "key opens them. A paired phone that comes "
+                    + "hunting files it in a thread named brush "
+                    + "— and you never learn it was taken. "
+                    + "EMCON stands the GATT host down, so a "
+                    + "drop does not survive going dark.")) {
+            if let key = KnockKeyStore.key {
+                HStack {
+                    TextField("leave a short drop",
+                              text: $brushDraft)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button("Arm drop") {
+                        if let sealed = try? Knocktalk.seal(
+                            brushDraft, key: key,
+                            suite: chat.sendSuite) {
+                            mouth.startGattHost(
+                                payload: sealed,
+                                name: "nightjar-hack")
+                            brushDraft = ""
+                        }
+                    }
+                    .disabled(brushDraft.isEmpty || brushTooLong)
+                }
+                if brushTooLong {
+                    Text("Too long for a drop — about 160 "
+                         + "characters.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                if mouth.gattHostOn {
+                    Text("GATT host is up — a paired phone in "
+                         + "range can take the drop. Stop "
+                         + "hosting (Send tab) to disarm it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Button(brushVisitor.hunting
+                       ? "Stop hunting" : "Hunt for a drop") {
+                    if brushVisitor.hunting {
+                        brushVisitor.stop()
+                    } else {
+                        brushVisitor.start()
+                    }
+                }
+                if brushVisitor.hunting
+                    || brushVisitor.status != "idle" {
+                    Text(brushVisitor.status)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Set up a pairing key above — drops are "
+                     + "sealed with it, like everything else "
+                     + "here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
         }
     }
 
