@@ -57,6 +57,9 @@ final class CanaryHost: ObservableObject {
         var dropTaken = false
         var dropNote = ""
         var idleWork: DispatchWorkItem?
+        /// Lessons already billed to this session, so a flow
+        /// that re-enters the script per chunk bills once.
+        var billedLessons: Set<String> = []
         init(persona: String, peer: String) {
             self.persona = persona
             self.peer = peer
@@ -162,6 +165,7 @@ final class CanaryHost: ObservableObject {
         session.dropNote = note
         Journal.log("canary", "honeydrop",
                     "drop taken by \(session.peer) — \(note)")
+        mouth?.onHoneydropTaken?(session.peer)
     }
 
     /// A correctly-framed SSH KEXINIT packet — the SSH
@@ -262,9 +266,25 @@ final class CanaryHost: ObservableObject {
 
     /// The paths web probers reach for first — where the
     /// honeydrop waits when the phase is armed.
-    private static let baitPaths = ["/backup.zip", "/backup",
+    static let baitPaths = ["/backup.zip", "/backup",
         "/.env", "/config.json", "/admin", "/db.sql",
         "/.git/config"]
+
+    /// Paths the operator armed from the lessons — the catch
+    /// taught the canary where else the drop should wait.
+    static var learnedPaths: [String] {
+        UserDefaults.standard.stringArray(
+            forKey: "canaryLearnedPaths") ?? []
+    }
+
+    /// Bill a lesson to the catch, once per session per ask.
+    private func learn(_ session: Session, kind: String,
+                       value: String) {
+        let key = kind + "|" + value
+        guard !session.billedLessons.contains(key) else { return }
+        session.billedLessons.insert(key)
+        CanaryLessons.record(kind: kind, value: value)
+    }
 
     /// The persona scripts: just enough protocol to keep the
     /// prober talking. Everything they say is already captured;
@@ -286,8 +306,12 @@ final class CanaryHost: ObservableObject {
                 .dropFirst().first ?? "/"
             let path = rawPath.components(
                 separatedBy: "?").first ?? rawPath
+            if path != "/" {
+                learn(session, kind: "http path", value: path)
+            }
             if dropArmed,
-               CanaryHost.baitPaths.contains(path) {
+               CanaryHost.baitPaths.contains(path)
+                || CanaryHost.learnedPaths.contains(path) {
                 let lure = drop(for: "http")
                 let head = "HTTP/1.1 200 OK\r\n"
                     + "Server: Apache/2.4.57 (Ubuntu)\r\n"
@@ -307,6 +331,19 @@ final class CanaryHost: ObservableObject {
                 send(connection, Data(head.utf8) + Data(body.utf8))
             }
         case "mqtt":
+            // A lesson, parse-only: whatever topic they reach
+            // for is worth knowing, armed or not.
+            if session.stage == 1, chunk.first == 0x82,
+               chunk.count >= 6 {
+                let topicLength = Int(chunk[4]) << 8
+                    | Int(chunk[5])
+                if chunk.count >= 6 + topicLength,
+                   let topic = String(
+                    bytes: Array(chunk[6..<(6 + topicLength)]),
+                    encoding: .utf8) {
+                    learn(session, kind: "mqtt topic", value: topic)
+                }
+            }
             if session.stage == 0,
                session.transcript.first == 0x10 {
                 session.stage = 1
@@ -372,6 +409,13 @@ final class CanaryHost: ObservableObject {
                                 encoding: .utf8),
                all.contains("\r\n.\r\n") {
                 session.stage = 1
+                let subject = all.components(separatedBy: "\r\n")
+                    .first { $0.lowercased()
+                        .hasPrefix("subject:") }
+                learn(session, kind: "smtp subject",
+                      value: subject?
+                        .trimmingCharacters(in: .whitespaces)
+                        ?? "a completed message")
                 if dropArmed {
                     let receipt = drop(for: "smtp")
                     send(connection, Data("250 2.0.0 Ok ".utf8)
@@ -384,6 +428,17 @@ final class CanaryHost: ObservableObject {
                 }
             }
         case "ssh":
+            // Their banner is the lesson — which client stack
+            // bothered to knock — recorded armed or not.
+            if session.stage == 0,
+               let text = String(data: session.transcript,
+                                 encoding: .utf8),
+               let firstLine = text.components(
+                separatedBy: "\r\n").first,
+               firstLine.hasPrefix("SSH-") {
+                learn(session, kind: "ssh client",
+                      value: firstLine)
+            }
             if session.stage == 0, dropArmed,
                let text = String(data: session.transcript,
                                  encoding: .utf8),
@@ -445,7 +500,11 @@ struct CanarySectionView: View {
     @AppStorage("canaryHoneydrop") private var honeydrop = false
     @AppStorage("canaryDrop") private var drop = ""
 
+    @State private var lessons: [CanaryLesson] = []
+    @State private var armedPaths: [String] = []
+
     var body: some View {
+        Group {
         Section(header: Text("Canary"),
                 footer: Text("A persona answers whoever knocks, "
                     + "in character, and files everything they "
@@ -512,5 +571,126 @@ struct CanarySectionView: View {
                 port = String(CanaryHost.defaultPort(newPersona))
             }
         }
+        lessonsSection
+        }
+    }
+
+    /// Bait that learns: what the catch actually asked for,
+    /// counted. Arming a learned path makes it bait alongside
+    /// the stock paths — the persona grows the lures its own
+    /// probers reach for, but only where the operator points.
+    private var lessonsSection: some View {
+        Section(header: Text("Lessons from the catch"),
+                footer: Text("Counted from the canary's own "
+                    + "sessions: the paths, topics, subjects, "
+                    + "and client banners probers brought with "
+                    + "them. Arming a path makes it bait — with "
+                    + "the honeydrop on, asking for it is "
+                    + "taking the drop.")) {
+            if lessons.isEmpty {
+                Text("No lessons yet — the canary learns from "
+                     + "whoever talks to it.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(lessons.prefix(8))) { lesson in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(lesson.value).font(.callout)
+                                .lineLimit(1)
+                            Text("\(lesson.kind) · asked "
+                                 + "\(lesson.count)×")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if lesson.kind == "http path" {
+                            if armedPaths.contains(lesson.value)
+                                || CanaryHost.baitPaths
+                                    .contains(lesson.value) {
+                                Text("BAIT")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.green)
+                            } else {
+                                Button("Arm as bait") {
+                                    armedPaths.append(lesson.value)
+                                    UserDefaults.standard.set(
+                                        armedPaths,
+                                        forKey: "canaryLearnedPaths")
+                                }
+                                .font(.callout)
+                            }
+                        }
+                    }
+                }
+                Button("Forget the lessons", role: .destructive) {
+                    CanaryLessons.clear()
+                    lessons = []
+                }
+            }
+        }
+        .onAppear {
+            lessons = CanaryLessons.all()
+            armedPaths = UserDefaults.standard.stringArray(
+                forKey: "canaryLearnedPaths") ?? []
+        }
+    }
+}
+
+/// One thing the catch taught the canary: a kind of ask, the
+/// ask itself, and how often it has been made.
+struct CanaryLesson: Codable, Identifiable {
+    var id: String { kind + "|" + value }
+    var kind: String
+    var value: String
+    var count: Int
+    var lastSeen: Date
+}
+
+/// The canary's notebook, kept at Documents/canary-lessons.json
+/// — small, capped, and erasable from the Serve tab.
+enum CanaryLessons {
+    private static var fileURL: URL {
+        FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("canary-lessons.json")
+    }
+
+    static func record(kind: String, value: String) {
+        var all = load()
+        if let i = all.firstIndex(
+            where: { $0.kind == kind && $0.value == value }) {
+            all[i].count += 1
+            all[i].lastSeen = Date()
+        } else {
+            all.append(CanaryLesson(kind: kind, value: value,
+                                    count: 1, lastSeen: Date()))
+        }
+        if all.count > 100 {
+            all.sort { $0.count > $1.count }
+            all = Array(all.prefix(100))
+        }
+        save(all)
+    }
+
+    static func all() -> [CanaryLesson] {
+        load().sorted { $0.count > $1.count }
+    }
+
+    static func clear() {
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    private static func load() -> [CanaryLesson] {
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode(
+                [CanaryLesson].self, from: data)
+        else { return [] }
+        return decoded
+    }
+
+    private static func save(_ lessons: [CanaryLesson]) {
+        guard let data = try? JSONEncoder().encode(lessons)
+        else { return }
+        try? data.write(to: fileURL, options: [.atomic])
     }
 }
