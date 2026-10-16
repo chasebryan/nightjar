@@ -67,6 +67,7 @@ _declares = {}           # source ip -> (to_box, from_box, expires)
 _bursts = {}             # source ip -> [ports]
 _timers = {}             # source ip -> threading.Timer
 _mailboxes = {}          # box -> [ {"from":…, "ports":[…], "at":…} ]
+_last_seen = {}          # box -> epoch of its last declare or collect
 
 
 def _flush_locked(ip):
@@ -158,7 +159,20 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with _lock:
                 frames = _mailboxes.pop(box, [])
+                _last_seen[box] = time.time()
             self._json(200, {"ok": True, "frames": frames})
+            return
+        if url.path == "/presence":
+            if not token_ok(qs.get("token", [""])[0]):
+                self._json(403, {"ok": False, "error": "bad token"})
+                return
+            box = (qs.get("box", [""])[0] or "").strip().lower()
+            if not box:
+                self._json(400, {"ok": False, "error": "box required"})
+                return
+            with _lock:
+                seen = _last_seen.get(box)
+            self._json(200, {"ok": True, "box": box, "last_seen": seen})
             return
         self._json(404, {"ok": False, "error": "no such path"})
 
@@ -185,6 +199,7 @@ class Handler(BaseHTTPRequestHandler):
         with _lock:
             _declares[self.client_address[0]] = (
                 to_box, from_box, time.time() + DECLARE_TTL)
+            _last_seen[from_box] = time.time()
         self._json(200, {"ok": True})
 
 
