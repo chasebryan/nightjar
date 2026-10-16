@@ -158,7 +158,8 @@ enum ProberFiles {
                 else { continue }
                 files[i].links.append((
                     host: files[j].host,
-                    shared: shared.sorted().map(traitLabel)))
+                    shared: shared.sorted().map(
+                        ProberFile.traitLabel)))
             }
         }
     }
