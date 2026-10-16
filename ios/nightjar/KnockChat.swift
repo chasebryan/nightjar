@@ -69,6 +69,15 @@ final class KnockChat: ObservableObject {
     private let saveQueue = DispatchQueue(label: "nightjar.knockchat.save")
     private var senderForwarding: AnyCancellable?
 
+    /// Sequences that arrive through the operator's relay are
+    /// replayed into the knock engine through this hook (wired
+    /// by Emcon at launch: source "relay:<mailbox>", ports in
+    /// order, the silent-knock verdict).
+    var onRelayFrame: ((_ from: String, _ ports: [Int]) -> Void)?
+    private var relayTimer: Timer?
+    private var relayDeclaring = false
+    @Published private(set) var relayStatus = ""
+
     init() {
         threads = Self.loadThreads()
         purge()
@@ -154,9 +163,46 @@ final class KnockChat: ObservableObject {
     }
 
     private func pumpOutbox() {
-        guard !sender.busy, !outbox.isEmpty else { return }
+        guard !sender.busy, !relayDeclaring, !outbox.isEmpty
+        else { return }
         let next = outbox.removeFirst()
+        if let box = KnockRelay.mailbox(ofPeer: next.peer) {
+            // A mailbox peer: declare the destination at the
+            // operator's relay, then knock the sequence at the
+            // relay host — from the wire's point of view the
+            // relay IS the other phone's perimeter.
+            guard KnockRelay.configured,
+                  let relayHost = KnockRelay.host else {
+                if let id = next.messageID {
+                    update(id) { $0.state = "failed" }
+                }
+                pumpOutbox()
+                return
+            }
+            relayDeclaring = true
+            KnockRelay.declare(to: box) { [weak self] ok in
+                guard let self = self else { return }
+                self.relayDeclaring = false
+                guard ok else {
+                    if let id = next.messageID {
+                        self.update(id) { $0.state = "failed" }
+                    }
+                    self.pumpOutbox()
+                    return
+                }
+                self.sender.sendFrames(host: relayHost,
+                                       frames: next.frames)
+                self.trackDelivery(of: next)
+            }
+            return
+        }
         sender.sendFrames(host: next.peer, frames: next.frames)
+        trackDelivery(of: next)
+    }
+
+    private func trackDelivery(of next: (peer: String,
+                                         frames: [[Int]],
+                                         messageID: String?)) {
         guard let id = next.messageID else {
             // ACK/NACK frames: nothing to track; the sender's
             // drain callback pumps the next item.
@@ -250,6 +296,55 @@ final class KnockChat: ObservableObject {
                        frames: [Knocktalk.nackFrame(missing: missing)],
                        messageID: nil))
         pumpOutbox()
+    }
+
+    // MARK: - relay
+
+    /// (Re)arm the mailbox poll. Called at launch and whenever
+    /// the operator edits the relay settings. The poll runs
+    /// only while a relay is fully configured; five seconds
+    /// between checks is nothing on a channel whose unit of
+    /// time is a five-second knock frame.
+    func refreshRelayPolling() {
+        relayTimer?.invalidate()
+        relayTimer = nil
+        guard KnockRelay.configured else {
+            relayStatus = ""
+            return
+        }
+        relayStatus = "relay: \(KnockRelay.host ?? "") · "
+            + "mailbox \(KnockRelay.mailbox)"
+        pollRelay()
+        relayTimer = Timer.scheduledTimer(
+            withTimeInterval: 5, repeats: true) { [weak self] _ in
+            self?.pollRelay()
+        }
+    }
+
+    private func pollRelay() {
+        guard KnockRelay.configured else {
+            // Settings were cleared under a running timer (a
+            // defaults reset): stand down quietly.
+            relayTimer?.invalidate()
+            relayTimer = nil
+            relayStatus = ""
+            return
+        }
+        KnockRelay.fetchInbox { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .failure(let error):
+                self.relayStatus = "relay unreachable: "
+                    + error.localizedDescription
+            case .success(let frames):
+                self.relayStatus =
+                    "relay: \(KnockRelay.host ?? "") · "
+                    + "mailbox \(KnockRelay.mailbox)"
+                for frame in frames {
+                    self.onRelayFrame?(frame.from, frame.ports)
+                }
+            }
+        }
     }
 
     // MARK: - retention + persistence
