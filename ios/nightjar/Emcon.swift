@@ -822,8 +822,8 @@ final class Emcon: ObservableObject {
         guard data.count >= 3 else { return nil }
         var best: (sig: Signature, overlap: Int, full: Bool)?
         for sig in signatures where sig.bytes.count >= 3 {
-            let full = data.hasPrefix(sig.bytes)
-            let partial = sig.bytes.hasPrefix(data)
+            let full = data.starts(with: sig.bytes)
+            let partial = sig.bytes.starts(with: data)
             guard full || partial else { continue }
             let overlap = full ? sig.bytes.count : data.count
             let take: Bool
@@ -875,13 +875,13 @@ final class Emcon: ObservableObject {
         if data.count >= 2, data[0] == 0x16, data[1] == 0x03 {
             return "TLS ClientHello — a TLS scanner or client knocked"
         }
-        if data.hasPrefix(Data("SSH-2.0-".utf8)) {
+        if data.starts(with: Data("SSH-2.0-".utf8)) {
             let line = ReconPayloads.firstLine(data, limit: 60)
             return "SSH client banner: \(line)"
         }
         for verb in ["GET ", "POST ", "HEAD ", "PUT ", "DELETE ",
                      "OPTIONS ", "CONNECT "] {
-            if data.hasPrefix(Data(verb.utf8)) {
+            if data.starts(with: Data(verb.utf8)) {
                 let line = ReconPayloads.firstLine(data, limit: 60)
                 return "HTTP request: \(line)"
             }
