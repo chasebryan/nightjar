@@ -168,18 +168,11 @@ final class Emcon: ObservableObject {
     /// The sequence engine (Knocktalk decoder, structure grader,
     /// vault combination), fed every raw knock from logEvent.
     let knockEngine = KnockEngine()
-    @Published private(set) var knockMessages: [KnockMessage] = []
+    /// The conversation layer: threads, delivery states, ACK /
+    /// NACK repair, the burn timer. It lives in its own tab now;
+    /// EMCON keeps the patterns — the detection side.
+    let chat = KnockChat()
     @Published private(set) var knockPatterns: [KnockPattern] = []
-    /// The burn timer: decoded messages older than this delete
-    /// themselves. Hours; 0 = never. Default 24 — a covert
-    /// channel should not accumulate an archive by accident.
-    /// Enforced at launch, when the tab appears, and when a
-    /// message lands — iOS gives a sideloaded app no background
-    /// timer worth promising, so a message can overstay only
-    /// while the app is closed, and burns at the next launch.
-    @Published var knockRetentionHours: Double =
-        UserDefaults.standard.object(forKey: "knocktalkRetentionHours")
-            as? Double ?? 24
     @Published private(set) var vaultOpenUntil: Date?
     /// Set by the view on appear — the vault needs the mouth to
     /// raise and seal its hidden Serve (the activate() path gets
@@ -192,8 +185,14 @@ final class Emcon: ObservableObject {
         active = UserDefaults.standard.bool(forKey: Self.activeKey)
         homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
-        knockMessages = Self.loadKnockMessages()
-        purgeKnockMessages()
+        // One-time migration: the v1 inbox becomes chat threads,
+        // then the old store goes away.
+        let legacy = Self.loadKnockMessages()
+        if !legacy.isEmpty {
+            chat.importLegacy(legacy)
+            try? FileManager.default.removeItem(
+                at: Self.knockMessagesURL)
+        }
         reloadVaultCombination()
         knockEngine.onOutput = { [weak self] output in
             DispatchQueue.main.async {
@@ -326,7 +325,7 @@ final class Emcon: ObservableObject {
     /// the GATT host arm does.
     func restoreIfNeeded() {
         reloadVaultCombination()
-        purgeKnockMessages()
+        chat.purge()
         // Reconcile with the persisted flag in BOTH directions:
         // a settings reset (About tab) clears the flag while this
         // instance may still be running, and the live posture must
@@ -896,19 +895,29 @@ final class Emcon: ObservableObject {
 
     private func handleKnockOutput(_ output: KnockEngine.Output) {
         switch output {
-        case .message(let message):
-            purgeKnockMessages()
-            knockMessages.insert(message, at: 0)
-            if knockMessages.count > 100 {
-                knockMessages.removeLast(knockMessages.count - 100)
-            }
-            saveKnockMessages()
+        case .message(let message, let ackHash):
+            chat.receive(text: message.text, from: message.source,
+                         ackHash: ackHash)
             // The journal records THAT a message arrived, never
-            // what it says — the text lives only in the Knocktalk
-            // inbox.
+            // what it says — the text lives only in the thread.
             Journal.log("emcon", "knocktalk",
                         "message received from \(message.source) — "
                         + "\(message.text.count) characters")
+        case .ack(let source, let hash):
+            chat.handleAck(from: source, hash: hash)
+            Journal.log("emcon", "knocktalk",
+                        "delivery confirmed by \(source)")
+        case .nack(let source, let missing):
+            chat.handleNack(from: source, missing: missing)
+            Journal.log("emcon", "knocktalk",
+                        "\(source) asked for \(missing.count) "
+                        + "fragment(s) again — re-knocking them")
+        case .nackNeeded(let source, let missing):
+            chat.requestRepair(to: source, missing: missing)
+            Journal.log("emcon", "knocktalk",
+                        "message from \(source) arrived with "
+                        + "\(missing.count) hole(s) — NACK "
+                        + "knocked back")
         case .pattern(let pattern):
             knockPatterns.insert(pattern, at: 0)
             if knockPatterns.count > 50 {
@@ -922,49 +931,16 @@ final class Emcon: ObservableObject {
         }
     }
 
-    func clearKnockMessages() {
-        knockMessages = []
-        saveKnockMessages()
-    }
-
-    func setKnockRetention(hours: Double) {
-        knockRetentionHours = hours
-        UserDefaults.standard.set(hours,
-                                  forKey: "knocktalkRetentionHours")
-        purgeKnockMessages()
-    }
-
-    /// Burn every decoded message past the retention line.
-    func purgeKnockMessages() {
-        guard knockRetentionHours > 0 else { return }
-        let cutoff = Date().addingTimeInterval(
-            -knockRetentionHours * 3600)
-        let kept = knockMessages.filter { $0.when >= cutoff }
-        if kept.count != knockMessages.count {
-            knockMessages = kept
-            saveKnockMessages()
-        }
-    }
-
     private static var knockMessagesURL: URL {
         documentsURL.appendingPathComponent("knocktalk-messages.json")
     }
 
+    /// The retired v1 inbox, read once for migration.
     private static func loadKnockMessages() -> [KnockMessage] {
         guard let data = try? Data(contentsOf: knockMessagesURL),
               let decoded = try? JSONDecoder().decode(
                 [KnockMessage].self, from: data) else { return [] }
         return decoded
-    }
-
-    private func saveKnockMessages() {
-        let snapshot = knockMessages
-        saveQueue.async {
-            if let data = try? JSONEncoder().encode(snapshot) {
-                try? data.write(to: Self.knockMessagesURL,
-                                options: .atomic)
-            }
-        }
     }
 
     // MARK: - the knock vault
