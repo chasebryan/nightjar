@@ -177,6 +177,10 @@ final class Emcon: ObservableObject {
     /// NACK repair, the burn timer. It lives in its own tab now;
     /// EMCON keeps the patterns — the detection side.
     let chat = KnockChat()
+
+    /// The watch officer: reads every knock against the
+    /// whole situation and answers under its charter.
+    let steward = Steward()
     @Published private(set) var knockPatterns: [KnockPattern] = []
     @Published private(set) var vaultOpenUntil: Date?
     /// Set by the view on appear — the vault needs the mouth to
@@ -947,6 +951,9 @@ final class Emcon: ObservableObject {
             Conductor.onKnock(emcon: self, source: labeled,
                               port: port, proto: proto,
                               verdict: verdict, mine: mine)
+            steward.onKnock(emcon: self, source: labeled,
+                            port: port, proto: proto,
+                            verdict: verdict, mine: mine)
         }
     }
 
@@ -1045,7 +1052,8 @@ final class Emcon: ObservableObject {
                !hometurf.stagedVerdicts.contains(verdict) {
                 notes.append("a new first word: \(verdict)")
             }
-            for note in notes {
+            for note in notes
+            where !Steward.isDismissed(note: note) {
                 hometurfNotes.append(note)
                 if hometurfNotes.count > 20 {
                     hometurfNotes.removeFirst(
@@ -1059,6 +1067,15 @@ final class Emcon: ObservableObject {
         hometurf.stagedPorts.insert(port)
         hometurf.stagedVerdicts.insert(verdict)
         saveHometurf()
+    }
+
+    /// The operator dismisses a deviation: it leaves
+    /// tonight's list, and the steward records the dismissal
+    /// so the pattern stops flagging this exact novelty.
+    /// Restorable from the steward section.
+    func hometurfDismiss(_ note: String) {
+        hometurfNotes.removeAll { $0 == note }
+        Steward.addDismissal(note: note)
     }
 
     func hometurfReset() {
@@ -1275,6 +1292,61 @@ final class Emcon: ObservableObject {
         if text.contains("smtp") { return "smtp" }
         if text.contains("http") { return "http" }
         return nil
+    }
+
+    /// The steward's anticipation: raise the matching canary
+    /// on a door a filed visitor is predicted to try next,
+    /// through the identical hand-off an answer uses — same
+    /// release, same ten minutes, same cooldown, same
+    /// teardown-race guard. The only difference is tense.
+    func prestageCanary(port: Int, persona: String,
+                        source: String) {
+        guard tripwireOn, escalation == nil,
+              let mouth = mouth,
+              mouth.canary.runningPersona == nil
+        else { return }
+        if let until = escalationCooldown[port], until > Date() {
+            return
+        }
+        releasePort(port)
+        let defaults = UserDefaults.standard
+        func raiseCanary() {
+            mouth.canary.start(
+                mouth: mouth, persona: persona, port: port,
+                honeydrop: defaults.bool(
+                    forKey: "canaryHoneydrop"),
+                drop: defaults.string(forKey: "canaryDrop") ?? "")
+        }
+        raiseCanary()
+        let until = Date().addingTimeInterval(600)
+        escalation = (persona, port, until)
+        escalationTimer?.invalidate()
+        escalationTimer = Timer.scheduledTimer(
+            withTimeInterval: 600, repeats: false) { [weak self] _ in
+            self?.endEscalation()
+        }
+        Journal.log("emcon", "escalation",
+                    "the steward pre-staged the \(persona) "
+                    + "canary on \(port) — \(source)'s own "
+                    + "sequence points there; it answers for "
+                    + "10 minutes")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            [weak self] in
+            guard let self = self, self.escalation != nil,
+                  mouth.canary.runningPersona == nil
+            else { return }
+            raiseCanary()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                [weak self] in
+                guard let self = self, self.escalation != nil,
+                      mouth.canary.runningPersona == nil
+                else { return }
+                Journal.log("emcon", "escalation",
+                            "the pre-stage hand-off failed "
+                            + "— port \(port) stays on the wire")
+                self.endEscalation()
+            }
+        }
     }
 
     /// The conductor's road into the same hand-off: a reflex
