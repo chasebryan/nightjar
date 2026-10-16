@@ -716,8 +716,11 @@ struct SessionRowView: View {
 
 struct AboutView: View {
     @EnvironmentObject private var updater: UpdateChecker
+    @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var toasts: ToastCenter
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
     @AppStorage("postName") private var postName = "phone"
+    @State private var confirmReset = false
 
     var body: some View {
         NavigationStack {
@@ -776,6 +779,16 @@ struct AboutView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+                Section(header: Text("Defaults"),
+                        footer: Text("Payloads, presets, sessions and logs are data, not settings — a reset never touches them.")) {
+                    Text("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button(role: .destructive) {
+                        confirmReset = true
+                    } label: {
+                        Text("Reset all settings to sane defaults")
+                    }
+                }
                 Section(header: Text("The unpure build")) {
                     Text("This is nightjar-hack: the listening post from nightjar, "
                          + "plus a mouth. The Listen tab is the purist half — it scans "
@@ -833,6 +846,16 @@ struct AboutView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("About")
+            .confirmationDialog("Reset all settings?",
+                                isPresented: $confirmReset) {
+                Button("Reset to sane defaults", role: .destructive) {
+                    SaneDefaults.reset(mouth: mouth)
+                    toasts.show("Settings reset — sane defaults restored")
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every setting returns to its sane default. EMCON stands down, the GATT host disarms, and stealth turns off. Payloads, presets, sessions and logs are not touched.")
+            }
         }
     }
 }
