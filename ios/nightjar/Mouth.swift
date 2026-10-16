@@ -724,6 +724,32 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    /// Start Serve from the persisted settings alone — the same
+    /// values the Serve tab's controls are bound to, with the
+    /// same declared defaults where a key was never set. This is
+    /// the knock vault's door-raiser: EMCON's combination opens
+    /// exactly the Serve the operator configured, nothing bespoke.
+    func startServeFromSettings() {
+        let defaults = UserDefaults.standard
+        func flag(_ key: String, _ fallback: Bool) -> Bool {
+            defaults.object(forKey: key) as? Bool ?? fallback
+        }
+        func port(_ key: String, _ fallback: String) -> Int? {
+            Int(defaults.string(forKey: key) ?? fallback)
+        }
+        startServe(
+            tcpPort: flag("serveUseTCP", true)
+                ? port("serveTcpPort", "9000") : nil,
+            udpPort: flag("serveUseUDP", false)
+                ? port("serveUdpPort", "9001") : nil,
+            httpPort: flag("serveUseHTTP", false)
+                ? port("serveHttpPort", "8080") : nil,
+            reply: defaults.string(forKey: "serveReply") ?? "ack",
+            framing: defaults.string(forKey: "serveFraming") ?? "raw",
+            echo: (defaults.string(forKey: "serveReplyMode")
+                   ?? "static") == "echo")
+    }
+
     private var lastServeParams: (tcp: Int?, udp: Int?, http: Int?,
                                   reply: String, framing: String,
                                   echo: Bool)?
