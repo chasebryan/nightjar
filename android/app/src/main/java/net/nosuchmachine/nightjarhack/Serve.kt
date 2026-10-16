@@ -139,6 +139,10 @@ class Serve(private val context: Context, private val mouth: Mouth) {
         if (generation.get() != gen) return
         val arrival = Arrival(System.currentTimeMillis(), via, from, data)
         _inbox.value = (_inbox.value + arrival).takeLast(200)
+        Journal.log(
+            "serve", "arrival",
+            "$via from $from — ${data.size} bytes"
+        )
         mouth.logExchange("serve-$via", from, 0, data)
         if (!stealth) notifyArrival(arrival)
     }
