@@ -14,6 +14,7 @@ class NightjarApp : Application() {
     lateinit var ble: BleMouth
     lateinit var engines: Engines
     lateinit var scanner: PortScanner
+    lateinit var recon: Recon
     lateinit var traceStore: TraceBookStore
     lateinit var tracer: NetworkTracer
 
@@ -21,6 +22,12 @@ class NightjarApp : Application() {
     /// of the library probe that speaks its port's language).
     val sendHandoff = MutableStateFlow<String?>(null)
     val sendHandoffPayload = MutableStateFlow<String?>(null)
+
+    /** A knocked port waiting for the Recon bench: host, port,
+     * and a nonce so a repeat handoff on the same door still
+     * registers as a change. */
+    val reconHandoff =
+        MutableStateFlow<Triple<String, Int, Long>?>(null)
 
     override fun onCreate() {
         super.onCreate()
@@ -34,6 +41,7 @@ class NightjarApp : Application() {
         ble = BleMouth(this, mouth)
         engines = Engines(mouth)
         scanner = PortScanner()
+        recon = Recon(mouth)
         tracer = NetworkTracer(this, mouth, traceStore) {
             // The trace's radio half: the listening post's
             // current rows, reduced to map facts at finish.
