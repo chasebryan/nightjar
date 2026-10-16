@@ -85,6 +85,41 @@ enum KnockRelay {
         let at: Double
     }
 
+    /// The board: when did the relay last see a mailbox (its
+    /// last declaration or collection)? Presence is rendezvous
+    /// metadata the relay already holds — it says a paired
+    /// device is alive and listening-ish, nothing about where
+    /// it is or what it said.
+    static func presence(of box: String,
+                         completion: @escaping (Date?) -> Void) {
+        guard let base = baseURL else { completion(nil); return }
+        var components = URLComponents(
+            url: base.appendingPathComponent("presence"),
+            resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "box", value: box),
+            URLQueryItem(name: "token", value: token),
+        ]
+        guard let url = components?.url else {
+            completion(nil)
+            return
+        }
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            struct Reply: Decodable {
+                let ok: Bool
+                let last_seen: Double?
+            }
+            let reply = data.flatMap {
+                try? JSONDecoder().decode(Reply.self, from: $0)
+            }
+            let date = (reply?.ok == true)
+                ? reply?.last_seen.map {
+                    Date(timeIntervalSince1970: $0)
+                } ?? nil : nil
+            DispatchQueue.main.async { completion(date) }
+        }.resume()
+    }
+
     /// Fetch and drain this phone's mailbox. Delivered frames
     /// are replayed into the knock engine by the chat layer.
     static func fetchInbox(
