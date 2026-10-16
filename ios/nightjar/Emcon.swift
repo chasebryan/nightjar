@@ -282,6 +282,17 @@ final class Emcon: ObservableObject {
     /// re-arm the tripwire so the posture survives restarts the way
     /// the GATT host arm does.
     func restoreIfNeeded() {
+        // Reconcile with the persisted flag in BOTH directions:
+        // a settings reset (About tab) clears the flag while this
+        // instance may still be running, and the live posture must
+        // follow the stored truth, not the stale in-memory one.
+        let persisted = UserDefaults.standard.bool(forKey: Self.activeKey)
+        if persisted, !active { active = true }
+        if !persisted, active {
+            active = false
+            stopTripwire()
+            return
+        }
         if active, !tripwireOn { startTripwire() }
     }
 
