@@ -235,12 +235,10 @@ def test_tcp_round_trip_len_framed():
 def test_http_round_trip():
     port = free_port()
     sink = FakeSink()
-    stop = threading.Event()
-    thread = threading.Thread(target=send.serve_http,
-                              args=("127.0.0.1", port, sink),
-                              kwargs={"stop": stop, "banner": False},
-                              daemon=True)
-    thread.start()
+    # Wait for the HTTP listener just as the TCP round-trip tests do.
+    # Without this handshake, CI can race the background server thread
+    # and fail with Connection refused before it binds the port.
+    stop, _ = start_server(send.serve_http, port, sink)
     try:
         target = send.parse_target(f"http://127.0.0.1:{port}/ingest")
         result = send.send_http(target, b"ping-http", timeout=5)

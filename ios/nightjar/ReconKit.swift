@@ -342,10 +342,11 @@ final class Recon: NSObject, ObservableObject {
         let payload = Data(blob)
         exchange(target: target, payload: payload, read: read, timeout: timeout) {
             [weak self] reply, failed in
-            guard let self = self, token == self.fuzzToken else { return }
-            if failed { self.fuzzDead += 1 }
-            let head = failed ? "DEAD" : ReconPayloads.firstLine(reply, limit: 60)
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, token == self.fuzzToken else { return }
+                // Published UI state must be updated on the main queue.
+                if failed { self.fuzzDead += 1 }
+                let head = failed ? "DEAD" : ReconPayloads.firstLine(reply, limit: 60)
                 self.fuzzLines.append(
                     "  \(String(format: "%5d", index))  len=\(payload.count)  "
                     + "reply=\(reply.count)  \(head)")
@@ -386,6 +387,10 @@ final class Recon: NSObject, ObservableObject {
         }
     }
 
+    /// A deadline is not successful unless the payload was actually sent.
+    /// A completed send without a reply is not by itself a dead connection.
+    static func timedOutExchangeFailed(didSend: Bool) -> Bool { !didSend }
+
     private func exchange(target: SendTarget, payload: Data, read: Bool,
                           timeout: TimeInterval,
                           done: @escaping (Data, Bool) -> Void) {
@@ -415,6 +420,8 @@ final class Recon: NSObject, ObservableObject {
                                       using: params)
         var reply = Data()
         var finished = false
+        // NWConnection callbacks and the deadline run on connectionQueue.
+        var didSend = false
         let finishLock = NSLock()
         func finish(_ failed: Bool) {
             finishLock.lock()
@@ -428,23 +435,33 @@ final class Recon: NSObject, ObservableObject {
             connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) {
                 data, _, isComplete, error in
                 if let data = data, !data.isEmpty { reply += data }
-                if isComplete || error != nil { finish(false) } else { drain() }
+                if error != nil {
+                    finish(true)
+                } else if isComplete {
+                    finish(false)
+                } else {
+                    drain()
+                }
             }
         }
         connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
-                connection.send(content: payload, completion: .contentProcessed { _ in
+                connection.send(content: payload, completion: .contentProcessed { error in
+                    guard error == nil else { finish(true); return }
+                    didSend = true
                     if read { drain() } else { finish(false) }
                 })
-            case .failed:
+            case .failed, .cancelled:
                 finish(true)
             default:
                 break
             }
         }
         connection.start(queue: connectionQueue)
-        connectionQueue.asyncAfter(deadline: .now() + timeout + 1) { finish(false) }
+        connectionQueue.asyncAfter(deadline: .now() + timeout + 1) {
+            finish(Self.timedOutExchangeFailed(didSend: didSend))
+        }
     }
 
     // MARK: - library handoff
