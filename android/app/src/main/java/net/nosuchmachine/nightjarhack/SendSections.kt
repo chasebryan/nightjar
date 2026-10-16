@@ -245,7 +245,7 @@ fun CentipedeSection(
             for (finding in findings) MonoText(finding)
         }
         homecoming?.let { home ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF263238))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Text(
                         "What it brought home — ${home.size} bytes",
@@ -871,7 +871,7 @@ fun CrosstalkSection(
         }
         for (line in lines) MonoText(line)
         lastWord?.let { word ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF263238))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Text(
                         "The last word — ${word.size} bytes",
@@ -930,7 +930,7 @@ fun SnatchSection(
             Text(if (busy) "Snatching… $bytes bytes so far" else "Snatch from $target")
         }
         result?.let { (label, data) ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF263238))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Text(
                         "$label — ${data.size} bytes",
