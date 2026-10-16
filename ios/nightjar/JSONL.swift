@@ -33,8 +33,10 @@ enum JSONL {
     }
 
     /// Epoch seconds with millisecond precision: `1760000001.250`.
+    /// The JSON number grammar requires a dot and forbids grouping
+    /// separators, irrespective of the device's locale.
     static func seconds(_ value: TimeInterval) -> String {
-        return String(format: "%.3f", value)
+        return String(format: "%.3f", locale: Locale(identifier: "en_US_POSIX"), value)
     }
 
     static func int(_ value: Int?) -> String {
