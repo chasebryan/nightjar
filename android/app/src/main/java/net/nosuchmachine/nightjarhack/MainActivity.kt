@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Send as OutlinedSend
 import androidx.compose.material3.Button
@@ -158,7 +159,8 @@ fun AppRoot(app: NightjarApp) {
                         Triple("Serve", Icons.Outlined.Inbox, 2),
                         Triple("Sessions", Icons.Outlined.ListAlt, 4),
                         Triple("About", Icons.Outlined.Info, 5),
-                        Triple("Scan", Icons.Outlined.MyLocation, 3)
+                        Triple("Scan", Icons.Outlined.MyLocation, 3),
+                        Triple("Recon", Icons.Outlined.TrackChanges, 6)
                     )
                     for ((label, icon, index) in items) {
                         NavigationBarItem(
@@ -191,6 +193,7 @@ fun AppRoot(app: NightjarApp) {
                     2 -> ServeTab(app)
                     3 -> ScanTab(app)
                     4 -> SessionsTab(app)
+                    6 -> ReconTab(app) { tab = 1 }
                     else -> AboutTab(app)
                 }
             }
