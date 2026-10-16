@@ -139,7 +139,7 @@ fun IosSectionHeader(title: String) {
         fontSize = 13.sp,
         letterSpacing = 0.6.sp,
         color = IosColors.SecondaryLabel,
-        modifier = Modifier.padding(start = 32.dp, top = 18.dp, bottom = 2.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 2.dp)
     )
 }
 
