@@ -98,10 +98,12 @@ enum SessionStore {
         defer { handle.closeFile() }
 
         let head = handle.readData(ofLength: 4096)
-        guard let headText = String(data: head, encoding: .utf8),
-              let firstLine = headText.split(separator: "\n", maxSplits: 1,
-                                             omittingEmptySubsequences: true).first,
-              let header = parse(line: String(firstLine)),
+        // The buffer may end in the middle of a multibyte character on
+        // a later line. Decode only the complete header line.
+        guard let headerBytes = head.split(separator: 0x0A, maxSplits: 1,
+                                           omittingEmptySubsequences: true).first,
+              let firstLine = String(data: Data(headerBytes), encoding: .utf8),
+              let header = parse(line: firstLine),
               header["type"] as? String == "session",
               let sessionID = header["session_id"] as? String,
               let startedAt = header["started_at"] as? Double else {
@@ -114,13 +116,16 @@ enum SessionStore {
             let tailLength = min(size, 4096)
             handle.seek(toFileOffset: UInt64(size - tailLength))
             let tail = handle.readData(ofLength: tailLength)
-            if let tailText = String(data: tail, encoding: .utf8) {
-                let lines = tailText.split(separator: "\n", omittingEmptySubsequences: true)
-                if let last = lines.last, let footer = parse(line: String(last)),
-                   footer["type"] as? String == "session_end" {
-                    endedAt = footer["ended_at"] as? Double
-                    sightings = footer["sightings"] as? Int
-                }
+            // This bounded read may begin halfway through a UTF-8 scalar
+            // on an earlier line. Split into lines before decoding the
+            // final (complete) footer, rather than decoding all 4 KB.
+            if let footerBytes = tail.split(separator: 0x0A,
+                                            omittingEmptySubsequences: true).last,
+               let footerLine = String(data: Data(footerBytes), encoding: .utf8),
+               let footer = parse(line: footerLine),
+               footer["type"] as? String == "session_end" {
+                endedAt = footer["ended_at"] as? Double
+                sightings = footer["sightings"] as? Int
             }
         }
         return SessionSummary(id: sessionID, url: url, label: header["label"] as? String,

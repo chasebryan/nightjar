@@ -96,6 +96,58 @@ final class LogFormatTests: XCTestCase {
         XCTAssertNil(summary?.label)
         XCTAssertEqual(SessionStore.countSightings(in: url), 1)
     }
+
+    func testSessionFooterSurvivesUTF8SplitAtTailBoundary() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nightjar-tail-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let header = "{\"type\":\"session\",\"session_id\":\"abc\",\"started_at\":1760000000.0}\n"
+        let footer = "{\"type\":\"session_end\",\"ended_at\":1760000002.0,\"sightings\":1}\n"
+        let closeSighting = "\"}\n"
+        // Position the 4 KB tail read two bytes into the four-byte bird emoji.
+        let padding = 4096 - 2 - closeSighting.utf8.count - footer.utf8.count
+        XCTAssertGreaterThan(padding, 0)
+        var log = Data(header.utf8)
+        log.append(contentsOf: "{\"type\":\"sighting\",\"name\":\"".utf8)
+        log.append(contentsOf: "🐦".utf8)
+        log.append(Data(repeating: 0x61, count: padding))
+        log.append(contentsOf: closeSighting.utf8)
+        log.append(contentsOf: footer.utf8)
+        try log.write(to: url)
+
+        let summary = SessionStore.summary(for: url)
+        XCTAssertEqual(summary?.id, "abc")
+        XCTAssertEqual(summary?.endedAt, 1760000002)
+        XCTAssertEqual(summary?.sightings, 1)
+        XCTAssertEqual(summary?.isUnfinished, false)
+    }
+
+    func testSessionHeaderSurvivesUTF8SplitAtHeadBoundary() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("nightjar-head-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let header = "{\"type\":\"session\",\"session_id\":\"abc\",\"started_at\":1760000000.0}\n"
+        let footer = "{\"type\":\"session_end\",\"ended_at\":1760000002.0,\"sightings\":1}\n"
+        var log = Data(header.utf8)
+        log.append(contentsOf: "{\"type\":\"sighting\",\"name\":\"".utf8)
+        // Position the 4 KB header read two bytes into the bird emoji
+        // on the second line. The first, complete line must still parse.
+        let padding = 4096 - log.count - 2
+        XCTAssertGreaterThan(padding, 0)
+        log.append(Data(repeating: 0x61, count: padding))
+        log.append(contentsOf: "🐦".utf8)
+        log.append(contentsOf: "\"}\n".utf8)
+        log.append(contentsOf: footer.utf8)
+        try log.write(to: url)
+
+        let summary = SessionStore.summary(for: url)
+        XCTAssertEqual(summary?.id, "abc")
+        XCTAssertEqual(summary?.startedAt, 1760000000)
+        XCTAssertEqual(summary?.endedAt, 1760000002)
+    }
+
 }
 
 import CoreBluetooth
