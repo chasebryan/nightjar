@@ -9,8 +9,9 @@ import UIKit
 /// hear anyone who comes probing with the same techniques.
 ///
 ///  - Exposure score: a single number for how visible this device
-///    is right now, computed from live emissions, the broadcast
-///    name, the last self-recon and the last Bonjour audit.
+///    is right now, plus the weights that produced it, computed
+///    from live emissions, the broadcast name, the last self-recon
+///    and the last Bonjour audit.
 ///  - Self-recon: knock this device with Recon's own probe registry
 ///    and itemize what answers — the view another operator gets.
 ///  - Bonjour audit: browse the LAN the way the Scan tab does and
@@ -25,8 +26,11 @@ import UIKit
 ///    The probes are wire-exact, which makes them fingerprintable —
 ///    a knock with this app's own first words is recognized and
 ///    logged with its source, as are the generic scanner shapes
-///    (TLS ClientHello, SSH banners, HTTP request lines). The log
-///    persists across launches. The tripwire never replies.
+///    (TLS ClientHello, SSH banners, HTTP request lines). A knock
+///    is logged once — late bytes beat the silent-knock timer —
+///    and a burst from the same source and port collapses into
+///    one row. The log persists across launches and can be shared.
+///    The tripwire never replies.
 ///  - The drill: scan, go dark, scan again, and show the delta.
 ///
 /// Honest limit, also stated in the UI: nothing at the app layer can
@@ -53,14 +57,73 @@ final class Emcon: ObservableObject {
         let why: String
     }
 
-    struct TripEvent: Identifiable, Codable {
-        var id: String = UUID().uuidString
-        let when: Date
-        let source: String
-        let port: Int
-        let proto: String
-        let verdict: String
-        let byteCount: Int
+    struct TripEvent: Identifiable, Codable, Equatable {
+        var id: String
+        var when: Date
+        var source: String
+        var port: Int
+        var proto: String
+        var verdict: String
+        var byteCount: Int
+        /// Identical knocks folded into this row. Old logs omit it.
+        var repeatCount: Int
+
+        init(id: String = UUID().uuidString, when: Date, source: String,
+             port: Int, proto: String, verdict: String, byteCount: Int,
+             repeatCount: Int = 1) {
+            self.id = id
+            self.when = when
+            self.source = source
+            self.port = port
+            self.proto = proto
+            self.verdict = verdict
+            self.byteCount = byteCount
+            self.repeatCount = repeatCount
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decodeIfPresent(String.self, forKey: .id)
+                ?? UUID().uuidString
+            when = try c.decode(Date.self, forKey: .when)
+            source = try c.decode(String.self, forKey: .source)
+            port = try c.decode(Int.self, forKey: .port)
+            proto = try c.decode(String.self, forKey: .proto)
+            verdict = try c.decode(String.self, forKey: .verdict)
+            byteCount = try c.decode(Int.self, forKey: .byteCount)
+            repeatCount = try c.decodeIfPresent(Int.self, forKey: .repeatCount) ?? 1
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id, when, source, port, proto, verdict, byteCount, repeatCount
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(when, forKey: .when)
+            try c.encode(source, forKey: .source)
+            try c.encode(port, forKey: .port)
+            try c.encode(proto, forKey: .proto)
+            try c.encode(verdict, forKey: .verdict)
+            try c.encode(byteCount, forKey: .byteCount)
+            try c.encode(repeatCount, forKey: .repeatCount)
+        }
+    }
+
+    /// Exposure score with the weights that produced it. `value` is
+    /// capped at 100; `parts` are the raw contributions, zeros omitted.
+    struct Score: Equatable {
+        struct Part: Identifiable, Equatable {
+            let label: String
+            let points: Int
+            var id: String { label }
+        }
+        let value: Int
+        let band: String
+        let parts: [Part]
+        var raw: Int { parts.reduce(0) { $0 + $1.points } }
+        var capped: Bool { raw > value }
     }
 
     struct Snapshot {
@@ -69,6 +132,7 @@ final class Emcon: ObservableObject {
     }
 
     @Published private(set) var active: Bool
+    @Published private(set) var homeSubnet: String?
     @Published private(set) var scanning = false
     @Published private(set) var exposures: [Exposure] = []
     @Published private(set) var lastScanAt: Date?
@@ -94,7 +158,11 @@ final class Emcon: ObservableObject {
 
     init() {
         active = UserDefaults.standard.bool(forKey: Self.activeKey)
+        homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
+        // The readable copy only. JSON is already on disk; rewriting
+        // it here would race a knock that lands during launch.
+        if !events.isEmpty { Self.writeReport(events) }
     }
 
     var deviceName: String { UIDevice.current.name }
@@ -104,23 +172,42 @@ final class Emcon: ObservableObject {
 
     /// 0 = ghost, 100 = a lighthouse. Computed from what is true
     /// right now, not from intentions: live emissions weigh most,
-    /// then what the last recon and audit actually found.
+    /// then what the last recon and audit actually found. The
+    /// parts are those same weights, so the band can be read
+    /// back to a cause.
     static func score(gattHostOn: Bool, beaconOn: Bool,
                       serveRunning: Bool, stealth: Bool,
                       deviceName: String,
                       exposureCount: Int,
-                      announcerCount: Int) -> (value: Int, band: String) {
-        var value = 0
-        if gattHostOn { value += 25 }
-        if beaconOn { value += 20 }
-        if serveRunning { value += stealth ? 4 : 20 }
-        if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
-            value += 12
-        } else if deviceName != "iPhone" {
-            value += 6
+                      announcerCount: Int) -> Score {
+        var parts: [Score.Part] = []
+        func weigh(_ label: String, _ points: Int) {
+            guard points > 0 else { return }
+            parts.append(Score.Part(label: label, points: points))
         }
-        value += min(20, exposureCount * 4)
-        value += min(18, announcerCount * 6)
+        if gattHostOn { weigh("GATT host", 25) }
+        if beaconOn { weigh("BLE beacon", 20) }
+        if serveRunning {
+            weigh(stealth ? "Serve, stealth" : "Serve, listed",
+                  stealth ? 4 : 20)
+        }
+        if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
+            weigh("Personal name", 12)
+        } else if deviceName != "iPhone" {
+            weigh("Broadcast name", 6)
+        }
+        if exposureCount > 0 {
+            let raw = exposureCount * 4
+            weigh("Recon hits ×\(exposureCount)"
+                  + (raw > 20 ? ", capped" : ""), min(20, raw))
+        }
+        if announcerCount > 0 {
+            let raw = announcerCount * 6
+            weigh("Bonjour ×\(announcerCount)"
+                  + (raw > 18 ? ", capped" : ""), min(18, raw))
+        }
+        let raw = parts.reduce(0) { $0 + $1.points }
+        let value = min(100, raw)
         let band: String
         switch value {
         case 0: band = "GHOST"
@@ -129,33 +216,43 @@ final class Emcon: ObservableObject {
         case 41...70: band = "LOUD"
         default: band = "BEACONING"
         }
-        return (min(100, value), band)
+        return Score(value: value, band: band, parts: parts)
     }
 
     // MARK: - home turf
 
-    var homeSubnet: String? {
-        UserDefaults.standard.string(forKey: Self.homeKey)
-    }
-
-    var currentSubnet: String? {
-        guard let ip = ownIP else { return nil }
+    /// First three octets of an IPv4 address, or nil when it isn't
+    /// a dotted quad. The comparison EMCON actually stores.
+    static func subnet(of ip: String) -> String? {
         let parts = ip.split(separator: ".")
         guard parts.count == 4 else { return nil }
         return parts[0...2].joined(separator: ".")
     }
 
-    /// Away = on a network that is not the marked home subnet.
-    var isAway: Bool {
-        guard let home = homeSubnet, let here = currentSubnet
-        else { return false }
+    /// Away only when both sides are known and they differ.
+    /// Unmarked, or not on Wi-Fi, is not "away".
+    static func away(home: String?, here: String?) -> Bool {
+        guard let home, let here else { return false }
         return home != here
     }
 
+    var currentSubnet: String? {
+        guard let ip = ownIP else { return nil }
+        return Self.subnet(of: ip)
+    }
+
+    /// Away = on a network that is not the marked home subnet.
+    var isAway: Bool { Self.away(home: homeSubnet, here: currentSubnet) }
+
     func markHome() {
-        if let here = currentSubnet {
-            UserDefaults.standard.set(here, forKey: Self.homeKey)
-        }
+        guard let here = currentSubnet else { return }
+        UserDefaults.standard.set(here, forKey: Self.homeKey)
+        homeSubnet = here
+    }
+
+    func unmarkHome() {
+        UserDefaults.standard.removeObject(forKey: Self.homeKey)
+        homeSubnet = nil
     }
 
     // MARK: - posture
@@ -409,6 +506,29 @@ final class Emcon: ObservableObject {
 
     // MARK: - the drill
 
+    static func exposureLine(_ hit: Exposure) -> String {
+        "\(hit.host):\(hit.port) \(hit.service)"
+    }
+
+    static func announcerLine(_ ad: Announcer) -> String {
+        "\(ad.label): \(ad.name)"
+    }
+
+    /// In the first snapshot, gone from the second.
+    static func silenced(before: Snapshot, after: Snapshot) -> [String] {
+        let afterPorts = Set(after.exposures.map(\.id))
+        let afterAds = Set(after.announcers.map(\.id))
+        return before.exposures.filter { !afterPorts.contains($0.id) }
+            .map(exposureLine)
+            + before.announcers.filter { !afterAds.contains($0.id) }
+            .map(announcerLine)
+    }
+
+    /// Everything the second snapshot still shows, service and name.
+    static func stillShowing(_ after: Snapshot) -> [String] {
+        after.exposures.map(exposureLine) + after.announcers.map(announcerLine)
+    }
+
     /// Scan and audit, go dark, scan and audit again. The two
     /// snapshots land in drillBefore / drillAfter for the delta view.
     func runDrill(mouth: Mouth) {
@@ -491,6 +611,27 @@ final class Emcon: ObservableObject {
         saveEvents()
     }
 
+    /// First caller logs the knock. The receive path and the
+    /// silent-knock timer both try; the second one is dropped.
+    final class TripOnce {
+        private let lock = NSLock()
+        private var settled = false
+
+        var isSettled: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            return settled
+        }
+
+        func claim() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            if settled { return false }
+            settled = true
+            return true
+        }
+    }
+
     private func handleTrip(_ connection: NWConnection, port: Int,
                             udp: Bool) {
         let source: String
@@ -499,31 +640,83 @@ final class Emcon: ObservableObject {
         } else {
             source = "unknown"
         }
+        let once = TripOnce()
         connection.stateUpdateHandler = { state in
             if case .failed = state { connection.cancel() }
         }
         connection.start(queue: tripQueue)
+        // One knock, one row. Bytes that show up as the grace
+        // timer cancels still win — cancel flushes the receive,
+        // and claim() drops the silent fallback.
         connection.receive(minimumIncompleteLength: 1,
                            maximumLength: 1024) { [weak self] data, _, _, _ in
-            let bytes = data ?? Data()
-            let verdict = Self.fingerprint(bytes, port: port, udp: udp)
-            connection.cancel()
-            self?.logEvent(source: source, port: port,
-                           proto: udp ? "UDP" : "TCP",
-                           verdict: verdict, byteCount: bytes.count)
+            self?.finishTrip(once, connection, source: source,
+                             port: port, udp: udp, bytes: data ?? Data())
         }
-        // A connection that sends nothing still counts: someone
-        // knocked and waited. Log it after a short grace period if
-        // no bytes arrived (the receive above simply never fires).
         tripQueue.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let self = self else { return }
-            if connection.state == .ready {
-                connection.cancel()
-                self.logEvent(source: source, port: port,
-                              proto: udp ? "UDP" : "TCP",
-                              verdict: "silent knock (no bytes sent)",
-                              byteCount: 0)
+            guard let self = self, !once.isSettled else { return }
+            // Still up, still mute. Cancel so a receive holding
+            // bytes completes and takes the row. If that
+            // completion never comes, the follow-up is the
+            // silent knock.
+            guard connection.state == .ready else { return }
+            connection.cancel()
+            self.tripQueue.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+                self?.finishTrip(once, connection, source: source,
+                                 port: port, udp: udp, bytes: Data())
             }
+        }
+    }
+
+    /// One knock, one result. The second call — the grace timer
+    /// racing a receive, or a receive racing the timer — is nil.
+    static func noteKnock(_ once: TripOnce, bytes: Data,
+                          port: Int, udp: Bool) -> (verdict: String, byteCount: Int)? {
+        guard once.claim() else { return nil }
+        return (tripVerdict(bytes, port: port, udp: udp), bytes.count)
+    }
+
+    private func finishTrip(_ once: TripOnce, _ connection: NWConnection,
+                            source: String, port: Int, udp: Bool,
+                            bytes: Data) {
+        guard let noted = Self.noteKnock(once, bytes: bytes,
+                                         port: port, udp: udp) else { return }
+        connection.cancel()
+        logEvent(source: source, port: port,
+                 proto: udp ? "UDP" : "TCP",
+                 verdict: noted.verdict, byteCount: noted.byteCount)
+    }
+
+    /// How long identical knocks from one source and port fold
+    /// into the same row. The window slides with the latest hit,
+    /// so a steady flood stays one line.
+    static let burstWindow: TimeInterval = 30
+    static let eventCap = 200
+
+    /// Insert a knock, or fold it into a recent identical row.
+    /// Identical means same source, port, protocol, and verdict.
+    static func record(_ events: inout [TripEvent],
+                       source: String, port: Int, proto: String,
+                       verdict: String, byteCount: Int,
+                       now: Date = Date()) {
+        if let index = events.firstIndex(where: { event in
+            event.source == source && event.port == port
+                && event.proto == proto && event.verdict == verdict
+                && now.timeIntervalSince(event.when) >= 0
+                && now.timeIntervalSince(event.when) < burstWindow
+        }) {
+            var hit = events.remove(at: index)
+            hit.repeatCount += 1
+            hit.when = now
+            hit.byteCount = byteCount
+            events.insert(hit, at: 0)
+            return
+        }
+        events.insert(TripEvent(when: now, source: source, port: port,
+                                proto: proto, verdict: verdict,
+                                byteCount: byteCount), at: 0)
+        if events.count > eventCap {
+            events.removeLast(events.count - eventCap)
         }
     }
 
@@ -532,26 +725,56 @@ final class Emcon: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             let mine = self.ownIP != nil && source.contains(self.ownIP!)
-            self.events.insert(
-                TripEvent(when: Date(),
-                          source: mine ? "\(source) (this device)"
-                                       : source,
-                          port: port, proto: proto, verdict: verdict,
-                          byteCount: byteCount),
-                at: 0)
-            if self.events.count > 200 {
-                self.events.removeLast(self.events.count - 200)
-            }
+            let labeled = mine ? "\(source) (this device)" : source
+            Self.record(&self.events, source: labeled, port: port,
+                        proto: proto, verdict: verdict,
+                        byteCount: byteCount)
             self.saveEvents()
         }
     }
 
     // MARK: - tripwire log persistence
 
-    private static var eventsURL: URL {
+    private static var documentsURL: URL {
         FileManager.default.urls(for: .documentDirectory,
                                  in: .userDomainMask)[0]
-            .appendingPathComponent("emcon-tripwire.json")
+    }
+
+    private static var eventsURL: URL {
+        documentsURL.appendingPathComponent("emcon-tripwire.json")
+    }
+
+    static var tripwireReportURL: URL {
+        documentsURL.appendingPathComponent("emcon-tripwire.txt")
+    }
+
+    private static func writeReport(_ events: [TripEvent]) {
+        try? Data(tripwireReport(events).utf8)
+            .write(to: tripwireReportURL, options: .atomic)
+    }
+
+    /// Readable export. One block per row; a burst shows as ×N.
+    /// JSON in Documents is the same log, for anything that parses.
+    static func tripwireReport(_ events: [TripEvent]) -> String {
+        let stamp = DateFormatter()
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        stamp.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        var lines = [
+            "EMCON tripwire",
+            "The tripwire never replies.",
+            "",
+        ]
+        if events.isEmpty {
+            lines.append("Nobody has knocked.")
+            return lines.joined(separator: "\n")
+        }
+        for event in events {
+            let times = event.repeatCount > 1 ? " ×\(event.repeatCount)" : ""
+            lines.append("\(stamp.string(from: event.when))  "
+                         + "\(event.source) → \(event.proto)/\(event.port)\(times)")
+            lines.append("  \(event.verdict)")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func loadEvents() -> [TripEvent] {
@@ -564,6 +787,7 @@ final class Emcon: ObservableObject {
 
     private func saveEvents() {
         let snapshot = events
+        Self.writeReport(snapshot)
         saveQueue.async {
             guard let data = try? JSONEncoder().encode(snapshot)
             else { return }
@@ -576,26 +800,77 @@ final class Emcon: ObservableObject {
     /// Probe signatures, built once. The builders are deterministic,
     /// so a byte stream matching a builder's output — in either
     /// direction, to allow for partial sends — is that probe.
-    private static let signatures: [(name: String, port: Int,
-                                     udp: Bool, bytes: Data)] =
+    private typealias Signature = (name: String, port: Int,
+                                   udp: Bool, bytes: Data)
+
+    private static let signatures: [Signature] =
         ReconPayloads.all.values.map {
             (name: $0.name, port: $0.port, udp: $0.udp, bytes: $0.build())
         }
 
-    private static func fingerprint(_ data: Data, port: Int,
-                                    udp: Bool) -> String {
-        guard !data.isEmpty else { return "empty connection" }
+    /// Best library probe for these bytes. Overlap is how many
+    /// bytes agree: a full signature sitting inside the payload,
+    /// or a partial send that is a prefix of one. A full match
+    /// beats an equal-length partial, so a short probe can't be
+    /// stolen by a longer one that merely starts the same way,
+    /// and a stub of a long probe can't lose to an even shorter
+    /// prefix. Several probes share one payload (the plain
+    /// GET /); the one aimed at this port wins that tie, then
+    /// the name.
+    private static func bestSignature(for data: Data, port: Int,
+                                      udp: Bool) -> Signature? {
+        guard data.count >= 3 else { return nil }
+        var best: (sig: Signature, overlap: Int, full: Bool)?
         for sig in signatures where sig.bytes.count >= 3 {
-            if data.hasPrefix(sig.bytes) || sig.bytes.hasPrefix(data) {
-                var verdict = "nightjar-hack probe: \(sig.name)"
-                if sig.port != port {
-                    verdict += " (on the wrong port)"
-                } else if sig.udp != udp {
-                    verdict += " (a \(sig.udp ? "UDP" : "TCP") probe "
-                        + "over \(udp ? "UDP" : "TCP"))"
+            let full = data.hasPrefix(sig.bytes)
+            let partial = sig.bytes.hasPrefix(data)
+            guard full || partial else { continue }
+            let overlap = full ? sig.bytes.count : data.count
+            let take: Bool
+            if let current = best {
+                if overlap != current.overlap {
+                    take = overlap > current.overlap
+                } else if full != current.full {
+                    take = full
+                } else if fits(sig, port: port, udp: udp)
+                            != fits(current.sig, port: port, udp: udp) {
+                    take = fits(sig, port: port, udp: udp)
+                } else {
+                    take = sig.name < current.sig.name
                 }
-                return verdict
+            } else {
+                take = true
             }
+            if take { best = (sig, overlap, full) }
+        }
+        return best?.sig
+    }
+
+    private static func fits(_ sig: Signature, port: Int, udp: Bool) -> Bool {
+        sig.port == port && sig.udp == udp
+    }
+
+    private static func verdict(for sig: Signature, port: Int, udp: Bool) -> String {
+        var verdict = "nightjar-hack probe: \(sig.name)"
+        if sig.port != port {
+            verdict += " (on the wrong port)"
+        } else if sig.udp != udp {
+            verdict += " (a \(sig.udp ? "UDP" : "TCP") probe "
+                + "over \(udp ? "UDP" : "TCP"))"
+        }
+        return verdict
+    }
+
+    /// Empty bytes are a silent knock. Anything else is fingerprinted.
+    static func tripVerdict(_ bytes: Data, port: Int, udp: Bool) -> String {
+        guard !bytes.isEmpty else { return "silent knock (no bytes sent)" }
+        return fingerprint(bytes, port: port, udp: udp)
+    }
+
+    static func fingerprint(_ data: Data, port: Int, udp: Bool) -> String {
+        guard !data.isEmpty else { return "empty connection" }
+        if let sig = bestSignature(for: data, port: port, udp: udp) {
+            return verdict(for: sig, port: port, udp: udp)
         }
         if data.count >= 2, data[0] == 0x16, data[1] == 0x03 {
             return "TLS ClientHello — a TLS scanner or client knocked"
