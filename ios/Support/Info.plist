@@ -21,6 +21,8 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>nightjar-hack uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>nightjar-hack listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
 	<key>UIBackgroundModes</key>
