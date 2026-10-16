@@ -194,7 +194,7 @@ enum Conductor {
             if let mouth = emcon.mouth, let host = fire.host,
                let port = fire.port {
                 mouth.reconHandoff = Mouth.ReconHandoff(
-                    host: host, port: port, nonce: "conductor")
+                    host: host, port: port, nonce: UUID())
                 detail = "the bench is loaded on "
                     + "\(host):\(port) — firing stays yours"
             } else {
