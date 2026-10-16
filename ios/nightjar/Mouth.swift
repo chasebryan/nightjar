@@ -472,6 +472,9 @@ final class Mouth: NSObject, ObservableObject {
     @Published private(set) var beaconOn = false
     @Published private(set) var gattHostOn = false
     @Published private(set) var serveRunning = false
+    /// The canary: persona services that answer probers in
+    /// character and file their transcripts as arrivals.
+    let canary = CanaryHost()
     @Published var serveError: String?
     @Published private(set) var writeTargets: [WriteTarget] = []
     @Published private(set) var writeScanning = false
@@ -753,6 +756,13 @@ final class Mouth: NSObject, ObservableObject {
     private var lastServeParams: (tcp: Int?, udp: Int?, http: Int?,
                                   reply: String, framing: String,
                                   echo: Bool)?
+
+    /// The canary's door into the arrival funnel: a prober's
+    /// transcript is an arrival like any other — inbox, journal
+    /// line, and banner rules included.
+    func fileArrival(transport: String, peer: String, data: Data) {
+        receive(transport: transport, peer: peer, data: data)
+    }
 
     private func receive(transport: String, peer: String, data: Data) {
         DispatchQueue.main.async {
