@@ -2,18 +2,68 @@
 
 ## Unreleased
 
-- **EMCON (iOS).** A tripwire knock is logged once: late bytes
-  beat the silent-knock timer instead of writing a second row,
-  and a burst from the same source and port folds into one row
-  with a count. The log shares out as readable text; JSON stays
-  in Documents. The exposure score lists the weights behind the
-  band (GATT, beacon, Serve, device name, recon hits, Bonjour).
-  Home turf can be unmarked. Off turf, with EMCON off, one tap
-  goes dark — it does not engage by itself. The drill names the
-  services that went quiet and the ones still showing. Probe
-  fingerprints prefer the closest library match, so a short
-  prefix can't steal the name. Prefix checks use
-  `Data.starts(with:)`, which is the method `Data` actually has.
+## 3.0.0 — 2026-10-16 — the ventriloquist
+
+The release where the instrument starts speaking in other
+voices — and learns to keep silence like a professional.
+
+- **EMCON (iOS).** A defensive posture tab: an exposure
+  score (0 GHOST – 100 BEACONING) computed from the phone's
+  own live emissions, a silence switch (stealth on, GATT
+  host and beacon down — standing down never re-opens an
+  emission), a Bonjour/mDNS self-audit, a TCP+UDP tripwire
+  that fingerprints inbound first words, a persistent
+  tripwire log, a one-tap go-dark drill, and home-subnet
+  memory. Closing the loop: **Answer in character** — a
+  fingerprinted knock makes the tripwire hand its port to
+  the matching canary persona for ten minutes, then take
+  it back.
+- **Canary personas + Honeydrop (iOS Serve).** Fake SSH /
+  HTTP / MQTT / SMTP services that answer probers in
+  character and file their full transcripts into the inbox.
+  The Honeydrop activate phase arms a persona with a prize
+  — a bait file, a published message, a receipt, a framed
+  SSH KEXINIT — and a taken drop is journaled on the spot
+  and stamped into the transcript.
+- **Knocktalk (iOS).** Encrypted messaging where the knock
+  ORDER is the channel: fragmented AEAD sealed boxes
+  (ChaCha20-Poly1305 or AES-256-GCM, per-operator choice,
+  no matching required) with ACK/NACK repair, a burn timer,
+  its own tab and threads, a knock vault whose combination
+  now fires operator-chosen **macros** (hidden Serve, raise
+  EMCON, burn threads, raise the canary), and an optional
+  operator-run **relay server**
+  (`tools/knocktalk-relay/`) that carries the knocks across
+  the internet while seeing nothing but port numbers.
+- **Three more transports for the same sealed box (iOS).**
+  **Chirp** — mawkbox-style 4-tone FSK, speaker to
+  microphone, plus **Chirp mail**: the song rendered to a
+  .wav for any audio carrier, decoded on arrival by the
+  same decoder. **Brush pass** — a sealed drop armed in
+  the GATT host, taken by a paired phone in BLE range; the
+  host never learns it was taken. **Blink** — the payload
+  as a looping QR-frame sequence, camera to screen.
+- **The interlinkages (iOS).** The **night log**: one
+  sealed timeline for the whole instrument — now a SHA-256
+  **hash chain**, with a verify action that proves no
+  sealed line was altered, reordered, or cut from the
+  middle. **Counter-knock**: a tripwire row pivots into a
+  loaded Recon bench. **Self-sparring**: EMCON replays a
+  captured knock, mutated, at the phone's own Serve.
+  **Device dossiers** with **drift watch**: keep a knock
+  as a baseline and later knocks report what opened and
+  what closed since. **Tracker hunt**: an RSSI Geiger
+  counter for walking onto one advertiser.
+- **Sane defaults (iOS).** Every setting the app keeps, in
+  one census in the About tab, resettable to defaults in
+  one confirmed action — configuration only; payloads,
+  presets, sessions and logs are not configuration.
+- **Store hygiene (iOS).** Privacy manifest
+  (UserDefaults + file-timestamp reasons declared), the
+  Bonjour service types declared, export-compliance flag
+  set (CryptoKit only), `PRIVACY.md` at the repo root, and
+  the GitHub update checker compiled out of store builds
+  behind `STORE_BUILD` (default builds unchanged).
 
 ## 2.6.0 — 2026-10-15 — the cartographer
 
