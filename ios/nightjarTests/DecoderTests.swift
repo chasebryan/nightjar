@@ -137,7 +137,9 @@ final class DecoderTests: XCTestCase {
         XCTAssertEqual(Services.decodeEddystone(url)?.describe, "Eddystone-URL https://example.com/x")
         XCTAssertEqual(Services.decodeFastPair([0x2D, 0x7A, 0x23])?.describe,
                        "Fast Pair, discoverable (model 0x2D7A23)")
-        XCTAssertEqual(Services.decodeFastPair([0x00, 0x62, 0x01])?.describe,
+        // Paired mode carries account-key filter data, not a three-byte model ID.
+        let paired: [UInt8] = [0x00, 0x40, 0x01, 0x02, 0x03, 0x04, 0x21, 0x00, 0x01]
+        XCTAssertEqual(Services.decodeFastPair(paired)?.describe,
                        "Fast Pair device (paired, not discoverable)")
     }
 

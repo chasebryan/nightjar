@@ -43,6 +43,10 @@ enum ReconPayloads {
         Data([UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF)])
     }
 
+    static func le16(_ value: Int) -> Data {
+        Data([UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF)])
+    }
+
     static func u32be(_ value: Int) -> Data {
         Data([UInt8((value >> 24) & 0xFF), UInt8((value >> 16) & 0xFF),
               UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF)])
@@ -336,24 +340,24 @@ enum ReconPayloads {
 
     static func smb2Negotiate() -> Data {
         var header = Data([0xFE]) + Data("SMB".utf8)
-        header += u16(64)                       // StructureSize
-        header += u16(0)                        // CreditCharge
-        header += u32be(0)                      // Status
-        header += u16(0)                        // Command = NEGOTIATE
-        header += u16(1)                        // CreditRequest
-        header += u32be(0)                      // Flags
-        header += u32be(0)                      // NextCommand
-        header += u64be(1)                      // MessageId
-        header += u32be(0)                      // Reserved
-        header += u32be(0)                      // TreeId
-        header += u64be(0)                      // SessionId
+        header += le16(64)                       // StructureSize
+        header += le16(0)                        // CreditCharge
+        header += le32(0)                        // Status
+        header += le16(0)                        // Command = NEGOTIATE
+        header += le16(1)                        // CreditRequest
+        header += le32(0)                        // Flags
+        header += le32(0)                        // NextCommand
+        header += u64le(0)                       // First request uses MessageId 0
+        header += le32(0)                        // Reserved
+        header += le32(0)                        // TreeId
+        header += u64le(0)                       // SessionId
         header += Data(repeating: 0, count: 16) // Signature
-        var request = u16(36) + u16(5) + u16(0) + u16(0) + u32be(0)
-        request += Data((0..<16).map { UInt8($0) })
-        for dialect in [0x0202, 0x0210, 0x0300, 0x0302, 0x0311] {
-            request += u16(dialect)
-        }
-        request += u32be(0) + u16(0) + u16(0)
+        // SMB 3.1.1 requires negotiate contexts; offer dialects through 3.0.2.
+        let dialects = [0x0202, 0x0210, 0x0300, 0x0302]
+        var request = le16(36) + le16(dialects.count) + le16(1) + le16(0) + le32(0)
+        request += Data((0..<16).map { UInt8($0) }) // ClientGuid
+        request += u64le(0)                      // ClientStartTime
+        for dialect in dialects { request += le16(dialect) }
         let message = header + request
         let length = message.count
         return Data([0x00, UInt8((length >> 16) & 0xFF),
@@ -361,10 +365,17 @@ enum ReconPayloads {
     }
 
     static func rpcNull() -> Data {
-        u32be(0x12345678) + u32be(0) + u32be(2) + u32be(100000)
-            + u32be(2) + u32be(0)
-            + u32be(0) + u32be(0)
-            + u32be(0) + u32be(0)
+        var packet = u32be(0x12345678)
+        packet += u32be(0)
+        packet += u32be(2)
+        packet += u32be(100000)
+        packet += u32be(2)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        return packet
     }
 
     static func mongodbIsmaster(_ database: String = "admin") -> Data {
@@ -700,8 +711,12 @@ enum ReconPayloads {
 
     static func build(_ name: String) throws -> Data {
         guard let probe = all[name] else {
+            let query = name.lowercased()
+            let prefix = String(query.dropLast())
             let near = all.keys.filter {
-                $0.lowercased().contains(name.lowercased())
+                let candidate = $0.lowercased()
+                return candidate.contains(query)
+                    || (!prefix.isEmpty && candidate.hasPrefix(prefix))
             }.sorted().prefix(5)
             throw ReconError.unknownProbe(name, Array(near))
         }
@@ -711,7 +726,7 @@ enum ReconPayloads {
     static func firstLine(_ data: Data, limit: Int = 160) -> String {
         guard !data.isEmpty else { return "" }
         let text = String(decoding: data, as: UTF8.self)
-        for line in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
+        for line in text.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if !trimmed.isEmpty,
                !trimmed.unicodeScalars.contains(where: {

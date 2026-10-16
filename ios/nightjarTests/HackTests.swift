@@ -71,6 +71,43 @@ final class HackTests: XCTestCase {
         XCTAssertEqual(PayloadKit.hexdump(Data()), "    (empty)")
     }
 
+
+    func testNetworkTargetsRejectInvalidPortsAndMissingHosts() {
+        for target in [
+            "tcp://127.0.0.1:0",
+            "tcp://127.0.0.1:65536",
+            "tcp://127.0.0.1:-1",
+            "tcp://:443",
+            "udp://example.com:0",
+            "udp://example.com:65536",
+            "tcp+tls://example.com:99999",
+            "http://",
+            "http://:80",
+            "http://example.com:0",
+            "https://example.com:65536",
+        ] {
+            XCTAssertThrowsError(try SendTarget.parse(target), "Accepted invalid target: \(target)")
+        }
+    }
+
+    func testNetworkTargetsAcceptPortBoundariesAndImplicitHTTPPorts() throws {
+        switch try SendTarget.parse("tcp://127.0.0.1:1") {
+        case .tcp(_, let port, _): XCTAssertEqual(port, 1)
+        default: XCTFail("expected tcp")
+        }
+        switch try SendTarget.parse("udp://127.0.0.1:65535") {
+        case .udp(_, let port): XCTAssertEqual(port, 65535)
+        default: XCTFail("expected udp")
+        }
+        switch try SendTarget.parse("https://example.com/path") {
+        case .http(let url, let https):
+            XCTAssertTrue(https)
+            XCTAssertEqual(url.host, "example.com")
+            XCTAssertNil(url.port)
+        default: XCTFail("expected https")
+        }
+    }
+
     func testTargetParsing() throws {
         switch try SendTarget.parse("tcp://127.0.0.1:9000") {
         case .tcp(let host, let port, let tls):

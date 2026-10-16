@@ -97,9 +97,8 @@ enum PayloadKit {
         return data
     }
 
-    // MARK: gzip (Compression gives a zlib stream; gzip is a wrapper
-    // around the same deflate body, so: strip zlib's 2-byte header and
-    // 4-byte Adler-32, add gzip's 10-byte header, CRC-32 and size.)
+    // MARK: gzip (Compression supplies raw DEFLATE bytes; gzip wraps
+    // those bytes with a 10-byte header, CRC-32 and original size.)
 
     private static let crcTable: [UInt32] = (0..<256).map { n in
         var c = UInt32(n)
@@ -132,11 +131,9 @@ enum PayloadKit {
                     nil, COMPRESSION_ZLIB)
             }
         }
-        guard written > 6 else { return nil }
-        let zlib = dst.prefix(written)
-        let rawDeflate = zlib.dropFirst(2).dropLast(4)
+        guard written > 0 else { return nil }
         var out = Data([0x1f, 0x8b, 0x08, 0, 0, 0, 0, 0, 0, 0x03])
-        out.append(rawDeflate)
+        out.append(dst.prefix(written))
         out.append(le32(crc32(data)))
         out.append(le32(UInt32(data.count)))
         return out
@@ -148,17 +145,13 @@ enum PayloadKit {
         }
         let size = Int(le32Value(data.suffix(4)))
         let body = data.dropFirst(10).dropLast(8)
-        // Rebuild a zlib stream: 0x78 0x9C header + raw deflate + dummy
-        // Adler-32 (the Compression decoder does not verify it).
-        var zlib = Data([0x78, 0x9C])
-        zlib.append(body)
-        zlib.append(Data([0, 0, 0, 0]))
+        guard !body.isEmpty else { return nil }
         var dst = Data(count: max(size, 1))
         let written = dst.withUnsafeMutableBytes { dstPtr -> Int in
-            zlib.withUnsafeBytes { srcPtr -> Int in
+            body.withUnsafeBytes { srcPtr -> Int in
                 compression_decode_buffer(
                     dstPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), max(size, 1),
-                    srcPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), zlib.count,
+                    srcPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), body.count,
                     nil, COMPRESSION_ZLIB)
             }
         }
@@ -406,8 +399,10 @@ enum SendTarget {
         let rest = text.dropFirst(parts[0].count + 3)
         switch scheme {
         case "http", "https":
-            guard let url = URL(string: text) else {
-                throw MouthError.message("bad URL in \(text)")
+            guard let url = URL(string: text),
+                  let host = url.host, !host.isEmpty,
+                  (1...65535).contains(url.port ?? (scheme == "https" ? 443 : 80)) else {
+                throw MouthError.message("bad host or port in \(text)")
             }
             return .http(url: url, https: scheme == "https")
         case "ble", "adv", "advertise":
@@ -422,8 +417,10 @@ enum SendTarget {
                 throw MouthError.message("\(scheme):// target needs host:port, got \(rest)")
             }
             let host = String(rest[..<colon])
-            guard let port = Int(rest[rest.index(after: colon)...]) else {
-                throw MouthError.message("bad port in \(text)")
+            guard !host.isEmpty,
+                  let port = Int(rest[rest.index(after: colon)...]),
+                  (1...65535).contains(port) else {
+                throw MouthError.message("bad host or port in \(text)")
             }
             if scheme == "udp" { return .udp(host: host, port: port) }
             return .tcp(host: host, port: port, tls: scheme != "tcp")

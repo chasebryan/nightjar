@@ -110,6 +110,8 @@ final class UpdateChecker: ObservableObject {
     nonisolated static func isNewer(_ latest: String, than current: String) -> Bool {
         let a = components(latest)
         let b = components(current)
+        // An unknown or malformed version is not evidence of an update.
+        guard !a.isEmpty, !b.isEmpty else { return false }
         let count = max(a.count, b.count)
         for i in 0..<count {
             let x = i < a.count ? a[i] : 0
@@ -120,12 +122,22 @@ final class UpdateChecker: ObservableObject {
     }
 
     nonisolated static func components(_ version: String) -> [Int] {
-        var text = version.trimmingCharacters(in: .whitespaces).lowercased()
+        var text = version.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if text.hasPrefix("v") { text.removeFirst() }
         // Drop any pre-release/build suffix: "2.1.0-rc1" -> "2.1.0".
         if let dash = text.firstIndex(where: { $0 == "-" || $0 == "+" }) {
             text = String(text[..<dash])
         }
-        return text.split(separator: ".").map { Int($0) ?? 0 }
+        // Never silently turn an invalid component into zero: for example,
+        // "3.oops" must not be treated as version 3.0.
+        let parts = text.split(separator: ".", omittingEmptySubsequences: false)
+        var numbers: [Int] = []
+        for part in parts {
+            guard !part.isEmpty,
+                  part.utf8.allSatisfy({ $0 >= 48 && $0 <= 57 }),
+                  let number = Int(part) else { return [] }
+            numbers.append(number)
+        }
+        return numbers
     }
 }

@@ -1,0 +1,75 @@
+name: Nightjar checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python tests (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install test runner
+        run: python -m pip install pytest
+      - name: Run CLI/overlay tests
+        run: python -m pytest tests/ -q
+
+  ios:
+    name: iOS simulator XCTest
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Select available iPhone simulator
+        shell: bash
+        run: |
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/simulators.json"
+          SIMULATOR_ID="$(python3 - "$RUNNER_TEMP/simulators.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              runtimes = json.load(stream)["devices"]
+          for runtime in sorted(runtimes, reverse=True):
+              if "SimRuntime.iOS-" not in runtime:
+                  continue
+              for device in runtimes[runtime]:
+                  if device.get("isAvailable", True) and "iPhone" in device["name"]:
+                      print(device["udid"])
+                      sys.exit(0)
+          sys.exit("No available iPhone simulator installed on the runner")
+          PY
+          )"
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
+          echo "Selected iPhone simulator: $SIMULATOR_ID"
+      - name: Run iOS unit tests without code signing
+        run: |
+          xcodebuild test \
+            -project ios/nightjar.xcodeproj \
+            -scheme nightjar \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RUNNER_TEMP/nightjar-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Upload XCTest result bundle on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightjar-ios-test-results
+          path: ${{ runner.temp }}/nightjar-tests.xcresult
+          if-no-files-found: ignore
