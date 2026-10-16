@@ -7,6 +7,11 @@ struct EmconView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @StateObject private var emcon = Emcon()
     @StateObject private var spar = Recon()
+    @StateObject private var knockSender = KnockSender()
+    @State private var knockTarget = ""
+    @State private var knockText = ""
+    @State private var keyDraft = ""
+    @State private var keyHex: String?
 
     @AppStorage("emconCheckName") private var checkName = false
     @AppStorage("emconCheckAirdrop") private var checkAirdrop = false
@@ -33,6 +38,8 @@ struct EmconView: View {
             auditSection
             tripwireSection
             sparringSection
+            knocktalkSection
+            vaultSection
             hardeningSection
             Section {
                 Text("EMCON cannot hide this device from the access "
@@ -44,7 +51,14 @@ struct EmconView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .onAppear { emcon.restoreIfNeeded() }
+        .onAppear {
+            emcon.restoreIfNeeded()
+            emcon.mouth = mouth
+            if keyHex == nil { keyHex = KnockKeyStore.keyHex }
+            if knockTarget.isEmpty {
+                knockTarget = emcon.ownIP ?? ""
+            }
+        }
         .onChange(of: spar.fuzzing) { _, now in
             if !now, sparWasFuzzing {
                 Journal.log("emcon", "spar",
@@ -523,6 +537,217 @@ struct EmconView: View {
                          : "Serve dropped \(spar.fuzzDead) "
                            + "connection(s) under mutation.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - knocktalk
+
+    /// Estimated sequence length for the draft: a sync knock
+    /// plus two knocks per sealed byte (nonce 12 + tag 16 ride
+    /// along with the text).
+    private var knockEstimate: Int {
+        1 + 2 * (28 + knockText.utf8.count)
+    }
+
+    private var knocktalkSection: some View {
+        Section(header: Text("Knocktalk"),
+                footer: Text("The pairing key lives in the "
+                             + "Keychain; the journal records "
+                             + "arrivals, never contents. A shared "
+                             + "key has no forward secrecy — the "
+                             + "honest limit of a channel that "
+                             + "cannot handshake. Auto-delete is "
+                             + "checked at launch, when this tab "
+                             + "opens, and when a message lands — a "
+                             + "closed app cannot burn on schedule.")) {
+            if keyHex != nil {
+                HStack {
+                    Text("Pairing key")
+                    Spacer()
+                    Text("fingerprint "
+                         + KnockKeyStore.fingerprint(ofHex: keyHex!))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                TextField("target — a phone running EMCON",
+                          text: $knockTarget)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                TextField("message (≤\(Knocktalk.maxCharacters) "
+                          + "characters)", text: $knockText)
+                    .disableAutocorrection(true)
+                if knockSender.sending {
+                    HStack {
+                        ProgressView()
+                        Text("knock \(knockSender.sent)/"
+                             + "\(knockSender.total)")
+                            .font(.callout)
+                    }
+                    Button("Cancel") { knockSender.cancel() }
+                } else {
+                    Button {
+                        if let key = KnockKeyStore.key,
+                           let ports = try? Knocktalk.encode(
+                            knockText, key: key) {
+                            knockSender.send(host: knockTarget,
+                                              ports: ports)
+                        }
+                    } label: {
+                        Label("Knock it — ≈\(knockEstimate) knocks, "
+                              + "~\(Knocktalk.etaSeconds(knocks: knockEstimate)) s",
+                              systemImage: "hand.tap")
+                    }
+                    .disabled(knockText.isEmpty
+                              || knockText.count > Knocktalk.maxCharacters
+                              || knockTarget.isEmpty)
+                }
+                Button {
+                    let hex = KnockKeyStore.generate()
+                    KnockKeyStore.keyHex = hex
+                    keyHex = hex
+                } label: {
+                    Text("Replace the pairing key")
+                }
+                Button(role: .destructive) {
+                    KnockKeyStore.keyHex = nil
+                    keyHex = nil
+                } label: {
+                    Text("Forget the pairing key")
+                }
+            } else {
+                Text("Knocktalk seals each message with "
+                     + "ChaCha20-Poly1305 under a 256-bit pairing "
+                     + "key both phones share. Generate one here "
+                     + "and carry it to the other phone, or paste "
+                     + "the one it generated. Without a key, "
+                     + "framed traffic still lands below — as "
+                     + "sealed patterns nobody can read.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    let hex = KnockKeyStore.generate()
+                    KnockKeyStore.keyHex = hex
+                    keyHex = hex
+                } label: {
+                    Label("Generate a pairing key",
+                          systemImage: "key")
+                }
+                TextField("paste a pairing key (64 hex digits)",
+                          text: $keyDraft)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .font(.caption.monospaced())
+                Button("Save the pasted key") {
+                    let hex = keyDraft
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                    if (try? PayloadKit.decodeHex(hex))?.count == 32 {
+                        KnockKeyStore.keyHex = hex
+                        keyHex = hex
+                        keyDraft = ""
+                    }
+                }
+                .disabled((try? PayloadKit.decodeHex(
+                    keyDraft.trimmingCharacters(
+                        in: .whitespacesAndNewlines)))?.count != 32)
+            }
+            Picker("Auto-delete decoded messages",
+                   selection: Binding(
+                    get: { emcon.knockRetentionHours },
+                    set: { emcon.setKnockRetention(hours: $0) })) {
+                Text("after 1 hour").tag(1.0)
+                Text("after 6 hours").tag(6.0)
+                Text("after 24 hours").tag(24.0)
+                Text("after 7 days").tag(168.0)
+                Text("never").tag(0.0)
+            }
+            if !emcon.knockMessages.isEmpty {
+                Text("Decoded")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(emcon.knockMessages) { message in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(message.text)
+                            .font(.callout.weight(.semibold))
+                        Text("\(message.source) · "
+                             + message.when.formatted(
+                                date: .omitted, time: .standard))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Button(role: .destructive) {
+                    emcon.clearKnockMessages()
+                } label: {
+                    Text("Clear decoded messages")
+                }
+            }
+            if !emcon.knockPatterns.isEmpty {
+                Text("Sealed / structured traffic")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(emcon.knockPatterns) { pattern in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(pattern.source) — \(pattern.knocks) "
+                             + "knocks")
+                            .font(.caption.weight(.semibold))
+                        Text(pattern.note).font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - knock vault
+
+    private static let vaultDigitOptions =
+        ["ssh", "tls", "mqtt", "http", "smtp", "ftp"]
+
+    private var vaultSection: some View {
+        Section(header: Text("Knock vault"),
+                footer: Text("The combination raises the Serve "
+                             + "configured on the Serve tab — its "
+                             + "ports, its reply — for sixty "
+                             + "seconds. EMCON must be up: no "
+                             + "tripwire, no ear. The default "
+                             + "combination is printed in the app — "
+                             + "it is no secret. Change the digits: "
+                             + "the combination is the key. Knocks "
+                             + "from this device itself never count.")) {
+            Text("Speak three protocols, in order, from one other "
+                 + "device, inside 20 seconds — each knock's bytes "
+                 + "recognized as its protocol:")
+                .font(.caption).foregroundStyle(.secondary)
+            ForEach(0..<3, id: \.self) { index in
+                Picker("Digit \(index + 1)",
+                       selection: Binding(
+                        get: { emcon.vaultCombo[index] },
+                        set: { emcon.setVaultDigit(index, $0) })) {
+                    ForEach(Self.vaultDigitOptions, id: \.self) {
+                        digit in
+                        Text(digit.uppercased()).tag(digit)
+                    }
+                }
+            }
+            if let until = emcon.vaultOpenUntil {
+                HStack {
+                    Text("Vault")
+                    Spacer()
+                    Text("OPEN — seals "
+                         + until.formatted(date: .omitted,
+                                           time: .standard))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.green)
+                }
+                Button("Seal now") { emcon.sealVault() }
+            } else {
+                HStack {
+                    Text("Vault")
+                    Spacer()
+                    Text("sealed")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
             }
         }
