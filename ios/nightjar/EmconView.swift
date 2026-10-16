@@ -34,6 +34,9 @@ struct EmconView: View {
             auditSection
             tripwireSection
             proberFilesSection
+            hometurfSection
+            senseSection
+            conductorSection
             sparringSection
             maneuversSection
             knockTrafficSection
@@ -715,6 +718,152 @@ struct EmconView: View {
     }
 
     // MARK: - hardening
+
+    // MARK: - home-turf memory
+
+    private var hometurfSection: some View {
+        Section(header: Text("Home-turf memory"),
+                footer: Text("Learned only while EMCON is up "
+                    + "on the home subnet — three banked nights "
+                    + "hold the pattern, and after that the tab "
+                    + "stops reporting events and starts "
+                    + "reporting deviations. It learns from "
+                    + "the tripwire's hearing alone; a quiet "
+                    + "house teaches it a quiet pattern.")) {
+            if emcon.homeSubnet == nil {
+                Text("No home subnet is marked, so there is "
+                     + "no turf to learn.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else if !emcon.hometurfReady {
+                Text("Learning the pattern — "
+                     + "\(emcon.hometurf.nights) of 3 nights "
+                     + "banked.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Text("Pattern held: \(emcon.hometurf.nights) "
+                     + "nights · \(emcon.hometurf.sources.count) "
+                     + "sources · \(emcon.hometurf.ports.count) "
+                     + "doors · \(emcon.hometurf.verdicts.count) "
+                     + "first words.")
+                    .font(.callout)
+                if emcon.hometurfNotes.isEmpty {
+                    Text("Nothing off-pattern tonight.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    ForEach(emcon.hometurfNotes, id: \.self) {
+                        note in
+                        Label(note, systemImage: "waveform.path.ecg")
+                            .font(.callout)
+                    }
+                }
+                Button("Forget the pattern", role: .destructive) {
+                    emcon.hometurfReset()
+                }
+            }
+        }
+    }
+
+    // MARK: - second sense
+
+    private var senseSection: some View {
+        Section(header: Text("Second sense"),
+                footer: Text("The perimeter tightens itself "
+                    + "for thirty minutes when a foreign "
+                    + "nightjar-grade probe speaks to it, or a "
+                    + "honeydrop is taken: answer in character "
+                    + "arms whether or not its switch is set. "
+                    + "Nothing else changes — a tightened "
+                    + "perimeter stays legible.")) {
+            if emcon.senseActive, let until = emcon.senseUntil {
+                Label("Heightened until "
+                      + until.formatted(date: .omitted,
+                                        time: .shortened),
+                      systemImage: "exclamationmark.shield")
+                    .font(.callout.weight(.medium))
+                Text(emcon.senseReason)
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Stand it down") { emcon.senseStandDown() }
+            } else {
+                Text("At ease. The perimeter is at its "
+                     + "ordinary posture.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - the conductor
+
+    @AppStorage("conductorOn") private var conductorOn = false
+    @State private var rules: [Conductor.Rule] = []
+    @State private var newTrigger = "fingerprinted"
+    @State private var newAction = "pivotRecon"
+
+    private var conductorSection: some View {
+        Section(header: Text("The conductor"),
+                footer: Text("Reflexes you arm once, fired "
+                    + "without you: a trigger on the wire, an "
+                    + "action the instrument already knows. "
+                    + "Each rule rests five minutes between "
+                    + "firings, every firing is journaled, and "
+                    + "actions needing a mouth or a target "
+                    + "degrade to the journal line alone when "
+                    + "they have neither. Firing the bench "
+                    + "stays your press — a reflex can load "
+                    + "Recon, never pull its trigger.")) {
+            Toggle("Conductor", isOn: $conductorOn)
+            ForEach($rules) { $rule in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(rule.name).font(.callout)
+                        Text(Conductor.triggerLabel(rule.trigger)
+                             + " → "
+                             + Conductor.actionLabel(rule.action))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $rule.enabled)
+                        .labelsHidden()
+                        .onChange(of: rule.enabled) { _ in
+                            Conductor.saveRules(rules)
+                        }
+                    Button(role: .destructive) {
+                        rules.removeAll { $0.id == rule.id }
+                        Conductor.saveRules(rules)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            Picker("When", selection: $newTrigger) {
+                ForEach(Conductor.triggers, id: \.id) { t in
+                    Text(t.label).tag(t.id)
+                }
+            }
+            Picker("Then", selection: $newAction) {
+                ForEach(Conductor.actions, id: \.id) { a in
+                    Text(a.label).tag(a.id)
+                }
+            }
+            Button {
+                let rule = Conductor.Rule(
+                    id: UUID().uuidString,
+                    name: Conductor.triggerLabel(newTrigger)
+                        + " → " + Conductor.actionLabel(newAction),
+                    trigger: newTrigger, action: newAction,
+                    enabled: true)
+                rules.append(rule)
+                Conductor.saveRules(rules)
+            } label: {
+                Label("Add the reflex", systemImage: "plus.circle")
+            }
+        }
+        .onAppear {
+            Conductor.seedIfNeeded()
+            rules = Conductor.loadRules()
+        }
+    }
 
     // MARK: - night maneuvers
 
