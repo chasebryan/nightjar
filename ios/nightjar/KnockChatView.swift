@@ -11,6 +11,7 @@ struct KnockChatView: View {
     @EnvironmentObject private var chat: KnockChat
     @State private var newPeer = ""
     @State private var openedPeer: String?
+    @State private var navActive = false
     @State private var keyDraft = ""
     @State private var keyHex: String?
 
@@ -43,8 +44,15 @@ struct KnockChatView: View {
                 retentionSection
             }
             .navigationTitle("Knocktalk")
-            .navigationDestination(item: $openedPeer) { peer in
-                ConversationView(peer: peer)
+            .background {
+                // iOS 16 navigation: one hidden link, driven by
+                // the Open button; thread rows are plain links.
+                NavigationLink(isActive: $navActive) {
+                    ConversationView(peer: openedPeer ?? "")
+                } label: {
+                    EmptyView()
+                }
+                .hidden()
             }
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
@@ -146,6 +154,7 @@ struct KnockChatView: View {
                 Button("Open") {
                     openedPeer = KnockChat.peerKey(newPeer)
                     newPeer = ""
+                    navActive = true
                 }
                 .disabled(newPeer
                     .trimmingCharacters(in: .whitespaces).isEmpty)
@@ -157,8 +166,8 @@ struct KnockChatView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             ForEach(chat.peersByRecency, id: \.self) { peer in
-                Button {
-                    openedPeer = peer
+                NavigationLink {
+                    ConversationView(peer: peer)
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -177,7 +186,6 @@ struct KnockChatView: View {
                         threadBadge(peer)
                     }
                 }
-                .buttonStyle(.plain)
             }
         }
     }
