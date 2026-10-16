@@ -113,6 +113,12 @@ struct DeviceRow: Identifiable {
     var txPowerLast: Int?
     var serviceUUIDs: [String] = []
     var rotatingAddress: Bool = false
+    /// Flare: this advertiser's FFF0 service data matched the
+    /// keyed rotating token — a holder of the pairing key is
+    /// (or was, this session) in radio range. Recognition, not
+    /// identity: the address rotates and the token expires.
+    var flare = false
+    var flareLastSeen: TimeInterval?
 
     static let historyCap = 24
 
@@ -163,6 +169,25 @@ struct DeviceRow: Identifiable {
         trackerShaped = trackerShaped || classification.trackerShaped
         rotatingAddress = rotatingAddress
             || classification.rotatingPhone
+        // Flare recognition: only checked when a pairing key
+        // exists, and only against FFF0 service data — three
+        // HMACs against the neighboring windows.
+        if let key = KnockKeyStore.key {
+            for (uuid, bytes) in sighting.serviceData
+            where Services.short(uuid) == 0xFFF0 {
+                if Flare.matches(Data(bytes), key: key) {
+                    if !flare {
+                        Journal.log(
+                            "listen", "flare",
+                            "a flare answered — a holder of the "
+                            + "pairing key is in radio range "
+                            + "(address \(id))")
+                    }
+                    flare = true
+                    flareLastSeen = sighting.seenAt
+                }
+            }
+        }
     }
 
     /// What to call it: the advertised name, else a label the broadcast
