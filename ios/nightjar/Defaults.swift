@@ -38,7 +38,7 @@ enum SaneDefaults {
         "serveUseTCP", "serveUseUDP", "serveUseHTTP",
         "serveReply", "serveReplyMode", "serveFraming",
         "canaryPersona", "canaryPort",
-        "canaryHoneydrop", "canaryDrop",
+        "canaryHoneydrop", "canaryDrop", "flare.on",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
@@ -51,6 +51,8 @@ enum SaneDefaults {
         // EMCON
         "emconActive", "emconHomeSubnet", "emconVaultCombo",
         "emconVaultAction", "emconEscalation",
+        "deadHand.on", "deadHand.hours", "deadHand.last",
+        "deadHand.firedAt",
         "knocktalkRetentionHours", "knocktalkSuite",
         "knocktalkRelayEnabled", "knocktalkRelayURL",
         "knocktalkRelayToken", "knocktalkRelayBox",
@@ -77,6 +79,7 @@ enum SaneDefaults {
         defaults.removeObject(forKey: "gattArm.on")
         if mouth.beaconOn { mouth.stopBeacon() }
         if mouth.canary.runningPersona != nil { mouth.canary.stop() }
+        if mouth.flareOn { mouth.stopFlare() }
         mouth.setStealth(false)
     }
 }
