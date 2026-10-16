@@ -84,7 +84,10 @@ final class HackTests: XCTestCase {
             "http://",
             "http://:80",
             "http://example.com:0",
+            "http://example.com:",
             "https://example.com:65536",
+            "https://example.com:9999999999999999999999",
+            "https://[::1]:9999999999999999999999",
         ] {
             XCTAssertThrowsError(try SendTarget.parse(target), "Accepted invalid target: \(target)")
         }
@@ -106,6 +109,7 @@ final class HackTests: XCTestCase {
             XCTAssertNil(url.port)
         default: XCTFail("expected https")
         }
+        XCTAssertNoThrow(try SendTarget.parse("https://[::1]/path"))
     }
 
     func testTargetParsing() throws {
