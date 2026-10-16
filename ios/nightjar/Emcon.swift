@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import Network
 import UIKit
+import UserNotifications
 
 /// EMCON — emissions control. The defensive half of nightjar-hack:
 /// turn the app's own instruments inward so the operator can see
@@ -938,6 +939,136 @@ final class Emcon: ObservableObject {
                                proto: proto, verdict: verdict,
                                mine: mine)
         }
+    }
+
+    // MARK: - dead hand
+
+    /// The dead hand. Arm it, then check in deliberately before
+    /// the interval runs out. If the app is next opened (launch
+    /// or foreground) with the check-in overdue, the hand falls:
+    /// the Knocktalk threads burn and EMCON rises, before the
+    /// operator has touched anything else. iOS gives a
+    /// third-party app no background timer it can trust, so the
+    /// hand falls at the next OPENING, not at the deadline
+    /// itself — two reminder notifications are scheduled as
+    /// courtesies, and the UI copy says all of this plainly.
+    /// Only the deliberate check-in resets the clock: merely
+    /// opening the app must never feed the hand.
+    static let deadHandHoursOptions = [12, 24, 72, 168]
+
+    @Published private(set) var deadHandDown = false
+
+    private var deadHandOn: Bool {
+        UserDefaults.standard.bool(forKey: "deadHand.on")
+    }
+    private var deadHandInterval: TimeInterval {
+        let h = UserDefaults.standard.integer(
+            forKey: "deadHand.hours")
+        return TimeInterval((h > 0 ? h : 24) * 3600)
+    }
+    private var deadHandLast: Date? {
+        let t = UserDefaults.standard.double(forKey: "deadHand.last")
+        return t > 0 ? Date(timeIntervalSince1970: t) : nil
+    }
+    var deadHandDeadline: Date? {
+        deadHandLast?.addingTimeInterval(deadHandInterval)
+    }
+    var deadHandOverdue: Bool {
+        guard deadHandOn, let deadline = deadHandDeadline
+        else { return false }
+        return Date() > deadline
+    }
+    var deadHandHasFallen: Bool {
+        deadHandDown
+            || UserDefaults.standard.double(
+                forKey: "deadHand.firedAt") > 0
+    }
+
+    /// Arming counts as the first check-in — the operator is
+    /// never ambushed by their own switch.
+    func deadHandArm() {
+        UserDefaults.standard.set(
+            Date().timeIntervalSince1970, forKey: "deadHand.last")
+        UserDefaults.standard.set(0.0, forKey: "deadHand.firedAt")
+        deadHandDown = false
+        deadHandScheduleReminders()
+        Journal.log("emcon", "deadhand",
+                    "dead hand armed — check in within "
+                    + "\(Int(deadHandInterval / 3600)) h, or the "
+                    + "next opening burns and goes dark")
+    }
+
+    func deadHandDisarm() {
+        deadHandCancelReminders()
+    }
+
+    /// The deliberate check-in: the ONLY thing that resets the
+    /// clock.
+    func deadHandCheckIn() {
+        UserDefaults.standard.set(
+            Date().timeIntervalSince1970, forKey: "deadHand.last")
+        UserDefaults.standard.set(0.0, forKey: "deadHand.firedAt")
+        deadHandDown = false
+        deadHandScheduleReminders()
+    }
+
+    /// Changing the interval re-times the reminders; the clock
+    /// itself is untouched.
+    func deadHandReschedule() {
+        deadHandScheduleReminders()
+    }
+
+    /// Launch and every foreground. Fires once per overdue
+    /// period; a check-in re-arms the trigger.
+    func deadHandEvaluate(mouth: Mouth) {
+        guard deadHandOn, !deadHandDown,
+              UserDefaults.standard.double(
+                forKey: "deadHand.firedAt") == 0,
+              deadHandOverdue, let deadline = deadHandDeadline
+        else { return }
+        UserDefaults.standard.set(
+            Date().timeIntervalSince1970, forKey: "deadHand.firedAt")
+        deadHandDown = true
+        chat.burnNow()
+        activate(mouth: mouth)
+        let overdueH = Int(
+            Date().timeIntervalSince(deadline) / 3600)
+        Journal.log("emcon", "deadhand",
+                    "DEAD HAND FELL — check-in overdue "
+                    + "(\(overdueH) h past the deadline). "
+                    + "Knocktalk threads burned; EMCON raised.")
+    }
+
+    private func deadHandScheduleReminders() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        deadHandCancelReminders()
+        guard let deadline = deadHandDeadline else { return }
+        func schedule(_ id: String, at date: Date, body: String) {
+            let seconds = date.timeIntervalSinceNow
+            guard seconds > 60 else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Dead hand"
+            content.body = body
+            let trigger = UNTimeIntervalNotificationTrigger(
+                timeInterval: seconds, repeats: false)
+            center.add(UNNotificationRequest(
+                identifier: id, content: content, trigger: trigger))
+        }
+        schedule("deadhand.warn",
+                 at: deadline.addingTimeInterval(-2 * 3600),
+                 body: "Check-in due in about two hours. Miss "
+                    + "it, and the next opening burns the "
+                    + "Knocktalk threads and raises EMCON.")
+        schedule("deadhand.due", at: deadline,
+                 body: "Check-in overdue. The hand falls at "
+                    + "the next opening.")
+    }
+
+    private func deadHandCancelReminders() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(
+                withIdentifiers: ["deadhand.warn", "deadhand.due"])
     }
 
     // MARK: - escalation (answer in character)
