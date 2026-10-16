@@ -406,8 +406,13 @@ enum SendTarget {
         let rest = text.dropFirst(parts[0].count + 3)
         switch scheme {
         case "http", "https":
+            // URL.port is nil both when no port is given and when one overflows.
+            let authority = rest.prefix { $0 != "/" && $0 != "?" && $0 != "#" }
+            let hostPort = authority.split(separator: "@", omittingEmptySubsequences: false).last ?? ""
+            let hasExplicitPort = hostPort.hasPrefix("[") ? hostPort.contains("]:") : hostPort.contains(":")
             guard let url = URL(string: text),
                   let host = url.host, !host.isEmpty,
+                  (!hasExplicitPort || url.port != nil),
                   (1...65535).contains(url.port ?? (scheme == "https" ? 443 : 80)) else {
                 throw MouthError.message("bad host or port in \(text)")
             }
