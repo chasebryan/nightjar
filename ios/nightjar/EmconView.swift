@@ -33,9 +33,12 @@ struct EmconView: View {
             selfReconSection
             auditSection
             tripwireSection
+            proberFilesSection
             sparringSection
+            maneuversSection
             knockTrafficSection
             vaultSection
+            deadHandSection
             hardeningSection
             Section {
                 Text("EMCON cannot hide this device from the access "
@@ -476,6 +479,62 @@ struct EmconView: View {
         }
     }
 
+    // MARK: - prober files
+
+    @State private var proberSelection: ProberFile?
+
+    private var proberFilesSection: some View {
+        let files = ProberFiles.build(events: emcon.events)
+        return Section(header: Text("Prober files"),
+                footer: Text("A dossier for everyone who has "
+                    + "knocked — assembled from the tripwire "
+                    + "log this phone keeps. It covers what "
+                    + "the log still holds.")) {
+            if files.isEmpty {
+                Text("No probers yet. When something knocks, "
+                     + "its file opens here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else {
+                ForEach(files) { file in
+                    Button {
+                        proberSelection = file
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(file.host)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                Text("\(file.knocks) knock(s) · "
+                                     + "\(file.ports.count) port(s)"
+                                     + (file.drops > 0
+                                        ? " · took \(file.drops) "
+                                            + "drop(s)" : "")
+                                     + " · last "
+                                     + file.lastSeen.formatted(
+                                        date: .omitted,
+                                        time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if ProberFiles.changed(file) {
+                                Text("CHANGED")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.orange)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(item: $proberSelection) { file in
+            ProberFileView(file: file)
+        }
+    }
+
     // MARK: - self-sparring
 
     /// TCP captures carrying their actual first words — the seeds.
@@ -656,6 +715,210 @@ struct EmconView: View {
     }
 
     // MARK: - hardening
+
+    // MARK: - night maneuvers
+
+    private struct ManeuverLeg: Identifiable {
+        enum Outcome { case pass, flag, skip }
+        var id: String { name }
+        let name: String
+        let outcome: Outcome
+        let detail: String
+    }
+
+    @StateObject private var maneuverSpar = Recon()
+    @State private var maneuverLegs: [ManeuverLeg] = []
+    @State private var maneuversRunning = false
+    @State private var maneuverWasFuzzing = false
+    @State private var maneuversGrade: String?
+
+    /// One press, three examinations, one grade in the sealed
+    /// log: the chain proves the record, the census reads the
+    /// posture, the spar tests the listener. A leg that cannot
+    /// run says so — skipped is a finding, not a failure.
+    private func runManeuvers() {
+        maneuverLegs = []
+        maneuversGrade = nil
+        maneuversRunning = true
+
+        let chain = Journal.verifyChain()
+        maneuverLegs.append(ManeuverLeg(
+            name: "Seal chain",
+            outcome: chain.brokenLine == nil ? .pass : .flag,
+            detail: chain.brokenLine == nil
+                ? "\(chain.sealed) sealed line(s) hold, "
+                    + "\(chain.legacy) legacy line(s) predate "
+                    + "the chain"
+                : "BROKEN at sealed line "
+                    + "\(chain.brokenLine ?? 0)"))
+
+        let censusDetail = "exposure \(score.value) · tripwire "
+            + (emcon.tripwireOn ? "up" : "DOWN")
+            + (emcon.unwatched.isEmpty
+                ? " · every port watched"
+                : " · \(emcon.unwatched.count) port(s) unwatched")
+        maneuverLegs.append(ManeuverLeg(
+            name: "Census",
+            outcome: emcon.tripwireOn && emcon.unwatched.isEmpty
+                ? .pass : .flag,
+            detail: censusDetail))
+
+        guard mouth.serveRunning else {
+            maneuverLegs.append(ManeuverLeg(
+                name: "Spar", outcome: .skip,
+                detail: "Serve is down — no listener to test"))
+            finishManeuvers()
+            return
+        }
+        guard let seed = sparSeeds.first,
+              let seedData = try? PayloadKit.decodeHex(
+                seed.bytesHex ?? "") else {
+            maneuverLegs.append(ManeuverLeg(
+                name: "Spar", outcome: .skip,
+                detail: "no captured probe to replay yet"))
+            finishManeuvers()
+            return
+        }
+        maneuverSpar.startFuzz(
+            target: "tcp://127.0.0.1:\(serveTCPPort)",
+            seed: seedData, count: 60, length: seedData.count,
+            mutations: 2, seedValue: nil, read: true, timeout: 1.2)
+    }
+
+    private func finishManeuvers(sparDead: Int? = nil) {
+        if let sparDead {
+            maneuverLegs.append(ManeuverLeg(
+                name: "Spar",
+                outcome: sparDead == 0 ? .pass : .flag,
+                detail: sparDead == 0
+                    ? "Serve held all 60 mutations"
+                    : "Serve dropped \(sparDead) connection(s) "
+                        + "under mutation"))
+        }
+        let clean = maneuverLegs.filter { $0.outcome == .pass }.count
+        maneuversGrade = "\(clean) of \(maneuverLegs.count) "
+            + "legs clean"
+        Journal.log("emcon", "maneuvers",
+                    maneuversGrade! + " — "
+                    + maneuverLegs.map {
+                        "\($0.name): \($0.detail)"
+                    }.joined(separator: " · "))
+        maneuversRunning = false
+    }
+
+    private var maneuversSection: some View {
+        Section(header: Text("Night maneuvers"),
+                footer: Text("The instrument reports for duty: "
+                    + "the seal chain proves the record, the "
+                    + "census reads the posture, the spar fires "
+                    + "sixty mutations of a real capture at your "
+                    + "own Serve. The grade goes into the sealed "
+                    + "log either way.")) {
+            Button {
+                runManeuvers()
+            } label: {
+                Label(maneuversRunning
+                        ? "Running maneuvers…"
+                        : "Run night maneuvers",
+                      systemImage: "checklist")
+            }
+            .disabled(maneuversRunning)
+            ForEach(maneuverLegs) { leg in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: leg.outcome == .pass
+                            ? "checkmark.circle.fill"
+                            : leg.outcome == .flag
+                                ? "exclamationmark.circle.fill"
+                                : "minus.circle")
+                        .foregroundStyle(leg.outcome == .pass
+                            ? .green
+                            : leg.outcome == .flag
+                                ? .orange : .secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(leg.name).font(.callout.weight(.medium))
+                        Text(leg.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if let grade = maneuversGrade, !maneuversRunning {
+                Text(grade + " — graded into the night log.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .onChange(of: maneuverSpar.fuzzing) { now in
+            if !now, maneuverWasFuzzing, maneuversRunning {
+                finishManeuvers(sparDead: maneuverSpar.fuzzDead)
+            }
+            maneuverWasFuzzing = now
+        }
+    }
+
+    // MARK: - dead hand
+
+    @AppStorage("deadHand.on") private var deadHandOn = false
+    @AppStorage("deadHand.hours") private var deadHandHours = 24
+
+    private var deadHandSection: some View {
+        Section(header: Text("Dead hand"),
+                footer: Text("Arm it, then check in here — "
+                    + "deliberately, with the button — before "
+                    + "the interval runs out. If the app is "
+                    + "next opened with the check-in overdue, "
+                    + "the Knocktalk threads burn and EMCON "
+                    + "rises before anything else happens. It "
+                    + "falls at the next OPENING, not at the "
+                    + "deadline: iOS gives no app a background "
+                    + "timer worth trusting. The reminders are "
+                    + "courtesies. Merely opening the app never "
+                    + "counts as a check-in — that is the "
+                    + "point of the hand.")) {
+            Toggle("Arm the dead hand", isOn: $deadHandOn)
+                .onChange(of: deadHandOn) { on in
+                    if on { emcon.deadHandArm() }
+                    else { emcon.deadHandDisarm() }
+                }
+            if deadHandOn {
+                Picker("Check in every",
+                       selection: $deadHandHours) {
+                    ForEach(Emcon.deadHandHoursOptions,
+                            id: \.self) { h in
+                        Text(h < 24 ? "\(h) hours"
+                                    : "\(h / 24) day(s)")
+                            .tag(h)
+                    }
+                }
+                .onChange(of: deadHandHours) { _ in
+                    emcon.deadHandReschedule()
+                }
+                if emcon.deadHandHasFallen {
+                    Text("THE HAND HAS FALLEN — threads "
+                         + "burned, EMCON raised. Check in to "
+                         + "re-arm it.")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.red)
+                } else if let deadline = emcon.deadHandDeadline {
+                    LabeledContent(
+                        "Deadline",
+                        value: deadline.formatted(
+                            date: .abbreviated, time: .shortened))
+                    if emcon.deadHandOverdue {
+                        Text("OVERDUE — the hand falls at "
+                             + "the next opening.")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Button {
+                    emcon.deadHandCheckIn()
+                } label: {
+                    Label("Check in — I'm here",
+                          systemImage: "hand.raised.fill")
+                }
+            }
+        }
+    }
 
     private var hardeningSection: some View {
         Section(header: Text("Hardening — the OS half")) {
