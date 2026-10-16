@@ -5,13 +5,8 @@ import SwiftUI
 struct EmconView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
-    @StateObject private var emcon = Emcon()
+    @EnvironmentObject private var emcon: Emcon
     @StateObject private var spar = Recon()
-    @StateObject private var knockSender = KnockSender()
-    @State private var knockTarget = ""
-    @State private var knockText = ""
-    @State private var keyDraft = ""
-    @State private var keyHex: String?
 
     @AppStorage("emconCheckName") private var checkName = false
     @AppStorage("emconCheckAirdrop") private var checkAirdrop = false
@@ -38,7 +33,7 @@ struct EmconView: View {
             auditSection
             tripwireSection
             sparringSection
-            knocktalkSection
+            knockTrafficSection
             vaultSection
             hardeningSection
             Section {
@@ -54,10 +49,6 @@ struct EmconView: View {
         .onAppear {
             emcon.restoreIfNeeded()
             emcon.mouth = mouth
-            if keyHex == nil { keyHex = KnockKeyStore.keyHex }
-            if knockTarget.isEmpty {
-                knockTarget = emcon.ownIP ?? ""
-            }
         }
         .onChange(of: spar.fuzzing) { _, now in
             if !now, sparWasFuzzing {
@@ -542,163 +533,40 @@ struct EmconView: View {
         }
     }
 
-    // MARK: - knocktalk
+    // MARK: - knock traffic (the detection side)
 
-    /// Estimated sequence length for the draft: a sync knock
-    /// plus two knocks per sealed byte (nonce 12 + tag 16 ride
-    /// along with the text).
-    private var knockEstimate: Int {
-        1 + 2 * (28 + knockText.utf8.count)
-    }
-
-    private var knocktalkSection: some View {
-        Section(header: Text("Knocktalk"),
-                footer: Text("The pairing key lives in the "
-                             + "Keychain; the journal records "
-                             + "arrivals, never contents. A shared "
-                             + "key has no forward secrecy — the "
-                             + "honest limit of a channel that "
-                             + "cannot handshake. Auto-delete is "
-                             + "checked at launch, when this tab "
-                             + "opens, and when a message lands — a "
-                             + "closed app cannot burn on schedule.")) {
-            if keyHex != nil {
-                HStack {
-                    Text("Pairing key")
-                    Spacer()
-                    Text("fingerprint "
-                         + KnockKeyStore.fingerprint(ofHex: keyHex!))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-                TextField("target — a phone running EMCON",
-                          text: $knockTarget)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                TextField("message (≤\(Knocktalk.maxCharacters) "
-                          + "characters)", text: $knockText)
-                    .disableAutocorrection(true)
-                if knockSender.sending {
-                    HStack {
-                        ProgressView()
-                        Text("knock \(knockSender.sent)/"
-                             + "\(knockSender.total)")
-                            .font(.callout)
-                    }
-                    Button("Cancel") { knockSender.cancel() }
-                } else {
-                    Button {
-                        if let key = KnockKeyStore.key,
-                           let ports = try? Knocktalk.encode(
-                            knockText, key: key) {
-                            knockSender.send(host: knockTarget,
-                                              ports: ports)
-                        }
-                    } label: {
-                        Label("Knock it — ≈\(knockEstimate) knocks, "
-                              + "~\(Knocktalk.etaSeconds(knocks: knockEstimate)) s",
-                              systemImage: "hand.tap")
-                    }
-                    .disabled(knockText.isEmpty
-                              || knockText.count > Knocktalk.maxCharacters
-                              || knockTarget.isEmpty)
-                }
-                Button {
-                    let hex = KnockKeyStore.generate()
-                    KnockKeyStore.keyHex = hex
-                    keyHex = hex
-                } label: {
-                    Text("Replace the pairing key")
-                }
-                Button(role: .destructive) {
-                    KnockKeyStore.keyHex = nil
-                    keyHex = nil
-                } label: {
-                    Text("Forget the pairing key")
-                }
-            } else {
-                Text("Knocktalk seals each message with "
-                     + "ChaCha20-Poly1305 under a 256-bit pairing "
-                     + "key both phones share. Generate one here "
-                     + "and carry it to the other phone, or paste "
-                     + "the one it generated. Without a key, "
-                     + "framed traffic still lands below — as "
-                     + "sealed patterns nobody can read.")
+    /// Knocktalk's conversations live in their own tab now.
+    /// What stays here is what EMCON is FOR: the traffic that
+    /// framed like speech but could not be opened — sealed,
+    /// mangled, or structured like spelling.
+    private var knockTrafficSection: some View {
+        Section(header: Text("Knock traffic"),
+                footer: Text("Decoded conversations live in the "
+                             + "Knocktalk tab. What remains here "
+                             + "never opened: framed traffic under "
+                             + "a wrong or missing key, and knock "
+                             + "patterns shaped like speech.")) {
+            if emcon.knockPatterns.isEmpty {
+                Text("Nothing sealed or structured has knocked. "
+                     + "A scan sweeps; anything that spells — "
+                     + "and fails to open — lands here.")
                     .font(.caption).foregroundStyle(.secondary)
-                Button {
-                    let hex = KnockKeyStore.generate()
-                    KnockKeyStore.keyHex = hex
-                    keyHex = hex
-                } label: {
-                    Label("Generate a pairing key",
-                          systemImage: "key")
-                }
-                TextField("paste a pairing key (64 hex digits)",
-                          text: $keyDraft)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .font(.caption.monospaced())
-                Button("Save the pasted key") {
-                    let hex = keyDraft
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .lowercased()
-                    if (try? PayloadKit.decodeHex(hex))?.count == 32 {
-                        KnockKeyStore.keyHex = hex
-                        keyHex = hex
-                        keyDraft = ""
-                    }
-                }
-                .disabled((try? PayloadKit.decodeHex(
-                    keyDraft.trimmingCharacters(
-                        in: .whitespacesAndNewlines)))?.count != 32)
             }
-            Picker("Auto-delete decoded messages",
-                   selection: Binding(
-                    get: { emcon.knockRetentionHours },
-                    set: { emcon.setKnockRetention(hours: $0) })) {
-                Text("after 1 hour").tag(1.0)
-                Text("after 6 hours").tag(6.0)
-                Text("after 24 hours").tag(24.0)
-                Text("after 7 days").tag(168.0)
-                Text("never").tag(0.0)
-            }
-            if !emcon.knockMessages.isEmpty {
-                Text("Decoded")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ForEach(emcon.knockMessages) { message in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(message.text)
-                            .font(.callout.weight(.semibold))
-                        Text("\(message.source) · "
-                             + message.when.formatted(
-                                date: .omitted, time: .standard))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Button(role: .destructive) {
-                    emcon.clearKnockMessages()
-                } label: {
-                    Text("Clear decoded messages")
-                }
-            }
-            if !emcon.knockPatterns.isEmpty {
-                Text("Sealed / structured traffic")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ForEach(emcon.knockPatterns) { pattern in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(pattern.source) — \(pattern.knocks) "
-                             + "knocks")
-                            .font(.caption.weight(.semibold))
-                        Text(pattern.note).font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+            ForEach(emcon.knockPatterns) { pattern in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(pattern.source) — \(pattern.knocks) "
+                         + "knocks")
+                        .font(.caption.weight(.semibold))
+                    Text(pattern.note).font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(pattern.when.formatted(
+                        date: .omitted, time: .standard))
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
     }
+
 
     // MARK: - knock vault
 
