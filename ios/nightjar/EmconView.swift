@@ -190,8 +190,11 @@ struct EmconView: View {
                         ForEach(Array(still.enumerated()), id: \.offset) { item in
                             Text("— \(item.element)").font(.callout)
                         }
-                        Text("These belong to the OS, not the app. "
-                             + "The hardening list below is how those die.")
+                        Text("These are real listeners on the device "
+                             + "that EMCON does not own — the OS, other "
+                             + "apps, or Serve ports kept under stealth. "
+                             + "The hardening list below is where the "
+                             + "OS ones die.")
                             .font(.callout).foregroundStyle(.secondary)
                     }
                 }
