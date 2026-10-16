@@ -1,7 +1,7 @@
 # nightjar-hack
 
 <p align="center">
-  <img src="2C92361F-540C-4FBF-875D-F14A779A925A.gif" width="560" alt="The world is yours">
+  <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
 **3.0.0 — the ventriloquist.**
@@ -66,8 +66,51 @@ Nine tabs, one instrument. Build and install notes live in
   statement, the privacy policy, and the sane-defaults
   census, resettable in one confirmed action.
 
+## Sideload the iOS app
+
+There is no App Store listing and no TestFlight. The app
+ships as source, and putting it on your phone means
+building it yourself — which sounds like a barrier and is
+really about ten minutes with a Mac.
+
+You need: a Mac with Xcode (free in the Mac App Store),
+an iPhone on iOS 16 or later, a cable that fits both,
+and an Apple ID. No paid developer account, no fee.
+
+1. Clone this repo and open `ios/nightjar.xcodeproj`
+   in Xcode.
+2. Click the **nightjar** target → **Signing &
+   Capabilities**. Check *Automatically manage signing*
+   and choose your Personal Team (if your Apple ID isn't
+   listed, add it under Xcode → Settings → Accounts).
+   If Xcode says the bundle ID is taken, change it to
+   anything unique — it ships as
+   `net.nosuchmachine.nightjarhack`.
+3. On the iPhone, turn on Developer Mode: Settings →
+   Privacy & Security → Developer Mode. The phone will
+   restart to apply it.
+4. Plug the phone in, trust the computer when asked,
+   pick the phone as the run destination in Xcode, and
+   press **Run**. The first build takes a few minutes.
+5. The first launch is blocked until you trust the
+   builder: Settings → General → VPN & Device
+   Management → your Apple ID → **Trust**.
+6. Open the app and answer its permission prompts as
+   features ask for them — Bluetooth and the local
+   network first. Everything it hears stays on the
+   phone (see [PRIVACY.md](PRIVACY.md)).
+
+Two honest wrinkles. Free signing expires after 7 days;
+when it does, plug in and press Run again — the app
+re-signs in place, and all your data, logs, and settings
+survive. And sideloading is per-phone: every iPhone
+needs its own build-and-trust pass.
+
+Deeper build notes live in
+[ios/README.md](ios/README.md).
+
 <p align="center">
-  <img src="66A879CE-1B61-4C82-9509-3A0739D35711.gif" width="380" alt="Scarface">
+  <img src="assets/scarface.gif" width="380" alt="Scarface">
 </p>
 
 ## 60 seconds (the CLI)
@@ -124,7 +167,7 @@ checkout and then calls apply_overlay.py.
 
 ## About me
 
-<img align="right" width="230" src="2A9E824C-E105-4CF6-975A-CF1B3E6521B8.gif" alt="Triangle">
+<img align="right" width="230" src="assets/triangle.gif" alt="Triangle">
 
 I'm Chase Bryan — cryptographer and builder. nightjar-hack
 is my instrument: I build the tools I want to exist, and I
