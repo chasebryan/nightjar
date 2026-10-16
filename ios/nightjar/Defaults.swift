@@ -37,6 +37,7 @@ enum SaneDefaults {
         "serveTcpPort", "serveUdpPort", "serveHttpPort",
         "serveUseTCP", "serveUseUDP", "serveUseHTTP",
         "serveReply", "serveReplyMode", "serveFraming",
+        "canaryPersona", "canaryPort",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
@@ -73,6 +74,7 @@ enum SaneDefaults {
         if mouth.gattHostOn { mouth.stopGattHost() }
         defaults.removeObject(forKey: "gattArm.on")
         if mouth.beaconOn { mouth.stopBeacon() }
+        if mouth.canary.runningPersona != nil { mouth.canary.stop() }
         mouth.setStealth(false)
     }
 }
