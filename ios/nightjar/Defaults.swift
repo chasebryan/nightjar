@@ -50,6 +50,7 @@ enum SaneDefaults {
         "sectionOpen.trace",
         // EMCON
         "emconActive", "emconHomeSubnet", "emconVaultCombo",
+        "emconVaultAction", "emconEscalation",
         "knocktalkRetentionHours", "knocktalkSuite",
         "knocktalkRelayEnabled", "knocktalkRelayURL",
         "knocktalkRelayToken", "knocktalkRelayBox",
