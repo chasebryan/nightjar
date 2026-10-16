@@ -177,6 +177,10 @@ final class Emcon: ObservableObject {
     /// NACK repair, the burn timer. It lives in its own tab now;
     /// EMCON keeps the patterns — the detection side.
     let chat = KnockChat()
+
+    /// The watch officer: reads every knock against the
+    /// whole situation and answers under its charter.
+    let steward = Steward()
     @Published private(set) var knockPatterns: [KnockPattern] = []
     @Published private(set) var vaultOpenUntil: Date?
     /// Set by the view on appear — the vault needs the mouth to
@@ -947,6 +951,9 @@ final class Emcon: ObservableObject {
             Conductor.onKnock(emcon: self, source: labeled,
                               port: port, proto: proto,
                               verdict: verdict, mine: mine)
+            steward.onKnock(emcon: self, source: labeled,
+                            port: port, proto: proto,
+                            verdict: verdict, mine: mine)
         }
     }
 
@@ -1045,7 +1052,8 @@ final class Emcon: ObservableObject {
                !hometurf.stagedVerdicts.contains(verdict) {
                 notes.append("a new first word: \(verdict)")
             }
-            for note in notes {
+            for note in notes
+            where !Steward.isDismissed(note: note) {
                 hometurfNotes.append(note)
                 if hometurfNotes.count > 20 {
                     hometurfNotes.removeFirst(
@@ -1059,6 +1067,15 @@ final class Emcon: ObservableObject {
         hometurf.stagedPorts.insert(port)
         hometurf.stagedVerdicts.insert(verdict)
         saveHometurf()
+    }
+
+    /// The operator dismisses a deviation: it leaves
+    /// tonight's list, and the steward records the dismissal
+    /// so the pattern stops flagging this exact novelty.
+    /// Restorable from the steward section.
+    func hometurfDismiss(_ note: String) {
+        hometurfNotes.removeAll { $0 == note }
+        Steward.addDismissal(note: note)
     }
 
     func hometurfReset() {
