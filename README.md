@@ -1,6 +1,6 @@
 # nightjar-hack — quickstart
 
-**2.6.0.** An overlay that gives the nightjar BLE listening post the
+**3.0.0.** An overlay that gives the nightjar BLE listening post the
 ability to send payloads out over the network and Bluetooth, without
 disturbing the receive-only scanning it was built around — and, in
 `ios/`, a full iOS app: the listening post, the mouth, and a pocket
