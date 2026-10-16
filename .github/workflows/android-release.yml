@@ -42,7 +42,9 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease
       - name: Verify downloadable APK
-        run: android/verify-release.sh
+        run: |
+          cat android/release-assets/v3.0.0/apk.part-* > nightjar-hack-v3.0.0.apk
+          android/verify-release.sh
       - uses: actions/upload-artifact@v4
         with:
           name: nightjar-hack-v3.0.0-android
