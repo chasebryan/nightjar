@@ -1,4 +1,8 @@
-# nightjar-hack by ***technique***
+# nightjar-hack
+
+<p align="center">
+  <img src="2C92361F-540C-4FBF-875D-F14A779A925A.gif" width="560" alt="The world is yours">
+</p>
 
 **3.0.0 — the ventriloquist.**
 
@@ -52,6 +56,10 @@ Nine tabs, one instrument. Build and install notes live in
   statement, the privacy policy, and the sane-defaults
   census, resettable in one confirmed action.
 
+<p align="center">
+  <img src="66A879CE-1B61-4C82-9509-3A0739D35711.gif" width="380" alt="Scarface">
+</p>
+
 ## 60 seconds (the CLI)
 
     # 1. get the upstream repo (nothing was uploaded; just clone)
@@ -103,6 +111,20 @@ checkout and then calls apply_overlay.py.
 - [ios/README.md](ios/README.md) — building the iOS app
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, when
 - [PRIVACY.md](PRIVACY.md) — what the app collects (nothing)
+
+## About me
+
+<img align="right" width="230" src="2A9E824C-E105-4CF6-975A-CF1B3E6521B8.gif" alt="Triangle">
+
+I'm Chase Bryan — cryptographer and builder. nightjar-hack
+is my instrument: I build the tools I want to exist, and I
+build them in the open.
+
+The rest of the shelf: **orange**, a language for
+specifying and verifying cryptography; **snoot**, a
+post-quantum crypto-inventory scanner; **mawkbox**, an
+encrypted text-to-audio modem; and **Magic Box**, keyless
+time-lock encryption.
 
 ## What it does not do
 
