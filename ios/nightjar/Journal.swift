@@ -228,6 +228,14 @@ enum MorningBrief {
         if let m = latest("emcon", "maneuvers") {
             out.append("Maneuvers: " + m.text)
         }
+        let stewardPlans = count("steward", "plan")
+        if stewardPlans > 0 {
+            out.append("The steward acted \(stewardPlans) "
+                       + "time(s) under its charter.")
+        }
+        if let s = latest("steward", "shift") {
+            out.append("Steward's shift report: " + s.text)
+        }
         let spars = count("emcon", "spar")
         if spars > 0 {
             out.append("\(spars) self-sparring run(s) against "
