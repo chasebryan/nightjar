@@ -39,6 +39,8 @@ enum SaneDefaults {
         "serveReply", "serveReplyMode", "serveFraming",
         "canaryPersona", "canaryPort",
         "canaryHoneydrop", "canaryDrop", "flare.on",
+        "canaryLearnedPaths", "conductorOn", "conductorRules",
+        "conductorFired",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
