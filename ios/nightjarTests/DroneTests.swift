@@ -114,7 +114,7 @@ final class DroneTests: XCTestCase {
 
     func testClassificationLabelsTheDroneBySerial() {
         let sighting = Sighting(
-            seenAt = 0, address: "AA", name: nil, rssi: -60,
+            seenAt: 0, address: "AA", name: nil, rssi: -60,
             serviceData: ["0000fffa-0000-1000-8000-00805f9b34fb": serviceData([basicID()])])
         let classification = Classification.classify(sighting)
         XCTAssertEqual(classification.kind, "Drone (Remote ID)")
