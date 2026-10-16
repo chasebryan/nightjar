@@ -56,6 +56,49 @@ Nine tabs, one instrument. Build and install notes live in
   statement, the privacy policy, and the sane-defaults
   census, resettable in one confirmed action.
 
+## Sideload the iOS app
+
+There is no App Store listing and no TestFlight. The app
+ships as source, and putting it on your phone means
+building it yourself — which sounds like a barrier and is
+really about ten minutes with a Mac.
+
+You need: a Mac with Xcode (free in the Mac App Store),
+an iPhone on iOS 16 or later, a cable that fits both,
+and an Apple ID. No paid developer account, no fee.
+
+1. Clone this repo and open `ios/nightjar.xcodeproj`
+   in Xcode.
+2. Click the **nightjar** target → **Signing &
+   Capabilities**. Check *Automatically manage signing*
+   and choose your Personal Team (if your Apple ID isn't
+   listed, add it under Xcode → Settings → Accounts).
+   If Xcode says the bundle ID is taken, change it to
+   anything unique — it ships as
+   `net.nosuchmachine.nightjarhack`.
+3. On the iPhone, turn on Developer Mode: Settings →
+   Privacy & Security → Developer Mode. The phone will
+   restart to apply it.
+4. Plug the phone in, trust the computer when asked,
+   pick the phone as the run destination in Xcode, and
+   press **Run**. The first build takes a few minutes.
+5. The first launch is blocked until you trust the
+   builder: Settings → General → VPN & Device
+   Management → your Apple ID → **Trust**.
+6. Open the app and answer its permission prompts as
+   features ask for them — Bluetooth and the local
+   network first. Everything it hears stays on the
+   phone (see [PRIVACY.md](PRIVACY.md)).
+
+Two honest wrinkles. Free signing expires after 7 days;
+when it does, plug in and press Run again — the app
+re-signs in place, and all your data, logs, and settings
+survive. And sideloading is per-phone: every iPhone
+needs its own build-and-trust pass.
+
+Deeper build notes live in
+[ios/README.md](ios/README.md).
+
 <p align="center">
   <img src="assets/scarface.gif" width="380" alt="Scarface">
 </p>
