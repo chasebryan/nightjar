@@ -26,6 +26,14 @@ struct NightjarApp: App {
                 .onAppear {
                     post.keepScreenAwake = keepScreenAwake
                     mouth.toasts = toasts
+                    emcon.mouth = mouth
+                    mouth.onHoneydropTaken = { peer in
+                        emcon.raiseSense(
+                            reason: "a honeydrop was taken "
+                                + "by \(peer)")
+                        Conductor.onHoneydrop(emcon: emcon,
+                                              peer: peer)
+                    }
                 }
 #if !STORE_BUILD
                 .task {
