@@ -1,5 +1,9 @@
 name: Nightjar checks
 
+# One workflow, path-aware: the `changes` gate diffs the PR/push and
+# switches each job on only when its side of the tree moved. Jobs that
+# are switched off report as skipped, so required checks never hang.
+
 on:
   push:
     branches: [main]
@@ -9,7 +13,42 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect what changed
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.diff.outputs.python }}
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            RANGE="origin/${{ github.base_ref }}...HEAD"
+          else
+            RANGE="${{ github.event.before }}...${{ github.sha }}"
+          fi
+          FILES="$(git diff --name-only $RANGE 2>/dev/null || true)"
+          if [ -z "$FILES" ]; then
+            echo "python=true" >> "$GITHUB_OUTPUT"
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$FILES"
+          PY=false
+          IOS=false
+          grep -Eq '^(tests/|nightjar/|tools/|[^/]+\.py$|\.github/workflows/nightjar-checks\.yml$)' <<<"$FILES" && PY=true
+          grep -Eq '^(ios/|\.github/workflows/nightjar-checks\.yml$)' <<<"$FILES" && IOS=true
+          echo "python=$PY" >> "$GITHUB_OUTPUT"
+          echo "ios=$IOS" >> "$GITHUB_OUTPUT"
+
   python:
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     name: Python tests (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
@@ -27,6 +66,8 @@ jobs:
         run: python -m pytest tests/ -q
 
   ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
     name: iOS simulator XCTest
     runs-on: macos-15
     timeout-minutes: 35
