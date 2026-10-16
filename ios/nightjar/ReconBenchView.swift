@@ -69,7 +69,7 @@ struct ReconBenchView: View {
                 recon.mouth = mouth
                 consumeReconHandoff()
             }
-            .onChange(of: mouth.reconHandoff) { _, _ in
+            .onChange(of: mouth.reconHandoff) { _ in
                 consumeReconHandoff()
             }
             .sheet(isPresented: $showPresets) { presetSheet }
