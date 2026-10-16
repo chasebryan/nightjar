@@ -290,8 +290,16 @@ final class Emcon: ObservableObject {
     /// Knock this device on every port in Recon's registry, over
     /// both loopback and the LAN address, speaking each port's own
     /// probe. Whatever answers is what another operator sees.
+    ///
+    /// The tripwire stands down for the duration: armed, it accepts
+    /// on every probed port, so a scan taken under it would report
+    /// the tripwire's own listeners as exposures (141 phantom hits
+    /// on first field use) and the tripwire would log the scan as
+    /// an attack. It re-arms when the scan completes.
     func runSelfScan(completion: (() -> Void)? = nil) {
         guard !scanning else { completion?(); return }
+        let resumeTripwire = tripwireOn
+        if resumeTripwire { stopTripwire() }
         scanning = true
         exposures = []
         var hosts = ["127.0.0.1"]
@@ -325,6 +333,7 @@ final class Emcon: ObservableObject {
             }
             self.lastScanAt = Date()
             self.scanning = false
+            if resumeTripwire { self.startTripwire() }
             completion?()
         }
     }
