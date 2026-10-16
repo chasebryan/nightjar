@@ -163,10 +163,32 @@ final class Emcon: ObservableObject {
     private static let activeKey = "emconActive"
     private static let homeKey = "emconHomeSubnet"
 
+    // MARK: - knocktalk + vault state
+
+    /// The sequence engine (Knocktalk decoder, structure grader,
+    /// vault combination), fed every raw knock from logEvent.
+    let knockEngine = KnockEngine()
+    @Published private(set) var knockMessages: [KnockMessage] = []
+    @Published private(set) var knockPatterns: [KnockPattern] = []
+    @Published private(set) var vaultOpenUntil: Date?
+    /// Set by the view on appear — the vault needs the mouth to
+    /// raise and seal its hidden Serve (the activate() path gets
+    /// one directly; this is the standing reference).
+    weak var mouth: Mouth?
+    private var vaultTimer: Timer?
+    private var vaultStartedServe = false
+
     init() {
         active = UserDefaults.standard.bool(forKey: Self.activeKey)
         homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
+        knockMessages = Self.loadKnockMessages()
+        reloadVaultCombination()
+        knockEngine.onOutput = { [weak self] output in
+            DispatchQueue.main.async {
+                self?.handleKnockOutput(output)
+            }
+        }
         // The readable copy only. JSON is already on disk; rewriting
         // it here would race a knock that lands during launch.
         if !events.isEmpty { Self.writeReport(events) }
@@ -292,6 +314,7 @@ final class Emcon: ObservableObject {
     /// re-arm the tripwire so the posture survives restarts the way
     /// the GATT host arm does.
     func restoreIfNeeded() {
+        reloadVaultCombination()
         // Reconcile with the persisted flag in BOTH directions:
         // a settings reset (About tab) clears the flag while this
         // instance may still be running, and the live posture must
@@ -852,7 +875,125 @@ final class Emcon: ObservableObject {
             self.saveEvents()
             Journal.log("emcon", "knock",
                         "\(labeled) → \(proto)/\(port) — \(verdict)")
+            self.knockEngine.note(source: labeled, port: port,
+                                  proto: proto, verdict: verdict)
         }
+    }
+
+    // MARK: - sequence engine outputs
+
+    private func handleKnockOutput(_ output: KnockEngine.Output) {
+        switch output {
+        case .message(let message):
+            knockMessages.insert(message, at: 0)
+            if knockMessages.count > 100 {
+                knockMessages.removeLast(knockMessages.count - 100)
+            }
+            saveKnockMessages()
+            // The journal records THAT a message arrived, never
+            // what it says — the text lives only in the Knocktalk
+            // inbox.
+            Journal.log("emcon", "knocktalk",
+                        "message received from \(message.source) — "
+                        + "\(message.text.count) characters")
+        case .pattern(let pattern):
+            knockPatterns.insert(pattern, at: 0)
+            if knockPatterns.count > 50 {
+                knockPatterns.removeLast(knockPatterns.count - 50)
+            }
+            Journal.log("emcon", "knocktalk",
+                        "structured pattern from \(pattern.source) — "
+                        + pattern.note)
+        case .vaultUnlock(let source):
+            openVault(source: source)
+        }
+    }
+
+    func clearKnockMessages() {
+        knockMessages = []
+        saveKnockMessages()
+    }
+
+    private static var knockMessagesURL: URL {
+        documentsURL.appendingPathComponent("knocktalk-messages.json")
+    }
+
+    private static func loadKnockMessages() -> [KnockMessage] {
+        guard let data = try? Data(contentsOf: knockMessagesURL),
+              let decoded = try? JSONDecoder().decode(
+                [KnockMessage].self, from: data) else { return [] }
+        return decoded
+    }
+
+    private func saveKnockMessages() {
+        let snapshot = knockMessages
+        saveQueue.async {
+            if let data = try? JSONEncoder().encode(snapshot) {
+                try? data.write(to: Self.knockMessagesURL,
+                                options: .atomic)
+            }
+        }
+    }
+
+    // MARK: - the knock vault
+
+    @Published private(set) var vaultCombo: [String] =
+        ["ssh", "tls", "mqtt"]
+    private static let vaultComboKey = "emconVaultCombo"
+
+    func reloadVaultCombination() {
+        let stored = UserDefaults.standard
+            .string(forKey: Self.vaultComboKey)?
+            .split(separator: ",").map(String.init) ?? []
+        let combo = stored.count == 3
+            ? stored : ["ssh", "tls", "mqtt"]
+        vaultCombo = combo
+        knockEngine.vaultCombination = combo
+    }
+
+    func setVaultDigit(_ index: Int, _ digit: String) {
+        var combo = vaultCombo
+        guard combo.indices.contains(index) else { return }
+        combo[index] = digit
+        UserDefaults.standard.set(combo.joined(separator: ","),
+                                  forKey: Self.vaultComboKey)
+        reloadVaultCombination()
+    }
+
+    /// The combination was spoken: a hidden Serve — raised from
+    /// the Serve tab's own saved settings — stands open for sixty
+    /// seconds, then seals itself. If Serve was already running
+    /// on the operator's own orders, the vault changes nothing
+    /// and claims nothing.
+    func openVault(source: String) {
+        guard vaultOpenUntil == nil else { return }
+        vaultOpenUntil = Date().addingTimeInterval(60)
+        vaultTimer?.invalidate()
+        vaultTimer = Timer.scheduledTimer(
+            withTimeInterval: 60, repeats: false) { [weak self] _ in
+            self?.sealVault()
+        }
+        if let mouth = mouth, !mouth.serveRunning {
+            mouth.startServeFromSettings()
+            vaultStartedServe = mouth.serveRunning
+        }
+        Journal.log("emcon", "vault",
+                    "combination spoken by \(source) — vault open "
+                    + "for 60 seconds"
+                    + (vaultStartedServe
+                       ? ", hidden Serve raised" : ""))
+    }
+
+    func sealVault() {
+        vaultTimer?.invalidate()
+        vaultTimer = nil
+        guard vaultOpenUntil != nil else { return }
+        vaultOpenUntil = nil
+        if vaultStartedServe, let mouth = mouth, mouth.serveRunning {
+            mouth.stopServe()
+        }
+        vaultStartedServe = false
+        Journal.log("emcon", "vault", "vault sealed")
     }
 
     // MARK: - tripwire log persistence
