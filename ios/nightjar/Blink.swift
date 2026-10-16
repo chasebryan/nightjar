@@ -252,7 +252,7 @@ extension BlinkReceiver: AVCaptureMetadataOutputObjectsDelegate {
     }
 }
 
-private final class PreviewView: UIView {
+final class PreviewView: UIView {
     var previewLayer: AVCaptureVideoPreviewLayer? {
         didSet {
             if let previewLayer = previewLayer {
