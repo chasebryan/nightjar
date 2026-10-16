@@ -72,8 +72,15 @@ enum Journal {
             } else {
                 try? line.write(to: url, options: .atomic)
             }
+            onEvent?(event)
         }
     }
+
+    /// A feed of everything written, for the one listener
+    /// whose job is the whole picture: the steward. Set by
+    /// the app at launch; called on the journal's queue, so
+    /// the listener hops queues itself.
+    static var onEvent: ((NightEvent) -> Void)?
 
     // MARK: - seal chain
 
@@ -227,6 +234,25 @@ enum MorningBrief {
         }
         if let m = latest("emcon", "maneuvers") {
             out.append("Maneuvers: " + m.text)
+        }
+        let stewardPlans = count("steward", "plan")
+        if stewardPlans > 0 {
+            out.append("The steward acted \(stewardPlans) "
+                       + "time(s) under its charter.")
+        }
+        let grades = count("steward", "grade")
+        if grades > 0, let g = latest("steward", "grade") {
+            out.append("Steward's record: \(grades) plan(s) "
+                       + "graded. Latest — " + g.text)
+        }
+        let caseCount = count("steward", "case")
+        if caseCount > 0 {
+            out.append("\(caseCount) case-file event(s) — "
+                       + "investigations are accumulating "
+                       + "in the EMCON tab.")
+        }
+        if let s = latest("steward", "shift") {
+            out.append("Steward's shift report: " + s.text)
         }
         let spars = count("emcon", "spar")
         if spars > 0 {
