@@ -4,10 +4,6 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-<p align="center">
-  <strong><a href="https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk">⬇ Download the Android APK — v3.0.0</a></strong>
-</p>
-
 **3.0.0 — the ventriloquist.**
 
 nightjar-hack began as an overlay that taught the nightjar BLE
