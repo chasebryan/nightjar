@@ -1,7 +1,7 @@
 # nightjar-hack
 
 <p align="center">
-  <img src="2C92361F-540C-4FBF-875D-F14A779A925A.gif" width="560" alt="The world is yours">
+  <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
 **3.0.0 — the ventriloquist.**
@@ -57,7 +57,7 @@ Nine tabs, one instrument. Build and install notes live in
   census, resettable in one confirmed action.
 
 <p align="center">
-  <img src="66A879CE-1B61-4C82-9509-3A0739D35711.gif" width="380" alt="Scarface">
+  <img src="assets/scarface.gif" width="380" alt="Scarface">
 </p>
 
 ## 60 seconds (the CLI)
@@ -114,7 +114,7 @@ checkout and then calls apply_overlay.py.
 
 ## About me
 
-<img align="right" width="230" src="2A9E824C-E105-4CF6-975A-CF1B3E6521B8.gif" alt="Triangle">
+<img align="right" width="230" src="assets/triangle.gif" alt="Triangle">
 
 I'm Chase Bryan — cryptographer and builder. nightjar-hack
 is my instrument: I build the tools I want to exist, and I
