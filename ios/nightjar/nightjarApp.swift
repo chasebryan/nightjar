@@ -3,7 +3,9 @@ import SwiftUI
 @main
 struct NightjarApp: App {
     @StateObject private var post = ListeningPost()
+#if !STORE_BUILD
     @StateObject private var updater = UpdateChecker()
+#endif
     @StateObject private var mouth = Mouth()
     @StateObject private var toasts = ToastCenter()
     @StateObject private var emcon = Emcon()
@@ -14,7 +16,9 @@ struct NightjarApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(post)
+#if !STORE_BUILD
                 .environmentObject(updater)
+#endif
                 .environmentObject(mouth)
                 .environmentObject(toasts)
                 .environmentObject(emcon)
@@ -23,9 +27,11 @@ struct NightjarApp: App {
                     post.keepScreenAwake = keepScreenAwake
                     mouth.toasts = toasts
                 }
+#if !STORE_BUILD
                 .task {
                     await updater.checkIfDue()
                 }
+#endif
                 .onChange(of: keepScreenAwake) { value in
                     post.keepScreenAwake = value
                 }
@@ -33,7 +39,9 @@ struct NightjarApp: App {
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
                         mouth.appBecameActive()
+#if !STORE_BUILD
                         Task { await updater.checkIfDue() }
+#endif
                     }
                 }
         }
