@@ -23,10 +23,10 @@ final class TraceTests: XCTestCase {
             contains login => stop
             """)
         XCTAssertEqual(rules.count, 2)
-        guard case .tag(let label)? = rules[0].action
+        guard case .tag(let label) = rules[0].action
         else { return XCTFail("expected a tag rule") }
         XCTAssertEqual(label, "web")
-        guard case .stop? = rules[1].action
+        guard case .stop = rules[1].action
         else { return XCTFail("expected a stop rule") }
     }
 
