@@ -67,10 +67,14 @@ final class Emcon: ObservableObject {
         var byteCount: Int
         /// Identical knocks folded into this row. Old logs omit it.
         var repeatCount: Int
+        /// The knock's actual first words, hex — kept so the
+        /// self-sparring loop can replay and mutate REAL captured
+        /// probes against the app's own Serve. Old logs omit it.
+        var bytesHex: String?
 
         init(id: String = UUID().uuidString, when: Date, source: String,
              port: Int, proto: String, verdict: String, byteCount: Int,
-             repeatCount: Int = 1) {
+             repeatCount: Int = 1, bytesHex: String? = nil) {
             self.id = id
             self.when = when
             self.source = source
@@ -79,6 +83,7 @@ final class Emcon: ObservableObject {
             self.verdict = verdict
             self.byteCount = byteCount
             self.repeatCount = repeatCount
+            self.bytesHex = bytesHex
         }
 
         init(from decoder: Decoder) throws {
@@ -92,10 +97,11 @@ final class Emcon: ObservableObject {
             verdict = try c.decode(String.self, forKey: .verdict)
             byteCount = try c.decode(Int.self, forKey: .byteCount)
             repeatCount = try c.decodeIfPresent(Int.self, forKey: .repeatCount) ?? 1
+            bytesHex = try c.decodeIfPresent(String.self, forKey: .bytesHex)
         }
 
         private enum CodingKeys: String, CodingKey {
-            case id, when, source, port, proto, verdict, byteCount, repeatCount
+            case id, when, source, port, proto, verdict, byteCount, repeatCount, bytesHex
         }
 
         func encode(to encoder: Encoder) throws {
@@ -108,6 +114,7 @@ final class Emcon: ObservableObject {
             try c.encode(verdict, forKey: .verdict)
             try c.encode(byteCount, forKey: .byteCount)
             try c.encode(repeatCount, forKey: .repeatCount)
+            try c.encodeIfPresent(bytesHex, forKey: .bytesHex)
         }
     }
 
@@ -267,6 +274,8 @@ final class Emcon: ObservableObject {
         if mouth.gattHostOn { mouth.stopGattHost() }
         if mouth.beaconOn { mouth.stopBeacon() }
         startTripwire()
+        Journal.log("emcon", "posture",
+                    "EMCON active — emissions silenced, tripwire armed")
     }
 
     /// Stand down the tripwire. Stealth, the GATT host and the
@@ -276,6 +285,7 @@ final class Emcon: ObservableObject {
         active = false
         UserDefaults.standard.set(false, forKey: Self.activeKey)
         stopTripwire()
+        Journal.log("emcon", "posture", "EMCON stood down")
     }
 
     /// On tab appearance after a relaunch: if EMCON was left active,
@@ -785,7 +795,8 @@ final class Emcon: ObservableObject {
         connection.cancel()
         logEvent(source: source, port: port,
                  proto: udp ? "UDP" : "TCP",
-                 verdict: noted.verdict, byteCount: noted.byteCount)
+                 verdict: noted.verdict, byteCount: noted.byteCount,
+                 bytes: bytes)
     }
 
     /// How long identical knocks from one source and port fold
@@ -799,6 +810,7 @@ final class Emcon: ObservableObject {
     static func record(_ events: inout [TripEvent],
                        source: String, port: Int, proto: String,
                        verdict: String, byteCount: Int,
+                       bytesHex: String? = nil,
                        now: Date = Date()) {
         if let index = events.firstIndex(where: { event in
             event.source == source && event.port == port
@@ -810,27 +822,36 @@ final class Emcon: ObservableObject {
             hit.repeatCount += 1
             hit.when = now
             hit.byteCount = byteCount
+            hit.bytesHex = bytesHex ?? hit.bytesHex
             events.insert(hit, at: 0)
             return
         }
         events.insert(TripEvent(when: now, source: source, port: port,
                                 proto: proto, verdict: verdict,
-                                byteCount: byteCount), at: 0)
+                                byteCount: byteCount,
+                                bytesHex: bytesHex), at: 0)
         if events.count > eventCap {
             events.removeLast(events.count - eventCap)
         }
     }
 
     private func logEvent(source: String, port: Int, proto: String,
-                          verdict: String, byteCount: Int) {
+                          verdict: String, byteCount: Int,
+                          bytes: Data? = nil) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             let mine = self.ownIP != nil && source.contains(self.ownIP!)
             let labeled = mine ? "\(source) (this device)" : source
             Self.record(&self.events, source: labeled, port: port,
                         proto: proto, verdict: verdict,
-                        byteCount: byteCount)
+                        byteCount: byteCount,
+                        bytesHex: bytes.map { data in
+                            data.map { String(format: "%02x", $0) }
+                                .joined()
+                        })
             self.saveEvents()
+            Journal.log("emcon", "knock",
+                        "\(labeled) → \(proto)/\(port) — \(verdict)")
         }
     }
 
