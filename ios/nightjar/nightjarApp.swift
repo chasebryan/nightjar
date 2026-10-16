@@ -45,11 +45,13 @@ struct NightjarApp: App {
                 }
                 .task {
                     emcon.deadHandEvaluate(mouth: mouth)
+                    emcon.steward.shiftChange(emcon: emcon)
                 }
                 .onChange(of: scenePhase) { phase in
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
                         emcon.deadHandEvaluate(mouth: mouth)
+                        emcon.steward.shiftChange(emcon: emcon)
                         mouth.appBecameActive()
 #if !STORE_BUILD
                         Task { await updater.checkIfDue() }
