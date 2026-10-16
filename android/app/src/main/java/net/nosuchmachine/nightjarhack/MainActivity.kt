@@ -31,6 +31,12 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.ListAlt
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Sensors
+import androidx.compose.material.icons.outlined.Send as OutlinedSend
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +44,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -58,10 +65,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.delay
 import java.io.File
@@ -71,7 +82,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val app = application as NightjarApp
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            MaterialTheme(colorScheme = nightjarColorScheme()) {
                 AppRoot(app)
             }
         }
@@ -81,15 +92,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun appBackdrop() {
     val painter = rememberAsyncImagePainter(model = "file:///android_asset/background.jpg")
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(IosColors.Base)) {
         Image(
             painter = painter, contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
+        // The iOS dim is 18% — at 62% the flag was mud and the
+        // whole app sat on near-nothing. Mirror means 18%.
         Box(
             modifier = Modifier.fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.62f))
+                .background(Color.Black.copy(alpha = 0.18f))
         )
     }
 }
@@ -98,13 +111,12 @@ fun appBackdrop() {
 fun AppRoot(app: NightjarApp) {
     var tab by remember { mutableIntStateOf(0) }
     var showBoot by remember { mutableStateOf(true) }
-    val snackbar = remember { SnackbarHostState() }
     val mouth = app.mouth
     val toast by mouth.toasts.collectAsState()
 
     LaunchedEffect(toast) {
-        toast?.let {
-            snackbar.showSnackbar(it.first)
+        if (toast != null) {
+            delay(2600)
             mouth.clearToast()
         }
     }
@@ -132,23 +144,35 @@ fun AppRoot(app: NightjarApp) {
         appBackdrop()
         Scaffold(
             containerColor = Color.Transparent,
-            snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
-                NavigationBar(containerColor = Color(0xCC121212)) {
+                // The iOS tab bar, mirrored: same order, same
+                // labels, SF-style line glyphs, white selected /
+                // gray unselected, and no Material pill. About is
+                // a real tab here — there is no "More" on iOS.
+                NavigationBar(containerColor = IosColors.TabBar) {
                     val items = listOf(
-                        Triple("Listen", Icons.Filled.Face, 0),
-                        Triple("Send", Icons.Filled.Send, 1),
-                        Triple("Serve", Icons.Filled.Email, 2),
-                        Triple("Scan", Icons.Filled.Search, 3),
-                        Triple("Sessions", Icons.Filled.List, 4),
-                        Triple("More", Icons.Filled.MoreVert, 5)
+                        Triple("Listen", Icons.Outlined.Sensors, 0),
+                        Triple("Send", Icons.Outlined.OutlinedSend, 1),
+                        Triple("Serve", Icons.Outlined.Inbox, 2),
+                        Triple("Sessions", Icons.Outlined.ListAlt, 4),
+                        Triple("About", Icons.Outlined.Info, 5),
+                        Triple("Scan", Icons.Outlined.MyLocation, 3)
                     )
                     for ((label, icon, index) in items) {
                         NavigationBarItem(
                             selected = tab == index,
                             onClick = { tab = index },
                             icon = { androidx.compose.material3.Icon(icon, label) },
-                            label = { Text(label) }
+                            label = { Text(label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = IosColors.Label,
+                                selectedTextColor = IosColors.Label,
+                                unselectedIconColor =
+                                    IosColors.SecondaryLabel,
+                                unselectedTextColor =
+                                    IosColors.SecondaryLabel,
+                                indicatorColor = Color.Transparent
+                            )
                         )
                     }
                 }
@@ -167,6 +191,31 @@ fun AppRoot(app: NightjarApp) {
                     4 -> SessionsTab(app)
                     else -> AboutTab(app)
                 }
+            }
+        }
+        // Toasts the iOS way: a floating capsule up top —
+        // white medium text on a dark pill, red for errors.
+        toast?.let { (message, isError) ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Text(
+                    message,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .shadow(8.dp, RoundedCornerShape(50))
+                        .background(
+                            if (isError) IosColors.ToastError
+                            else IosColors.ToastNeutral,
+                            RoundedCornerShape(50)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                )
             }
         }
         if (showBoot) {
@@ -214,7 +263,7 @@ fun BootSplash(app: NightjarApp, onDone: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontFamily = FontFamily.Monospace
                 ),
-                color = Color(0xFF7FD1C0)
+                color = IosColors.Accent
             )
             Spacer(Modifier.height(24.dp))
             Column(modifier = Modifier.padding(horizontal = 48.dp)) {
@@ -234,7 +283,7 @@ fun BootSplash(app: NightjarApp, onDone: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth(progress)
                         .height(3.dp)
-                        .background(Color(0xFF7FD1C0))
+                        .background(IosColors.Accent)
                 )
             }
         }
@@ -548,7 +597,7 @@ fun DeviceDetail(
 
 @Composable
 fun Sparkline(history: List<Int>) {
-    val accent = Color(0xFF7FD1C0)
+    val accent = IosColors.Accent
     Canvas(
         modifier = Modifier.fillMaxWidth().height(36.dp).padding(top = 4.dp)
     ) {
