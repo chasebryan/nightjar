@@ -40,7 +40,9 @@ enum SaneDefaults {
         "canaryPersona", "canaryPort",
         "canaryHoneydrop", "canaryDrop", "flare.on",
         "canaryLearnedPaths", "conductorOn", "conductorRules",
-        "conductorFired",
+        "conductorFired", "stewardOn", "stewardLatitude",
+        "stewardProposals", "stewardFired", "stewardLastShift",
+        "stewardDismissals",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
