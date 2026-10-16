@@ -34,10 +34,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      # GitHub's Ubuntu runner already includes an Android SDK and sdkmanager.
-      # setup-android@v3 invokes the retired 'tools' SDK package and fails here.
-      - name: Check preinstalled Android SDK tools
-        run: sdkmanager --version
+      # SDK command-line tools are installed on the runner but not in PATH.
+      # Avoid setup-android@v3: it fails trying to install the removed 'tools' package.
+      - name: Add preinstalled Android SDK tools to PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdk_manager="$(find "$sdk_root/cmdline-tools" -maxdepth 3 -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -n "$sdk_manager"
+          echo "$(dirname "$sdk_manager")" >> "$GITHUB_PATH"
       - name: Install SDK packages
         run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
