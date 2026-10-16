@@ -170,6 +170,16 @@ final class Emcon: ObservableObject {
     let knockEngine = KnockEngine()
     @Published private(set) var knockMessages: [KnockMessage] = []
     @Published private(set) var knockPatterns: [KnockPattern] = []
+    /// The burn timer: decoded messages older than this delete
+    /// themselves. Hours; 0 = never. Default 24 — a covert
+    /// channel should not accumulate an archive by accident.
+    /// Enforced at launch, when the tab appears, and when a
+    /// message lands — iOS gives a sideloaded app no background
+    /// timer worth promising, so a message can overstay only
+    /// while the app is closed, and burns at the next launch.
+    @Published var knockRetentionHours: Double =
+        UserDefaults.standard.object(forKey: "knocktalkRetentionHours")
+            as? Double ?? 24
     @Published private(set) var vaultOpenUntil: Date?
     /// Set by the view on appear — the vault needs the mouth to
     /// raise and seal its hidden Serve (the activate() path gets
@@ -183,6 +193,7 @@ final class Emcon: ObservableObject {
         homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
         knockMessages = Self.loadKnockMessages()
+        purgeKnockMessages()
         reloadVaultCombination()
         knockEngine.onOutput = { [weak self] output in
             DispatchQueue.main.async {
@@ -315,6 +326,7 @@ final class Emcon: ObservableObject {
     /// the GATT host arm does.
     func restoreIfNeeded() {
         reloadVaultCombination()
+        purgeKnockMessages()
         // Reconcile with the persisted flag in BOTH directions:
         // a settings reset (About tab) clears the flag while this
         // instance may still be running, and the live posture must
@@ -885,6 +897,7 @@ final class Emcon: ObservableObject {
     private func handleKnockOutput(_ output: KnockEngine.Output) {
         switch output {
         case .message(let message):
+            purgeKnockMessages()
             knockMessages.insert(message, at: 0)
             if knockMessages.count > 100 {
                 knockMessages.removeLast(knockMessages.count - 100)
@@ -912,6 +925,25 @@ final class Emcon: ObservableObject {
     func clearKnockMessages() {
         knockMessages = []
         saveKnockMessages()
+    }
+
+    func setKnockRetention(hours: Double) {
+        knockRetentionHours = hours
+        UserDefaults.standard.set(hours,
+                                  forKey: "knocktalkRetentionHours")
+        purgeKnockMessages()
+    }
+
+    /// Burn every decoded message past the retention line.
+    func purgeKnockMessages() {
+        guard knockRetentionHours > 0 else { return }
+        let cutoff = Date().addingTimeInterval(
+            -knockRetentionHours * 3600)
+        let kept = knockMessages.filter { $0.when >= cutoff }
+        if kept.count != knockMessages.count {
+            knockMessages = kept
+            saveKnockMessages()
+        }
     }
 
     private static var knockMessagesURL: URL {
