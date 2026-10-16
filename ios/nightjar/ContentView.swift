@@ -4,6 +4,7 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
+    @EnvironmentObject private var mouth: Mouth
     @State private var tab = 0
     @State private var showBoot = true
 
@@ -45,6 +46,11 @@ struct ContentView: View {
                 .tag(7)
         }
         .onChange(of: tab) { _ in Haptics.select() }
+        .onChange(of: mouth.reconHandoff) { _, handoff in
+            // Counter-knock pivot: a tripwire row tapped in EMCON
+            // lands the operator on the Recon bench, pre-aimed.
+            if handoff != nil { tab = 6 }
+        }
         .overlay(alignment: .top) {
             if let toast = toasts.current {
                 ToastView(toast: toast)
@@ -514,6 +520,14 @@ struct SessionsView: View {
     var body: some View {
         NavigationStack {
             List(selection: $selection) {
+                Section {
+                    NavigationLink {
+                        NightLogView()
+                    } label: {
+                        Label("Night log — the whole instrument, one timeline",
+                              systemImage: "list.bullet.rectangle")
+                    }
+                }
                 if sessions.isEmpty {
                     Text("No sessions yet. Start one on the Listen tab; each session becomes "
                          + "a .jsonl file you can share to the Mac and feed to "
