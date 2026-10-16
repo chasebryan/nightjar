@@ -93,7 +93,7 @@ fun ServeTab(app: NightjarApp) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Text("Serve", style = MaterialTheme.typography.headlineSmall)
+            TabTitle("Serve")
             app.mouth.localIPAddress()?.let { ip ->
                 Text(
                     "Reachable at tcp://$ip:${tcpPort.ifEmpty { "9000" }}",
@@ -103,7 +103,7 @@ fun ServeTab(app: NightjarApp) {
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -209,7 +209,7 @@ fun ServeTab(app: NightjarApp) {
             }
         }
         items(inbox.reversed(), key = { it.atMs }) { arrival ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
                         "${arrival.via} · ${arrival.from} · ${clockTime(arrival.atMs / 1000.0)}",
@@ -253,7 +253,7 @@ fun ScanTab(app: NightjarApp) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Text("Scan", style = MaterialTheme.typography.headlineSmall)
+            TabTitle("Scan")
             Text(
                 "This network: ${ownIP ?: "no address"} · gateway guess ${
                     ownIP?.substringBeforeLast('.')?.plus(".1") ?: "—"
@@ -263,7 +263,7 @@ fun ScanTab(app: NightjarApp) {
             )
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -369,7 +369,7 @@ fun TlsSection(app: NightjarApp) {
     var lines by remember { mutableStateOf<List<String>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -413,7 +413,7 @@ fun BonjourSection(app: NightjarApp) {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -453,7 +453,7 @@ fun SweepSection(app: NightjarApp) {
     var busy by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -559,7 +559,7 @@ fun FeedSection(app: NightjarApp) {
     var watching by remember { mutableStateOf(false) }
     var events by remember { mutableStateOf<List<String>>(emptyList()) }
     val scope = rememberCoroutineScope()
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -644,7 +644,7 @@ fun DnsSection(app: NightjarApp) {
     var lines by remember { mutableStateOf<List<String>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -688,7 +688,7 @@ fun PcapSection(app: NightjarApp) {
             }
         }
     }
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
