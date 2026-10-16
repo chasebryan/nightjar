@@ -47,15 +47,18 @@ final class ReconTests: XCTestCase {
 
     func testSMB2Header() {
         let blob = ReconPayloads.smb2Negotiate()
-        XCTAssertEqual(Array(blob[4..<8]), Array("SMB".utf8) + [0x00][0...0] + [])
-        XCTAssertEqual(blob[4], 0xFE)
+        // The four-byte NetBIOS session header precedes the SMB2 magic.
+        XCTAssertEqual(Array(blob[4..<8]), [0xFE] + Array("SMB".utf8))
+        let declared = Int(blob[1]) << 16 | Int(blob[2]) << 8 | Int(blob[3])
+        XCTAssertEqual(declared, blob.count - 4)
         let structure = Int(blob[8]) | Int(blob[9]) << 8
         XCTAssertEqual(structure, 64)
     }
 
     func testSMB1NegotiateLengthMatches() {
         let blob = ReconPayloads.smb1Negotiate()
-        XCTAssertEqual(blob[1], 0xFF)
+        // SMB1 magic begins after the NetBIOS framing length.
+        XCTAssertEqual(Array(blob[4..<8]), [0xFF] + Array("SMB".utf8))
         let declared = Int(blob[1]) << 16 | Int(blob[2]) << 8 | Int(blob[3])
         XCTAssertEqual(declared, blob.count - 4)
     }
