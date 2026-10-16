@@ -40,6 +40,7 @@ struct KnockChatView: View {
                     keySection
                 }
                 suiteSection
+                relaySection
                 threadsSection
                 retentionSection
             }
@@ -144,10 +145,63 @@ struct KnockChatView: View {
         }
     }
 
+    @AppStorage("knocktalkRelayEnabled") private var relayEnabled = false
+    @AppStorage("knocktalkRelayURL") private var relayURL = ""
+    @AppStorage("knocktalkRelayToken") private var relayToken = ""
+    @AppStorage("knocktalkRelayBox") private var relayBox = ""
+
+    private var relaySection: some View {
+        Section(header: Text("Relay server"),
+                footer: Text("Without a relay, Knocktalk is "
+                    + "perimeter-only: both phones must share a "
+                    + "network. Run your own relay (this repo, "
+                    + "tools/knocktalk-relay) on any host you "
+                    + "control, point both phones at it, and "
+                    + "address each other as relay:<mailbox>. The "
+                    + "relay forwards knock sequences between "
+                    + "mailboxes — it never holds the pairing key "
+                    + "and cannot read a word; it sees timing, "
+                    + "lengths, and mailbox names. The vault, "
+                    + "which is a perimeter ritual, never answers "
+                    + "a relay knock.")) {
+            Toggle("Use my relay server", isOn: $relayEnabled)
+            if relayEnabled {
+                TextField("server (host:8901 or https://…)",
+                          text: $relayURL)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .keyboardType(.URL)
+                TextField("this phone's mailbox name",
+                          text: $relayBox)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                SecureField("relay token", text: $relayToken)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                if !chat.relayStatus.isEmpty {
+                    Text(chat.relayStatus)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .onChange(of: relayEnabled) { _ in
+            chat.refreshRelayPolling()
+        }
+        .onChange(of: relayURL) { _ in
+            chat.refreshRelayPolling()
+        }
+        .onChange(of: relayToken) { _ in
+            chat.refreshRelayPolling()
+        }
+        .onChange(of: relayBox) { _ in
+            chat.refreshRelayPolling()
+        }
+    }
+
     private var threadsSection: some View {
         Section(header: Text("Conversations")) {
             HStack {
-                TextField("peer address (192.168.4.21)",
+                TextField("peer address — IP, or relay:name",
                           text: $newPeer)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
