@@ -46,6 +46,12 @@ final class Recon: NSObject, ObservableObject {
     private var consoleConnection: NWConnection?
     private var fuzzToken = 0
 
+    /// UDP socket readiness is not proof a remote port is open.
+    /// Without a response, the strongest supported result is open|filtered.
+    static func probeState(_ state: String, udp: Bool, replyBytes: Int) -> String {
+        return udp && state == "open" && replyBytes == 0 ? "open|filtered" : state
+    }
+
     // MARK: - knock
 
     func knock(host rawHost: String, ports: [Int], udp: Bool,
@@ -138,7 +144,8 @@ final class Recon: NSObject, ObservableObject {
                 confirmed = hint.isEmpty ? !reply.isEmpty
                                          : reply.range(of: hint) != nil
             }
-            done(Hit(port: port, udp: udp, state: state, service: service,
+            let observed = Self.probeState(state, udp: udp, replyBytes: reply.count)
+            done(Hit(port: port, udp: udp, state: observed, service: service,
                      banner: banner, confirmed: confirmed, reply: reply))
         }
 
