@@ -13,6 +13,20 @@ final class ReconTests: XCTestCase {
         XCTAssertFalse(Recon.timedOutExchangeFailed(didSend: true))
     }
 
+    func testUDPReadinessWithoutReplyIsNotAnOpenPort() {
+        XCTAssertEqual(Recon.probeState("open", udp: true, replyBytes: 0),
+                       "open|filtered")
+        XCTAssertEqual(Recon.probeState("open", udp: true, replyBytes: 16),
+                       "open")
+        XCTAssertEqual(Recon.probeState("open|filtered", udp: true, replyBytes: 0),
+                       "open|filtered")
+        // For TCP, a completed connect is enough to establish openness.
+        XCTAssertEqual(Recon.probeState("open", udp: false, replyBytes: 0),
+                       "open")
+        XCTAssertEqual(Recon.probeState("closed", udp: false, replyBytes: 0),
+                       "closed")
+    }
+
     func testEveryProbeBuilds() {
         for name in ReconPayloads.names {
             XCTAssertNotNil(ReconPayloads.all[name])
