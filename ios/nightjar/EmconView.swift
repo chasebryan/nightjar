@@ -8,6 +8,7 @@ struct EmconView: View {
     @EnvironmentObject private var emcon: Emcon
     @StateObject private var spar = Recon()
 
+    @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
     @AppStorage("emconCheckAirdrop") private var checkAirdrop = false
     @AppStorage("emconCheckHotspot") private var checkHotspot = false
@@ -400,6 +401,28 @@ struct EmconView: View {
                         .joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Toggle("Answer in character", isOn: $escalationArmed)
+            Text("When a knock fingerprints as a real protocol "
+                 + "— SSH, HTTP, MQTT, SMTP — the tripwire hands "
+                 + "that port to the matching canary for ten "
+                 + "minutes, honeydrop as configured on the "
+                 + "Serve tab, then takes the port back. The "
+                 + "prober's first knock meets silence; their "
+                 + "second meets an actor. A port cools down "
+                 + "for half an hour afterwards.")
+                .font(.caption).foregroundStyle(.secondary)
+            if let live = emcon.escalation {
+                HStack {
+                    Text("Answering on \(live.port) as "
+                         + "\(live.persona.uppercased()) until "
+                         + live.until.formatted(date: .omitted,
+                                                time: .shortened))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Button("Stand down") { emcon.endEscalation() }
+                }
+            }
             if emcon.events.isEmpty {
                 Text("Nobody has knocked. When someone runs these "
                      + "probes against this phone, it lands here — "
@@ -575,11 +598,15 @@ struct EmconView: View {
 
     private var vaultSection: some View {
         Section(header: Text("Knock vault"),
-                footer: Text("The combination raises the Serve "
-                             + "configured on the Serve tab — its "
-                             + "ports, its reply — for sixty "
-                             + "seconds. EMCON must be up: no "
-                             + "tripwire, no ear. The default "
+                footer: Text("Speak the combination from one "
+                             + "other device and the chosen macro "
+                             + "fires. Timed macros ride a "
+                             + "sixty-second window and stand "
+                             + "back down at the seal; anything "
+                             + "you already had running stays "
+                             + "yours. The ear must be listening — "
+                             + "the tripwire, or the relay. The "
+                             + "default "
                              + "combination is printed in the app — "
                              + "it is no secret. Change the digits: "
                              + "the combination is the key. Knocks "
@@ -597,6 +624,13 @@ struct EmconView: View {
                         digit in
                         Text(digit.uppercased()).tag(digit)
                     }
+                }
+            }
+            Picker("When spoken", selection: Binding(
+                get: { emcon.vaultAction },
+                set: { emcon.setVaultAction($0) })) {
+                ForEach(Emcon.vaultActions, id: \.self) { action in
+                    Text(Emcon.vaultActionLabel(action)).tag(action)
                 }
             }
             if let until = emcon.vaultOpenUntil {
