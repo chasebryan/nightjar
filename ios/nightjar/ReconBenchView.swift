@@ -43,6 +43,16 @@ struct ReconBenchView: View {
         return Array(Set(out)).sorted().prefix(1024).map { $0 }
     }
 
+    /// The counter-knock pivot: EMCON's tripwire hands a knock's
+    /// source here — the bench aims itself (host + the knocked
+    /// port). Firing is still the operator's press.
+    private func consumeReconHandoff() {
+        guard let handoff = mouth.reconHandoff else { return }
+        host = handoff.host
+        ports = "\(handoff.port)"
+        knockUDP = false
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -55,7 +65,13 @@ struct ReconBenchView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Recon")
-            .onAppear { recon.mouth = mouth }
+            .onAppear {
+                recon.mouth = mouth
+                consumeReconHandoff()
+            }
+            .onChange(of: mouth.reconHandoff) { _, _ in
+                consumeReconHandoff()
+            }
             .sheet(isPresented: $showPresets) { presetSheet }
         }
     }
