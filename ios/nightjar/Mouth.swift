@@ -406,8 +406,10 @@ enum SendTarget {
         let rest = text.dropFirst(parts[0].count + 3)
         switch scheme {
         case "http", "https":
-            guard let url = URL(string: text) else {
-                throw MouthError.message("bad URL in \(text)")
+            guard let url = URL(string: text),
+                  let host = url.host, !host.isEmpty,
+                  (1...65535).contains(url.port ?? (scheme == "https" ? 443 : 80)) else {
+                throw MouthError.message("bad host or port in \(text)")
             }
             return .http(url: url, https: scheme == "https")
         case "ble", "adv", "advertise":
@@ -422,8 +424,10 @@ enum SendTarget {
                 throw MouthError.message("\(scheme):// target needs host:port, got \(rest)")
             }
             let host = String(rest[..<colon])
-            guard let port = Int(rest[rest.index(after: colon)...]) else {
-                throw MouthError.message("bad port in \(text)")
+            guard !host.isEmpty,
+                  let port = Int(rest[rest.index(after: colon)...]),
+                  (1...65535).contains(port) else {
+                throw MouthError.message("bad host or port in \(text)")
             }
             if scheme == "udp" { return .udp(host: host, port: port) }
             return .tcp(host: host, port: port, tls: scheme != "tcp")
