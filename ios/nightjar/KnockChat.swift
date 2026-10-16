@@ -347,6 +347,29 @@ final class KnockChat: ObservableObject {
         }
     }
 
+    /// A message picked up by brush pass (proximity BLE).
+    /// Like a chirp, the medium has no acknowledgement — the
+    /// host never learns its drop was taken.
+    func receiveBrush(text: String) {
+        append(ChatMessage(id: UUID().uuidString, peer: "brush",
+                           outgoing: false, text: text,
+                           when: Date(), state: "received",
+                           hash: nil, suite: nil))
+        purge()
+    }
+
+    /// A message that arrived by sound (Chirp). That medium
+    /// has no way to knock an ACK back — the sender watches a
+    /// progress bar, not a delivery state — so chirps file as
+    /// plain received messages in their own thread.
+    func receiveChirp(text: String) {
+        append(ChatMessage(id: UUID().uuidString, peer: "chirp",
+                           outgoing: false, text: text,
+                           when: Date(), state: "received",
+                           hash: nil, suite: nil))
+        purge()
+    }
+
     // MARK: - retention + persistence
 
     func setRetention(hours: Double) {
