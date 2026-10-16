@@ -488,6 +488,17 @@ final class Mouth: NSObject, ObservableObject {
     @Published var scanHandoffPayload: String?
     @Published var scanHandoffHex: String?
 
+    /// The counter-knock pivot (EMCON → Recon): a tripwire log
+    /// row hands its source here; ContentView switches to the
+    /// Recon tab and ReconBench aims itself. The nonce makes
+    /// every tap a fresh signal, even for a repeat source.
+    struct ReconHandoff: Equatable {
+        let host: String
+        let port: Int
+        let nonce: UUID
+    }
+    @Published var reconHandoff: ReconHandoff?
+
     /// The most recent reply a send collected, for the Send tab's
     /// inline readout (the full trail still lives in the log).
     struct LastReply: Identifiable {
@@ -722,6 +733,8 @@ final class Mouth: NSObject, ObservableObject {
             self.inbox.insert(ReceivedPayload(at: Date(), transport: transport,
                                               peer: peer, data: data), at: 0)
             if self.inbox.count > 200 { self.inbox.removeLast(self.inbox.count - 200) }
+            Journal.log("serve", "arrival",
+                        "\(transport) from \(peer) — \(data.count) B")
             // Stealth check stays FIRST: in stealth nothing banners.
             if !self.stealth {
                 // Make it pop: a banner with the message itself when it
