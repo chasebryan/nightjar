@@ -115,6 +115,8 @@ final class UpdateChecker: ObservableObject {
     nonisolated static func isNewer(_ latest: String, than current: String) -> Bool {
         let a = components(latest)
         let b = components(current)
+        // A malformed tag (or current build version) is not comparable.
+        guard !a.isEmpty, !b.isEmpty else { return false }
         let count = max(a.count, b.count)
         for i in 0..<count {
             let x = i < a.count ? a[i] : 0
@@ -125,13 +127,24 @@ final class UpdateChecker: ObservableObject {
     }
 
     nonisolated static func components(_ version: String) -> [Int] {
-        var text = version.trimmingCharacters(in: .whitespaces).lowercased()
+        var text = version.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if text.hasPrefix("v") { text.removeFirst() }
-        // Drop any pre-release/build suffix: "2.1.0-rc1" -> "2.1.0".
+        // Compare release numbers only: "2.1.0-rc1" -> "2.1.0".
         if let dash = text.firstIndex(where: { $0 == "-" || $0 == "+" }) {
             text = String(text[..<dash])
         }
-        return text.split(separator: ".").map { Int($0) ?? 0 }
+        // Keep empty fields so "3..0" and "3." cannot become valid.
+        let fields = text.split(separator: ".", omittingEmptySubsequences: false)
+        guard !fields.isEmpty else { return [] }
+        var numbers: [Int] = []
+        for field in fields {
+            // Reject non-decimal digits, empty fields, signs and Int overflow.
+            guard !field.isEmpty,
+                  field.utf8.allSatisfy({ $0 >= 48 && $0 <= 57 }),
+                  let value = Int(field) else { return [] }
+            numbers.append(value)
+        }
+        return numbers
     }
 }
 #endif
