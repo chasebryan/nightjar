@@ -678,6 +678,12 @@ final class Mouth: NSObject, ObservableObject {
     // token from Flare.swift. It outranks the plain beacon for
     // the one service-data slot; EMCON's stopBeacon drops it too.
     @Published private(set) var flareOn = false
+
+    /// Fired by the canary at the moment a honeydrop is
+    /// taken, with the taker's "host:port". The app wires it
+    /// to EMCON's second sense and the conductor — the mouth
+    /// itself stays ignorant of both.
+    var onHoneydropTaken: ((String) -> Void)?
     private var wantFlare = false
     private var flareTimer: Timer?
     private var beaconPayload: Data = Data()
