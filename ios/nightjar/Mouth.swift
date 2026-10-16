@@ -655,6 +655,13 @@ final class Mouth: NSObject, ObservableObject {
             // and any iOS relaunch-for-Bluetooth — take effect.
             _ = ensurePeripheral()
         }
+        if UserDefaults.standard.bool(forKey: "flare.on"),
+           KnockKeyStore.key != nil {
+            // A flare left up comes back up: the token is a
+            // function of the clock and the key, so there is
+            // nothing else to restore.
+            startFlare()
+        }
     }
 
     struct WriteTarget: Identifiable {
@@ -667,6 +674,12 @@ final class Mouth: NSObject, ObservableObject {
     private let queue = DispatchQueue(label: "net.nosuchmachine.nightjarhack.mouth")
     private var peripheralManager: CBPeripheralManager?
     private var wantBeacon = false  // intent, survives radio state changes
+    // Flare: a beacon mode whose payload is the keyed rotating
+    // token from Flare.swift. It outranks the plain beacon for
+    // the one service-data slot; EMCON's stopBeacon drops it too.
+    @Published private(set) var flareOn = false
+    private var wantFlare = false
+    private var flareTimer: Timer?
     private var beaconPayload: Data = Data()
     private var beaconName = "nightjar"
     private var gattPayload: Data = Data()
@@ -1605,7 +1618,55 @@ final class Mouth: NSObject, ObservableObject {
         ui("Beacon on — the payload is on the air")
     }
 
+    func startFlare() {
+        if gattHostOn {
+            line("nightjar: stop the GATT host before raising a flare")
+            return
+        }
+        guard KnockKeyStore.key != nil else {
+            line("nightjar: a flare needs a pairing key")
+            ui("Set a pairing key first — a flare is keyed",
+               error: true)
+            return
+        }
+        wantFlare = true
+        flareOn = true
+        UserDefaults.standard.set(true, forKey: "flare.on")
+        _ = ensurePeripheral()
+        refreshAdvertising()
+        flareTimer?.invalidate()
+        flareTimer = Timer.scheduledTimer(
+            withTimeInterval: 30, repeats: true) { [weak self] _ in
+                self?.refreshAdvertising()
+            }
+        ui("Flare up — paired operators can see this phone")
+    }
+
+    func stopFlare() {
+        wantFlare = false
+        flareOn = false
+        flareTimer?.invalidate()
+        flareTimer = nil
+        UserDefaults.standard.set(false, forKey: "flare.on")
+        ui("Flare off")
+        if gattHostOn || wantBeacon {
+            refreshAdvertising()
+        } else {
+            beaconOn = false
+            peripheralManager?.stopAdvertising()
+        }
+    }
+
     func stopBeacon() {
+        if wantFlare {
+            // Posture semantics: standing the beacon down takes
+            // the flare with it — a flare IS an emission.
+            wantFlare = false
+            flareOn = false
+            flareTimer?.invalidate()
+            flareTimer = nil
+            UserDefaults.standard.set(false, forKey: "flare.on")
+        }
         wantBeacon = false
         beaconOn = false
         ui("Beacon off")
@@ -1649,7 +1710,7 @@ final class Mouth: NSObject, ObservableObject {
         ui("GATT host off")
         peripheralManager?.removeAllServices()
         gattCharacteristic = nil
-        if wantBeacon {
+        if wantBeacon || wantFlare {
             beaconOn = true
             refreshAdvertising()
         } else {
@@ -1665,6 +1726,14 @@ final class Mouth: NSObject, ObservableObject {
         if gattHostOn {
             advertisement[CBAdvertisementDataServiceUUIDsKey] = [Mouth.serviceUUID]
             beaconOn = false
+        } else if wantFlare, let key = KnockKeyStore.key {
+            // The flare token, computed fresh at every refresh:
+            // the five-minute window turns over on its own, and
+            // the thirty-second timer keeps the air current.
+            advertisement[CBAdvertisementDataServiceUUIDsKey] = [Mouth.serviceUUID]
+            advertisement[CBAdvertisementDataServiceDataKey] =
+                [Mouth.serviceUUID: Flare.tokenNow(key: key)]
+            beaconOn = true
         } else if wantBeacon {
             // ble:// : the payload rides in service data, the one payload
             // slot iOS lets an app set. (Python stamps manufacturer data
@@ -1824,7 +1893,7 @@ extension Mouth: CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state == .poweredOn {
             rearmGattHostIfNeeded()
-            if wantBeacon || gattHostOn {
+            if wantBeacon || gattHostOn || wantFlare {
                 refreshAdvertising()
             }
         } else {
@@ -1859,7 +1928,7 @@ extension Mouth: CBPeripheralManagerDelegate {
         // Confirmed on the air: reflect the live intent.
         if gattHostOn {
             gattHostOn = true
-        } else if wantBeacon {
+        } else if wantBeacon || wantFlare {
             beaconOn = true
         }
     }
