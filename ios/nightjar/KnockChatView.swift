@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// The Knocktalk tab: conversations carried by knock order.
@@ -42,6 +43,17 @@ struct KnockChatView: View {
     @State private var blinkDraft = ""
     @State private var blinkFrames: [String] = []
     @State private var blinkShowing = false
+    @State private var boardSeen: [String: Date] = [:]
+    @State private var boardChecked = false
+    @State private var capsuleDraft = ""
+    @State private var capsuleDelay: Double = 600
+    @State private var capsuleBlob: String?
+    @State private var capsuleStatus = ""
+    @State private var capsuleBusy = false
+    @State private var capsulePaste = ""
+    @State private var capsuleProgress: Double?
+    @State private var capsuleNote = ""
+    @State private var grindControl = GrindControl()
     @State private var blinkReceiving = false
 
     /// A blink names its suite in every frame; open with the
@@ -91,6 +103,8 @@ struct KnockChatView: View {
                 chirpSection
                 brushSection
                 blinkSection
+                flareSection
+                capsuleSection
                 threadsSection
                 retentionSection
             }
@@ -219,6 +233,40 @@ struct KnockChatView: View {
     @AppStorage("knocktalkRelayToken") private var relayToken = ""
     @AppStorage("knocktalkRelayBox") private var relayBox = ""
 
+    /// The board: every mailbox this phone talks to (plus its
+    /// own), and when the relay last saw each — a declaration
+    /// or a collection counts as a sighting. Presence is all
+    /// the relay can offer: it holds nothing else.
+    private var boardBoxes: [String] {
+        var boxes = Set(chat.threads.keys.compactMap {
+            KnockRelay.mailbox(ofPeer: $0)
+        })
+        if !KnockRelay.mailbox.isEmpty {
+            boxes.insert(KnockRelay.mailbox)
+        }
+        return boxes.sorted()
+    }
+
+    private func refreshBoard() {
+        boardChecked = true
+        for box in boardBoxes {
+            KnockRelay.presence(of: box) { date in
+                if let date { boardSeen[box] = date }
+            }
+        }
+    }
+
+    private func boardLabel(_ box: String) -> String {
+        guard boardChecked else { return "—" }
+        guard let date = boardSeen[box] else {
+            return "never seen by the relay"
+        }
+        let fmt = RelativeDateTimeFormatter()
+        fmt.unitsStyle = .full
+        return "seen " + fmt.localizedString(for: date,
+                                              relativeTo: Date())
+    }
+
     private var relaySection: some View {
         Section(header: Text("Relay server"),
                 footer: Text("Without a relay, Knocktalk is "
@@ -250,6 +298,15 @@ struct KnockChatView: View {
                 if !chat.relayStatus.isEmpty {
                     Text(chat.relayStatus)
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                if KnockRelay.configured {
+                    Button("Check the board") { refreshBoard() }
+                    ForEach(boardBoxes, id: \.self) { box in
+                        LabeledContent(
+                            box == KnockRelay.mailbox
+                                ? "\(box) (this phone)" : box,
+                            value: boardLabel(box))
+                    }
                 }
             }
         }
@@ -503,6 +560,192 @@ struct KnockChatView: View {
         .sheet(isPresented: $blinkReceiving) {
             BlinkReceiverView { data, suite in
                 openBlinkPayload(data, suite: suite)
+            }
+        }
+    }
+
+    private var flareSection: some View {
+        Section(header: Text("Flare — be recognized, by key-holders only"),
+                footer: Text("With the flare up, this phone's "
+                    + "beacon slot carries a token only the "
+                    + "pairing key can compute — it turns over "
+                    + "every five minutes and names nobody. A "
+                    + "paired phone listening sees a flame "
+                    + "beside the row in Listen and knows one "
+                    + "of ours is near. It outranks a plain "
+                    + "payload beacon for the slot while it's "
+                    + "up, and EMCON takes it down like any "
+                    + "other emission.")) {
+            if KnockKeyStore.key != nil {
+                Toggle("Raise my flare", isOn: Binding(
+                    get: { mouth.flareOn },
+                    set: { on in
+                        if on { mouth.startFlare() }
+                        else { mouth.stopFlare() }
+                    }))
+                if mouth.flareOn {
+                    Text("On the air. Holders of this key, "
+                         + "listening now, can see it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Set up a pairing key above — a flare is "
+                     + "computed from it.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var capsuleTooLong: Bool {
+        capsuleDraft.utf8.count + 28 > Knocktalk.maxSealedBytes
+    }
+
+    private func sealCapsule() {
+        let draft = capsuleDraft
+        let delay = capsuleDelay
+        let suite = chat.sendSuite
+        capsuleBusy = true
+        capsuleStatus = "Working…"
+        DispatchQueue.global(qos: .userInitiated).async {
+            let blob = TimeCapsule.seal(
+                message: draft, seconds: delay, suite: suite
+            ) { status in
+                DispatchQueue.main.async { capsuleStatus = status }
+            }
+            DispatchQueue.main.async {
+                capsuleBusy = false
+                capsuleStatus = ""
+                capsuleBlob = blob
+                if blob != nil { capsuleDraft = "" }
+            }
+        }
+    }
+
+    private func grindCapsule() {
+        let blob = capsulePaste
+        grindControl = GrindControl()
+        let control = grindControl
+        capsuleProgress = 0
+        capsuleNote = "Grinding — the squarings are sequential; "
+            + "that's the lock working."
+        DispatchQueue.global(qos: .userInitiated).async {
+            TimeCapsule.grind(
+                blob: blob, control: control,
+                progress: { p in
+                    DispatchQueue.main.async { capsuleProgress = p }
+                },
+                completion: { text in
+                    DispatchQueue.main.async {
+                        capsuleProgress = nil
+                        if control.cancelled {
+                            capsuleNote = "Grind stopped. The "
+                                + "capsule keeps — grind it any "
+                                + "time; the work restarts from "
+                                + "the first squaring."
+                        } else if let text {
+                            chat.receiveCapsule(text: text)
+                            capsulePaste = ""
+                            capsuleNote = "Opened — filed in "
+                                + "the capsule thread below."
+                        } else {
+                            capsuleNote = "That didn't open — "
+                                + "damaged in transit, or not a "
+                                + "capsule."
+                        }
+                    }
+                })
+        }
+    }
+
+    private var capsuleSection: some View {
+        Section(header: Text("Time capsule — sealed until the grinding is done"),
+                footer: Text("A message locked by repeated "
+                    + "squaring, in the Magic Box manner: the "
+                    + "sealer forges two primes, slips through "
+                    + "the φ shortcut, and throws the factors "
+                    + "away. After that, the only road in is "
+                    + "the grind — sequential, unparallelizable, "
+                    + "calibrated to this phone's pace. A lock "
+                    + "delays; it does not schedule: anyone "
+                    + "holding the capsule can start grinding "
+                    + "now, and faster hardware finishes "
+                    + "sooner. Carry the capsule by any means — "
+                    + "the lock travels with it.")) {
+            if KnockKeyStore.key != nil {
+                TextField("seal a message into the future",
+                          text: $capsuleDraft)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                Picker("Hold for", selection: $capsuleDelay) {
+                    Text("a breath — 30 seconds (test it)")
+                        .tag(30.0)
+                    Text("10 minutes").tag(600.0)
+                    Text("an hour").tag(3600.0)
+                    Text("6 hours").tag(21600.0)
+                }
+                Button {
+                    sealCapsule()
+                } label: {
+                    Label(capsuleBusy ? "Sealing…"
+                                      : "Seal the capsule",
+                          systemImage: "lock.clock")
+                }
+                .disabled(capsuleDraft.isEmpty || capsuleBusy
+                          || capsuleTooLong)
+                if capsuleTooLong {
+                    Text("Too long — capsules carry what a "
+                         + "Knocktalk message carries.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                if !capsuleStatus.isEmpty {
+                    Text(capsuleStatus)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let blob = capsuleBlob {
+                    Text(blob)
+                        .font(.caption2.monospaced())
+                        .lineLimit(4)
+                        .textSelection(.enabled)
+                    HStack {
+                        ShareLink(item: blob) {
+                            Label("Share capsule",
+                                  systemImage: "square.and.arrow.up")
+                        }
+                        Spacer()
+                        Button("Copy") {
+                            UIPasteboard.general.string = blob
+                        }
+                    }
+                }
+                Divider()
+                TextField("paste a capsule to open",
+                          text: $capsulePaste)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .font(.caption.monospaced())
+                if let progress = capsuleProgress {
+                    ProgressView(value: progress)
+                    Button("Stop grinding") {
+                        grindControl.cancelled = true
+                    }
+                } else {
+                    Button {
+                        grindCapsule()
+                    } label: {
+                        Label("Grind it open",
+                              systemImage: "hammer")
+                    }
+                    .disabled(capsulePaste.isEmpty)
+                }
+                if !capsuleNote.isEmpty {
+                    Text(capsuleNote)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Set up a pairing key above — capsules "
+                     + "seal with the same suites as everything "
+                     + "here.")
+                    .font(.callout).foregroundStyle(.secondary)
             }
         }
     }
