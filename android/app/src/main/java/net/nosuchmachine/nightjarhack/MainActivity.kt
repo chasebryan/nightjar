@@ -325,7 +325,7 @@ fun ListenTab(app: NightjarApp, goToSend: () -> Unit) {
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Listen", style = MaterialTheme.typography.headlineSmall)
+                TabTitle("Listen")
                 Text(
                     when {
                         !bluetoothOn -> "Bluetooth is off"
@@ -399,10 +399,7 @@ fun ListenTab(app: NightjarApp, goToSend: () -> Unit) {
 @Composable
 fun DeviceRowCard(row: DeviceRow, now: Double, onClick: () -> Unit, onWrite: () -> Unit) {
     val quiet = row.age(now) > 20
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xD91E1E1E)
-        ),
+    IosPanelCard(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onClick = onClick, onLongClick = onWrite)
@@ -508,7 +505,7 @@ fun DeviceDetail(
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("Heard as", style = MaterialTheme.typography.titleMedium)
                     if (row.details.isEmpty()) {
@@ -522,7 +519,7 @@ fun DeviceDetail(
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("Signal", style = MaterialTheme.typography.titleMedium)
                     FactRow("Last", row.rssiLast?.let { "$it dBm" } ?: "—")
@@ -547,7 +544,7 @@ fun DeviceDetail(
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("Timing", style = MaterialTheme.typography.titleMedium)
                     FactRow("First heard", clockTime(row.firstSeen))
@@ -563,7 +560,7 @@ fun DeviceDetail(
         }
         if (row.serviceUUIDs.isNotEmpty()) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+                IosPanelCard {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("Services advertised", style = MaterialTheme.typography.titleMedium)
                         for (uuid in row.serviceUUIDs) MonoText(shortUUID(uuid))
@@ -572,7 +569,7 @@ fun DeviceDetail(
             }
         }
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text("Identifier", style = MaterialTheme.typography.titleMedium)
                     MonoText(row.id)
@@ -647,7 +644,7 @@ fun SessionsTab(app: NightjarApp) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Text("Sessions", style = MaterialTheme.typography.headlineSmall)
+            TabTitle("Sessions")
             Text(
                 "Each listening session is a .jsonl file in upstream nightjar's format — feed it to `nightjar report` / `nightjar trackers` on a computer.",
                 style = MaterialTheme.typography.bodySmall,
@@ -658,7 +655,7 @@ fun SessionsTab(app: NightjarApp) {
             item { Text("No sessions yet. Start one on the Listen tab.") }
         }
         items(files, key = { it.absolutePath }) { file ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(file.name, style = MaterialTheme.typography.bodyMedium)
                     Text(
@@ -694,7 +691,7 @@ fun SessionsTab(app: NightjarApp) {
             }) { Text("Clear history") }
         }
         items(history.take(100)) { entry ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+            IosPanelCard {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(
                         "${entry.optString("kind")} · ${entry.optString("label")}",
