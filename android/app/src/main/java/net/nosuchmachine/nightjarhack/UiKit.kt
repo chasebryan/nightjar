@@ -98,6 +98,38 @@ fun IosPanel(
     )
 }
 
+/// The Card replacement inside the tab lists (which already
+/// carry the 16dp inset): a flat translucent panel, 10dp
+/// radius, no elevation, no margin of its own. Children keep
+/// their own 12dp content padding, exactly as the Cards did.
+@Composable
+fun IosPanelCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xD91C1C1E)),
+        content = content
+    )
+}
+
+/// The tab's title in iOS large-title manners: bold, quiet,
+/// sitting directly on the backdrop — not a Material headline
+/// floating in a list.
+@Composable
+fun TabTitle(text: String) {
+    Text(
+        text,
+        fontSize = 28.sp,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        color = IosColors.Label,
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+    )
+}
+
 /// A grouped-list section header: small, gray, uppercase,
 /// letterspaced — the iOS section voice.
 @Composable
