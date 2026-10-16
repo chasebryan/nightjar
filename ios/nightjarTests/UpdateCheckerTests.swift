@@ -26,7 +26,7 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertEqual(UpdateChecker.components("3."), [])
         XCTAssertEqual(UpdateChecker.components("3.0/other"), [])
         XCTAssertEqual(UpdateChecker.components("999999999999999999999999999999"), [])
-        XCTAssertEqual(UpdateChecker.components("  v3.1.0\\n"), [3, 1, 0])
+        XCTAssertEqual(UpdateChecker.components("  v3.1.0\n"), [3, 1, 0])
     }
 
     func testMalformedVersionsNeverTriggerAnUpdate() {
