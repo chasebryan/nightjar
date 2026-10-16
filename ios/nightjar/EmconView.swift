@@ -37,6 +37,7 @@ struct EmconView: View {
             hometurfSection
             senseSection
             conductorSection
+            StewardSectionView(steward: emcon.steward)
             sparringSection
             maneuversSection
             knockTrafficSection
