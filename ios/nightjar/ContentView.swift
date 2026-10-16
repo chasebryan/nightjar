@@ -92,6 +92,7 @@ struct ListenView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @State private var label = ""
+    @State private var huntRow: DeviceRow?
     @State private var now = Date().timeIntervalSince1970
 
     private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -142,6 +143,12 @@ struct ListenView: View {
                                         Label("Write a payload…",
                                               systemImage: "paperplane")
                                     }
+                                    Button {
+                                        huntRow = row
+                                    } label: {
+                                        Label("Hunt this signal",
+                                              systemImage: "location.viewfinder")
+                                    }
                                 }
                         }
                     }
@@ -151,6 +158,10 @@ struct ListenView: View {
             .background { AppBackdrop() }
             .navigationTitle("nightjar-hack")
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
+            .sheet(item: $huntRow) { row in
+                HuntView(targetID: row.id)
+                    .environmentObject(post)
+            }
         }
     }
 
@@ -336,6 +347,7 @@ struct DeviceDetailView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @State private var now = Date().timeIntervalSince1970
+    @State private var hunting = false
 
     private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -389,6 +401,16 @@ struct DeviceDetailView: View {
                                    ?? "not advertised")
                 LabeledContent("Estimated range", value: rangeText)
                 LabeledContent("Trend", value: live.trend ?? "—")
+                Button {
+                    hunting = true
+                } label: {
+                    Label("Hunt this signal",
+                          systemImage: "location.viewfinder")
+                }
+                .sheet(isPresented: $hunting) {
+                    HuntView(targetID: row.id)
+                        .environmentObject(post)
+                }
                 sparkline
             }
             Section("Timing") {
