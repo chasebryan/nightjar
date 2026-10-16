@@ -214,11 +214,11 @@ fun SendTab(app: NightjarApp) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
-                Text("Send", style = MaterialTheme.typography.headlineSmall)
+                TabTitle("Send")
             }
             // Step 1 — target
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+                IosPanelCard {
                     Column(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -280,7 +280,7 @@ fun SendTab(app: NightjarApp) {
             }
             // Step 3 — send
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+                IosPanelCard {
                     Column(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -361,7 +361,7 @@ fun SendTab(app: NightjarApp) {
             item { PayPlantSection(app, target, payloadText) }
             // Log
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+                IosPanelCard {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -424,7 +424,7 @@ fun PayloadEditor(
     val book by app.book.items.collectAsState()
     var libraryOpen by remember { mutableStateOf(false) }
     var saveName by remember { mutableStateOf("") }
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xD91E1E1E))) {
+    IosPanelCard {
         Column(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
