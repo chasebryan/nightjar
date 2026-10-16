@@ -74,7 +74,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -635,6 +637,67 @@ fun shortUUID(uuid: String): String {
 
 // MARK: - Sessions tab
 
+/// The night log panel: the sealed timeline, newest first,
+/// with the chain verification the iOS view offers.
+@Composable
+fun NightLogPanel() {
+    var events by remember { mutableStateOf<List<NightEvent>>(emptyList()) }
+    var report by remember { mutableStateOf<String?>(null) }
+    var verifyWanted by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        events = withContext(Dispatchers.IO) { Journal.events(60) }
+    }
+    LaunchedEffect(verifyWanted) {
+        if (verifyWanted > 0) {
+            val result = withContext(Dispatchers.IO) {
+                Journal.verifyChain()
+            }
+            report = if (result.brokenLine != null) {
+                "Chain broken at line ${result.brokenLine} — " +
+                    "${result.sealed} sealed lines verified before it."
+            } else {
+                "Chain holds: ${result.sealed} sealed lines, " +
+                    "${result.legacy} unsealed."
+            }
+        }
+    }
+    IosPanelCard {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (events.isEmpty()) {
+                Text(
+                    "Nothing in the night log yet — arrivals, " +
+                        "knocks and session bounds land here, " +
+                        "sealed in a hash chain."
+                )
+            }
+            for (event in events) {
+                Column {
+                    Text(
+                        event.text,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "${event.module} · ${event.kind} · " +
+                            event.when.replace("T", " ")
+                                .removeSuffix("Z"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            OutlinedButton(onClick = { verifyWanted++ }) {
+                Text("Verify the seal")
+            }
+            report?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
 @Composable
 fun SessionsTab(app: NightjarApp) {
     var files by remember { mutableStateOf(listSessionFiles(app)) }
@@ -651,6 +714,9 @@ fun SessionsTab(app: NightjarApp) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        item { IosSectionHeader("Night log") }
+        item { NightLogPanel() }
+        item { IosSectionHeader("Session files") }
         if (files.isEmpty()) {
             item { Text("No sessions yet. Start one on the Listen tab.") }
         }
