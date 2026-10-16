@@ -23,6 +23,39 @@ struct ProberFile: Identifiable {
     var verdicts: [String] = []
     /// Honeydrops this source has taken (from the journal).
     var drops = 0
+    /// First-words byte prefixes (hex), one trait family for
+    /// the same-hands correlation.
+    var bytePrefixes: Set<String> = []
+    /// This source is the phone itself (its events carry the
+    /// label) — own addresses never take part in correlation.
+    var isSelf = false
+    /// Same-hands candidates: other addresses sharing enough
+    /// of this file's habits, with the shared traits spelled
+    /// out. Correlation over the phone's own log — a labeled
+    /// suspicion, never an identification.
+    var links: [(host: String, shared: [String])] = []
+
+    /// The habit set correlation runs over: doors tried,
+    /// vocabularies spoken, byte prefixes sent.
+    var traits: Set<String> {
+        var t = Set(ports.keys.map { "port:\($0)" })
+        t.formUnion(verdicts.map { "word:\($0)" })
+        t.formUnion(bytePrefixes.map { "bytes:\($0)" })
+        return t
+    }
+
+    static func traitLabel(_ trait: String) -> String {
+        if trait.hasPrefix("port:") {
+            return "knocked port \(trait.dropFirst(5))"
+        }
+        if trait.hasPrefix("word:") {
+            return "spoke \u{201C}\(trait.dropFirst(5))\u{201D}"
+        }
+        if trait.hasPrefix("bytes:") {
+            return "first words began \(trait.dropFirst(6))…"
+        }
+        return trait
+    }
 
     var portsByTraffic: [(port: Int, count: Int)] {
         ports.sorted { $0.value > $1.value }
@@ -82,6 +115,12 @@ enum ProberFiles {
             if !f.verdicts.contains(e.verdict) {
                 f.verdicts.append(e.verdict)
             }
+            if let hex = e.bytesHex, hex.count >= 8 {
+                f.bytePrefixes.insert(String(hex.prefix(8)))
+            }
+            if e.source.contains("(this device)") {
+                f.isSelf = true
+            }
             byHost[host] = f
         }
         // Honeydrop takes are journal lines naming the taker's
@@ -94,7 +133,34 @@ enum ProberFiles {
                 byHost[host]?.drops += 1
             }
         }
-        return byHost.values.sorted { $0.lastSeen > $1.lastSeen }
+        var files = byHost.values.sorted {
+            $0.lastSeen > $1.lastSeen
+        }
+        correlate(&files)
+        return files
+    }
+
+    /// Same hands: two addresses whose habit sets overlap by
+    /// at least half the smaller set, with at least three
+    /// shared traits, are linked — in both directions, with
+    /// the evidence attached. Own addresses never correlate
+    /// (the phone answering itself is not a mystery).
+    private static func correlate(_ files: inout [ProberFile]) {
+        for i in files.indices where !files[i].isSelf {
+            for j in files.indices
+            where j != i && !files[j].isSelf {
+                let mine = files[i].traits
+                let theirs = files[j].traits
+                let shared = mine.intersection(theirs)
+                let smaller = min(mine.count, theirs.count)
+                guard smaller > 0, shared.count >= 3,
+                      Double(shared.count) / Double(smaller) >= 0.5
+                else { continue }
+                files[i].links.append((
+                    host: files[j].host,
+                    shared: shared.sorted().map(traitLabel)))
+            }
+        }
     }
 
     // "Changed since you last looked": the last-seen stamp a
@@ -153,6 +219,28 @@ struct ProberFileView: View {
                     Section(header: Text("First words heard")) {
                         ForEach(file.verdicts, id: \.self) { v in
                             Text(v).font(.callout)
+                        }
+                    }
+                }
+                if !file.links.isEmpty {
+                    Section(header: Text("Same hands?"),
+                            footer: Text("Correlation over this "
+                                + "phone's own tripwire log: "
+                                + "shared habits suggest, they "
+                                + "never prove. Two tenants of one "
+                                + "NAT can share every trait here "
+                                + "and still be strangers.")) {
+                        ForEach(file.links, id: \.host) { link in
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(link.host)
+                                    .font(.callout.weight(.medium))
+                                ForEach(link.shared, id: \.self) {
+                                    trait in
+                                    Text("· " + trait)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                         }
                     }
                 }
