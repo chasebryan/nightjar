@@ -1,4 +1,4 @@
-# nightjar-hack
+# nightjar-hack by ***technique***
 
 **3.0.0 — the ventriloquist.**
 
