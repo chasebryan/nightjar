@@ -38,6 +38,7 @@ enum SaneDefaults {
         "serveUseTCP", "serveUseUDP", "serveUseHTTP",
         "serveReply", "serveReplyMode", "serveFraming",
         "canaryPersona", "canaryPort",
+        "canaryHoneydrop", "canaryDrop",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
