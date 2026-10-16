@@ -51,7 +51,7 @@ struct ContentView: View {
                 .tag(8)
         }
         .onChange(of: tab) { _ in Haptics.select() }
-        .onChange(of: mouth.reconHandoff) { _, handoff in
+        .onChange(of: mouth.reconHandoff) { handoff in
             // Counter-knock pivot: a tripwire row tapped in EMCON
             // lands the operator on the Recon bench, pre-aimed.
             if handoff != nil { tab = 6 }
