@@ -18,6 +18,34 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertFalse(UpdateChecker.isNewer("v2.0", than: "2.0"))
     }
 
+    func testMalformedVersionComponentsAreRejected() {
+        XCTAssertEqual(UpdateChecker.components(""), [])
+        XCTAssertEqual(UpdateChecker.components("v"), [])
+        XCTAssertEqual(UpdateChecker.components("3.oops"), [])
+        XCTAssertEqual(UpdateChecker.components("3..0"), [])
+        XCTAssertEqual(UpdateChecker.components("3."), [])
+        XCTAssertEqual(UpdateChecker.components("3.0/other"), [])
+        XCTAssertEqual(UpdateChecker.components("999999999999999999999999999999"), [])
+        XCTAssertEqual(UpdateChecker.components("  v3.1.0\\n"), [3, 1, 0])
+    }
+
+    func testMalformedVersionsNeverTriggerAnUpdate() {
+        XCTAssertFalse(UpdateChecker.isNewer("3.oops", than: "2.6"))
+        XCTAssertFalse(UpdateChecker.isNewer("v", than: "2.6"))
+        XCTAssertFalse(UpdateChecker.isNewer("999999999999999999999999999999", than: "2.6"))
+        XCTAssertFalse(UpdateChecker.isNewer("2.7", than: "2.invalid"))
+        XCTAssertTrue(UpdateChecker.isNewer("3.0", than: "2.6"))
+    }
+
+    func testParseRejectsMalformedReleaseTag() {
+        let json = """
+        {"tag_name": "v3.bad", "html_url":
+        "https://github.com/chasebryan/nightjar-hack/releases/tag/v3.bad",
+        "draft": false, "prerelease": false}
+        """.data(using: .utf8)!
+        XCTAssertNil(UpdateChecker.parse(json, current: "2.6"))
+    }
+
     func testParseNewerRelease() {
         let json = """
         {"tag_name": "v2.1.0", "name": "nightjar 2.1", "html_url": \
