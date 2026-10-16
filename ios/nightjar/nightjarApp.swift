@@ -6,6 +6,7 @@ struct NightjarApp: App {
     @StateObject private var updater = UpdateChecker()
     @StateObject private var mouth = Mouth()
     @StateObject private var toasts = ToastCenter()
+    @StateObject private var emcon = Emcon()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
 
@@ -16,6 +17,8 @@ struct NightjarApp: App {
                 .environmentObject(updater)
                 .environmentObject(mouth)
                 .environmentObject(toasts)
+                .environmentObject(emcon)
+                .environmentObject(emcon.chat)
                 .onAppear {
                     post.keepScreenAwake = keepScreenAwake
                     mouth.toasts = toasts
