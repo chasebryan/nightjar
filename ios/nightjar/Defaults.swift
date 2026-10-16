@@ -42,7 +42,8 @@ enum SaneDefaults {
         "canaryLearnedPaths", "conductorOn", "conductorRules",
         "conductorFired", "stewardOn", "stewardLatitude",
         "stewardProposals", "stewardFired", "stewardLastShift",
-        "stewardDismissals",
+        "stewardDismissals", "stewardOrders", "stewardWatches",
+        "stewardCases",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
