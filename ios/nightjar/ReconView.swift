@@ -1242,6 +1242,16 @@ struct ScanView: View {
         return parts.dropLast().joined(separator: ".")
     }
 
+    /// Unique swept addresses, for the Dossiers section.
+    private var sweptIPs: [String] {
+        Array(Set(model.sweepHosts.map(\.ip))).sorted()
+    }
+
+    private func sweptPorts(for ip: String) -> String {
+        model.sweepHosts.filter { $0.ip == ip }
+            .map { String($0.port) }.joined(separator: ", ")
+    }
+
     private var portsToScan: [Int] {
         // Comma/space separated ports, and ranges: "8000-8010"
         // means the eleven ports, not ports 8000 and 8010.
@@ -1420,6 +1430,44 @@ struct ScanView: View {
                          + "stay invisible — that's connect scanning.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+
+                if !model.sweepHosts.isEmpty || !model.discovered.isEmpty {
+                    Section(header: Text("Dossiers")) {
+                        ForEach(sweptIPs, id: \.self) { ip in
+                            NavigationLink {
+                                DossierView(
+                                    title: ip, ip: ip,
+                                    wifiLines: [
+                                        "Answered the sweep on port "
+                                        + "\(sweptPorts(for: ip))",
+                                        "Census: Scan tab subnet sweep",
+                                    ])
+                            } label: {
+                                Label(ip, systemImage: "folder.badge.gear")
+                            }
+                        }
+                        ForEach(model.discovered) { service in
+                            NavigationLink {
+                                DossierView(
+                                    title: service.name, ip: nil,
+                                    wifiLines: [
+                                        "Announces itself via Bonjour: "
+                                        + service.label,
+                                        "Census: Scan tab discovery sweep",
+                                    ])
+                            } label: {
+                                Label(service.name,
+                                      systemImage: "folder.badge.gear")
+                            }
+                        }
+                        Text("One page per device, every organ's "
+                             + "testimony: what Scan heard, whether "
+                             + "Listen has heard the name over "
+                             + "Bluetooth, and a Recon knock on "
+                             + "demand.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
 
                 Section(header: Text("Observation feed")) {
