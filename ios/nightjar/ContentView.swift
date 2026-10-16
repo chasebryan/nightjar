@@ -39,6 +39,10 @@ struct ContentView: View {
                 .appThemed()
                 .tabItem { Label("Recon", systemImage: "target") }
                 .tag(6)
+            EmconView()
+                .appThemed()
+                .tabItem { Label("EMCON", systemImage: "shield.slash") }
+                .tag(7)
         }
         .onChange(of: tab) { _ in Haptics.select() }
         .overlay(alignment: .top) {
