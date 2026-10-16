@@ -116,6 +116,9 @@ final class ListeningPost: NSObject, ObservableObject {
 
         let active = ActiveSession(id: id, label: label, startedAt: startedAt, url: url)
         session = active
+        Journal.log("listen", "session",
+                    "listening started"
+                    + (label.map { " — \($0)" } ?? ""))
         remember(active)
         devices = [:]
         rows = []
@@ -142,6 +145,8 @@ final class ListeningPost: NSObject, ObservableObject {
         }
         writer = nil
         session = nil
+        Journal.log("listen", "session",
+                    "listening stopped — \(sightingsSeen) sightings")
         forgetActiveSession()
         stopTicker()
         applyIdleTimer()
