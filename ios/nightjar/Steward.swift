@@ -685,7 +685,7 @@ final class Steward: ObservableObject {
             guard let mouth = emcon.mouth, let host = host,
                   let port = port else { return false }
             mouth.reconHandoff = Mouth.ReconHandoff(
-                host: host, port: port, nonce: "steward")
+                host: host, port: port, nonce: UUID())
             return true
         default:
             return false
