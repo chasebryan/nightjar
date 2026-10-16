@@ -24,6 +24,7 @@ class NightjarApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Journal.init(this)
         post = ListeningPost(this)
         book = PayloadBook(this)
         mouth = Mouth(this)
