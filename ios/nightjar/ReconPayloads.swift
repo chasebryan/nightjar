@@ -361,10 +361,17 @@ enum ReconPayloads {
     }
 
     static func rpcNull() -> Data {
-        u32be(0x12345678) + u32be(0) + u32be(2) + u32be(100000)
-            + u32be(2) + u32be(0)
-            + u32be(0) + u32be(0)
-            + u32be(0) + u32be(0)
+        var packet = u32be(0x12345678)
+        packet += u32be(0)
+        packet += u32be(2)
+        packet += u32be(100000)
+        packet += u32be(2)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        packet += u32be(0)
+        return packet
     }
 
     static func mongodbIsmaster(_ database: String = "admin") -> Data {
