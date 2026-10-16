@@ -49,6 +49,8 @@ enum SaneDefaults {
         // EMCON
         "emconActive", "emconHomeSubnet", "emconVaultCombo",
         "knocktalkRetentionHours", "knocktalkSuite",
+        "knocktalkRelayEnabled", "knocktalkRelayURL",
+        "knocktalkRelayToken", "knocktalkRelayBox",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
     ]
