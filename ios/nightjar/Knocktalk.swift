@@ -1,3 +1,4 @@
+import Combine
 import CryptoKit
 import Foundation
 import Network
@@ -31,7 +32,130 @@ enum Knocktalk {
     static let syncPort = 443
     /// Silence longer than this closes the window.
     static let gap: TimeInterval = 3.5
-    static let maxCharacters = 40
+    static let maxCharacters = 160
+
+    // MARK: protocol v2 — fragmentation + repair
+    //
+    // v1 framed a whole message as one knock stream: a single
+    // lost knock failed the AEAD open and the message died
+    // silently. v2 seals once, then fragments the sealed box.
+    // Each fragment frame is [sync] [index] [total] [payload
+    // nibbles] [checksum nibble] — the checksum (sum mod 16)
+    // exists so a mangled fragment can be dropped and NACKed
+    // rather than poisoning the reassembly; the Poly1305 tag
+    // remains the real integrity, checked once, at the end.
+    // The receiver answers in kind: an ACK frame ([sync] 15 15
+    // + four hash nibbles of the sealed box) on success, or a
+    // NACK frame ([sync] 14 14 + the missing indices) so the
+    // sender re-knocks only what was lost. Two devices running
+    // this app are both always listening — the channel is
+    // two-way because the tripwire never closes.
+
+    static let fragmentPayloadBytes = 12
+    static let maxFragments = 16
+    /// Sealed bytes a message may occupy (16 × 12).
+    static var maxSealedBytes: Int {
+        maxFragments * fragmentPayloadBytes
+    }
+
+    // MARK: suites — cryptographic agility
+    //
+    // Each operator configures the suite THEY send with. The
+    // choice is not negotiated and never has to match: a suite
+    // nibble rides at the head of every fragment frame, and the
+    // receiver opens the reassembled box with whatever suite
+    // the frames name. A suite this build doesn't speak still
+    // reassembles — and lands as a plainly-labeled note, not
+    // garbage. Both suites are AEAD with the same 28-byte
+    // overhead, so the framing budget is suite-independent.
+
+    static let suiteChaCha = 0
+    static let suiteAESGCM = 1
+    static let suiteNames = ["ChaCha20-Poly1305", "AES-256-GCM"]
+
+    enum SealError: Error { case noCombined }
+
+    static func seal(_ plaintext: String, key: SymmetricKey,
+                     suite: Int) throws -> Data {
+        let data = Data(plaintext.utf8)
+        switch suite {
+        case suiteAESGCM:
+            // A freshly sealed box always has a combined form;
+            // the Optional exists for boxes built from parts.
+            guard let combined = try AES.GCM.seal(
+                data, using: key).combined
+            else { throw SealError.noCombined }
+            return combined
+        default:
+            return try ChaChaPoly.seal(data, using: key).combined
+        }
+    }
+
+    static func open(sealed: Data, key: SymmetricKey,
+                     suite: Int) -> String? {
+        let plain: Data?
+        switch suite {
+        case suiteChaCha:
+            guard let box = try? ChaChaPoly.SealedBox(
+                combined: sealed) else { return nil }
+            plain = try? ChaChaPoly.open(box, using: key)
+        case suiteAESGCM:
+            guard let box = try? AES.GCM.SealedBox(
+                combined: sealed) else { return nil }
+            plain = try? AES.GCM.open(box, using: key)
+        default:
+            return nil
+        }
+        guard let plain = plain else { return nil }
+        return String(data: plain, encoding: .utf8)
+    }
+
+    /// Fragment frames in the suite layout:
+    /// [sync] [suite] [index] [total] [payload] [checksum] —
+    /// an even nibble count, which also keeps them distinct
+    /// from legacy odd-count frames and from v1 streams.
+    static func fragmentFrames(sealed: Data, suite: Int) -> [[Int]] {
+        var chunks: [[UInt8]] = []
+        var start = 0
+        while start < sealed.count {
+            let end = min(start + fragmentPayloadBytes, sealed.count)
+            chunks.append(Array(sealed[start..<end]))
+            start = end
+        }
+        if chunks.isEmpty { chunks = [[]] }
+        let total = chunks.count
+        return chunks.enumerated().map { index, chunk in
+            var nibbles = [suite, index, total]
+            for byte in chunk {
+                nibbles.append(Int(byte >> 4))
+                nibbles.append(Int(byte & 0x0F))
+            }
+            let check = nibbles.reduce(0, +) % 16
+            return [syncPort]
+                + nibbles.map { alphabet[$0] }
+                + [alphabet[check]]
+        }
+    }
+
+    /// The first two bytes of the sealed box's SHA-256, as four
+    /// nibbles — enough for the sender to match an ACK to the
+    /// message it names, far too little to learn anything from.
+    static func hashNibbles(of sealed: Data) -> [Int] {
+        let digest = SHA256.hash(data: sealed)
+        let bytes = Array(digest.prefix(2))
+        return [Int(bytes[0] >> 4), Int(bytes[0] & 0x0F),
+                Int(bytes[1] >> 4), Int(bytes[1] & 0x0F)]
+    }
+
+    static func ackFrame(hash: [Int]) -> [Int] {
+        [syncPort] + [15, 15].map { alphabet[$0] }
+            + hash.map { alphabet[$0] }
+    }
+
+    static func nackFrame(missing: [Int]) -> [Int] {
+        [syncPort] + [14, 14].map { alphabet[$0] }
+            + missing.sorted().map { alphabet[$0] }
+    }
 
     static func nibble(of port: Int) -> Int? {
         alphabet.firstIndex(of: port)
@@ -164,9 +288,19 @@ struct KnockPattern: Identifiable {
 /// structure grader (scan vs. speech), and the vault combination.
 final class KnockEngine {
     enum Output {
-        case message(KnockMessage)
+        /// A decoded message. `ackHash` is set for v2-framed
+        /// messages (the chat layer ACKs them); nil for legacy
+        /// v1 frames, whose senders never listen for one.
+        case message(KnockMessage, ackHash: [Int]?)
         case pattern(KnockPattern)
         case vaultUnlock(source: String)
+        /// The peer confirms a message ours named by hash.
+        case ack(source: String, hash: [Int])
+        /// The peer lists fragments of our message it is missing.
+        case nack(source: String, missing: [Int])
+        /// Our reassembly of the peer's message has holes —
+        /// the chat layer should knock a NACK back.
+        case nackNeeded(source: String, missing: [Int])
     }
 
     var onOutput: ((Output) -> Void)?
@@ -197,6 +331,15 @@ final class KnockEngine {
         guard proto == "TCP" else { return }
         noteVault(source: source, verdict: verdict, when: when)
         if port == Knocktalk.syncPort {
+            // A sync delimits frames: flush whatever the previous
+            // frame accumulated before opening the next one. The
+            // sender's inter-frame pause is far shorter than the
+            // close gap, so without the flush, consecutive
+            // fragments would smear into one session.
+            if let old = sessions[source], !old.nibbles.isEmpty {
+                finalizeWork[source]?.cancel()
+                finalize(source: source)
+            }
             sessions[source] = Session(lastKnock: when)
             scheduleFinalize(source: source)
             return
@@ -221,23 +364,156 @@ final class KnockEngine {
             deadline: .now() + Knocktalk.gap, execute: work)
     }
 
+    private struct Partial {
+        var total: Int
+        var suite: Int = Knocktalk.suiteChaCha
+        var fragments: [Int: Data] = [:]
+    }
+    private var partials: [String: Partial] = [:]
+    private var partialWork: [String: DispatchWorkItem] = [:]
+
     private func finalize(source: String) {
         guard let session = sessions.removeValue(forKey: source),
               !session.nibbles.isEmpty else { return }
         finalizeWork[source] = nil
+        let n = session.nibbles
+        // ACK frame: [15 15] + four hash nibbles.
+        if n.count == 6, n[0] == 15, n[1] == 15 {
+            onOutput?(.ack(source: source, hash: Array(n[2..<6])))
+            return
+        }
+        // Suite fragment frame: even length, suite nibble first.
+        if n.count >= 6, n.count <= 40, n.count % 2 == 0,
+           handleFragment(source: source, nibbles: n,
+                          suiteLayout: true) {
+            return
+        }
+        // Legacy fragment frame: odd length, checksum-tailed.
+        if n.count >= 5, n.count % 2 == 1,
+           handleFragment(source: source, nibbles: n,
+                          suiteLayout: false) {
+            return
+        }
+        // NACK frame: [14 14] + the missing indices.
+        if n.count >= 3, n.count <= 10, n[0] == 14, n[1] == 14 {
+            onOutput?(.nack(source: source, missing: Array(n[2...])))
+            return
+        }
+        // v1 whole-message frame.
         if let key = KnockKeyStore.key,
-           let text = Knocktalk.decode(nibbles: session.nibbles,
-                                        key: key) {
+           let text = Knocktalk.decode(nibbles: n, key: key) {
             onOutput?(.message(KnockMessage(
                 id: UUID().uuidString, when: Date(), source: source,
-                text: text)))
+                text: text), ackHash: nil))
         } else {
             onOutput?(.pattern(KnockPattern(
                 when: Date(), source: source,
-                knocks: session.nibbles.count + 1,
+                knocks: n.count + 1,
                 note: "Knocktalk-framed but sealed — wrong key, "
                     + "no key, or knocks lost in transit")))
         }
+    }
+
+    /// Parse one fragment frame. True means the stream was
+    /// fragment-shaped and has been consumed (stored, completed,
+    /// or dropped as corrupt); false means not a fragment.
+    private func handleFragment(source: String, nibbles n: [Int],
+                                suiteLayout: Bool) -> Bool {
+        let suite = suiteLayout ? n[0] : Knocktalk.suiteChaCha
+        let index = suiteLayout ? n[1] : n[0]
+        let total = suiteLayout ? n[2] : n[1]
+        guard (1...Knocktalk.maxFragments).contains(total),
+              index < total else { return false }
+        let header = suiteLayout ? 3 : 2
+        let payload = Array(n[header..<(n.count - 1)])
+        guard payload.count >= 2, payload.count % 2 == 0
+        else { return false }
+        guard n.dropLast().reduce(0, +) % 16 == n.last else {
+            // Fragment-shaped but mangled: register the hole so
+            // the NACK asks for this index again.
+            registerPartial(source: source, total: total, suite: suite,
+                            index: nil, data: nil)
+            return true
+        }
+        var bytes = Data()
+        var i = 0
+        while i < payload.count {
+            bytes.append(UInt8(payload[i] << 4 | payload[i + 1]))
+            i += 2
+        }
+        registerPartial(source: source, total: total, suite: suite,
+                        index: index, data: bytes)
+        return true
+    }
+
+    private func registerPartial(source: String, total: Int,
+                                 suite: Int, index: Int?,
+                                 data: Data?) {
+        var partial = partials[source]
+        if partial == nil || partial!.total != total {
+            partial = Partial(total: total)
+        }
+        // A fresh fragment 0 that disagrees with the stored one
+        // is a NEW message superseding the stale partial.
+        if index == 0, let data = data,
+           let existing = partial!.fragments[0], existing != data {
+            partial = Partial(total: total)
+        }
+        if index == 0 || partial!.fragments[0] == nil {
+            partial!.suite = suite
+        }
+        if let index = index, let data = data {
+            partial!.fragments[index] = data
+        }
+        partials[source] = partial
+        guard partial!.fragments.count == total else {
+            schedulePartialCheck(source: source)
+            return
+        }
+        partials[source] = nil
+        partialWork[source]?.cancel()
+        let sealed = (0..<total)
+            .map { partial!.fragments[$0]! }
+            .reduce(Data()) { $0 + $1 }
+        let finalSuite = partial!.suite
+        if !Knocktalk.suiteNames.indices.contains(finalSuite) {
+            onOutput?(.pattern(KnockPattern(
+                when: Date(), source: source, knocks: total,
+                note: "a complete message in suite \(finalSuite), "
+                    + "which this build does not speak")))
+        } else if let key = KnockKeyStore.key,
+           let text = Knocktalk.open(sealed: sealed, key: key,
+                                     suite: finalSuite) {
+            onOutput?(.message(KnockMessage(
+                id: UUID().uuidString, when: Date(), source: source,
+                text: text),
+                ackHash: Knocktalk.hashNibbles(of: sealed)))
+        } else {
+            onOutput?(.pattern(KnockPattern(
+                when: Date(), source: source, knocks: total,
+                note: "a complete Knocktalk message that would "
+                    + "not open — wrong key")))
+        }
+    }
+
+    /// When a partial goes quiet with holes in it, ask — once —
+    /// for exactly the missing fragments.
+    private func schedulePartialCheck(source: String) {
+        partialWork[source]?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self,
+                  let partial = self.partials[source] else { return }
+            self.partials[source] = nil
+            let missing = (0..<partial.total)
+                .filter { partial.fragments[$0] == nil }
+            if !missing.isEmpty {
+                self.onOutput?(.nackNeeded(source: source,
+                                           missing: missing))
+            }
+        }
+        partialWork[source] = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Knocktalk.gap + 2.0, execute: work)
     }
 
     /// Six alphabet knocks inside ten seconds, unframed: not a
@@ -306,34 +582,50 @@ final class KnockEngine {
     }
 }
 
-/// The composer end: knocks a sequence at a target, one connect
+/// The composer end: knocks sequences at a target, one connect
 /// at a time, in order — a connect, a breath, a close, and
-/// nothing else. No bytes are ever sent.
+/// nothing else. No bytes are ever sent. Frames queue: a
+/// message's fragments go out back to back with a short pause
+/// between frames, and `onQueueEmpty` reports the drain.
 final class KnockSender: ObservableObject {
     @Published private(set) var sending = false
     @Published private(set) var sent = 0
     @Published private(set) var total = 0
+    var onQueueEmpty: (() -> Void)?
 
-    private var ports: [Int] = []
+    private var frames: [[Int]] = []
+    private var frameIndex = 0
+    private var knockIndex = 0
     private var host = ""
     private var cancelled = false
     private var connection: NWConnection?
     private let queue = DispatchQueue(label: "nightjar.knocktalk.send")
 
+    /// Knock one raw sequence (v1-style single frame).
     func send(host: String, ports: [Int]) {
-        guard !sending, !ports.isEmpty,
+        sendFrames(host: host, frames: [ports])
+    }
+
+    func sendFrames(host: String, frames: [[Int]]) {
+        let clean = frames.filter { !$0.isEmpty }
+        guard !sending, !clean.isEmpty,
               !host.trimmingCharacters(in: .whitespaces).isEmpty
         else { return }
         self.host = host.trimmingCharacters(in: .whitespaces)
-        self.ports = ports
+        self.frames = clean
+        frameIndex = 0
+        knockIndex = 0
         cancelled = false
+        let knocks = clean.reduce(0) { $0 + $1.count }
         DispatchQueue.main.async {
-            self.total = ports.count
+            self.total = knocks
             self.sent = 0
             self.sending = true
         }
         queue.async { self.step() }
     }
+
+    var busy: Bool { sending }
 
     func cancel() {
         cancelled = true
@@ -341,15 +633,31 @@ final class KnockSender: ObservableObject {
         DispatchQueue.main.async { self.sending = false }
     }
 
+    private func finish() {
+        DispatchQueue.main.async {
+            self.sending = false
+            self.onQueueEmpty?()
+        }
+    }
+
     private func step() {
         guard !cancelled else { return }
-        let index = DispatchQueue.main.sync { self.sent }
-        guard index < ports.count else {
-            DispatchQueue.main.async { self.sending = false }
+        if knockIndex >= frames[frameIndex].count {
+            // Frame drained: pause, then the next frame — or out.
+            if frameIndex + 1 < frames.count {
+                frameIndex += 1
+                knockIndex = 0
+                queue.asyncAfter(deadline: .now() + 0.8) {
+                    self.step()
+                }
+            } else {
+                finish()
+            }
             return
         }
+        let port = frames[frameIndex][knockIndex]
         guard let nwPort = NWEndpoint.Port(
-            rawValue: UInt16(ports[index])) else { return }
+            rawValue: UInt16(port)) else { return }
         let connection = NWConnection(host: NWEndpoint.Host(host),
                                       port: nwPort, using: .tcp)
         self.connection = connection
@@ -358,6 +666,7 @@ final class KnockSender: ObservableObject {
             guard let self = self, !advanced else { return }
             advanced = true
             connection.cancel()
+            self.knockIndex += 1
             DispatchQueue.main.async { self.sent += 1 }
             self.queue.asyncAfter(deadline: .now() + 0.30) {
                 self.step()
