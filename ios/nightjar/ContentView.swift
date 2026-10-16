@@ -44,6 +44,11 @@ struct ContentView: View {
                 .appThemed()
                 .tabItem { Label("EMCON", systemImage: "shield.slash") }
                 .tag(7)
+            KnockChatView()
+                .appThemed()
+                .tabItem { Label("Knocktalk",
+                                 systemImage: "message.badge.waveform") }
+                .tag(8)
         }
         .onChange(of: tab) { _ in Haptics.select() }
         .onChange(of: mouth.reconHandoff) { _, handoff in
