@@ -12,7 +12,8 @@
   goes dark — it does not engage by itself. The drill names the
   services that went quiet and the ones still showing. Probe
   fingerprints prefer the closest library match, so a short
-  prefix can't steal the name.
+  prefix can't steal the name. Prefix checks use
+  `Data.starts(with:)`, which is the method `Data` actually has.
 
 ## 2.6.0 — 2026-10-15 — the cartographer
 
