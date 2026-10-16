@@ -358,6 +358,17 @@ final class KnockChat: ObservableObject {
         purge()
     }
 
+    /// A message that arrived by light (Blink). Like sound
+    /// and proximity, the medium is one-way — no ACK rides a
+    /// QR frame back.
+    func receiveBlink(text: String) {
+        append(ChatMessage(id: UUID().uuidString, peer: "blink",
+                           outgoing: false, text: text,
+                           when: Date(), state: "received",
+                           hash: nil, suite: nil))
+        purge()
+    }
+
     /// A message that arrived by sound (Chirp). That medium
     /// has no way to knock an ACK back — the sender watches a
     /// progress bar, not a delivery state — so chirps file as
@@ -393,6 +404,16 @@ final class KnockChat: ObservableObject {
             }
         }
         if changed { save() }
+    }
+
+    /// Burn everything, right now — every thread, every
+    /// message, whatever the retention setting says. The
+    /// knock vault's burn macro lands here.
+    func burnNow() {
+        threads = [:]
+        save()
+        Journal.log("knocktalk", "burn",
+                    "all threads burned on command")
     }
 
     func clearThread(_ peer: String) {
