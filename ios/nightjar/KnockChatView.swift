@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The Knocktalk tab: conversations carried by knock order.
 ///
@@ -18,8 +19,48 @@ struct KnockChatView: View {
     @StateObject private var chirpSender = ChirpSender()
     @StateObject private var chirpListener = ChirpListener()
     @State private var chirpDraft = ""
+    @State private var chirpWavURL: URL?
+    @State private var chirpImporting = false
+    @State private var chirpFileNote: String?
+
+    /// One door for chirps, however they arrived — sung live,
+    /// or decoded from a mailed file.
+    private func openChirpPayload(_ data: Data) -> Bool {
+        guard let key = KnockKeyStore.key else { return false }
+        for suite in [Knocktalk.suiteChaCha,
+                      Knocktalk.suiteAESGCM] {
+            if let text = Knocktalk.open(
+                sealed: data, key: key, suite: suite) {
+                chat.receiveChirp(text: text)
+                return true
+            }
+        }
+        return false
+    }
     @StateObject private var brushVisitor = BrushVisitor()
     @State private var brushDraft = ""
+    @State private var blinkDraft = ""
+    @State private var blinkFrames: [String] = []
+    @State private var blinkShowing = false
+    @State private var blinkReceiving = false
+
+    /// A blink names its suite in every frame; open with the
+    /// carried suite first, the other second.
+    private func openBlinkPayload(_ data: Data,
+                                  suite: Int) -> Bool {
+        guard let key = KnockKeyStore.key else { return false }
+        let order = suite == Knocktalk.suiteAESGCM
+            ? [Knocktalk.suiteAESGCM, Knocktalk.suiteChaCha]
+            : [Knocktalk.suiteChaCha, Knocktalk.suiteAESGCM]
+        for candidate in order {
+            if let text = Knocktalk.open(
+                sealed: data, key: key, suite: candidate) {
+                chat.receiveBlink(text: text)
+                return true
+            }
+        }
+        return false
+    }
 
     var body: some View {
         NavigationStack {
@@ -49,6 +90,7 @@ struct KnockChatView: View {
                 relaySection
                 chirpSection
                 brushSection
+                blinkSection
                 threadsSection
                 retentionSection
             }
@@ -67,17 +109,7 @@ struct KnockChatView: View {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
                 chat.purge()
                 chirpListener.onPayload = { data in
-                    guard let key = KnockKeyStore.key
-                    else { return false }
-                    for suite in [Knocktalk.suiteChaCha,
-                                  Knocktalk.suiteAESGCM] {
-                        if let text = Knocktalk.open(
-                            sealed: data, key: key, suite: suite) {
-                            chat.receiveChirp(text: text)
-                            return true
-                        }
-                    }
-                    return false
+                    openChirpPayload(data)
                 }
                 brushVisitor.onPayload = { data in
                     guard let key = KnockKeyStore.key
@@ -287,10 +319,66 @@ struct KnockChatView: View {
                     Text(chirpListener.status)
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                Button("Sing it to a file instead") {
+                    if let sealed = try? Knocktalk.seal(
+                        chirpDraft, key: key,
+                        suite: chat.sendSuite) {
+                        chirpWavURL = ChirpMail.export(
+                            payload: sealed)
+                        chirpFileNote = chirpWavURL == nil
+                            ? "the .wav would not render"
+                            : "rendered — share it through "
+                                + "anything that moves audio; "
+                                + "it decodes on arrival"
+                        if chirpWavURL != nil { chirpDraft = "" }
+                    }
+                }
+                .disabled(chirpDraft.isEmpty || chirpTooLong)
+                if let wav = chirpWavURL {
+                    ShareLink(item: wav) {
+                        Label("Share the chirp (.wav)",
+                              systemImage: "waveform")
+                    }
+                }
+                Button("Decode a chirp file…") {
+                    chirpImporting = true
+                }
+                if let note = chirpFileNote {
+                    Text(note)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             } else {
                 Text("Set up a pairing key above — chirps are "
                      + "sealed with it, exactly like knocks.")
                     .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .fileImporter(
+            isPresented: $chirpImporting,
+            allowedContentTypes: [.wav, .mp3, .mpeg4Audio,
+                                  .audio]) { result in
+            guard case .success(let url) = result else { return }
+            chirpFileNote = "decoding…"
+            DispatchQueue.global(qos: .userInitiated).async {
+                let scoped = url
+                    .startAccessingSecurityScopedResource()
+                let payload = ChirpMail.decode(fileURL: url)
+                if scoped {
+                    url.stopAccessingSecurityScopedResource()
+                }
+                DispatchQueue.main.async {
+                    if let payload = payload {
+                        chirpFileNote = openChirpPayload(payload)
+                            ? "decoded — filed in the Chirp "
+                                + "thread below"
+                            : "that file carries a chirp that "
+                                + "does not open with your "
+                                + "pairing key"
+                    } else {
+                        chirpFileNote = "no complete chirp "
+                            + "heard in that file"
+                    }
+                }
             }
         }
     }
@@ -357,6 +445,64 @@ struct KnockChatView: View {
                      + "sealed with it, like everything else "
                      + "here.")
                     .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var blinkTooLong: Bool {
+        blinkDraft.utf8.count + 28 > Knocktalk.maxSealedBytes
+    }
+
+    private var blinkSection: some View {
+        Section(header: Text("Blink — messages by light"),
+                footer: Text("The sealed box as a looping "
+                    + "sequence of QR frames — for the room "
+                    + "where even a chirp is too loud. The "
+                    + "camera gathers frames until the set is "
+                    + "whole; the loop forgives every miss. "
+                    + "One-way, like sound: no acknowledgement "
+                    + "rides the light back.")) {
+            if KnockKeyStore.key != nil {
+                HStack {
+                    TextField("blink a short message",
+                              text: $blinkDraft)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                    Button("Show") {
+                        if let key = KnockKeyStore.key,
+                           let sealed = try? Knocktalk.seal(
+                            blinkDraft, key: key,
+                            suite: chat.sendSuite) {
+                            blinkFrames = BlinkFraming.frames(
+                                payload: sealed,
+                                suite: chat.sendSuite)
+                            blinkShowing = true
+                            blinkDraft = ""
+                        }
+                    }
+                    .disabled(blinkDraft.isEmpty || blinkTooLong)
+                }
+                if blinkTooLong {
+                    Text("Too long for light — about 160 "
+                         + "characters.")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                Button("Receive a blink") {
+                    blinkReceiving = true
+                }
+            } else {
+                Text("Set up a pairing key above — blinks are "
+                     + "sealed with it, like everything else "
+                     + "here.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .sheet(isPresented: $blinkShowing) {
+            BlinkSenderView(frames: blinkFrames)
+        }
+        .sheet(isPresented: $blinkReceiving) {
+            BlinkReceiverView { data, suite in
+                openBlinkPayload(data, suite: suite)
             }
         }
     }
