@@ -199,6 +199,20 @@ final class Emcon: ObservableObject {
                 self?.handleKnockOutput(output)
             }
         }
+        // Relay-replayed knocks enter the same engine. The
+        // verdict is the honest one — a relay knock carries no
+        // bytes — so no protocol digit is ever derived from
+        // one, and the vault combination can only ever be
+        // spoken on the local perimeter.
+        chat.onRelayFrame = { [weak self] from, ports in
+            for port in ports {
+                self?.knockEngine.note(
+                    source: "relay:" + from, port: port,
+                    proto: "TCP",
+                    verdict: "silent knock (no bytes sent)")
+            }
+        }
+        chat.refreshRelayPolling()
         // The readable copy only. JSON is already on disk; rewriting
         // it here would race a knock that lands during launch.
         if !events.isEmpty { Self.writeReport(events) }
