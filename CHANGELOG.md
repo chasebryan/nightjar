@@ -64,6 +64,20 @@ voices — and learns to keep silence like a professional.
   set (CryptoKit only), `PRIVACY.md` at the repo root, and
   the GitHub update checker compiled out of store builds
   behind `STORE_BUILD` (default builds unchanged).
+- **The second wave (iOS, same evening).** **Prober
+  files** — dossiers for everyone who knocks, assembled
+  from the tripwire log. **Dead hand** — miss a deliberate
+  check-in and the next opening burns the Knocktalk
+  threads and raises EMCON. **The board** — the relay now
+  reports when each mailbox was last seen. **Night
+  maneuvers** — a one-press self-test (seal chain, census,
+  spar) graded into the sealed log. **Flare** — a keyed
+  rotating beacon token: paired operators recognize each
+  other in Listen, and the token names nobody. **Time
+  capsule** — Knocktalk messages under an RSW time-lock
+  (hand-rolled Montgomery bignum, forged primes, the φ
+  shortcut for the sealer and the sequential grind for
+  everyone else), in the Magic Box manner.
 
 ## 2.6.0 — 2026-10-15 — the cartographer
 
