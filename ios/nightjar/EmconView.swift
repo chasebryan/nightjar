@@ -6,6 +6,7 @@ struct EmconView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @StateObject private var emcon = Emcon()
+    @StateObject private var spar = Recon()
 
     @AppStorage("emconCheckName") private var checkName = false
     @AppStorage("emconCheckAirdrop") private var checkAirdrop = false
@@ -31,6 +32,7 @@ struct EmconView: View {
             selfReconSection
             auditSection
             tripwireSection
+            sparringSection
             hardeningSection
             Section {
                 Text("EMCON cannot hide this device from the access "
@@ -43,7 +45,19 @@ struct EmconView: View {
             }
         }
         .onAppear { emcon.restoreIfNeeded() }
+        .onChange(of: spar.fuzzing) { _, now in
+            if !now, sparWasFuzzing {
+                Journal.log("emcon", "spar",
+                            (sparSummary ?? "sparring run")
+                            + " — \(spar.fuzzDead) dead connection(s), "
+                            + "Serve \(mouth.serveRunning ? "still up" : "down")")
+            }
+            sparWasFuzzing = now
+        }
     }
+
+    @State private var sparWasFuzzing = false
+    @State private var sparSummary: String?
 
     // MARK: - status + score
 
@@ -355,6 +369,13 @@ struct EmconView: View {
         }
     }
 
+    /// The bare host of a tripwire row — the stored source may
+    /// carry the " (this device)" label, which is display text,
+    /// not an address.
+    private func knockBackHost(_ event: Emcon.TripEvent) -> String {
+        event.source.components(separatedBy: " ").first ?? event.source
+    }
+
     // MARK: - tripwire
 
     private var tripwireSection: some View {
@@ -383,17 +404,32 @@ struct EmconView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(emcon.events) { event in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(event.source) → \(event.proto)"
-                             + "/\(event.port)"
-                             + (event.repeatCount > 1
-                                ? " ×\(event.repeatCount)" : ""))
-                            .font(.callout.weight(.semibold))
-                        Text(event.verdict)
-                            .font(.caption)
-                        Text(event.when.formatted(
-                            date: .omitted, time: .standard))
-                            .font(.caption).foregroundStyle(.secondary)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(event.source) → \(event.proto)"
+                                 + "/\(event.port)"
+                                 + (event.repeatCount > 1
+                                    ? " ×\(event.repeatCount)" : ""))
+                                .font(.callout.weight(.semibold))
+                            Text(event.verdict)
+                                .font(.caption)
+                            Text(event.when.formatted(
+                                date: .omitted, time: .standard))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if knockBackHost(event) != "127.0.0.1" {
+                            Button {
+                                mouth.reconHandoff = Mouth.ReconHandoff(
+                                    host: knockBackHost(event),
+                                    port: event.port,
+                                    nonce: UUID())
+                            } label: {
+                                Image(systemName: "scope")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Knock back in Recon")
+                        }
                     }
                 }
                 ShareLink(item: Emcon.tripwireReportURL) {
@@ -407,6 +443,86 @@ struct EmconView: View {
                     emcon.clearEvents()
                 } label: {
                     Label("Clear the log", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    // MARK: - self-sparring
+
+    /// TCP captures carrying their actual first words — the seeds.
+    private var sparSeeds: [Emcon.TripEvent] {
+        emcon.events.filter { $0.proto == "TCP" && $0.bytesHex != nil }
+    }
+
+    private var serveTCPPort: Int {
+        UserDefaults.standard.string(forKey: "serveTcpPort")
+            .flatMap(Int.init) ?? 9000
+    }
+
+    private var sparringSection: some View {
+        Section(header: Text("Self-sparring"),
+                footer: Text("The loop fires only at this device: "
+                             + "the target is loopback, and the "
+                             + "mutations are of traffic this phone "
+                             + "actually received.")) {
+            if sparSeeds.isEmpty {
+                Text("No captured bytes yet. When the tripwire "
+                     + "catches a knock, its first words are kept — "
+                     + "and become ammunition here: replayed, "
+                     + "mutated, and fired at your own Serve to see "
+                     + "what holds.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if !mouth.serveRunning {
+                Text("\(sparSeeds.count) captured probe(s) ready. "
+                     + "Start Serve (TCP :\(serveTCPPort)) on the "
+                     + "Serve tab — sparring fires mutations of a "
+                     + "real capture at your own listener, on "
+                     + "loopback, and reads what it answers.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if let seed = sparSeeds.first,
+                      let seedData = try? PayloadKit.decodeHex(
+                        seed.bytesHex ?? "") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Latest capture: \(seed.verdict) — "
+                         + "\(seed.byteCount) B from \(seed.source)")
+                        .font(.caption)
+                    if spar.fuzzing {
+                        HStack {
+                            ProgressView()
+                            Text("Sparring…").font(.callout)
+                        }
+                        Button("Stop") { spar.stopFuzz() }
+                    } else {
+                        Button {
+                            sparSummary = "60 mutations of a captured "
+                                + "\(seed.verdict) probe vs own Serve "
+                                + ":\(serveTCPPort)"
+                            spar.startFuzz(
+                                target: "tcp://127.0.0.1:\(serveTCPPort)",
+                                seed: seedData, count: 60,
+                                length: seedData.count, mutations: 2,
+                                seedValue: nil, read: true,
+                                timeout: 1.2)
+                        } label: {
+                            Label("Spar — 60 mutations vs own Serve "
+                                  + ":\(serveTCPPort)",
+                                  systemImage: "figure.fencing")
+                        }
+                    }
+                }
+            }
+            if !spar.fuzzLines.isEmpty {
+                ForEach(Array(spar.fuzzLines.suffix(10).enumerated()),
+                        id: \.offset) { _, line in
+                    Text(line).font(.caption.monospaced())
+                }
+                if !spar.fuzzing {
+                    Text(spar.fuzzDead == 0
+                         ? "Serve held: no dead connections."
+                         : "Serve dropped \(spar.fuzzDead) "
+                           + "connection(s) under mutation.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
