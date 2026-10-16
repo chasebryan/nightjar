@@ -191,6 +191,7 @@ final class Emcon: ObservableObject {
         active = UserDefaults.standard.bool(forKey: Self.activeKey)
         homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
+        hometurf = Self.loadHometurf()
         // One-time migration: the v1 inbox becomes chat threads,
         // then the old store goes away.
         let legacy = Self.loadKnockMessages()
@@ -938,7 +939,183 @@ final class Emcon: ObservableObject {
             self.maybeEscalate(source: labeled, port: port,
                                proto: proto, verdict: verdict,
                                mine: mine)
+            self.hometurfObserve(source: labeled, port: port,
+                                 verdict: verdict, mine: mine)
+            self.senseObserve(source: labeled, port: port,
+                              proto: proto, verdict: verdict,
+                              mine: mine)
+            Conductor.onKnock(emcon: self, source: labeled,
+                              port: port, proto: proto,
+                              verdict: verdict, mine: mine)
         }
+    }
+
+    // MARK: - home-turf memory
+
+    /// What a normal night at home sounds like, learned from
+    /// the tripwire's own log: the sources that knock, the
+    /// doors they try, the first words they speak. It learns
+    /// only while EMCON is up on the home subnet — anywhere
+    /// else, or standing down, teaches it nothing. After three
+    /// banked nights the pattern is held, and anything off it
+    /// is flagged as a deviation: the point is not to report
+    /// events but to make the ONE new thing in a week of
+    /// sameness impossible to miss.
+    struct Hometurf: Codable {
+        var nights: Int = 0
+        var sources: Set<String> = []
+        var ports: Set<Int> = []
+        var verdicts: Set<String> = []
+        var stagingDay: String = ""
+        var stagedSources: Set<String> = []
+        var stagedPorts: Set<Int> = []
+        var stagedVerdicts: Set<String> = []
+    }
+
+    @Published private(set) var hometurf = Hometurf()
+    @Published private(set) var hometurfNotes: [String] = []
+
+    var hometurfReady: Bool { hometurf.nights >= 3 }
+
+    private static var hometurfURL: URL {
+        FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("emcon-hometurf.json")
+    }
+
+    private static func loadHometurf() -> Hometurf {
+        guard let data = try? Data(contentsOf: hometurfURL),
+              let decoded = try? JSONDecoder().decode(
+                Hometurf.self, from: data)
+        else { return Hometurf() }
+        return decoded
+    }
+
+    private func saveHometurf() {
+        guard let data = try? JSONEncoder().encode(hometurf)
+        else { return }
+        try? data.write(to: Self.hometurfURL, options: [.atomic])
+    }
+
+    private static func dayString(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: date)
+    }
+
+    /// Fed every knock the funnel sees. Learns silently;
+    /// flags only once the pattern is held — and only once
+    /// per novelty, since tonight's staging absorbs it.
+    func hometurfObserve(source: String, port: Int,
+                         verdict: String, mine: Bool) {
+        guard active, !mine, homeSubnet != nil, !isAway
+        else { return }
+        let host = source.components(separatedBy: " ").first
+            ?? source
+        let today = Self.dayString(Date())
+        if hometurf.stagingDay != today {
+            if !hometurf.stagingDay.isEmpty,
+               !hometurf.stagedSources.isEmpty
+                || !hometurf.stagedPorts.isEmpty {
+                hometurf.sources.formUnion(hometurf.stagedSources)
+                hometurf.ports.formUnion(hometurf.stagedPorts)
+                hometurf.verdicts.formUnion(
+                    hometurf.stagedVerdicts)
+                hometurf.nights += 1
+                Journal.log("emcon", "hometurf",
+                            "night \(hometurf.nights) banked "
+                            + "into the home pattern")
+            }
+            hometurf.stagingDay = today
+            hometurf.stagedSources = []
+            hometurf.stagedPorts = []
+            hometurf.stagedVerdicts = []
+        }
+        if hometurfReady {
+            var notes: [String] = []
+            if !hometurf.sources.contains(host),
+               !hometurf.stagedSources.contains(host) {
+                notes.append("a new source knocked: \(host)")
+            }
+            if !hometurf.ports.contains(port),
+               !hometurf.stagedPorts.contains(port) {
+                notes.append("a new door tried: port \(port)")
+            }
+            if !hometurf.verdicts.contains(verdict),
+               !hometurf.stagedVerdicts.contains(verdict) {
+                notes.append("a new first word: \(verdict)")
+            }
+            for note in notes {
+                hometurfNotes.append(note)
+                if hometurfNotes.count > 20 {
+                    hometurfNotes.removeFirst(
+                        hometurfNotes.count - 20)
+                }
+                Journal.log("emcon", "hometurf",
+                            "off the learned pattern — " + note)
+            }
+        }
+        hometurf.stagedSources.insert(host)
+        hometurf.stagedPorts.insert(port)
+        hometurf.stagedVerdicts.insert(verdict)
+        saveHometurf()
+    }
+
+    func hometurfReset() {
+        hometurf = Hometurf()
+        hometurfNotes = []
+        saveHometurf()
+        Journal.log("emcon", "hometurf",
+                    "the home pattern was forgotten — "
+                    + "learning starts over")
+    }
+
+    // MARK: - second sense
+
+    /// The perimeter's threat level as a behavior. A foreign
+    /// nightjar-grade probe, or a honeydrop taken, raises a
+    /// thirty-minute heightened state on its own: while it
+    /// lasts, answer in character is armed whether or not its
+    /// toggle is set, and the state shows in the EMCON tab
+    /// with its reason and its expiry. Nothing else changes —
+    /// a tightened perimeter should be legible, not magical.
+    @Published private(set) var senseUntil: Date?
+    @Published private(set) var senseReason = ""
+
+    var senseActive: Bool {
+        senseUntil.map { $0 > Date() } ?? false
+    }
+
+    func raiseSense(reason: String) {
+        let wasActive = senseActive
+        senseUntil = Date().addingTimeInterval(30 * 60)
+        senseReason = reason
+        if !wasActive {
+            Journal.log("emcon", "sense",
+                        "second sense raised for 30 minutes — "
+                        + reason + ". Answer in character is "
+                        + "armed while it lasts.")
+        }
+    }
+
+    func senseStandDown() {
+        guard senseActive else { return }
+        senseUntil = nil
+        senseReason = ""
+        Journal.log("emcon", "sense",
+                    "second sense stood down by the operator")
+    }
+
+    /// Fed every knock: someone out there is running tooling
+    /// of this instrument's own grade at it. That fact alone
+    /// tightens the perimeter.
+    func senseObserve(source: String, port: Int, proto: String,
+                      verdict: String, mine: Bool) {
+        guard !mine, proto == "TCP",
+              verdict.hasPrefix("nightjar-hack probe:")
+        else { return }
+        raiseSense(reason: "a foreign nightjar-grade probe "
+                   + "(\(verdict)) from \(source)")
     }
 
     // MARK: - dead hand
@@ -1100,10 +1277,19 @@ final class Emcon: ObservableObject {
         return nil
     }
 
+    /// The conductor's road into the same hand-off: a reflex
+    /// may order the answer even with the toggle off and the
+    /// sense at ease — every other guard still applies.
+    func escalateNow(source: String, port: Int, verdict: String) {
+        maybeEscalate(source: source, port: port, proto: "TCP",
+                      verdict: verdict, mine: false, forced: true)
+    }
+
     private func maybeEscalate(source: String, port: Int,
                                proto: String, verdict: String,
-                               mine: Bool) {
-        guard Self.escalationArmed, proto == "TCP", !mine,
+                               mine: Bool, forced: Bool = false) {
+        guard Self.escalationArmed || senseActive || forced,
+              proto == "TCP", !mine,
               tripwireOn, escalation == nil,
               let mouth = mouth,
               mouth.canary.runningPersona == nil,
@@ -1339,6 +1525,7 @@ final class Emcon: ObservableObject {
         Journal.log("emcon", "vault",
                     "combination spoken by \(source) — macro: "
                     + Self.vaultActionLabel(vaultAction) + detail)
+        Conductor.onVault(emcon: self)
     }
 
     func sealVault() {
