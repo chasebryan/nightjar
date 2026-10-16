@@ -5,6 +5,14 @@ import XCTest
 /// they claim to be.
 final class ReconTests: XCTestCase {
 
+    func testUnsentExchangeTimeoutCountsAsDead() {
+        // A handshake or send stuck past the deadline must not be shown
+        // as a successful fuzz attempt.
+        XCTAssertTrue(Recon.timedOutExchangeFailed(didSend: false))
+        // A completed send with no reply is not proof the peer is dead.
+        XCTAssertFalse(Recon.timedOutExchangeFailed(didSend: true))
+    }
+
     func testEveryProbeBuilds() {
         for name in ReconPayloads.names {
             XCTAssertNotNil(ReconPayloads.all[name])
