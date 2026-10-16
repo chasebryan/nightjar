@@ -1294,6 +1294,61 @@ final class Emcon: ObservableObject {
         return nil
     }
 
+    /// The steward's anticipation: raise the matching canary
+    /// on a door a filed visitor is predicted to try next,
+    /// through the identical hand-off an answer uses — same
+    /// release, same ten minutes, same cooldown, same
+    /// teardown-race guard. The only difference is tense.
+    func prestageCanary(port: Int, persona: String,
+                        source: String) {
+        guard tripwireOn, escalation == nil,
+              let mouth = mouth,
+              mouth.canary.runningPersona == nil
+        else { return }
+        if let until = escalationCooldown[port], until > Date() {
+            return
+        }
+        releasePort(port)
+        let defaults = UserDefaults.standard
+        func raiseCanary() {
+            mouth.canary.start(
+                mouth: mouth, persona: persona, port: port,
+                honeydrop: defaults.bool(
+                    forKey: "canaryHoneydrop"),
+                drop: defaults.string(forKey: "canaryDrop") ?? "")
+        }
+        raiseCanary()
+        let until = Date().addingTimeInterval(600)
+        escalation = (persona, port, until)
+        escalationTimer?.invalidate()
+        escalationTimer = Timer.scheduledTimer(
+            withTimeInterval: 600, repeats: false) { [weak self] _ in
+            self?.endEscalation()
+        }
+        Journal.log("emcon", "escalation",
+                    "the steward pre-staged the \(persona) "
+                    + "canary on \(port) — \(source)'s own "
+                    + "sequence points there; it answers for "
+                    + "10 minutes")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            [weak self] in
+            guard let self = self, self.escalation != nil,
+                  mouth.canary.runningPersona == nil
+            else { return }
+            raiseCanary()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                [weak self] in
+                guard let self = self, self.escalation != nil,
+                      mouth.canary.runningPersona == nil
+                else { return }
+                Journal.log("emcon", "escalation",
+                            "the pre-stage hand-off failed "
+                            + "— port \(port) stays on the wire")
+                self.endEscalation()
+            }
+        }
+    }
+
     /// The conductor's road into the same hand-off: a reflex
     /// may order the answer even with the toggle off and the
     /// sense at ease — every other guard still applies.
