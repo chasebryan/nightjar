@@ -21,6 +21,8 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>nightjar-hack listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
