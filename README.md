@@ -4,6 +4,10 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
+<p align="center">
+  <strong><a href="https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk">⬇ Download the Android APK — v3.0.0</a></strong>
+</p>
+
 **3.0.0 — the ventriloquist.**
 
 nightjar-hack began as an overlay that taught the nightjar BLE
@@ -15,6 +19,10 @@ encrypted messaging carried by knock order alone.
 ## Android download
 
 [**Download the v3.0.0 Android APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
+
+On the release page itself, the file hides at the very
+bottom of the notes under **Assets** — the link above
+skips the scrolling and downloads it directly.
 
 Android 8.0+; open the APK on your phone to install. This packages the existing
 six-tab Android port; the iOS-only EMCON and Knocktalk features are not yet
