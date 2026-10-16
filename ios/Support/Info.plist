@@ -6,6 +6,21 @@
 	<string>nightjar-hack listens for Bluetooth devices around you and logs what it hears. If you use the Send tab, it can also advertise a payload you type and write to devices you choose. Listening never connects to anything.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>nightjar-hack sends payloads to, and receives payloads from, devices on your local network — only to addresses you type, and only while the app is open.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_ssh._tcp</string>
+		<string>_http._tcp</string>
+		<string>_https._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_ipp._tcp</string>
+		<string>_printer._tcp</string>
+		<string>_airplay._tcp</string>
+		<string>_googlecast._tcp</string>
+		<string>_mqtt._tcp</string>
+		<string>_nightjar._tcp</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
