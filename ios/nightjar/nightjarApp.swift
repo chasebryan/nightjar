@@ -35,9 +35,13 @@ struct NightjarApp: App {
                 .onChange(of: keepScreenAwake) { value in
                     post.keepScreenAwake = value
                 }
+                .task {
+                    emcon.deadHandEvaluate(mouth: mouth)
+                }
                 .onChange(of: scenePhase) { phase in
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
+                        emcon.deadHandEvaluate(mouth: mouth)
                         mouth.appBecameActive()
 #if !STORE_BUILD
                         Task { await updater.checkIfDue() }
