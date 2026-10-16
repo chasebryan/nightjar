@@ -299,7 +299,88 @@ final class Emcon: ObservableObject {
     func runSelfScan(completion: (() -> Void)? = nil) {
         guard !scanning else { completion?(); return }
         let resumeTripwire = tripwireOn
+        let releasedPorts = watched
         if resumeTripwire { stopTripwire() }
+        guard resumeTripwire, !releasedPorts.isEmpty else {
+            performSelfScan(resumeTripwire: resumeTripwire,
+                            completion: completion)
+            return
+        }
+        // Teardown is asynchronous: cancel() enqueues behind the
+        // tripwire queue's pending work, and the sockets outlive it.
+        // A scan fired immediately re-measures the dying listeners —
+        // field evidence: exactly the first semaphore wave (~24
+        // ports, loopback, where connects complete instantly)
+        // reported as open. So the scan waits until a watched port
+        // can actually be re-bound (with a short floor), and only
+        // then knocks.
+        awaitRelease(of: releasedPorts, attempts: 40) { [weak self] in
+            self?.performSelfScan(resumeTripwire: resumeTripwire,
+                                   completion: completion)
+        }
+    }
+
+    /// Poll-bind a canary: the last watched port, until the old
+    /// listener's socket is really gone (bind succeeds) or the
+    /// attempts run out. Never resolves in under 0.3 s. The last
+    /// port is the canary because the canary's own socket also
+    /// needs a moment to die — and the scan, knocking in ascending
+    /// order, reaches that port seconds later.
+    private func awaitRelease(of ports: [Int], attempts: Int,
+                              done: @escaping () -> Void) {
+        let entered = DispatchTime.now()
+        func finish() {
+            let wait = entered + 0.3
+            if DispatchTime.now() < wait {
+                DispatchQueue.main.asyncAfter(deadline: wait) { done() }
+            } else {
+                DispatchQueue.main.async { done() }
+            }
+        }
+        guard attempts > 0, let canary = ports.last,
+              let port = NWEndpoint.Port(rawValue: UInt16(canary)) else {
+            finish()
+            return
+        }
+        let queue = DispatchQueue(label: "nightjar.emcon.release")
+        let listener: NWListener
+        do {
+            listener = try NWListener(using: .tcp, on: port)
+        } catch {
+            queue.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                self?.awaitRelease(of: ports, attempts: attempts - 1,
+                                   done: done)
+            }
+            return
+        }
+        var settled = false
+        listener.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .ready:
+                if !settled {
+                    settled = true
+                    listener.cancel()
+                    finish()
+                }
+            case .failed:
+                if !settled {
+                    settled = true
+                    listener.cancel()
+                    queue.asyncAfter(deadline: .now() + 0.06) {
+                        self?.awaitRelease(of: ports,
+                                           attempts: attempts - 1,
+                                           done: done)
+                    }
+                }
+            default:
+                break
+            }
+        }
+        listener.start(queue: queue)
+    }
+
+    private func performSelfScan(resumeTripwire: Bool,
+                                 completion: (() -> Void)?) {
         scanning = true
         exposures = []
         var hosts = ["127.0.0.1"]
