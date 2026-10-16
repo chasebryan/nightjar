@@ -710,7 +710,7 @@ fun AboutTab(app: NightjarApp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("nightjar-hack", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Version 2.5.0 — the pocket release (Android port)",
+                    "Version ${BuildConfig.VERSION_NAME} (Android port)",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(

@@ -12,6 +12,16 @@ listening post to talk. It is its own project now: a Python CLI
 mouth, a recon bench, a defensive posture tab, and Knocktalk,
 encrypted messaging carried by knock order alone.
 
+## Android download
+
+[**Download the v3.0.0 Android APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
+
+Android 8.0+; open the APK on your phone to install. This packages the existing
+six-tab Android port; the iOS-only EMCON and Knocktalk features are not yet
+ported. If replacing the old v2.6.0 debug-signed APK, export your data before
+uninstalling it: v3.0.0 starts a new release signing key. See
+[Android install/build notes](android/README.md) for details.
+
 ## The iOS app
 
 Nine tabs, one instrument. Build and install notes live in

@@ -1,9 +1,31 @@
 # nightjar-hack for Android
 
-A full Kotlin/Jetpack Compose port of the iOS app in
-`chasebryan/nightjar-hack` (`ios/`), built 2026-10-15.
-Same bundle id (`net.nosuchmachine.nightjarhack`), same
-version (2.5.0), same six tabs, same engines.
+The Kotlin/Jetpack Compose Android app for the **v3.0.0** release.
+Package: `net.nosuchmachine.nightjarhack`; version code: **300**.
+Requires **Android 8.0 (API 26) or newer** and Bluetooth LE.
+
+## Download and install
+
+[**Download nightjar-hack v3.0.0 APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
+
+Open the link on your Android phone, open the downloaded APK, and allow
+installation from your browser/file manager if Android asks. No ZIP extraction,
+Android Studio, or account is needed to download the public release asset.
+For USB installation: `adb install -r nightjar-hack-v3.0.0.apk`.
+
+This is a release build, signed with the dedicated Nightjar Android release
+key. The previous repository APK (v2.6.0) used a different debug certificate:
+**export any sessions, presets, or other data you want to keep before
+uninstalling that build**, then install v3.0.0. Uninstalling removes app data.
+Future APKs signed with the same release key can update v3.0.0 in place.
+
+The APK packages the Android implementation present at the v3.0.0 tag,
+with corrected version metadata and a standard Gradle build. Its six tabs
+are **Listen, Send, Serve, Scan, Sessions, and More**. It does **not** include
+the iOS-only v3.0.0 Recon tab, EMCON, canary/Honeydrop, Knocktalk, Chirp,
+brush pass, Blink, or time-capsule features. A shared version number does
+not imply feature parity. See [the release notes](RELEASE.md) for build
+provenance, verification, and the signing certificate.
 
 ## What's here
 
@@ -59,17 +81,39 @@ version (2.5.0), same six tabs, same engines.
 - Android shows **real BLE MAC addresses**; iOS hides them
   behind per-host UUIDs. Listen rows/detail show the MAC,
   and a BLE write targets the address directly.
-- iOS-only pieces with no Android twin: Shortcuts/Siri
-  intent, peripheral-manager state-restoration wake.
+- Other iOS-only pieces: Shortcuts/Siri intents and
+  peripheral-manager state-restoration wake.
 - Android-only realities: runtime Bluetooth permissions,
   NSD instead of Bonjour.framework (same wire protocol).
 
 ## Building
 
-Standard Gradle project (AGP 8.5.2, Kotlin 2.0.20,
-minSdk 26, targetSdk 34): open in Android Studio or run
-`gradle assembleDebug`. The shipped APK was built in a
-sandbox where the Gradle daemon could not run, so it was
-produced by an equivalent manual pipeline (aapt2 + the
-Kotlin embeddable compiler + d8 + zipalign + apksigner) —
-see `manual-build.sh` for the exact steps used.
+Install JDK 17 and the Android SDK (platform 34 and build-tools 34.0.0),
+then run from this directory:
+
+```sh
+export ANDROID_HOME=/absolute/path/to/android-sdk
+./gradlew testReleaseUnitTest assembleDebug assembleRelease
+```
+
+The checked-in wrapper pins Gradle 8.7 and verifies its distribution checksum.
+AGP is 8.5.2; Kotlin and the Compose compiler are 2.0.20. Version name, version
+code, SDK levels, and the About screen derive from the Gradle configuration.
+`assembleDebug` makes a locally debug-signed APK. `assembleRelease` makes an
+**unsigned** APK; it is not the downloadable signed release.
+
+To produce the release APK, use the private signing backup (never commit it):
+
+```sh
+export NIGHTJAR_KEYSTORE=/absolute/path/to/nightjar-android-release.p12
+read -rsp 'Keystore password: ' NIGHTJAR_KEYSTORE_PASSWORD; echo
+export NIGHTJAR_KEYSTORE_PASSWORD
+./build-release.sh
+unset NIGHTJAR_KEYSTORE_PASSWORD
+```
+
+This runs the parity tests, builds the release, signs it, verifies the APK
+signature and alignment, and writes the APK, SHA-256 checksum, and certificate
+report to `android/dist/`. `NIGHTJAR_KEY_ALIAS` defaults to `nightjar-release`.
+The old machine-specific manual compiler pipeline has been replaced by this
+Gradle pipeline; `manual-build.sh` forwards to `build-release.sh`.

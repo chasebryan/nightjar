@@ -4,6 +4,23 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Share the existing artwork with iOS without requiring manual copies or
+// committing a second set of large binary assets.
+val sharedArtwork = layout.buildDirectory.dir("generated/nightjar-artwork")
+val prepareSharedArtwork by tasks.registering(Sync::class) {
+    from(rootProject.file("../ios/nightjar/Assets.xcassets/AppBackground.imageset/background.jpg")) {
+        into("assets")
+    }
+    from(rootProject.file("../ios/nightjar/centipede.gif")) {
+        into("assets")
+    }
+    from(rootProject.file("../ios/nightjar/Assets.xcassets/AppIcon.appiconset/IMG_1434.png")) {
+        into("res/mipmap-xxxhdpi")
+        rename { "ic_launcher.png" }
+    }
+    into(sharedArtwork)
+}
+
 android {
     namespace = "net.nosuchmachine.nightjarhack"
     compileSdk = 34
@@ -12,8 +29,8 @@ android {
         applicationId = "net.nosuchmachine.nightjarhack"
         minSdk = 26
         targetSdk = 34
-        versionCode = 250
-        versionName = "2.5.0"
+        versionCode = 300
+        versionName = "3.0.0"
     }
 
     buildTypes {
@@ -33,6 +50,11 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    sourceSets.getByName("main") {
+        assets.srcDir(sharedArtwork.map { it.dir("assets") })
+        res.srcDir(sharedArtwork.map { it.dir("res") })
     }
     packaging {
         resources {
@@ -41,7 +63,10 @@ android {
     }
 }
 
+tasks.named("preBuild") { dependsOn(prepareSharedArtwork) }
+
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.13.1")
