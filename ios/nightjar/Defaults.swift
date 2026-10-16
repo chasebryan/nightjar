@@ -48,7 +48,7 @@ enum SaneDefaults {
         "sectionOpen.trace",
         // EMCON
         "emconActive", "emconHomeSubnet", "emconVaultCombo",
-        "knocktalkRetentionHours",
+        "knocktalkRetentionHours", "knocktalkSuite",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
     ]
