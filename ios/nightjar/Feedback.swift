@@ -2909,7 +2909,11 @@ extension SkelliMind {
         + " happened overnight, the exposure"
         + " posture, the facts she has learned,"
         + " and the Subconscious brief; write code;"
-        + " forge payloads; recolour the house by"
+        + " forge payloads; fetch or select an"
+        + " open-weights model on her bench;"
+        + " strike what she built (a forged or"
+        + " custom payload, a taught pattern);"
+        + " recolour the house by"
         + " theme name; research the living web."
         + " If he seems to want one done and it"
         + " hasn't happened, tell him plainly he"
@@ -2951,6 +2955,9 @@ extension SkelliMind {
             + " CODE (write code or a script for"
             + " him), FORGE (build or forge a"
             + " packet or payload for him),"
+            + " DELETE (he wants something she"
+            + " built or keeps — a payload or a"
+            + " pattern — removed),"
             + " REMEMBER:<the fact, briefly, in"
             + " his own words> (he wants something"
             + " kept in her memory), THEME:<a colour"
@@ -3030,6 +3037,7 @@ extension SkelliMind {
             ("BRIEF", "brief"),
             ("CODE", "CODE"),
             ("FORGE", "FORGE"),
+            ("DELETE", "DELETE"),
         ]
         for (token, phrase) in map where t == token {
             return phrase
@@ -3135,6 +3143,11 @@ extension SkelliCenter {
                     }
                     if hit == "FORGE" {
                         if forgeAsk(q, raw: raw) {
+                            return
+                        }
+                    }
+                    if hit == "DELETE" {
+                        if deleteAsk("delete " + q) {
                             return
                         }
                     }
