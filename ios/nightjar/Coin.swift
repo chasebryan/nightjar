@@ -250,7 +250,13 @@ struct CoinSectionView: View {
                     + "app keeps a hash of the tag, never its "
                     + "contents. A copied tag is the same coin "
                     + "— the factor is possession, like every "
-                    + "physical key ever cut.")) {
+                    + "physical key ever cut. One honesty: NFC "
+                    + "reading needs the NFC Tag Reading "
+                    + "capability, which only a paid developer "
+                    + "team's profile grants — under free "
+                    + "Personal Team signing the taps will "
+                    + "fail, and that is the team talking, not "
+                    + "the tag.")) {
             if center.claimed {
                 Label("A coin is claimed",
                       systemImage: "circle.circle.fill")
