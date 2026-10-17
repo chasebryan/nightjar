@@ -10,6 +10,7 @@ struct EmconView: View {
     @StateObject private var assault = AssaultCenter()
     @State private var armAssault = false
     @State private var assaultIgnition = false
+    @State private var shareAssaultReport = false
 
     @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
@@ -32,7 +33,8 @@ struct EmconView: View {
         List {
             statusSection
             NetAssaultSectionView(center: assault,
-                                  armRequest: $armAssault)
+                                  armRequest: $armAssault,
+                                  shareRequest: $shareAssaultReport)
             drillSection
             emissionsSection
             selfReconSection
@@ -77,6 +79,9 @@ struct EmconView: View {
         }
         .fullScreenCover(isPresented: $assaultIgnition) {
             AssaultIgnitionView(isShown: $assaultIgnition)
+        }
+        .sheet(isPresented: $shareAssaultReport) {
+            ShareSheet(items: [assault.report])
         }
         .confirmationDialog(
             "Turn loose the net-assault?",
