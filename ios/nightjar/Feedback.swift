@@ -1295,19 +1295,16 @@ enum SkelliWeb {
         for page in pages.sorted(by: {
             $0.score > $1.score
         }) {
+            if page.score <= 0 { continue }
             if blocks.count >= 3 { break }
             blocks.append(block(page))
         }
         if !blocks.isEmpty {
-            var out = "I went out through my browser. "
-                + "What holds up:\n\n"
-                + blocks.joined(separator: "\n\n")
+            var out = blocks.joined(
+                separator: "\n\n")
             if walls > 0 {
-                out += "\n\n(" + "\(walls) result"
-                    + (walls == 1 ? "" : "s")
-                    + " hid behind a wall or a check — "
-                    + "I walk past those, and work the "
-                    + "sources that let me in cleanly.)"
+                out += "\n\n(" + "\(walls) behind a "
+                    + "wall — walked past.)"
             }
             return out
         }
@@ -1327,19 +1324,13 @@ enum SkelliWeb {
                 + excerpt(wiki.text)
                 + "\nSource: " + wiki.url
         }
-        var failure = "I went out through my browser "
-            + "for '" + query + "' and the sources "
-            + "that let a machine in cleanly — the "
-            + "open indexes, the lite index, the pages "
-            + "themselves — brought nothing solid back."
+        var failure = "Nothing solid came back for '"
+            + query + "'."
         if walls > 0 {
-            failure += " " + "\(walls) result"
-                + (walls == 1 ? "" : "s")
-                + " hid behind a wall or a check; I "
-                + "don't climb those."
+            failure += " " + "\(walls) behind a wall."
         }
-        failure += " Rephrase it, or name the thing "
-            + "more plainly, and I'll go again."
+        failure += " Name it more plainly and I'll "
+            + "go again."
         return failure
     }
 
@@ -1375,14 +1366,28 @@ enum SkelliWeb {
         return Array(out.prefix(8))
     }
 
+    /// Term scoring on whole words, never
+    /// substrings — "hi" inside "HiShelli" is not
+    /// a mention, and a junk page that merely
+    /// contains the letters earns nothing. Longer
+    /// terms also credit their word-stems.
     private static func score(_ text: String,
                               terms: [String]) -> Int {
-        let low = text.lowercased()
+        let words = text.lowercased()
+            .components(separatedBy:
+                CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
         var total = 0
         for term in terms {
-            total += min(
-                low.components(separatedBy: term)
-                    .count - 1, 8)
+            var hits = 0
+            for word in words {
+                if word == term
+                    || (term.count >= 4
+                        && word.hasPrefix(term)) {
+                    hits += 1
+                }
+            }
+            total += min(hits, 8)
         }
         return total
     }
@@ -1481,6 +1486,24 @@ enum SkelliWeb {
             ("&#8220;", "“"), ("&#8221;", "”"),
             ("&#8211;", "–"), ("&#8212;", "—"),
             ("&#038;", "&"),
+            ("&mdash;", "—"), ("&ndash;", "–"),
+            ("&hellip;", "…"), ("&lsquo;", "‘"),
+            ("&rsquo;", "’"), ("&ldquo;", "“"),
+            ("&rdquo;", "”"), ("&middot;", "·"),
+            ("&copy;", "©"), ("&reg;", "®"),
+            ("&trade;", "™"), ("&deg;", "°"),
+            ("&plusmn;", "±"), ("&times;", "×"),
+            ("&divide;", "÷"), ("&laquo;", "«"),
+            ("&raquo;", "»"), ("&bull;", "•"),
+            ("&prime;", "′"), ("&Prime;", "″"),
+            ("&asymp;", "≈"), ("&ne;", "≠"),
+            ("&le;", "≤"), ("&ge;", "≥"),
+            ("&infin;", "∞"), ("&alpha;", "α"),
+            ("&beta;", "β"), ("&pi;", "π"),
+            ("&micro;", "µ"), ("&eacute;", "é"),
+            ("&uuml;", "ü"), ("&ouml;", "ö"),
+            ("&auml;", "ä"), ("&ccedil;", "ç"),
+            ("&ntilde;", "ñ"),
         ] {
             out = out.replacingOccurrences(
                 of: entity, with: replacement)
@@ -1691,9 +1714,32 @@ extension SkelliCenter {
         }
         let clean = q.trimmingCharacters(
             in: CharacterSet(charactersIn: " !?."))
-        if ["hello", "hi", "hey", "hello there",
-            "hi there", "hey there"].contains(clean) {
-            say("Hello — all quiet here.")
+        // Social speech, matched by shape rather
+        // than by exact string: a greeting head
+        // with at most a small social tail, doubled
+        // letters ("hiii") squeezed flat first.
+        let tokens = clean.split(separator: " ")
+            .map(String.init)
+        func squeezed(_ token: String) -> String {
+            var out = ""
+            var previous: Character? = nil
+            for character in token {
+                if character != previous {
+                    out.append(character)
+                }
+                previous = character
+            }
+            return out
+        }
+        if let head = tokens.first,
+           ["hi", "hello", "hey", "hiya", "yo",
+            "heya", "greetings"]
+               .contains(squeezed(head)),
+           tokens.dropFirst().allSatisfy({
+               ["there", "friend", "all", "everyone",
+                "guys", "again"].contains($0)
+           }) {
+            say("Hello.")
             return true
         }
         if ["what's up", "whats up", "what is up",
@@ -1704,7 +1750,7 @@ extension SkelliCenter {
                 .neighbors.count
             say("All quiet — \(wire) on the wire, web "
                 + (webResearchEnabled ? "on" : "off")
-                + ". What's on your mind?")
+                + ".")
             return true
         }
         if clean.hasPrefix("good morning") {
@@ -1719,13 +1765,39 @@ extension SkelliCenter {
             say("Evening.")
             return true
         }
+        if ["bye", "goodbye", "good night",
+            "goodnight", "see you", "see ya", "cya",
+            "later", "gn"].contains(clean) {
+            say(clean.contains("night")
+                ? "Night." : "Later.")
+            return true
+        }
+        if ["ok", "okay", "k", "got it", "cool",
+            "nice", "great", "perfect", "awesome",
+            "sweet", "understood", "roger",
+            "copy that", "sounds good", "good",
+            "right", "indeed", "exactly", "yes",
+            "yeah", "yep"].contains(clean) {
+            say("Noted.")
+            return true
+        }
+        if clean == "sorry" || clean == "my bad"
+            || clean == "apologies"
+            || clean.hasPrefix("sorry ") {
+            say("Nothing to forgive.")
+            return true
+        }
+        if ["lol", "haha", "lmao", "heh"]
+            .contains(squeezed(clean)) {
+            say("Heh.")
+            return true
+        }
         if q.contains("thank") {
             say("Any time.")
             return true
         }
         if q.contains("how are you") {
-            say("Running clean — the house is quiet "
-                + "and everything answers. You?")
+            say("Running clean. You?")
             return true
         }
         if let value = mathAnswer(q) {
