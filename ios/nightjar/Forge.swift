@@ -177,7 +177,7 @@ enum ForgeToolStore {
 }
 
 struct ForgeView: View {
-    @EnvironmentObject private var mouth: Mouth
+    @StateObject private var book = PayloadBook()
     @EnvironmentObject private var toasts: ToastCenter
     @Environment(\.dismiss) private var dismiss
 
@@ -682,7 +682,7 @@ struct ForgeView: View {
             in: .whitespacesAndNewlines)
         let finalName = trimmed.isEmpty
             ? built.name : trimmed
-        mouth.add(SavedPayload(
+        book.add(SavedPayload(
             name: finalName,
             source: built.source,
             text: built.text,
