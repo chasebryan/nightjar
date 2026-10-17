@@ -25,7 +25,7 @@ import java.util.concurrent.Executors
 /// tail, and this one doesn't claim to.)
 data class NightEvent(
     val id: String,
-    val when: String,
+    val `when`: String,
     val module: String,
     val kind: String,
     val text: String,
@@ -61,7 +61,7 @@ object Journal {
             if (!chainLoaded) loadChainTail(target)
             val base = NightEvent(
                 id = UUID.randomUUID().toString(),
-                when = DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
+                `when` = DateTimeFormatter.ISO_INSTANT.format(Instant.now()),
                 module = module, kind = kind, text = text,
                 p = lastHash
             )
@@ -156,7 +156,7 @@ object Journal {
             val obj = JSONObject(line)
             NightEvent(
                 id = obj.getString("id"),
-                when = obj.getString("when"),
+                `when` = obj.getString("when"),
                 module = obj.getString("module"),
                 kind = obj.getString("kind"),
                 text = obj.getString("text"),
@@ -195,7 +195,7 @@ object Journal {
         field("module", event.module)
         field("p", event.p)
         field("text", event.text)
-        field("when", event.when)
+        field("when", event.`when`)
         return sb.append('}').toString()
     }
 
