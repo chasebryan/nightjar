@@ -534,10 +534,11 @@ extension UIImage {
 /// A full-bleed GIF player (UIImageView under the hood).
 struct GIFPlayerView: UIViewRepresentable {
     let data: Data
+    var contentMode: UIView.ContentMode = .scaleAspectFill
 
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
-        view.contentMode = .scaleAspectFill
+        view.contentMode = contentMode
         view.clipsToBounds = true
         view.backgroundColor = .black
         if let image = UIImage.animatedGIF(data: data) {
