@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **The Instrument (iOS EMCON).** The Apple Watch,
+  read: worn and paired, it already measures the
+  operator and leaves the readings in this phone's
+  health store — no watch app, no session, no tap.
+  A new section in EMCON reads them: heart rate,
+  variability, resting heart, blood oxygen, breath,
+  sleeping wrist temperature, last night's sleep as
+  a window, and the day's steps — every value with
+  its age and its source, because a reading is not
+  a live feed and the sync cadence is the Watch's.
+  Read-only, on-device, never journaled raw. The
+  Subconscious's after-midnight reading takes the
+  Instrument's testimony when it has any: asleep
+  for it, or still up. HealthKit rides an
+  entitlement, so the Instrument is built the way
+  the Coin was: if a signing refuses it, the code
+  stays and the section reports itself dormant
+  instead of breaking the build.
+
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
 - **The great presenter audit.** Every sheet, cover,
