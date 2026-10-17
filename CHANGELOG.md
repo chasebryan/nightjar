@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Deliveries, and a self that grows.**
+  Everything she makes is now filed as a
+  document the moment she makes it — armory
+  payloads, drafted briefs, built code, chat
+  code — in her **Deliveries** (her menu):
+  share any one, or zip the chosen or the
+  whole shelf into a single archive (a small
+  zip writer of her own, no dependencies).
+  And she grows without a rebuild: teach her
+  a **payload pattern** (a template with
+  {host}/{path}/{domain}/{client}/{method}
+  holes) in the Forge and it joins her
+  patterns for good; keep a JavaScript build
+  as a **tool** and she runs it on the spot,
+  input and all. "Go bloodwork" recolours
+  the whole house by voice.
+
 - **A programmer's best friend.** Ask her
   to write something — a function, a script,
   a tool — and the benches answer as coders:
