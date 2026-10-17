@@ -9,6 +9,36 @@
   dossiers, and a sweep lights the house up room by room.
   Placement is the operator's testimony — the app keeps
   it and never invents a location of its own.
+- **The Compass and the Matrix (iOS).** The Map is a
+  matrix now — black field, dot grid in the house colors,
+  a slow radar sweep, rooms and devices glowing by their
+  freshness. Beneath it, an "In the air" strip lists what
+  the ear is hearing autonomously, and any of them can be
+  walked to: a compass face whose ring fills as you close
+  in, signal in honest bands with paw-prints for distance,
+  and a bearing that condenses out of your own footsteps —
+  gains laid along the courses that earned them, wide and
+  unsure at first, sharpening as you walk. No wedge until
+  you have walked, and no precision the signal never gave:
+  Bluetooth gives up a loudness, never a direction, so the
+  direction is learned from you.
+- **The Subconscious, second mind (iOS).** It keeps a
+  fortnight's hourly baseline now, and reads against it:
+  days that run loud or quiet against the house's habit;
+  regulars who have gone silent past three times their
+  own rhythm; the next regular named before it knocks,
+  as a printed forecast. It correlates — a fresh face
+  within three hours of night activity, foreign hands,
+  or its own drift is read as one story, not three small
+  ones. And it learns from its operator: every finding
+  takes a True / Not so verdict, kept per kind, and its
+  printed confidence bends toward the record. Asking
+  grew up too: about a device by any of its names, who
+  has gone quiet, when the house is busiest.
+- **One back button, everywhere (iOS).** Dossiers and
+  Knocktalk conversations now present as sheets with a
+  single Done — the cure Colours took — instead of pushes
+  that doubled the back chevron inside More-tab screens.
 - **Every road leads to the Map (iOS).** The Map is
   populated by anything any feature discovers, through one
   LAN-guarded door in the Neighborhood store: recon
