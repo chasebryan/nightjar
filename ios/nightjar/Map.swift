@@ -173,12 +173,16 @@ struct MapView: View {
     @State private var newRoomName = ""
     @State private var dossierNeighbor: Neighbor?
     @State private var editingNeighbor: Neighbor?
+    @State private var huntTarget: AirTarget?
+    @EnvironmentObject var post: ListeningPost
+    @ObservedObject private var themeCenter = ThemeCenter.shared
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 canvas
                 tray
+                airStrip
             }
             .navigationTitle("The Map")
             .navigationBarTitleDisplayMode(.inline)
@@ -243,7 +247,10 @@ struct MapView: View {
     private var canvas: some View {
         GeometryReader { geo in
             ZStack {
-                Color(white: 0.05)
+                Color.black
+                MatrixDots(color: themeCenter.current.accent
+                    .opacity(0.13))
+                MatrixSweep(color: themeCenter.current.accent)
                 ForEach(store.rooms) { room in
                     roomView(room, in: geo.size)
                 }
@@ -282,7 +289,8 @@ struct MapView: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color.white.opacity(0.05))
             RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Color.white.opacity(0.22),
+                .strokeBorder(themeCenter.current.accent
+                                .opacity(0.45),
                               lineWidth: 1)
             Text(room.name)
                 .font(.caption.weight(.semibold))
@@ -412,6 +420,68 @@ struct MapView: View {
         .background(.bar)
     }
 
+    // MARK: in the air
+
+    /// What the ear is hearing right now, autonomously —
+    /// and the door to walking to it.
+    private var airStrip: some View {
+        Section(header: Text("In the air — heard now"),
+                footer: Text("The ear hears these on its "
+                    + "own, no asking. Pick one and walk: "
+                    + "the compass ring closes as you near "
+                    + "it, and your steps teach it the way.")) {
+            let heard = post.rows.filter {
+                Date().timeIntervalSince1970 - $0.lastSeen < 90
+                    && $0.rssiSmooth != nil
+            }.sorted {
+                ($0.rssiSmooth ?? -120)
+                    > ($1.rssiSmooth ?? -120)
+            }
+            if heard.isEmpty {
+                Text("Nothing fresh in the air. The ear "
+                     + "wakes in Listen.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(heard.prefix(6)) { row in
+                Button {
+                    huntTarget = AirTarget(
+                        id: row.id,
+                        label: row.name ?? row.preferredLabel
+                            ?? row.kind,
+                        kind: row.kind)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.name
+                                 ?? row.preferredLabel
+                                 ?? row.kind)
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(row.kind)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(row.rssiSmooth.map {
+                            "\(Int($0.rounded())) dBm"
+                        } ?? "")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "location.north.line")
+                            .foregroundStyle(
+                                themeCenter.current.accent)
+                    }
+                }
+            }
+        }
+        .sheet(item: $huntTarget) { target in
+            HomingCompassView(targetID: target.id,
+                              label: target.label,
+                              kind: target.kind)
+        }
+    }
+
     // MARK: sorting the cast
 
     private var placedNeighbors: [Neighbor] {
@@ -460,6 +530,7 @@ private struct NodeChip: View {
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(ring, lineWidth: selected ? 3 : 2))
+        .shadow(color: ring.opacity(0.55), radius: 7)
     }
 
     private var caption: String {
@@ -478,4 +549,12 @@ private struct NodeChip: View {
         if age < 3600 { return .yellow }
         return Color(white: 0.45)
     }
+}
+
+
+/// A voice in the air, chosen for the walk.
+struct AirTarget: Identifiable {
+    let id: String
+    let label: String
+    let kind: String
 }
