@@ -65,6 +65,17 @@ class NightjarApp : Application() {
         mouth.bleArrivalHandler = { from, data ->
             serve.injectBleArrival(from, data)
         }
+        // The conductor listens where the events already
+        // flow: the tripwire funnel and the knock vault.
+        val conductorPrefs = Prefs(this)
+        emcon.conductorHook = { e, source, port, proto, verdict, mine ->
+            Conductor.onKnock(
+                conductorPrefs, e, source, port, proto, verdict, mine)
+        }
+        emcon.vaultHook = { e -> Conductor.onVault(conductorPrefs, e) }
+        emcon.pivotSink = { host, port ->
+            reconHandoff.value = Triple(host, port, System.nanoTime())
+        }
         // The dead hand falls at an opening, before anything
         // else: if a check-in is overdue, this launch burns
         // and goes dark.
