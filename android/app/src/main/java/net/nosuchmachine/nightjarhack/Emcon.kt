@@ -1755,8 +1755,22 @@ object Dismissals {
 
     fun add(prefs: Prefs, note: String) {
         val set = load(prefs)
-        set.add(note)
+        if (!set.add(note)) return
         prefs.put(KEY, set.joinToString("\n"))
+        Journal.log(
+            "steward", "dismissal",
+            "the operator dismissed a deviation and the " +
+                "pattern learned it: $note")
+    }
+
+    fun count(prefs: Prefs): Int = load(prefs).size
+
+    fun clear(prefs: Prefs) {
+        prefs.put(KEY, "")
+        Journal.log(
+            "steward", "dismissal",
+            "all dismissals restored — the pattern flags " +
+                "everything again")
     }
 }
 
