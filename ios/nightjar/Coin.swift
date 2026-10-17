@@ -172,17 +172,18 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
                 errorMessage: "That tag said nothing.")
             return
         }
-        let hash = Self.hash(of: message)
-        switch mode {
-        case .tap:
-            act(hash: hash, session: session)
-        case .claim:
-            claim(hash: hash, session: session)
-        case .mint:
+        if purpose == .mint {
             finish(false,
                    "The mint needs the tag itself, not its "
                    + "message — hold it steady and try again.",
                    session: session)
+            return
+        }
+        let hash = Self.hash(of: message)
+        if purpose == .claim {
+            claim(hash: hash, session: session)
+        } else {
+            judge(hash: hash, session: session)
         }
     }
 
