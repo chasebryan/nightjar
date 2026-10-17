@@ -70,12 +70,6 @@ lock, a second phone.
   decoded once and shared by every tab, looping from its
   beginning to its end and back, forever.
 
-
-## 3.0.0 — 2026-10-16 — the ventriloquist
-
-The release where the instrument starts speaking in other
-voices — and learns to keep silence like a professional.
-
 - **Colours (iOS).** The app's wardrobe, in the More
   section: six built-in themes (Phosphor, Bloodwork,
   Ultraviolet, Arctic Signal, Amber Deck, Bone) driving
@@ -87,6 +81,12 @@ voices — and learns to keep silence like a professional.
   copied onto the device and never uploaded anywhere.
   The same pass fixes the Knocktalk tab, whose lists had
   never worn the backdrop at all.
+
+
+## 3.0.0 — 2026-10-16 — the ventriloquist
+
+The release where the instrument starts speaking in other
+voices — and learns to keep silence like a professional.
 
 - **EMCON (iOS).** A defensive posture tab: an exposure
   score (0 GHOST – 100 BEACONING) computed from the phone's
