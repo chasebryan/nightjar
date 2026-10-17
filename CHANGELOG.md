@@ -9,6 +9,24 @@
   dossiers, and a sweep lights the house up room by room.
   Placement is the operator's testimony — the app keeps
   it and never invents a location of its own.
+- **Net-Assault (iOS EMCON).** A dedicated section
+  under a drawn skull and crossbones, second only to the
+  status board: one arming turns every organ in the house
+  loose on the wire in a continuous autonomous run —
+  subnet sweeps on rotating ports, the Bonjour browse,
+  and the recon bench knocking the full census against
+  every known neighbor, pass after pass, until the
+  operator stands it down. Findings walk the usual
+  roads (Neighborhood, Map, sealed log, the watching
+  Subconscious); the dashboard counts passes, new
+  devices, drift, and knocks; the finished run exports
+  an after-action report. It is loud by design and says
+  so twice — a permanent warning in the section and a
+  confirmation that names the consequence (watchers,
+  intrusion detection, questions) before the first pass.
+  Depth (sweep / +Bonjour / full) and rest between
+  passes are the operator's. It runs while the app is
+  awake; sleep pauses it, waking resumes it.
 - **The Compass and the Matrix (iOS).** The Map is a
   matrix now — black field, dot grid in the house colors,
   a slow radar sweep, rooms and devices glowing by their
