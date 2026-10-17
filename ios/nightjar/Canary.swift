@@ -136,20 +136,34 @@ final class CanaryHost: ObservableObject {
         if !dropText.isEmpty { return Data(dropText.utf8) }
         switch persona {
         case "http":
+            // The lure's dates are minted relative
+            // to today: a backup file "from" a fixed
+            // date in the past decays a little more
+            // every day it is served, until no
+            // prober believes it.
+            let stamp = DateFormatter()
+            stamp.dateFormat = "yyyy-MM-dd"
+            let recent = Date().addingTimeInterval(
+                -2 * 24 * 3600)
             var text = "APP_ENV=production\n"
             text += "DB_HOST=db.internal\n"
             text += "DB_NAME=app\n"
             text += "DB_USER=backup_svc\n"
             text += "BACKUP_DIR=/var/backups/nightly\n"
-            text += "BACKUP_FILE=db_dump_2026-10-15.sql.gz\n"
+            text += "BACKUP_FILE=db_dump_"
+                + "\(stamp.string(from: recent)).sql.gz\n"
             return Data(text.utf8)
         case "mqtt":
             return Data(("{\"site\":\"home\",\"config\":"
                 + "\"rev 41\",\"backup\":\"nas.internal:445\"}")
                 .utf8)
         case "smtp":
+            let calendar = Calendar.current
+            let now = Date()
             let text = "archive copy: https://mail.example.org"
-                + "/archive/2026/10/msg-4471"
+                + "/archive/\(calendar.component(.year, from: now))"
+                + "/\(String(format: "%02d", calendar.component(.month, from: now)))"
+                + "/msg-4471"
             return Data(text.utf8)
         default:
             return Data()
@@ -468,11 +482,28 @@ final class CanaryHost: ObservableObject {
 
     private func armIdleFlush(_ id: ObjectIdentifier) {
         sessions[id]?.idleWork?.cancel()
+        // The flush clock follows the engagement —
+        // it re-arms on every chunk, so the delay
+        // below is read off the session as it now
+        // stands. A one-probe drive-by files in
+        // twenty seconds; a prober deep in the
+        // script, or holding the drop, keeps its
+        // session whole instead of being filed in
+        // fragments on the same clock as noise.
+        let session = sessions[id]
+        let delay: TimeInterval
+        if session?.dropTaken ?? false {
+            delay = 60
+        } else if (session?.stage ?? 0) >= 2 {
+            delay = 45
+        } else {
+            delay = 20
+        }
         let work = DispatchWorkItem { [weak self] in
             self?.finish(id)
         }
         sessions[id]?.idleWork = work
-        queue.asyncAfter(deadline: .now() + 20, execute: work)
+        queue.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private func finish(_ id: ObjectIdentifier) {
@@ -604,9 +635,17 @@ struct CanarySectionView: View {
                         }
                         Spacer()
                         if lesson.kind == "http path" {
-                            if armedPaths.contains(lesson.value)
-                                || CanaryHost.baitPaths
-                                    .contains(lesson.value) {
+                            if armedPaths.contains(lesson.value) {
+                                Button("Disarm") {
+                                    armedPaths.removeAll {
+                                        $0 == lesson.value }
+                                    UserDefaults.standard.set(
+                                        armedPaths,
+                                        forKey: "canaryLearnedPaths")
+                                }
+                                .font(.callout)
+                            } else if CanaryHost.baitPaths
+                                .contains(lesson.value) {
                                 Text("BAIT")
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(.green)
@@ -670,6 +709,34 @@ enum CanaryLessons {
             all = Array(all.prefix(100))
         }
         save(all)
+        // The learn→act loop, closed: a path the
+        // catch has reached for three times arms
+        // itself as bait — the section header has
+        // always promised the persona grows the
+        // lures its probers reach for; until now
+        // only a human tap grew them. The arming
+        // is journaled, and the operator can stand
+        // it down in the Lessons section (the count
+        // only crosses three once, so a disarm
+        // stands until the lessons are forgotten).
+        if kind == "http path",
+           let lesson = all.first(where: {
+               $0.kind == kind && $0.value == value }),
+           lesson.count == 3 {
+            var learned = UserDefaults.standard
+                .stringArray(forKey: "canaryLearnedPaths")
+                ?? []
+            if !learned.contains(value),
+               !CanaryHost.baitPaths.contains(value) {
+                learned.append(value)
+                UserDefaults.standard.set(
+                    learned, forKey: "canaryLearnedPaths")
+                Journal.log("canary", "bait",
+                            "\(value) asked for three "
+                            + "times — armed as bait by "
+                            + "the canary itself")
+            }
+        }
     }
 
     static func all() -> [CanaryLesson] {

@@ -389,6 +389,30 @@ final class KnockEngine {
         }
     }
 
+    /// This source's session gap, taken from its
+    /// own rhythm: four times the median interval
+    /// between its recent knocks, clamped to
+    /// [1.2 s, 8 s] — the flat constant until
+    /// enough knocks have landed to know better.
+    /// The engine already recorded every knock's
+    /// time for the Cadence Seal; until now the
+    /// sessionizer never looked at them, so a fast
+    /// sender's message waited out a flat 3.5 s
+    /// after its last knock, and a slow sender —
+    /// congested relay, deliberate pacing — could
+    /// be chopped mid-frame into a NACK repair.
+    private func finalizeGap(for source: String)
+        -> TimeInterval {
+        let times = knockTimes[source] ?? []
+        let deltas = zip(times, times.dropFirst())
+            .map { $0.1.timeIntervalSince($0.0) }
+            .filter { $0 > 0.05 }
+        guard deltas.count >= 4 else { return Knocktalk.gap }
+        let recent = Array(deltas.suffix(40)).sorted()
+        let median = recent[recent.count / 2]
+        return min(8, max(1.2, 4 * median))
+    }
+
     private func scheduleFinalize(source: String) {
         finalizeWork[source]?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -396,7 +420,8 @@ final class KnockEngine {
         }
         finalizeWork[source] = work
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + Knocktalk.gap, execute: work)
+            deadline: .now() + finalizeGap(for: source),
+            execute: work)
     }
 
     private struct Partial {
@@ -550,7 +575,8 @@ final class KnockEngine {
         }
         partialWork[source] = work
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + Knocktalk.gap + 2.0, execute: work)
+            deadline: .now() + finalizeGap(for: source) + 2.0,
+            execute: work)
     }
 
     /// Six alphabet knocks inside ten seconds, unframed: not a
