@@ -9,6 +9,7 @@ struct EmconView: View {
     @StateObject private var spar = Recon()
     @StateObject private var assault = AssaultCenter()
     @State private var armAssault = false
+    @State private var assaultIgnition = false
 
     @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
@@ -74,12 +75,22 @@ struct EmconView: View {
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
         }
+        .fullScreenCover(isPresented: $assaultIgnition) {
+            AssaultIgnitionView(isShown: $assaultIgnition)
+        }
         .confirmationDialog(
             "Turn loose the net-assault?",
             isPresented: $armAssault,
             titleVisibility: .visible) {
             Button("Begin the assault", role: .destructive) {
                 assault.arm()
+                // The run starts now; the ignition theatre
+                // lays over its first pass, a breath behind
+                // this dialog so the two never race.
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.35) {
+                    assaultIgnition = true
+                }
             }
             Button("Not yet", role: .cancel) {}
         } message: {
