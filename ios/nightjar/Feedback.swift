@@ -117,11 +117,14 @@ extension View {
     func appThemed() -> some View { modifier(AppThemed()) }
 }
 
-/// Boot splash, OS-style: black screen, the Jolly Roger as the
-/// machine's emblem, a wordmark, and a boot log that types itself
-/// line by line over a progress bar — and every line is true:
-/// this device, this network, this library, this stealth state.
-/// Fades into the app after ~2 seconds; a tap skips it.
+/// Boot splash: the boot reel plays full-screen — the
+/// machine waking up, eyes wide — while the boot log types
+/// itself over it, line by line, every line true: this
+/// device, this network, this library, this stealth state.
+/// The Jolly Roger stays inside the app; nothing of it is
+/// out here. Fades into the app after ~2 seconds; a tap
+/// skips it. Without the reel in the bundle, the same log
+/// plays over plain black — never a broken boot.
 struct BootView: View {
     let onDone: () -> Void
 
@@ -134,6 +137,19 @@ struct BootView: View {
         let text: String
         let tone: Tone
         enum Tone { case cmd, ok, warn, off }
+    }
+
+    /// The boot reel, by either road in: a "BootReel" data
+    /// asset, or boot-reel.gif in the bundle.
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "BootReel") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "boot-reel",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
     }
 
     private var lines: [BootLine] {
@@ -168,23 +184,23 @@ struct BootView: View {
                        tone: .ok)
             : BootLine(text: "[ -- ] stealth   off", tone: .off))
         if UIImage(named: "AppBackground") != nil {
-            out.append(BootLine(text: "[ ok ] backdrop jolly roger",
+            out.append(BootLine(text: "[ ok ] backdrop loaded",
                                 tone: .ok))
         } else {
             out.append(BootLine(text: "[ -- ] backdrop image missing",
                                 tone: .off))
         }
-        out.append(BootLine(text: "> systems nominal — welcome back",
+        out.append(BootLine(text: "> the world is yours",
                             tone: .cmd))
         return out
     }
 
     private func color(_ tone: BootLine.Tone) -> Color {
         switch tone {
-        case .cmd: return Color(white: 0.92)
+        case .cmd: return Color(white: 0.95)
         case .ok: return Color(red: 0.35, green: 1.0, blue: 0.45)
         case .warn: return Color(red: 1.0, green: 0.72, blue: 0.25)
-        case .off: return Color(white: 0.55)
+        case .off: return Color(white: 0.6)
         }
     }
 
@@ -192,57 +208,130 @@ struct BootView: View {
         lines.isEmpty ? 0 : CGFloat(shown) / CGFloat(lines.count)
     }
 
+    @ViewBuilder
+    private func lineView(_ line: BootLine) -> some View {
+        let text = Text(line.text)
+            .font(.system(.footnote, design: .monospaced)
+                  .weight(line.tone == .cmd ? .semibold : .regular))
+            .foregroundStyle(color(line.tone))
+            .shadow(color: .black.opacity(0.95), radius: 3, x: 0, y: 1)
+        if line.tone == .cmd {
+            text.shadow(color: .white.opacity(0.35), radius: 7)
+        } else if line.tone == .ok {
+            text.shadow(color: color(.ok).opacity(0.45), radius: 6)
+        } else {
+            text
+        }
+    }
+
+    /// The loading bar: twenty-six blocks that fill with a
+    /// phosphor glow as the log completes, and the count.
+    private var loadingBar: some View {
+        VStack(spacing: 7) {
+            GeometryReader { geo in
+                let count = 26
+                let gap: CGFloat = 2.5
+                let width = (geo.size.width
+                             - gap * CGFloat(count - 1))
+                            / CGFloat(count)
+                HStack(spacing: gap) {
+                    ForEach(0..<count, id: \.self) { i in
+                        let lit = Double(i)
+                            < Double(count) * Double(progress)
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(lit ? color(.ok)
+                                      : Color.white.opacity(0.10))
+                            .frame(width: width, height: 14)
+                            .shadow(color: lit
+                                    ? color(.ok).opacity(0.85)
+                                    : .clear, radius: 5)
+                    }
+                }
+            }
+            .frame(height: 14)
+            HStack {
+                Text("LOADING THE NIGHT")
+                    .font(.system(.caption2, design: .monospaced))
+                    .tracking(2)
+                    .foregroundStyle(Color(white: 0.55))
+                    .shadow(color: .black.opacity(0.9), radius: 3)
+                Spacer()
+                Text("\(Int(progress * 100))%")
+                    .font(.system(.caption, design: .monospaced)
+                          .weight(.bold))
+                    .foregroundStyle(color(.ok))
+                    .shadow(color: color(.ok).opacity(0.6), radius: 6)
+            }
+        }
+        .animation(.easeOut(duration: 0.25), value: shown)
+    }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+                LinearGradient(
+                    colors: [Color.black.opacity(0.52),
+                             Color.black.opacity(0)],
+                    startPoint: .top, endPoint: .center)
+                    .ignoresSafeArea()
+                LinearGradient(
+                    colors: [Color.black.opacity(0),
+                             Color.black.opacity(0.80)],
+                    startPoint: .center, endPoint: .bottom)
+                    .ignoresSafeArea()
+            }
             VStack(spacing: 0) {
+                VStack(spacing: 4) {
+                    Text("nightjar-hack")
+                        .font(.system(.title3, design: .monospaced)
+                              .weight(.bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 5, x: 0, y: 1)
+                    Text("IOS BUILD · FIELD UNIT")
+                        .font(.system(.caption2,
+                                      design: .monospaced))
+                        .tracking(2)
+                        .foregroundStyle(Color(white: 0.62))
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 4, x: 0, y: 1)
+                }
+                .padding(.top, 22)
                 Spacer()
-                Image("AppBackground")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 216, height: 216)
-                    .clipped()
-                    .overlay(Rectangle().stroke(
-                        Color.white.opacity(0.14), lineWidth: 1))
-                    .shadow(color: .black, radius: 18, y: 8)
-                Text("nightjar-hack")
-                    .font(.system(.title3, design: .monospaced)
-                          .weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.top, 20)
-                Text("IOS BUILD · FIELD UNIT")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(Color(white: 0.45))
-                    .padding(.top, 4)
-                VStack(alignment: .leading, spacing: 5) {
-                    ForEach(0..<min(shown, lines.count), id: \.self) { i in
-                        Text(lines[i].text)
-                            .font(.system(.footnote, design: .monospaced))
-                            .foregroundStyle(color(lines[i].tone))
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(0..<min(shown, lines.count),
+                                id: \.self) { i in
+                            lineView(lines[i])
+                        }
+                        Text("▊")
+                            .font(.system(.footnote,
+                                          design: .monospaced))
+                            .foregroundStyle(color(.ok))
+                            .shadow(color: color(.ok).opacity(0.7),
+                                    radius: 6)
+                            .opacity(cursorOn ? 1 : 0)
                     }
-                    Text("▊")
-                        .font(.system(.footnote, design: .monospaced))
-                        .foregroundStyle(color(.ok))
-                        .opacity(cursorOn ? 1 : 0)
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
+                    .frame(height: 172, alignment: .topLeading)
+                    loadingBar
+                        .padding(.top, 16)
+                    Text("TAP TO SKIP")
+                        .font(.system(.caption2,
+                                      design: .monospaced))
+                        .tracking(2)
+                        .foregroundStyle(Color(white: 0.45))
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 3)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 18)
                 }
-                .frame(width: 300, height: 168, alignment: .topLeading)
-                .padding(.top, 30)
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.12))
-                        .frame(height: 3)
-                    Rectangle()
-                        .fill(color(.ok))
-                        .frame(width: 300 * progress, height: 3)
-                        .animation(.easeOut(duration: 0.25), value: shown)
-                }
-                .frame(width: 300)
-                .padding(.top, 14)
-                Spacer()
-                Text("TAP TO SKIP")
-                    .font(.system(.caption2, design: .monospaced))
-                    .foregroundStyle(Color(white: 0.35))
-                    .padding(.bottom, 26)
+                .padding(.horizontal, 26)
+                .padding(.bottom, 30)
             }
         }
         .contentShape(Rectangle())
