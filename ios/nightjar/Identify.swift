@@ -29,6 +29,21 @@ struct Classification {
     }
 
     static func classify(_ sighting: Sighting) -> Classification {
+        // Every channel testifies; the rank ladder
+        // arbitrates. The old waterfall returned at
+        // the first match — an Apple Continuity hit
+        // meant the service UUIDs that might name
+        // the PRODUCT were never consulted, and
+        // evidence from the other channels was
+        // thrown away. Now all candidates are
+        // gathered, the highest rank wins the kind
+        // (ties go to the earliest channel, as the
+        // waterfall had it), and the details of
+        // every candidate within one rung of the
+        // winner are merged in — one device, all
+        // its evidence.
+        var candidates: [Classification] = []
+
         if let apple = sighting.manufacturerData[Continuity.appleCompanyID], !apple.isEmpty {
             let ident = Continuity.identifyApple(apple)
             var rankValue = rankFor(specificity: ident.specificity)
@@ -36,57 +51,97 @@ struct Classification {
                 rankValue = rankFamilyHint
             }
             let tracker = ident.findMy?.separated ?? false
-            return Classification(kind: ident.kind, details: ident.details, rank: rankValue,
-                                  trackerShaped: tracker, rotatingPhone: false)
+            candidates.append(Classification(kind: ident.kind, details: ident.details, rank: rankValue,
+                                  trackerShaped: tracker, rotatingPhone: false))
         }
 
         if let more = MoreDecoders.identify(sighting) {
-            return Classification(kind: more.kind, details: more.details,
+            candidates.append(Classification(kind: more.kind, details: more.details,
                                   rank: rankFor(specificity: more.specificity),
                                   trackerShaped: more.trackerShaped,
                                   rotatingPhone: more.rotatingPhone,
-                                  preferredLabel: more.preferredLabel)
+                                  preferredLabel: more.preferredLabel))
         }
 
+        // Services speaks once, at the rank its
+        // specificity earns — full standing at
+        // subfamily or better; below that, the
+        // family-rank leftover the waterfall fell
+        // back to (which never carried the tracker
+        // or rotation flags, and still does not).
         let service = Services.identify(serviceUUIDs: sighting.serviceUUIDs,
                                         serviceData: sighting.serviceData)
-        if let service = service, service.specificity >= 2 {
-            return Classification(kind: service.kind, details: service.details,
-                                  rank: rankFor(specificity: service.specificity),
-                                  trackerShaped: service.trackerShaped,
-                                  rotatingPhone: service.rotatingPhone,
-                                  preferredLabel: service.preferredLabel)
+        if let service = service {
+            if service.specificity >= 2 {
+                candidates.append(Classification(kind: service.kind, details: service.details,
+                                      rank: rankFor(specificity: service.specificity),
+                                      trackerShaped: service.trackerShaped,
+                                      rotatingPhone: service.rotatingPhone,
+                                      preferredLabel: service.preferredLabel))
+            } else {
+                candidates.append(Classification(kind: service.kind, details: service.details,
+                                      rank: rankFamily, trackerShaped: false, rotatingPhone: false,
+                                      preferredLabel: service.preferredLabel))
+            }
         }
 
         if let vendor = Vendors.identify(sighting.manufacturerData) {
-            return Classification(kind: vendor.kind, details: vendor.details,
+            candidates.append(Classification(kind: vendor.kind, details: vendor.details,
                                   rank: rankFor(specificity: vendor.specificity),
-                                  trackerShaped: false, rotatingPhone: false)
+                                  trackerShaped: false, rotatingPhone: false))
         }
 
-        // Round 2's recognition floor lives behind its own hook on
-        // purpose: inside the early MoreDecoders step it would answer
-        // at family rank before Services' decoders and Vendors ever
-        // ran (a DJI drone would lose its Remote ID label to "DJI
-        // device"). Here, after every real decoder has passed, it can
-        // only ever beat "unknown".
+        // Round 2's recognition floor, still behind
+        // its own hook on purpose: inside the early
+        // MoreDecoders step it would answer at family
+        // rank before Services' decoders and Vendors
+        // ever ran (a DJI drone would lose its Remote
+        // ID label to "DJI device"). Under arbitration
+        // its rank is capped below subfamily, so it
+        // can still only ever beat the family floor,
+        // the bare name, and "unknown" — never a real
+        // decoder's product or subfamily reading.
         if let late = MoreDecoders.lateIdentify(sighting) {
-            return Classification(kind: late.kind, details: late.details,
-                                  rank: rankFor(specificity: late.specificity),
+            candidates.append(Classification(kind: late.kind, details: late.details,
+                                  rank: min(rankFor(specificity: late.specificity),
+                                             rankFamilyHint),
                                   trackerShaped: late.trackerShaped,
                                   rotatingPhone: late.rotatingPhone,
-                                  preferredLabel: late.preferredLabel)
+                                  preferredLabel: late.preferredLabel))
         }
 
-        if let service = service {
-            return Classification(kind: service.kind, details: service.details,
-                                  rank: rankFamily, trackerShaped: false, rotatingPhone: false,
-                                  preferredLabel: service.preferredLabel)
-        }
         if sighting.name != nil {
-            return Classification(kind: "Named device")
+            candidates.append(Classification(kind: "Named device"))
         }
-        return Classification()
+        guard let winnerIndex = candidates.indices.max(
+            by: { candidates[$0].rank < candidates[$1].rank })
+        else { return Classification() }
+        let winner = candidates[winnerIndex]
+        // Merge the evidence: the winner's details,
+        // then any detail from a candidate at the
+        // winning rank or one rung below it, in
+        // channel order, without repeats.
+        let rungs = [rankUnknown, rankFamily,
+                     rankFamilyHint, rankSubfamily,
+                     rankProduct]
+        let mergeFloor = rungs.filter { $0 < winner.rank }
+            .max() ?? winner.rank
+        var merged = winner.details
+        for (index, candidate) in candidates.enumerated()
+        where index != winnerIndex
+            && candidate.rank >= mergeFloor {
+            for line in candidate.details
+            where !merged.contains(line) {
+                merged.append(line)
+            }
+        }
+        var result = winner
+        result.details = merged
+        if result.preferredLabel == nil {
+            result.preferredLabel = candidates
+                .compactMap { $0.preferredLabel }.first
+        }
+        return result
     }
 }
 
@@ -156,14 +211,22 @@ struct DeviceRow: Identifiable {
             if serviceUUIDs.count < 16 { serviceUUIDs.append(uuid) }
         }
         let classification = Classification.classify(sighting)
-        if classification.rank >= rank || rank == Classification.rankUnknown {
+        // One guard for all three: a weaker sighting
+        // may not overwrite a stronger reading's
+        // kind, its label, or — as it silently
+        // could until now — the details behind the
+        // kind, leaving a confident name standing
+        // on evidence from a worse look.
+        let won = classification.rank >= rank
+            || rank == Classification.rankUnknown
+        if won {
             kind = classification.kind
             rank = classification.rank
         }
-        if let label = classification.preferredLabel {
+        if won, let label = classification.preferredLabel {
             preferredLabel = label
         }
-        if !classification.details.isEmpty {
+        if won, !classification.details.isEmpty {
             details = classification.details
         }
         trackerShaped = trackerShaped || classification.trackerShaped

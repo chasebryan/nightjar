@@ -94,6 +94,52 @@ final class AssaultCenter: ObservableObject {
     private let recon = Recon()
     private var timer: Timer?
     private var knockQueue: [Neighbor] = []
+
+    // MARK: - knock memory
+
+    /// What the knocking stage remembers per neighbor,
+    /// persisted across runs: when it was knocked, how
+    /// much drift it carried then, the ports it had
+    /// answered, and on which pass. Until now the
+    /// stage was amnesiac — every pass re-knocked the
+    /// identical full census against the twelve most
+    /// recently seen, forever: an unchanged cast got
+    /// the same thousand questions on pass eleven as
+    /// on pass one, and a changed device waited
+    /// behind static ones.
+    private static let knockKey = "assaultKnock"
+
+    private struct KnockRecord {
+        var lastKnocked: TimeInterval = 0
+        var driftSeen: Int = 0
+        var ports: [Int] = []
+        var cycle: Int = 0
+    }
+
+    private static func loadKnockRecords()
+        -> [String: KnockRecord] {
+        let raw = UserDefaults.standard.dictionary(
+            forKey: knockKey)
+            as? [String: [String: Any]] ?? [:]
+        return raw.mapValues {
+            KnockRecord(
+                lastKnocked: $0["lastKnocked"] as? Double ?? 0,
+                driftSeen: $0["driftSeen"] as? Int ?? 0,
+                ports: $0["ports"] as? [Int] ?? [],
+                cycle: $0["cycle"] as? Int ?? 0)
+        }
+    }
+
+    private static func saveKnockRecords(
+        _ records: [String: KnockRecord]) {
+        let raw = records.mapValues {
+            ["lastKnocked": $0.lastKnocked,
+             "driftSeen": $0.driftSeen,
+             "ports": $0.ports,
+             "cycle": $0.cycle] as [String: Any]
+        }
+        UserDefaults.standard.set(raw, forKey: knockKey)
+    }
     private var baseNeighbors = 0
     private var baseDrift = 0
     private var cycle = 0
@@ -201,8 +247,6 @@ final class AssaultCenter: ObservableObject {
                     phase = "Listening to the wire announce "
                         + "itself (Bonjour)"
                     model.startDiscovery()
-                } else if depth >= 2 {
-                    beginKnocking()
                 } else {
                     rest()
                 }
@@ -226,6 +270,14 @@ final class AssaultCenter: ObservableObject {
                     probedThisRun += census.count
                     phase = "Knocking \(next.displayName) — "
                         + "the full census (\(census.count) ports)"
+                    var records = Self.loadKnockRecords()
+                    records[next.ip] = KnockRecord(
+                        lastKnocked: Date()
+                            .timeIntervalSince1970,
+                        driftSeen: next.drift.count,
+                        ports: next.ports.sorted(),
+                        cycle: cycle)
+                    Self.saveKnockRecords(records)
                     recon.knock(host: next.ip, ports: census,
                                 udp: false, speak: false)
                 }
@@ -243,9 +295,42 @@ final class AssaultCenter: ObservableObject {
         }
     }
 
+    /// The queue is ordered by significance, not
+    /// recency: unseen drift first, then the never
+    /// knocked, then arrivals of this run, then the
+    /// longest unprobed. A neighbor unchanged since
+    /// a knock within the last three passes keeps
+    /// the picture that knock took — it is skipped,
+    /// not re-asked the whole census.
     private func beginKnocking() {
+        let records = Self.loadKnockRecords()
+        let now = Date()
+        func significance(_ n: Neighbor) -> Double {
+            let record = records[n.ip]
+            var score = 0.0
+            if n.drift.count > (record?.driftSeen ?? 0) {
+                score += 1000
+            }
+            if record == nil { score += 500 }
+            if let startedAt, n.firstSeen >= startedAt {
+                score += 100
+            }
+            if let record {
+                score += min(90, (now.timeIntervalSince1970
+                    - record.lastKnocked) / 3600)
+            }
+            return score
+        }
+        func unchanged(_ n: Neighbor) -> Bool {
+            guard let record = records[n.ip],
+                  record.driftSeen == n.drift.count,
+                  record.ports == n.ports.sorted()
+            else { return false }
+            return cycle - record.cycle < 3
+        }
         knockQueue = Array(NeighborhoodStore.shared.neighbors
-            .sorted { $0.lastSeen > $1.lastSeen }
+            .filter { !unchanged($0) }
+            .sorted { significance($0) > significance($1) }
             .prefix(12))
         if knockQueue.isEmpty {
             rest()
@@ -253,7 +338,8 @@ final class AssaultCenter: ObservableObject {
         }
         stage = .knocking
         phase = "Knocking the cast — "
-            + "\(knockQueue.count) device(s) this pass"
+            + "\(knockQueue.count) device(s) this pass, "
+            + "in order of significance"
     }
 
     private func rest() {
