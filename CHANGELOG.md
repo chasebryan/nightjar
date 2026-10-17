@@ -360,6 +360,20 @@
   line by line, a fade, or all at once. A
   tap still skips.
 
+- **Updates that install themselves.**
+  Xcode-run builds are signed for seven
+  days; that leash is now optional. When a
+  release carries an ad hoc build and its
+  install manifest, the app's update banner
+  and About's Version section become a true
+  Update button — iOS installs the new
+  build over the old, data intact (the
+  ritual, a manifest template, and an
+  armable CI workflow live in `ota/`). The
+  free road is here too: the repo is a
+  SideStore source, re-signed on the phone
+  before the week runs out.
+
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
 - **The great presenter audit.** Every sheet, cover,
