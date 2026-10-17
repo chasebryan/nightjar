@@ -1476,6 +1476,7 @@ struct ScanView: View {
                     }
                 }
 
+                MapSectionView(model: model)
                 NeighborhoodSectionView(
                     store: NeighborhoodStore.shared)
 
