@@ -64,6 +64,7 @@ enum SaneDefaults {
         "cadenceSealOn", "cadence.profiles",
         "voiceThrow.armed",
         "coin.hash", "coin.lockKnocktalk",
+        "season.state",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
     ]
