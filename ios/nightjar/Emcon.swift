@@ -1504,10 +1504,14 @@ final class Emcon: ObservableObject {
                         "message received from \(message.source) — "
                         + "\(message.text.count) characters")
             gradeCadence(of: message)
+            NeighborhoodStore.shared.discover(
+                source: message.source, via: "knocktalk")
         case .ack(let source, let hash):
             chat.handleAck(from: source, hash: hash)
             Journal.log("emcon", "knocktalk",
                         "delivery confirmed by \(source)")
+            NeighborhoodStore.shared.discover(
+                source: source, via: "knocktalk")
         case .nack(let source, let missing):
             chat.handleNack(from: source, missing: missing)
             Journal.log("emcon", "knocktalk",
