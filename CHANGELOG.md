@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 4.0.0 — 2026-10-16
+## 4.0.0 — 2026-10-16 — the masquerade
 
 The release where the instrument grows a second of
 everything: a second factor, a second mouth, a second
