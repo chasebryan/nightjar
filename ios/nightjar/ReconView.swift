@@ -1253,6 +1253,15 @@ struct ScanView: View {
         Array(Set(model.sweepHosts.map(\.ip))).sorted()
     }
 
+    /// A swept address presented by its given name when
+    /// the Neighborhood knows one — the name follows the
+    /// device into every section.
+    private func knownName(for ip: String) -> String {
+        NeighborhoodStore.shared.neighbors.first {
+            $0.ip == ip
+        }?.displayName ?? ip
+    }
+
     private func sweptPorts(for ip: String) -> String {
         model.sweepHosts.filter { $0.ip == ip }
             .map { String($0.port) }.joined(separator: ", ")
@@ -1443,14 +1452,14 @@ struct ScanView: View {
                         ForEach(sweptIPs, id: \.self) { ip in
                             NavigationLink {
                                 DossierView(
-                                    title: ip, ip: ip,
+                                    title: knownName(for: ip), ip: ip,
                                     wifiLines: [
                                         "Answered the sweep on port "
                                         + "\(sweptPorts(for: ip))",
                                         "Census: Scan tab subnet sweep",
                                     ])
                             } label: {
-                                Label(ip, systemImage: "folder.badge.gear")
+                                Label(knownName(for: ip), systemImage: "folder.badge.gear")
                             }
                         }
                         ForEach(model.discovered) { service in
