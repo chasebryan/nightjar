@@ -540,6 +540,7 @@ struct SessionsView: View {
     @State private var sessions: [SessionSummary] = []
     @State private var selection = Set<String>()
     @State private var showClearConfirm = false
+    @State private var shareItem: ShareItem?
 
     private var deletable: [SessionSummary] {
         sessions.filter { $0.id != post.session?.id }
@@ -582,7 +583,10 @@ struct SessionsView: View {
                     SessionRowView(
                         session: session,
                         isLive: post.session?.id == session.id,
-                        onDelete: deleteAction(for: session))
+                        onDelete: deleteAction(for: session),
+                        onShare: { url in
+                            shareItem = ShareItem(items: [url])
+                        })
                     .tag(session.id)
                 }
                 .onDelete { offsets in
@@ -629,6 +633,9 @@ struct SessionsView: View {
                         }
                     }
                 }
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
             }
             .confirmationDialog(
                 "Delete all sessions?",
@@ -703,6 +710,7 @@ struct SessionRowView: View {
     let session: SessionSummary
     let isLive: Bool
     var onDelete: (() -> Void)? = nil
+    var onShare: ((URL) -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .top) {
@@ -728,9 +736,10 @@ struct SessionRowView: View {
                     .lineLimit(1)
             }
             Spacer()
-            if !isLive {
-                ShareLink(item: session.url,
-                          preview: SharePreview(session.url.lastPathComponent)) {
+            if !isLive, let onShare {
+                Button {
+                    onShare(session.url)
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
                 .buttonStyle(.borderless)
