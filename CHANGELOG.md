@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.2.0 — 2026-10-17 — the sleepwalker
+
 - **The great presenter audit.** Every sheet, cover,
   dialog, importer, and share in the app was inventoried
   and moved to the one level that has never failed on
