@@ -119,6 +119,8 @@ struct KnockChatView: View {
                 }
                 retentionSection
             }
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Knocktalk")
             .background {
                 // iOS 16 navigation: one hidden link, driven by
@@ -968,6 +970,8 @@ struct ConversationView: View {
                 .listRowSeparator(.hidden)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background { AppBackdrop() }
         .navigationTitle(peer)
         .toolbar {
             if !messages.isEmpty {
