@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 4.2.0
+# nightjar-hack for iOS — 5.0.0
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
