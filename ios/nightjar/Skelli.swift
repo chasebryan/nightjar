@@ -1,5 +1,8 @@
 import AVFoundation
 import Combine
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 import Foundation
 import PDFKit
 import SwiftUI
@@ -791,8 +794,82 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
-        // Beyond the house: research it through the
-        researchWeb(for: q)
+        // Open water: her trained mind first, the
+        // browser when the mind says the living web
+        // is needed — or when no mind can speak.
+        consultMindOrResearch(q)
+    }
+
+    /// The open question goes to her trained mind
+    /// first — Apple's on-device model, when this
+    /// build and this phone carry it. It answers
+    /// conversation and general knowledge in her
+    /// voice, grounded in the house's facts; when
+    /// an answer needs the living web, it says so
+    /// with one word and the browser goes instead.
+    /// No model, or a model error, takes the
+    /// browser path exactly as before.
+    private func consultMindOrResearch(_ q: String) {
+        let started = SkelliMind.consult(
+            question: q,
+            grounding: mindGrounding(),
+            recent: recentLines()) { [weak self] verdict in
+            guard let self = self else { return }
+            switch verdict {
+            case .answer(let text):
+                self.say(text)
+            case .research:
+                self.researchWeb(for: q)
+            }
+        }
+        if started {
+            activity = "Thinking it through…"
+        } else {
+            researchWeb(for: q)
+        }
+    }
+
+    /// Her grounding: who she is, the state of the
+    /// house right now, and what her manual covers —
+    /// the facts the model may speak from, and the
+    /// fence it may not cross.
+    private func mindGrounding() -> String {
+        let wire = NeighborhoodStore.shared
+            .neighbors.count
+        let titles = SkelliKnowledge.entries
+            .map { $0.title }
+            .joined(separator: ", ")
+        return "You are Skelli, the onboard "
+            + "specialist of nightjar-hack, a network "
+            + "instrument on this iPhone. You run "
+            + "entirely on this phone — nothing you "
+            + "are told leaves it. Speak dry, precise, "
+            + "and brief: a sentence or three unless "
+            + "more is asked for. The house right now: "
+            + "\(wire) devices on the wire; web "
+            + "research is "
+            + (webResearchEnabled ? "on" : "off")
+            + "; you hold \(notes.count) remembered "
+            + "notes. Your manual covers: \(titles). "
+            + "Orders and house state are handled by "
+            + "your engine before you are consulted; "
+            + "you answer open conversation and "
+            + "general knowledge. Never invent facts "
+            + "about this house or its devices. If "
+            + "the answer needs current facts from "
+            + "outside this phone — news, prices, "
+            + "today's anything — or you are not sure "
+            + "of the facts, reply with exactly one "
+            + "word: RESEARCH"
+    }
+
+    /// The last few exchanges, so the conversation
+    /// she is in is the one she answers in.
+    private func recentLines() -> String {
+        lines.suffix(6).map { line in
+            (line.fromOperator
+             ? "Operator: " : "Skelli: ") + line.text
+        }.joined(separator: "\n")
     }
 
     /// What the house cannot answer, the web might —
@@ -1444,6 +1521,100 @@ final class SkelliCenter: ObservableObject {
     }
 }
 
+// MARK: - Her mind
+
+/// Her trained mind: Apple's on-device model
+/// (Foundation Models, iOS 26), when the build's
+/// SDK and this phone both carry it — compiled out
+/// cleanly where they don't, leaving her engine to
+/// answer alone, exactly as it did before.
+enum SkelliMind {
+    enum Verdict {
+        case answer(String)
+        case research
+    }
+
+    static var isAvailable: Bool {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            return SkelliModelBox.available
+        }
+        #endif
+        return false
+    }
+
+    /// Consult the model. False means no model can
+    /// speak and the caller falls back at once;
+    /// true means the verdict arrives on the main
+    /// queue.
+    static func consult(question: String,
+                        grounding: String,
+                        recent: String,
+                        completion:
+                            @escaping (Verdict) -> Void)
+        -> Bool {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            guard SkelliModelBox.available
+            else { return false }
+            let prompt = recent.isEmpty
+                ? question
+                : recent + "\nOperator: " + question
+            Task {
+                let text = await SkelliModelBox.run(
+                    instructions: grounding,
+                    prompt: prompt)
+                let verdict: Verdict
+                if let text = text {
+                    let trimmed = text.trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                    if trimmed.isEmpty
+                        || trimmed.hasPrefix("RESEARCH") {
+                        verdict = .research
+                    } else {
+                        verdict = .answer(trimmed)
+                    }
+                } else {
+                    verdict = .research
+                }
+                await MainActor.run {
+                    completion(verdict)
+                }
+            }
+            return true
+        }
+        #endif
+        return false
+    }
+}
+
+#if canImport(FoundationModels)
+/// The model itself, behind the availability gate.
+@available(iOS 26.0, *)
+private enum SkelliModelBox {
+    static var available: Bool {
+        if case .available = SystemLanguageModel
+            .default.availability {
+            return true
+        }
+        return false
+    }
+
+    static func run(instructions: String,
+                    prompt: String) async -> String? {
+        let session = LanguageModelSession(
+            instructions: instructions)
+        do {
+            let response = try await session
+                .respond(to: prompt)
+            return response.content
+        } catch {
+            return nil
+        }
+    }
+}
+#endif
+
 // MARK: - Her body
 
 /// Skelli, drawn from the original: the skeleton in
@@ -2013,6 +2184,8 @@ struct SkelliView: View {
         return moodWord + " · \(wire) on the wire"
             + (skelli.webResearchEnabled
                ? " · web on" : " · web off")
+            + (SkelliMind.isAvailable
+               ? " · model on" : "")
             + (skelli.notes.isEmpty
                ? ""
                : " · remembers \(skelli.notes.count)")
