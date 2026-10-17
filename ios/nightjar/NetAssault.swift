@@ -443,3 +443,79 @@ struct NetAssaultSectionView: View {
         return s < 60 ? "\(s)s" : "\(s / 60)m \(s % 60)s"
     }
 }
+
+// MARK: - The ignition
+
+/// What plays when the mode is initialized: the operator's
+/// GIF, full-bleed, over the run's first pass — pure theatre
+/// laid over real work, exactly like the centipede's drumroll.
+/// The GIF comes from an "Assault" data asset or an
+/// assault.gif in the bundle; without one, a flickering
+/// skull card stands in, so the mode is never broken by a
+/// missing flourish. Tap to skip.
+struct AssaultIgnitionView: View {
+    @Binding var isShown: Bool
+    @ObservedObject private var themeCenter =
+        ThemeCenter.shared
+    @State private var flicker = false
+
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "Assault") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "assault",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    /// The GIF's own play length plus a breath, clamped
+    /// sane; 3 s for the fallback card.
+    private var splashSeconds: Double {
+        guard let data = gifData,
+              let image = UIImage.animatedGIF(data: data)
+        else { return 3.0 }
+        return min(max(image.duration + 0.3, 1.5), 6.0)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+            } else {
+                MatrixDots(color: themeCenter.current.accent
+                    .opacity(0.15))
+                    .ignoresSafeArea()
+                VStack(spacing: 16) {
+                    SkullMark(color: .red, size: 110)
+                    Text("NET-ASSAULT")
+                        .font(.title.monospaced().weight(.bold))
+                        .tracking(5)
+                        .foregroundStyle(.white)
+                    Text("the wire will hear this phone coming")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isShown = false }
+        .onAppear {
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + splashSeconds) {
+                isShown = false
+            }
+        }
+    }
+}
