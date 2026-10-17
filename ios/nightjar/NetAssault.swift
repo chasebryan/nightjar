@@ -348,12 +348,20 @@ struct NetAssaultSectionView: View {
                 Text("Full").tag(2)
             }
             .pickerStyle(.segmented)
-            Picker("Rest between passes", selection: $restSeconds) {
+            Picker("Pause between passes",
+                   selection: $restSeconds) {
                 Text("30s").tag(30.0)
                 Text("75s").tag(75.0)
                 Text("3 min").tag(180.0)
             }
             .pickerStyle(.segmented)
+            Text("How long the wire rests between one full "
+                 + "pass — sweep, browse, knock — and the "
+                 + "next. Shorter keeps the pressure "
+                 + "continuous; longer revisits on a slower, "
+                 + "quieter cadence.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Button {
                 armRequest = true
             } label: {
@@ -466,6 +474,14 @@ struct AssaultIgnitionView: View {
         if let url = Bundle.main.url(forResource: "assault",
                                      withExtension: "gif") {
             return try? Data(contentsOf: url)
+        }
+        // Any bundled GIF with the assault in its name —
+        // the reel is forgiving about filenames.
+        if let path = Bundle.main.paths(
+            forResourcesOfType: "gif", inDirectory: nil)
+            .first(where: {
+                $0.lowercased().contains("assault") }) {
+            return try? Data(contentsOfFile: path)
         }
         return nil
     }
