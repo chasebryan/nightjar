@@ -11,8 +11,9 @@ BLE listening post to talk. It is its own project now, and
 its flagship is the iOS app: the listening post, the mouth,
 a recon bench, a defensive posture tab, and Knocktalk —
 encrypted messaging carried by knock order alone. A Python
-CLI carries the same mouth to the desktop, and an Android
-port follows the flagship on a staggered schedule (see
+CLI carries the same mouth to the desktop. An Android port
+was carried alongside the flagship for a time; its
+development has been discontinued (see
 [Android](#android)).
 
 ## The flagship: the iOS app
@@ -154,45 +155,29 @@ checkout and then calls apply_overlay.py.
 
 ## Android
 
-The flagship, carried to Android — a port of the iOS app,
-released on the staggered schedule below.
+Android development has stopped, and the APK will not be
+continued at this time.
 
-[**Download the v3.0.0 Android APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
+The port never reached the standard the flagship sets.
+Build after build failed at the last mile — packaging,
+then installation, and in the end reliable launch — and
+an instrument that cannot be trusted to open does not
+ship under this name. The effort belongs on the iOS app,
+and that is where it has gone back to.
 
-On the release page itself, the file hides at the very
-bottom of the notes under **Assets** — the link above
-downloads it directly.
-
-Android 8.0+; open the APK on your phone to install. If
-replacing the old v2.6.0 debug-signed APK, export your
-data before uninstalling it: v3.0.0 starts a new release
-signing key. Build and install notes live in
-[android/README.md](android/README.md).
-
-### Release schedule
-
-iOS is the flagship. It is developed continuously, and
-every feature lands there first. Android is packaged at
-full numbered releases: when the flagship cuts a new
-major number, an APK is built to mirror that release —
-equal quality, the same form. Between those releases the
-Android app holds at its packaged version while iOS moves
-ahead; the stagger is deliberate, so the port is always a
-finished mirror of a finished flagship, never a rough
-draft of one still moving.
-
-The current package is v3.0.0: the six foundation tabs
-(Listen, Send, Serve, Scan, Sessions, About) over the
-shared decoder bench. The mirror overhaul now underway
-brings the port to the flagship's full standard for the
-next full numbered release.
+The Android source remains in this tree under
+[android/](android/) as the record of the attempt. The
+APK previously offered for download here is withdrawn:
+the Android file on the release page is a leftover of
+the discontinued port, not the current instrument. If
+the port is ever resumed, it will be announced here.
 
 ## Documents
 
 - [HACKER.md](HACKER.md) — the CLI manual
 - [HACKER-RECON.md](HACKER-RECON.md) — the Recon bench
 - [ios/README.md](ios/README.md) — building the iOS app
-- [android/README.md](android/README.md) — the Android port
+- [android/README.md](android/README.md) — the discontinued Android port (archive)
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, when
 - [PRIVACY.md](PRIVACY.md) — what the app collects (nothing)
 
