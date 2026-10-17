@@ -13,6 +13,9 @@ struct KnockChatView: View {
     @EnvironmentObject private var chat: KnockChat
     @EnvironmentObject private var mouth: Mouth
     @State private var newPeer = ""
+    @AppStorage("coin.lockKnocktalk") private var coinLock = false
+    @State private var coinUnlocked = false
+    @State private var coinNote = ""
     @State private var openedPeer: String?
     @State private var navActive = false
     @State private var keyDraft = ""
@@ -108,7 +111,11 @@ struct KnockChatView: View {
                 blinkSection
                 flareSection
                 capsuleSection
-                threadsSection
+                if coinLock && !coinUnlocked {
+                    coinLockSection
+                } else {
+                    threadsSection
+                }
                 retentionSection
             }
             .navigationTitle("Knocktalk")
@@ -790,6 +797,28 @@ struct KnockChatView: View {
                      + "seal with the same suites as everything "
                      + "here.")
                     .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var coinLockSection: some View {
+        Section(header: Text("Knocktalk is locked")) {
+            Label("The coin stands guard over these "
+                  + "conversations.", systemImage: "lock.fill")
+                .font(.callout)
+            Button {
+                CoinCenter.shared.tap(.unlock, emcon: nil) {
+                    ok, text in
+                    coinNote = text
+                    if ok { coinUnlocked = true }
+                }
+            } label: {
+                Label("Tap the coin to unlock",
+                      systemImage: "wave.3.right")
+            }
+            if !coinNote.isEmpty {
+                Text(coinNote).font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
