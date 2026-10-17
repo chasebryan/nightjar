@@ -120,7 +120,7 @@ struct MapSectionView: View {
     @ObservedObject private var store = MapStore.shared
     @ObservedObject private var neighborhood =
         NeighborhoodStore.shared
-    @State private var showMap = false
+    @Binding var shown: Bool
 
     var body: some View {
         Section(header: Text("The Map — the house, on one canvas"),
@@ -129,15 +129,12 @@ struct MapSectionView: View {
                     + "your hand, kept by the app. Walk the "
                     + "house with it.")) {
             Button {
-                showMap = true
+                shown = true
             } label: {
                 Label("Open the map", systemImage: "map")
             }
             Text(summary)
                 .font(.callout).foregroundStyle(.secondary)
-        }
-        .fullScreenCover(isPresented: $showMap) {
-            MapView(model: model)
         }
     }
 
