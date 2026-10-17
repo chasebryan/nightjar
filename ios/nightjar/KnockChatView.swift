@@ -100,6 +100,8 @@ struct KnockChatView: View {
                 }
                 suiteSection
                 cadenceSection
+                VoiceThrowSection(center: emcon.voiceThrow,
+                                  chat: chat)
                 relaySection
                 chirpSection
                 brushSection
@@ -914,7 +916,8 @@ struct ConversationView: View {
                     if message.outgoing { Spacer(minLength: 40) }
                     VStack(alignment: message.outgoing
                            ? .trailing : .leading, spacing: 2) {
-                        Text(message.text)
+                        Text(VoiceThrowCodec.displayText(
+                            message.text))
                             .font(.callout)
                         Text(caption(for: message))
                             .font(.caption2)
