@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.0.0 — 2026-10-17 — the awakening
+
 - **Deliveries, and a self that grows.**
   Everything she makes is now filed as a
   document the moment she makes it — armory
