@@ -31,7 +31,9 @@ struct EmconView: View {
                     announcerCount: emcon.announcers.count,
                     assaultOn: assault.running,
                     serveListeners: mouth.serveListenerCount,
-                    probingOn: spar.fuzzing)
+                    probingOn: spar.fuzzing,
+                    onLan: emcon.ownIP != nil,
+                    hostName: emcon.hostName)
     }
 
     var body: some View {
@@ -187,9 +189,10 @@ struct EmconView: View {
                         .foregroundStyle(scoreColor)
                 }
             }
-            Text("Exposure score — live emissions weigh most, then "
-                 + "what the last knock and audit actually found. "
-                 + "Run the drill for the full picture.")
+            Text("Exposure score — being on the wire weighs first, "
+                 + "then live emissions, then what the last knock "
+                 + "and audit actually found. Run the drill for "
+                 + "the full picture.")
                 .font(.caption).foregroundStyle(.secondary)
             if emcon.active,
                let before = emcon.scoreBeforeDark,

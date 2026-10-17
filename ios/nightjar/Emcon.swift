@@ -250,13 +250,27 @@ final class Emcon: ObservableObject {
     var deviceName: String { UIDevice.current.name }
     var ownIP: String? { Mouth.localIPAddress() }
 
+    /// The name this device actually answers to on the wire —
+    /// its mDNS hostname, derived from the name in Settings.
+    /// UIDevice.current.name has returned the generic "iPhone"
+    /// to ordinary apps since iOS 16, so the score reads the
+    /// hostname the wire itself sees instead.
+    var hostName: String {
+        var buffer = [CChar](repeating: 0, count: 256)
+        guard gethostname(&buffer, buffer.count) == 0 else { return "" }
+        let raw = String(cString: buffer)
+        return raw.split(separator: ".").first.map(String.init) ?? raw
+    }
+
     // MARK: - exposure score
 
     /// 0 = ghost, 100 = a lighthouse. Computed from what is true
-    /// right now, not from intentions: live emissions weigh most,
-    /// then what the last recon and audit actually found. The
-    /// parts are those same weights, so the band can be read
-    /// back to a cause.
+    /// right now, not from intentions: mere presence on the wire
+    /// weighs first (a joined device is addressable and answers
+    /// under a name, EMCON or not), then live emissions, then
+    /// what the last recon and audit actually found. The parts
+    /// are those same weights, so the band can be read back to
+    /// a cause.
     static func score(gattHostOn: Bool, beaconOn: Bool,
                       serveRunning: Bool, stealth: Bool,
                       deviceName: String,
@@ -264,12 +278,15 @@ final class Emcon: ObservableObject {
                       announcerCount: Int,
                       assaultOn: Bool = false,
                       serveListeners: Int = 1,
-                      probingOn: Bool = false) -> Score {
+                      probingOn: Bool = false,
+                      onLan: Bool = false,
+                      hostName: String = "") -> Score {
         var parts: [Score.Part] = []
         func weigh(_ label: String, _ points: Int) {
             guard points > 0 else { return }
             parts.append(Score.Part(label: label, points: points))
         }
+        if onLan { weigh("On the wire", 10) }
         if assaultOn { weigh("Net-Assault running", 30) }
         if gattHostOn { weigh("GATT host", 25) }
         if beaconOn { weigh("BLE beacon", 20) }
@@ -286,6 +303,11 @@ final class Emcon: ObservableObject {
         }
         if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
             weigh("Personal name", 12)
+        } else if !hostName.isEmpty
+                    && hostName.lowercased() != "iphone" {
+            // The wire-facing name: what every device on the LAN
+            // can read off this phone without asking it anything.
+            weigh("Answers as \(hostName)", 8)
         } else if deviceName != "iPhone" {
             weigh("Broadcast name", 6)
         }
@@ -365,7 +387,9 @@ final class Emcon: ObservableObject {
             deviceName: deviceName,
             exposureCount: exposures.count,
             announcerCount: announcers.count,
-            serveListeners: mouth.serveListenerCount)
+            serveListeners: mouth.serveListenerCount,
+            onLan: ownIP != nil,
+            hostName: hostName)
         active = true
         UserDefaults.standard.set(true, forKey: Self.activeKey)
         mouth.setStealth(true)
