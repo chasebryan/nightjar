@@ -85,6 +85,16 @@ final class NeighborhoodStore: ObservableObject {
         }
     }
 
+    /// Empty the board: every neighbor forgotten, and
+    /// their Map placements with them (a placement for a
+    /// device the house no longer keeps is a ghost). The
+    /// wire will populate its own cast again.
+    func clear() {
+        neighbors = []
+        save()
+        MapStore.shared.prune(to: [])
+    }
+
     /// Give an address its operator name — or take it
     /// back. The name follows the address everywhere it is
     /// presented: this board, the Map, its dossier, the
@@ -286,6 +296,8 @@ struct NeighborhoodSectionView: View {
     @ObservedObject var store: NeighborhoodStore
     @Binding var editing: Neighbor?
     @Binding var dossier: DossierPresentation?
+    @Binding var clearRequest: Bool
+    @State private var boardOpen = false
 
     var body: some View {
         Section(header: Text("The Neighborhood — this wire, kept"),
@@ -300,7 +312,24 @@ struct NeighborhoodSectionView: View {
                      + "Bonjour resolve, or simply be knocked — "
                      + "the wire will populate its own cast.")
                     .font(.callout).foregroundStyle(.secondary)
+            } else {
+                Button {
+                    withAnimation { boardOpen.toggle() }
+                } label: {
+                    HStack {
+                        Label("Devices", systemImage: "house")
+                        Spacer()
+                        Text("\(store.neighbors.count)")
+                            .foregroundStyle(.secondary)
+                        Image(systemName: boardOpen
+                              ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .foregroundStyle(.primary)
             }
+            if boardOpen {
             ForEach(store.neighbors) { neighbor in
                 Button {
                     dossier = DossierPresentation(
@@ -330,6 +359,15 @@ struct NeighborhoodSectionView: View {
                         Label("Name this device\u{2026}",
                               systemImage: "pencil")
                     }
+                }
+            }
+            }
+            if !store.neighbors.isEmpty {
+                Button(role: .destructive) {
+                    clearRequest = true
+                } label: {
+                    Label("Clear the Neighborhood",
+                          systemImage: "trash")
                 }
             }
         }
