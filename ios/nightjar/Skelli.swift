@@ -838,20 +838,22 @@ final class SkelliCenter: ObservableObject {
             }
         }
 
+        // Orders before lessons: an imperative
+        // that names her hands is performed, not
+        // taught — questions had the manual, above.
+        if handsGate(q, raw: raw) { return }
+        if applyThemeAsk(q) { return }
+        if isCodeAsk(q) {
+            consultCode(q)
+            return
+        }
+
         // The manual.
         if let entry = SkelliKnowledge.lookup(q) {
             say(entry.body + "\nFind it: \(entry.home).")
             return
         }
 
-        // Open water: her trained mind first, the
-        // browser when the mind says the living web
-        // is needed — or when no mind can speak.
-        if applyThemeAsk(q) { return }
-        if isCodeAsk(q) {
-            consultCode(q)
-            return
-        }
         // No pattern caught it: one semantic
         // reading before it is conversation.
         if again, lateGate(q, raw: raw) {
