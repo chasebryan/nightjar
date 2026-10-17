@@ -185,6 +185,7 @@ fun ServeTab(app: NightjarApp) {
                 }
             }
         }
+        item { CanarySection(app) }
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -246,6 +247,22 @@ fun ScanTab(app: NightjarApp) {
     val ownIP = app.mouth.localIPAddress()
     if (host.isEmpty() && ownIP != null) {
         host = ownIP.substringBeforeLast('.') + ".1"
+    }
+    var sweptHosts by remember {
+        mutableStateOf<List<String>>(emptyList())
+    }
+    var bonjourFound by remember {
+        mutableStateOf<List<BonjourSweeper.Found>>(emptyList())
+    }
+    var dossier by remember {
+        mutableStateOf<Triple<String, String?, List<String>>?>(null)
+    }
+    val sweepPortNow = prefs.string("sweepPort", "80")
+    dossier?.let { picked ->
+        DossierView(
+            app, picked.first, picked.second, picked.third
+        ) { dossier = null }
+        return
     }
 
     LazyColumn(
@@ -353,8 +370,15 @@ fun ScanTab(app: NightjarApp) {
             }
         }
         item { TlsSection(app) }
-        item { BonjourSection(app) }
-        item { SweepSection(app) }
+        if (sweptHosts.isNotEmpty() || bonjourFound.isNotEmpty()) {
+            item {
+                DossiersSection(
+                    sweptHosts, sweepPortNow, bonjourFound
+                ) { picked -> dossier = picked }
+            }
+        }
+        item { BonjourSection(app) { found -> bonjourFound = found } }
+        item { SweepSection(app) { hosts -> sweptHosts = hosts } }
         item { FeedSection(app) }
         item { DnsSection(app) }
         item { PcapSection(app) }
@@ -408,7 +432,10 @@ fun TlsSection(app: NightjarApp) {
 }
 
 @Composable
-fun BonjourSection(app: NightjarApp) {
+fun BonjourSection(
+    app: NightjarApp,
+    onFound: (List<BonjourSweeper.Found>) -> Unit = {}
+) {
     var found by remember { mutableStateOf<List<BonjourSweeper.Found>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -424,6 +451,7 @@ fun BonjourSection(app: NightjarApp) {
                     busy = true
                     scope.launch {
                         found = BonjourSweeper(context).sweep()
+                        onFound(found)
                         busy = false
                     }
                 },
@@ -445,7 +473,10 @@ fun BonjourSection(app: NightjarApp) {
 }
 
 @Composable
-fun SweepSection(app: NightjarApp) {
+fun SweepSection(
+    app: NightjarApp,
+    onHosts: (List<String>) -> Unit = {}
+) {
     val prefs = rememberPrefs()
     var target by prefString(prefs, "sweepTarget", "")
     var port by prefString(prefs, "sweepPort", "80")
@@ -526,6 +557,7 @@ fun SweepSection(app: NightjarApp) {
                         pool.shutdown()
                         withContext(Dispatchers.Main) {
                             hosts = foundHosts.sorted()
+                            onHosts(hosts)
                             busy = false
                             progress = ""
                         }
@@ -704,6 +736,73 @@ fun PcapSection(app: NightjarApp) {
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Pick a .pcap file") }
             for (line in lines.take(80)) MonoText(line)
+        }
+    }
+}
+
+/// The Scan tab's dossier index: one page per device the
+/// sweep or the discovery heard, every organ's testimony on
+/// it — the doorway into DossierView.
+@Composable
+fun DossiersSection(
+    sweptHosts: List<String>, sweepPort: String,
+    bonjourFound: List<BonjourSweeper.Found>,
+    onPick: (Triple<String, String?, List<String>>) -> Unit
+) {
+    IosPanelCard {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Dossiers", style = MaterialTheme.typography.titleMedium)
+            for (ip in sweptHosts) {
+                Text(
+                    "\uD83D\uDCC1 $ip",
+                    modifier = Modifier
+                        .clickable {
+                            onPick(
+                                Triple(
+                                    ip, ip,
+                                    listOf(
+                                        "Answered the sweep on port $sweepPort",
+                                        "Census: Scan tab subnet sweep"
+                                    )
+                                )
+                            )
+                        }
+                        .padding(vertical = 2.dp),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace
+                    )
+                )
+            }
+            for (service in bonjourFound) {
+                Text(
+                    "\uD83D\uDCC1 ${service.name}",
+                    modifier = Modifier
+                        .clickable {
+                            onPick(
+                                Triple(
+                                    service.name, null,
+                                    listOf(
+                                        "Announces itself via Bonjour: ${service.label}",
+                                        "Census: Scan tab discovery sweep"
+                                    )
+                                )
+                            )
+                        }
+                        .padding(vertical = 2.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Text(
+                "One page per device, every organ's testimony: " +
+                    "what Scan heard, whether Listen has heard " +
+                    "the name over Bluetooth, and a Recon knock " +
+                    "on demand.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
