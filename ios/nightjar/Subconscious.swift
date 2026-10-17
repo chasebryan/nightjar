@@ -186,6 +186,16 @@ final class SubconsciousCenter: ObservableObject {
     /// their evidence and their birthdays. A fact keeps
     /// its first birthday across re-derivations; a fact
     /// the operator buried stays buried.
+    /// Every event in a set whose text names this
+    /// address — the one way appearances are
+    /// counted, shared by the consolidation that
+    /// learns the facts and the watch that tests
+    /// them.
+    func mentions(of ip: String,
+                  in events: [NightEvent]) -> [NightEvent] {
+        events.filter { $0.text.contains(ip) }
+    }
+
     private func consolidate(events: [NightEvent],
                              neighbors: [Neighbor],
                              now: Date) {
@@ -231,15 +241,16 @@ final class SubconsciousCenter: ObservableObject {
             }
         }
 
-        // A regular's rhythm.
-        func mentions(of ip: String) -> [NightEvent] {
-            fortnight.filter { $0.text.contains(ip) }
-        }
+        // A regular's rhythm. (Appearances are
+        // counted by the center's shared mentions(),
+        // so the consolidation and the contradiction
+        // watch count them the same way.)
         var rhythms = 0
         for neighbor in neighbors.sorted(by: {
             $0.sightings > $1.sightings }).prefix(3)
         where neighbor.sightings >= 15 && rhythms < 2 {
-            let seen = mentions(of: neighbor.ip)
+            let seen = mentions(of: neighbor.ip,
+                                in: fortnight)
             guard seen.count >= 12 else { continue }
             var hist = [Int](repeating: 0, count: 24)
             for e in seen {
@@ -271,7 +282,8 @@ final class SubconsciousCenter: ObservableObject {
 
         // Two who stir together.
         let talkative = neighbors
-            .map { ($0, mentions(of: $0.ip)) }
+            .map { ($0, mentions(of: $0.ip,
+                                  in: fortnight)) }
             .filter { $0.1.count >= 8 }
             .sorted { $0.1.count > $1.1.count }
             .prefix(8)
@@ -768,6 +780,58 @@ final class SubconsciousCenter: ObservableObject {
                         confidence: 0.55))
                 }
             }
+            if fact.id.hasPrefix("fact-pair-") {
+                // The pairings are watched too: both
+                // members about these last four days,
+                // on separate days, yet never together
+                // — the stirring-together the house
+                // knows has stopped.
+                let parts = fact.id.split(separator: "-")
+                if parts.count == 4 {
+                    let ipA = String(parts[2])
+                    let ipB = String(parts[3])
+                    let recent = events.filter {
+                        $0.when > now.addingTimeInterval(
+                            -4 * 24 * 3600)
+                    }
+                    let aSeen = mentions(of: ipA, in: recent)
+                    let bSeen = mentions(of: ipB, in: recent)
+                    let daysA = Set(aSeen.map {
+                        Calendar.current.startOfDay(
+                            for: $0.when) }).count
+                    let daysB = Set(bSeen.map {
+                        Calendar.current.startOfDay(
+                            for: $0.when) }).count
+                    let together = aSeen.contains { ea in
+                        bSeen.contains {
+                            abs($0.when.timeIntervalSince(
+                                ea.when)) < 45 * 60
+                        }
+                    }
+                    if daysA >= 2, daysB >= 2, !together {
+                        let nameA = neighbors.first(
+                            where: { $0.ip == ipA })?
+                            .displayName ?? ipA
+                        let nameB = neighbors.first(
+                            where: { $0.ip == ipB })?
+                            .displayName ?? ipB
+                        found.append(Insight(
+                            id: "against-" + fact.id,
+                            when: now,
+                            title: "Against its own record",
+                            body: "\(nameA) and \(nameB) "
+                                + "were never far apart — "
+                                + "but these last four days "
+                                + "both have been about, on "
+                                + "their own days, and never "
+                                + "together once. Whatever "
+                                + "woke the one no longer "
+                                + "wakes the other.",
+                            citations: [],
+                            confidence: 0.5))
+                    }
+                }
+            }
             if fact.id == "fact-foreign" {
                 // The foreign habits are watched
                 // too: cadence flags are the foreign
@@ -880,6 +944,46 @@ final class SubconsciousCenter: ObservableObject {
                     citations: [],
                     confidence: 0.5))
             }
+        }
+        // Variability and temperature, against
+        // themselves — the two streams the
+        // Instrument always collected and never
+        // thought with, now baselined like the rest.
+        if let base = instrument.hrvBaseline,
+           let latest = instrument.hrvLatest,
+           base - latest >= 8 {
+            found.append(Insight(
+                id: "operator-hrv",
+                when: now,
+                title: "The operator's variability dipped",
+                body: "Heart-rate variability read "
+                    + "\(Int(latest.rounded())) ms "
+                    + "against your own fortnight "
+                    + "baseline of \(Int(base.rounded())) "
+                    + "ms — the nervous system's ledger, "
+                    + "read against itself. Strain, "
+                    + "short sleep, and coming illness "
+                    + "all write in it. A correlation, "
+                    + "printed as one — not a cause.",
+                citations: [],
+                confidence: 0.5))
+        }
+        if let base = instrument.tempBaseline,
+           let latest = instrument.tempLatest,
+           latest - base >= 0.4 {
+            found.append(Insight(
+                id: "operator-temp",
+                when: now,
+                title: "The operator ran warm in the night",
+                body: "Sleeping wrist temperature read "
+                    + String(format: "%.1f", latest - base)
+                    + "° above your own fortnight "
+                    + "baseline — the deviation the "
+                    + "watch itself treats as worth a "
+                    + "second look. A correlation, "
+                    + "printed as one — not a cause.",
+                citations: [],
+                confidence: 0.5))
         }
 
         // The operator's verdicts bend every confidence,

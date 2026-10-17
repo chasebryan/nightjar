@@ -304,6 +304,7 @@ final class Steward: ObservableObject {
     private func confidence(nightjarGrade: Bool,
                             file: ProberFile?,
                             newSource: Bool, offPattern: Bool,
+                            host: String,
                             emcon: Emcon)
         -> (points: Int, band: String, factors: [String]) {
         var points = 0
@@ -336,6 +337,22 @@ final class Steward: ObservableObject {
             points += 10
             factors.append("the sense is already up")
         }
+        // Its own graded past bends the price — the
+        // track record, read back at last.
+        let track = Self.trackRecord(for: host)
+        let proved = track["confirmed"] ?? 0
+        let quiet = track["quiet"] ?? 0
+        if proved > 0 {
+            points += min(15, 5 * proved)
+            factors.append("plans against it proved "
+                + "out ×\(proved)")
+        }
+        if quiet >= 2 {
+            points -= min(15, 5 * quiet)
+            factors.append("plans against it graded "
+                + "quiet ×\(quiet) — cried wolf here")
+        }
+        points = max(0, points)
         let band = points >= 65 ? "high"
             : (points >= 35 ? "medium" : "low")
         return (points, band, factors)
@@ -401,6 +418,7 @@ final class Steward: ObservableObject {
         let score = confidence(
             nightjarGrade: nightjarGrade, file: file,
             newSource: newSource, offPattern: offPattern,
+            host: host,
             emcon: emcon)
 
         // The taker returns: a source with drops in its
@@ -759,6 +777,7 @@ final class Steward: ObservableObject {
         where !watches[i].resolved && watches[i].host == host {
             watches[i].resolved = true
             changed = true
+            Self.recordOutcome(host: host, outcome: outcome)
             Journal.log("steward", "grade",
                         "plan record — \(watches[i].situation) "
                         + "on \(host): \(outcome).")
@@ -861,6 +880,45 @@ final class Steward: ObservableObject {
               default: 0] += 1
         all[title] = entry
         UserDefaults.standard.set(all, forKey: tallyKey)
+    }
+
+    // MARK: - the track record
+
+    /// What its own graded plans came to, per host.
+    /// The outcome watches always resolved into
+    /// journal lines — a scorecard nobody read.
+    /// Now they resolve into this tally, and
+    /// confidence() reads it back: a host whose
+    /// plans proved out earns belief, and a host
+    /// whose plans keep grading quiet has cried
+    /// wolf here before.
+    private static let trackKey = "stewardTrack"
+
+    static func trackRecord(for host: String)
+        -> [String: Int] {
+        (UserDefaults.standard.dictionary(forKey: trackKey)
+            as? [String: [String: Int]])?[host] ?? [:]
+    }
+
+    static func recordGrade(host: String, kind: String) {
+        var all = UserDefaults.standard.dictionary(
+            forKey: trackKey) as? [String: [String: Int]]
+            ?? [:]
+        var entry = all[host] ?? [:]
+        entry[kind, default: 0] += 1
+        all[host] = entry
+        UserDefaults.standard.set(all, forKey: trackKey)
+    }
+
+    private static func recordOutcome(host: String,
+                                      outcome: String) {
+        if outcome.hasPrefix("confirmed") {
+            recordGrade(host: host, kind: "confirmed")
+        } else if outcome.hasPrefix("returned") {
+            recordGrade(host: host, kind: "returned")
+        } else if outcome.contains("quiet") {
+            recordGrade(host: host, kind: "quiet")
+        }
     }
 
     func enact(_ proposal: Proposal, emcon: Emcon,
@@ -978,6 +1036,8 @@ final class Steward: ObservableObject {
                 > 24 * 3600 {
             watches[i].resolved = true
             gradedQuiet = true
+            Self.recordGrade(host: watches[i].host,
+                             kind: "quiet")
             Journal.log("steward", "grade",
                         "plan record — \(watches[i].situation) "
                         + "on \(watches[i].host): no return in "

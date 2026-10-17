@@ -67,6 +67,15 @@ final class InstrumentCenter: ObservableObject {
     /// stale, and the Subconscious's comparison
     /// deserves to know which it holds.
     @Published private(set) var restingLatestAt: Date?
+    /// Variability and wrist temperature, reckoned
+    /// the same way — both were fetched for display
+    /// and thought with by nobody; against their
+    /// own baselines they are the operator-state
+    /// signals with the most to say.
+    @Published private(set) var hrvBaseline: Double?
+    @Published private(set) var hrvLatest: Double?
+    @Published private(set) var tempBaseline: Double?
+    @Published private(set) var tempLatest: Double?
     @Published private(set) var watchName: String?
     @Published private(set) var lastReadAt: Date?
 
@@ -236,6 +245,54 @@ final class InstrumentCenter: ObservableObject {
         store.execute(query)
     }
 
+    /// One vital's fortnight reckoning: daily means
+    /// over complete days only — the enumeration
+    /// stops at this morning, so no partial day
+    /// blunts the mean — with the newest complete
+    /// day standing outside the baseline as the
+    /// latest, so every latest/baseline pair the
+    /// Subconscious compares is consistent by
+    /// construction. Needs five days of record.
+    private func dailyBaseline(
+        _ id: HKQuantityTypeIdentifier, unit: HKUnit,
+        apply: @escaping (Double, Double, Date) -> Void) {
+        guard let type = HKObjectType.quantityType(
+            forIdentifier: id) else { return }
+        let anchor = Calendar.current.startOfDay(
+            for: Date())
+        let predicate = HKQuery.predicateForSamples(
+            withStart: anchor.addingTimeInterval(
+                -14 * 24 * 3600),
+            end: nil, options: .strictStartDate)
+        let query = HKStatisticsCollectionQuery(
+            quantityType: type,
+            quantitySamplePredicate: predicate,
+            options: .discreteAverage,
+            anchorDate: anchor,
+            intervalComponents: DateComponents(day: 1))
+        query.initialResultsHandler = { _, results, _ in
+            var daily: [Double] = []
+            results?.enumerateStatistics(
+                from: anchor.addingTimeInterval(
+                    -14 * 24 * 3600),
+                to: anchor) { stats, _ in
+                if let avg = stats.averageQuantity() {
+                    daily.append(avg.doubleValue(for: unit))
+                }
+            }
+            guard daily.count >= 5,
+                  let latest = daily.last else { return }
+            let baseDays = daily.count >= 6
+                ? Array(daily.dropLast()) : daily
+            let mean = baseDays.reduce(0, +)
+                / Double(baseDays.count)
+            DispatchQueue.main.async {
+                apply(mean, latest, anchor)
+            }
+        }
+        store.execute(query)
+    }
+
     /// The operator's fortnight baselines: mean daily
     /// resting heart rate and mean night's sleep, each
     /// only once at least five days of record stand
@@ -246,63 +303,47 @@ final class InstrumentCenter: ObservableObject {
             return
         }
         // Resting heart, daily means over the fortnight.
-        if let type = HKObjectType.quantityType(
-            forIdentifier: .restingHeartRate) {
-            let cal = Calendar.current
-            let anchor = cal.startOfDay(for: Date())
-            let predicate = HKQuery.predicateForSamples(
-                withStart: anchor.addingTimeInterval(
-                    -14 * 24 * 3600),
-                end: nil, options: .strictStartDate)
-            let query = HKStatisticsCollectionQuery(
-                quantityType: type,
-                quantitySamplePredicate: predicate,
-                options: .discreteAverage,
-                anchorDate: anchor,
-                intervalComponents: DateComponents(day: 1))
-            query.initialResultsHandler = { [weak self] _, results, _ in
-                var daily: [Double] = []
-                let bpm = HKUnit.count().unitDivided(
-                    by: .minute())
-                results?.enumerateStatistics(
-                    from: anchor.addingTimeInterval(
-                        -14 * 24 * 3600),
-                    to: anchor) { stats, _ in
-                    if let avg = stats.averageQuantity() {
-                        daily.append(avg.doubleValue(for: bpm))
-                    }
-                }
-                guard daily.count >= 5 else { return }
-                // Complete days only — the enumeration
-                // stops at this morning, so no partial
-                // day blunts the mean; and the newest
-                // complete day stands outside the
-                // baseline as its latest, so the pair
-                // the Subconscious compares is
-                // consistent by construction.
-                let latestDay = daily.last
-                let baseDays = daily.count >= 6
-                    ? Array(daily.dropLast()) : daily
-                let mean = baseDays.reduce(0, +)
-                    / Double(baseDays.count)
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    let changed = self.restingBaseline != mean
-                    self.restingBaseline = mean
-                    if let latestDay,
-                       self.restingLatestAt == nil
-                        || self.restingLatestAt! < anchor {
-                        self.restingLatest = latestDay
-                        self.restingLatestAt = anchor
-                    }
-                    if changed {
-                        NotificationCenter.default.post(
-                            name: Self.baselinesUpdated,
-                            object: nil)
-                    }
-                }
+        let bpm = HKUnit.count().unitDivided(by: .minute())
+        dailyBaseline(.restingHeartRate, unit: bpm) {
+            [weak self] mean, latestDay, anchor in
+            guard let self = self else { return }
+            let changed = self.restingBaseline != mean
+            self.restingBaseline = mean
+            if self.restingLatestAt == nil
+                || self.restingLatestAt! < anchor {
+                self.restingLatest = latestDay
+                self.restingLatestAt = anchor
             }
-            store.execute(query)
+            if changed {
+                NotificationCenter.default.post(
+                    name: Self.baselinesUpdated, object: nil)
+            }
+        }
+        // Variability and wrist temperature: the
+        // same reckoning, against themselves.
+        dailyBaseline(.heartRateVariabilitySDNN,
+                      unit: .secondUnit(with: .milli)) {
+            [weak self] mean, latest, _ in
+            guard let self = self else { return }
+            let changed = self.hrvBaseline != mean
+            self.hrvBaseline = mean
+            self.hrvLatest = latest
+            if changed {
+                NotificationCenter.default.post(
+                    name: Self.baselinesUpdated, object: nil)
+            }
+        }
+        dailyBaseline(.appleSleepingWristTemperature,
+                      unit: .degreeCelsius()) {
+            [weak self] mean, latest, _ in
+            guard let self = self else { return }
+            let changed = self.tempBaseline != mean
+            self.tempBaseline = mean
+            self.tempLatest = latest
+            if changed {
+                NotificationCenter.default.post(
+                    name: Self.baselinesUpdated, object: nil)
+            }
         }
         // Sleep: cluster the fortnight's asleep samples
         // into nights, average the real ones.

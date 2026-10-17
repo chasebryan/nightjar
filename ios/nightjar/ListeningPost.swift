@@ -246,10 +246,18 @@ final class ListeningPost: NSObject, ObservableObject {
     }
 
     /// The settled order: keep the previous one, let
-    /// newcomers join by smoothed RSSI, sink quiet devices
-    /// (> 20 s silent) below active ones, then run a few
-    /// hysteresis passes — a device overtakes only when its
-    /// smoothed RSSI beats the device above by the margin.
+    /// newcomers join by smoothed RSSI, then settle into
+    /// tiers — the pinned, the active, the quiet — with
+    /// hysteresis passes inside each tier (a device
+    /// overtakes only when its smoothed RSSI beats the
+    /// device above by the margin). The pin and the
+    /// patience are kind-aware: tracker-class beacons
+    /// advertise slowly and intermittently BY DESIGN,
+    /// so the old flat 20-second quiet sink buried
+    /// exactly the devices this post exists to catch.
+    /// Trackers go quiet on a minutes scale, and while
+    /// they are about they hold the top — as does a
+    /// flare, a key-holder in radio range.
     private static func ranked(devices: [String: DeviceRow],
                                previous: [String],
                                now: TimeInterval) -> [String] {
@@ -260,21 +268,31 @@ final class ListeningPost: NSObject, ObservableObject {
             .sorted { ($0.rssiSmooth ?? -200)
                 > ($1.rssiSmooth ?? -200) }
         order += newcomers.map { $0.id }
+        func isPinned(_ id: String) -> Bool {
+            guard let row = devices[id] else { return false }
+            return row.trackerShaped || row.flare
+        }
         func isQuiet(_ id: String) -> Bool {
-            (devices[id]?.age(now: now) ?? 0) > 20
+            let limit: TimeInterval = isPinned(id) ? 300 : 20
+            return (devices[id]?.age(now: now) ?? 0) > limit
+        }
+        func tier(_ id: String) -> Int {
+            if isPinned(id), !isQuiet(id) { return 0 }
+            return isQuiet(id) ? 2 : 1
         }
         func smooth(_ id: String) -> Double {
             devices[id]?.rssiSmooth ?? -200
         }
-        order = order.filter { !isQuiet($0) }
-            + order.filter { isQuiet($0) }
+        order = order.filter { tier($0) == 0 }
+            + order.filter { tier($0) == 1 }
+            + order.filter { tier($0) == 2 }
         let margin = 3.0
         if order.count > 1 {
             for _ in 0..<3 {
                 var swapped = false
                 for i in 0..<(order.count - 1) {
                     let a = order[i], b = order[i + 1]
-                    if isQuiet(a) == isQuiet(b),
+                    if tier(a) == tier(b),
                        smooth(b) > smooth(a) + margin {
                         order.swapAt(i, i + 1)
                         swapped = true
