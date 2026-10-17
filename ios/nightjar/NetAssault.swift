@@ -1,0 +1,445 @@
+import SwiftUI
+import UIKit
+
+/// Net-Assault — the house, turned loose on its own wire.
+///
+/// Every organ the app owns, orchestrated into one
+/// continuous autonomous run: the subnet sweep on rotating
+/// ports, the Bonjour browse, the recon bench knocking the
+/// full census against every known neighbor — pass after
+/// pass, for as long as the operator leaves it armed. What
+/// it finds walks the same roads everything else does:
+/// the Neighborhood learns it, the Map can place it, the
+/// journal seals it, and the Subconscious reads over its
+/// shoulder.
+///
+/// It is LOUD, and it says so before it starts and while it
+/// runs: a sweep is an announcement, a knock is a knock on
+/// a stranger's door, and anything on the wire that watches
+/// for exactly this will see it. That warning is not fine
+/// print; it is the first thing the section shows.
+///
+/// It uses only the house's own organs — nothing new is
+/// exploited, flooded, or broken into. Things are knocked
+/// on and listened to, at length, in the open.
+
+// MARK: - The mark
+
+/// A line-art skull and crossbones, drawn — the Jolly
+/// Roger in the matrix's own geometry.
+struct SkullMark: View {
+    var color: Color
+    var size: CGFloat = 22
+
+    var body: some View {
+        Canvas { context, canvas in
+            let w = canvas.width, h = canvas.height
+            let stroke = StrokeStyle(lineWidth: 1.6,
+                                     lineCap: .round)
+            let cranium = CGRect(x: w * 0.22, y: h * 0.06,
+                                 width: w * 0.56,
+                                 height: h * 0.52)
+            context.stroke(Path(ellipseIn: cranium),
+                           with: .color(color), style: stroke)
+            let jaw = CGRect(x: w * 0.37, y: h * 0.52,
+                             width: w * 0.26, height: h * 0.15)
+            context.stroke(
+                Path(roundedRect: jaw, cornerRadius: 2),
+                with: .color(color), style: stroke)
+            for cx in [0.38, 0.62] {
+                let eye = CGRect(x: w * cx - w * 0.055,
+                                 y: h * 0.29,
+                                 width: w * 0.11,
+                                 height: h * 0.13)
+                context.fill(Path(ellipseIn: eye),
+                             with: .color(color))
+            }
+            let bone = StrokeStyle(lineWidth: 2.6,
+                                   lineCap: .round)
+            for flip in [false, true] {
+                var path = Path()
+                let y1 = h * 0.78, y2 = h * 0.97
+                if flip {
+                    path.move(to: CGPoint(x: w * 0.82, y: y1))
+                    path.addLine(to: CGPoint(x: w * 0.18, y: y2))
+                } else {
+                    path.move(to: CGPoint(x: w * 0.18, y: y1))
+                    path.addLine(to: CGPoint(x: w * 0.82, y: y2))
+                }
+                context.stroke(path, with: .color(color),
+                               style: bone)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - The center
+
+final class AssaultCenter: ObservableObject {
+    @Published var running = false
+    @Published var phase = "Standing by"
+    @Published var passes = 0
+    @Published var newThisRun = 0
+    @Published var driftThisRun = 0
+    @Published var probedThisRun = 0
+    @Published var startedAt: Date?
+    @Published var log: [String] = []
+
+    private enum Stage { case idle, sweeping, browsing,
+                         knocking, resting }
+    private var stage: Stage = .idle
+    private var stageEnds = Date.distantPast
+    private let model = ScanModel()
+    private let recon = Recon()
+    private var timer: Timer?
+    private var knockQueue: [Neighbor] = []
+    private var baseNeighbors = 0
+    private var baseDrift = 0
+    private var cycle = 0
+    private let sweepPorts = [80, 443, 22, 8080, 8443]
+
+    private var depth: Int {
+        // Unset means the picker's own default: Full.
+        UserDefaults.standard.object(forKey: "assault.depth")
+            as? Int ?? 2
+    }
+    private var restSeconds: Double {
+        let v = UserDefaults.standard.double(
+            forKey: "assault.rest")
+        return v > 0 ? v : 75
+    }
+
+    func arm() {
+        guard !running else { return }
+        running = true
+        passes = 0
+        newThisRun = 0
+        driftThisRun = 0
+        probedThisRun = 0
+        log = []
+        startedAt = Date()
+        baseNeighbors = NeighborhoodStore.shared
+            .neighbors.count
+        baseDrift = Self.totalDrift()
+        Journal.log("assault", "armed",
+                    "net-assault armed — depth "
+                    + "\(depth), rest "
+                    + "\(Int(restSeconds))s. The operator was "
+                    + "warned it is loud.")
+        note("Armed. The wire will hear this phone coming.")
+        startPass()
+        timer = Timer.scheduledTimer(withTimeInterval: 1,
+                                     repeats: true) { _ in
+            self.tick()
+        }
+    }
+
+    func disarm(reason: String = "the operator stood it down") {
+        guard running else { return }
+        running = false
+        timer?.invalidate()
+        timer = nil
+        model.stopDiscovery()
+        stage = .idle
+        phase = "Stood down"
+        Journal.log("assault", "disarmed",
+                    "net-assault stood down after "
+                    + "\(passes) pass(es) — \(reason). "
+                    + "\(newThisRun) new device(s), "
+                    + "\(driftThisRun) drift line(s), "
+                    + "\(probedThisRun) ports knocked.")
+        note("Stood down after \(passes) pass(es).")
+    }
+
+    private static func totalDrift() -> Int {
+        NeighborhoodStore.shared.neighbors.reduce(0) {
+            $0 + $1.drift.count
+        }
+    }
+
+    private func note(_ line: String) {
+        let stamp = Date().formatted(date: .omitted,
+                                     time: .shortened)
+        log.append("\(stamp) — \(line)")
+        if log.count > 60 {
+            log.removeFirst(log.count - 60)
+        }
+    }
+
+    private func startPass() {
+        cycle += 1
+        let port = sweepPorts[(cycle - 1) % sweepPorts.count]
+        stage = .sweeping
+        phase = "Pass \(cycle): sweeping the wire on "
+            + "port \(port)"
+        model.sweep(port: port)
+    }
+
+    private func tick() {
+        guard running else { return }
+        newThisRun = max(0, NeighborhoodStore.shared
+            .neighbors.count - baseNeighbors)
+        driftThisRun = Self.totalDrift() - baseDrift
+        if UIApplication.shared.applicationState != .active {
+            phase = "Paused — the house sleeps; "
+                + "it resumes when you return"
+            return
+        }
+        switch stage {
+        case .sweeping:
+            if !model.sweeping && !model.scanning {
+                passes += 1
+                let line = "Pass \(cycle) swept: "
+                    + "\(NeighborhoodStore.shared.neighbors.count) "
+                    + "devices known, \(newThisRun) new this run."
+                note(line)
+                Journal.log("assault", "pass", line)
+                if depth >= 1 {
+                    stage = .browsing
+                    stageEnds = Date().addingTimeInterval(12)
+                    phase = "Listening to the wire announce "
+                        + "itself (Bonjour)"
+                    model.startDiscovery()
+                } else if depth >= 2 {
+                    beginKnocking()
+                } else {
+                    rest()
+                }
+            }
+        case .browsing:
+            if Date() > stageEnds {
+                model.stopDiscovery()
+                if depth >= 2 {
+                    beginKnocking()
+                } else {
+                    rest()
+                }
+            }
+        case .knocking:
+            if !recon.knocking {
+                if knockQueue.isEmpty {
+                    rest()
+                } else {
+                    let next = knockQueue.removeFirst()
+                    let census = ScanModel.topPorts.map { $0.0 }
+                    probedThisRun += census.count
+                    phase = "Knocking \(next.displayName) — "
+                        + "the full census (\(census.count) ports)"
+                    recon.knock(host: next.ip, ports: census,
+                                udp: false, speak: false)
+                }
+            }
+        case .resting:
+            let left = Int(stageEnds.timeIntervalSinceNow)
+            if left <= 0 {
+                startPass()
+            } else {
+                phase = "Resting — next pass in \(left)s. "
+                    + "The ear stays up."
+            }
+        case .idle:
+            break
+        }
+    }
+
+    private func beginKnocking() {
+        knockQueue = Array(NeighborhoodStore.shared.neighbors
+            .sorted { $0.lastSeen > $1.lastSeen }
+            .prefix(12))
+        if knockQueue.isEmpty {
+            rest()
+            return
+        }
+        stage = .knocking
+        phase = "Knocking the cast — "
+            + "\(knockQueue.count) device(s) this pass"
+    }
+
+    private func rest() {
+        stage = .resting
+        stageEnds = Date().addingTimeInterval(restSeconds)
+    }
+
+    /// The after-action report: the run, on one page.
+    var report: String {
+        var lines = ["NET-ASSAULT — after-action report",
+                     "Passes: \(passes) · new devices: "
+                        + "\(newThisRun) · drift: "
+                        + "\(driftThisRun) · ports knocked: "
+                        + "\(probedThisRun)",
+                     ""]
+        lines += log
+        lines.append("")
+        lines.append("The sealed journal carries the same "
+                     + "run under module 'assault', citable "
+                     + "line by line.")
+        return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - The section
+
+struct NetAssaultSectionView: View {
+    @ObservedObject var center: AssaultCenter
+    @Binding var armRequest: Bool
+    @ObservedObject private var mind =
+        SubconsciousCenter.shared
+    @ObservedObject private var themeCenter =
+        ThemeCenter.shared
+    @AppStorage("assault.depth") private var depth = 2
+    @AppStorage("assault.rest") private var restSeconds = 75.0
+
+    var body: some View {
+        Section {
+            if center.running {
+                runningDashboard
+            } else {
+                idlePitch
+            }
+        } header: {
+            HStack(spacing: 8) {
+                SkullMark(color: themeCenter.current.accent,
+                          size: 20)
+                Text("Net-Assault")
+                    .font(.headline)
+                    .foregroundStyle(
+                        themeCenter.current.accent)
+                Spacer()
+                Text(center.running ? "RUNNING" : "HOLSTERED")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(center.running
+                                     ? .red : .secondary)
+            }
+        } footer: {
+            Text("Runs while the app is awake in front of "
+                 + "you — sleep pauses it, waking resumes it. "
+                 + "It uses only the house's own organs: the "
+                 + "sweep, the browse, the recon bench, the "
+                 + "ear. Nothing is exploited and nothing is "
+                 + "flooded; things are knocked on and "
+                 + "listened to — loudly, and in the open.")
+        }
+    }
+
+    private var idlePitch: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Every organ in the house, one continuous "
+                 + "autonomous run: sweep the wire on "
+                 + "rotating ports, let it announce itself, "
+                 + "then knock the full census against every "
+                 + "known device — pass after pass, for as "
+                 + "long as you leave it armed. Everything "
+                 + "it learns walks the usual roads: the "
+                 + "Neighborhood, the Map, the sealed log, "
+                 + "the mind underneath.")
+                .font(.callout)
+            Label("This is loud. It announces this phone to "
+                  + "every device — and every watcher — on "
+                  + "the wire. On networks you do not own it "
+                  + "may trip intrusion detection, alerts, "
+                  + "and logs with your name on them.",
+                  systemImage: "exclamationmark.shield.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+            Picker("Depth", selection: $depth) {
+                Text("Sweep").tag(0)
+                Text("+ Bonjour").tag(1)
+                Text("Full").tag(2)
+            }
+            .pickerStyle(.segmented)
+            Picker("Rest between passes", selection: $restSeconds) {
+                Text("30s").tag(30.0)
+                Text("75s").tag(75.0)
+                Text("3 min").tag(180.0)
+            }
+            .pickerStyle(.segmented)
+            Button {
+                armRequest = true
+            } label: {
+                HStack {
+                    SkullMark(color: .red, size: 18)
+                    Text("Arm the net-assault")
+                        .font(.body.weight(.bold))
+                    Spacer()
+                }
+            }
+            .foregroundStyle(.red)
+            if center.passes > 0 {
+                ShareLink(item: center.report) {
+                    Label("After-action report — last run",
+                          systemImage: "square.and.arrow.up")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var runningDashboard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(center.phase)
+                .font(.callout.weight(.bold))
+                .foregroundStyle(themeCenter.current.glow)
+            LazyVGrid(columns: [GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())],
+                      spacing: 8) {
+                stat("Passes", "\(center.passes)")
+                stat("New", "\(center.newThisRun)")
+                stat("Drift", "\(center.driftThisRun)")
+                stat("Knocked", "\(center.probedThisRun)")
+                stat("Elapsed", elapsed)
+                stat("Known",
+                     "\(NeighborhoodStore.shared.neighbors.count)")
+            }
+            if let top = mind.insights.first {
+                Text("The mind, watching: \(top.title)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(center.log.suffix(4), id: \.self) {
+                    line in
+                    Text(line)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Button(role: .destructive) {
+                center.disarm()
+            } label: {
+                HStack {
+                    Image(systemName: "hand.raised.fill")
+                    Text("Stand down")
+                        .font(.body.weight(.bold))
+                    Spacer()
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .onAppear { mind.refresh() }
+    }
+
+    private func stat(_ name: String, _ value: String)
+        -> some View {
+        VStack(spacing: 1) {
+            Text(value)
+                .font(.headline.monospaced())
+                .foregroundStyle(themeCenter.current.accent)
+            Text(name)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8)
+            .fill(Color.white.opacity(0.05)))
+    }
+
+    private var elapsed: String {
+        guard let start = center.startedAt else { return "—" }
+        let s = Int(Date().timeIntervalSince(start))
+        return s < 60 ? "\(s)s" : "\(s / 60)m \(s % 60)s"
+    }
+}
