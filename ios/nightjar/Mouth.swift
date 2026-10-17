@@ -528,6 +528,8 @@ final class Mouth: NSObject, ObservableObject {
         replyLock.unlock()
         DispatchQueue.main.async { [weak self] in
             self?.lastReply = noted
+            NeighborhoodStore.shared.discover(
+                source: label, via: "the mouth")
         }
     }
 
