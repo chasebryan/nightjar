@@ -844,6 +844,7 @@ final class SkelliCenter: ObservableObject {
         // Open water: her trained mind first, the
         // browser when the mind says the living web
         // is needed — or when no mind can speak.
+        if applyThemeAsk(q) { return }
         if isCodeAsk(q) {
             consultCode(q)
             return
@@ -851,15 +852,11 @@ final class SkelliCenter: ObservableObject {
         consultMindOrResearch(q)
     }
 
-    /// The open question goes to her trained mind
-    /// first — Apple's on-device model, when this
-    /// build and this phone carry it. It answers
-    /// conversation and general knowledge in her
-    /// voice, grounded in the house's facts; when
-    /// an answer needs the living web, it says so
-    /// with one word and the browser goes instead.
-    /// No model, or a model error, takes the
-    /// browser path exactly as before.
+    /// The open question goes to her minds: they
+    /// answer conversation and general knowledge
+    /// in her voice, grounded in the house; when
+    /// an answer needs the living web, one word
+    /// says so and the browser goes instead.
     private func consultMindOrResearch(_ q: String) {
         let started = SkelliMind.consult(
             question: q,
@@ -880,10 +877,6 @@ final class SkelliCenter: ObservableObject {
         }
     }
 
-    /// Her grounding: who she is, the state of the
-    /// house right now, and what her manual covers —
-    /// the facts the model may speak from, and the
-    /// fence it may not cross.
     /// The whole house at this moment, in one
     /// breath — the system's senses, as facts.
     private func sitrep() -> String {
@@ -1698,17 +1691,13 @@ private final class OnceFlag: @unchecked Sendable {
     }
 }
 
-/// Her trained minds, in cascade. Apple's on-device
-/// model (Foundation Models, iOS 26) speaks first —
-/// fast, free, on the phone. Her weights bench (an
-/// open-weights model the operator stages into the
-/// bundle, run through MLX) speaks when Apple's
-/// cannot, or first when the operator prefers it.
-/// When no mind can speak — or one stalls past the
-/// watchdog — the verdict is research, and her
-/// browser goes, exactly as it did before any mind
-/// existed. Nothing either mind hears leaves the
-/// phone.
+/// Her trained minds: Apple's on-device model
+/// (Foundation Models, iOS 26) and her weights
+/// bench (open weights through MLX). In council
+/// mode one drafts and the other refines; the
+/// single-mind modes speak alone. When no mind
+/// can speak, the verdict is research. Nothing
+/// either mind hears leaves the phone.
 enum SkelliMind {
     enum Verdict {
         case answer(String)
@@ -1821,11 +1810,9 @@ enum SkelliMind {
     }
 
     #if canImport(FoundationModels)
-    /// Apple's model first (or the bench, when
-    /// preferred), the other bench on failure, and
-    /// a thirty-second watchdog over all of it: a
-    /// stalled mind must never hold her answer
-    /// hostage.
+    /// The modes, and a thirty-second watchdog
+    /// over all of them: a stalled mind must
+    /// never hold her answer hostage.
     @available(iOS 26.0, *)
     private static func runCascade(
         prompt: String, grounding: String,
@@ -1937,14 +1924,9 @@ import Tokenizers
 #endif
 
 /// Her weights bench: open-weights models run
-/// through MLX. The operator picks one in her
-/// Weights sheet; it downloads from the Hugging
-/// Face hub into the app's own cache, is selected
-/// there, and is kept resident once woken. A
-/// folder named SkelliWeights staged into the
-/// bundle still serves as a bench when nothing
-/// has been chosen. Nothing here compiles unless
-/// the mlx-swift-lm package is in the target.
+/// through MLX — picked in her Weights sheet,
+/// downloaded from the hub into the app's own
+/// cache, kept resident once woken.
 @available(iOS 17.0, *)
 enum SkelliWeights {
     private static var container: ModelContainer?
@@ -2548,6 +2530,7 @@ struct SkelliView: View {
     @State private var showMemory = false
     @State private var showWeights = false
     @State private var showForge = false
+    @State private var showDeliveries = false
     @AppStorage("skelli.mindMode")
     private var mindMode = "council"
     @State private var confirmClear = false
@@ -2572,6 +2555,9 @@ struct SkelliView: View {
         }
         .sheet(isPresented: $showForge) {
             ForgeView()
+        }
+        .sheet(isPresented: $showDeliveries) {
+            DeliveriesView()
         }
         .confirmationDialog(
             "Clear this conversation?",
@@ -2694,6 +2680,12 @@ struct SkelliView: View {
             } label: {
                 Label("Forge",
                       systemImage: "hammer")
+            }
+            Button {
+                showDeliveries = true
+            } label: {
+                Label("Deliveries",
+                      systemImage: "shippingbox")
             }
             Toggle(isOn: $skelli.webResearchEnabled) {
                 Label("Web research",
