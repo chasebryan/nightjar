@@ -563,6 +563,7 @@ struct SessionsView: View {
     @State private var selection = Set<String>()
     @State private var showClearConfirm = false
     @State private var shareItem: ShareItem?
+    @State private var showNightLog = false
 
     private var deletable: [SessionSummary] {
         sessions.filter { $0.id != post.session?.id }
@@ -588,12 +589,13 @@ struct SessionsView: View {
         NavigationStack {
             List(selection: $selection) {
                 Section {
-                    NavigationLink {
-                        NightLogView()
+                    Button {
+                        showNightLog = true
                     } label: {
                         Label("Night log — the whole instrument, one timeline",
                               systemImage: "list.bullet.rectangle")
                     }
+                    .foregroundStyle(.primary)
                 }
                 if sessions.isEmpty {
                     Text("No sessions yet. Start one on the Listen tab; each session becomes "
@@ -678,6 +680,21 @@ struct SessionsView: View {
             }
             .onAppear(perform: reload)
             .onChange(of: post.session?.id) { _ in reload() }
+            .sheet(isPresented: $showNightLog) {
+                NavigationStack {
+                    NightLogView()
+                        .toolbar {
+                            ToolbarItem(
+                                placement:
+                                    .confirmationAction) {
+                                Button("Done") {
+                                    showNightLog = false
+                                }
+                            }
+                        }
+                }
+                .environment(\.backdropSlot, .sessions)
+            }
         }
     }
 
