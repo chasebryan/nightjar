@@ -214,7 +214,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
                 return
             }
             let token = "nightjar-coin:" + UUID().uuidString
-            guard let record = NFCNDEFRecord.wellKnownTypeTextPayload(
+            guard let record = NFCNDEFPayload.wellKnownTypeTextPayload(
                     string: token, locale: Locale(identifier: "en"))
             else {
                 self.finish(false, "The coin would not strike.",
