@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **Skelli, a trained mind (iOS).** Where her
+  engine's knowledge ends, she now consults
+  Apple's on-device model (Foundation Models,
+  iOS 26) before reaching for the browser: the
+  model answers open conversation and general
+  knowledge in her voice, grounded in the house's
+  live facts and the last few exchanges, and when
+  an answer needs the living web it says so with
+  one word and the browser goes instead, exactly
+  as before. The model runs entirely on the
+  phone — nothing she is told leaves the device.
+  Her status line reads "model on" when it is
+  live; where the build's SDK or the phone
+  cannot carry it, the code compiles the mind
+  away and her engine answers alone.
+
 - **Skelli, greeted properly (iOS).** Being
   spoken to by name no longer sends her to the
   browser: a leading "Skelli," is read as address,
