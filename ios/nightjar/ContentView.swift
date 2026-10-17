@@ -415,10 +415,6 @@ struct DeviceDetailView: View {
                     Label("Hunt this signal",
                           systemImage: "location.viewfinder")
                 }
-                .sheet(isPresented: $hunting) {
-                    HuntView(targetID: row.id)
-                        .environmentObject(post)
-                }
                 sparkline
             }
             Section("Timing") {
@@ -470,6 +466,10 @@ struct DeviceDetailView: View {
         .background { AppBackdrop() }
         .navigationTitle("Device")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $hunting) {
+            HuntView(targetID: row.id)
+                .environmentObject(post)
+        }
         .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
     }
 
