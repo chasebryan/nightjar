@@ -38,6 +38,7 @@ struct EmconView: View {
             senseSection
             conductorSection
             StewardSectionView(steward: emcon.steward)
+            SubconsciousSectionView()
             sparringSection
             SeasonSectionView(season: emcon.season,
                               emcon: emcon)
