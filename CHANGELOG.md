@@ -2,23 +2,42 @@
 
 ## Unreleased
 
-- **Skelli (iOS, everywhere).** The house's
-  specialist: a full section of its own behind a
-  floating skull button on every tab. Not a general
+- **Skelli (iOS).** The house's specialist, with
+  her own tab first in the bar — and a face: drawn
+  alive in the house's line art, a skull at her
+  laptop, breathing and blinking at rest, eyes up
+  and dots circling while she thinks, hands typing
+  while she works, jaw moving while she speaks,
+  glowing in the theme's own colours. Not a general
   intelligence — a specialist for this one
   application, whose knowledge is the app's own
   manual (a directory of every tab, organ, and
-  switch, browsable or askable), whose senses are
-  the app's live state (the wire, the sealed log,
-  the mind, the instrument, the posture), and
-  whose hands are the app's own controls, worked
-  through the real organs the app hands it: sweeps,
-  self-scans, audits, going dark, serve, stealth,
-  the tripwire, and navigation to any tab. Loud
-  and destructive levers keep their own
-  confirmations — Skelli walks the operator to
-  them and names why. Asked outside the house, it
-  says so.
+  switch, behind her menu), whose senses are the
+  app's live state (the wire, the sealed log, the
+  mind, the instrument, the posture), and whose
+  hands are the app's own controls, worked through
+  the real organs the app hands her: sweeps,
+  self-scans, audits, the drill, the ear, going
+  dark, serve, stealth, the tripwire, naming a
+  device for the whole house, and navigation to any
+  tab. She holds a conversation, not just a command
+  line: follow-ups land on the device under
+  discussion, answers about a device compose every
+  organ's word on it, and she proposes the next step
+  where the state invites one ('Shall I take you to
+  the Map?' — a yes walks). She remembers: the
+  conversation persists between visits, and what
+  she is told ('remember …') is kept in her own
+  memory, viewable and forgettable note by note;
+  the conversation clears on request, and Reset
+  returns her to her defaults. Thinking is always
+  on — a short, real beat while she consults the
+  house — and she still answers fast, because
+  everything she consults is already in the house.
+  Loud and destructive levers keep their own
+  confirmations — Skelli walks the operator to them
+  and names why. Asked outside the house, she says
+  so.
 - **The mind, consolidated (iOS).** The
   Subconscious now writes down what it concludes:
   durable house facts — the quiet hours, a
