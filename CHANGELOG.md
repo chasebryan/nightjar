@@ -1,21 +1,20 @@
 # Changelog
 
-## 6.0.0 — 2026-10-17 — the red bloom
+## 6.0.0 — 2026-10-17 — the open mind
 
-- **A new living wallpaper.** The
-  reel behind every tab is a red
-  bloom now: a seed of points on
-  black that multiplies outward
-  into a widening constellation,
-  rings, and folds home to the
-  seed — 615×615, a seamless
-  nineteen-second loop, wearing
-  wallpaper.gif's name so every
-  backdrop, fallback, and report
-  that already knew the name
-  wears the new reel without a
-  seam. The retired orb stays in
-  the repository's assets; the
+- **The wallpaper question,
+  settled.** A new reel — the red
+  bloom, a seed of red points on
+  black blooming into a
+  constellation — was tried as
+  the living wallpaper and
+  stepped down the same morning
+  at the operator's word: the
+  orb keeps the default behind
+  every tab, and the bloom is
+  kept in the repository's
+  assets under its own name for
+  whenever it is wanted. The
   Jolly Roger still stands as a
   choice in Colours.
 - **Everything prepared as 5.0.5
