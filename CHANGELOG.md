@@ -9,6 +9,15 @@
   dossiers, and a sweep lights the house up room by room.
   Placement is the operator's testimony — the app keeps
   it and never invents a location of its own.
+- **Given names (iOS).** Every device on the wire can be
+  given the operator's own name and a mark to tell it
+  apart — and the name follows the device everywhere it
+  is presented: the Neighborhood board, the Map, Scan's
+  dossiers, its own dossier, and the Subconscious's
+  findings. The wire's own name is never overwritten,
+  only outranked, and the journal keeps the naming. The
+  Bluetooth air keeps its classification labels instead:
+  a passerby is not yours to name.
 - **The Subconscious (iOS EMCON).** An underlying
   intelligence that reads across every organ — the sealed
   night log, the Neighborhood, the Map, cadence, the
