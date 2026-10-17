@@ -1888,9 +1888,6 @@ struct SkelliView: View {
 
     private var screen: some View {
         VStack(spacing: 0) {
-            header
-            activityBar
-            Divider()
             transcript
             inputBar
         }
@@ -2070,6 +2067,13 @@ struct SkelliView: View {
                 scrollToEnd(proxy)
             }
             .onAppear { scrollToEnd(proxy) }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                header
+                activityBar
+                Divider()
+            }
         }
     }
 
