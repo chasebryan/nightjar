@@ -82,7 +82,8 @@ final class NeighborhoodStore: ObservableObject {
     /// — a first sighting, a new port, a changed name. Routine
     /// re-sightings are tallied in silence.
     private func upsert(ip: String,
-                        mutate: (inout Neighbor, Bool) -> Void) {
+                        mutate: @escaping (inout Neighbor,
+                                           Bool) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             if let index = self.neighbors.firstIndex(
