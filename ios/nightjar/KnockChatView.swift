@@ -111,6 +111,7 @@ struct KnockChatView: View {
                 blinkSection
                 flareSection
                 capsuleSection
+                TestamentSectionView(store: TestamentStore.shared)
                 if coinLock && !coinUnlocked {
                     coinLockSection
                 } else {
