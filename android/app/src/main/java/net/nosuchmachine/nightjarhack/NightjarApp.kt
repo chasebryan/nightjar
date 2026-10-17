@@ -15,6 +15,7 @@ class NightjarApp : Application() {
     lateinit var engines: Engines
     lateinit var scanner: PortScanner
     lateinit var recon: Recon
+    lateinit var canary: CanaryHost
     lateinit var emcon: Emcon
     lateinit var steward: Steward
     lateinit var knockEngine: KnockEngine
@@ -76,6 +77,15 @@ class NightjarApp : Application() {
                 conductorPrefs, e, source, port, proto, verdict, mine)
         }
         emcon.vaultHook = { e -> Conductor.onVault(conductorPrefs, e) }
+        // The canary answers in character from the Serve tab;
+        // EMCON escalation and the steward's anticipation hand
+        // ports to it through the hook, and a taken drop feeds
+        // the conductor's choke.
+        canary = CanaryHost(this, serve)
+        emcon.canary = canary
+        canary.onHoneydropTaken = { peer ->
+            Conductor.onHoneydrop(conductorPrefs, emcon, peer)
+        }
         emcon.pivotSink = { host, port ->
             reconHandoff.value = Triple(host, port, System.nanoTime())
         }
