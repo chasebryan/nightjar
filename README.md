@@ -35,7 +35,14 @@ against. It boots over a living reel — the boot log typing itself across the f
   minds (see *Two ways in*, below): Apple's on-device
   model where the phone carries it, and an
   open-weights model she downloads and runs herself —
-  nothing she hears ever leaves the phone.
+  nothing she hears ever leaves the phone. Her minds
+  work as a council — one drafts, the other checks it
+  against the house before she speaks. She forges
+  real packets to order in her **Forge**, drafts and
+  runs code in her **Workbench**, files everything
+  she makes in **Deliveries**, and understands plain
+  intent in plain words: no modes to pick, no
+  phrasing to memorize.
 - **Listen** — the purist half: receive-only BLE, sessions in
   the same JSONL the Mac tools read, a wide decoder bench for
   the air (MiBeacon, BTHome, Ruuvi, drone Remote ID, and
@@ -87,8 +94,12 @@ against. It boots over a living reel — the boot log typing itself across the f
 - **About** — the options hub: identity, the authorized-use
   statement, the privacy policy, the sane-defaults census
   (resettable in one confirmed action), and **Colours** —
-  six themes plus the operator's own tailoring, and a
-  backdrop of its own for every tab.
+  six themes plus the operator's own tailoring, a
+  backdrop of its own for every tab, and the boot
+  screen's dress. About also keeps the version watch
+  (see *Staying current*) and carries a quiet support
+  door for anyone who wants to chip in toward the
+  costs.
 
 ## Two ways in: the current build, or v4.0.0
 
@@ -140,7 +151,7 @@ no Metal toolchain, no Apple Intelligence.** It is
 the complete flagship as it stood at that release —
 the listening post, the mouth, Recon, EMCON,
 Knocktalk, Colours, the works — without the 4.2.0
-intelligence wave (the Map, the Subconscious, the
+additions (the Map, the Subconscious, the
 Instrument) and without Skelli. If your phone or
 Mac can't carry the current build, this is your
 version, and it is a finished instrument, not a
@@ -197,6 +208,26 @@ needs its own build-and-trust pass.
 
 Deeper build notes live in
 [ios/README.md](ios/README.md).
+
+## Staying current
+
+The app watches for its own next release — at launch,
+whenever you return to it, every few minutes while it
+is open, and now and then while it sleeps. When a
+newer release exists, the Listen banner and About's
+Version row say so; if the release carries an
+over-the-air build, the update installs from inside
+the app, and if not, the notice links to the release
+page. Nothing installs unasked, and dismissing a
+version silences that one alone.
+
+Two roads feed it, both documented in
+[ota/README.md](ota/README.md): ad hoc over-the-air
+builds on the paid Developer Program, and the free
+[SideStore source](sidestore-source.json) — add its
+address to SideStore and releases surface there,
+re-signed on the phone itself. Rebuilding from
+source, as above, always works too.
 
 <p align="center">
   <img src="assets/scarface.gif" width="380" alt="Scarface">
