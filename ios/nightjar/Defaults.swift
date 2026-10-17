@@ -63,6 +63,7 @@ enum SaneDefaults {
         "knocktalkRelayToken", "knocktalkRelayBox",
         "cadenceSealOn", "cadence.profiles",
         "voiceThrow.armed",
+        "coin.hash", "coin.lockKnocktalk",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
     ]
