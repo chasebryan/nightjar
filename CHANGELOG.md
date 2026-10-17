@@ -59,6 +59,29 @@
   not twenty seconds. Pair facts
   join the contradiction watch.
 
+- **The wire organs learn
+  (intelligence batch 3).** The
+  Neighborhood stops rewriting its
+  whole file for every sighting —
+  sweeps land in one pass, saves
+  coalesce. Net-Assault knocks by
+  significance with a memory:
+  unseen drift first, an unchanged
+  cast skipped, not re-censused
+  forever. Identification runs
+  every channel and lets the rank
+  ladder arbitrate, evidence
+  merged; a weaker sighting can no
+  longer overwrite a stronger
+  one's details. Recon knocks in
+  two phases — known ports first,
+  the census only for hosts that
+  answer or were never known —
+  and the fuzzer keeps a corpus
+  of payloads that earned replies
+  and draws its mutations by
+  their yield.
+
 ## 5.0.5 — 2026-10-17 — the open hand
 
 - **Her hands, in conversation.** The
