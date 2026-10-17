@@ -835,18 +835,26 @@ struct AboutView: View {
 #endif
                 }
                 Section(header: Text("Backdrop")) {
-                    if let flag = UIImage(named: "AppBackground") {
-                        Text("Jolly Roger: loaded "
-                             + "(\(Int(flag.size.width))×"
-                             + "\(Int(flag.size.height)) pt) — it flies "
-                             + "behind every tab.")
+                    if let reel = Wallpaper.image {
+                        Text("Living wallpaper: playing "
+                             + "(\(Int(reel.size.width))×"
+                             + "\(Int(reel.size.height)) pt) — it "
+                             + "loops behind every tab, beginning "
+                             + "to end, forever.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    } else if UIImage(named: "AppBackground") != nil {
+                        Text("The living wallpaper has not landed "
+                             + "in this build — the retired Jolly "
+                             + "Roger stands in behind every tab "
+                             + "until wallpaper.gif joins the "
+                             + "bundle.")
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
-                        Text("Jolly Roger: NOT FOUND in this build. The "
-                             + "app looks for an image set named exactly "
-                             + "AppBackground in this project's "
-                             + "Assets.xcassets, with the picture in "
-                             + "its 1x slot.")
+                        Text("No backdrop in this build. The app "
+                             + "looks for wallpaper.gif in the "
+                             + "bundle (or a \"Wallpaper\" data "
+                             + "asset) — and wears plain black "
+                             + "until it finds one.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
