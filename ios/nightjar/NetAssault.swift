@@ -283,6 +283,7 @@ final class AssaultCenter: ObservableObject {
 struct NetAssaultSectionView: View {
     @ObservedObject var center: AssaultCenter
     @Binding var armRequest: Bool
+    @Binding var shareRequest: Bool
     @ObservedObject private var mind =
         SubconsciousCenter.shared
     @ObservedObject private var themeCenter =
@@ -374,7 +375,12 @@ struct NetAssaultSectionView: View {
             }
             .foregroundStyle(.red)
             if center.passes > 0 {
-                ShareLink(item: center.report) {
+                // A door, not a ShareLink: a bare ShareLink
+                // buried in a List section cannot find a
+                // presentation host in this app and dies
+                // silently under the finger. The sheet
+                // itself hangs off the screen's root.
+                Button { shareRequest = true } label: {
                     Label("After-action report — last run",
                           systemImage: "square.and.arrow.up")
                 }
@@ -450,6 +456,25 @@ struct NetAssaultSectionView: View {
         let s = Int(Date().timeIntervalSince(start))
         return s < 60 ? "\(s)s" : "\(s / 60)m \(s % 60)s"
     }
+}
+
+// MARK: - Sharing
+
+/// The system's share sheet as a plain view controller, so
+/// it can hang off a screen's root like every other working
+/// presenter in the house.
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(
+        context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items,
+                                 applicationActivities: nil)
+    }
+
+    func updateUIViewController(
+        _ controller: UIActivityViewController,
+        context: Context) {}
 }
 
 // MARK: - The ignition
