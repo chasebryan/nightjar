@@ -29,6 +29,8 @@
 	<string>nightjar-hack reads a tag you hold to the phone when you use the Coin — a physical key you claim in the EMCON tab. The tag is only read at the moment you tap, and only a hash of it is kept.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>nightjar-hack listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>nightjar-hack reads the readings your Apple Watch already collects — heart rate, blood oxygen, breath, wrist temperature, and sleep — to show the state of the operator beside the state of the house. It only reads; nothing is written to your health data, and nothing leaves this phone.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
