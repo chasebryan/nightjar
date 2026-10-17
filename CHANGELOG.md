@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **She reopens where you left her.** The
+  app remembers the last tab you were working
+  in and restores it on launch — even after
+  a swipe-close — so work picks up where it
+  stopped, anywhere in the house.
+
 - **One intelligence.** Her benches work in
   unison now: in Council mode (her menu) one
   mind drafts and the other verifies it
