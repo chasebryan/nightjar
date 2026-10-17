@@ -844,6 +844,10 @@ final class SkelliCenter: ObservableObject {
         // Open water: her trained mind first, the
         // browser when the mind says the living web
         // is needed — or when no mind can speak.
+        if isCodeAsk(q) {
+            consultCode(q)
+            return
+        }
         consultMindOrResearch(q)
     }
 
@@ -976,7 +980,11 @@ final class SkelliCenter: ObservableObject {
             + "Serve, arm the tripwire, work the "
             + "ear, name devices, forge payloads "
             + "into the armory, remember and "
-            + "forget. The house right now: "
+            + "forget. You are also the "
+            + "operator's programming partner: "
+            + "you write complete, correct code "
+            + "for anything asked. The house "
+            + "right now: "
             + sitrep()
             + ". Your manual covers: \(titles). "
             + "Orders and house state are handled "
