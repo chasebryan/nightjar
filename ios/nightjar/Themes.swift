@@ -58,7 +58,7 @@ struct AppTheme: Identifiable, Codable, Equatable {
 
     static let phosphor = AppTheme(
         id: "phosphor", name: "Phosphor",
-        accentHex: "#34F27B", glowHex: "#B6FFC9",
+        accentHex: "#148040", glowHex: "#B6FFC9",
         tintHex: "#04150A", tintStrength: 0.35, dim: 0.18,
         builtIn: true)
     static let bloodwork = AppTheme(
@@ -510,7 +510,7 @@ private struct ThemeEditorView: View {
         existingID = theme?.id
         _name = State(initialValue: theme?.name ?? "My theme")
         _accent = State(initialValue:
-            theme?.accent ?? Color(hex: "#34F27B"))
+            theme?.accent ?? Color(hex: "#148040"))
         _glow = State(initialValue:
             theme?.glow ?? Color(hex: "#B6FFC9"))
         _tint = State(initialValue:
