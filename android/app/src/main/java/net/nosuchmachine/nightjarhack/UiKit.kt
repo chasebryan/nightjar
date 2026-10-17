@@ -178,6 +178,12 @@ class Prefs(context: Context) {
     fun put(key: String, value: Boolean) {
         shared.edit().putBoolean(key, value).apply()
     }
+
+    fun remove(key: String) {
+        shared.edit().remove(key).apply()
+    }
+
+    fun allKeys(): Set<String> = shared.all.keys
 }
 
 @Composable
