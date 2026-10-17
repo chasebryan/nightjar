@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -103,6 +104,7 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
         emcon.deadHandEvaluate()
         Conductor.seedIfNeeded(prefs)
         rules = Conductor.loadRules(prefs)
+        app.steward.refresh()
     }
     LaunchedEffect(sparFuzzing) {
         if (!sparFuzzing && sparWasFuzzing) {
@@ -1062,6 +1064,13 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
             }
         }
 
+        // MARK: the steward
+        item {
+            StewardSection(
+                app = app, prefs = prefs,
+                hometurfNotes = hometurfNotes)
+        }
+
         // MARK: self-sparring
         item { IosSectionHeader("Self-sparring") }
         item {
@@ -1710,4 +1719,293 @@ private fun ManeuversSection(
             }
         }
     }
+}
+
+// MARK: - the steward
+
+@Composable
+private fun StewardSection(
+    app: NightjarApp, prefs: Prefs, hometurfNotes: List<String>
+) {
+    val steward = app.steward
+    val emcon = app.emcon
+    var stewardOn by prefBool(prefs, "stewardOn", false)
+    var latitude by prefString(prefs, "stewardLatitude", "observe")
+    val assessment by steward.assessment.collectAsState()
+    val mirrorLine by steward.mirrorLine.collectAsState()
+    val proposals by steward.proposals.collectAsState()
+    val orders by steward.orders.collectAsState()
+    val cases by steward.cases.collectAsState()
+    var orderName by remember { mutableStateOf("") }
+    var orderHost by remember { mutableStateOf("") }
+    var orderPort by remember { mutableStateOf("") }
+    var orderVerdict by remember { mutableStateOf("") }
+    var orderAction by remember { mutableStateOf("tighten") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        IosSectionHeader("The steward")
+        IosPanelCard {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("The steward")
+                    Switch(
+                        checked = stewardOn,
+                        onCheckedChange = { stewardOn = it })
+                }
+                if (stewardOn) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        for ((id, label) in listOf(
+                            "observe" to "Observe",
+                            "act" to "Act",
+                            "full" to "Full")) {
+                            FilterChip(
+                                selected = latitude == id,
+                                onClick = {
+                                    latitude = id
+                                    steward.refresh()
+                                },
+                                label = { Text(label) })
+                        }
+                    }
+                    Text(assessment)
+                    if (mirrorLine.isNotEmpty()) {
+                        Text(
+                            mirrorLine,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IosColors.SecondaryLabel)
+                    }
+                    for (proposal in proposals) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                proposal.title,
+                                fontWeight = FontWeight.Medium)
+                            Text(
+                                proposal.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = IosColors.SecondaryLabel)
+                            Row(
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(16.dp)
+                            ) {
+                                when (proposal.kind) {
+                                    "plan" -> TextButton(onClick = {
+                                        steward.enact(proposal)
+                                    }) { Text("Enact the plan") }
+                                    "rule" -> TextButton(onClick = {
+                                        steward.enact(proposal)
+                                    }) { Text("Approve the reflex") }
+                                    "charter" -> TextButton(onClick = {
+                                        steward.enact(proposal)
+                                    }) { Text("Amend the charter") }
+                                    "posture" -> TextButton(onClick = {
+                                        steward.enact(proposal)
+                                    }) { Text("Raise EMCON") }
+                                }
+                                TextButton(onClick = {
+                                    steward.dismissProposal(proposal)
+                                }) {
+                                    Text(
+                                        "Dismiss",
+                                        color = IosColors.Error)
+                                }
+                            }
+                        }
+                    }
+                    for (note in hometurfNotes) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                note,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                emcon.hometurfDismiss(note)
+                            }) { Text("Dismiss") }
+                        }
+                    }
+                    Text(
+                        "Watch orders — your own situations",
+                        fontWeight = FontWeight.Medium)
+                    for (order in orders) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(order.name)
+                                Text(
+                                    orderSummary(order),
+                                    style = MaterialTheme.typography
+                                        .bodySmall,
+                                    color = IosColors.SecondaryLabel)
+                            }
+                            Switch(
+                                checked = order.enabled,
+                                onCheckedChange = { on ->
+                                    steward.setOrders(
+                                        orders.map {
+                                            if (it.id == order.id) {
+                                                it.copy(enabled = on)
+                                            } else {
+                                                it
+                                            }
+                                        })
+                                })
+                            TextButton(onClick = {
+                                steward.setOrders(
+                                    orders.filter { it.id != order.id })
+                            }) {
+                                Text("Delete", color = IosColors.Error)
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = orderName,
+                        onValueChange = { orderName = it },
+                        label = {
+                            Text("Order name (e.g. the landlord's box)")
+                        },
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = orderHost,
+                        onValueChange = { orderHost = it },
+                        label = { Text("Host contains (blank = any)") },
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = orderPort,
+                        onValueChange = { orderPort = it },
+                        label = { Text("Port (blank = any)") },
+                        modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = orderVerdict,
+                        onValueChange = { orderVerdict = it },
+                        label = {
+                            Text("First word contains (blank = any)")
+                        },
+                        modifier = Modifier.fillMaxWidth())
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        for ((id, label) in listOf(
+                            "tighten" to "Raise the second sense",
+                            "answer" to "Answer in character",
+                            "pivot" to "Load the bench on them")) {
+                            FilterChip(
+                                selected = orderAction == id,
+                                onClick = { orderAction = id },
+                                label = { Text(label) })
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            if (orderName.isEmpty()) return@Button
+                            steward.setOrders(
+                                orders + Steward.WatchOrder(
+                                    id = java.util.UUID.randomUUID()
+                                        .toString(),
+                                    name = orderName, host = orderHost,
+                                    port = orderPort,
+                                    verdict = orderVerdict,
+                                    action = orderAction,
+                                    enabled = true))
+                            orderName = ""
+                            orderHost = ""
+                            orderPort = ""
+                            orderVerdict = ""
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Post the watch order") }
+                    val open = cases.filter { it.open }
+                    if (open.isNotEmpty()) {
+                        Text("Case files", fontWeight = FontWeight.Medium)
+                        for (entry in open) {
+                            Column(
+                                verticalArrangement =
+                                    Arrangement.spacedBy(3.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween,
+                                    verticalAlignment =
+                                        Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        entry.hosts.joinToString(", "),
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f))
+                                    TextButton(onClick = {
+                                        steward.closeCase(entry)
+                                    }) { Text("Close") }
+                                }
+                                for (line in entry.entries.takeLast(4)) {
+                                    Text(
+                                        line,
+                                        style = MaterialTheme.typography
+                                            .bodySmall,
+                                        color = IosColors.SecondaryLabel)
+                                }
+                            }
+                        }
+                    }
+                    val dismissed = Dismissals.count(prefs)
+                    if (dismissed > 0) {
+                        TextButton(onClick = {
+                            Dismissals.clear(prefs)
+                        }) {
+                            Text(
+                                "Restore $dismissed dismissed " +
+                                    "deviation(s)")
+                        }
+                    }
+                }
+                Text(
+                    "A watch officer under a charter you write. " +
+                        "OBSERVE: it assesses and files proposals, " +
+                        "and touches nothing. ACT: it runs plans " +
+                        "in proportion to confidence — high runs " +
+                        "the whole plan, medium its first step, " +
+                        "low is journaled and left to you. FULL: " +
+                        "it may also approve its own drafted " +
+                        "reflexes and raise EMCON at your usual " +
+                        "hour. Every judgment is a sealed journal " +
+                        "line with its score and its factors; you " +
+                        "audit it, you amend the charter. It " +
+                        "thinks while the app is open — every " +
+                        "opening is a shift change.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = IosColors.SecondaryLabel)
+            }
+        }
+    }
+}
+
+private fun orderSummary(order: Steward.WatchOrder): String {
+    val parts = mutableListOf<String>()
+    parts.add(
+        if (order.host.isEmpty()) "any host" else "host ∋ ${order.host}")
+    parts.add(
+        if (order.port.isEmpty()) "any port" else "port ${order.port}")
+    parts.add(
+        if (order.verdict.isEmpty()) {
+            "any first word"
+        } else {
+            "speaks ∋ ${order.verdict}"
+        })
+    return parts.joinToString(" · ") + " → " + order.action
 }
