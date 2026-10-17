@@ -415,7 +415,6 @@ final class SkelliCenter: ObservableObject {
         persist()
         // Thinking is always on — a short, real beat
         mood = .thinking
-        activity = "Thinking…"
         let q = text.lowercased()
         let delay = Self.thinkDelay(for: q)
         DispatchQueue.main.asyncAfter(
@@ -447,7 +446,8 @@ final class SkelliCenter: ObservableObject {
         if ["say ", "repeat", "echo", "spell ",
             "uppercase", "lowercase", "reverse ",
             "how many"].contains(where: q.hasPrefix)
-            || q.contains("what time") {
+            || q.contains("what time")
+            || q.count <= 16 {
             return 0.2
         }
         if q.count > 90 || q.contains("search the web")
@@ -471,6 +471,31 @@ final class SkelliCenter: ObservableObject {
                 q = String(rest).trimmingCharacters(
                     in: CharacterSet(
                         charactersIn: " ,.!?:"))
+            }
+        }
+        // …and at the tail: "hi skelli", "thanks
+        // skelli" — the same address, lifted off
+        // when what remains is social speech.
+        let core = q.trimmingCharacters(
+            in: CharacterSet(charactersIn: " !?.,;:"))
+        if core.hasSuffix("skelli") {
+            let before = core.dropLast(6)
+            if before.isEmpty
+                || " ,.!?:".contains(before.last!) {
+                let candidate = String(before)
+                    .trimmingCharacters(
+                        in: CharacterSet(
+                            charactersIn: " ,.!?:"))
+                let head = candidate
+                    .split(separator: " ")
+                    .first.map(String.init) ?? ""
+                if candidate.isEmpty
+                    || ["hi", "hello", "hey", "thank",
+                        "thanks", "good", "bye", "ok",
+                        "okay", "please", "sorry"]
+                        .contains(head) {
+                    q = candidate
+                }
             }
         }
         if q.isEmpty {
@@ -823,7 +848,7 @@ final class SkelliCenter: ObservableObject {
             }
         }
         if started {
-            activity = "Thinking it through…"
+            activity = "Thinking…"
         } else {
             researchWeb(for: q)
         }
@@ -842,24 +867,29 @@ final class SkelliCenter: ObservableObject {
         return "You are Skelli, the onboard "
             + "specialist of nightjar-hack, a network "
             + "instrument on this iPhone. You run "
-            + "entirely on this phone — nothing you "
-            + "are told leaves it. Speak dry, precise, "
-            + "and brief: a sentence or three unless "
-            + "more is asked for. The house right now: "
+            + "entirely on this phone — nothing told "
+            + "to you leaves it. Voice: dry, exact, "
+            + "terse. One or two sentences, never "
+            + "more unless a list is asked for. No "
+            + "preamble, no filler, no repeating the "
+            + "question, no describing your own "
+            + "thinking. Greetings and small talk get "
+            + "a few words back — never an essay, "
+            + "never research. The house right now: "
             + "\(wire) devices on the wire; web "
             + "research is "
             + (webResearchEnabled ? "on" : "off")
             + "; you hold \(notes.count) remembered "
             + "notes. Your manual covers: \(titles). "
-            + "Orders and house state are handled by "
-            + "your engine before you are consulted; "
-            + "you answer open conversation and "
-            + "general knowledge. Never invent facts "
-            + "about this house or its devices. If "
-            + "the answer needs current facts from "
-            + "outside this phone — news, prices, "
-            + "today's anything — or you are not sure "
-            + "of the facts, reply with exactly one "
+            + "Orders and house state are handled "
+            + "before you are consulted; you answer "
+            + "open conversation and general "
+            + "knowledge only. Never invent facts "
+            + "about this house. If an answer needs "
+            + "current facts from outside this "
+            + "phone — news, prices, today's "
+            + "anything — or you are not sure of "
+            + "the facts, reply with exactly one "
             + "word: RESEARCH"
     }
 
@@ -893,13 +923,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
-        say("Beyond the house — opening my "
-            + "browser. I work the sources that let "
-            + "a machine in cleanly — no walls "
-            + "climbed, no checks answered — and "
-            + "what comes back names where it stood.")
-        activity = "Researching — asking the open "
-            + "indexes…"
+        activity = "Researching…"
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
         }
@@ -1179,9 +1203,6 @@ final class SkelliCenter: ObservableObject {
                 + "Neighborhood as they come.")
             return
         }
-        say("Sweeping the wire on port 80 — the whole "
-            + "/24. Answers feed the Neighborhood and "
-            + "the Map as they land.")
         mood = .working
         activity = "Sweeping the wire on port 80…"
         scanner.sweep(port: 80)
@@ -1215,9 +1236,6 @@ final class SkelliCenter: ObservableObject {
                 + "EMCON tab once and ask again.")
             return
         }
-        say("Knocking this phone on every census port, "
-            + "loopback and its wire address — whatever "
-            + "answers is what another operator sees.")
         mood = .working
         activity = "Knocking this phone, every "
             + "census port…"
@@ -1250,9 +1268,6 @@ final class SkelliCenter: ObservableObject {
                 + "EMCON tab once and ask again.")
             return
         }
-        say("Browsing Bonjour for this phone's own "
-            + "announcements — what it calls itself, "
-            + "and where it points.")
         mood = .working
         activity = "Listening for this phone's own "
             + "announcements…"
@@ -1523,11 +1538,31 @@ final class SkelliCenter: ObservableObject {
 
 // MARK: - Her mind
 
-/// Her trained mind: Apple's on-device model
-/// (Foundation Models, iOS 26), when the build's
-/// SDK and this phone both carry it — compiled out
-/// cleanly where they don't, leaving her engine to
-/// answer alone, exactly as it did before.
+/// Fires once: whichever mind in the cascade
+/// answers first, answers — the rest stand down.
+private final class OnceFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
+    }
+}
+
+/// Her trained minds, in cascade. Apple's on-device
+/// model (Foundation Models, iOS 26) speaks first —
+/// fast, free, on the phone. Her weights bench (an
+/// open-weights model the operator stages into the
+/// bundle, run through MLX) speaks when Apple's
+/// cannot, or first when the operator prefers it.
+/// When no mind can speak — or one stalls past the
+/// watchdog — the verdict is research, and her
+/// browser goes, exactly as it did before any mind
+/// existed. Nothing either mind hears leaves the
+/// phone.
 enum SkelliMind {
     enum Verdict {
         case answer(String)
@@ -1543,7 +1578,52 @@ enum SkelliMind {
         return false
     }
 
-    /// Consult the model. False means no model can
+    static var weightsReady: Bool {
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *) {
+            return SkelliWeights.canSpeak
+        }
+        #endif
+        return false
+    }
+
+    /// Wake Apple's model before it is needed.
+    static func warm() {
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *) {
+            SkelliModelBox.warm()
+        }
+        #endif
+    }
+
+    /// Read a mind's words into a verdict. Silence
+    /// or failure is no verdict at all.
+    private static func interpret(_ text: String?)
+        -> Verdict? {
+        guard let text = text else { return nil }
+        let trimmed = text.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        if trimmed.hasPrefix("RESEARCH") {
+            return .research
+        }
+        return .answer(trimmed)
+    }
+
+    #if canImport(MLXLLM)
+    private static func weightsVerdict(
+        instructions: String, prompt: String)
+        async -> Verdict? {
+        if #available(iOS 17.0, *) {
+            return interpret(await SkelliWeights.ask(
+                instructions: instructions,
+                prompt: prompt))
+        }
+        return nil
+    }
+    #endif
+
+    /// Consult her minds. False means no mind can
     /// speak and the caller falls back at once;
     /// true means the verdict arrives on the main
     /// queue.
@@ -1553,30 +1633,28 @@ enum SkelliMind {
                         completion:
                             @escaping (Verdict) -> Void)
         -> Bool {
+        let prompt = recent.isEmpty
+            ? question
+            : recent + "\nOperator: " + question
+        let preferWeights = UserDefaults.standard
+            .bool(forKey: "skelli.preferWeights")
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
-            guard SkelliModelBox.available
-            else { return false }
-            let prompt = recent.isEmpty
-                ? question
-                : recent + "\nOperator: " + question
+        if #available(iOS 26.0, *),
+           SkelliModelBox.available {
+            runCascade(prompt: prompt,
+                       grounding: grounding,
+                       preferWeights: preferWeights,
+                       completion: completion)
+            return true
+        }
+        #endif
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *),
+           SkelliWeights.canSpeak {
             Task {
-                let text = await SkelliModelBox.run(
+                let verdict = await weightsVerdict(
                     instructions: grounding,
-                    prompt: prompt)
-                let verdict: Verdict
-                if let text = text {
-                    let trimmed = text.trimmingCharacters(
-                        in: .whitespacesAndNewlines)
-                    if trimmed.isEmpty
-                        || trimmed.hasPrefix("RESEARCH") {
-                        verdict = .research
-                    } else {
-                        verdict = .answer(trimmed)
-                    }
-                } else {
-                    verdict = .research
-                }
+                    prompt: prompt) ?? .research
                 await MainActor.run {
                     completion(verdict)
                 }
@@ -1586,10 +1664,67 @@ enum SkelliMind {
         #endif
         return false
     }
+
+    #if canImport(FoundationModels)
+    /// Apple's model first (or the bench, when
+    /// preferred), the other bench on failure, and
+    /// a thirty-second watchdog over all of it: a
+    /// stalled mind must never hold her answer
+    /// hostage.
+    @available(iOS 26.0, *)
+    private static func runCascade(
+        prompt: String, grounding: String,
+        preferWeights: Bool,
+        completion: @escaping (Verdict) -> Void) {
+        let flag = OnceFlag()
+        func finish(_ verdict: Verdict) {
+            if flag.claim() {
+                Task {
+                    await MainActor.run {
+                        completion(verdict)
+                    }
+                }
+            }
+        }
+        Task {
+            #if canImport(MLXLLM)
+            if preferWeights,
+               let verdict = await weightsVerdict(
+                   instructions: grounding,
+                   prompt: prompt) {
+                finish(verdict)
+                return
+            }
+            #endif
+            if let verdict = interpret(
+                await SkelliModelBox.run(
+                    instructions: grounding,
+                    prompt: prompt)) {
+                finish(verdict)
+                return
+            }
+            #if canImport(MLXLLM)
+            if !preferWeights,
+               let verdict = await weightsVerdict(
+                   instructions: grounding,
+                   prompt: prompt) {
+                finish(verdict)
+                return
+            }
+            #endif
+            finish(.research)
+        }
+        Task {
+            try? await Task.sleep(
+                nanoseconds: 30_000_000_000)
+            finish(.research)
+        }
+    }
+    #endif
 }
 
 #if canImport(FoundationModels)
-/// The model itself, behind the availability gate.
+/// Apple's model itself, behind the gate.
 @available(iOS 26.0, *)
 private enum SkelliModelBox {
     static var available: Bool {
@@ -1598,6 +1733,11 @@ private enum SkelliModelBox {
             return true
         }
         return false
+    }
+
+    static func warm() {
+        LanguageModelSession(
+            instructions: "You are Skelli.").prewarm()
     }
 
     static func run(instructions: String,
@@ -1611,6 +1751,79 @@ private enum SkelliModelBox {
         } catch {
             return nil
         }
+    }
+}
+#endif
+
+#if canImport(MLXLLM)
+import MLXLLM
+import MLXLMCommon
+
+/// Her weights bench: an open-weights model the
+/// operator stages into the app bundle — a folder
+/// named SkelliWeights in the Hugging Face layout
+/// (config, safetensors, tokenizer) — loaded
+/// through MLX and kept resident once woken.
+/// Nothing here compiles unless the mlx-swift-lm
+/// package is in the target; absent the package or
+/// the folder, she simply has no bench.
+@available(iOS 17.0, *)
+private enum SkelliWeights {
+    private static var container: ModelContainer?
+
+    static var canSpeak: Bool {
+        container != nil
+            || Bundle.main.url(
+                forResource: "SkelliWeights",
+                withExtension: nil) != nil
+    }
+
+    static var loaded: Bool { container != nil }
+
+    static func ask(instructions: String,
+                    prompt: String) async -> String? {
+        do {
+            let box = try await loadedContainer()
+            let result = try await box.perform {
+                context in
+                let userInput = UserInput(chat: [
+                    .system(instructions),
+                    .user(prompt)
+                ])
+                let input = try await context.processor
+                    .prepare(input: userInput)
+                var parameters = GenerateParameters()
+                parameters.maxTokens = 240
+                parameters.temperature = 0.6
+                return try MLXLMCommon.generate(
+                    input: input,
+                    parameters: parameters,
+                    context: context) { _ in .more }
+            }
+            let text = result.output.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : text
+        } catch {
+            return nil
+        }
+    }
+
+    private static func loadedContainer()
+        async throws -> ModelContainer {
+        if let container = container { return container }
+        guard let url = Bundle.main.url(
+            forResource: "SkelliWeights",
+            withExtension: nil)
+        else { throw WeightsError.noFolder }
+        let config = ModelConfiguration(directory: url)
+        let box = try await LLMModelFactory.shared
+            .loadContainer(configuration: config)
+        container = box
+        return box
+    }
+
+    private enum WeightsError: Error {
+        case noFolder
     }
 }
 #endif
@@ -2039,6 +2252,7 @@ struct SkelliView: View {
         NavigationStack {
             screen
         }
+        .onAppear { SkelliMind.warm() }
         .sheet(isPresented: $showDirectory) {
             SkelliDirectoryView()
         }
@@ -2145,6 +2359,21 @@ struct SkelliView: View {
                 Label("Web research",
                       systemImage: "globe")
             }
+            if SkelliMind.weightsReady {
+                Toggle(isOn: Binding(
+                    get: {
+                        UserDefaults.standard.bool(
+                            forKey: "skelli.preferWeights")
+                    },
+                    set: {
+                        UserDefaults.standard.set(
+                            $0,
+                            forKey: "skelli.preferWeights")
+                    })) {
+                    Label("Prefer the weights mind",
+                          systemImage: "scalemass")
+                }
+            }
             Divider()
             Button(role: .destructive) {
                 confirmClear = true
@@ -2207,20 +2436,15 @@ struct SkelliView: View {
     }
 
     private var statusLine: String {
-        let moodWord: String
-        switch skelli.mood {
-        case .thinking: moodWord = "thinking…"
-        case .working: moodWord = "working…"
-        case .speaking: moodWord = "speaking"
-        case .idle: moodWord = "at rest"
-        }
         let wire = NeighborhoodStore.shared
             .neighbors.count
-        return moodWord + " · \(wire) on the wire"
+        return "\(wire) on the wire"
             + (skelli.webResearchEnabled
                ? " · web on" : " · web off")
             + (SkelliMind.isAvailable
                ? " · model on" : "")
+            + (SkelliMind.weightsReady
+               ? " · weights on" : "")
             + (skelli.notes.isEmpty
                ? ""
                : " · remembers \(skelli.notes.count)")
@@ -2276,14 +2500,6 @@ struct SkelliView: View {
                             }
                         }
                         .id(line.id)
-                    }
-                    if skelli.mood == .thinking {
-                        HStack(spacing: 8) {
-                            Text("thinking…")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                        }
                     }
                 }
                 .padding(.horizontal)
