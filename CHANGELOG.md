@@ -40,6 +40,25 @@
   the reading it fell from, so the
   card shows the fall it bought.
 
+- **The awareness organs learn
+  (intelligence batch 2, second
+  half).** Variability and wrist
+  temperature are baselined like
+  resting heart and sleep, and the
+  Subconscious reads them: a dipped
+  variability and a warm night now
+  speak. The Steward's confidence
+  finally reads its own scorecard —
+  graded plan outcomes per host
+  bend the price it puts on the
+  next knock, in the open, as a
+  named factor. The listening post
+  ranks kind-aware: tracker-class
+  beacons pin while they are about
+  and go quiet on a minutes scale,
+  not twenty seconds. Pair facts
+  join the contradiction watch.
+
 ## 5.0.5 — 2026-10-17 — the open hand
 
 - **Her hands, in conversation.** The
