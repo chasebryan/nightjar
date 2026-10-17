@@ -873,6 +873,7 @@ struct AboutView: View {
 #if !STORE_BUILD
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var updater: UpdateChecker
+    @State private var showSupport = false
 #endif
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
@@ -946,16 +947,25 @@ struct AboutView: View {
                 }
 #if !STORE_BUILD
                 Section(header: Text("Support the work")) {
-                    Link(destination: URL(string: "https://buymeacoffee.com/realTechnique")!) {
-                        Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
+                    Button {
+                        showSupport = true
+                    } label: {
+                        HStack {
+                            Label {
+                                Text("Buy me a coffee")
+                            } icon: {
+                                Image(systemName: "cup.and.saucer.fill")
+                                    .foregroundStyle(Color(red: 0.85, green: 0.58, blue: 0.30))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
                     }
-                    Text("nightjar-hack is free and open source — "
-                         + "no ads, no tracking, no accounts. If it "
-                         + "earns its keep on your phone, a coffee "
-                         + "helps cover the developer fee and the "
-                         + "test gear, and keeps it free for "
-                         + "everyone. Nothing unlocks; everything "
-                         + "here is already yours.")
+                    Text("Free and open source, always. If you'd "
+                         + "like to help cover the costs, there's "
+                         + "a quiet door here — no pressure at all.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -1078,6 +1088,21 @@ struct AboutView: View {
                         }
                 }
             }
+#if !STORE_BUILD
+            .sheet(isPresented: $showSupport) {
+                NavigationStack {
+                    SupportView()
+                        .toolbar {
+                            ToolbarItem(
+                                placement: .confirmationAction) {
+                                Button("Done") {
+                                    showSupport = false
+                                }
+                            }
+                        }
+                }
+            }
+#endif
             .confirmationDialog("Reset all settings?",
                                 isPresented: $confirmReset) {
                 Button("Reset to sane defaults", role: .destructive) {
@@ -1091,6 +1116,96 @@ struct AboutView: View {
         }
     }
 }
+
+#if !STORE_BUILD
+// MARK: - Support
+
+/// The quiet door. A warm little room of its own — coffee colours,
+/// apart from every theme in the house — that asks for nothing and
+/// means it: the app is free either way, and this screen exists only
+/// so an operator who wants to chip in can find the way. It links
+/// out to Buy Me a Coffee; the app itself never touches a payment.
+struct SupportView: View {
+    private let cream = Color(red: 0.96, green: 0.91, blue: 0.83)
+    private let tan = Color(red: 0.76, green: 0.65, blue: 0.52)
+    private let amber = Color(red: 0.85, green: 0.58, blue: 0.30)
+    private let espresso = Color(red: 0.10, green: 0.06, blue: 0.03)
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.16, green: 0.10, blue: 0.06),
+                         Color(red: 0.05, green: 0.03, blue: 0.02)],
+                startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 22) {
+                    ZStack {
+                        Circle()
+                            .fill(amber.opacity(0.16))
+                            .frame(width: 118, height: 118)
+                        Image(systemName: "cup.and.saucer.fill")
+                            .font(.system(size: 52))
+                            .foregroundStyle(amber)
+                    }
+                    .padding(.top, 36)
+
+                    Text("Support the work")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(cream)
+
+                    VStack(spacing: 14) {
+                        Text("nightjar-hack is free, and it stays "
+                             + "free either way — every tool in it "
+                             + "is already yours. There are no "
+                             + "paywalls here, and there never "
+                             + "will be.")
+                        Text("If it has earned its keep on your "
+                             + "phone and you'd like to chip in, a "
+                             + "coffee helps cover the developer "
+                             + "fee and the test gear it takes to "
+                             + "build this. And if not — that's "
+                             + "cool too. Truly.")
+                        Text("— Chase")
+                            .foregroundStyle(amber)
+                    }
+                    .font(.body)
+                    .foregroundStyle(tan)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 28)
+
+                    Link(destination: URL(string: "https://buymeacoffee.com/realTechnique")!) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "cup.and.saucer.fill")
+                            Text("Buy me a coffee")
+                        }
+                        .font(.headline)
+                        .foregroundStyle(espresso)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(amber, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 6)
+
+                    Text("Opens Buy Me a Coffee in your browser — "
+                         + "the app never sees or touches your "
+                         + "payment details.")
+                        .font(.footnote)
+                        .foregroundStyle(tan.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 36)
+                        .padding(.bottom, 28)
+                }
+            }
+        }
+        .navigationTitle("Support")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+}
+#endif
 
 #Preview {
     ContentView()
