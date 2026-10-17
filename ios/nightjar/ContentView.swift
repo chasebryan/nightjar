@@ -6,15 +6,20 @@ struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var emcon: Emcon
+    @EnvironmentObject private var post: ListeningPost
     @State private var tab = 0
     @State private var showBoot = true
-    @State private var showSkelli = false
     @ObservedObject private var themes = ThemeCenter.shared
 
     var body: some View {
         ZStack {
             AppBackdrop()
             TabView(selection: $tab) {
+            SkelliView()
+                .appThemed(.skelli)
+                .tabItem { Label("Skelli",
+                                 systemImage: "skull") }
+                .tag(9)
             ListenView(tab: $tab)
                 .appThemed(.listen)
                 .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
@@ -62,16 +67,14 @@ struct ContentView: View {
             // organs, so its hands work the real
             // controls.
             SkelliCenter.shared.wire(mouth: mouth,
-                                     emcon: emcon)
+                                     emcon: emcon,
+                                     post: post)
         }
         .onReceive(NotificationCenter.default.publisher(
             for: .houseNavigate)) { note in
             if let target = note.userInfo?["tab"] as? Int {
                 tab = target
             }
-        }
-        .sheet(isPresented: $showSkelli) {
-            SkelliView()
         }
         .onChange(of: tab) { _ in Haptics.select() }
         .onChange(of: mouth.reconHandoff) { handoff in
@@ -86,36 +89,6 @@ struct ContentView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-            if !showBoot {
-                // Skelli, one tap from anywhere: the
-                // house's specialist, floating over
-                // every tab.
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button {
-                            showSkelli = true
-                        } label: {
-                            SkullMark(color: .white, size: 24)
-                                .padding(13)
-                                .background(
-                                    Color.black.opacity(0.55),
-                                    in: Circle())
-                                .overlay {
-                                    Circle().stroke(
-                                        Color.white.opacity(0.35),
-                                        lineWidth: 1)
-                                }
-                        }
-                        .accessibilityLabel(
-                            "Ask Skelli")
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 62)
-                    }
-                }
-                .zIndex(10)
-            }
             if showBoot {
                 BootView {
                     withAnimation(.easeOut(duration: 0.5)) {
