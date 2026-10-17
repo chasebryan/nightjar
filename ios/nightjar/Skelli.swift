@@ -2697,32 +2697,18 @@ struct SkelliView: View {
                       systemImage: "globe")
             }
             if SkelliMind.weightsReady {
-                Button {
-                    mindMode = "council"
+                Menu {
+                    Button { mindMode = "council" } label: {
+                        Label("Council of both", systemImage: mindMode == "council" ? "checkmark" : "person.2")
+                    }
+                    Button { mindMode = "apple" } label: {
+                        Label("Apple only", systemImage: mindMode == "apple" ? "checkmark" : "apple.logo")
+                    }
+                    Button { mindMode = "weights" } label: {
+                        Label("Weights only", systemImage: mindMode == "weights" ? "checkmark" : "scalemass")
+                    }
                 } label: {
-                    Label("Mind: council of both",
-                          systemImage: mindMode
-                            == "council"
-                            ? "checkmark"
-                            : "person.2")
-                }
-                Button {
-                    mindMode = "apple"
-                } label: {
-                    Label("Mind: Apple only",
-                          systemImage: mindMode
-                            == "apple"
-                            ? "checkmark"
-                            : "apple.logo")
-                }
-                Button {
-                    mindMode = "weights"
-                } label: {
-                    Label("Mind: weights only",
-                          systemImage: mindMode
-                            == "weights"
-                            ? "checkmark"
-                            : "scalemass")
+                    Label("Mind: " + (mindMode == "apple" ? "Apple only" : mindMode == "weights" ? "weights only" : "council"), systemImage: "brain.head.profile")
                 }
             }
             Divider()
