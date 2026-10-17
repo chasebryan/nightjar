@@ -99,6 +99,7 @@ struct KnockChatView: View {
                     keySection
                 }
                 suiteSection
+                cadenceSection
                 relaySection
                 chirpSection
                 brushSection
@@ -226,6 +227,47 @@ struct KnockChatView: View {
                 }
             }
         }
+    }
+
+    @AppStorage("cadenceSealOn") private var cadenceSealOn = true
+
+    private var cadenceSection: some View {
+        Section(header: Text("Cadence Seal — the second factor is rhythm"),
+                footer: Text("The pairing key decides what "
+                    + "opens. Cadence decides what is believed: "
+                    + "the seal learns a peer's knock timing "
+                    + "from its first messages, then flags any "
+                    + "later message that arrives in foreign "
+                    + "hands — right key, wrong rhythm. It never "
+                    + "blocks a message; it marks it, and the "
+                    + "night log remembers.")) {
+            Toggle("Cadence Seal", isOn: $cadenceSealOn)
+            ForEach(chat.peersByRecency, id: \.self) { peer in
+                HStack {
+                    Text(peer).font(.callout)
+                    Spacer()
+                    Text(cadenceStatus(peer))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Reset") {
+                        CadenceSeal.reset(peer: peer)
+                    }
+                    .font(.caption)
+                }
+            }
+        }
+    }
+
+    private func cadenceStatus(_ peer: String) -> String {
+        if let note = chat.cadenceNotes[peer] { return note }
+        guard let profile = CadenceSeal.profile(for: peer) else {
+            return "not enrolled"
+        }
+        if profile.samples >= CadenceSeal.enrollSamples {
+            return "enrolled — watching the hands"
+        }
+        return "learning \(profile.samples)/"
+            + "\(CadenceSeal.enrollSamples)"
     }
 
     @AppStorage("knocktalkRelayEnabled") private var relayEnabled = false
@@ -851,6 +893,15 @@ struct ConversationView: View {
 
     var body: some View {
         List {
+            if let note = chat.cadenceNotes[peer] {
+                Text(note)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(note.contains("FOREIGN")
+                        ? Color.red
+                        : (note.contains("✓") ? Color.green
+                           : Color.secondary))
+                    .listRowSeparator(.hidden)
+            }
             if messages.isEmpty {
                 Text("Nothing yet. The first message knocks the "
                      + "whole conversation open — fragments, "
