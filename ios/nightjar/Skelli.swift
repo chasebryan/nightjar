@@ -1,3 +1,4 @@
+import AVFoundation
 import Combine
 import Foundation
 import PDFKit
@@ -29,424 +30,200 @@ enum SkelliKnowledge {
             home: "the Listen tab",
             keywords: ["listen", "ear", "bluetooth", "ble",
                        "radar", "sightings", "nearby", "drone"],
-            body: "A passive Bluetooth LE listening post. "
-                + "It never connects or pairs; it logs "
-                + "advertisements, builds a presence "
-                + "registry, decodes Apple Continuity and "
-                + "Remote ID drone broadcasts, and flags "
-                + "unknown trackers. Sessions are kept in "
-                + "the same JSONL the Mac tools read."),
+            body: "A passive Bluetooth LE listening post. It never connects or pairs; it logs advertisements, builds a presence registry, decodes Apple Continuity and Remote ID drone broadcasts, and flags unknown trackers. Sessions are kept in the same JSONL the Mac tools read."),
         SkelliEntry(
             id: "send", title: "Send — the throwing arm",
             home: "the Send tab",
             keywords: ["send", "payload", "throw", "fan-out",
                        "fanout", "snatchsteal", "payplant",
                        "timed", "template"],
-            body: "Payloads out over TCP, UDP, TLS, HTTP, "
-                + "and BLE — typed by hand or from the "
-                + "protocol library, templated with the "
-                + "target, fanned out to many hosts, "
-                + "timed, repeated, or planted to stay "
-                + "living on a service (PayPlant). "
-                + "SnatchSteal knocks, then drains "
-                + "everything the target sends back."),
+            body: "Payloads out over TCP, UDP, TLS, HTTP, and BLE — typed by hand or from the protocol library, templated with the target, fanned out to many hosts, timed, repeated, or planted to stay living on a service (PayPlant). SnatchSteal knocks, then drains everything the target sends back."),
         SkelliEntry(
             id: "serve", title: "Serve — the open door",
             home: "the Serve tab",
             keywords: ["serve", "listener", "listen on",
                        "inbox", "stealth", "reply"],
-            body: "TCP, UDP, and HTTP listeners with "
-                + "fixed or echo replies and an inbox "
-                + "that banners arrivals. Stealth stops "
-                + "the Bonjour listing — reachable by "
-                + "known address, invisible on the board. "
-                + "The BLE GATT host arms once and "
-                + "survives backgrounding until you stop "
-                + "it yourself."),
+            body: "TCP, UDP, and HTTP listeners with fixed or echo replies and an inbox that banners arrivals. Stealth stops the Bonjour listing — reachable by known address, invisible on the board. The BLE GATT host arms once and survives backgrounding until you stop it yourself."),
         SkelliEntry(
             id: "sessions", title: "Sessions",
             home: "the Sessions tab",
             keywords: ["sessions", "recordings", "history",
                        "export", "jsonl"],
-            body: "Every listening session the ear has "
-                + "kept, in the nightjar JSONL the "
-                + "desktop tools read. Sessions can be "
-                + "shared out, and deleted — singly or "
-                + "all at once, behind a confirmation."),
+            body: "Every listening session the ear has kept, in the nightjar JSONL the desktop tools read. Sessions can be shared out, and deleted — singly or all at once, behind a confirmation."),
         SkelliEntry(
             id: "nightlog", title: "The Night log",
             home: "EMCON's brief and the About tab",
             keywords: ["night log", "journal", "sealed",
                        "log", "hash", "record", "brief",
                        "morning"],
-            body: "The house's sealed journal: every "
-                + "organ writes to one hash-chained JSONL "
-                + "in Documents, each line bound to the "
-                + "one before it, so the record testifies "
-                + "about tampering itself. It folds "
-                + "behind an Entries door, clears behind "
-                + "a confirmation, and its morning brief "
-                + "opens the day. Contents of knocktalk "
-                + "are never journaled — only arrivals."),
+            body: "The house's sealed journal: every organ writes to one hash-chained JSONL in Documents, each line bound to the one before it, so the record testifies about tampering itself. It folds behind an Entries door, clears behind a confirmation, and its morning brief opens the day. Contents of knocktalk are never journaled — only arrivals."),
         SkelliEntry(
             id: "scan", title: "Scan — the wire, swept",
             home: "the Scan tab",
             keywords: ["scan", "sweep", "ports", "subnet",
                        "discovery", "bonjour", "tls", "dns",
                        "pcap", "feed"],
-            body: "A connect scanner and a /24 subnet "
-                + "sweep, a Bonjour board that resolves "
-                + "to addresses, an observation feed that "
-                + "narrates hosts coming and going, a TLS "
-                + "inspector, a DNS toolkit, and a pcap "
-                + "dissector for captures from your own "
-                + "machines. Everything it finds feeds "
-                + "the Neighborhood and the Map."),
+            body: "A connect scanner and a /24 subnet sweep, a Bonjour board that resolves to addresses, an observation feed that narrates hosts coming and going, a TLS inspector, a DNS toolkit, and a pcap dissector for captures from your own machines. Everything it finds feeds the Neighborhood and the Map."),
         SkelliEntry(
             id: "dossiers", title: "Dossiers",
             home: "the Scan tab, under Dossiers",
             keywords: ["dossier", "device page", "baseline",
                        "profile"],
-            body: "One page per device, every organ's "
-                + "testimony in one place: what Scan "
-                + "heard, whether the ear knows the name "
-                + "over Bluetooth, its given name and "
-                + "mark, its drift — and a knock baseline "
-                + "you can set, so the house can say when "
-                + "the device stops sounding like itself."),
+            body: "One page per device, every organ's testimony in one place: what Scan heard, whether the ear knows the name over Bluetooth, its given name and mark, its drift — and a knock baseline you can set, so the house can say when the device stops sounding like itself."),
         SkelliEntry(
             id: "map", title: "The Map",
             home: "the top of the Scan tab",
             keywords: ["map", "rooms", "room", "placed",
                        "floor", "house plan", "layout"],
-            body: "The house on one canvas: you name "
-                + "rooms and place each neighbor where "
-                + "the device physically sits; nodes "
-                + "glow by freshness, carry their drift, "
-                + "and open their dossiers. Placement is "
-                + "your testimony — the app keeps it and "
-                + "never invents a location of its own. "
-                + "The Map resets from its More menu; "
-                + "the devices stay, the sitting is "
-                + "forgotten."),
+            body: "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten."),
         SkelliEntry(
             id: "compass", title: "The Compass",
             home: "the Map's 'In the air' strip",
             keywords: ["compass", "homing", "walk", "find",
                        "direction", "bearing", "paw"],
-            body: "Walk to a Bluetooth device the ear is "
-                + "hearing: signal in honest bands with "
-                + "paw-prints for distance, a ring that "
-                + "fills as you close in, and a bearing "
-                + "that condenses out of your own "
-                + "footsteps — Bluetooth gives a loudness, "
-                + "never a direction, so the direction is "
-                + "learned from your walking. No wedge "
-                + "until you have walked."),
+            body: "Walk to a Bluetooth device the ear is hearing: signal in honest bands with paw-prints for distance, a ring that fills as you close in, and a bearing that condenses out of your own footsteps — Bluetooth gives a loudness, never a direction, so the direction is learned from your walking. No wedge until you have walked."),
         SkelliEntry(
             id: "neighborhood", title: "The Neighborhood",
             home: "the Scan tab",
             keywords: ["neighborhood", "neighbors",
                        "neighbours", "devices", "given name",
                        "name a device", "rename", "mark"],
-            body: "The wire's cast, kept: every device "
-                + "the house has learned — by sweep, by "
-                + "announcement, by knock at its own door "
-                + "— with its sightings, ports, drift, "
-                + "and arrivals. Any of them can be given "
-                + "your own name and a mark, and the name "
-                + "follows the device everywhere. The "
-                + "board folds behind a counted door and "
-                + "clears behind a confirmation."),
+            body: "The wire's cast, kept: every device the house has learned — by sweep, by announcement, by knock at its own door — with its sightings, ports, drift, and arrivals. Any of them can be given your own name and a mark, and the name follows the device everywhere. The board folds behind a counted door and clears behind a confirmation."),
         SkelliEntry(
             id: "recon", title: "The Recon bench",
             home: "the Recon tab",
             keywords: ["recon", "bench", "knock", "connect",
                        "fuzz", "census", "probe"],
-            body: "The pocket bench: knock a host across "
-                + "the full port census speaking each "
-                + "port's own first words, read banners, "
-                + "fuzz a service with malformed "
-                + "greetings, and keep presets of the "
-                + "knocks you run often. Its answers feed "
-                + "the Neighborhood like everything "
-                + "else's."),
+            body: "The pocket bench: knock a host across the full port census speaking each port's own first words, read banners, fuzz a service with malformed greetings, and keep presets of the knocks you run often. Its answers feed the Neighborhood like everything else's."),
         SkelliEntry(
             id: "emcon", title: "EMCON — the posture",
             home: "the EMCON tab",
             keywords: ["emcon", "score", "posture", "ghost",
                        "exposure", "dark", "visible"],
-            body: "Emission control: one number for how "
-                + "visible this phone is — its own "
-                + "listeners, its announcements, its "
-                + "radios — with the weights shown. "
-                + "Going dark silences what the house "
-                + "owns: stealth on, beacon and GATT "
-                + "host down, tripwire armed. The score "
-                + "never hides what it cannot silence; "
-                + "your VPN's own listener reads as what "
-                + "it is."),
+            body: "Emission control: one number for how visible this phone is — its own listeners, its announcements, its radios — with the weights shown. Going dark silences what the house owns: stealth on, beacon and GATT host down, tripwire armed. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
         SkelliEntry(
             id: "tripwire", title: "The tripwire & prober files",
             home: "the EMCON tab",
             keywords: ["tripwire", "prober", "knocked me",
                        "who knocked", "probed"],
-            body: "Silent listeners bound on the census "
-                + "ports: anyone who knocks this phone "
-                + "is logged — source, port, first words "
-                + "— and never answered. The prober files "
-                + "assemble a dossier per knocker from "
-                + "that log. Both fold to six with a door "
-                + "to the rest, and the log clears from "
-                + "its own section."),
+            body: "Silent listeners bound on the census ports: anyone who knocks this phone is logged — source, port, first words — and never answered. The prober files assemble a dossier per knocker from that log. Both fold to six with a door to the rest, and the log clears from its own section."),
         SkelliEntry(
             id: "drill", title: "The drill",
             home: "the EMCON tab",
             keywords: ["drill", "prove it", "went quiet",
                        "silenced"],
-            body: "'Prove it — scan, go dark, scan "
-                + "again.' The drill snapshots the "
-                + "phone's exposure, engages EMCON, "
-                + "measures again, and reads the "
-                + "difference out — from a ledger of "
-                + "what it switched off, beside the "
-                + "snapshot diff, because a withdrawn "
-                + "Bonjour listing echoes in mDNS after "
-                + "it dies and a scan alone would swear "
-                + "nothing happened."),
+            body: "'Prove it — scan, go dark, scan again.' The drill snapshots the phone's exposure, engages EMCON, measures again, and reads the difference out — from a ledger of what it switched off, beside the snapshot diff, because a withdrawn Bonjour listing echoes in mDNS after it dies and a scan alone would swear nothing happened."),
         SkelliEntry(
             id: "assault", title: "Net-Assault",
             home: "the EMCON tab, under the skull",
             keywords: ["net-assault", "net assault",
                        "assault", "autonomous", "passes",
                        "after-action", "after action"],
-            body: "The house turned loose on its own "
-                + "wire: sweeps on rotating ports, the "
-                + "Bonjour browse, and the bench knocking "
-                + "the full census against every known "
-                + "neighbor, pass after pass until you "
-                + "stand it down. Loud by design — it "
-                + "warns twice, runs only while the app "
-                + "is awake, and exports an after-action "
-                + "report when it stands down. Arming "
-                + "plays the ignition reel."),
+            body: "The house turned loose on its own wire: sweeps on rotating ports, the Bonjour browse, and the bench knocking the full census against every known neighbor, pass after pass until you stand it down. Loud by design — it warns twice, runs only while the app is awake, and exports an after-action report when it stands down. Arming plays the ignition reel."),
         SkelliEntry(
             id: "steward", title: "The Steward",
             home: "the EMCON tab",
             keywords: ["steward", "proposals", "suggests",
                        "latitude", "home-turf", "home turf"],
-            body: "The house's judgment, on a leash: it "
-                + "watches and proposes — enact or "
-                + "dismiss, and it learns the shape of "
-                + "your house from three banked nights "
-                + "of home-turf before it proposes there. "
-                + "It ships at observe latitude: it asks, "
-                + "it does not act alone."),
+            body: "The house's judgment, on a leash: it watches and proposes — enact or dismiss, and it learns the shape of your house from three banked nights of home-turf before it proposes there. It ships at observe latitude: it asks, it does not act alone."),
         SkelliEntry(
             id: "subconscious", title: "The Subconscious",
             home: "the EMCON tab — 'Open the mind'",
             keywords: ["subconscious", "mind", "findings",
                        "facts", "learned", "verdict",
                        "pattern", "brief", "ask"],
-            body: "The mind underneath: it reads across "
-                + "every organ — log, wire, Map, "
-                + "cadence, the Instrument — and names "
-                + "what breaks the house's pattern, with "
-                + "citations and printed confidence. It "
-                + "consolidates: durable facts with "
-                + "their evidence, contradicted in the "
-                + "open when the house breaks them. "
-                + "Your True / Not so verdicts bend its "
-                + "confidences and teach its priorities. "
-                + "Ask it about the record in its own "
-                + "view. It never acts; it advises."),
+            body: "The mind underneath: it reads across every organ — log, wire, Map, cadence, the Instrument — and names what breaks the house's pattern, with citations and printed confidence. It consolidates: durable facts with their evidence, contradicted in the open when the house breaks them. Your True / Not so verdicts bend its confidences and teach its priorities. Ask it about the record in its own view. It never acts; it advises."),
         SkelliEntry(
             id: "instrument", title: "The Instrument",
             home: "the EMCON tab, below the Subconscious",
             keywords: ["instrument", "watch", "apple watch",
                        "heart", "sleep", "health", "oxygen",
                        "hrv", "steps"],
-            body: "The Apple Watch, read: worn and "
-                + "paired, it already measures you and "
-                + "leaves the readings in this phone's "
-                + "health store — no watch app, no "
-                + "session. Heart, variability, resting "
-                + "heart, blood oxygen, breath, wrist "
-                + "temperature, steps, and last night's "
-                + "sleep as a window. A reading, not a "
-                + "live feed: every value carries its "
-                + "age. The mind reads you against your "
-                + "own fortnight baseline."),
+            body: "The Apple Watch, read: worn and paired, it already measures you and leaves the readings in this phone's health store — no watch app, no session. Heart, variability, resting heart, blood oxygen, breath, wrist temperature, steps, and last night's sleep as a window. A reading, not a live feed: every value carries its age. The mind reads you against your own fortnight baseline."),
         SkelliEntry(
             id: "knocktalk", title: "Knocktalk",
             home: "the Knocktalk tab",
             keywords: ["knocktalk", "messages", "chat",
                        "sealed", "pairing", "burn"],
-            body: "Messages that travel as knock ORDER "
-                + "alone — a ChaCha20-Poly1305 sealed box "
-                + "spelled in port sequences under a "
-                + "pairing key kept in the Keychain. The "
-                + "journal records arrivals, never "
-                + "contents. A burn timer deletes decoded "
-                + "messages after the retention you set. "
-                + "Threads clear from its Housekeeping, "
-                + "key untouched."),
+            body: "Messages that travel as knock ORDER alone — a ChaCha20-Poly1305 sealed box spelled in port sequences under a pairing key kept in the Keychain. The journal records arrivals, never contents. A burn timer deletes decoded messages after the retention you set. Threads clear from its Housekeeping, key untouched."),
         SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
             keywords: ["vault", "combination", "raise serve",
                        "secret knock"],
-            body: "Three protocol digits you choose, "
-                + "spoken properly by one other device "
-                + "inside twenty seconds, raise Serve "
-                + "from its settings for sixty seconds — "
-                + "then it seals itself. The combination "
-                + "is yours, changeable in EMCON."),
+            body: "Three protocol digits you choose, spoken properly by one other device inside twenty seconds, raise Serve from its settings for sixty seconds — then it seals itself. The combination is yours, changeable in EMCON."),
         SkelliEntry(
             id: "cadence", title: "The Cadence Seal",
             home: "the Knocktalk tab and EMCON's grading",
             keywords: ["cadence", "foreign hands", "rhythm",
                        "timing", "hands", "fingerprint"],
-            body: "Knock timing is a fingerprint: the "
-                + "seal learns each peer's rhythm across "
-                + "six features and flags a correct key "
-                + "knocked by the wrong hands — FOREIGN "
-                + "HANDS — in the thread, the banner, "
-                + "and the journal. It annotates, never "
-                + "blocks. Profiles forget from "
-                + "Knocktalk's Housekeeping."),
+            body: "Knock timing is a fingerprint: the seal learns each peer's rhythm across six features and flags a correct key knocked by the wrong hands — FOREIGN HANDS — in the thread, the banner, and the journal. It annotates, never blocks. Profiles forget from Knocktalk's Housekeeping."),
         SkelliEntry(
             id: "throw", title: "Throw Your Voice",
             home: "the Knocktalk tab",
             keywords: ["throw", "voice", "remote", "receipt",
                        "command another"],
-            body: "One phone instructs another by "
-                + "knocktalk — send this, there, now — "
-                + "and the armed mouth executes and "
-                + "returns a receipt that settles the "
-                + "delivery in the thread. The "
-                + "instruction rides sealed, like any "
-                + "other message."),
+            body: "One phone instructs another by knocktalk — send this, there, now — and the armed mouth executes and returns a receipt that settles the delivery in the thread. The instruction rides sealed, like any other message."),
         SkelliEntry(
             id: "coin", title: "The Coin",
             home: "the EMCON tab",
             keywords: ["coin", "nfc", "tag", "physical key"],
-            body: "A physical key: any NFC tag, claimed "
-                + "by a hash of its contents. Taps check "
-                + "in the dead hand, raise the vault, or "
-                + "unlock a coin-locked Knocktalk. "
-                + "Honest limit: under free (Personal "
-                + "Team) signing iOS refuses the NFC "
-                + "entitlement, so the Coin ships "
-                + "dormant — present, truthful, and live "
-                + "the moment a paid team signs the app."),
+            body: "A physical key: any NFC tag, claimed by a hash of its contents. Taps check in the dead hand, raise the vault, or unlock a coin-locked Knocktalk. Honest limit: under free (Personal Team) signing iOS refuses the NFC entitlement, so the Coin ships dormant — present, truthful, and live the moment a paid team signs the app."),
         SkelliEntry(
             id: "testament", title: "Last Testament & the dead hand",
             home: "the EMCON tab",
             keywords: ["testament", "dead hand", "capsule",
                        "after", "sealed note"],
-            body: "A note sealed under a time-lock "
-                + "grind that the app refuses to open "
-                + "until the dead hand has fallen and its "
-                + "days have passed — the refusal is the "
-                + "feature. When the terms are met, the "
-                + "grind runs and the plaintext replaces "
-                + "the blob."),
+            body: "A note sealed under a time-lock grind that the app refuses to open until the dead hand has fallen and its days have passed — the refusal is the feature. When the terms are met, the grind runs and the plaintext replaces the blob."),
         SkelliEntry(
             id: "duel", title: "Duel Mode",
             home: "the EMCON tab",
             keywords: ["duel", "arena", "strikes", "game",
                        "opponent"],
-            body: "Two phones, one arena: the host's "
-                + "real ports and decoys; the guest "
-                + "strikes three a round for three "
-                + "rounds with the recon bench; scoring "
-                + "is read from the defender's own event "
-                + "log. Herald messages ride knocktalk."),
+            body: "Two phones, one arena: the host's real ports and decoys; the guest strikes three a round for three rounds with the recon bench; scoring is read from the defender's own event log. Herald messages ride knocktalk."),
         SkelliEntry(
             id: "season", title: "Sparring Season",
             home: "the EMCON tab",
             keywords: ["sparring", "season", "ghost",
                        "visits", "training", "grade"],
-            body: "Nine ghost visits over seven days — "
-                + "loud spelling, quiet knocks, a "
-                + "vault combination spoken at the door "
-                + "— played through the real tripwire "
-                + "and scored from the journal: did the "
-                + "house hear, did the Steward react, "
-                + "did the vault open. A final grade is "
-                + "journaled. It plays only while the "
-                + "app is awake, and says so."),
+            body: "Nine ghost visits over seven days — loud spelling, quiet knocks, a vault combination spoken at the door — played through the real tripwire and scored from the journal: did the house hear, did the Steward react, did the vault open. A final grade is journaled. It plays only while the app is awake, and says so."),
         SkelliEntry(
             id: "canary", title: "Canary & honeydrop",
             home: "the Serve and EMCON tabs",
             keywords: ["canary", "honeydrop", "bait",
                        "drop", "lure"],
-            body: "Bait the house keeps: a canary "
-                + "service that should never be touched, "
-                + "and a honeydrop payload whose takers "
-                + "announce themselves — every taker "
-                + "joins the Neighborhood through the "
-                + "same LAN-guarded door as any other "
-                + "discovery."),
+            body: "Bait the house keeps: a canary service that should never be touched, and a honeydrop payload whose takers announce themselves — every taker joins the Neighborhood through the same LAN-guarded door as any other discovery."),
         SkelliEntry(
             id: "chirp", title: "Chirp, Blink & Flare",
             home: "the Knocktalk tab",
             keywords: ["chirp", "blink", "flare", "tones",
                        "qr", "sound", "light"],
-            body: "Knocktalk's other voices: messages as "
-                + "audible tones (Chirp), as looping QR "
-                + "frames read by the camera (Blink), "
-                + "and Flare — each authenticated with "
-                + "the pairing key and a five-minute "
-                + "window, like everything else in the "
-                + "tab."),
+            body: "Knocktalk's other voices: messages as audible tones (Chirp), as looping QR frames read by the camera (Blink), and Flare — each authenticated with the pairing key and a five-minute window, like everything else in the tab."),
         SkelliEntry(
             id: "hunt", title: "The tracker hunt",
             home: "the Listen tab — a row's Hunt",
             keywords: ["hunt", "tracker", "airtag", "find",
                        "following me", "tone"],
-            body: "Walk down an unknown tracker the ear "
-                + "has flagged: a tone that quickens as "
-                + "its smoothed signal strengthens. It "
-                + "reads the listening post's own rows — "
-                + "the hunt never transmits."),
+            body: "Walk down an unknown tracker the ear has flagged: a tone that quickens as its smoothed signal strengthens. It reads the listening post's own rows — the hunt never transmits."),
         SkelliEntry(
             id: "capsule", title: "The time capsule",
             home: "the Knocktalk tab",
             keywords: ["time capsule", "rsw", "time-lock",
                        "timelock", "puzzle"],
-            body: "A message sealed behind repeated "
-                + "squaring — Rivest–Shamir–Wagner — so "
-                + "the opening takes the time it takes "
-                + "and cannot be hurried by cleverness. "
-                + "Share the blob; the clock does the "
-                + "rest."),
+            body: "A message sealed behind repeated squaring — Rivest–Shamir–Wagner — so the opening takes the time it takes and cannot be hurried by cleverness. Share the blob; the clock does the rest."),
         SkelliEntry(
             id: "conductor", title: "Conductor & night maneuvers",
             home: "the EMCON tab",
             keywords: ["conductor", "maneuvers", "manoeuvres",
                        "choreograph", "sequence", "routine"],
-            body: "Choreography for the house: maneuvers "
-                + "that run the organs in sequence — "
-                + "scan, darken, listen — and a conductor "
-                + "that keeps the evening's routine in "
-                + "step. Schedules the house can keep "
-                + "while it is awake."),
+            body: "Choreography for the house: maneuvers that run the organs in sequence — scan, darken, listen — and a conductor that keeps the evening's routine in step. Schedules the house can keep while it is awake."),
         SkelliEntry(
             id: "colours", title: "Colours",
             home: "the About tab — the Colours section",
             keywords: ["colours", "colors", "theme",
                        "wallpaper", "backdrop", "accent",
                        "look", "customise", "customize"],
-            body: "The app's wardrobe: six built-in "
-                + "themes and your own — accent, glow, "
-                + "and tint washing every backdrop — "
-                + "plus per-tab backdrops: the living "
-                + "wallpaper, the Jolly Roger kept "
-                + "forever as a choice, plain colour, or "
-                + "your own image or GIF, copied onto "
-                + "the device and never leaving it."),
+            body: "The app's wardrobe: six built-in themes and your own — accent, glow, and tint washing every backdrop — plus per-tab backdrops: the living wallpaper, the Jolly Roger kept forever as a choice, plain colour, or your own image or GIF, copied onto the device and never leaving it."),
     ]
 
     static func lookup(_ query: String) -> SkelliEntry? {
@@ -520,964 +297,6 @@ enum SkelliStore {
     }
 }
 
-/// What her face is doing — the avatar reads it.
-enum SkelliMood {
-    case idle, thinking, working, speaking
-}
-
-enum SkelliWeb {
-    struct Finding {
-        var text: String
-        var source: String
-        var url: String
-        var score: Int = 0
-        var preformatted: Bool = false
-    }
-
-    static func research(_ query: String,
-                         completion: @escaping (String) -> Void) {
-        let group = DispatchGroup()
-        let collect = DispatchQueue(label: "skelli.web.collect")
-        var instant: Finding?
-        var wiki: Finding?
-        var scouted: Finding?
-        var pages: [Finding] = []
-        var walls = 0
-        let terms = searchTerms(query)
-
-        if let url = endpoint("https://api.duckduckgo.com/",
-                              items: [
-                                  URLQueryItem(name: "q",
-                                               value: query),
-                                  URLQueryItem(name: "format",
-                                               value: "json"),
-                                  URLQueryItem(name: "no_html",
-                                               value: "1"),
-                                  URLQueryItem(name: "skip_disambig",
-                                               value: "1"),
-                              ]) {
-            group.enter()
-            fetchJSON(url) { dict in
-                let found = duckDuckGoFinding(dict)
-                collect.sync { instant = found }
-                group.leave()
-            }
-        }
-        if let url = endpoint("https://en.wikipedia.org/w/api.php",
-                              items: [
-                                  URLQueryItem(name: "action",
-                                               value: "query"),
-                                  URLQueryItem(name: "generator",
-                                               value: "search"),
-                                  URLQueryItem(name: "gsrsearch",
-                                               value: query),
-                                  URLQueryItem(name: "gsrlimit",
-                                               value: "3"),
-                                  URLQueryItem(name: "prop",
-                                               value: "extracts|info"),
-                                  URLQueryItem(name: "exintro",
-                                               value: "1"),
-                                  URLQueryItem(name: "explaintext",
-                                               value: "1"),
-                                  URLQueryItem(name: "inprop",
-                                               value: "url"),
-                                  URLQueryItem(name: "format",
-                                               value: "json"),
-                              ]) {
-            group.enter()
-            fetchJSON(url) { dict in
-                let found = wikipediaFinding(dict)
-                collect.sync { wiki = found }
-                group.leave()
-            }
-        }
-
-        group.enter()
-        scout(query: query, terms: terms) { found in
-            collect.sync { scouted = found }
-            group.leave()
-        }
-
-        group.enter()
-        if let lite = endpoint(
-            "https://lite.duckduckgo.com/lite/",
-            items: [URLQueryItem(name: "q", value: query)]) {
-            fetchText(lite) { html in
-                let results = html.map(liteResults) ?? []
-                for result in results.prefix(3) {
-                    group.enter()
-                    gatherPage(result, terms: terms) {
-                        finding, hitWall in
-                        collect.sync {
-                            if let finding = finding {
-                                pages.append(finding)
-                            }
-                            if hitWall { walls += 1 }
-                        }
-                        group.leave()
-                    }
-                }
-                group.leave()
-            }
-        } else {
-            group.leave()
-        }
-
-        group.notify(queue: .main) {
-            completion(compose(query: query, scout: scouted,
-                               pages: pages, instant: instant,
-                               wiki: wiki, walls: walls))
-        }
-    }
-
-    // MARK: fetching
-
-    private static func endpoint(
-        _ base: String, items: [URLQueryItem]) -> URL? {
-        var components = URLComponents(string: base)
-        components?.queryItems = items
-        return components?.url
-    }
-
-    private static func fetchData(
-        _ url: URL,
-        completion: @escaping (Data?, HTTPURLResponse?) -> Void) {
-        var request = URLRequest(url: url,
-                                 timeoutInterval: 12)
-        request.setValue(
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 "
-                + "like Mac OS X) AppleWebKit/605.1.15 "
-                + "(KHTML, like Gecko) Version/17.0 "
-                + "Mobile/15E148 Safari/604.1 Skelli",
-            forHTTPHeaderField: "User-Agent")
-        URLSession.shared.dataTask(with: request) {
-            data, response, _ in
-            completion(data, response as? HTTPURLResponse)
-        }.resume()
-    }
-
-    private static func fetchText(
-        _ url: URL, completion: @escaping (String?) -> Void) {
-        fetchData(url) { data, response in
-            guard let http = response,
-                  (200...299).contains(http.statusCode),
-                  let data = data
-            else {
-                completion(nil)
-                return
-            }
-            completion(
-                String(data: data, encoding: .utf8)
-                    ?? String(data: data,
-                              encoding: .isoLatin1))
-        }
-    }
-
-    private static func fetchJSON(
-        _ url: URL,
-        completion: @escaping ([String: Any]?) -> Void) {
-        fetchData(url) { data, response in
-            guard let http = response,
-                  (200...299).contains(http.statusCode),
-                  let data = data,
-                  let object = try? JSONSerialization
-                      .jsonObject(with: data),
-                  let dict = object as? [String: Any]
-            else {
-                completion(nil)
-                return
-            }
-            completion(dict)
-        }
-    }
-
-    // MARK: the instant parsers
-
-    private static func duckDuckGoFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let dict = dict else { return nil }
-        let source = (dict["AbstractSource"] as? String)
-            ?? "DuckDuckGo"
-        if let answer = dict["Answer"] as? String,
-           !answer.isEmpty {
-            return Finding(text: answer, source: source,
-                           url: (dict["AbstractURL"]
-                               as? String)
-                               ?? "https://duckduckgo.com")
-        }
-        if let abstract = dict["AbstractText"] as? String,
-           !abstract.isEmpty {
-            return Finding(text: abstract, source: source,
-                           url: (dict["AbstractURL"]
-                               as? String)
-                               ?? "https://duckduckgo.com")
-        }
-        return firstTopic(dict["RelatedTopics"])
-    }
-
-    private static func firstTopic(_ any: Any?) -> Finding? {
-        guard let topics = any as? [[String: Any]] else {
-            return nil
-        }
-        for topic in topics {
-            if let text = topic["Text"] as? String,
-               !text.isEmpty {
-                return Finding(
-                    text: text, source: "DuckDuckGo",
-                    url: (topic["FirstURL"] as? String)
-                        ?? "https://duckduckgo.com")
-            }
-            if let nested = firstTopic(topic["Topics"]) {
-                return nested
-            }
-        }
-        return nil
-    }
-
-    private static func wikipediaFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let query = dict?["query"] as? [String: Any],
-              let pages = query["pages"]
-                  as? [String: [String: Any]]
-        else { return nil }
-        let ordered = pages.values.sorted {
-            (($0["index"] as? Int) ?? 99)
-                < (($1["index"] as? Int) ?? 99)
-        }
-        for page in ordered {
-            if let extract = page["extract"] as? String,
-               !extract.isEmpty {
-                return Finding(
-                    text: extract, source: "Wikipedia",
-                    url: (page["fullurl"] as? String)
-                        ?? "https://en.wikipedia.org")
-            }
-        }
-        return nil
-    }
-
-    // MARK: the scouts — friendly doors, chosen by intent
-
-    private static func scout(
-        query: String, terms: [String],
-        completion: @escaping (Finding?) -> Void) {
-        let q = query.lowercased()
-
-        if let number = firstCapture(
-            "rfc\\s*#?\\s*(\\d{1,5})", in: q),
-           let url = URL(string: "https://www.rfc-editor.org"
-                         + "/rfc/rfc" + number + ".txt") {
-            fetchText(url) { text in
-                completion(text.map {
-                    Finding(
-                        text: bestExcerpt(
-                            $0, terms: terms + ["abstract"],
-                            maxChars: 640),
-                        source: "RFC " + number
-                            + " — the RFC Editor",
-                        url: "https://www.rfc-editor.org"
-                            + "/info/rfc" + number,
-                        score: 100, preformatted: true)
-                })
-            }
-            return
-        }
-
-        if q.contains("arxiv") || q.contains("paper")
-            || q.contains("study")
-            || q.contains("journal article") {
-            let encoded = query.addingPercentEncoding(
-                withAllowedCharacters:
-                    .urlQueryAllowed) ?? query
-            if let url = URL(string: "https://export.arxiv.org"
-                             + "/api/query?search_query=all:"
-                             + encoded
-                             + "&start=0&max_results=2") {
-                fetchText(url) { xml in
-                    completion(xml.flatMap(arxivFinding))
-                }
-                return
-            }
-        }
-
-        if q.contains("book") || q.contains("author")
-            || q.contains("novel") || q.contains("isbn") {
-            if let url = endpoint(
-                "https://openlibrary.org/search.json",
-                items: [URLQueryItem(name: "q",
-                                     value: query),
-                        URLQueryItem(name: "limit",
-                                     value: "3")]) {
-                fetchJSON(url) { dict in
-                    completion(openLibraryFinding(dict))
-                }
-                return
-            }
-        }
-
-        if q.contains("github") || q.contains("repository")
-            || q.contains("repositories")
-            || q.contains(" repo ")
-            || q.hasSuffix(" repo") {
-            if let url = endpoint(
-                "https://api.github.com/search/repositories",
-                items: [URLQueryItem(name: "q",
-                                     value: query),
-                        URLQueryItem(name: "sort",
-                                     value: "stars"),
-                        URLQueryItem(name: "per_page",
-                                     value: "3")]) {
-                fetchJSON(url) { dict in
-                    completion(githubFinding(dict))
-                }
-                return
-            }
-        }
-
-        if q.contains("stack overflow")
-            || q.contains("stackoverflow") {
-            let cleaned = q
-                .replacingOccurrences(
-                    of: "stack overflow", with: "")
-                .replacingOccurrences(
-                    of: "stackoverflow", with: "")
-                .trimmingCharacters(in: .whitespaces)
-            if let url = endpoint(
-                "https://api.stackexchange.com/2.3"
-                    + "/search/advanced",
-                items: [URLQueryItem(name: "order",
-                                     value: "desc"),
-                        URLQueryItem(name: "sort",
-                                     value: "relevance"),
-                        URLQueryItem(name: "q",
-                                     value: cleaned),
-                        URLQueryItem(name: "site",
-                                     value: "stackoverflow"),
-                        URLQueryItem(name: "pagesize",
-                                     value: "3")]) {
-                fetchJSON(url) { dict in
-                    completion(stackExchangeFinding(dict))
-                }
-                return
-            }
-        }
-
-        completion(nil)
-    }
-
-    private static func arxivFinding(_ xml: String)
-        -> Finding? {
-        let entries = regexMatches(
-            "(?s)<entry>(.*?)</entry>", in: xml)
-        guard !entries.isEmpty else { return nil }
-        var lines: [String] = []
-        var firstURL = "https://arxiv.org"
-        for entry in entries.prefix(2) {
-            let block = entry[1]
-            let title = clean(decodeEntities(
-                firstCapture("<title>(.*?)</title>",
-                             in: block) ?? ""))
-            let summary = clean(decodeEntities(
-                firstCapture("<summary>(.*?)</summary>",
-                             in: block) ?? ""))
-            let link = firstCapture("<id>(.*?)</id>",
-                                    in: block) ?? firstURL
-            if lines.isEmpty { firstURL = link }
-            lines.append(title + " — "
-                         + excerpt(summary, maxChars: 300))
-        }
-        return Finding(text: lines.joined(separator: "\n"),
-                       source: "arXiv", url: firstURL,
-                       score: 60, preformatted: true)
-    }
-
-    private static func openLibraryFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let docs = dict?["docs"]
-                as? [[String: Any]], !docs.isEmpty
-        else { return nil }
-        var lines: [String] = []
-        var firstURL = "https://openlibrary.org"
-        for doc in docs.prefix(3) {
-            let title = (doc["title"] as? String)
-                ?? "Untitled"
-            let authors = (doc["author_name"]
-                as? [String])?.joined(separator: ", ")
-            let year = doc["first_publish_year"] as? Int
-            var line = title
-            if let authors = authors { line += " by " + authors }
-            if let year = year { line += " (\(year))" }
-            lines.append(line)
-            if lines.count == 1,
-               let key = doc["key"] as? String {
-                firstURL = "https://openlibrary.org" + key
-            }
-        }
-        return Finding(text: lines.joined(separator: "\n"),
-                       source: "Open Library", url: firstURL,
-                       score: 60, preformatted: true)
-    }
-
-    private static func githubFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let items = dict?["items"]
-                as? [[String: Any]], !items.isEmpty
-        else { return nil }
-        var lines: [String] = []
-        var firstURL = "https://github.com"
-        for item in items.prefix(3) {
-            let name = (item["full_name"] as? String)
-                ?? "unknown"
-            let stars = (item["stargazers_count"] as? Int)
-                ?? 0
-            let about = (item["description"] as? String)
-                ?? "no description"
-            lines.append(name + " (★\(stars)): " + about)
-            if lines.count == 1,
-               let url = item["html_url"] as? String {
-                firstURL = url
-            }
-        }
-        return Finding(text: lines.joined(separator: "\n"),
-                       source: "GitHub", url: firstURL,
-                       score: 60, preformatted: true)
-    }
-
-    private static func stackExchangeFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let items = dict?["items"]
-                as? [[String: Any]], !items.isEmpty
-        else { return nil }
-        var lines: [String] = []
-        var firstURL = "https://stackoverflow.com"
-        for item in items.prefix(3) {
-            let title = clean(decodeEntities(
-                stripTags((item["title"] as? String) ?? "")))
-            let answers = (item["answer_count"] as? Int)
-                ?? 0
-            lines.append(title + " — \(answers) answer"
-                         + (answers == 1 ? "" : "s"))
-            if lines.count == 1,
-               let link = item["link"] as? String {
-                firstURL = link
-            }
-        }
-        return Finding(text: lines.joined(separator: "\n"),
-                       source: "Stack Overflow", url: firstURL,
-                       score: 60, preformatted: true)
-    }
-
-    // MARK: her browser — search, visit, read
-
-    private static func liteResults(_ html: String)
-        -> [(title: String, url: URL)] {
-        var out: [(title: String, url: URL)] = []
-        var seen = Set<String>()
-        for match in regexMatches(
-            "(?is)<a[^>]+href=\"([^\"]+)\"[^>]*>(.*?)</a>",
-            in: html) {
-            var href = match[1]
-            if let marker = href.range(of: "uddg=") {
-                let tail = href[marker.upperBound...]
-                let raw = tail.split(separator: "&")
-                    .first.map(String.init) ?? ""
-                href = raw.removingPercentEncoding ?? raw
-            }
-            guard href.hasPrefix("http"),
-                  let url = URL(string: href),
-                  let host = url.host,
-                  !host.contains("duckduckgo.com"),
-                  !skippedDomain(host),
-                  !seen.contains(href)
-            else { continue }
-            let title = clean(decodeEntities(
-                stripTags(match[2])))
-            guard title.count >= 3 else { continue }
-            seen.insert(href)
-            out.append((title: title, url: url))
-        }
-        return out
-    }
-
-    private static func skippedDomain(_ host: String)
-        -> Bool {
-        ["nytimes.com", "wsj.com", "ft.com",
-         "bloomberg.com", "linkedin.com",
-         "facebook.com", "instagram.com", "x.com",
-         "twitter.com", "pinterest.com", "quora.com",
-         "scribd.com", "researchgate.net"]
-            .contains { host == $0 || host.hasSuffix("." + $0) }
-    }
-
-    private static func gatherPage(
-        _ result: (title: String, url: URL),
-        terms: [String],
-        completion: @escaping (Finding?, Bool) -> Void) {
-        fetchData(result.url) { data, response in
-            guard let data = data, let http = response,
-                  (200...299).contains(http.statusCode)
-            else {
-                completion(nil, false)
-                return
-            }
-            let mime = http.mimeType ?? ""
-            if mime.contains("pdf")
-                || result.url.pathExtension
-                    .lowercased() == "pdf" {
-                if let text = pdfText(data) {
-                    completion(Finding(
-                        text: bestExcerpt(text, terms: terms),
-                        source: result.title,
-                        url: result.url.absoluteString,
-                        score: score(text, terms: terms),
-                        preformatted: true), false)
-                } else {
-                    completion(nil, false)
-                }
-                return
-            }
-            guard let html = String(data: data,
-                                    encoding: .utf8)
-                    ?? String(data: data,
-                              encoding: .isoLatin1)
-            else {
-                completion(nil, false)
-                return
-            }
-            if hostile(html) {
-                completion(nil, true)
-                return
-            }
-            let title = pageTitle(html) ?? result.title
-            let extracted = extractText(html)
-            if extracted.count >= 600 {
-                completion(Finding(
-                    text: bestExcerpt(extracted,
-                                      terms: terms),
-                    source: title,
-                    url: result.url.absoluteString,
-                    score: score(extracted, terms: terms),
-                    preformatted: true), false)
-                return
-            }
-            DispatchQueue.main.async {
-                SkelliWebRenderer.shared.render(
-                    url: result.url) { rendered in
-                    if let rendered = rendered,
-                       rendered.count > extracted.count {
-                        if hostile(rendered) {
-                            completion(nil, true)
-                            return
-                        }
-                        completion(Finding(
-                            text: bestExcerpt(rendered,
-                                              terms: terms),
-                            source: title,
-                            url: result.url.absoluteString,
-                            score: score(rendered,
-                                         terms: terms),
-                            preformatted: true), false)
-                    } else if extracted.count >= 200 {
-                        completion(Finding(
-                            text: bestExcerpt(extracted,
-                                              terms: terms),
-                            source: title,
-                            url: result.url.absoluteString,
-                            score: score(extracted,
-                                         terms: terms),
-                            preformatted: true), false)
-                    } else {
-                        completion(nil, false)
-                    }
-                }
-            }
-        }
-    }
-
-    private static func hostile(_ page: String) -> Bool {
-        let low = page.lowercased()
-        return ["are you a robot", "verify you are human",
-                "unusual traffic from your computer",
-                "challenge-platform",
-                "checking your browser before accessing",
-                "request blocked",
-                "please complete the security check",
-                "enable javascript and cookies to continue"]
-            .contains { low.contains($0) }
-    }
-
-    private static func pageTitle(_ html: String)
-        -> String? {
-        guard let raw = firstCapture(
-            "(?is)<title[^>]*>(.*?)</title>", in: html)
-        else { return nil }
-        let title = clean(decodeEntities(stripTags(raw)))
-        return title.isEmpty ? nil
-            : String(title.prefix(90))
-    }
-
-    private static func extractText(_ html: String)
-        -> String {
-        var s = html
-        for tag in ["script", "style", "noscript", "svg",
-                    "header", "footer", "nav", "aside",
-                    "form", "iframe"] {
-            s = regexReplace(
-                s, "(?is)<" + tag + "\\b[^>]*>.*?</"
-                    + tag + ">", " ")
-        }
-        s = regexReplace(s, "(?is)<br\\s*/?>", "\n")
-        s = regexReplace(
-            s, "(?is)</(p|div|li|h1|h2|h3|h4|tr)>", "\n")
-        s = decodeEntities(stripTags(s))
-        let lines = s.components(separatedBy: "\n")
-            .map { clean($0) }
-            .filter { $0.count >= 25 }
-        return lines.joined(separator: "\n")
-    }
-
-    private static func pdfText(_ data: Data) -> String? {
-        guard data.count <= 12_000_000,
-              let doc = PDFDocument(data: data)
-        else { return nil }
-        var out = ""
-        for index in 0..<doc.pageCount {
-            if let page = doc.page(at: index),
-               let text = page.string {
-                out += text + "\n"
-            }
-            if out.count > 24_000 { break }
-        }
-        return out.isEmpty ? nil : out
-    }
-
-    // MARK: composing the answer
-
-    private static func compose(query: String,
-                                scout: Finding?,
-                                pages: [Finding],
-                                instant: Finding?,
-                                wiki: Finding?,
-                                walls: Int) -> String {
-        var blocks: [String] = []
-        if let scout = scout {
-            blocks.append(block(scout))
-        }
-        for page in pages.sorted(by: {
-            $0.score > $1.score
-        }) {
-            if blocks.count >= 3 { break }
-            blocks.append(block(page))
-        }
-        if !blocks.isEmpty {
-            var out = "I went out through my browser. "
-                + "What holds up:\n\n"
-                + blocks.joined(separator: "\n\n")
-            if walls > 0 {
-                out += "\n\n(" + "\(walls) result"
-                    + (walls == 1 ? "" : "s")
-                    + " hid behind a wall or a check — "
-                    + "I walk past those, and work the "
-                    + "sources that let me in cleanly.)"
-            }
-            return out
-        }
-        if let instant = instant {
-            var lines = ["From the web — "
-                         + instant.source + ":",
-                         excerpt(instant.text),
-                         "Source: " + instant.url]
-            if let wiki = wiki, wiki.url != instant.url {
-                lines.append("Also: " + wiki.source
-                             + " — " + wiki.url)
-            }
-            return lines.joined(separator: "\n")
-        }
-        if let wiki = wiki {
-            return "From the web — " + wiki.source + ":\n"
-                + excerpt(wiki.text)
-                + "\nSource: " + wiki.url
-        }
-        var failure = "I went out through my browser "
-            + "for '" + query + "' and the sources "
-            + "that let a machine in cleanly — the "
-            + "open indexes, the lite index, the pages "
-            + "themselves — brought nothing solid back."
-        if walls > 0 {
-            failure += " " + "\(walls) result"
-                + (walls == 1 ? "" : "s")
-                + " hid behind a wall or a check; I "
-                + "don't climb those."
-        }
-        failure += " Rephrase it, or name the thing "
-            + "more plainly, and I'll go again."
-        return failure
-    }
-
-    private static func block(_ finding: Finding)
-        -> String {
-        "— " + finding.source + ": " + finding.text
-            + "\nSource: " + finding.url
-    }
-
-    // MARK: text work
-
-    private static func searchTerms(_ query: String)
-        -> [String] {
-        let stop: Set<String> = [
-            "what", "is", "the", "a", "an", "of", "for",
-            "in", "on", "to", "and", "or", "how", "does",
-            "do", "did", "who", "when", "where", "why",
-            "can", "could", "should", "would", "tell",
-            "me", "about", "search", "web", "online",
-            "research", "look", "up", "find", "explain",
-        ]
-        var seen = Set<String>()
-        var out: [String] = []
-        for word in query.lowercased().components(
-            separatedBy: CharacterSet.alphanumerics
-                .inverted) {
-            if word.count >= 3, !stop.contains(word),
-               !seen.contains(word) {
-                seen.insert(word)
-                out.append(word)
-            }
-        }
-        return Array(out.prefix(8))
-    }
-
-    private static func score(_ text: String,
-                              terms: [String]) -> Int {
-        let low = text.lowercased()
-        var total = 0
-        for term in terms {
-            total += min(
-                low.components(separatedBy: term)
-                    .count - 1, 8)
-        }
-        return total
-    }
-
-    private static func sentences(_ text: String)
-        -> [String] {
-        clean(text).components(separatedBy: ". ")
-            .map {
-                $0.trimmingCharacters(in: .whitespaces)
-            }
-            .filter { !$0.isEmpty }
-            .map { $0.hasSuffix(".") ? $0 : $0 + "." }
-    }
-
-    private static func bestExcerpt(_ text: String,
-                                    terms: [String],
-                                    maxChars: Int = 520)
-        -> String {
-        let all = sentences(text)
-        guard !all.isEmpty else {
-            return excerpt(text, maxChars: maxChars)
-        }
-        var best = 0
-        var bestScore = -1
-        for (index, sentence) in all.enumerated() {
-            let value = score(sentence, terms: terms)
-            if value > bestScore {
-                bestScore = value
-                best = index
-            }
-        }
-        if bestScore <= 0 {
-            return excerpt(text, maxChars: maxChars)
-        }
-        var out = all[best]
-        var step = 1
-        while out.count < maxChars, step <= all.count {
-            if best + step < all.count {
-                out += " " + all[best + step]
-            }
-            if out.count >= maxChars { break }
-            if best - step >= 0 {
-                out = all[best - step] + " " + out
-            }
-            step += 1
-        }
-        return out.count > maxChars + 160
-            ? excerpt(out, maxChars: maxChars) : out
-    }
-
-    private static func excerpt(_ text: String,
-                                maxChars: Int = 720)
-        -> String {
-        let cleaned = clean(text)
-        if cleaned.count <= maxChars { return cleaned }
-        var out = ""
-        for part in cleaned.components(separatedBy: ". ") {
-            let sentence = part.hasSuffix(".")
-                ? part : part + "."
-            if out.isEmpty {
-                if sentence.count > maxChars { break }
-                out = sentence
-            } else if (out + " " + sentence).count
-                        <= maxChars {
-                out += " " + sentence
-            } else {
-                break
-            }
-            if out.count > maxChars - 120 { break }
-        }
-        return out.isEmpty
-            ? String(cleaned.prefix(maxChars)) + "…"
-            : out
-    }
-
-    private static func clean(_ text: String) -> String {
-        text.components(
-            separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
-    private static func stripTags(_ html: String)
-        -> String {
-        regexReplace(html, "(?s)<[^>]+>", " ")
-    }
-
-    private static func decodeEntities(_ text: String)
-        -> String {
-        var out = text
-        for (entity, replacement) in [
-            ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
-            ("&quot;", "\""), ("&apos;", "'"),
-            ("&#39;", "'"), ("&#x27;", "'"),
-            ("&nbsp;", " "), ("&#8217;", "’"),
-            ("&#8220;", "“"), ("&#8221;", "”"),
-            ("&#8211;", "–"), ("&#8212;", "—"),
-            ("&#038;", "&"),
-        ] {
-            out = out.replacingOccurrences(
-                of: entity, with: replacement)
-        }
-        return out
-    }
-
-    private static func regexReplace(_ s: String,
-                                     _ pattern: String,
-                                     _ template: String)
-        -> String {
-        s.replacingOccurrences(of: pattern, with: template,
-                               options: .regularExpression)
-    }
-
-    private static func regexMatches(_ pattern: String,
-                                     in s: String)
-        -> [[String]] {
-        guard let re = try? NSRegularExpression(
-            pattern: pattern) else { return [] }
-        let range = NSRange(s.startIndex..., in: s)
-        return re.matches(in: s, range: range).map {
-            match in
-            (0..<match.numberOfRanges).map { index in
-                guard let r = Range(
-                    match.range(at: index), in: s)
-                else { return "" }
-                return String(s[r])
-            }
-        }
-    }
-
-    private static func firstCapture(_ pattern: String,
-                                     in s: String)
-        -> String? {
-        regexMatches(pattern, in: s)
-            .first.flatMap {
-                $0.count > 1 && !$0[1].isEmpty
-                    ? $0[1] : nil
-            }
-    }
-}
-
-final class SkelliWebRenderer: NSObject,
-                               WKNavigationDelegate {
-    static let shared = SkelliWebRenderer()
-
-    private weak var webView: WKWebView?
-    private var completion: ((String?) -> Void)?
-    private var timeout: DispatchWorkItem?
-
-    func attach(_ view: WKWebView) {
-        webView = view
-        view.navigationDelegate = self
-    }
-
-    func render(url: URL,
-                completion: @escaping (String?) -> Void) {
-        guard let view = webView, self.completion == nil
-        else {
-            completion(nil)
-            return
-        }
-        self.completion = completion
-        view.stopLoading()
-        view.load(URLRequest(url: url,
-                             timeoutInterval: 15))
-        let work = DispatchWorkItem { [weak self] in
-            self?.finish(nil)
-        }
-        timeout = work
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 18, execute: work)
-    }
-
-    func webView(_ webView: WKWebView,
-                 didFinish navigation: WKNavigation!) {
-        webView.evaluateJavaScript(
-            "document.body ? document.body.innerText : ''"
-        ) { [weak self] result, _ in
-            self?.finish(result as? String)
-        }
-    }
-
-    func webView(_ webView: WKWebView,
-                 didFail navigation: WKNavigation!,
-                 withError error: Error) {
-        finish(nil)
-    }
-
-    func webView(_ webView: WKWebView,
-                 didFailProvisionalNavigation
-                     navigation: WKNavigation!,
-                 withError error: Error) {
-        finish(nil)
-    }
-
-    private func finish(_ text: String?) {
-        timeout?.cancel()
-        timeout = nil
-        let done = completion
-        completion = nil
-        webView?.stopLoading()
-        done?(text)
-    }
-}
-
-struct SkelliWebHost: UIViewRepresentable {
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .nonPersistent()
-        config.defaultWebpagePreferences
-            .allowsContentJavaScript = true
-        let view = WKWebView(
-            frame: CGRect(x: 0, y: 0, width: 2, height: 2),
-            configuration: config)
-        view.alpha = 0.02
-        view.isUserInteractionEnabled = false
-        SkelliWebRenderer.shared.attach(view)
-        return view
-    }
-
-    func updateUIView(_ uiView: WKWebView,
-                      context: Context) { }
-}
-
 // MARK: - The center
 
 final class SkelliCenter: ObservableObject {
@@ -1486,6 +305,7 @@ final class SkelliCenter: ObservableObject {
     @Published var lines: [SkelliLine] = []
     @Published var notes: [SkelliNote] = []
     @Published var mood: SkelliMood = .idle
+    @Published var activity: String = "Ready."
     /// Her outward eye, on unless the operator
     @Published var webResearchEnabled: Bool = true {
         didSet {
@@ -1511,6 +331,11 @@ final class SkelliCenter: ObservableObject {
         webResearchEnabled = (UserDefaults.standard
             .object(forKey: "skelli.webResearch")
             as? Bool) ?? true
+        SkelliWeb.onProgress = { [weak self] text in
+            DispatchQueue.main.async {
+                self?.activity = text
+            }
+        }
     }
 
     /// The app hands over its own organs at first light,
@@ -1538,6 +363,7 @@ final class SkelliCenter: ObservableObject {
         idleWork = work
         DispatchQueue.main.asyncAfter(
             deadline: .now() + 1.4, execute: work)
+        activity = "Ready."
     }
 
     /// The operator empties the conversation. Her notes
@@ -1586,10 +412,12 @@ final class SkelliCenter: ObservableObject {
         persist()
         // Thinking is always on — a short, real beat
         mood = .thinking
+        activity = "Thinking…"
         let q = text.lowercased()
+        let delay = Self.thinkDelay(for: q)
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + 0.45) { [weak self] in
-            self?.respond(to: q)
+            deadline: .now() + delay) { [weak self] in
+            self?.respond(to: q, raw: text)
         }
     }
 
@@ -1606,9 +434,30 @@ final class SkelliCenter: ObservableObject {
             userInfo: ["tab": tab])
     }
 
+    // MARK: small favors
+
+    /// How long she thinks before answering: a breath
+    /// for a plain order, longer for a real question.
+    /// Research takes its own time once it starts.
+    private static func thinkDelay(for q: String)
+        -> TimeInterval {
+        if ["say ", "repeat", "echo", "spell ",
+            "uppercase", "lowercase", "reverse ",
+            "how many"].contains(where: q.hasPrefix)
+            || q.contains("what time") {
+            return 0.2
+        }
+        if q.count > 90 || q.contains("search the web")
+            || q.contains("research") {
+            return 0.9
+        }
+        return 0.55
+    }
+
     // MARK: the routing
 
-    private func respond(to q: String) {
+    private func respond(to q: String,
+                         raw: String) {
         // An offered action, awaiting a word.
         if let pending = pendingAction {
             if ["yes", "yeah", "yep", "do it", "go",
@@ -1625,6 +474,10 @@ final class SkelliCenter: ObservableObject {
                 return
             }
         }
+
+        // Small favors first: plain orders, plainly
+        // done, before the machinery wakes.
+        if smallFavor(q, raw: raw) { return }
 
         // Being told things: her long memory.
         if q.hasPrefix("remember ") {
@@ -1664,8 +517,8 @@ final class SkelliCenter: ObservableObject {
         // Greetings and the tour.
         if ["hello", "hi", "hey"].contains(q)
             || q.contains("who are you") {
-            say("Skelli — the house's specialist. I "
-                + "answer from the system itself: its "
+            say("Skelli. I answer from the system "
+                + "itself: its "
                 + "manual, its live state, its "
                 + "controls — and when a question "
                 + "leaves the house, I research it "
@@ -1950,6 +803,8 @@ final class SkelliCenter: ObservableObject {
             + "a machine in cleanly — no walls "
             + "climbed, no checks answered — and "
             + "what comes back names where it stood.")
+        activity = "Researching — asking the open "
+            + "indexes…"
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
         }
@@ -2199,6 +1054,8 @@ final class SkelliCenter: ObservableObject {
             + "scan again. Its readout lands in "
             + "EMCON's drill section, where the ledger "
             + "names what went quiet.")
+        activity = "Running the drill — scan, dark, "
+            + "scan…" 
     }
 
     private func startListening() {
@@ -2231,6 +1088,7 @@ final class SkelliCenter: ObservableObject {
             + "/24. Answers feed the Neighborhood and "
             + "the Map as they land.")
         mood = .working
+        activity = "Sweeping the wire on port 80…"
         scanner.sweep(port: 80)
         sweepWatch = scanner.$sweeping
             .dropFirst()
@@ -2266,6 +1124,8 @@ final class SkelliCenter: ObservableObject {
             + "loopback and its wire address — whatever "
             + "answers is what another operator sees.")
         mood = .working
+        activity = "Knocking this phone, every "
+            + "census port…"
         emcon.runSelfScan { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
@@ -2299,6 +1159,8 @@ final class SkelliCenter: ObservableObject {
             + "announcements — what it calls itself, "
             + "and where it points.")
         mood = .working
+        activity = "Listening for this phone's own "
+            + "announcements…"
         emcon.runBonjourAudit { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
@@ -2864,6 +1726,114 @@ struct SkelliAvatar: View {
     }
 }
 
+// MARK: - Her living model
+
+/// Herself, alive: the same 3D animation that fronts
+/// the assistant — resting, conjuring, at the desk,
+/// talking — chosen by her mood and looped without
+/// end. The films ride the bundle as skelli-*.mp4;
+/// until they are in the tree, her drawn model
+/// stands in.
+struct SkelliLiveView: View {
+    var mood: SkelliMood = .idle
+    var size: CGFloat = 96
+
+    static var filmsPresent: Bool {
+        Bundle.main.url(forResource: "skelli-idle",
+                        withExtension: "mp4") != nil
+    }
+
+    private var film: String {
+        switch mood {
+        case .idle: return "skelli-idle"
+        case .thinking: return "skelli-thinking"
+        case .working: return "skelli-working"
+        case .speaking: return "skelli-talking"
+        }
+    }
+
+    var body: some View {
+        if Self.filmsPresent {
+            SkelliFilm(name: film)
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(
+                    cornerRadius: size * 0.2))
+        } else {
+            SkelliAvatar(mood: mood, size: size)
+        }
+    }
+}
+
+struct SkelliFilm: UIViewRepresentable {
+    var name: String
+
+    func makeUIView(context: Context) -> SkelliFilmView {
+        let view = SkelliFilmView()
+        view.play(name)
+        return view
+    }
+
+    func updateUIView(_ view: SkelliFilmView,
+                      context: Context) {
+        view.play(name)
+    }
+
+    static func dismantleUIView(_ view: SkelliFilmView,
+                                coordinator: ()) {
+        view.stop()
+    }
+}
+
+final class SkelliFilmView: UIView {
+    private var player: AVPlayer?
+    private var endObserver: NSObjectProtocol?
+    private var current: String?
+
+    override static var layerClass: AnyClass {
+        AVPlayerLayer.self
+    }
+
+    private var filmLayer: AVPlayerLayer {
+        layer as! AVPlayerLayer
+    }
+
+    func play(_ name: String) {
+        guard name != current else { return }
+        current = name
+        stop()
+        guard let url = Bundle.main.url(
+            forResource: name, withExtension: "mp4")
+        else { return }
+        let item = AVPlayerItem(url: url)
+        let next = AVPlayer(playerItem: item)
+        next.isMuted = true
+        next.actionAtItemEnd = .none
+        endObserver = NotificationCenter.default
+            .addObserver(
+                forName: .AVPlayerItemDidPlayToEndTime,
+                object: item, queue: .main) { [weak next] _ in
+                next?.seek(to: .zero)
+                next?.play()
+            }
+        filmLayer.videoGravity = .resizeAspectFill
+        filmLayer.player = next
+        player = next
+        next.play()
+    }
+
+    func stop() {
+        player?.pause()
+        if let endObserver = endObserver {
+            NotificationCenter.default
+                .removeObserver(endObserver)
+            self.endObserver = nil
+        }
+        player = nil
+    }
+
+    deinit { stop() }
+}
+
 // MARK: - Her tab
 
 struct SkelliView: View {
@@ -2874,6 +1844,7 @@ struct SkelliView: View {
     @State private var showMemory = false
     @State private var confirmClear = false
     @State private var confirmReset = false
+    @FocusState private var inputFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -2895,15 +1866,15 @@ struct SkelliView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("The transcript goes. What Skelli "
+            Text("The transcript goes. What she "
                  + "remembers stays — forgetting that "
                  + "is its own act, under Reset.")
         }
         .confirmationDialog(
-            "Reset Skelli to her defaults?",
+            "Reset to defaults?",
             isPresented: $confirmReset,
             titleVisibility: .visible) {
-            Button("Reset Skelli", role: .destructive) {
+            Button("Reset", role: .destructive) {
                 skelli.resetToDefaults()
             }
             Button("Cancel", role: .cancel) { }
@@ -2918,6 +1889,7 @@ struct SkelliView: View {
     private var screen: some View {
         VStack(spacing: 0) {
             header
+            activityBar
             Divider()
             transcript
             inputBar
@@ -2927,8 +1899,6 @@ struct SkelliView: View {
                 .frame(width: 2, height: 2)
                 .allowsHitTesting(false)
         }
-        .navigationTitle("Skelli")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 menu
@@ -2947,7 +1917,7 @@ struct SkelliView: View {
             Button {
                 showMemory = true
             } label: {
-                Label("What Skelli remembers",
+                Label("Memory",
                       systemImage: "brain")
             }
             Toggle("Web research",
@@ -2962,13 +1932,29 @@ struct SkelliView: View {
             Button(role: .destructive) {
                 confirmReset = true
             } label: {
-                Label("Reset Skelli",
+                Label("Reset to defaults",
                       systemImage:
                         "arrow.counterclockwise")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+    }
+
+    private var activityBar: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(skelli.mood == .idle
+                      ? Color.secondary
+                      : themes.current.accent)
+                .frame(width: 7, height: 7)
+            Text(skelli.activity)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
     }
 
     private var header: some View {
@@ -2982,14 +1968,11 @@ struct SkelliView: View {
                         center: .center,
                         startRadius: 4, endRadius: 52))
                     .frame(width: 104, height: 104)
-                SkelliAvatar(mood: skelli.mood, size: 96)
+                SkelliLiveView(mood: skelli.mood, size: 96)
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text("Skelli")
                     .font(.title3.weight(.semibold))
-                Text("The house's specialist")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
                 Text(statusLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -3075,7 +2058,7 @@ struct SkelliView: View {
                     }
                     if skelli.mood == .thinking {
                         HStack(spacing: 8) {
-                            SkelliAvatar(mood: .thinking,
+                            SkelliLiveView(mood: .thinking,
                                          size: 40)
                             Text("thinking…")
                                 .font(.callout)
@@ -3106,10 +2089,11 @@ struct SkelliView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Ask Skelli, or give an order…",
+            TextField("Ask, or give an order…",
                       text: $input, axis: .vertical)
                 .lineLimit(1...4)
                 .textFieldStyle(.roundedBorder)
+                .focused($inputFocused)
                 .onSubmit(send)
             Button {
                 send()
@@ -3130,6 +2114,7 @@ struct SkelliView: View {
     private func send() {
         let text = input
         input = ""
+        inputFocused = false
         skelli.ask(text)
     }
 }
@@ -3178,7 +2163,7 @@ struct SkelliMemoryView: View {
         NavigationStack {
             List {
                 if skelli.notes.isEmpty {
-                    Text("Nothing yet. Tell Skelli "
+                    Text("Nothing yet. Tell her "
                          + "'remember …' in conversation "
                          + "and it will be kept here — "
                          + "and only here.")
@@ -3199,7 +2184,7 @@ struct SkelliMemoryView: View {
                     skelli.forgetNotes(at: offsets)
                 }
             }
-            .navigationTitle("What Skelli remembers")
+            .navigationTitle("Memory")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
