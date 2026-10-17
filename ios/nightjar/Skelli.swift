@@ -2076,9 +2076,12 @@ struct SkelliView: View {
     }
 
     private var screen: some View {
-        VStack(spacing: 0) {
-            transcript
-            inputBar
+        ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                transcript
+                inputBar
+            }
+            pinnedHeader
         }
         .overlay(alignment: .bottomLeading) {
             SkelliWebHost()
@@ -2089,6 +2092,38 @@ struct SkelliView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 menu
             }
+        }
+    }
+
+    /// Her pinned presence — the film, her name, and
+    /// what she is doing — fixed at the top while the
+    /// conversation scrolls beneath it, over a blur
+    /// that fades away at its lower edge.
+    private var pinnedHeader: some View {
+        VStack(spacing: 0) {
+            header
+            activityBar
+        }
+        .background {
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                Rectangle()
+                    .fill(themes.current.tint
+                        .opacity(0.35))
+            }
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .black,
+                              location: 0),
+                        .init(color: .black,
+                              location: 0.7),
+                        .init(color: .clear,
+                              location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom))
         }
     }
 
@@ -2251,7 +2286,9 @@ struct SkelliView: View {
                         }
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.bottom)
+                .padding(.top, 146)
             }
             .onChange(of: skelli.lines.count) { _ in
                 scrollToEnd(proxy)
@@ -2260,13 +2297,6 @@ struct SkelliView: View {
                 scrollToEnd(proxy)
             }
             .onAppear { scrollToEnd(proxy) }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            VStack(spacing: 0) {
-                header
-                activityBar
-                Divider()
-            }
         }
     }
 
