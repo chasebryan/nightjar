@@ -149,6 +149,10 @@ final class Emcon: ObservableObject {
     @Published private(set) var heardCount = 0
     @Published private(set) var lastAuditAt: Date?
     @Published private(set) var drilling = false
+    /// The score as it stood the moment before going
+    /// dark — the header reads the fall from it, so
+    /// engaging EMCON shows what it actually bought.
+    @Published private(set) var scoreBeforeDark: Score?
     @Published private(set) var drillBefore: Snapshot?
     @Published private(set) var drillAfter: Snapshot?
     /// What the drill itself switched off, by name —
@@ -257,17 +261,28 @@ final class Emcon: ObservableObject {
                       serveRunning: Bool, stealth: Bool,
                       deviceName: String,
                       exposureCount: Int,
-                      announcerCount: Int) -> Score {
+                      announcerCount: Int,
+                      assaultOn: Bool = false,
+                      serveListeners: Int = 1,
+                      probingOn: Bool = false) -> Score {
         var parts: [Score.Part] = []
         func weigh(_ label: String, _ points: Int) {
             guard points > 0 else { return }
             parts.append(Score.Part(label: label, points: points))
         }
+        if assaultOn { weigh("Net-Assault running", 30) }
         if gattHostOn { weigh("GATT host", 25) }
         if beaconOn { weigh("BLE beacon", 20) }
+        if probingOn { weigh("Active probing", 10) }
         if serveRunning {
-            weigh(stealth ? "Serve, stealth" : "Serve, listed",
-                  stealth ? 4 : 20)
+            let extra = max(0, serveListeners - 1)
+            let counted = serveListeners > 1
+                ? " ×\(serveListeners)" : ""
+            if stealth {
+                weigh("Serve, stealth" + counted, 4 + extra)
+            } else {
+                weigh("Serve, listed" + counted, 20 + 3 * extra)
+            }
         }
         if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
             weigh("Personal name", 12)
@@ -339,6 +354,18 @@ final class Emcon: ObservableObject {
     /// tripwire. Serve listeners keep running if they were running,
     /// but under stealth — unlisted, silent arrivals.
     func activate(mouth: Mouth) {
+        // The reading before the fall, taken from the
+        // figures as they stand — engaging EMCON
+        // must be able to show what it bought.
+        scoreBeforeDark = Self.score(
+            gattHostOn: mouth.gattHostOn,
+            beaconOn: mouth.beaconOn,
+            serveRunning: mouth.serveRunning,
+            stealth: mouth.stealth,
+            deviceName: deviceName,
+            exposureCount: exposures.count,
+            announcerCount: announcers.count,
+            serveListeners: mouth.serveListenerCount)
         active = true
         UserDefaults.standard.set(true, forKey: Self.activeKey)
         mouth.setStealth(true)
@@ -353,6 +380,7 @@ final class Emcon: ObservableObject {
     /// beacon are left exactly as they are — re-arming an emission
     /// is always a deliberate act in its own tab.
     func deactivate() {
+        scoreBeforeDark = nil
         active = false
         UserDefaults.standard.set(false, forKey: Self.activeKey)
         stopTripwire()
