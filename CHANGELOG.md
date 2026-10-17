@@ -16,6 +16,19 @@
   logbook, the inbox, chirps, and capsules — is now a
   button that raises the share sheet from the screen's
   root, the way the after-action report learned to.
+  The Net-Assault section itself was then rebuilt
+  as true list rows — one control per row — after
+  its single stuffed cell (pitch, warning, both
+  pickers, both buttons in one row) misrouted the
+  report button's taps to Arm once the button
+  appeared after a run.
+- **The Night log folds.** Its entries — up to three
+  hundred sealed rows — now sit behind an Entries
+  dropdown, closed on arrival, with the count printed
+  on the door; and the log can be cleared from the
+  same section, behind a confirmation: the file is
+  deleted on the journal's own queue and the seal
+  chain starts fresh.
 - **The Map (iOS Scan).** A special section of its own:
   the house on one canvas. The operator names rooms and
   places each neighbor where the device physically sits;
