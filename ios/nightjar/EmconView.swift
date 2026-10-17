@@ -48,6 +48,7 @@ struct EmconView: View {
             conductorSection
             StewardSectionView(steward: emcon.steward)
             SubconsciousSectionView(showMind: $showMind)
+            instrumentSection
             sparringSection
             SeasonSectionView(season: emcon.season,
                               emcon: emcon)
@@ -561,6 +562,129 @@ struct EmconView: View {
                 } label: {
                     Label("Clear the log", systemImage: "trash")
                 }
+            }
+        }
+    }
+
+    // MARK: - the instrument
+
+    @ObservedObject private var instrument = InstrumentCenter.shared
+
+    private func vitalRow(_ label: String,
+                          _ reading: VitalReading?) -> some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.callout)
+                Text(reading.map {
+                    InstrumentCenter.ageLine($0.when)
+                        + ($0.source.map { " · \($0)" } ?? "")
+                } ?? "no reading yet")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(reading?.value ?? "—")
+                .font(.callout.weight(.semibold))
+        }
+    }
+
+    private var instrumentSection: some View {
+        Section(header: Text("The Instrument — the operator, read"),
+                footer: Text("The Watch is never asked to do "
+                    + "anything — worn and paired, it already "
+                    + "measures, and the readings wait in this "
+                    + "phone's health store. A reading, not a "
+                    + "live feed: samples arrive at the Watch's "
+                    + "sync cadence, and every value carries "
+                    + "its age. Read-only and on-device; raw "
+                    + "readings are never written to the "
+                    + "night log.")) {
+            switch instrument.phase {
+            case .unavailable:
+                Text("This device has no health store to read.")
+                    .font(.callout).foregroundStyle(.secondary)
+            case .dormant:
+                Text("This build's signing doesn't carry the "
+                     + "HealthKit entitlement, so the "
+                     + "instrument sleeps — the way the Coin "
+                     + "sleeps under free signing. A signing "
+                     + "that carries it wakes the instrument "
+                     + "with no other change.")
+                    .font(.callout).foregroundStyle(.secondary)
+            case .unknown:
+                Text("Your Watch already knows the state of "
+                     + "the operator — heart, breath, blood, "
+                     + "sleep. Let the house read it, and that "
+                     + "state stands beside the state of the "
+                     + "house.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button {
+                    instrument.requestAccess()
+                } label: {
+                    Label("Let the house read the instrument",
+                          systemImage: "heart.text.square")
+                }
+            case .asking:
+                HStack {
+                    ProgressView()
+                    Text("Asking\u{2026}")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+            case .reading:
+                if let watch = instrument.watchName {
+                    Text("Reading \(watch), through the "
+                         + "health store it already feeds. It "
+                         + "was never asked to do anything else.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                vitalRow("Heart rate", instrument.heartRate)
+                vitalRow("Heart rate variability",
+                         instrument.hrv)
+                vitalRow("Resting heart rate",
+                         instrument.restingHeartRate)
+                vitalRow("Blood oxygen", instrument.oxygen)
+                vitalRow("Respiratory rate",
+                         instrument.respiratory)
+                vitalRow("Wrist temperature (sleeping)",
+                         instrument.wristTemp)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sleep, last night").font(.callout)
+                        Text(instrument.lastSleep.map {
+                            "asleep "
+                                + $0.start.formatted(
+                                    date: .omitted, time: .shortened)
+                                + " → "
+                                + $0.end.formatted(
+                                    date: .omitted, time: .shortened)
+                        } ?? "no sleep recorded")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(instrument.lastSleep.map(
+                        InstrumentCenter.durationLine) ?? "—")
+                        .font(.callout.weight(.semibold))
+                }
+                HStack {
+                    Text("Steps today").font(.callout)
+                    Spacer()
+                    Text(instrument.stepsToday?.formatted() ?? "—")
+                        .font(.callout.weight(.semibold))
+                }
+                Button {
+                    instrument.fetchAll()
+                } label: {
+                    Label("Read again", systemImage: "arrow.clockwise")
+                }
+                if let read = instrument.lastReadAt {
+                    Text("Read " + InstrumentCenter.ageLine(read) + ".")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .onAppear {
+            if instrument.phase == .reading {
+                instrument.fetchAll()
             }
         }
     }
