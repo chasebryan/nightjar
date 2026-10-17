@@ -1769,6 +1769,11 @@ private enum SkelliModelBox {
 #if canImport(MLXLLM)
 import MLXLLM
 import MLXLMCommon
+#if canImport(MLXHuggingFace)
+import MLXHuggingFace
+import HuggingFace
+import Tokenizers
+#endif
 
 /// Her weights bench: open-weights models run
 /// through MLX. The operator picks one in her
@@ -1848,16 +1853,22 @@ private enum SkelliWeights {
            containerKey == key {
             return container
         }
-        let config: ModelConfiguration
+        let box: ModelContainer
         if let id = downloadedSelection {
-            config = ModelConfiguration(id: id)
+            box = try await LLMModelFactory.shared
+                .loadContainer(
+                    from: #hubDownloader(),
+                    using: #huggingFaceTokenizerLoader(),
+                    configuration: ModelConfiguration(
+                        id: id))
         } else if let folder = folderURL {
-            config = ModelConfiguration(directory: folder)
+            box = try await LLMModelFactory.shared
+                .loadContainer(
+                    from: folder,
+                    using: #huggingFaceTokenizerLoader())
         } else {
             throw WeightsError.noBench
         }
-        let box = try await LLMModelFactory.shared
-            .loadContainer(configuration: config)
         container = box
         containerKey = key
         return box
