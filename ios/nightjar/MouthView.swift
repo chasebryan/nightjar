@@ -94,6 +94,7 @@ struct SendView: View {
     @State private var shareItem: ShareItem?
     @State private var showLog = false
     @State private var showHelm = false
+    @State private var showWarRoom = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
@@ -271,6 +272,24 @@ struct SendView: View {
                         + "devices — and a place to learn "
                         + "new buttons from what your gear "
                         + "sends you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Button {
+                        Haptics.tap()
+                        showWarRoom = true
+                    } label: {
+                        Label("War Room — one operation, "
+                            + "one timeline",
+                              systemImage: "map")
+                    }
+                    Text("Listen, the trace and the knock "
+                        + "bench run as a single operation on "
+                        + "the Trace scope, feeding one "
+                        + "timestamped timeline — and one "
+                        + "export carries the whole record.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1211,6 +1230,9 @@ struct SendView: View {
             }
             .sheet(isPresented: $showHelm) {
                 HelmView()
+            }
+            .sheet(isPresented: $showWarRoom) {
+                WarRoomView()
             }
             .fullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)
