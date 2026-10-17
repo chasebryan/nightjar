@@ -179,6 +179,8 @@ final class Emcon: ObservableObject {
     let chat = KnockChat()
     /// The ventriloquist: throws land here first.
     let voiceThrow = VoiceThrowCenter()
+    /// The sparring season's ghost lives here.
+    let season = Season()
 
     /// The watch officer: reads every knock against the
     /// whole situation and answers under its charter.
@@ -921,6 +923,15 @@ final class Emcon: ObservableObject {
         if events.count > eventCap {
             events.removeLast(events.count - eventCap)
         }
+    }
+
+    /// The season ghost's door: a synthetic knock fed through
+    /// the very path real arrivals take, so every defense —
+    /// tripwire, engine, prober files, steward, conductor —
+    /// answers it exactly as it would answer the world.
+    func ghostKnock(source: String, port: Int, verdict: String) {
+        logEvent(source: source, port: port, proto: "TCP",
+                 verdict: verdict, byteCount: 0)
     }
 
     private func logEvent(source: String, port: Int, proto: String,
