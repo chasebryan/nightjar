@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **A programmer's best friend.** Ask her
+  to write something — a function, a script,
+  a tool — and the benches answer as coders:
+  complete, runnable, no placeholders. Her
+  Forge grows a **Workbench**: name a
+  language, brief her, and the draft lands
+  in an editor — copyable, shareable
+  anywhere, and JavaScript runs on the spot
+  in a leashed interpreter, output and all.
+
 - **She reopens where you left her.** The
   app remembers the last tab you were working
   in and restores it on launch — even after
