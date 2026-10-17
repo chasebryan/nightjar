@@ -12,8 +12,11 @@ import SwiftUI
 /// the app's own controls, worked through the same
 /// organs the tabs use. She keeps a memory of what
 /// she is told, and the conversation itself, between
-/// visits. She answers only from those, and when a
-/// question leaves the house she says so.
+/// visits. The house is answered first, always; when
+/// a question leaves it, she may research through
+/// the phone's own network connection and bring the
+/// answer back with its source named — with house
+/// particulars scrubbed from anything sent outward.
 ///
 /// Loud and destructive levers keep their own
 /// confirmations: Skelli walks the operator to them
@@ -540,6 +543,234 @@ enum SkelliMood {
     case idle, thinking, working, speaking
 }
 
+/// Her outward eye: research through the phone's own
+/// network connection, for the questions the house
+/// cannot answer. Two keyless public sources —
+/// DuckDuckGo's instant answers and Wikipedia — are
+/// asked in parallel, and whatever comes back is
+/// composed with its source named, so the operator
+/// can judge it. Retrieval only: she quotes and
+/// condenses what a source says, and the source line
+/// rides with every answer.
+enum SkelliWeb {
+    struct Finding {
+        var text: String
+        var source: String
+        var url: String
+    }
+
+    static func research(_ query: String,
+                         completion: @escaping (String) -> Void) {
+        let group = DispatchGroup()
+        var ddg: Finding?
+        var wiki: Finding?
+
+        if let url = endpoint("https://api.duckduckgo.com/",
+                              items: [
+                                  URLQueryItem(name: "q",
+                                               value: query),
+                                  URLQueryItem(name: "format",
+                                               value: "json"),
+                                  URLQueryItem(name: "no_html",
+                                               value: "1"),
+                                  URLQueryItem(name: "skip_disambig",
+                                               value: "1"),
+                              ]) {
+            group.enter()
+            fetchJSON(url) { dict in
+                ddg = duckDuckGoFinding(dict)
+                group.leave()
+            }
+        }
+        if let url = endpoint("https://en.wikipedia.org/w/api.php",
+                              items: [
+                                  URLQueryItem(name: "action",
+                                               value: "query"),
+                                  URLQueryItem(name: "generator",
+                                               value: "search"),
+                                  URLQueryItem(name: "gsrsearch",
+                                               value: query),
+                                  URLQueryItem(name: "gsrlimit",
+                                               value: "3"),
+                                  URLQueryItem(name: "prop",
+                                               value: "extracts|info"),
+                                  URLQueryItem(name: "exintro",
+                                               value: "1"),
+                                  URLQueryItem(name: "explaintext",
+                                               value: "1"),
+                                  URLQueryItem(name: "inprop",
+                                               value: "url"),
+                                  URLQueryItem(name: "format",
+                                               value: "json"),
+                              ]) {
+            group.enter()
+            fetchJSON(url) { dict in
+                wiki = wikipediaFinding(dict)
+                group.leave()
+            }
+        }
+        group.notify(queue: .main) {
+            completion(compose(query: query, ddg: ddg,
+                               wiki: wiki))
+        }
+    }
+
+    private static func endpoint(
+        _ base: String, items: [URLQueryItem]) -> URL? {
+        var components = URLComponents(string: base)
+        components?.queryItems = items
+        return components?.url
+    }
+
+    private static func fetchJSON(
+        _ url: URL,
+        completion: @escaping ([String: Any]?) -> Void) {
+        var request = URLRequest(url: url,
+                                 timeoutInterval: 12)
+        request.setValue(
+            "nightjar-hack Skelli (on-device research)",
+            forHTTPHeaderField: "User-Agent")
+        URLSession.shared.dataTask(with: request) {
+            data, response, _ in
+            guard let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode),
+                  let data = data,
+                  let object = try? JSONSerialization
+                      .jsonObject(with: data),
+                  let dict = object as? [String: Any]
+            else {
+                completion(nil)
+                return
+            }
+            completion(dict)
+        }.resume()
+    }
+
+    private static func duckDuckGoFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let dict = dict else { return nil }
+        let source = (dict["AbstractSource"] as? String)
+            ?? "DuckDuckGo"
+        if let answer = dict["Answer"] as? String,
+           !answer.isEmpty {
+            return Finding(text: answer, source: source,
+                           url: (dict["AbstractURL"]
+                               as? String)
+                               ?? "https://duckduckgo.com")
+        }
+        if let abstract = dict["AbstractText"] as? String,
+           !abstract.isEmpty {
+            return Finding(text: abstract, source: source,
+                           url: (dict["AbstractURL"]
+                               as? String)
+                               ?? "https://duckduckgo.com")
+        }
+        if let topic = firstTopic(dict["RelatedTopics"]) {
+            return topic
+        }
+        return nil
+    }
+
+    private static func firstTopic(_ any: Any?) -> Finding? {
+        guard let topics = any as? [[String: Any]] else {
+            return nil
+        }
+        for topic in topics {
+            if let text = topic["Text"] as? String,
+               !text.isEmpty {
+                return Finding(
+                    text: text, source: "DuckDuckGo",
+                    url: (topic["FirstURL"] as? String)
+                        ?? "https://duckduckgo.com")
+            }
+            if let nested = firstTopic(topic["Topics"]) {
+                return nested
+            }
+        }
+        return nil
+    }
+
+    private static func wikipediaFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let query = dict?["query"] as? [String: Any],
+              let pages = query["pages"]
+                  as? [String: [String: Any]]
+        else { return nil }
+        let ordered = pages.values.sorted {
+            (($0["index"] as? Int) ?? 99)
+                < (($1["index"] as? Int) ?? 99)
+        }
+        for page in ordered {
+            if let extract = page["extract"] as? String,
+               !extract.isEmpty {
+                return Finding(
+                    text: extract, source: "Wikipedia",
+                    url: (page["fullurl"] as? String)
+                        ?? "https://en.wikipedia.org")
+            }
+        }
+        return nil
+    }
+
+    private static func compose(query: String,
+                                ddg: Finding?,
+                                wiki: Finding?) -> String {
+        if let ddg = ddg {
+            var lines = ["From the web — " + ddg.source
+                         + ":", excerpt(ddg.text),
+                         "Source: " + ddg.url]
+            if let wiki = wiki, wiki.url != ddg.url {
+                lines.append("Also: " + wiki.source
+                             + " — " + wiki.url)
+            }
+            return lines.joined(separator: "\n")
+        }
+        if let wiki = wiki {
+            return "From the web — " + wiki.source + ":\n"
+                + excerpt(wiki.text)
+                + "\nSource: " + wiki.url
+        }
+        return "I looked outward for '" + query
+            + "' through this phone's connection, and "
+            + "the public sources I can reach — "
+            + "DuckDuckGo's instant answers and "
+            + "Wikipedia — had nothing solid to bring "
+            + "back. Rephrase it, or name the thing "
+            + "more plainly, and I'll look again."
+    }
+
+    /// Condense a source's prose: whole sentences,
+    /// capped, so a web answer reads like an answer
+    /// and not a paste.
+    private static func excerpt(_ text: String,
+                                maxChars: Int = 720)
+        -> String {
+        let cleaned = text
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if cleaned.count <= maxChars { return cleaned }
+        var out = ""
+        for part in cleaned.components(separatedBy: ". ") {
+            let sentence = part.hasSuffix(".")
+                ? part : part + "."
+            if out.isEmpty {
+                if sentence.count > maxChars { break }
+                out = sentence
+            } else if (out + " " + sentence).count
+                        <= maxChars {
+                out += " " + sentence
+            } else {
+                break
+            }
+            if out.count > maxChars - 120 { break }
+        }
+        return out.isEmpty
+            ? String(cleaned.prefix(maxChars)) + "…"
+            : out
+    }
+}
+
 // MARK: - The center
 
 final class SkelliCenter: ObservableObject {
@@ -548,6 +779,15 @@ final class SkelliCenter: ObservableObject {
     @Published var lines: [SkelliLine] = []
     @Published var notes: [SkelliNote] = []
     @Published var mood: SkelliMood = .idle
+    /// Her outward eye, on unless the operator
+    /// closes it. Survives launches; Reset restores it.
+    @Published var webResearchEnabled: Bool = true {
+        didSet {
+            UserDefaults.standard.set(
+                webResearchEnabled,
+                forKey: "skelli.webResearch")
+        }
+    }
     private(set) var mouth: Mouth?
     private(set) var emcon: Emcon?
     private(set) var post: ListeningPost?
@@ -564,6 +804,9 @@ final class SkelliCenter: ObservableObject {
         let saved = SkelliStore.load()
         lines = saved.lines
         notes = saved.notes
+        webResearchEnabled = (UserDefaults.standard
+            .object(forKey: "skelli.webResearch")
+            as? Bool) ?? true
     }
 
     /// The app hands over its own organs at first light,
@@ -611,6 +854,7 @@ final class SkelliCenter: ObservableObject {
         notes = []
         pendingAction = nil
         lastDeviceIP = nil
+        webResearchEnabled = true
         mood = .idle
         SkelliStore.wipe()
     }
@@ -726,7 +970,11 @@ final class SkelliCenter: ObservableObject {
             say("Skelli — the house's specialist. I "
                 + "answer from the system itself: its "
                 + "manual, its live state, its "
-                + "controls. Ask 'what can you do'.")
+                + "controls — and when a question "
+                + "leaves the house, I research it "
+                + "through this phone's connection and "
+                + "name the source. Ask 'what can you "
+                + "do'.")
             return
         }
         if q.contains("what can you do")
@@ -978,12 +1226,106 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
-        say("That's outside the house. I know this "
-            + "application — every tab, organ, and "
-            + "switch in it — and the live state of "
-            + "your wire, your log, and your night. "
-            + "Ask me about those, or say 'what can you "
-            + "do'.")
+        // Beyond the house: research it through the
+        // phone's own connection.
+        researchWeb(for: q)
+    }
+
+    /// What the house cannot answer, the web might —
+    /// through this phone's own connection. The query
+    /// is scrubbed first: house details (private
+    /// addresses, .local names, anything key-shaped)
+    /// are never sent outward.
+    private func researchWeb(for q: String) {
+        guard webResearchEnabled else {
+            say("That's outside the house, and my "
+                + "web research is off — it's in my "
+                + "menu, under Web research. Inside "
+                + "the house I know every tab, organ, "
+                + "and switch, and the live state of "
+                + "your wire, your log, and your night.")
+            return
+        }
+        guard let query = Self.webQuery(from: q) else {
+            say("That one touches the house's own "
+                + "record — addresses and the like — "
+                + "and I don't send house details "
+                + "outward. Ask it as a general "
+                + "question, without the house's "
+                + "particulars, and I'll research it.")
+            return
+        }
+        mood = .working
+        say("Beyond the house — looking outward "
+            + "through this phone's connection. What "
+            + "comes back will name its source.")
+        SkelliWeb.research(query) { [weak self] result in
+            self?.say(result)
+        }
+    }
+
+    /// Build the outward query: command words off,
+    /// house particulars out. Nil when what remains
+    /// is too thin — or too private — to send.
+    private static func webQuery(from q: String) -> String? {
+        let lowered = q.lowercased()
+        if ["password", "pairing key", "secret",
+            "token", "credential"].contains(
+                where: lowered.contains) {
+            return nil
+        }
+        var text = q.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        let prefixes = [
+            "search the web for", "search online for",
+            "search the web", "search online",
+            "look up online", "use the web for",
+            "use the web", "web search for", "web search",
+            "search for", "search", "look up", "research",
+            "google", "find out", "find", "tell me about",
+            "what is", "what's", "who is", "explain",
+        ]
+        var changed = true
+        while changed {
+            changed = false
+            for prefix in prefixes {
+                if text.lowercased().hasPrefix(prefix + " ")
+                    || text.lowercased() == prefix {
+                    text = String(text.dropFirst(
+                        min(prefix.count + 1, text.count)))
+                        .trimmingCharacters(
+                            in: .whitespacesAndNewlines)
+                    changed = true
+                }
+            }
+        }
+        let words = text
+            .split(whereSeparator: {
+                $0 == " " || $0 == "?" || $0 == "\t"
+            })
+            .map(String.init)
+            .filter { word in
+                !isPrivateAddress(word)
+                    && !word.hasSuffix(".local")
+                    && !word.contains("@")
+            }
+        let query = words.joined(separator: " ")
+        guard query.count >= 3 else { return nil }
+        return query
+    }
+
+    private static func isPrivateAddress(_ word: String)
+        -> Bool {
+        let parts = word.split(separator: ".")
+        guard parts.count == 4,
+              parts.allSatisfy({ Int($0) != nil })
+        else { return false }
+        let first = Int(parts[0]) ?? -1
+        let second = Int(parts[1]) ?? -1
+        return first == 10 || first == 127
+            || (first == 172 && (16...31).contains(second))
+            || (first == 192 && second == 168)
+            || (first == 169 && second == 254)
     }
 
     private var capabilities: String {
@@ -1006,7 +1348,16 @@ final class SkelliCenter: ObservableObject {
             + "and the ear ('start listening'), and I "
             + "can name a device: 'name 192.168.4.50 "
             + "the printer'. Tell me 'remember …' and "
-            + "I keep it across conversations."
+            + "I keep it across conversations. And "
+            + "when a question is beyond the house, I "
+            + "research it through this phone's own "
+            + "network connection — DuckDuckGo's "
+            + "instant answers and Wikipedia — and "
+            + "bring the answer back with its source: "
+            + "'search the web for …' forces the "
+            + "outward look. House particulars are "
+            + "never sent out; the switch is in my "
+            + "menu."
     }
 
     // MARK: memory and devices
@@ -1762,6 +2113,8 @@ struct SkelliView: View {
                             Label("What Skelli remembers",
                                   systemImage: "brain")
                         }
+                        Toggle("Web research",
+                               isOn: $skelli.webResearchEnabled)
                         Divider()
                         Button(role: .destructive) {
                             confirmClear = true
@@ -1858,6 +2211,8 @@ struct SkelliView: View {
         let wire = NeighborhoodStore.shared
             .neighbors.count
         return moodWord + " · \(wire) on the wire"
+            + (skelli.webResearchEnabled
+               ? " · web on" : " · web off")
             + (skelli.notes.isEmpty
                ? ""
                : " · remembers \(skelli.notes.count)")
