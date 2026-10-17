@@ -369,7 +369,17 @@
   Update button — iOS installs the new
   build over the old, data intact (the
   ritual, a manifest template, and an
-  armable CI workflow live in `ota/`). The
+  armable CI workflow live in `ota/`). And
+  the checker never sleeps: it watches
+  constantly while the app is open —
+  conditional requests keep that nearly
+  free — checks again in the background
+  whenever iOS grants the time, and
+  announces a waiting release by
+  notification where notifications are
+  already welcome. Dismiss a release and
+  it goes quiet about that one; About
+  keeps it on file regardless. The
   free road is here too: the repo is a
   SideStore source, re-signed on the phone
   before the week runs out.
