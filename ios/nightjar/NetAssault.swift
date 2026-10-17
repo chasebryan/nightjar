@@ -499,7 +499,17 @@ struct AssaultIgnitionView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let data = gifData {
+                // The reel, whole: itself, blurred and
+                // dimmed, fills the screen behind — and
+                // the frame itself plays uncropped on top,
+                // every edge of it visible.
                 GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+                    .scaleEffect(1.15)
+                    .blur(radius: 26)
+                    .overlay(Color.black.opacity(0.35))
+                GIFPlayerView(data: data,
+                              contentMode: .scaleAspectFit)
                     .ignoresSafeArea()
             } else {
                 MatrixDots(color: themeCenter.current.accent
