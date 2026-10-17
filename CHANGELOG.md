@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Skelli, greeted properly (iOS).** Being
+  spoken to by name no longer sends her to the
+  browser: a leading "Skelli," is read as address,
+  not as a search subject, and the plain social
+  layer — what's up, how's it going, good morning
+  — is answered socially, out of her own live
+  status, before any machinery wakes. The menu's
+  Web research row carries its globe now, like
+  its neighbours.
+
 - **Two judgements (iOS).** Skelli is pinned to
   the top of her chat: her header and activity line
   ride a safe-area inset, the scroll region
