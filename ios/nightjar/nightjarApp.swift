@@ -24,6 +24,10 @@ struct NightjarApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .background(
+                    KeyboardSwipeInstaller()
+                        .frame(width: 0, height: 0)
+                        .allowsHitTesting(false))
                 .environmentObject(post)
 #if !STORE_BUILD
                 .environmentObject(updater)
