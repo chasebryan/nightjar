@@ -177,6 +177,8 @@ final class Emcon: ObservableObject {
     /// NACK repair, the burn timer. It lives in its own tab now;
     /// EMCON keeps the patterns — the detection side.
     let chat = KnockChat()
+    /// The ventriloquist: throws land here first.
+    let voiceThrow = VoiceThrowCenter()
 
     /// The watch officer: reads every knock against the
     /// whole situation and answers under its charter.
@@ -1465,6 +1467,13 @@ final class Emcon: ObservableObject {
     private func handleKnockOutput(_ output: KnockEngine.Output) {
         switch output {
         case .message(let message, let ackHash):
+            // The ventriloquist gets first refusal: a throw or
+            // its receipt is business, not conversation.
+            if voiceThrow.intercept(text: message.text,
+                                    source: message.source,
+                                    chat: chat) {
+                break
+            }
             chat.receive(text: message.text, from: message.source,
                          ackHash: ackHash)
             // The journal records THAT a message arrived, never
