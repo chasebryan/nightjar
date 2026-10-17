@@ -17,6 +17,8 @@ class NightjarApp : Application() {
     lateinit var recon: Recon
     lateinit var emcon: Emcon
     lateinit var steward: Steward
+    lateinit var knockEngine: KnockEngine
+    lateinit var knockChat: KnockChat
     lateinit var traceStore: TraceBookStore
     lateinit var tracer: NetworkTracer
 
@@ -85,6 +87,31 @@ class NightjarApp : Application() {
         }
         Journal.onEvent = { event -> steward.consume(event) }
         steward.shiftChange()
+        // Knocktalk: the engine is fed every raw knock the
+        // tripwire hears; its outputs land in the chat, the
+        // pattern list, and the vault.
+        KnockKeyStore.init(filesDir)
+        knockEngine = KnockEngine()
+        knockChat = KnockChat(conductorPrefs, filesDir)
+        emcon.knockSink = { source, port, proto, verdict ->
+            knockEngine.note(source, port, proto, verdict)
+        }
+        emcon.burnHook = { knockChat.burnNow() }
+        emcon.comboSink = { combo ->
+            knockEngine.vaultCombination = combo
+        }
+        knockEngine.vaultCombination = emcon.vaultCombo.value
+        knockEngine.onOutput = { output ->
+            handleKnockOutput(output)
+        }
+        knockChat.onRelayFrame = { from, ports ->
+            for (port in ports) {
+                knockEngine.note(
+                    "relay:$from", port, "TCP",
+                    "silent knock (no bytes sent)")
+            }
+        }
+        knockChat.refreshRelayPolling()
         // The dead hand falls at an opening, before anything
         // else: if a check-in is overdue, this launch burns
         // and goes dark.
@@ -97,5 +124,40 @@ class NightjarApp : Application() {
                 }
                 .build()
         )
+    }
+
+    /// Where the knock engine's outputs land: messages into
+    /// the chat (the journal records that a message moved,
+    /// never what it said), patterns into EMCON's knock
+    /// traffic, a spoken combination into the vault, and the
+    /// delivery protocol into the chat's hands.
+    private fun handleKnockOutput(output: KnockEngine.Output) {
+        when (output) {
+            is KnockEngine.Output.Message -> {
+                Journal.log(
+                    "knocktalk", "arrival",
+                    "message from ${output.message.source} — " +
+                        "${output.message.text.length} chars")
+                knockChat.receive(
+                    output.message.text, output.message.source,
+                    output.ackHash)
+            }
+            is KnockEngine.Output.Pattern -> {
+                emcon.noteKnockPattern(output.pattern)
+            }
+            is KnockEngine.Output.VaultUnlock -> {
+                emcon.openVault(output.source)
+            }
+            is KnockEngine.Output.Ack -> {
+                knockChat.handleAck(output.source, output.hash)
+            }
+            is KnockEngine.Output.Nack -> {
+                knockChat.handleNack(output.source, output.missing)
+            }
+            is KnockEngine.Output.NackNeeded -> {
+                knockChat.requestRepair(
+                    output.source, output.missing)
+            }
+        }
     }
 }
