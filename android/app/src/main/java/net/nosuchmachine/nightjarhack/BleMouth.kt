@@ -14,8 +14,14 @@ import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.content.Context
 import android.os.ParcelUuid
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /// The BLE mouth: advertisement beacons in the FFF0 service
@@ -55,7 +61,7 @@ class BleMouth(private val context: Context, private val mouth: Mouth) {
     fun startBeacon(payload: ByteArray): Boolean {
         val advertiser = bluetoothManager.adapter?.bluetoothLeAdvertiser
             ?: return false
-        stopBeacon()
+        stopBeaconInternal()
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
             .setConnectable(false)
@@ -84,7 +90,7 @@ class BleMouth(private val context: Context, private val mouth: Mouth) {
     }
 
     @SuppressLint("MissingPermission")
-    fun stopBeacon() {
+    private fun stopBeaconInternal() {
         val advertiser = bluetoothManager.adapter?.bluetoothLeAdvertiser
         val callback = advertiseCallback
         if (advertiser != null && callback != null) {
@@ -95,6 +101,53 @@ class BleMouth(private val context: Context, private val mouth: Mouth) {
         }
         advertiseCallback = null
         _beaconOn.value = false
+    }
+
+    /** Stopping the beacon also stands the flare down —
+     * the flare rides the same slot. */
+    fun stopBeacon() {
+        stopFlareJob()
+        stopBeaconInternal()
+    }
+
+    // MARK: Flare (the beacon slot carries a key-holder token)
+
+    private val _flareOn = MutableStateFlow(false)
+    val flareOn: StateFlow<Boolean> = _flareOn
+    private var flareJob: Job? = null
+    private val flareScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Raise the flare: the beacon slot carries the current
+     * five-minute window's token, rotated as windows turn. */
+    fun startFlare(key: ByteArray) {
+        if (!startBeacon(Flare.tokenNow(key))) return
+        _flareOn.value = true
+        flareJob?.cancel()
+        flareJob = flareScope.launch {
+            var window = Flare.window()
+            while (true) {
+                delay(20_000)
+                val now = Flare.window()
+                if (now != window) {
+                    window = now
+                    if (startBeacon(Flare.tokenNow(key))) {
+                        _flareOn.value = true
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopFlare() {
+        stopFlareJob()
+        stopBeaconInternal()
+    }
+
+    private fun stopFlareJob() {
+        flareJob?.cancel()
+        flareJob = null
+        _flareOn.value = false
     }
 
     // MARK: GATT host (FFF0 service, FFF1 write characteristic)
