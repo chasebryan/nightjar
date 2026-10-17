@@ -356,7 +356,7 @@ final class DuelCenter: ObservableObject {
 /// EMCON's duel card: opens the arena.
 struct DuelSectionView: View {
     let emcon: Emcon
-    @State private var showing = false
+    @Binding var showing: Bool
 
     var body: some View {
         Section(header: Text("Duel — two phones, one wire"),
@@ -370,10 +370,6 @@ struct DuelSectionView: View {
                 Label("Enter the arena",
                       systemImage: "figure.fencing")
             }
-        }
-        .sheet(isPresented: $showing) {
-            DuelView(center: emcon.duel, emcon: emcon,
-                     chat: emcon.chat)
         }
     }
 }
