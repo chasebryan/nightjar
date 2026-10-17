@@ -162,7 +162,8 @@ fun AppRoot(app: NightjarApp) {
                         Triple("About", Icons.Outlined.Info, 5),
                         Triple("Scan", Icons.Outlined.MyLocation, 3),
                         Triple("Recon", Icons.Outlined.TrackChanges, 6),
-                        Triple("EMCON", Icons.Outlined.Shield, 7)
+                        Triple("EMCON", Icons.Outlined.Shield, 7),
+                        Triple("Knock", Icons.Outlined.TouchApp, 8)
                     )
                     for ((label, icon, index) in items) {
                         NavigationBarItem(
@@ -197,6 +198,7 @@ fun AppRoot(app: NightjarApp) {
                     4 -> SessionsTab(app)
                     6 -> ReconTab(app) { tab = 1 }
                     7 -> EmconTab(app) { tab = 6 }
+                    8 -> KnockTab(app)
                     else -> AboutTab(app)
                 }
             }
