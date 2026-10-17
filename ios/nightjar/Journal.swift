@@ -430,6 +430,8 @@ struct NightLogView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background { AppBackdrop() }
         .navigationTitle("Night log")
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)
