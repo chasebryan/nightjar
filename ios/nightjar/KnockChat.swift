@@ -82,6 +82,15 @@ final class KnockChat: ObservableObject {
     /// as messages land. Display only — the seal never blocks.
     @Published private(set) var cadenceNotes: [String: String] = [:]
 
+    /// Burn everything: every thread, every cadence
+    /// note. The pairing key is NOT touched — the house
+    /// forgets the conversations, not how to have them.
+    func clearAllThreads() {
+        threads = [:]
+        cadenceNotes = [:]
+        save()
+    }
+
     func setCadenceNote(peer: String, note: String) {
         cadenceNotes[peer] = note
     }
