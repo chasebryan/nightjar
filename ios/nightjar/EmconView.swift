@@ -43,6 +43,8 @@ struct EmconView: View {
             knockTrafficSection
             vaultSection
             deadHandSection
+            CoinSectionView(center: CoinCenter.shared,
+                            emcon: emcon)
             hardeningSection
             Section {
                 Text("EMCON cannot hide this device from the access "
