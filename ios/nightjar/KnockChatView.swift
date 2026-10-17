@@ -59,6 +59,8 @@ struct KnockChatView: View {
     @State private var grindControl = GrindControl()
     @State private var blinkReceiving = false
     @State private var shareItem: ShareItem?
+    @State private var confirmClearThreads = false
+    @State private var confirmForgetCadence = false
 
     /// A blink names its suite in every frame; open with the
     /// carried suite first, the other second.
@@ -119,6 +121,7 @@ struct KnockChatView: View {
                     threadsSection
                 }
                 retentionSection
+                housekeepingSection
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
@@ -174,6 +177,33 @@ struct KnockChatView: View {
         }
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)
+        }
+        .confirmationDialog(
+            "Clear every Knocktalk thread?",
+            isPresented: $confirmClearThreads,
+            titleVisibility: .visible) {
+            Button("Delete all threads", role: .destructive) {
+                chat.clearAllThreads()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Every conversation and cadence note is "
+                 + "deleted. The pairing key stays — the "
+                 + "house forgets the conversations, not "
+                 + "how to have them.")
+        }
+        .confirmationDialog(
+            "Forget every cadence profile?",
+            isPresented: $confirmForgetCadence,
+            titleVisibility: .visible) {
+            Button("Forget all profiles", role: .destructive) {
+                CadenceSeal.resetAll()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("The timing fingerprints learned for "
+                 + "every peer are deleted. Cadence learns "
+                 + "each hand again from its next knocks.")
         }
         .fileImporter(
             isPresented: $chirpImporting,
@@ -902,6 +932,26 @@ struct KnockChatView: View {
         }) {
             Text("awaiting")
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var housekeepingSection: some View {
+        Section(header: Text("Housekeeping"),
+                footer: Text("What this tab has collected, "
+                    + "and the doors to empty it.")) {
+            Button(role: .destructive) {
+                confirmClearThreads = true
+            } label: {
+                Label("Clear all threads",
+                      systemImage: "trash")
+            }
+            .disabled(chat.threads.isEmpty)
+            Button(role: .destructive) {
+                confirmForgetCadence = true
+            } label: {
+                Label("Forget cadence profiles",
+                      systemImage: "hand.raised.slash")
+            }
         }
     }
 
