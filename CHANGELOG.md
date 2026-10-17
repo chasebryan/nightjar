@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Her hands, in conversation.** The
+  Forge and the Weights bench answer in
+  chat now, not only in their sheets:
+  "forge me a DNS packet for the
+  gateway" builds the packet, keeps it
+  in the armory, and files it in
+  Deliveries; "download the 7B" and
+  "use the Llama" run her bench; and a
+  fact she is asked to keep — in plain
+  words, punctuation and all — is
+  written to her notes for real, by
+  reflex or by the second reading
+  alike. An operator who never leaves
+  her tab loses nothing.
+
 ## 5.0.0 — 2026-10-17 — the awakening
 
 - **Deliveries, and a self that grows.**
