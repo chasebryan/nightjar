@@ -62,6 +62,11 @@ final class InstrumentCenter: ObservableObject {
     @Published private(set) var restingBaseline: Double?
     @Published private(set) var sleepBaselineHours: Double?
     @Published private(set) var restingLatest: Double?
+    /// When the latest resting reading was taken —
+    /// a latest without a date can be silently
+    /// stale, and the Subconscious's comparison
+    /// deserves to know which it holds.
+    @Published private(set) var restingLatestAt: Date?
     @Published private(set) var watchName: String?
     @Published private(set) var lastReadAt: Date?
 
@@ -193,6 +198,7 @@ final class InstrumentCenter: ObservableObject {
                     if id == .restingHeartRate {
                         self.restingLatest = sample.quantity
                             .doubleValue(for: unit)
+                        self.restingLatestAt = sample.endDate
                     }
                     let reading = format(
                         sample.quantity.doubleValue(for: unit),
@@ -261,18 +267,34 @@ final class InstrumentCenter: ObservableObject {
                 results?.enumerateStatistics(
                     from: anchor.addingTimeInterval(
                         -14 * 24 * 3600),
-                    to: Date()) { stats, _ in
+                    to: anchor) { stats, _ in
                     if let avg = stats.averageQuantity() {
                         daily.append(avg.doubleValue(for: bpm))
                     }
                 }
                 guard daily.count >= 5 else { return }
-                let mean = daily.reduce(0, +)
-                    / Double(daily.count)
+                // Complete days only — the enumeration
+                // stops at this morning, so no partial
+                // day blunts the mean; and the newest
+                // complete day stands outside the
+                // baseline as its latest, so the pair
+                // the Subconscious compares is
+                // consistent by construction.
+                let latestDay = daily.last
+                let baseDays = daily.count >= 6
+                    ? Array(daily.dropLast()) : daily
+                let mean = baseDays.reduce(0, +)
+                    / Double(baseDays.count)
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     let changed = self.restingBaseline != mean
                     self.restingBaseline = mean
+                    if let latestDay,
+                       self.restingLatestAt == nil
+                        || self.restingLatestAt! < anchor {
+                        self.restingLatest = latestDay
+                        self.restingLatestAt = anchor
+                    }
                     if changed {
                         NotificationCenter.default.post(
                             name: Self.baselinesUpdated,

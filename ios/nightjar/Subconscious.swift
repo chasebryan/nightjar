@@ -328,22 +328,50 @@ final class SubconsciousCenter: ObservableObject {
                     text: "Foreign hands have only ever "
                         + "come in the small hours.",
                     evidence: "\(cadence.count) cadence flags",
-                    learnedAt: now))
+                    learnedAt: now,
+                    windowStart: 0, windowEnd: 5))
             }
         }
 
-        // Merge: keep birthdays, respect burials, cap it.
+        // Merge: keep birthdays, respect burials,
+        // cap it — and RETAIN. A fact the fortnight
+        // no longer re-derives is not silently
+        // dropped: it was a durable conclusion, and
+        // its evidence aging out of the window is
+        // not a refutation (the contradiction watch
+        // is what catches a fact the house broke).
+        // When the cap bites, the un-re-derived go
+        // first, oldest first; derivation order no
+        // longer starves whole families.
         let existing = Dictionary(uniqueKeysWithValues:
             (state.facts ?? []).map { ($0.id, $0) })
         var merged: [HouseFact] = []
+        var derivedIDs = Set<String>()
         for fact in derived where !buried.contains(fact.id) {
             var f = fact
             if let old = existing[fact.id] {
                 f.learnedAt = old.learnedAt
             }
             merged.append(f)
+            derivedIDs.insert(f.id)
         }
-        state.facts = Array(merged.prefix(12))
+        merged.append(contentsOf: (state.facts ?? [])
+            .filter {
+                !derivedIDs.contains($0.id)
+                    && !buried.contains($0.id)
+            })
+        if merged.count > 12 {
+            let evictable = merged.sorted { a, b in
+                let aDerived = derivedIDs.contains(a.id)
+                let bDerived = derivedIDs.contains(b.id)
+                if aDerived != bDerived { return !aDerived }
+                return a.learnedAt < b.learnedAt
+            }
+            let doomed = Set(evictable
+                .prefix(merged.count - 12).map { $0.id })
+            merged.removeAll { doomed.contains($0.id) }
+        }
+        state.facts = merged
         facts = state.facts ?? []
     }
 
@@ -521,7 +549,15 @@ final class SubconsciousCenter: ObservableObject {
                 .hour, from: event.when)] += 1
         }
         let priorDays = fortnight.filter { $0.when <= dayAgo }
-        let priorMean = Double(priorDays.count) / 13.0
+        // The habit's denominator is the record's
+        // real span, not an assumed fortnight: a
+        // young house's normal is reckoned from
+        // the days it actually has behind it.
+        let priorSpan = priorDays.first.map {
+            max(1.0, min(13.0, dayAgo.timeIntervalSince(
+                $0.when) / 86400))
+        } ?? 13.0
+        let priorMean = Double(priorDays.count) / priorSpan
         let last24Count = events.filter {
             $0.when > dayAgo }.count
         if priorMean >= 10 {
@@ -730,6 +766,73 @@ final class SubconsciousCenter: ObservableObject {
                             + ":00–\(end):00).",
                         citations: [],
                         confidence: 0.55))
+                }
+            }
+            if fact.id == "fact-foreign" {
+                // The foreign habits are watched
+                // too: cadence flags are the foreign
+                // hands' own events, and a flag
+                // outside the known hours — or on a
+                // weekend, against the weekday
+                // claim — breaks the fact.
+                let cadenceDay = dayEvents.filter {
+                    $0.module == "emcon" && $0.kind == "cadence"
+                }
+                if let start = fact.windowStart,
+                   let end = fact.windowEnd {
+                    let outside = cadenceDay.filter { e in
+                        let h = Calendar.current.component(
+                            .hour, from: e.when)
+                        return !(start < end
+                            ? (h >= start && h < end)
+                            : (h >= start || h < end))
+                    }
+                    if let rogue = outside.first {
+                        found.append(Insight(
+                            id: "against-fact-foreign",
+                            when: rogue.when,
+                            title: "Against its own record",
+                            body: "Foreign hands were only "
+                                + "ever known in the small "
+                                + "hours (\(start):00–"
+                                + "\(end):00) — but a cadence "
+                                + "flag landed at "
+                                + rogue.when.formatted(
+                                    date: .omitted,
+                                    time: .shortened)
+                                + ". The habit is broken, "
+                                + "or new hands have arrived.",
+                            citations: [Self.cite(rogue)],
+                            confidence: 0.55))
+                    }
+                } else if !fact.text.contains("small hours") {
+                    // The weekday claim. (A small-hours
+                    // fact learned before the watch
+                    // recorded its hours carries no
+                    // window — it is not tested
+                    // against the wrong claim.)
+                    let weekend = cadenceDay.filter { e in
+                        let wd = Calendar.current.component(
+                            .weekday, from: e.when)
+                        return wd == 1 || wd == 7
+                    }
+                    if let rogue = weekend.first {
+                        found.append(Insight(
+                            id: "against-fact-foreign",
+                            when: rogue.when,
+                            title: "Against its own record",
+                            body: "Foreign hands were only "
+                                + "ever known on weekdays — "
+                                + "but a cadence flag landed "
+                                + "on a weekend, at "
+                                + rogue.when.formatted(
+                                    date: .abbreviated,
+                                    time: .shortened)
+                                + ". The habit is broken, "
+                                + "or new hands have arrived.",
+                            citations: [Self.cite(rogue)],
+                            confidence: 0.55))
+                    }
                 }
             }
         }

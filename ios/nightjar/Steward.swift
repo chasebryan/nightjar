@@ -835,6 +835,34 @@ final class Steward: ObservableObject {
 
     // MARK: - proposals, in the operator's hands
 
+    // MARK: - the rulings tally
+
+    /// The operator's rulings, counted where they
+    /// happen and kept. The study below used to
+    /// re-derive them by parsing journal prose over
+    /// the last 1000 events — a window a busy house
+    /// outgrows, so the history silently reset —
+    /// and anticipation enactments, which log a
+    /// different sentence, were never counted at
+    /// all. The tally forgets nothing.
+    private static let tallyKey = "stewardRulings"
+
+    static func rulings() -> [String: [String: Int]] {
+        UserDefaults.standard.dictionary(forKey: tallyKey)
+            as? [String: [String: Int]] ?? [:]
+    }
+
+    private static func recordRuling(_ title: String,
+                                     enacted: Bool) {
+        guard !title.isEmpty else { return }
+        var all = rulings()
+        var entry = all[title] ?? [:]
+        entry[enacted ? "enacted" : "dismissed",
+              default: 0] += 1
+        all[title] = entry
+        UserDefaults.standard.set(all, forKey: tallyKey)
+    }
+
     func enact(_ proposal: Proposal, emcon: Emcon,
                mouth: Mouth) {
         switch proposal.kind {
@@ -880,6 +908,8 @@ final class Steward: ObservableObject {
                             + "anticipation — the \(persona) "
                             + "canary is pre-staged on port "
                             + "\(port) for \(host).")
+                Self.recordRuling(proposal.title,
+                                  enacted: true)
             } else {
                 var done: [String] = []
                 for action in proposal.plan {
@@ -896,6 +926,8 @@ final class Steward: ObservableObject {
                             + (done.isEmpty ? "nothing could "
                                 + "be carried out" : done.joined(
                                     separator: ", ")) + ".")
+                Self.recordRuling(proposal.title,
+                                  enacted: true)
                 if let host = proposal.host {
                     watches.append(Watch(host: host,
                                          situation: proposal.title,
@@ -917,6 +949,7 @@ final class Steward: ObservableObject {
         Journal.log("steward", "observe",
                     "The operator dismissed a proposal: "
                     + proposal.title + ".")
+        Self.recordRuling(proposal.title, enacted: false)
     }
 
     // MARK: - the shift change
@@ -1023,32 +1056,16 @@ final class Steward: ObservableObject {
     private func studyOperator(emcon: Emcon,
                                all: [NightEvent]) {
         if Self.latitude == "observe" {
+            // The rulings tally — counted where the
+            // rulings happen, kept without a window.
             var enacted: [String: Int] = [:]
             var dismissed: [String: Int] = [:]
-            for event in all where event.module == "steward" {
-                if event.text.hasPrefix(
-                    "The operator enacted a held plan — ") {
-                    let title = event.text
-                        .replacingOccurrences(
-                            of: "The operator enacted a held "
-                                + "plan — ", with: "")
-                        .components(separatedBy: ":").first
-                        ?? ""
-                    if !title.isEmpty {
-                        enacted[title, default: 0] += 1
-                    }
+            for (title, entry) in Self.rulings() {
+                if let n = entry["enacted"], n > 0 {
+                    enacted[title] = n
                 }
-                if event.text.hasPrefix(
-                    "The operator dismissed a proposal: ") {
-                    let title = event.text
-                        .replacingOccurrences(
-                            of: "The operator dismissed a "
-                                + "proposal: ", with: "")
-                        .components(separatedBy: ".").first
-                        ?? ""
-                    if !title.isEmpty {
-                        dismissed[title, default: 0] += 1
-                    }
+                if let n = entry["dismissed"], n > 0 {
+                    dismissed[title] = n
                 }
             }
             for (situation, count) in enacted
