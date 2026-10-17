@@ -251,7 +251,12 @@ struct EmconView: View {
                 ProgressView()
             } else if let before = emcon.drillBefore,
                       let after = emcon.drillAfter {
-                let gone = Emcon.silenced(before: before, after: after)
+                // The readout is the ledger plus the
+                // snapshot diff: what the drill switched
+                // off by name, and what the wire itself
+                // stopped showing.
+                let gone = emcon.drillSilenced
+                    + Emcon.silenced(before: before, after: after)
                 let still = Emcon.stillShowing(after)
                 if gone.isEmpty, still.isEmpty {
                     Text("Before and after agree: nothing was "
