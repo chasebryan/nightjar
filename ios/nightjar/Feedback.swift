@@ -4,6 +4,10 @@ import PDFKit
 import SwiftUI
 import UIKit
 import WebKit
+#if canImport(MLXLLM)
+import MLXLLM
+import MLXLMCommon
+#endif
 import WebKit
 
 /// Little in-app banners that say what just happened, then fade —
@@ -1988,6 +1992,311 @@ extension SkelliCenter {
                 i += 1
             }
             return Double(t)
+        }
+    }
+}
+
+// MARK: - Her weights, managed in the app
+
+/// A weights model her bench can run: an MLX build
+/// on the Hugging Face hub, sized for a phone.
+struct WeightsOption: Identifiable {
+    var id: String
+    var name: String
+    var sizeGB: Double
+    var note: String
+}
+
+/// Her bench's keeper: the catalog she supports,
+/// the recommendation for this phone, and the
+/// downloads themselves — picked, fetched, and
+/// run without ever leaving the app. Downloads
+/// come from the Hugging Face hub into the app's
+/// own cache; afterwards the model is entirely
+/// on the phone, and nothing is sent back.
+final class WeightsCenter: ObservableObject {
+    static let shared = WeightsCenter()
+
+    static let catalog: [WeightsOption] = [
+        WeightsOption(
+            id: "mlx-community/Qwen3-4B-4bit",
+            name: "Qwen3 4B", sizeGB: 2.5,
+            note: "The deep bench — sharp and "
+                + "unhurried."),
+        WeightsOption(
+            id: "mlx-community/Llama-3.2-3B-Instruct-4bit",
+            name: "Llama 3.2 3B", sizeGB: 1.9,
+            note: "Meta's small talker — quick and "
+                + "plainspoken."),
+        WeightsOption(
+            id: "mlx-community/Qwen3-1.7B-4bit",
+            name: "Qwen3 1.7B", sizeGB: 1.1,
+            note: "The middle weight — fast and "
+                + "capable."),
+        WeightsOption(
+            id: "mlx-community/Qwen2.5-7B-Instruct-4bit",
+            name: "Qwen2.5 7B", sizeGB: 4.3,
+            note: "The heavyweight — the most she "
+                + "can carry."),
+        WeightsOption(
+            id: "mlx-community/Qwen3-0.6B-4bit",
+            name: "Qwen3 0.6B", sizeGB: 0.5,
+            note: "The featherweight — nearly "
+                + "instant, and modest."),
+    ]
+
+    @Published var selectedID: String? {
+        didSet {
+            UserDefaults.standard.set(
+                selectedID, forKey: "skelli.weightsModel")
+        }
+    }
+    @Published var downloaded: Set<String> {
+        didSet {
+            UserDefaults.standard.set(
+                Array(downloaded),
+                forKey: "skelli.weightsDownloaded")
+        }
+    }
+    @Published var progress: [String: Double] = [:]
+    @Published var states: [String: String] = [:]
+
+    init() {
+        selectedID = UserDefaults.standard.string(
+            forKey: "skelli.weightsModel")
+        downloaded = Set(UserDefaults.standard
+            .stringArray(
+                forKey: "skelli.weightsDownloaded")
+            ?? [])
+    }
+
+    /// The bench this phone should carry, judged
+    /// by the memory it has to carry it in.
+    var recommended: WeightsOption {
+        let gb = Double(ProcessInfo.processInfo
+            .physicalMemory) / 1_073_741_824
+        if gb >= 7.5 { return Self.catalog[0] }
+        if gb >= 5 { return Self.catalog[2] }
+        return Self.catalog[4]
+    }
+
+    var memoryGB: Double {
+        Double(ProcessInfo.processInfo.physicalMemory)
+            / 1_073_741_824
+    }
+
+    func download(_ option: WeightsOption) {
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *) {
+            guard progress[option.id] == nil
+            else { return }
+            states[option.id] = "Downloading…"
+            progress[option.id] = 0
+            Task {
+                do {
+                    let config = ModelConfiguration(
+                        id: option.id)
+                    _ = try await LLMModelFactory
+                        .shared.loadContainer(
+                            configuration: config) { p in
+                        DispatchQueue.main.async {
+                            self.progress[option.id] =
+                                p.fractionCompleted
+                        }
+                    }
+                    await MainActor.run {
+                        self.progress[option.id] = nil
+                        self.downloaded.insert(option.id)
+                        self.selectedID = option.id
+                        self.states[option.id] = "Ready."
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.progress[option.id] = nil
+                        self.states[option.id] =
+                            "Failed — check the "
+                            + "connection and try again."
+                    }
+                }
+            }
+        } else {
+            states[option.id] = "The bench needs "
+                + "iOS 17 or later."
+        }
+        #else
+        states[option.id] = "The bench isn't in "
+            + "this build."
+        #endif
+    }
+
+    func select(_ option: WeightsOption) {
+        selectedID = option.id
+    }
+
+    func remove(_ option: WeightsOption) {
+        downloaded.remove(option.id)
+        if selectedID == option.id {
+            selectedID = nil
+        }
+        states[option.id] = nil
+        let folder = "models--" + option.id
+            .replacingOccurrences(of: "/", with: "--")
+        var bases: [URL] = []
+        if let caches = FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask).first {
+            bases.append(caches)
+        }
+        if let docs = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask).first {
+            bases.append(docs)
+        }
+        for base in bases {
+            for sub in ["huggingface/hub/", "hub/", ""] {
+                try? FileManager.default.removeItem(
+                    at: base.appendingPathComponent(
+                        sub + folder))
+            }
+        }
+    }
+}
+
+/// The Weights sheet: her bench, on one screen —
+/// what this phone should carry, what it does
+/// carry, and the buttons to change it.
+struct WeightsView: View {
+    @StateObject private var center = WeightsCenter.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if !SkelliMind.benchBuiltIn {
+                    Section {
+                        Text("The weights bench isn't "
+                            + "in this build — the MLX "
+                            + "package (mlx-swift-lm) "
+                            + "isn't linked into the "
+                            + "target yet. Once it is, "
+                            + "her models live here: "
+                            + "picked, downloaded, and "
+                            + "run without ever leaving "
+                            + "the app.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Section {
+                        Text("This phone carries "
+                            + String(format: "%.0f",
+                                     center.memoryGB)
+                            + " GB — her bench should "
+                            + "be the "
+                            + center.recommended.name
+                            + ".")
+                            .font(.callout)
+                        if !center.downloaded.contains(
+                            center.recommended.id) {
+                            Button("Download the "
+                                + center.recommended.name) {
+                                center.download(
+                                    center.recommended)
+                            }
+                        }
+                    }
+                    Section("The bench") {
+                        ForEach(WeightsCenter.catalog) {
+                            option in
+                            row(option)
+                        }
+                    }
+                    Section {
+                        Text("Downloads come from the "
+                            + "Hugging Face hub and "
+                            + "live in the app's own "
+                            + "cache. After that the "
+                            + "model never leaves the "
+                            + "phone, and nothing is "
+                            + "sent back.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("Weights")
+            .toolbar {
+                ToolbarItem(
+                    placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func row(_ option: WeightsOption)
+        -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(option.name)
+                    .font(.headline)
+                if option.id == center.recommended.id {
+                    Text("recommended")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                controls(option)
+            }
+            Text(option.note)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(String(format: "%.1f GB · ",
+                        option.sizeGB) + option.id)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            if let value = center.progress[option.id] {
+                ProgressView(value: value)
+            } else if let state = center
+                .states[option.id] {
+                Text(state)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func controls(_ option: WeightsOption)
+        -> some View {
+        if center.progress[option.id] != nil {
+            Text("…")
+                .foregroundStyle(.secondary)
+        } else if center.downloaded
+            .contains(option.id) {
+            HStack(spacing: 12) {
+                if center.selectedID == option.id {
+                    Label("In use",
+                          systemImage: "checkmark")
+                        .font(.caption.weight(.semibold))
+                } else {
+                    Button("Use") {
+                        center.select(option)
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+                Button(role: .destructive) {
+                    center.remove(option)
+                } label: {
+                    Image(systemName: "trash")
+                }
+            }
+        } else {
+            Button("Download") {
+                center.download(option)
+            }
+            .font(.caption.weight(.semibold))
         }
     }
 }
