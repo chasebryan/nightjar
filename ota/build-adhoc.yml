@@ -1,0 +1,88 @@
+# Build the ad hoc OTA IPA on every version tag and attach it,
+# with its install manifest, to the GitHub release — which is
+# what lights up the app's in-app Update button.
+#
+# To arm this file:
+#   1. Move it to .github/workflows/build-adhoc.yml and push
+#      from your own git (the repo's automation token cannot
+#      create workflow files).
+#   2. Fill __TEAM_ID__ and __PROFILE_NAME__ in
+#      ota/ExportOptions.plist.
+#   3. Add these repository secrets:
+#        ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64
+#          (App Store Connect API key, base64 of the .p8 file)
+#        CERT_P12_BASE64, CERT_PASSWORD
+#          (Apple Distribution certificate + private key, .p12)
+#
+# Scaffold, honestly: expect the first run or two to surface
+# portal/signing complaints to adjust. The manual ritual in
+# ota/README.md always works.
+
+name: Build ad hoc IPA
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  adhoc:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Install the distribution certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.CERT_P12_BASE64 }}
+          p12-password: ${{ secrets.CERT_PASSWORD }}
+
+      - name: Write the App Store Connect API key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.ASC_KEY_P8_BASE64 }}" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Archive
+        run: |
+          xcodebuild archive \
+            -project ios/nightjar.xcodeproj \
+            -scheme nightjar \
+            -archivePath "$RUNNER_TEMP/nightjar.xcarchive" \
+            -destination "generic/platform=iOS" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
+            CODE_SIGN_STYLE=Manual
+
+      - name: Export the ad hoc IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/nightjar.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist ota/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+          cp "$RUNNER_TEMP/export/nightjar.ipa" nightjar-hack.ipa
+
+      - name: Fill the manifest
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed "s/__VERSION__/$VERSION/" ota/manifest.plist > manifest.plist
+
+      - name: Attach both to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            nightjar-hack.ipa manifest.plist --clobber
