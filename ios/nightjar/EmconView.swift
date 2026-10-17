@@ -38,11 +38,11 @@ struct EmconView: View {
             senseSection
             conductorSection
             StewardSectionView(steward: emcon.steward)
-            SubconsciousSectionView()
+            SubconsciousSectionView(showMind: $showMind)
             sparringSection
             SeasonSectionView(season: emcon.season,
                               emcon: emcon)
-            DuelSectionView(emcon: emcon)
+            DuelSectionView(emcon: emcon, showing: $showDuel)
             maneuversSection
             knockTrafficSection
             vaultSection
@@ -59,6 +59,16 @@ struct EmconView: View {
                      + "it announces themselves to the tripwire.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+        }
+        .sheet(isPresented: $showMind) {
+            SubconsciousView()
+        }
+        .sheet(isPresented: $showDuel) {
+            DuelView(center: emcon.duel, emcon: emcon,
+                     chat: emcon.chat)
+        }
+        .sheet(item: $proberSelection) { file in
+            ProberFileView(file: file)
         }
         .onAppear {
             emcon.restoreIfNeeded()
@@ -77,6 +87,8 @@ struct EmconView: View {
 
     @State private var sparWasFuzzing = false
     @State private var sparSummary: String?
+    @State private var showMind = false
+    @State private var showDuel = false
 
     // MARK: - status + score
 
@@ -539,9 +551,6 @@ struct EmconView: View {
                     }
                 }
             }
-        }
-        .sheet(item: $proberSelection) { file in
-            ProberFileView(file: file)
         }
     }
 
