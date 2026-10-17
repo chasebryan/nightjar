@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**3.0.0 — the ventriloquist.**
+**4.0.0.**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -20,7 +20,7 @@ development has been discontinued (see
 
 Nine tabs, one instrument. This is where nightjar-hack is
 developed, and the standard everything else is measured
-against. Build and install notes live in
+against. It boots over a living reel — the boot log typing itself across the film — and wears a live wallpaper behind every tab. Build and install notes live in
 [ios/README.md](ios/README.md).
 
 - **Listen** — the purist half: receive-only BLE, sessions in
@@ -42,6 +42,8 @@ against. Build and install notes live in
 - **Scan** — connect scanner, /24 sweep, observation feed,
   TLS inspector, DNS toolkit, Bonjour, a pcap dissector, and
   **device dossiers** with knock baselines and drift watch.
+  Below them, **the Neighborhood** keeps standing files
+  on every device on your wire, fed by observation alone.
 - **Recon** — the probe bench: protocol-speaking knocks, a
   connect console, a seeded fuzzer, and a probe library that
   hands off to Send.
@@ -50,14 +52,25 @@ against. Build and install notes live in
   files, a knock vault that fires operator-chosen macros,
   the dead hand, self-sparring, night maneuvers, and Answer
   in character — the tripwire hands a knocked port to the
-  matching canary, then takes it back.
+  matching canary, then takes it back. A **sparring
+  season** runs a week-long ghost campaign through those
+  same defenses, **duel mode** scores rounds between two
+  phones on one wire, and **the Coin** — any NFC tag,
+  claimed — works as a physical key for dead-hand
+  check-ins and the vault.
 - **Knocktalk** — encrypted chat where the knock ORDER is
   the channel: AEAD sealed boxes with delivery repair, a
   burn timer, per-operator cipher choice, an optional relay
   server (`tools/knocktalk-relay/`), and four more carriers
   for the same sealed box: **Chirp** (sound), **brush pass**
   (a BLE brush-by), **Blink** (QR frames), and **time
-  capsules** (RSW time-locked messages).
+  capsules** (RSW time-locked messages). Also here:
+  **Cadence Seal**, a peer's knock rhythm kept as a
+  second factor; **Throw Your Voice**, where a paired
+  phone emits your payload while yours stays silent; and
+  **Last Testament**, a capsule under a second lock —
+  the dead hand must have fallen before the phone will
+  grind.
 - **About** — the options hub: identity, the authorized-use
   statement, the privacy policy, and the sane-defaults
   census, resettable in one confirmed action.
