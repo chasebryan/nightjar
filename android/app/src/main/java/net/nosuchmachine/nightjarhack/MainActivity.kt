@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.ListAlt
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.TrackChanges
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Sensors
 import androidx.compose.material.icons.outlined.Send as OutlinedSend
 import androidx.compose.material3.Button
@@ -689,7 +690,7 @@ fun NightLogPanel() {
                     )
                     Text(
                         "${event.module} · ${event.kind} · " +
-                            event.when.replace("T", " ")
+                            event.`when`.replace("T", " ")
                                 .removeSuffix("Z"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
