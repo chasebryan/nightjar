@@ -1388,13 +1388,17 @@ final class SkelliCenter: ObservableObject {
     }
 
     private func roomLine(_ neighbor: Neighbor) -> String {
-        if let placement = MapStore.shared
-            .placements[neighbor.ip],
-           let room = MapStore.shared.rooms.first(
-               where: { $0.id == placement.roomID }) {
+        // A placement is a position; the room is
+        // derived from it, by the Map's own reckoning.
+        if let room = MapStore.shared.room(of: neighbor.ip) {
             return "\(neighbor.displayName) sits in "
                 + room.name + " — your placement, kept "
                 + "by the Map."
+        }
+        if MapStore.shared.placements[neighbor.ip] != nil {
+            return "\(neighbor.displayName) is placed "
+                + "on the Map, on open floor outside "
+                + "any named room."
         }
         return "\(neighbor.displayName) is unplaced — "
             + "it waits in the Map's tray for you to "
