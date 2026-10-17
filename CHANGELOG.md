@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- **Her bar is an instrument now.** Skelli's
+  pinned header is sealed to the top of the
+  screen — nothing scrolls above or around it —
+  her options button lives inside it, and a new
+  strip of vital signs runs beneath her name:
+  EMCON posture, devices on the wire, the Serve
+  door and its waiting arrivals, the ear, which
+  mind is awake, and the last twelve hours of
+  the house log, each one a door to the organ it
+  reports. The fade is richer — her colour
+  graded deep to nothing over the blur — and the
+  film shrank to make room, so the bar tells far
+  more per point of height. Also cured from her
+  first night out: a model occasionally echoing
+  the conversation transcript back before
+  answering (cut structurally, at the verdict
+  door), questions about herself wandering off
+  to web research (a wider fast lane), and
+  research findings that never earned their
+  place (every finding now needs a real word of
+  the question in it).
+
 - **Build fix (MLX 3.x).** The mlx-swift-lm
   package resolved to its 3.x line, whose loading
   API broke from 2.x: downloads and tokenizers
