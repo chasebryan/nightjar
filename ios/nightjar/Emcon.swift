@@ -961,6 +961,9 @@ final class Emcon: ObservableObject {
             self.senseObserve(source: labeled, port: port,
                               proto: proto, verdict: verdict,
                               mine: mine)
+            if let ip = NeighborhoodStore.lanIPv4(from: labeled) {
+                NeighborhoodStore.shared.recordArrival(ip: ip)
+            }
             Conductor.onKnock(emcon: self, source: labeled,
                               port: port, proto: proto,
                               verdict: verdict, mine: mine)
