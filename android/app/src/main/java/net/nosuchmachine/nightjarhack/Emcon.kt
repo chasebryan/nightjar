@@ -199,6 +199,21 @@ class Emcon(
     val unwatched: StateFlow<List<Int>> = _unwatched
     private val _events = MutableStateFlow<List<TripEvent>>(emptyList())
     val events: StateFlow<List<TripEvent>> = _events
+
+    /// Knock patterns the engine graded but could not open —
+    /// the EMCON tab's knock-traffic section reads these.
+    private val _knockPatterns =
+        MutableStateFlow<List<KnockPattern>>(emptyList())
+    val knockPatterns: StateFlow<List<KnockPattern>> = _knockPatterns
+
+    fun noteKnockPattern(pattern: KnockPattern) {
+        _knockPatterns.value =
+            (listOf(pattern) + _knockPatterns.value).take(50)
+    }
+
+    /// Keeps the knock engine's vault combination in step
+    /// with the operator's setting.
+    var comboSink: ((List<String>) -> Unit)? = null
     private val _hometurf = MutableStateFlow(Hometurf())
     val hometurf: StateFlow<Hometurf> = _hometurf
     private val _hometurfNotes = MutableStateFlow<List<String>>(emptyList())
@@ -1383,6 +1398,7 @@ class Emcon(
         } else {
             listOf("ssh", "tls", "mqtt")
         }
+        comboSink?.invoke(_vaultCombo.value)
         reloadVaultAction()
     }
 
