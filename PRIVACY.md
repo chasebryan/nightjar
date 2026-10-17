@@ -1,6 +1,6 @@
 # Nightjar — Privacy Policy
 
-_Last updated: October 16, 2026_
+_Last updated: October 17, 2026_
 
 Nightjar is built to watch networks, not people — and it starts
 with its own developer.
@@ -39,6 +39,44 @@ be configured to delete themselves after an interval you choose.
   (EMCON). Traffic goes only where you point it.
 - **Notifications** — only to tell you something arrived, and
   never while stealth mode is on.
+- **Camera** — to read Knocktalk Blink QR frames you point
+  it at. Nothing is photographed or kept.
+- **Microphone** — for Chirp, Knocktalk's sound carrier,
+  when you use it.
+- **Location** — iOS requires it before an app may learn
+  the name of the Wi-Fi network it is on (shown in Scan),
+  and the Map's compass uses it. The app does not track
+  or record where you are.
+- **Health** — the Instrument reads a paired Apple Watch's
+  passive readings (heart rate, sleep, and kin) through
+  HealthKit, only when you open its section. Read-only;
+  the readings are never logged and never leave the phone.
+- **NFC** — the Coin: reading tags you hold to the phone
+  to claim or check in.
+
+## Connections the app itself makes
+
+Three, all of them ordinary web requests that carry no
+account, no identifier, and nothing about your captures,
+logs, or messages:
+
+- **Update checks.** The app periodically asks GitHub
+  whether a newer release of Nightjar exists. GitHub's
+  servers see the request the way any web server does
+  (including your IP address); nothing else is sent.
+  This is compiled out of store builds.
+- **Skelli's research.** When you ask Skelli to look
+  something up, she queries public sources with your
+  question. Details of your own house — private
+  addresses, device names — are scrubbed before
+  anything is sent. She only goes out when asked.
+- **Model downloads, and the support door.** If you
+  download an open-weights model from Skelli's Weights
+  bench, it comes from the Hugging Face hub, which sees
+  the download request like any file server. The
+  support door in About likewise opens the author's
+  Buy Me a Coffee page in your browser; the app never
+  sees or touches payment details.
 
 ## Connections you configure
 
