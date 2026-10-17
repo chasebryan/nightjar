@@ -71,25 +71,70 @@ struct ToastView: View {
     }
 }
 
-/// The app's backdrop: the Jolly Roger over near-black, dimmed a
-/// touch so text stays readable. The image lives in the asset
-/// catalog as "AppBackground" — it is added in Xcode (binaries
-/// cannot ride the repo connector, same as the app icon was);
-/// until it lands, the app simply wears black.
+/// The living wallpaper: the operator's reel, decoded ONCE
+/// and shared by every backdrop in the app. It plays from
+/// the beginning of its loop to the end and starts again,
+/// forever — a background that breathes instead of a picture
+/// that hangs. By either road in: a "Wallpaper" data asset,
+/// or wallpaper.gif in the bundle.
+enum Wallpaper {
+    static let image: UIImage? = {
+        let data: Data?
+        if let asset = NSDataAsset(name: "Wallpaper") {
+            data = asset.data
+        } else if let url = Bundle.main.url(
+            forResource: "wallpaper", withExtension: "gif") {
+            data = try? Data(contentsOf: url)
+        } else {
+            data = nil
+        }
+        guard let data else { return nil }
+        return UIImage.animatedGIF(data: data)
+    }()
+}
+
+/// A full-bleed player for one shared animated image.
+struct AnimatedImageView: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -> UIImageView {
+        let view = UIImageView(image: image)
+        view.contentMode = .scaleAspectFill
+        view.clipsToBounds = true
+        view.backgroundColor = .black
+        view.startAnimating()
+        return view
+    }
+
+    func updateUIView(_ view: UIImageView, context: Context) {}
+}
+
+/// The app's backdrop: the living wallpaper over near-black,
+/// dimmed a touch so text stays readable. Until the reel
+/// lands in the bundle, the retired Jolly Roger stands in —
+/// the app is never naked for want of a flourish.
 struct AppBackdrop: View {
     var body: some View {
-        // GeometryReader pins the backdrop to exactly the size it
-        // is offered. A bare scaledToFill image inside a ZStack
-        // reports its natural size (1320x2855!) and blows the
-        // whole layout out to match — frame + clip keep it tame.
+        // GeometryReader pins the backdrop to exactly the size
+        // it is offered. A bare scaledToFill image inside a
+        // ZStack reports its natural size and blows the whole
+        // layout out to match — frame + clip keep it tame.
         GeometryReader { geo in
             ZStack {
                 Color(white: 0.03)
-                Image("AppBackground")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
+                if let wallpaper = Wallpaper.image {
+                    AnimatedImageView(image: wallpaper)
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                } else {
+                    Image("AppBackground")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                }
                 Rectangle().fill(Color.black.opacity(0.18))
             }
             .ignoresSafeArea()
@@ -183,7 +228,8 @@ struct BootView: View {
             ? BootLine(text: "[ ok ] stealth   ON — unlisted, silent",
                        tone: .ok)
             : BootLine(text: "[ -- ] stealth   off", tone: .off))
-        if UIImage(named: "AppBackground") != nil {
+        if Wallpaper.image != nil
+            || UIImage(named: "AppBackground") != nil {
             out.append(BootLine(text: "[ ok ] backdrop loaded",
                                 tone: .ok))
         } else {
