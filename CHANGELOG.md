@@ -11,7 +11,9 @@
   linked — plus the HuggingFace and
   Tokenizers packages those loading macros
   expand against, declared on the target as
-  MLX 3.x requires), and the project pins
+  MLX 3.x requires); generation moved to
+  the new AsyncStream API; and the project
+  pins
   the package to
   the 3.x line so a future major can't arrive
   unannounced again.
