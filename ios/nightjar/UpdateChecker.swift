@@ -7,12 +7,14 @@ import Foundation
 
 /// Watches GitHub Releases for a newer nightjar and surfaces it.
 ///
-/// A sideloaded app can't install its own update — iOS won't let it, and
-/// a free Personal Team build has to be re-run from Xcode anyway. So this
-/// doesn't pretend to self-update: it notices when a newer release is
-/// tagged and shows a banner that links to it, with the honest next step
-/// (open the project, press Run). Quietly does nothing when the repo has
-/// no releases yet or the network is unreachable.
+/// When the release carries an over-the-air build — an ad hoc .ipa
+/// with its manifest.plist attached — the surface is a true Update
+/// button: no app may install a package itself, but an app may hand
+/// iOS a manifest, and iOS installs the new build over this one,
+/// data intact. When the release has no OTA build (the Personal
+/// Team world), the surface is what it honestly is there: a link
+/// to the release and the Xcode next step. Quietly does nothing
+/// when the repo has no releases yet or the network is unreachable.
 @MainActor
 final class UpdateChecker: ObservableObject {
     struct Release: Equatable {
@@ -20,6 +22,9 @@ final class UpdateChecker: ObservableObject {
         let name: String
         let url: URL
         let notes: String
+        /// Set when the release carries an OTA build:
+        /// the itms-services address iOS installs from.
+        var installURL: URL? = nil
     }
 
     @Published private(set) var available: Release?
@@ -86,7 +91,12 @@ final class UpdateChecker: ObservableObject {
             // it — exactly as it was.
             guard http.statusCode == 200 else { return }
             noReleasesYet = false
-            available = Self.parse(data, current: current)
+            var parsed = Self.parse(data, current: current)
+            if parsed != nil {
+                parsed?.installURL = await Self.installURL(
+                    repo: repo, session: session)
+            }
+            available = parsed
         } catch {
             // Offline or transport failure: lastChecked stays where
             // it was and any prior result stands; surface nothing.
@@ -109,6 +119,36 @@ final class UpdateChecker: ObservableObject {
         let name = (object["name"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? tag
         let notes = (object["body"] as? String) ?? ""
         return Release(tag: tag, name: name, url: url, notes: notes)
+    }
+
+    /// Where a release's OTA manifest would live, if it has one.
+    nonisolated static func manifestURL(repo: String) -> URL {
+        URL(string: "https://github.com/\(repo)"
+            + "/releases/latest/download/manifest.plist")!
+    }
+
+    /// The install address, when the latest release carries an
+    /// OTA build — probed with a single HEAD, so a release
+    /// without one costs one request and changes nothing. The
+    /// manifest's own address rides inside, fully encoded: iOS
+    /// does the rest.
+    static func installURL(repo: String,
+                           session: URLSession) async -> URL? {
+        let manifest = manifestURL(repo: repo)
+        var probe = URLRequest(url: manifest)
+        probe.httpMethod = "HEAD"
+        guard let (_, response) = try? await session.data(
+                for: probe),
+              (response as? HTTPURLResponse)?.statusCode == 200
+        else { return nil }
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        guard let encoded = manifest.absoluteString
+            .addingPercentEncoding(
+                withAllowedCharacters: allowed)
+        else { return nil }
+        return URL(string: "itms-services://?action="
+            + "download-manifest&url=" + encoded)
     }
 
     /// Compare "v2.1.0" against "2.0" numerically, component by component.
