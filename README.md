@@ -23,6 +23,19 @@ developed, and the standard everything else is measured
 against. It boots over a living reel — the boot log typing itself across the film — and wears a living wallpaper behind its tabs, under whatever theme and backdrop the operator dresses it in from Colours. Build and install notes live in
 [ios/README.md](ios/README.md).
 
+- **Skelli** — her own tab, first in the bar: the
+  house's specialist. She knows every tab and organ,
+  answers from the app's own manual and its live
+  state, runs its controls on request (sweeps, going
+  dark, the drill, listening, serving), remembers
+  what you tell her across conversations, and
+  researches the open web through a browser of her
+  own that works only the sources which let a machine
+  in cleanly. She thinks with a cascade of trained
+  minds (see *Two ways in*, below): Apple's on-device
+  model where the phone carries it, and an
+  open-weights model she downloads and runs herself —
+  nothing she hears ever leaves the phone.
 - **Listen** — the purist half: receive-only BLE, sessions in
   the same JSONL the Mac tools read, a wide decoder bench for
   the air (MiBeacon, BTHome, Ruuvi, drone Remote ID, and
@@ -77,6 +90,65 @@ against. It boots over a living reel — the boot log typing itself across the f
   six themes plus the operator's own tailoring, and a
   backdrop of its own for every tab.
 
+## Two ways in: the current build, or v4.0.0
+
+The code on `main` is ahead of the last release, and
+it asks more of your gear. There are two supported
+ways in, and which one is yours depends on your Mac
+and your phone.
+
+**The current build** (this repo, `main`) adds Skelli
+on top of everything in 4.2.0 — the Map, the
+Subconscious, the Instrument. Building it requires:
+
+- **Xcode 26** on the Mac. Skelli's Apple-model code
+  is written against the iOS 26 SDK.
+- **The Metal Toolchain component for Xcode.** MLX
+  compiles Metal shaders while it builds, and Xcode
+  26 keeps that toolchain as a separate download. If
+  the build stops with *"The Metal Toolchain was not
+  installed"*, install it once — Xcode → Settings →
+  Components, the download button on the error
+  itself, or `xcodebuild -downloadComponent
+  MetalToolchain` in Terminal. It is a per-Mac,
+  one-time thing.
+- **An iPhone on iOS 17 or later.** The project's
+  deployment floor rose from 16 to 17 because the
+  MLX package requires it.
+- **For Skelli's Apple mind specifically:** iOS 26
+  and an Apple Intelligence iPhone (15 Pro or later),
+  with Apple Intelligence turned on. Without it she
+  loses nothing else — her engine, her weights
+  bench, and her browser all still run; her status
+  line simply won't say *model on*.
+
+One thing you do **not** have to do: add any
+package. The MLX package (`mlx-swift-lm`) is
+declared in the project file itself, so Xcode
+downloads and builds it automatically the first
+time you open and build — the first build is long,
+and that is the package, not a problem. After the
+app is installed, her weights models are chosen
+and downloaded **inside the app** (her menu →
+Weights), sized to your phone's memory; nothing
+about them touches Xcode or a computer again.
+
+**v4.0.0 "the masquerade"** is the last release
+before all of that, and it asks for none of it:
+**iOS 16 or later, any recent Xcode, no packages,
+no Metal toolchain, no Apple Intelligence.** It is
+the complete flagship as it stood at that release —
+the listening post, the mouth, Recon, EMCON,
+Knocktalk, Colours, the works — without the 4.2.0
+intelligence wave (the Map, the Subconscious, the
+Instrument) and without Skelli. If your phone or
+Mac can't carry the current build, this is your
+version, and it is a finished instrument, not a
+demo: get it from the
+[v4.0.0 release](https://github.com/chasebryan/nightjar-hack/releases/tag/v4.0.0)
+or `git checkout v4.0.0`, then sideload exactly as
+below.
+
 ## Sideload the iOS app
 
 There is no App Store listing and no TestFlight. The app
@@ -84,12 +156,18 @@ ships as source, and putting it on your phone means
 building it yourself — which sounds like a barrier and is
 really about ten minutes with a Mac.
 
-You need: a Mac with Xcode (free in the Mac App Store),
-an iPhone on iOS 16 or later, a cable that fits both,
-and an Apple ID. No paid developer account, no fee.
+You need: a Mac with Xcode 26 (free in the Mac App
+Store), an iPhone on iOS 17 or later, a cable that
+fits both, and an Apple ID. No paid developer
+account, no fee. (Building v4.0.0 instead? Any
+recent Xcode and iOS 16 will do — see *Two ways in*,
+above.)
 
 1. Clone this repo and open `ios/nightjar.xcodeproj`
-   in Xcode.
+   in Xcode. The first build also downloads the MLX
+   package and may ask for the Metal Toolchain
+   component — both one-time, both explained in
+   *Two ways in*.
 2. Click the **nightjar** target → **Signing &
    Capabilities**. Check *Automatically manage signing*
    and choose your Personal Team (if your Apple ID isn't
