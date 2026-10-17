@@ -132,7 +132,7 @@ Look before you leap:
   handler entries, and one honest sentence in the description.
 - `pyproject.toml` - an optional extra,
   `tx = ["bless>=0.2.0", "websockets>=12", "pyserial>=3.5"]`.
-- `nightjar/__init__.py` - version to `4.0.0`.
+- `nightjar/__init__.py` - version to `4.2.0`.
 
 No other file is touched. `apply_overlay.py --check` reports drift without
 writing anything.
