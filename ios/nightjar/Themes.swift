@@ -345,6 +345,20 @@ struct ColoursView: View {
                     BackdropRow(slot: slot)
                 }
             }
+
+            Section(header: Text("Boot screen"),
+                    footer: Text("The film behind "
+                        + "the boot log and how its "
+                        + "text arrives, from the "
+                        + "next launch. Your own "
+                        + "art is copied into the "
+                        + "app and never leaves "
+                        + "this device; a GIF "
+                        + "plays, a photograph "
+                        + "holds still. A tap "
+                        + "still skips.")) {
+                BootRow()
+            }
         }
         .navigationTitle("Colours")
         .sheet(isPresented: $creating) {
@@ -578,6 +592,108 @@ private struct ThemeEditorView: View {
                     Button("Save") {
                         themes.saveCustom(draft)
                         dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The boot, tailored: which backdrop plays
+/// behind its log — the provided reel, the
+/// operator's own GIF or image, or plain
+/// black — and how the log's text arrives.
+private struct BootRow: View {
+    @AppStorage(BootMedia.mediaKey)
+    private var media = "provided"
+    @AppStorage(BootMedia.textKey)
+    private var textStyle = "lines"
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var notice: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Backdrop")
+                Spacer()
+                Picker("", selection: $media) {
+                    Text("Provided film")
+                        .tag("provided")
+                    Text("Your own").tag("custom")
+                    Text("None — black")
+                        .tag("none")
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+            if media == "custom" {
+                HStack(spacing: 12) {
+                    if let data = BootMedia.data(),
+                       let image = UIImage(
+                           data: data) {
+                        Image(uiImage: image)
+                            .resizable().scaledToFill()
+                            .frame(width: 44,
+                                   height: 44)
+                            .clipShape(
+                                RoundedRectangle(
+                                    cornerRadius: 8))
+                    }
+                    PhotosPicker(
+                        selection: $pickerItem,
+                        matching: .images) {
+                        Text(BootMedia.exists
+                             ? "Replace GIF or image"
+                             : "Choose a GIF or image")
+                            .font(.callout
+                                .weight(.semibold))
+                    }
+                    if BootMedia.exists {
+                        Button("Remove",
+                               role: .destructive) {
+                            BootMedia.remove()
+                        }
+                        .font(.callout)
+                    }
+                }
+            }
+            HStack {
+                Text("Log text")
+                Spacer()
+                Picker("", selection: $textStyle) {
+                    Text("Line by line")
+                        .tag("lines")
+                    Text("Typewriter").tag("type")
+                    Text("Scramble")
+                        .tag("scramble")
+                    Text("Fade in").tag("fade")
+                    Text("Instant").tag("instant")
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+            if let notice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .onChange(of: pickerItem) { item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item
+                    .loadTransferable(
+                        type: Data.self),
+                   BootMedia.save(data) {
+                    await MainActor.run {
+                        notice = nil
+                    }
+                } else {
+                    await MainActor.run {
+                        notice = "That file would "
+                            + "not come — try "
+                            + "another GIF or "
+                            + "image."
                     }
                 }
             }
