@@ -188,6 +188,7 @@ struct ProberFileView: View {
     let file: ProberFile
     @EnvironmentObject private var mouth: Mouth
     @Environment(\.dismiss) private var dismiss
+    @State private var shareItem: ShareItem?
 
     var body: some View {
         NavigationStack {
@@ -262,7 +263,9 @@ struct ProberFileView: View {
                                   systemImage: "scope")
                         }
                     }
-                    ShareLink(item: file.text) {
+                    Button {
+                        shareItem = ShareItem(items: [file.text])
+                    } label: {
                         Label("Share this file",
                               systemImage: "square.and.arrow.up")
                     }
@@ -276,6 +279,9 @@ struct ProberFileView: View {
                 }
             }
             .onAppear { ProberFiles.markSeen(file) }
+        }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: item.items)
         }
     }
 }
