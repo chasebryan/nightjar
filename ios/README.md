@@ -191,7 +191,7 @@ Below the steps, the Send tab keeps working:
   with runs on the phone. See *Building the
   current build*, below, for what she asks of
   your gear.
-- **The intelligence wave (4.2.0).** The **Map** —
+- **What 4.2.0 added.** The **Map** —
   devices placed in rooms on a floor plan, with a
   compass that homes on them. The **Subconscious**
   — the house correlating its own nights, learning
@@ -200,17 +200,21 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
-- **The look — and the boot.** The Jolly Roger flies behind
-  everything: forms and lists are transparent over the backdrop
-  (dimmed slightly for readability) and the app is pinned to dark
-  appearance to match. The image itself is an asset-catalog
-  imageset named `AppBackground`, added in Xcode — binaries can't
-  ride the repo connector, the same reason the app icon moved by
-  hand. And it boots like an OS: black splash, the flag as an
-  emblem card over the wordmark, and a terminal boot log that
-  types itself over a progress bar — every line true (this device,
-  this Wi-Fi address, this library's real payload count, this
-  stealth state), tap to skip, fading into the app in ~2 seconds.
+- **The look — and the boot.** **Colours** (in About)
+  dresses the house: six themes, the operator's own
+  tailoring, and a backdrop for every tab — the living
+  wallpaper, the Jolly Roger, the plain theme colour,
+  or the operator's own image or GIF, copied on-device
+  only. Forms and lists ride transparent over the
+  backdrop, dimmed slightly for readability, and the
+  app is pinned to dark appearance to match. And it
+  boots like an OS: a film reel (the provided one, or
+  the operator's own GIF in place of it, or plain
+  black), and a terminal boot log whose every line is
+  true — this device, this Wi-Fi address, this
+  library's real payload count, this stealth state —
+  in five styles (lines, type, scramble, fade,
+  instant), tap to skip, fading into the app.
 - **The Scan tab.** A "This network" panel (SSID where iOS offers
   it, your IP, the /24, a one-tap likely-gateway target); a TCP
   connect scanner over the usual 28 ports (or your own list) with
@@ -369,9 +373,11 @@ you'll meet them:
   one by the phone's memory, downloads come
   from the Hugging Face hub into the app's own
   cache, and models are selected, swapped, or
-  deleted there. A folder named `SkelliWeights`
-  staged into the app bundle also works as a
-  bench when nothing has been downloaded.
+  deleted there. What counts as downloaded is
+  read off the hub cache itself at every launch:
+  a finished download counts even if the session
+  that fetched it died before writing it down,
+  and a partial one never claims to be whole.
 
 ### If your gear can't run this: v4.0.0
 
@@ -382,7 +388,7 @@ floor, no packages, no Metal toolchain, no
 Xcode 26 requirement, and the Install steps
 below verbatim. It is the complete 4.0.0
 flagship — everything in this document except
-the 4.2.0 intelligence wave and Skelli.
+the 4.2.0 additions and Skelli.
 
 ## Staying installed — and updating from inside the app
 
@@ -447,6 +453,12 @@ project keep working):
   the Jolly Roger backdrop, and the boot splash (new). Skelli's
   web-research engine, small-favors layer, and the Weights
   catalog and sheet also live here.
+- `nightjar/ContentView.swift`, `Themes.swift`,
+  `UpdateChecker.swift`, `Forge.swift`, `Deliveries.swift`,
+  `Keyboard.swift` — the tab shell and the About hub, Colours
+  and the boot dress, the sleepless update checker, Skelli's
+  Forge, her Deliveries shelf, and the swipe that folds the
+  keyboard anywhere (new).
 - `nightjarTests/` — upstream decoder/log tests, plus `DroneTests`
   (vectors shared in spirit with `tests/test_remoteid.py`),
   `HackTests` (payloads, framing, target parsing) and
