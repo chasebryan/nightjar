@@ -1317,6 +1317,21 @@ enum SkelliWeb {
             }
             return out
         }
+        // The unescorted findings earn their
+        // place the way pages do: a real term of
+        // the question, whole-word, in the text.
+        // A question about the house once came
+        // back as a pop song on the strength of
+        // the word "you".
+        let terms = searchTerms(query)
+        let instant = instant.flatMap {
+            score($0.text, terms: terms) > 0
+                ? $0 : nil
+        }
+        let wiki = wiki.flatMap {
+            score($0.text, terms: terms) > 0
+                ? $0 : nil
+        }
         if let instant = instant {
             var lines = ["From the web — "
                          + instant.source + ":",
@@ -1359,6 +1374,7 @@ enum SkelliWeb {
             "do", "did", "who", "when", "where", "why",
             "can", "could", "should", "would", "tell",
             "me", "about", "search", "web", "online",
+            "you", "your", "yours",
             "research", "look", "up", "find", "explain",
         ]
         var seen = Set<String>()
