@@ -255,6 +255,7 @@ final class ScanModel: ObservableObject {
                 return
             }
             self.sweepHosts = found.sorted { $0.octet < $1.octet }
+            NeighborhoodStore.shared.recordSweep(self.sweepHosts)
             let wasWatch = self.sweepIsWatch
             self.sweepIsWatch = false
             // Only a watch-cycle sweep feeds the observation
@@ -458,6 +459,11 @@ final class ScanModel: ObservableObject {
             guard !finished else { return }
             finished = true
             connection.cancel()
+            if let resolved = resolved {
+                NeighborhoodStore.shared.recordBonjour(
+                    ip: resolved.0, name: service.name,
+                    label: service.label)
+            }
             done(resolved)
         }
         connection.stateUpdateHandler = { state in
@@ -1469,6 +1475,9 @@ struct ScanView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+
+                NeighborhoodSectionView(
+                    store: NeighborhoodStore.shared)
 
                 Section(header: Text("Observation feed")) {
                     if model.watching {
