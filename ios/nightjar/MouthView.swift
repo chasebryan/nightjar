@@ -91,6 +91,7 @@ struct SendView: View {
     @State private var suppressClear = false
     @State private var customExpanded = false
     @State private var showLibrary = false
+    @State private var shareItem: ShareItem?
     @State private var showLog = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
@@ -737,7 +738,9 @@ struct SendView: View {
                     .font(.caption)
                     HStack {
                         if let url = presetExportURL {
-                            ShareLink(item: url) {
+                            Button {
+                                shareItem = ShareItem(items: [url])
+                            } label: {
                                 Label("Share presets",
                                       systemImage: "square.and.arrow.up")
                             }
@@ -845,7 +848,9 @@ struct SendView: View {
                         Text(traceLine).font(.caption.monospaced())
                     }
                     if let export = mouth.traceLatestExport {
-                        ShareLink(item: export) {
+                        Button {
+                            shareItem = ShareItem(items: [export])
+                        } label: {
                             Label("Download trace JSON",
                                   systemImage: "square.and.arrow.up")
                         }
@@ -853,7 +858,10 @@ struct SendView: View {
                     }
                     if FileManager.default.fileExists(
                         atPath: TraceBookStore.logbookURL.path) {
-                        ShareLink(item: TraceBookStore.logbookURL) {
+                        Button {
+                            shareItem = ShareItem(
+                                items: [TraceBookStore.logbookURL])
+                        } label: {
                             Label("Download the crawl logbook",
                                   systemImage: "book.closed")
                         }
@@ -875,10 +883,6 @@ struct SendView: View {
                     mouth.traceCentipedeRoute = nil
                     openCentipede = true
                     toasts.show("Centipede configured from the trace")
-                }
-                .fileImporter(isPresented: $showPresetImporter,
-                              allowedContentTypes: [.json]) { result in
-                    importPresets(result)
                 }
 
                 CollapsibleSection("Crosstalk", isOpen: $openTalk) {
@@ -1116,6 +1120,13 @@ struct SendView: View {
             }
             .fullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
+            }
+            .fileImporter(isPresented: $showPresetImporter,
+                          allowedContentTypes: [.json]) { result in
+                importPresets(result)
             }
             .alert("Could not build the payload", isPresented: .constant(showError != nil)) {
                 Button("OK") { showError = nil }
@@ -1922,6 +1933,7 @@ struct ServeView: View {
     @AppStorage("serveFraming") private var framing = "raw"
     @AppStorage("stealthMode") private var stealthMode = false
     @State private var showLog = false
+    @State private var shareItem: ShareItem?
 
     private var stealthBinding: Binding<Bool> {
         Binding(get: { stealthMode },
@@ -2054,7 +2066,10 @@ struct ServeView: View {
                     }
                     if !mouth.inbox.isEmpty {
                         HStack {
-                            ShareLink(item: inboxFile()) {
+                            Button {
+                                shareItem = ShareItem(
+                                    items: [inboxFile()])
+                            } label: {
                                 Label("Share inbox (.jsonl)", systemImage: "square.and.arrow.up")
                             }
                             Spacer()
@@ -2081,6 +2096,9 @@ struct ServeView: View {
             }
             .sheet(isPresented: $showLog) {
                 MouthLogSheet()
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
             }
         }
     }
