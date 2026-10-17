@@ -1,0 +1,305 @@
+import CoreNFC
+import CryptoKit
+import SwiftUI
+
+/// The Coin: a physical key for a digital instrument.
+///
+/// Any NDEF tag — a transit card, a hotel key, a blank from a
+/// drawer — can be claimed as the coin. The app remembers a
+/// hash of the tag's contents, never the contents; from then
+/// on, that tag, in a pocket, is a key: tap it to check in
+/// the dead hand, tap it to raise the knock vault, tap it to
+/// unlock Knocktalk. What the key opens is decided here;
+/// what the key IS is a thing you can hold, hide, lend, or
+/// lose — and losing it is handled the honest way: claim a
+/// new one in the open, and the night log says it happened.
+///
+/// Stated plainly: a copied tag is the same coin. The factor
+/// is possession, not secrecy — like every physical key ever
+/// cut.
+final class CoinCenter: NSObject, ObservableObject {
+    static let shared = CoinCenter()
+
+    enum Purpose { case claim, mint, checkin, vault, unlock }
+
+    @Published private(set) var lastResult = ""
+    @Published private(set) var claimed = false
+
+    private var session: NFCNDEFReaderSession?
+    private var purpose: Purpose = .claim
+    private weak var emcon: Emcon?
+    private var completion: ((Bool, String) -> Void)?
+
+    private static let hashKey = "coin.hash"
+
+    var coinHash: String? {
+        UserDefaults.standard.string(forKey: Self.hashKey)
+    }
+
+    override init() {
+        super.init()
+        claimed = coinHash != nil
+    }
+
+    static func hash(of message: NFCNDEFMessage) -> String {
+        var hasher = SHA256()
+        for record in message.records {
+            hasher.update(data: record.payload)
+        }
+        return hasher.finalize()
+            .map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Begin a tap. The phone prompts for the tag itself; the
+    /// completion reports what the tap did, in words.
+    func tap(_ purpose: Purpose, emcon: Emcon?,
+             completion: ((Bool, String) -> Void)? = nil) {
+        guard NFCNDEFReaderSession.readingAvailable else {
+            completion?(false, "This phone cannot read NFC tags.")
+            return
+        }
+        self.purpose = purpose
+        self.emcon = emcon
+        self.completion = completion
+        let session = NFCNDEFReaderSession(
+            delegate: self, queue: nil, invalidateAfterFirstRead: false)
+        session.alertMessage = alert(for: purpose)
+        self.session = session
+        session.begin()
+    }
+
+    private func alert(for purpose: Purpose) -> String {
+        switch purpose {
+        case .claim: return "Hold the tag to the top of the "
+            + "phone to claim it as the coin."
+        case .mint: return "Hold a writable tag to the top of "
+            + "the phone to mint it as the coin."
+        case .checkin: return "Tap the coin to check in the "
+            + "dead hand."
+        case .vault: return "Tap the coin to raise the vault."
+        case .unlock: return "Tap the coin to unlock Knocktalk."
+        }
+    }
+
+    private func finish(_ ok: Bool, _ text: String,
+                        session: NFCNDEFReaderSession?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.lastResult = text
+            self.claimed = self.coinHash != nil
+            let completion = self.completion
+            self.completion = nil
+            session?.invalidate()
+            self.session = nil
+            completion?(ok, text)
+        }
+    }
+
+    private func judge(hash: String,
+                       session: NFCNDEFReaderSession) {
+        guard let stored = coinHash else {
+            finish(false,
+                   "No coin claimed yet — claim a tag first, "
+                   + "in EMCON.",
+                   session: session)
+            return
+        }
+        guard stored == hash else {
+            finish(false, "Not the coin — a different tag.",
+                   session: session)
+            return
+        }
+        switch purpose {
+        case .checkin:
+            emcon?.deadHandCheckIn()
+            Journal.log("coin", "checkin",
+                        "dead hand checked in by the coin")
+            finish(true, "Checked in — the hand stays up.",
+                   session: session)
+        case .vault:
+            emcon?.openVault(source: "the coin")
+            Journal.log("coin", "vault",
+                        "knock vault raised by the coin")
+            finish(true, "The vault stands open.", session: session)
+        case .unlock:
+            Journal.log("coin", "unlock",
+                        "Knocktalk unlocked by the coin")
+            finish(true, "Unlocked.", session: session)
+        case .claim, .mint:
+            finish(true, "The coin, recognized.", session: session)
+        }
+    }
+
+    private func claim(hash: String,
+                       session: NFCNDEFReaderSession) {
+        if let stored = coinHash, stored != hash {
+            finish(false,
+                   "A different coin is already claimed. This "
+                   + "tag is not it — forget the old coin first "
+                   + "if this one is to rule.",
+                   session: session)
+            return
+        }
+        UserDefaults.standard.set(hash, forKey: Self.hashKey)
+        Journal.log("coin", "claim",
+                    "a tag was claimed as the coin")
+        finish(true, "Claimed — this tag is the coin now.",
+               session: session)
+    }
+
+    func forget() {
+        UserDefaults.standard.removeObject(forKey: Self.hashKey)
+        claimed = false
+        lastResult = "The coin is forgotten. Any tag may be " +
+            "claimed in its place."
+        Journal.log("coin", "forget",
+                    "the coin was forgotten by the operator")
+    }
+}
+
+extension CoinCenter: NFCNDEFReaderSessionDelegate {
+    func readerSessionDidBecomeActive(
+        _ session: NFCNDEFReaderSession) {}
+
+    func readerSession(_ session: NFCNDEFReaderSession,
+                       didInvalidateWithError error: Error) {
+        let code = (error as NSError).code
+        // 200 is the operator simply cancelling — not news.
+        if code != 200 {
+            DispatchQueue.main.async { [weak self] in
+                self?.lastResult =
+                    "The tap failed: \(error.localizedDescription)"
+                let completion = self?.completion
+                self?.completion = nil
+                completion?(false, self?.lastResult ?? "")
+            }
+        }
+        DispatchQueue.main.async { [weak self] in
+            if self?.session === session { self?.session = nil }
+        }
+    }
+
+    func readerSession(_ session: NFCNDEFReaderSession,
+                       didDetect tags: [NFCNDEFTag]) {
+        guard let tag = tags.first else { return }
+        if purpose == .mint {
+            mint(tag: tag, session: session)
+            return
+        }
+        tag.readNDEF { [weak self] message, _ in
+            guard let self = self, let message = message else {
+                self?.finish(false,
+                             "That tag carries nothing readable.",
+                             session: session)
+                return
+            }
+            let hash = Self.hash(of: message)
+            if self.purpose == .claim {
+                self.claim(hash: hash, session: session)
+            } else {
+                self.judge(hash: hash, session: session)
+            }
+        }
+    }
+
+    private func mint(tag: NFCNDEFTag,
+                      session: NFCNDEFReaderSession) {
+        tag.queryNDEFStatus { [weak self] status, _, _ in
+            guard let self = self else { return }
+            guard status == .readWrite else {
+                self.finish(false,
+                            "That tag cannot be written — mint "
+                            + "needs a blank, writable tag.",
+                            session: session)
+                return
+            }
+            let token = "nightjar-coin:" + UUID().uuidString
+            guard let record = NFCNDEFRecord.wellKnownTypeTextPayload(
+                    string: token, locale: Locale(identifier: "en"))
+            else {
+                self.finish(false, "The coin would not strike.",
+                            session: session)
+                return
+            }
+            let message = NFCNDEFMessage(records: [record])
+            tag.writeNDEF(message) { [weak self] error in
+                guard let self = self else { return }
+                if error != nil {
+                    self.finish(false,
+                                "The mint failed mid-strike.",
+                                session: session)
+                    return
+                }
+                self.claim(hash: Self.hash(of: message),
+                           session: session)
+            }
+        }
+    }
+}
+
+/// EMCON's coin card: claim, tap, govern.
+struct CoinSectionView: View {
+    @ObservedObject var center: CoinCenter
+    let emcon: Emcon
+    @AppStorage("coin.lockKnocktalk") private var lockKnocktalk = false
+
+    var body: some View {
+        Section(header: Text("The coin — a key you can hold"),
+                footer: Text("Any NDEF tag can be the coin: a "
+                    + "transit card, a hotel key, a blank. The "
+                    + "app keeps a hash of the tag, never its "
+                    + "contents. A copied tag is the same coin "
+                    + "— the factor is possession, like every "
+                    + "physical key ever cut.")) {
+            if center.claimed {
+                Label("A coin is claimed",
+                      systemImage: "circle.circle.fill")
+                    .font(.callout)
+                Button {
+                    center.tap(.checkin, emcon: emcon)
+                } label: {
+                    Label("Tap the coin — check in the dead hand",
+                          systemImage: "hand.raised")
+                }
+                Button {
+                    center.tap(.vault, emcon: emcon)
+                } label: {
+                    Label("Tap the coin — raise the vault",
+                          systemImage: "lock.open")
+                }
+                Button {
+                    center.tap(.claim, emcon: emcon)
+                } label: {
+                    Label("Present the coin", systemImage: "wave.3.right")
+                }
+                Toggle("Knocktalk requires the coin",
+                       isOn: $lockKnocktalk)
+                Button(role: .destructive) {
+                    center.forget()
+                } label: {
+                    Text("Forget the coin")
+                }
+            } else {
+                Text("No coin yet. Claim any NFC tag, or mint a "
+                     + "blank one with the mark of the house.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Button {
+                    center.tap(.claim, emcon: emcon)
+                } label: {
+                    Label("Claim a tag as the coin",
+                          systemImage: "circle.circle")
+                }
+                Button {
+                    center.tap(.mint, emcon: emcon)
+                } label: {
+                    Label("Mint a blank tag",
+                          systemImage: "seal")
+                }
+            }
+            if !center.lastResult.isEmpty {
+                Text(center.lastResult)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+}
