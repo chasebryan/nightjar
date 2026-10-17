@@ -7,8 +7,21 @@ struct ContentView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var post: ListeningPost
-    @State private var tab = 0
+    @State private var tab: Int
     @State private var showBoot = true
+
+    init() {
+        // The house reopens where you left it:
+        // the last tab worked in is restored on
+        // launch, even after a swipe-close, so
+        // work continues where it stopped.
+        let stored = UserDefaults.standard
+            .object(forKey: "house.lastTab") as? Int
+        _tab = State(initialValue:
+            stored.flatMap {
+                (0...9).contains($0) ? $0 : nil
+            } ?? 0)
+    }
     @ObservedObject private var themes = ThemeCenter.shared
 
     var body: some View {
@@ -77,7 +90,11 @@ struct ContentView: View {
                 tab = target
             }
         }
-        .onChange(of: tab) { _ in Haptics.select() }
+        .onChange(of: tab) { newTab in
+            Haptics.select()
+            UserDefaults.standard.set(
+                newTab, forKey: "house.lastTab")
+        }
         .onChange(of: mouth.reconHandoff) { handoff in
             // Counter-knock pivot: a tripwire row tapped in EMCON
             // lands the operator on the Recon bench, pre-aimed.
