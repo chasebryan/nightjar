@@ -218,6 +218,16 @@ fun KnockTab(app: NightjarApp) {
                          relayStatus = relayStatus)
         }
 
+        // MARK: carriers
+        item { ChirpSection(app = app, hasKey = keyHex != null) }
+        item {
+            BrushSection(app = app, prefs = prefs,
+                         hasKey = keyHex != null)
+        }
+        item { BlinkSection(app = app, hasKey = keyHex != null) }
+        item { FlareSection(app = app, hasKey = keyHex != null) }
+        item { CapsuleSection(app = app, hasKey = keyHex != null) }
+
         // MARK: conversations
         item { IosSectionHeader("Conversations") }
         item {
