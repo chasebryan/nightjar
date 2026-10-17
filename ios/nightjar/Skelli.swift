@@ -754,7 +754,7 @@ final class SkelliCenter: ObservableObject {
                         + "\(event.kind) · "
                         + event.when.formatted(
                             date: .abbreviated,
-                            time: .shortened))
+                            time: .shortened)
                 }.joined(separator: "\n"))
                 return
             }
