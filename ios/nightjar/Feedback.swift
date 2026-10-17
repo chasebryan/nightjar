@@ -248,12 +248,65 @@ extension View {
 /// out here. Fades into the app after ~2 seconds; a tap
 /// skips it. Without the reel in the bundle, the same log
 /// plays over plain black — never a broken boot.
+/// The boot's wardrobe: the operator's own film
+/// or image for the boot backdrop, copied into
+/// Documents/boot-media and nowhere else, and
+/// the two choices — backdrop and text style —
+/// as keys both the boot and Colours read.
+enum BootMedia {
+    static let mediaKey = "boot.media"
+    static let textKey = "boot.textStyle"
+
+    static var file: URL {
+        let docs = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask)[0]
+        let dir = docs.appendingPathComponent(
+            "boot-media", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent(
+            "custom-media")
+    }
+
+    static var exists: Bool {
+        FileManager.default.fileExists(
+            atPath: file.path)
+    }
+
+    static func data() -> Data? {
+        try? Data(contentsOf: file)
+    }
+
+    @discardableResult
+    static func save(_ data: Data) -> Bool {
+        (try? data.write(to: file,
+                         options: .atomic)) != nil
+    }
+
+    static func remove() {
+        try? FileManager.default.removeItem(
+            at: file)
+    }
+
+    static func isGIF(_ data: Data) -> Bool {
+        data.starts(with: [0x47, 0x49, 0x46, 0x38])
+    }
+}
+
 struct BootView: View {
     let onDone: () -> Void
 
     @StateObject private var book = PayloadBook()
     @AppStorage("stealthMode") private var stealthMode = false
+    @AppStorage(BootMedia.mediaKey)
+    private var bootMedia = "provided"
+    @AppStorage(BootMedia.textKey)
+    private var bootText = "lines"
     @State private var shown = 0
+    @State private var typed = 0
+    @State private var scrambleStep = 0
+    @State private var fadeShown = false
     @State private var cursorOn = true
 
     private struct BootLine {
@@ -264,7 +317,7 @@ struct BootView: View {
 
     /// The boot reel, by either road in: a "BootReel" data
     /// asset, or boot-reel.gif in the bundle.
-    private var gifData: Data? {
+    private var providedData: Data? {
         if let asset = NSDataAsset(name: "BootReel") {
             return asset.data
         }
@@ -273,6 +326,20 @@ struct BootView: View {
             return try? Data(contentsOf: url)
         }
         return nil
+    }
+
+    /// The backdrop the operator chose: their own
+    /// film or image, the provided reel, or
+    /// nothing at all over plain black.
+    private var backdropData: Data? {
+        switch bootMedia {
+        case "none":
+            return nil
+        case "custom":
+            return BootMedia.data() ?? providedData
+        default:
+            return providedData
+        }
     }
 
     private var lines: [BootLine] {
@@ -328,13 +395,118 @@ struct BootView: View {
         }
     }
 
+    private var totalChars: Int {
+        lines.reduce(0) { $0 + $1.text.count + 1 }
+    }
+
     private var progress: CGFloat {
-        lines.isEmpty ? 0 : CGFloat(shown) / CGFloat(lines.count)
+        switch bootText {
+        case "type":
+            return totalChars == 0 ? 0
+                : CGFloat(typed) / CGFloat(totalChars)
+        case "scramble":
+            return CGFloat(scrambleStep)
+                / CGFloat(max(1, 2 * lines.count + 8))
+        case "fade":
+            return fadeShown ? 1 : 0
+        case "instant":
+            return 1
+        default:
+            return lines.isEmpty ? 0
+                : CGFloat(shown) / CGFloat(lines.count)
+        }
+    }
+
+    private var cursor: some View {
+        Text("▊")
+            .font(.system(.footnote,
+                          design: .monospaced))
+            .foregroundStyle(color(.ok))
+            .shadow(color: color(.ok).opacity(0.7),
+                    radius: 6)
+            .opacity(cursorOn ? 1 : 0)
+    }
+
+    /// The typewriter's rows: whole lines until
+    /// the character budget runs out mid-line.
+    private func typedRows()
+        -> [(BootLine, String)] {
+        var rows: [(BootLine, String)] = []
+        var left = typed
+        for line in lines {
+            if left <= 0 { break }
+            let take = min(left, line.text.count)
+            rows.append(
+                (line, String(line.text.prefix(take))))
+            left -= take + 1
+        }
+        return rows
+    }
+
+    /// The scramble's text for one line: a
+    /// resolved head and a tail of glyphs that
+    /// churns deterministically per step.
+    private func scrambled(_ line: BootLine,
+                           index: Int) -> String {
+        let glyphs = Array("!<>-_/[]{}=+*^?#01")
+        let resolved = max(0, min(
+            line.text.count,
+            (scrambleStep - index * 2) * 2))
+        var out = String(line.text.prefix(resolved))
+        let chars = Array(line.text)
+        for pos in resolved..<chars.count {
+            let pick = (index * 31 + pos * 17
+                        + scrambleStep * 13)
+                % glyphs.count
+            out.append(glyphs[pick])
+        }
+        return out
+    }
+
+    /// The log itself, wearing the chosen style.
+    @ViewBuilder
+    private var logView: some View {
+        switch bootText {
+        case "type":
+            let rows = typedRows()
+            ForEach(rows.indices, id: \.self) { i in
+                lineView(rows[i].0, text: rows[i].1)
+            }
+            cursor
+        case "scramble":
+            ForEach(lines.indices, id: \.self) { i in
+                lineView(lines[i],
+                         text: scrambled(lines[i],
+                                          index: i))
+            }
+        case "instant":
+            ForEach(lines.indices, id: \.self) { i in
+                lineView(lines[i])
+                    .opacity(fadeShown ? 1 : 0)
+            }
+        case "fade":
+            ForEach(lines.indices, id: \.self) { i in
+                lineView(lines[i])
+                    .opacity(fadeShown ? 1 : 0)
+                    .animation(
+                        .easeOut(duration: 0.5)
+                            .delay(Double(i) * 0.07),
+                        value: fadeShown)
+            }
+        default:
+            ForEach(0..<min(shown, lines.count),
+                    id: \.self) { i in
+                lineView(lines[i])
+            }
+            cursor
+        }
     }
 
     @ViewBuilder
-    private func lineView(_ line: BootLine) -> some View {
-        let text = Text(line.text)
+    private func lineView(_ line: BootLine,
+                          text override: String? = nil)
+        -> some View {
+        let text = Text(override ?? line.text)
             .font(.system(.footnote, design: .monospaced)
                   .weight(line.tone == .cmd ? .semibold : .regular))
             .foregroundStyle(color(line.tone))
@@ -393,9 +565,17 @@ struct BootView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                GIFPlayerView(data: data)
-                    .ignoresSafeArea()
+            if let data = backdropData {
+                if BootMedia.isGIF(data) {
+                    GIFPlayerView(data: data)
+                        .ignoresSafeArea()
+                } else if let image = UIImage(
+                    data: data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .ignoresSafeArea()
+                }
                 LinearGradient(
                     colors: [Color.black.opacity(0.52),
                              Color.black.opacity(0)],
@@ -427,17 +607,7 @@ struct BootView: View {
                 Spacer()
                 VStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 5) {
-                        ForEach(0..<min(shown, lines.count),
-                                id: \.self) { i in
-                            lineView(lines[i])
-                        }
-                        Text("▊")
-                            .font(.system(.footnote,
-                                          design: .monospaced))
-                            .foregroundStyle(color(.ok))
-                            .shadow(color: color(.ok).opacity(0.7),
-                                    radius: 6)
-                            .opacity(cursorOn ? 1 : 0)
+                        logView
                     }
                     .frame(maxWidth: .infinity,
                            alignment: .leading)
@@ -467,14 +637,60 @@ struct BootView: View {
                     cursorOn.toggle()
                 }
             }
-            for _ in lines.indices {
+            switch bootText {
+            case "instant":
+                shown = lines.count
+                fadeShown = true
                 try? await Task.sleep(
-                    nanoseconds: UInt64.random(in: 110_000_000...210_000_000))
-                if Task.isCancelled { blink.cancel(); return }
-                shown += 1
-                Haptics.tick()
+                    nanoseconds: 900_000_000)
+            case "fade":
+                shown = lines.count
+                fadeShown = true
+                try? await Task.sleep(
+                    nanoseconds: 1_500_000_000)
+            case "type":
+                let total = max(1, totalChars)
+                let perChar = UInt64(
+                    1_500_000_000 / total)
+                for _ in 0..<total {
+                    try? await Task.sleep(
+                        nanoseconds: perChar)
+                    if Task.isCancelled {
+                        blink.cancel(); return
+                    }
+                    typed += 1
+                    if typed % 14 == 0 {
+                        Haptics.tick()
+                    }
+                }
+                try? await Task.sleep(
+                    nanoseconds: 400_000_000)
+            case "scramble":
+                let steps = 2 * lines.count + 8
+                for step in 0...steps {
+                    scrambleStep = step
+                    try? await Task.sleep(
+                        nanoseconds: 65_000_000)
+                    if Task.isCancelled {
+                        blink.cancel(); return
+                    }
+                }
+                try? await Task.sleep(
+                    nanoseconds: 350_000_000)
+            default:
+                for _ in lines.indices {
+                    try? await Task.sleep(
+                        nanoseconds: UInt64.random(
+                            in: 110_000_000...210_000_000))
+                    if Task.isCancelled {
+                        blink.cancel(); return
+                    }
+                    shown += 1
+                    Haptics.tick()
+                }
+                try? await Task.sleep(
+                    nanoseconds: 550_000_000)
             }
-            try? await Task.sleep(nanoseconds: 550_000_000)
             blink.cancel()
             if Task.isCancelled { return }
             Haptics.success()
