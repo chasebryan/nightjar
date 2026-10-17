@@ -269,7 +269,8 @@ struct MapView: View {
                         title: neighbor.displayName,
                         ip: neighbor.ip,
                         wifiLines: neighborhood.wifiLines(
-                            for: neighbor))
+                            for: neighbor),
+                        wireName: neighbor.name)
                     .toolbar {
                         ToolbarItem(
                             placement: .confirmationAction) {

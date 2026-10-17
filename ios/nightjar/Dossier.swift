@@ -77,6 +77,12 @@ struct DossierView: View {
     let title: String
     let ip: String?
     let wifiLines: [String]
+    /// The name the device itself answers to on the
+    /// wire — as distinct from the operator's given
+    /// name in `title`. Bluetooth evidence is matched
+    /// against this: a nickname matches nothing in
+    /// the air.
+    var wireName: String? = nil
 
     @EnvironmentObject private var post: ListeningPost
     @StateObject private var recon = Recon()
@@ -87,8 +93,10 @@ struct DossierView: View {
     @State private var driftClosed: [String] = []
 
     private var bleMatches: [DeviceRow] {
-        post.rows.filter { row in
-            row.name == title || row.preferredLabel == title
+        let matchName = wireName ?? title
+        return post.rows.filter { row in
+            row.name == matchName
+                || row.preferredLabel == matchName
         }
     }
 
@@ -96,9 +104,21 @@ struct DossierView: View {
         recon.hits.filter { $0.isOpen }
     }
 
-    /// The knock's testimony as comparable lines.
+    /// The knock's testimony as comparable lines —
+    /// port, service, banner, and whether the
+    /// service confirmed itself. A port that still
+    /// answers but banners a different service or
+    /// version than the baseline knew IS drift;
+    /// the old signature (port + service only) was
+    /// blind to exactly that change.
     private var knockSignature: [String] {
-        openHits.map { "\($0.label) \($0.service)" }.sorted()
+        openHits.map { hit in
+            let banner = hit.banner
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            return "\(hit.label) \(hit.service) \(banner) "
+                + (hit.confirmed ? "confirmed" : "unconfirmed")
+        }.sorted()
     }
 
     private var hasDrift: Bool {
@@ -345,6 +365,7 @@ struct DossierPresentation: Identifiable {
     let title: String
     let ip: String?
     let wifiLines: [String]
+    var wireName: String? = nil
 }
 
 /// The dossier as a sheet: its own single stack, one Done —
@@ -359,7 +380,8 @@ struct DossierSheetView: View {
         NavigationStack {
             DossierView(title: presentation.title,
                         ip: presentation.ip,
-                        wifiLines: presentation.wifiLines)
+                        wifiLines: presentation.wifiLines,
+                        wireName: presentation.wireName)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }

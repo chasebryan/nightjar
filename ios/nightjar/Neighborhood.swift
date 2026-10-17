@@ -85,6 +85,26 @@ final class NeighborhoodStore: ObservableObject {
         }
     }
 
+    /// Persistence, coalesced: a sweep can land
+    /// hundreds of sightings in a breath, and the
+    /// file used to be rewritten whole for every
+    /// one of them. Mutations now mark the store
+    /// dirty and the write lands once, a second
+    /// later, with everything the breath brought.
+    /// (Deliberate acts — a rename, a clear — still
+    /// save on the spot.)
+    private var savePending = false
+    private func scheduleSave() {
+        guard !savePending else { return }
+        savePending = true
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            self.savePending = false
+            self.save()
+        }
+    }
+
     /// Empty the board: every neighbor forgotten, and
     /// their Map placements with them (a placement for a
     /// device the house no longer keeps is a ghost). The
@@ -126,26 +146,36 @@ final class NeighborhoodStore: ObservableObject {
                         mutate: @escaping (inout Neighbor, Bool) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            if let index = self.neighbors.firstIndex(
-                where: { $0.ip == ip }) {
-                var neighbor = self.neighbors[index]
-                mutate(&neighbor, false)
-                neighbor.lastSeen = Date()
-                neighbor.sightings += 1
-                self.neighbors[index] = neighbor
-            } else {
-                var neighbor = Neighbor(ip: ip, name: nil,
-                                        firstSeen: Date(),
-                                        lastSeen: Date())
-                mutate(&neighbor, true)
-                neighbor.sightings = 1
-                self.neighbors.append(neighbor)
-                Journal.log("neighborhood", "new",
-                            "a new neighbor at \(ip) — the wire "
-                            + "has one more character")
-            }
+            self.applyUpsert(ip: ip, mutate: mutate)
             self.neighbors.sort { $0.lastSeen > $1.lastSeen }
-            self.save()
+            self.scheduleSave()
+        }
+    }
+
+    /// The upsert itself — main queue, no sort, no
+    /// save. The batch door runs a whole sweep
+    /// through it and settles both once, instead of
+    /// per host.
+    private func applyUpsert(
+        ip: String,
+        mutate: (inout Neighbor, Bool) -> Void) {
+        if let index = neighbors.firstIndex(
+            where: { $0.ip == ip }) {
+            var neighbor = neighbors[index]
+            mutate(&neighbor, false)
+            neighbor.lastSeen = Date()
+            neighbor.sightings += 1
+            neighbors[index] = neighbor
+        } else {
+            var neighbor = Neighbor(ip: ip, name: nil,
+                                    firstSeen: Date(),
+                                    lastSeen: Date())
+            mutate(&neighbor, true)
+            neighbor.sightings = 1
+            neighbors.append(neighbor)
+            Journal.log("neighborhood", "new",
+                        "a new neighbor at \(ip) — the wire "
+                        + "has one more character")
         }
     }
 
@@ -193,23 +223,32 @@ final class NeighborhoodStore: ObservableObject {
     // MARK: - the three feeds
 
     /// Scan's /24 sweep answered: who is up, on this port.
+    /// One door for the whole sweep: a single main-queue
+    /// pass, a single sort, a single coalesced save —
+    /// not one of each per host.
     func recordSweep(_ hosts: [SweepHost]) {
         let byIP = Dictionary(grouping: hosts, by: { $0.ip })
-        for (ip, answers) in byIP {
-            upsert(ip: ip) { neighbor, isNew in
-                for answer in answers
-                where !neighbor.ports.contains(answer.port) {
-                    neighbor.ports.append(answer.port)
-                    neighbor.ports.sort()
-                    if !isNew {
-                        self.noteDrift(&neighbor,
-                                  "answered on port "
-                                  + "\(answer.port) "
-                                  + "(\(ScanModel.serviceNames[answer.port] ?? "unknown")) "
-                                  + "for the first time")
+        guard !byIP.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            for (ip, answers) in byIP {
+                self.applyUpsert(ip: ip) { neighbor, isNew in
+                    for answer in answers
+                    where !neighbor.ports.contains(answer.port) {
+                        neighbor.ports.append(answer.port)
+                        neighbor.ports.sort()
+                        if !isNew {
+                            self.noteDrift(&neighbor,
+                                      "answered on port "
+                                      + "\(answer.port) "
+                                      + "(\(ScanModel.serviceNames[answer.port] ?? "unknown")) "
+                                      + "for the first time")
+                        }
                     }
                 }
             }
+            self.neighbors.sort { $0.lastSeen > $1.lastSeen }
+            self.scheduleSave()
         }
     }
 
@@ -335,7 +374,8 @@ struct NeighborhoodSectionView: View {
                     dossier = DossierPresentation(
                         title: neighbor.displayName,
                         ip: neighbor.ip,
-                        wifiLines: store.wifiLines(for: neighbor))
+                        wifiLines: store.wifiLines(for: neighbor),
+                        wireName: neighbor.name)
                 } label: {
                     HStack(spacing: 8) {
                         if let mark = neighbor.customMark {
