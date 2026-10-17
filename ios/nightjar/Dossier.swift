@@ -328,3 +328,37 @@ struct DossierView: View {
         }
     }
 }
+
+
+// MARK: - The dossier, presented
+
+/// A dossier as a sheet carries its evidence with it, so
+/// any section can present it whole.
+struct DossierPresentation: Identifiable {
+    let id = UUID()
+    let title: String
+    let ip: String?
+    let wifiLines: [String]
+}
+
+/// The dossier as a sheet: its own single stack, one Done —
+/// the standing cure for the doubled back chevron that a
+/// push inside a More-tab screen kept producing (the same
+/// cure Colours took).
+struct DossierSheetView: View {
+    let presentation: DossierPresentation
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            DossierView(title: presentation.title,
+                        ip: presentation.ip,
+                        wifiLines: presentation.wifiLines)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
+                }
+        }
+    }
+}
