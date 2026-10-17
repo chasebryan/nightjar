@@ -21,6 +21,8 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>nightjar-hack's compass uses your heading and direction of travel to point you toward a Bluetooth device its ear is hearing, while you walk to it. Your location is never stored and never leaves the phone.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>nightjar-hack uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
 	<key>NFCReaderUsageDescription</key>
