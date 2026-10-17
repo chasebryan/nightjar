@@ -66,45 +66,156 @@ final class Recon: NSObject, ObservableObject {
         lastKnocked = host
         generation += 1
         let gen = generation
+
+        // Two phases, because the knock used to have
+        // one fixed order, one fixed timeout, and no
+        // memory. What the host is KNOWN to answer —
+        // the neighborhood's record, fed by every
+        // organ, together with this engine's own
+        // last knock — goes first at a short
+        // deadline, with the head of the caller's
+        // list: a fast liveness verdict and a fast
+        // partial picture. The rest of the census
+        // follows only for a host that answered, or
+        // one never known. A known host silent on
+        // everything it used to answer is itself
+        // the finding — the census is not burned
+        // proving a dark box is dark.
+        let known = Self.knownPorts(for: host)
+            .filter { ports.contains($0) }
+        var phaseOne = known
+        for port in ports.prefix(16)
+        where !phaseOne.contains(port) {
+            phaseOne.append(port)
+        }
+        let phaseTwo = ports.filter {
+            !phaseOne.contains($0) }
+        let shared = KnockShared()
+        probePhase(host: host, ports: phaseOne, udp: udp,
+                   timeout: min(timeout, 0.6), jobs: jobs,
+                   speak: speak, shared: shared) {
+            [weak self] in
+            guard let self = self,
+                  self.generation == gen else { return }
+            let answered = shared.found.contains {
+                $0.isOpen || !$0.reply.isEmpty }
+            if phaseTwo.isEmpty || answered
+                || known.isEmpty {
+                self.probePhase(host: host, ports: phaseTwo,
+                                udp: udp, timeout: timeout,
+                                jobs: jobs, speak: speak,
+                                shared: shared) {
+                    [weak self] in
+                    self?.finishKnock(host: host,
+                                      ports: ports, gen: gen,
+                                      shared: shared)
+                }
+            } else {
+                self.console.append(
+                    "knock \(host): silent on all "
+                    + "\(phaseOne.count) known ports — "
+                    + "the census stands down")
+                self.finishKnock(host: host, ports: ports,
+                                 gen: gen, shared: shared)
+            }
+        }
+    }
+
+    /// Accumulates one knock's hits across its phases.
+    private final class KnockShared {
         var found: [Hit] = []
+        let lock = NSLock()
+    }
+
+    private func probePhase(host: String, ports: [Int],
+                            udp: Bool, timeout: TimeInterval,
+                            jobs: Int, speak: Bool,
+                            shared: KnockShared,
+                            done: @escaping () -> Void) {
+        guard !ports.isEmpty else { done(); return }
         let group = DispatchGroup()
-        let semaphore = DispatchSemaphore(value: max(1, min(jobs, 64)))
+        let semaphore = DispatchSemaphore(
+            value: max(1, min(jobs, 64)))
         for port in ports {
             group.enter()
             queue.async { [weak self] in
-                guard let self = self else { group.leave(); return }
+                guard let self = self else {
+                    group.leave(); return }
                 semaphore.wait()
                 self.probe(host: host, port: port, udp: udp,
                            timeout: timeout, speak: speak) { hit in
                     if let hit = hit {
-                        self.lock.lock()
-                        found.append(hit)
-                        self.lock.unlock()
+                        shared.lock.lock()
+                        shared.found.append(hit)
+                        shared.lock.unlock()
                     }
-                    DispatchQueue.main.async { self.probed += 1 }
+                    DispatchQueue.main.async {
+                        self.probed += 1 }
                     semaphore.signal()
                     group.leave()
                 }
             }
         }
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self, self.generation == gen else { return }
-            let sorted = found.sorted { ($0.port, $0.udp ? 1 : 0) < ($1.port, $1.udp ? 1 : 0) }
-            self.hits = sorted
-            self.knocking = false
-            let open = sorted.filter { $0.isOpen }
-            self.console.append("knock \(host): \(open.count) open of \(ports.count)")
-            if let mouth = self.mouth {
-                mouth.logRecon("knock", host, lines: open.map {
-                    "\($0.label) \($0.service) \($0.banner)"
-                })
-                mouth.uiSuccess("Knock: \(open.count) open of \(ports.count)")
-            }
-            for hit in open {
-                NeighborhoodStore.shared.discover(
-                    source: host, port: hit.port, via: "recon")
-            }
+        group.notify(queue: .main) { done() }
+    }
+
+    private func finishKnock(host: String, ports: [Int],
+                             gen: Int, shared: KnockShared) {
+        guard generation == gen else { return }
+        let sorted = shared.found.sorted {
+            ($0.port, $0.udp ? 1 : 0)
+                < ($1.port, $1.udp ? 1 : 0) }
+        hits = sorted
+        knocking = false
+        let open = sorted.filter { $0.isOpen }
+        console.append("knock \(host): \(open.count) open of \(ports.count)")
+        if let mouth = mouth {
+            mouth.logRecon("knock", host, lines: open.map {
+                "\($0.label) \($0.service) \($0.banner)"
+            })
+            mouth.uiSuccess("Knock: \(open.count) open of \(ports.count)")
         }
+        for hit in open {
+            NeighborhoodStore.shared.discover(
+                source: host, port: hit.port, via: "recon")
+        }
+        Self.rememberKnock(host: host,
+                           openPorts: open.map { $0.port })
+    }
+
+    // MARK: - knock memory
+
+    private static let knockMemoryKey = "reconKnockMemory"
+
+    /// The ports a host is known to answer: the
+    /// neighborhood's record together with this
+    /// engine's own last knock of it.
+    private static func knownPorts(for host: String)
+        -> [Int] {
+        var known = Set<Int>()
+        if let neighbor = NeighborhoodStore.shared
+            .neighbors.first(where: { $0.ip == host }) {
+            known.formUnion(neighbor.ports)
+        }
+        let memory = UserDefaults.standard.dictionary(
+            forKey: knockMemoryKey)
+            as? [String: [String: Any]]
+        if let entry = memory?[host],
+           let ports = entry["ports"] as? [Int] {
+            known.formUnion(ports)
+        }
+        return known.sorted()
+    }
+
+    private static func rememberKnock(host: String,
+                                      openPorts: [Int]) {
+        var memory = UserDefaults.standard.dictionary(
+            forKey: knockMemoryKey)
+            as? [String: [String: Any]] ?? [:]
+        memory[host] = ["ports": openPorts,
+                        "when": Date().timeIntervalSince1970]
+        UserDefaults.standard.set(memory,
+                                  forKey: knockMemoryKey)
     }
 
     func cancelKnock() {
@@ -330,26 +441,66 @@ final class Recon: NSObject, ObservableObject {
         }
         step(target: target, base: base, index: 1, count: count,
              mutations: mutations, read: read, timeout: timeout,
-             rng: rng, token: token)
+             rng: rng, corpus: FuzzCorpus(), token: token)
+    }
+
+    /// The fuzzer's memory, traveling by value beside
+    /// the RNG: the payloads that earned a reply —
+    /// above all a NEW reply shape — kept as parents
+    /// for later steps, and each mutation
+    /// operation's yield this run. The fuzzer used
+    /// to restart from the pristine seed on every
+    /// step and draw its seven operations uniformly
+    /// forever, so nothing it learned from a reply
+    /// ever steered the next payload. (Given the
+    /// same seed and the same target behavior, the
+    /// run is still the same run: every choice here
+    /// is an RNG draw.)
+    private struct FuzzCorpus {
+        var parents: [Data] = []
+        var seenShapes: Set<String> = []
+        var opYield: [Int] = Array(repeating: 0, count: 7)
+        var opTried: [Int] = Array(repeating: 0, count: 7)
     }
 
     private func step(target: SendTarget, base: Data, index: Int, count: Int,
                       mutations: Int, read: Bool, timeout: TimeInterval,
-                      rng: SplitMix64, token: Int) {
+                      rng: SplitMix64, corpus: FuzzCorpus, token: Int) {
         // The RNG travels by value: an inout parameter cannot be
         // captured by the escaping exchange completion below, and
         // SplitMix64 is a value type — each step mutates its own
         // copy and hands the advanced state to the next step, so
         // the draw sequence is the same continuous stream.
         var rng = rng
+        var corpus = corpus
         guard token == fuzzToken else { return }
         if index > count {
             fuzzing = false
-            fuzzLines.append("done — \(fuzzDead) dead connection(s)")
+            fuzzLines.append("done — \(fuzzDead) dead connection(s)"
+                + (corpus.parents.isEmpty ? ""
+                   : " · corpus kept \(corpus.parents.count) "
+                    + "replying parent(s)"))
             return
         }
-        var blob = [UInt8](base)
-        for _ in 0..<max(1, mutations) { mutate(&blob, &rng) }
+        // The parent: once the corpus has earned
+        // anything, half the steps build on a payload
+        // that already made the target speak, so
+        // mutations accumulate on success instead of
+        // restarting from the seed.
+        var blob: [UInt8]
+        if !corpus.parents.isEmpty, rng.next() % 2 == 0 {
+            blob = [UInt8](corpus.parents[
+                Int(rng.next()
+                    % UInt64(corpus.parents.count))])
+        } else {
+            blob = [UInt8](base)
+        }
+        var opsUsed: [Int] = []
+        for _ in 0..<max(1, mutations) {
+            let op = mutate(&blob, &rng,
+                            weights: corpus.opYield)
+            if op >= 0 { opsUsed.append(op) }
+        }
         let payload = Data(blob)
         exchange(target: target, payload: payload, read: read, timeout: timeout) {
             [weak self] reply, failed in
@@ -357,6 +508,28 @@ final class Recon: NSObject, ObservableObject {
                 guard let self = self, token == self.fuzzToken else { return }
                 // Published UI state must be updated on the main queue.
                 if failed { self.fuzzDead += 1 }
+                // Grade the operations, and keep the
+                // payload as a parent when its reply
+                // is a shape this run has not seen.
+                for op in opsUsed {
+                    corpus.opTried[op] += 1
+                    if !failed, !reply.isEmpty {
+                        corpus.opYield[op] += 1
+                    }
+                }
+                if !failed, !reply.isEmpty {
+                    let shape = "\(reply.count):"
+                        + ReconPayloads.firstLine(
+                            reply, limit: 24)
+                    if corpus.seenShapes.insert(shape)
+                        .inserted {
+                        corpus.parents.append(payload)
+                        if corpus.parents.count > 24 {
+                            corpus.parents.removeFirst(
+                                corpus.parents.count - 24)
+                        }
+                    }
+                }
                 let head = failed ? "DEAD" : ReconPayloads.firstLine(reply, limit: 60)
                 self.fuzzLines.append(
                     "  \(String(format: "%5d", index))  len=\(payload.count)  "
@@ -366,16 +539,36 @@ final class Recon: NSObject, ObservableObject {
                 }
                 self.step(target: target, base: base, index: index + 1,
                           count: count, mutations: mutations, read: read,
-                          timeout: timeout, rng: rng, token: token)
+                          timeout: timeout, rng: rng, corpus: corpus,
+                          token: token)
             }
         }
     }
 
     func stopFuzz() { fuzzToken += 1; fuzzing = false }
 
-    private func mutate(_ data: inout [UInt8], _ rng: inout SplitMix64) {
-        guard !data.isEmpty else { data.append(UInt8(rng.next() & 0xFF)); return }
-        switch Int(rng.next() % 7) {
+    /// One mutation, drawn by yield: an operation
+    /// that has earned replies this run is drawn
+    /// oftener, with a floor of one so no operation
+    /// ever starves. Returns the operation used, or
+    /// -1 when the payload only needed a first byte.
+    private func mutate(_ data: inout [UInt8],
+                        _ rng: inout SplitMix64,
+                        weights: [Int]) -> Int {
+        guard !data.isEmpty else {
+            data.append(UInt8(rng.next() & 0xFF)); return -1 }
+        let totalWeight = (0..<7).reduce(0) {
+            $0 + 1 + (weights.indices.contains($1)
+                        ? weights[$1] : 0) }
+        var draw = Int(rng.next()
+            % UInt64(max(1, totalWeight)))
+        var op = 6
+        for i in 0..<7 {
+            draw -= 1 + (weights.indices.contains(i)
+                            ? weights[i] : 0)
+            if draw < 0 { op = i; break }
+        }
+        switch op {
         case 0:
             let i = Int(rng.next() % UInt64(data.count))
             data[i] ^= 1 << UInt8(rng.next() % 8)
@@ -383,8 +576,13 @@ final class Recon: NSObject, ObservableObject {
             data[Int(rng.next() % UInt64(data.count))] = UInt8(rng.next() & 0xFF)
         case 2:
             data.insert(UInt8(rng.next() & 0xFF), at: Int(rng.next() % UInt64(data.count + 1)))
-        case 3 where data.count > 1:
-            data.remove(at: Int(rng.next() % UInt64(data.count)))
+        case 3:
+            if data.count > 1 {
+                data.remove(at: Int(rng.next() % UInt64(data.count)))
+            } else {
+                let i = Int(rng.next() % UInt64(data.count))
+                data[i] ^= 1 << UInt8(rng.next() % 8)
+            }
         case 4:
             let start = Int(rng.next() % UInt64(data.count))
             let end = min(data.count, start + 1 + Int(rng.next() % 16))
@@ -396,6 +594,7 @@ final class Recon: NSObject, ObservableObject {
         default:
             data.removeSubrange(Int(rng.next() % UInt64(data.count))..<data.count)
         }
+        return op
     }
 
     /// A deadline is not successful unless the payload was actually sent.
