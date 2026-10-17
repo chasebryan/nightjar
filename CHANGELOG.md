@@ -384,6 +384,33 @@
   SideStore source, re-signed on the phone
   before the week runs out.
 
+- **The bench fetches; the disk keeps the
+  books.** Weight downloads are downloads
+  now — files only, one at a time, in the
+  order asked — never a model loaded into
+  memory as a side effect of fetching it,
+  which is what let a stack of downloads
+  (the 7B above all) push the app out of
+  memory and take its own records with it.
+  And "downloaded" is read off the hub
+  cache itself at every launch: a finished
+  download counts even if the session that
+  fetched it died before writing it down,
+  and a partial one never claims to be
+  whole.
+- **She understands.** A message none of
+  her patterns catch is no longer treated
+  as small talk by default: a bench reads
+  it once — three seconds, no more —
+  against the full menu of what she can
+  do, and a plain intent in any words is
+  obeyed like a plain order: sweep, audit,
+  drill, go dark, serve, listen, recolour,
+  code. No modes to pick, no phrasing to
+  memorize. And her council now grounds in
+  her own capabilities, so her answers
+  know her hands.
+
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
 - **The great presenter audit.** Every sheet, cover,
