@@ -2018,10 +2018,6 @@ struct SkelliView: View {
                         HStack(alignment: .top, spacing: 8) {
                             if line.fromOperator {
                                 Spacer(minLength: 48)
-                            } else {
-                                SkelliAvatar(
-                                    mood: .idle, size: 40)
-                                    .padding(.top, 2)
                             }
                             VStack(alignment: line.fromOperator
                                        ? .trailing
@@ -2058,8 +2054,6 @@ struct SkelliView: View {
                     }
                     if skelli.mood == .thinking {
                         HStack(spacing: 8) {
-                            SkelliLiveView(mood: .thinking,
-                                         size: 40)
                             Text("thinking…")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
