@@ -15,6 +15,7 @@ class NightjarApp : Application() {
     lateinit var engines: Engines
     lateinit var scanner: PortScanner
     lateinit var recon: Recon
+    lateinit var emcon: Emcon
     lateinit var traceStore: TraceBookStore
     lateinit var tracer: NetworkTracer
 
@@ -42,6 +43,7 @@ class NightjarApp : Application() {
         engines = Engines(mouth)
         scanner = PortScanner()
         recon = Recon(mouth)
+        emcon = Emcon(this, mouth, serve, ble)
         tracer = NetworkTracer(this, mouth, traceStore) {
             // The trace's radio half: the listening post's
             // current rows, reduced to map facts at finish.
@@ -63,6 +65,10 @@ class NightjarApp : Application() {
         mouth.bleArrivalHandler = { from, data ->
             serve.injectBleArrival(from, data)
         }
+        // The dead hand falls at an opening, before anything
+        // else: if a check-in is overdue, this launch burns
+        // and goes dark.
+        emcon.deadHandEvaluate()
         // Coil with GIF support for the centipede splash.
         coil.Coil.setImageLoader(
             coil.ImageLoader.Builder(this)
