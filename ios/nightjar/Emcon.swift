@@ -151,6 +151,14 @@ final class Emcon: ObservableObject {
     @Published private(set) var drilling = false
     @Published private(set) var drillBefore: Snapshot?
     @Published private(set) var drillAfter: Snapshot?
+    /// What the drill itself switched off, by name —
+    /// recorded from the mouth's own state at the moment
+    /// of going dark, not inferred from the second scan.
+    /// The scans can only see listeners and listings,
+    /// and a withdrawn listing echoes in mDNS after it
+    /// dies; the ledger is the source of truth for the
+    /// house's own emissions.
+    @Published private(set) var drillSilenced: [String] = []
     @Published private(set) var tripwireOn = false
     @Published private(set) var watched: [Int] = []
     @Published private(set) var watchedUDP: [Int] = []
@@ -712,13 +720,35 @@ final class Emcon: ObservableObject {
         drilling = true
         drillBefore = nil
         drillAfter = nil
+        drillSilenced = []
         runSelfScan { [weak self] in
             guard let self = self else { return }
             self.runBonjourAudit {
                 self.drillBefore = Snapshot(exposures: self.exposures,
                                             announcers: self.announcers)
+                // Name what going dark is about to silence,
+                // from the mouth's own state — the second
+                // scan is an echo-prone witness for these.
+                var ledger: [String] = []
+                if mouth.serveRunning, !mouth.stealth {
+                    ledger.append("Serve's Bonjour listing — "
+                        + "withdrawn; the listeners stay up, "
+                        + "unlisted")
+                }
+                if mouth.gattHostOn {
+                    ledger.append("BLE GATT host — stood down")
+                }
+                if mouth.beaconOn {
+                    ledger.append("BLE beacon — stood down")
+                }
+                self.drillSilenced = ledger
                 self.activate(mouth: mouth)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                // A beat longer than feels necessary: a
+                // withdrawn listing lingers in the browse
+                // for a moment after it dies, and the
+                // second pass should measure the wire as
+                // it is, not its echo.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     self.runSelfScan {
                         self.runBonjourAudit {
                             self.drillAfter = Snapshot(
