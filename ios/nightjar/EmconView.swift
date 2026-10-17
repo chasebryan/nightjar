@@ -41,6 +41,7 @@ struct EmconView: View {
             sparringSection
             SeasonSectionView(season: emcon.season,
                               emcon: emcon)
+            DuelSectionView(emcon: emcon)
             maneuversSection
             knockTrafficSection
             vaultSection
