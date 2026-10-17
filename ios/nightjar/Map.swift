@@ -222,6 +222,11 @@ struct MapView: View {
                     store: NeighborhoodStore.shared,
                     neighbor: neighbor)
             }
+            .sheet(item: $huntTarget) { target in
+                HomingCompassView(targetID: target.id,
+                                  label: target.label,
+                                  kind: target.kind)
+            }
             .sheet(item: $dossierNeighbor) { neighbor in
                 NavigationStack {
                     DossierView(
@@ -474,11 +479,6 @@ struct MapView: View {
                     }
                 }
             }
-        }
-        .sheet(item: $huntTarget) { target in
-            HomingCompassView(targetID: target.id,
-                              label: target.label,
-                              kind: target.kind)
         }
     }
 
