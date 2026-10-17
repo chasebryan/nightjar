@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- **Skelli (iOS, everywhere).** The house's
+  specialist: a full section of its own behind a
+  floating skull button on every tab. Not a general
+  intelligence — a specialist for this one
+  application, whose knowledge is the app's own
+  manual (a directory of every tab, organ, and
+  switch, browsable or askable), whose senses are
+  the app's live state (the wire, the sealed log,
+  the mind, the instrument, the posture), and
+  whose hands are the app's own controls, worked
+  through the real organs the app hands it: sweeps,
+  self-scans, audits, going dark, serve, stealth,
+  the tripwire, and navigation to any tab. Loud
+  and destructive levers keep their own
+  confirmations — Skelli walks the operator to
+  them and names why. Asked outside the house, it
+  says so.
+- **The mind, consolidated (iOS).** The
+  Subconscious now writes down what it concludes:
+  durable house facts — the quiet hours, a
+  regular's rhythm, two who stir together, the
+  foreign hands' habits — each with its evidence
+  and its birthday, listed in the mind's view,
+  contradicted in the open ("Against its own
+  record") when the house breaks them, and
+  forgettable one by one, with the forgetting
+  itself remembered so a buried fact is not
+  re-taught tomorrow. Verdicts now teach priority
+  as well as confidence: the findings are ranked
+  by what the operator has confirmed, and the
+  brief says when it is leading with a taught
+  kind. The Instrument's fortnight baselines
+  (resting heart, sleep) join the reading: the
+  operator read against himself, joined to the
+  night's events as printed correlation. Ask
+  grew again: while-you-slept windows, first
+  appearances, the Instrument answering for
+  itself, and who is on the wire.
+
 - **The Instrument (iOS EMCON).** The Apple Watch,
   read: worn and paired, it already measures the
   operator and leaves the readings in this phone's
