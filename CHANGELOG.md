@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- **The awareness organs reckon
+  honestly (intelligence batch 2).**
+  The Instrument's resting baseline
+  no longer averages in today's
+  half-lived day, and the latest it
+  is compared against is stamped and
+  refreshed from the same record —
+  the "ran hot" reading is a fair
+  comparison now. The Subconscious
+  tempo is reckoned from the days
+  of record the house actually has;
+  Consolidation facts are retained
+  instead of evaporating when their
+  evidence ages out, capped by
+  weakest evidence rather than by
+  derivation order; foreign-hands
+  facts join the contradiction
+  watch. The Steward counts the
+  operator's rulings in a kept
+  tally instead of re-parsing
+  journal prose over a window a
+  busy house outgrows.
+
+
 - **The exposure score feels the room
   now.** Stealth was a switch no view
   could see move, so the EMCON card —
