@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Build fix (MLX 3.x).** The mlx-swift-lm
+  package resolved to its 3.x line, whose loading
+  API broke from 2.x: downloads and tokenizers
+  are now explicit arguments. Her bench and her
+  Weights downloads speak the new API (via the
+  package's MLXHuggingFace integration, now also
+  linked), and the project pins the package to
+  the 3.x line so a future major can't arrive
+  unannounced again.
+
 - **Documentation.** The READMEs now carry the
   current build's full requirements in the open —
   Xcode 26, the Metal Toolchain component, the
