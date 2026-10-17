@@ -125,7 +125,7 @@ class Steward(
         private const val SHIFT_KEY = "stewardLastShift"
         private const val REST_MS = 3600_000L
 
-        fun persona(forPort: Int): String? = when (port) {
+        fun persona(forPort: Int): String? = when (forPort) {
             22 -> "ssh"
             80, 8080 -> "http"
             1883 -> "mqtt"
@@ -1114,7 +1114,7 @@ class Steward(
 
     private fun eventInstant(event: NightEvent): Instant =
         try {
-            Instant.parse(event.when)
+            Instant.parse(event.`when`)
         } catch (_: Exception) {
             Instant.EPOCH
         }
