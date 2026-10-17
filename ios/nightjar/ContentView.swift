@@ -142,7 +142,7 @@ struct ListenView: View {
         NavigationStack {
             List {
 #if !STORE_BUILD
-                if let release = updater.available {
+                if let release = updater.visibleUpdate {
                     Section {
                         UpdateBanner(release: release)
                     }
@@ -285,12 +285,26 @@ struct ListenView: View {
 struct UpdateBanner: View {
     let release: UpdateChecker.Release
     @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var updater: UpdateChecker
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("Update available — \(release.name)", systemImage: "arrow.down.circle.fill")
-                .font(.body.weight(.medium))
-                .foregroundStyle(.tint)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label("Update available — \(release.name)", systemImage: "arrow.down.circle.fill")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                Spacer(minLength: 0)
+                Button {
+                    updater.dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .padding(4)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Not now")
+            }
             if let install = release.installURL {
                 Text("This release carries an over-the-air build. "
                      + "iOS installs it over this one — your logs, "
