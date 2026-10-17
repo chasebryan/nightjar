@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Documentation.** The READMEs now carry the
+  current build's full requirements in the open —
+  Xcode 26, the Metal Toolchain component, the
+  self-resolving MLX package, the iOS 17 floor,
+  and what each of Skelli's minds needs from the
+  phone — plus a plainly marked path to v4.0.0,
+  the complete pre-Skelli flagship that asks for
+  none of it (iOS 16 and any recent Xcode), for
+  gear that can't run the current build.
+
 - **Skelli, her weights managed in the app
   (iOS).** Her bench no longer asks the operator
   to stage files by hand: her menu's Weights
