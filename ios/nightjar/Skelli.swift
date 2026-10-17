@@ -459,8 +459,8 @@ final class SkelliCenter: ObservableObject {
 
     // MARK: the routing
 
-    private func respond(to q: String,
-                         raw: String) {
+    func respond(to q: String, raw: String,
+                  again: Bool = true) {
         // Addressed by name: "Skelli, what's up" is
         // speech to her, not a search about her.
         var q = q
@@ -849,6 +849,11 @@ final class SkelliCenter: ObservableObject {
             consultCode(q)
             return
         }
+        // No pattern caught it: one semantic
+        // reading before it is conversation.
+        if again, secondReading(q, raw: raw) {
+            return
+        }
         consultMindOrResearch(q)
     }
 
@@ -857,7 +862,7 @@ final class SkelliCenter: ObservableObject {
     /// in her voice, grounded in the house; when
     /// an answer needs the living web, one word
     /// says so and the browser goes instead.
-    private func consultMindOrResearch(_ q: String) {
+    func consultMindOrResearch(_ q: String) {
         let started = SkelliMind.consult(
             question: q,
             grounding: mindGrounding(),
@@ -998,7 +1003,7 @@ final class SkelliCenter: ObservableObject {
 
     /// The last few exchanges, so the conversation
     /// she is in is the one she answers in.
-    private func recentLines() -> String {
+    func recentLines() -> String {
         lines.suffix(6).map { line in
             (line.fromOperator
              ? "Operator: " : "Skelli: ") + line.text
