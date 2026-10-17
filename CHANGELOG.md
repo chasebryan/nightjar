@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **The Map (iOS Scan).** A special section of its own:
+  the house on one canvas. The operator names rooms and
+  places each neighbor where the device physically sits;
+  nodes carry freshness, drift, and a doorway into their
+  dossiers, and a sweep lights the house up room by room.
+  Placement is the operator's testimony — the app keeps
+  it and never invents a location of its own.
+- **The Subconscious (iOS EMCON).** An underlying
+  intelligence that reads across every organ — the sealed
+  night log, the Neighborhood, the Map, cadence, the
+  season, the dead hand — and names what breaks the
+  house's pattern: findings with their journal citations
+  and printed confidence, a narrative brief ("the night,
+  understood"), and a query line over the operator's own
+  data. It never acts and never touches the network; it
+  advises, and the Steward still asks.
+
 ## 4.0.0 — 2026-10-16 — the masquerade
 
 The release where the instrument grows a second of
