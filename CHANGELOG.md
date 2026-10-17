@@ -38,6 +38,24 @@
   confirmations — Skelli walks the operator to them
   and names why. Asked outside the house, she says
   so.
+- **Skelli researches (iOS).** What the house
+  cannot answer, she now looks up through the
+  phone's own network connection: DuckDuckGo's
+  instant answers and Wikipedia are asked in
+  parallel, and the answer comes back condensed
+  to whole sentences with its source named and
+  linked, so it can be judged like any other
+  testimony. 'Search the web for …' forces the
+  outward look; any question the manual, the
+  senses, and the record can't answer takes it
+  on its own. The outward query is scrubbed
+  first — private addresses, .local names, and
+  anything key-shaped are never sent — and web
+  research has its own switch in her menu (on by
+  default; her status line shows it; Reset
+  restores it). Retrieval, stated plainly: she
+  quotes and condenses what a source says; she
+  does not invent.
 - **The mind, consolidated (iOS).** The
   Subconscious now writes down what it concludes:
   durable house facts — the quiet hours, a
