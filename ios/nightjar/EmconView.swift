@@ -28,7 +28,10 @@ struct EmconView: View {
                     stealth: mouth.stealth,
                     deviceName: emcon.deviceName,
                     exposureCount: emcon.exposures.count,
-                    announcerCount: emcon.announcers.count)
+                    announcerCount: emcon.announcers.count,
+                    assaultOn: assault.running,
+                    serveListeners: mouth.serveListenerCount,
+                    probingOn: spar.fuzzing)
     }
 
     var body: some View {
@@ -167,6 +170,15 @@ struct EmconView: View {
                  + "what the last knock and audit actually found. "
                  + "Run the drill for the full picture.")
                 .font(.caption).foregroundStyle(.secondary)
+            if emcon.active,
+               let before = emcon.scoreBeforeDark,
+               before.value > score.value {
+                Text("Going dark took you from \(before.value) "
+                     + "\(before.band) to \(score.value) "
+                     + "\(score.band).")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.green)
+            }
             if !score.parts.isEmpty {
                 Text("Why \(score.band):")
                     .font(.caption.weight(.semibold))
