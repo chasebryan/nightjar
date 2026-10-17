@@ -1,4 +1,6 @@
+import JavaScriptCore
 import SwiftUI
+import UIKit
 
 /// Her forge: payload work built to order. From
 /// her patterns she assembles real packets —
@@ -128,6 +130,13 @@ struct ForgeView: View {
     @State private var keptPattern = false
 
     @State private var brief = ""
+    @State private var codeBrief = ""
+    @State private var codeLang = "Swift"
+    @State private var codeDraft = ""
+    @State private var codeOutput = ""
+    @State private var draftingCode = false
+    @State private var runningCode = false
+    @State private var shareItem: ShareItem?
     @State private var drafting = false
     @State private var draft = ""
     @State private var draftSource = "text"
@@ -266,6 +275,84 @@ struct ForgeView: View {
                         .disabled(keptDraft)
                     }
                 }
+                Section("The workbench") {
+                    Text("Anything else she "
+                        + "builds: tools, scripts, "
+                        + "whole programs — "
+                        + "drafted by her minds, "
+                        + "held here, yours to "
+                        + "take anywhere. "
+                        + "JavaScript runs on the "
+                        + "spot.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("Language",
+                           selection: $codeLang) {
+                        ForEach(["Swift", "Python",
+                                 "JavaScript",
+                                 "Shell", "Other"],
+                                id: \.self) {
+                            Text($0).tag($0)
+                        }
+                    }
+                    TextField(
+                        "Tell her what to build…",
+                        text: $codeBrief,
+                        axis: .vertical)
+                        .lineLimit(2...4)
+                    Button {
+                        draftCode()
+                    } label: {
+                        if draftingCode {
+                            ProgressView()
+                        } else {
+                            Text("Have her build it")
+                        }
+                    }
+                    .disabled(draftingCode
+                        || codeBrief
+                            .trimmingCharacters(
+                                in: .whitespacesAndNewlines)
+                            .isEmpty)
+                    if !codeDraft.isEmpty {
+                        TextEditor(text: $codeDraft)
+                            .font(.system(
+                                .caption,
+                                design: .monospaced))
+                            .frame(minHeight: 150)
+                        HStack(spacing: 14) {
+                            if codeLang
+                                == "JavaScript" {
+                                Button(runningCode
+                                       ? "Running…"
+                                       : "Run it") {
+                                    runCode()
+                                }
+                                .disabled(runningCode)
+                            }
+                            Button("Copy") {
+                                UIPasteboard.general
+                                    .string = codeDraft
+                                toasts.show(
+                                    "Copied.")
+                            }
+                            Button("Share") {
+                                shareItem = ShareItem(
+                                    items: [codeDraft])
+                            }
+                        }
+                        if !codeOutput.isEmpty {
+                            Text(codeOutput)
+                                .font(.system(
+                                    .caption,
+                                    design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
             }
             .navigationTitle("The Forge")
             .toolbar {
@@ -275,6 +362,52 @@ struct ForgeView: View {
                 }
             }
         }
+    }
+
+    private func draftCode() {
+        draftingCode = true
+        codeOutput = ""
+        let lang = codeLang
+        let ask = codeBrief
+        Task {
+            let text = await SkelliMind.rawAnswer(
+                instructions: "You are Skelli, "
+                    + "the operator's programming "
+                    + "partner. Produce ONLY "
+                    + "complete, correct, runnable "
+                    + "code — no explanation, no "
+                    + "code fences, no commentary. "
+                    + "Language: " + lang + ".",
+                prompt: ask)
+            await MainActor.run {
+                draftingCode = false
+                guard var text = text else {
+                    toasts.show(
+                        "No bench could build it.",
+                        error: true)
+                    return
+                }
+                text = text
+                    .replacingOccurrences(
+                        of: "```", with: "")
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                codeDraft = text
+            }
+        }
+    }
+
+    private func runCode() {
+        runningCode = true
+        let code = codeDraft
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                let output = JSRunner.run(code)
+                DispatchQueue.main.async {
+                    runningCode = false
+                    codeOutput = output
+                }
+            }
     }
 
     private func keep(_ built: ForgeKit.Built,
@@ -335,5 +468,63 @@ struct ForgeView: View {
                 draftSource = hexish ? "hex" : "text"
             }
         }
+    }
+}
+
+
+/// Her scratch interpreter: JavaScript, run on
+/// the spot inside JavaScriptCore — no network,
+/// no files, a three-second leash. Output is
+/// what the code logged, plus its final value.
+enum JSRunner {
+
+    static func run(_ code: String) -> String {
+        let semaphore = DispatchSemaphore(value: 0)
+        var result = ""
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                result = evaluate(code)
+                semaphore.signal()
+            }
+        if semaphore.wait(
+            timeout: .now() + 3) == .timedOut {
+            return "Ran past three seconds — "
+                + "the leash pulled it back."
+        }
+        return result
+    }
+
+    private static func evaluate(
+        _ code: String) -> String {
+        let context = JSContext()!
+        var logs: [String] = []
+        var failure: String?
+        context.exceptionHandler = { _, exc in
+            failure = exc?.toString()
+        }
+        let log: @convention(block)
+            (JSValue) -> Void = { value in
+                logs.append(
+                    value.isUndefined
+                        ? "" : value.toString())
+            }
+        context.setObject(
+            log, forKeyedSubscript: "log" as NSString)
+        _ = context.evaluateScript(
+            "var console = { log: log, "
+            + "error: log, warn: log };")
+        let value = context.evaluateScript(code)
+        if let failure = failure {
+            logs.append("Error: " + failure)
+        } else if let value = value,
+                  !value.isUndefined,
+                  !value.isNull {
+            logs.append("→ " + value.toString())
+        }
+        let out = logs
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        return out.isEmpty ? "(ran — no output)"
+            : out
     }
 }
