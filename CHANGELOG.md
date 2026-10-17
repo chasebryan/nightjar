@@ -415,16 +415,19 @@
   the app, over any screen, sheet or form:
   one swipe down and the keyboard folds.
 
-- **Support the work.** About carries a
-  door to the author's Buy Me a Coffee
-  (buymeacoffee.com/realTechnique): the
-  app is free and open source, and a
-  coffee covers the developer fee and the
-  test gear. Nothing unlocks — everything
-  is already yours. Like the update
-  checker, the door is compiled out of
-  store builds, and the repo wears the
-  same link in its Sponsor button.
+- **Support the work.** About gains a
+  quiet room of its own — coffee colours,
+  apart from every theme in the house —
+  where the author's Buy Me a Coffee
+  (buymeacoffee.com/realTechnique) waits
+  for anyone who feels like chipping in
+  toward the developer fee and the test
+  gear. It asks for nothing: the app is
+  free either way, and nothing unlocks.
+  Like the update checker, the room is
+  compiled out of store builds, and the
+  repo wears the same link in its
+  Sponsor button.
 
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
