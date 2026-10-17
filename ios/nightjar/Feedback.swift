@@ -2792,6 +2792,8 @@ extension SkelliMind {
     static func council(
         prompt: String, grounding: String,
         finish: @escaping (Verdict) -> Void) async {
+        let grounding = grounding
+            + Self.capabilityBrief
         var draft: String?
         var draftedByWeights = false
         #if canImport(MLXLLM)
@@ -2884,6 +2886,175 @@ extension SkelliMind {
         return nil
     }
 
+    /// What she can do, in the words intents
+    /// arrive in — appended to the council's
+    /// grounding, so her conversation knows her
+    /// own hands: these are real abilities, and
+    /// naming the ask that triggers one is
+    /// grounded advice, not invention.
+    static let capabilityBrief =
+        "\nHer hands — the operator triggers each"
+        + " by asking in his own words, and a"
+        + " message that plainly asks for one is"
+        + " acted on before it ever reaches you,"
+        + " so if you are answering, either he"
+        + " didn't ask, or he is asking ABOUT one:"
+        + " sweep the local network for devices;"
+        + " check his own exposure; run the audit;"
+        + " run a drill; go dark (EMCON) or stand"
+        + " down; start or stop listening (the BLE"
+        + " ear); raise or stop Serve; stealth on"
+        + " or off; arm or drop the tripwire;"
+        + " report who is on the wire, what"
+        + " happened overnight, the exposure"
+        + " posture, the facts she has learned,"
+        + " and the Subconscious brief; write code;"
+        + " forge payloads; recolour the house by"
+        + " theme name; research the living web."
+        + " If he seems to want one done and it"
+        + " hasn't happened, tell him plainly he"
+        + " can just say so — no mode, no menu."
+
+    /// The second reading: a message no pattern
+    /// caught is read once, semantically, against
+    /// the menu of her capabilities — and comes
+    /// back as the canonical phrase her own
+    /// reflexes already obey, a THEME: or CODE
+    /// token, or nothing (plain conversation,
+    /// honestly come by). The quick bench reads
+    /// first; meaning, not keywords, decides.
+    static func intentPhrase(for text: String,
+                             recent: String)
+        async -> String? {
+        let prompt = recent.isEmpty
+            ? text
+            : recent + "\nOperator: " + text
+        let charter =
+            "You read intent for Skelli, the"
+            + " specialist inside nightjar-hack."
+            + " The operator's message matched none"
+            + " of her command patterns. Judge by"
+            + " MEANING alone: if he plainly wants"
+            + " one of these DONE, answer with its"
+            + " token and nothing else — SWEEP"
+            + " (scan the local network), SELFSCAN"
+            + " (check his own exposure), AUDIT,"
+            + " DRILL, DARK (EMCON on), STANDDOWN,"
+            + " LISTEN, STOPLISTEN, SERVE,"
+            + " STOPSERVE, STEALTH_ON, STEALTH_OFF,"
+            + " TRIPWIRE_ON, TRIPWIRE_OFF, WIRE"
+            + " (who is on his network), NIGHT"
+            + " (what happened overnight),"
+            + " POSTURE (the house's exposure),"
+            + " FACTS (what she has learned),"
+            + " BRIEF (her Subconscious brief),"
+            + " CODE (write code or a script for"
+            + " him), THEME:<a colour theme's"
+            + " name> (recolour the app). If he is"
+            + " chatting, asking a question, or"
+            + " wants information rather than an"
+            + " action, answer NONE. One token,"
+            + " one line, no explanation."
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *),
+           SkelliModelBox.available,
+           let raw = await SkelliModelBox.run(
+               instructions: charter,
+               prompt: prompt) {
+            return parseIntent(raw)
+        }
+        #endif
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *),
+           SkelliWeights.canSpeak,
+           let raw = await SkelliWeights.ask(
+               instructions: charter,
+               prompt: prompt) {
+            return parseIntent(raw)
+        }
+        #endif
+        return nil
+    }
+
+    /// Tokens the reader may answer with, and
+    /// the phrases — already fluent in her
+    /// reflexes — that they stand for.
+    static func parseIntent(_ raw: String?)
+        -> String? {
+        guard let raw else { return nil }
+        let line = decontaminate(raw)
+            .components(separatedBy: "\n")
+            .first ?? ""
+        let t = line.trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            .uppercased()
+            .trimmingCharacters(
+                in: CharacterSet(
+                    charactersIn: ".!:*"))
+        if t.hasPrefix("THEME:") {
+            let name = String(t.dropFirst(6))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            return name.isEmpty
+                ? nil : "THEME:" + name
+        }
+        let map: [(String, String)] = [
+            ("SELFSCAN", "how exposed"),
+            ("STOPSERVE", "stop serving"),
+            ("STOPLISTEN", "stop listening"),
+            ("TRIPWIRE_ON", "tripwire on"),
+            ("TRIPWIRE_OFF", "tripwire off"),
+            ("STEALTH_ON", "stealth on"),
+            ("STEALTH_OFF", "stealth off"),
+            ("STANDDOWN", "stand down"),
+            ("SERVE", "start serving"),
+            ("LISTEN", "start listening"),
+            ("DARK", "go dark"),
+            ("SWEEP", "sweep"),
+            ("AUDIT", "audit"),
+            ("DRILL", "drill"),
+            ("WIRE", "who's here"),
+            ("NIGHT", "what happened"),
+            ("POSTURE", "posture"),
+            ("FACTS", "facts"),
+            ("BRIEF", "brief"),
+            ("CODE", "CODE"),
+        ]
+        for (token, phrase) in map where t == token {
+            return phrase
+        }
+        if t.contains("NONE") { return nil }
+        for (token, phrase) in map
+        where t.contains(token) {
+            return phrase
+        }
+        return nil
+    }
+
+    /// The reading, on a leash: a bench that
+    /// hasn't answered within the limit hasn't
+    /// answered — conversation proceeds without
+    /// it rather than after it.
+    static func intentWithTimeout(
+        for text: String, recent: String,
+        seconds: Double) async -> String? {
+        await withTaskGroup(
+            of: String?.self) { group in
+            group.addTask {
+                await intentPhrase(
+                    for: text, recent: recent)
+            }
+            group.addTask {
+                try? await Task.sleep(
+                    for: .seconds(seconds))
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+    }
+
     /// Small models love to continue the script
     /// they were shown — echoing the transcript
     /// back before answering. Cut any echo: what
@@ -2914,6 +3085,59 @@ extension SkelliMind {
             .trimmingCharacters(
                 in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? text : cleaned
+    }
+}
+
+// MARK: - The second reading
+
+/// Patterns are reflexes; this is understanding.
+/// A message that ran the whole gauntlet of her
+/// patterns uncaught is read once by a bench —
+/// against everything she can do — before it is
+/// allowed to be mere conversation. A plain
+/// intent comes back as the canonical phrase her
+/// reflexes already obey, so nothing here learns
+/// a second way to act: she just hears better.
+/// No bench, no reading — conversation proceeds
+/// exactly as it always has.
+extension SkelliCenter {
+
+    func secondReading(_ q: String,
+                       raw: String) -> Bool {
+        guard SkelliMind.isAvailable
+                || SkelliMind.weightsReady
+        else { return false }
+        activity = "Thinking…"
+        let recent = recentLines()
+        Task {
+            let hit = await SkelliMind
+                .intentWithTimeout(
+                    for: raw, recent: recent,
+                    seconds: 3)
+            await MainActor.run {
+                if let hit {
+                    if hit == "CODE" {
+                        consultCode(q)
+                        return
+                    }
+                    if hit.hasPrefix("THEME:") {
+                        let name = String(
+                            hit.dropFirst(6))
+                            .lowercased()
+                        if applyThemeAsk(
+                            "go " + name) {
+                            return
+                        }
+                    } else {
+                        respond(to: hit, raw: raw,
+                                again: false)
+                        return
+                    }
+                }
+                consultMindOrResearch(q)
+            }
+        }
+        return true
     }
 }
 
