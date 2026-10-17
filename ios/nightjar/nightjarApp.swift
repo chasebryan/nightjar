@@ -12,6 +12,15 @@ struct NightjarApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
 
+    init() {
+#if !STORE_BUILD
+        // Before launch finishes, on every launch — the
+        // background update checker's handler must be on
+        // file with the system before it can ever be woken.
+        UpdateChecker.registerBackgroundCheck()
+#endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -42,7 +51,7 @@ struct NightjarApp: App {
                 }
 #if !STORE_BUILD
                 .task {
-                    await updater.checkIfDue()
+                    updater.watch()
                 }
 #endif
                 .onChange(of: keepScreenAwake) { value in
@@ -59,7 +68,13 @@ struct NightjarApp: App {
                         emcon.steward.shiftChange(emcon: emcon)
                         mouth.appBecameActive()
 #if !STORE_BUILD
-                        Task { await updater.checkIfDue() }
+                        updater.watch()
+#endif
+                    }
+                    if phase == .background {
+#if !STORE_BUILD
+                        updater.unwatch()
+                        UpdateChecker.scheduleBackgroundCheck()
 #endif
                     }
                 }
