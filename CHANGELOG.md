@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Two judgements (iOS).** Skelli is pinned to
+  the top of her chat: her header and activity line
+  ride a safe-area inset, the scroll region
+  allocating around them, so the conversation moves
+  beneath a fixed presence and she is never lost
+  from view. And the default Phosphor accent
+  deepens (#34F27B → #148040) — the old green was
+  too bright behind white text to read; the new
+  one carries it, in her bubbles and everywhere
+  else the accent speaks.
+
 - **Skelli, alive (iOS).** Her model is no longer
   a drawing: the tab fronts her with the same 3D
   animation that fronts the assistant — resting,
