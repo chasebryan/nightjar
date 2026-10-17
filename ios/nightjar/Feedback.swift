@@ -1689,6 +1689,36 @@ extension SkelliCenter {
             say(formatter.string(from: Date()) + ".")
             return true
         }
+        let clean = q.trimmingCharacters(
+            in: CharacterSet(charactersIn: " !?."))
+        if ["hello", "hi", "hey", "hello there",
+            "hi there", "hey there"].contains(clean) {
+            say("Hello — all quiet here.")
+            return true
+        }
+        if ["what's up", "whats up", "what is up",
+            "sup", "how's it going", "hows it going",
+            "how are things", "how is it going",
+            "how goes it"].contains(clean) {
+            let wire = NeighborhoodStore.shared
+                .neighbors.count
+            say("All quiet — \(wire) on the wire, web "
+                + (webResearchEnabled ? "on" : "off")
+                + ". What's on your mind?")
+            return true
+        }
+        if clean.hasPrefix("good morning") {
+            say("Morning.")
+            return true
+        }
+        if clean.hasPrefix("good afternoon") {
+            say("Afternoon.")
+            return true
+        }
+        if clean.hasPrefix("good evening") {
+            say("Evening.")
+            return true
+        }
         if q.contains("thank") {
             say("Any time.")
             return true
