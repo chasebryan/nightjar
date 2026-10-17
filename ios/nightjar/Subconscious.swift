@@ -15,6 +15,9 @@ import SwiftUI
 // MARK: - A finding
 
 struct Insight: Identifiable {
+    /// "85%" — computed here, so no view ever has to do
+    /// arithmetic inside a string interpolation.
+    var percent: String { "\(Int(confidence * 100))%" }
     var id: String
     var when: Date
     var title: String
@@ -361,8 +364,7 @@ struct SubconsciousView: View {
                                     .font(.callout
                                         .weight(.semibold))
                                 Spacer()
-                                Text("\(Int(insight.confidence "
-                                            * 100))%")
+                                Text(insight.percent)
                                     .font(.caption.weight(.bold))
                                     .foregroundStyle(.secondary)
                             }
