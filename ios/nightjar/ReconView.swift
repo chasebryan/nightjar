@@ -1229,6 +1229,8 @@ struct ScanView: View {
     @EnvironmentObject private var mouth: Mouth
     @StateObject private var model = ScanModel()
     @State private var dossierSheet: DossierPresentation?
+    @State private var mapShown = false
+    @State private var editingNeighbor: Neighbor?
     @StateObject private var tls = TLSInspector()
     @StateObject private var dns = DNSModel()
     @State private var host = ""
@@ -1484,14 +1486,13 @@ struct ScanView: View {
                              + "demand.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    .sheet(item: $dossierSheet) { presentation in
-                        DossierSheetView(presentation: presentation)
-                    }
                 }
 
-                MapSectionView(model: model)
+                MapSectionView(model: model, shown: $mapShown)
                 NeighborhoodSectionView(
-                    store: NeighborhoodStore.shared)
+                    store: NeighborhoodStore.shared,
+                    editing: $editingNeighbor,
+                    dossier: $dossierSheet)
 
                 Section(header: Text("Observation feed")) {
                     if model.watching {
@@ -1659,6 +1660,17 @@ struct ScanView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Scan")
+            .fullScreenCover(isPresented: $mapShown) {
+                MapView(model: model)
+            }
+            .sheet(item: $dossierSheet) { presentation in
+                DossierSheetView(presentation: presentation)
+            }
+            .sheet(item: $editingNeighbor) { neighbor in
+                NeighborNameEditor(
+                    store: NeighborhoodStore.shared,
+                    neighbor: neighbor)
+            }
             .onAppear {
                 model.startDiscovery()
                 NEHotspotNetwork.fetchCurrent { network in
