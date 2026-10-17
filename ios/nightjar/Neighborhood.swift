@@ -34,7 +34,15 @@ struct Neighbor: Codable, Identifiable {
     /// The newest stories first, capped.
     var drift: [String] = []
 
-    var displayName: String { name ?? ip }
+    /// The operator's given name for this address, if any —
+    /// the name it answers to in every section. The wire's
+    /// own name stays in `name`; this one outranks it.
+    var customName: String? = nil
+    /// An SF Symbol the operator picked to tell it apart
+    /// at a glance.
+    var customMark: String? = nil
+
+    var displayName: String { customName ?? name ?? ip }
 
     var lastSeenLine: String {
         let fmt = RelativeDateTimeFormatter()
@@ -77,13 +85,35 @@ final class NeighborhoodStore: ObservableObject {
         }
     }
 
+    /// Give an address its operator name — or take it
+    /// back. The name follows the address everywhere it is
+    /// presented: this board, the Map, its dossier, the
+    /// Subconscious's findings.
+    func rename(ip: String, to newName: String?,
+                mark: String?) {
+        guard let index = neighbors.firstIndex(
+            where: { $0.ip == ip }) else { return }
+        let trimmed = newName?.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        neighbors[index].customName =
+            (trimmed?.isEmpty == true) ? nil : trimmed
+        neighbors[index].customMark = mark
+        save()
+        if let given = neighbors[index].customName {
+            Journal.log("neighborhood", "named",
+                        "\(ip) answers to '\(given)' now")
+        } else {
+            Journal.log("neighborhood", "named",
+                        "\(ip)'s given name was cleared")
+        }
+    }
+
     /// The one mutation door: every feed arrives on the main
     /// queue, upserts its neighbor, and journals what is NEWS
     /// — a first sighting, a new port, a changed name. Routine
     /// re-sightings are tallied in silence.
     private func upsert(ip: String,
-                        mutate: @escaping (inout Neighbor,
-                                           Bool) -> Void) {
+                        mutate: (inout Neighbor, Bool) -> Void) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             if let index = self.neighbors.firstIndex(
@@ -132,7 +162,7 @@ final class NeighborhoodStore: ObservableObject {
                     neighbor.ports.append(answer.port)
                     neighbor.ports.sort()
                     if !isNew {
-                        self.noteDrift(&neighbor,
+                        noteDrift(&neighbor,
                                   "answered on port "
                                   + "\(answer.port) "
                                   + "(\(ScanModel.serviceNames[answer.port] ?? "unknown")) "
@@ -147,7 +177,7 @@ final class NeighborhoodStore: ObservableObject {
     func recordBonjour(ip: String, name: String, label: String) {
         upsert(ip: ip) { neighbor, isNew in
             if let old = neighbor.name, old != name, !isNew {
-                self.noteDrift(&neighbor,
+                noteDrift(&neighbor,
                           "announces itself as \u{201C}\(name)\u{201D} now — "
                           + "it was \u{201C}\(old)\u{201D}")
             }
@@ -158,7 +188,7 @@ final class NeighborhoodStore: ObservableObject {
             if !neighbor.announcements.contains(line) {
                 neighbor.announcements.append(line)
                 if !isNew {
-                    self.noteDrift(&neighbor,
+                    noteDrift(&neighbor,
                               "began announcing \(label)")
                 }
             }
@@ -224,6 +254,7 @@ final class NeighborhoodStore: ObservableObject {
 /// each opening into its full dossier.
 struct NeighborhoodSectionView: View {
     @ObservedObject var store: NeighborhoodStore
+    @State private var editing: Neighbor?
 
     var body: some View {
         Section(header: Text("The Neighborhood — this wire, kept"),
@@ -246,22 +277,46 @@ struct NeighborhoodSectionView: View {
                         ip: neighbor.ip,
                         wifiLines: store.wifiLines(for: neighbor))
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(neighbor.displayName)
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(neighborCaption(neighbor))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        if let mark = neighbor.customMark {
+                            Image(systemName: mark)
+                                .foregroundStyle(.secondary)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(neighbor.displayName)
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Text(neighborCaption(neighbor))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .contextMenu {
+                    Button {
+                        editing = neighbor
+                    } label: {
+                        Label("Name this device\u{2026}",
+                              systemImage: "pencil")
                     }
                 }
             }
+        }
+        .sheet(item: $editing) { neighbor in
+            NeighborNameEditor(store: store, neighbor: neighbor)
         }
     }
 
     private func neighborCaption(_ neighbor: Neighbor) -> String {
         var parts: [String] = []
-        if neighbor.name != nil { parts.append(neighbor.ip) }
+        if neighbor.customName != nil {
+            parts.append(neighbor.ip)
+            if let wire = neighbor.name {
+                parts.append("answers as \(wire)")
+            }
+        } else if neighbor.name != nil {
+            parts.append(neighbor.ip)
+        }
         parts.append("\(neighbor.sightings) sightings")
         parts.append(neighbor.lastSeenLine)
         if !neighbor.ports.isEmpty {
@@ -275,5 +330,96 @@ struct NeighborhoodSectionView: View {
             parts.append("drift: " + latest)
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+
+/// Name a device, and give it a mark to be told apart by.
+/// The name is the operator's word for the address, kept in
+/// the neighbor's own file — it follows the device into the
+/// Map, its dossier, and the Subconscious's findings.
+struct NeighborNameEditor: View {
+    @ObservedObject var store: NeighborhoodStore
+    let neighbor: Neighbor
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: String
+    @State private var mark: String?
+
+    private static let marks: [String] = [
+        "house.fill", "tv.fill", "laptopcomputer",
+        "desktopcomputer", "iphone", "gamecontroller.fill",
+        "video.fill", "speaker.wave.3.fill", "printer.fill",
+        "network", "lock.fill", "questionmark.circle",
+    ]
+
+    init(store: NeighborhoodStore, neighbor: Neighbor) {
+        self.store = store
+        self.neighbor = neighbor
+        _draft = State(initialValue: neighbor.customName ?? "")
+        _mark = State(initialValue: neighbor.customMark)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Its name here"),
+                        footer: Text("The wire calls it "
+                            + "\(neighbor.name ?? neighbor.ip). "
+                            + "Your name outranks the wire's "
+                            + "everywhere in the app.")) {
+                    TextField(neighbor.name ?? neighbor.ip,
+                              text: $draft)
+                        .disableAutocorrection(true)
+                }
+                Section(header: Text("Its mark")) {
+                    LazyVGrid(columns: [GridItem(.adaptive(
+                        minimum: 52))], spacing: 12) {
+                        ForEach(Self.marks, id: \.self) { symbol in
+                            Button {
+                                mark = (mark == symbol)
+                                    ? nil : symbol
+                            } label: {
+                                Image(systemName: symbol)
+                                    .font(.title3)
+                                    .frame(width: 44, height: 44)
+                                    .background(
+                                        RoundedRectangle(
+                                            cornerRadius: 10)
+                                            .fill(mark == symbol
+                                                  ? Color.accentColor
+                                                    .opacity(0.3)
+                                                  : Color.white
+                                                    .opacity(0.06)))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                if neighbor.customName != nil {
+                    Section {
+                        Button("Clear the given name",
+                               role: .destructive) {
+                            store.rename(ip: neighbor.ip, to: nil,
+                                         mark: nil)
+                            dismiss()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Name this device")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        store.rename(ip: neighbor.ip, to: draft,
+                                     mark: mark)
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
