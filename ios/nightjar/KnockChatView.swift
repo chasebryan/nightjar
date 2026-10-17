@@ -122,15 +122,22 @@ struct KnockChatView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Knocktalk")
-            .background {
-                // iOS 16 navigation: one hidden link, driven by
-                // the Open button; thread rows are plain links.
-                NavigationLink(isActive: $navActive) {
+            .sheet(isPresented: $navActive) {
+                // A conversation is a sheet, not a push — the
+                // same cure Colours and the dossiers took for
+                // the doubled back chevron inside More-tab
+                // screens. One stack, one Done.
+                NavigationStack {
                     ConversationView(peer: openedPeer ?? "")
-                } label: {
-                    EmptyView()
+                        .toolbar {
+                            ToolbarItem(
+                                placement: .confirmationAction) {
+                                Button("Done") {
+                                    navActive = false
+                                }
+                            }
+                        }
                 }
-                .hidden()
             }
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
@@ -848,8 +855,9 @@ struct KnockChatView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             ForEach(chat.peersByRecency, id: \.self) { peer in
-                NavigationLink {
-                    ConversationView(peer: peer)
+                Button {
+                    openedPeer = peer
+                    navActive = true
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
