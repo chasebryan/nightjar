@@ -26,7 +26,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>nightjar-hack uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
 	<key>NFCReaderUsageDescription</key>
-	<string>nightjar-hack reads a tag you hold to the phone when you use the Coin — a physical key you claim in the EMCON tab. The tag is only read at the moment you tap, and only a hash of it is kept.</string>
+	<string>nightjar-hack reads a tag you hold to the phone when you use the Coin — a physical key you claim in the EMCON tab — and when you run the EMCON tag census on your own cards and tags. Tags are only read at the moment you tap; the Coin keeps only a hash, and the census keeps nothing but what it shows you.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>nightjar-hack listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
 	<key>NSHealthShareUsageDescription</key>

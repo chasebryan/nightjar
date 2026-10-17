@@ -62,6 +62,23 @@ struct EmconView: View {
             deadHandSection
             CoinSectionView(center: CoinCenter.shared,
                             emcon: emcon)
+            Section {
+                Button {
+                    Haptics.tap()
+                    showTagCensus = true
+                } label: {
+                    Label("Tag census — read your own "
+                        + "cards and tags",
+                          systemImage: "wave.3.right")
+                }
+                Text("What a tag tells any reader, read "
+                    + "whole: its kind, its identifier, its "
+                    + "NDEF records, and an APDU explorer "
+                    + "for ISO 7816 cards. Nothing is "
+                    + "written, emulated, or cloned.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             hardeningSection
             Section {
                 Text("EMCON cannot hide this device from the access "
@@ -79,6 +96,9 @@ struct EmconView: View {
         .sheet(isPresented: $showDuel) {
             DuelView(center: emcon.duel, emcon: emcon,
                      chat: emcon.chat)
+        }
+        .sheet(isPresented: $showTagCensus) {
+            TagCensusView()
         }
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
@@ -136,6 +156,7 @@ struct EmconView: View {
     @State private var sparSummary: String?
     @State private var showMind = false
     @State private var showDuel = false
+    @State private var showTagCensus = false
 
     // MARK: - status + score
 

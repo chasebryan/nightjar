@@ -93,6 +93,7 @@ struct SendView: View {
     @State private var showLibrary = false
     @State private var shareItem: ShareItem?
     @State private var showLog = false
+    @State private var showHelm = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
@@ -255,6 +256,24 @@ struct SendView: View {
         NavigationStack {
             Form {
                 handoffSection
+
+                Section {
+                    Button {
+                        Haptics.tap()
+                        showHelm = true
+                    } label: {
+                        Label("The Helm — remotes for "
+                            + "your own gear",
+                              systemImage: "dial.medium")
+                    }
+                    Text("Named remotes whose buttons fire "
+                        + "the book's payloads at your own "
+                        + "devices — and a place to learn "
+                        + "new buttons from what your gear "
+                        + "sends you.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 Section(header: Text("Step 1 · Destination")) {
                     if showPhones && !mouth.nearbyPhones.isEmpty {
@@ -1189,6 +1208,9 @@ struct SendView: View {
             }
             .sheet(isPresented: $showLog) {
                 MouthLogSheet()
+            }
+            .sheet(isPresented: $showHelm) {
+                HelmView()
             }
             .fullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)
