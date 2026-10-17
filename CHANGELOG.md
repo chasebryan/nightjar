@@ -41,6 +41,18 @@
   the Neighborhood board and Scan's dossiers open
   by a counted door, and EMCON's tripwire feed and
   prober files show six with a door to the rest.
+- **The drill reads its own ledger.** Its readout
+  used to come only from the before/after snapshots —
+  but going dark silences emissions the scans cannot
+  reliably see (a withdrawn Bonjour listing echoes in
+  mDNS, and the beacon and GATT host were never
+  measured at all), so it could report "nothing went
+  quiet" over a phone that had plainly gone darker.
+  The drill now names what it switched off, from the
+  mouth's own state at the moment of going dark, and
+  reads the ledger beside the snapshot diff; the
+  settle before the second pass is longer, so the
+  wire is measured as it is, not its echo.
 - **The Map (iOS Scan).** A special section of its own:
   the house on one canvas. The operator names rooms and
   places each neighbor where the device physically sits;
