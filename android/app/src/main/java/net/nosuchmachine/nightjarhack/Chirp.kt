@@ -583,7 +583,7 @@ class ChirpSender {
             val chunk = 4096
             while (offset < samples.size && isActive) {
                 val n = minOf(chunk, samples.size - offset)
-                audioTrack.write(samples, offset, n)
+                audioTrack.write(samples, offset, n, AudioTrack.WRITE_BLOCKING)
                 offset += n
             }
             progressJob.join()
