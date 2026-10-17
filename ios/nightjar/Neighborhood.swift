@@ -150,6 +150,36 @@ final class NeighborhoodStore: ObservableObject {
                     + line)
     }
 
+    /// The one discovery door. Anything any feature finds
+    /// on this wire walks in here — a recon answer, a reply
+    /// the mouth collected, a knocktalk peer, a honeydrop
+    /// taker — and becomes a neighbor the Map can place.
+    /// The same LAN filter the arrivals feed uses stands
+    /// guard, so relay labels, the ghost, loopback, and the
+    /// wide internet are turned away at the door.
+    func discover(source rawLabel: String, port: Int? = nil,
+                  via: String) {
+        guard let ip = Self.lanIPv4(from: rawLabel) else {
+            return
+        }
+        upsert(ip: ip) { neighbor, isNew in
+            if let port, !neighbor.ports.contains(port) {
+                neighbor.ports.append(port)
+                neighbor.ports.sort()
+                if !isNew {
+                    self.noteDrift(
+                        &neighbor,
+                        "answered on port \(port) "
+                        + "for the first time")
+                }
+            }
+            if isNew {
+                Journal.log("neighborhood", "discovery",
+                            "\(ip) found by \(via)")
+            }
+        }
+    }
+
     // MARK: - the three feeds
 
     /// Scan's /24 sweep answered: who is up, on this port.
