@@ -9,8 +9,9 @@ import Foundation
 /// where the events already flow: the tripwire funnel, the
 /// knock vault, and the honeydrop choke.
 ///
-/// Discipline: a master switch, a five-minute rest between
-/// firings of the same rule, and every firing journaled —
+/// Discipline: a master switch, a rest between
+/// firings that lengthens per rule and per host,
+/// and every firing journaled —
 /// a reflex that acts in the dark and leaves no line in the
 /// sealed log would be a second operator, and there is only
 /// one operator. Actions that need what the moment doesn't
@@ -60,8 +61,8 @@ enum Conductor {
     // MARK: - store
 
     private static let rulesKey = "conductorRules"
-    private static let firedKey = "conductorFired"
-    private static let rest: TimeInterval = 300
+    private static let restUntilKey = "conductorRestUntil"
+    private static let countKey = "conductorFiredCounts"
 
     static func loadRules() -> [Rule] {
         guard let data = UserDefaults.standard.data(
@@ -97,18 +98,59 @@ enum Conductor {
         ])
     }
 
-    private static func resting(_ rule: Rule) -> Bool {
-        let fired = UserDefaults.standard.dictionary(
-            forKey: firedKey) as? [String: Double] ?? [:]
-        guard let last = fired[rule.id] else { return false }
-        return Date().timeIntervalSince1970 - last < rest
+    /// The rest base, by trigger class: the vault is
+    /// the operator's own hand (short), anyKnock on
+    /// a busy wire is weather (long).
+    private static func baseRest(for trigger: String)
+        -> TimeInterval {
+        switch trigger {
+        case "vault": return 60
+        case "honeydrop", "fingerprinted": return 180
+        case "anyKnock": return 600
+        default: return 300
+        }
     }
 
-    private static func markFired(_ rule: Rule) {
-        var fired = UserDefaults.standard.dictionary(
-            forKey: firedKey) as? [String: Double] ?? [:]
-        fired[rule.id] = Date().timeIntervalSince1970
-        UserDefaults.standard.set(fired, forKey: firedKey)
+    private static func fireKey(_ rule: Rule,
+                                _ fire: Fire) -> String {
+        rule.id + "|" + (fire.host ?? "*")
+    }
+
+    private static func resting(_ rule: Rule,
+                                _ fire: Fire) -> Bool {
+        let until = UserDefaults.standard.dictionary(
+            forKey: restUntilKey) as? [String: Double] ?? [:]
+        guard let deadline = until[fireKey(rule, fire)]
+        else { return false }
+        return Date().timeIntervalSince1970 < deadline
+    }
+
+    /// Firings are counted per rule AND host, and
+    /// the rest doubles per count, jittered ±25% —
+    /// the old flat five minutes, identical for
+    /// every rule and every host, was a metronome
+    /// an observer could set a watch by, and the
+    /// tenth honeydrop take from one host answered
+    /// exactly like the first. Returns the count.
+    @discardableResult
+    private static func markFired(_ rule: Rule,
+                                  _ fire: Fire) -> Int {
+        let key = fireKey(rule, fire)
+        var counts = UserDefaults.standard.dictionary(
+            forKey: countKey) as? [String: Int] ?? [:]
+        let count = (counts[key] ?? 0) + 1
+        counts[key] = count
+        UserDefaults.standard.set(counts, forKey: countKey)
+        let doublings = min(count - 1, 4)
+        let base = baseRest(for: rule.trigger)
+            * Double(1 << doublings)
+        let jitter = base * Double.random(in: -0.25...0.25)
+        var until = UserDefaults.standard.dictionary(
+            forKey: restUntilKey) as? [String: Double] ?? [:]
+        until[key] = Date().timeIntervalSince1970
+            + min(3600, base + jitter)
+        UserDefaults.standard.set(until, forKey: restUntilKey)
+        return count
     }
 
     // MARK: - evaluation
@@ -122,10 +164,25 @@ enum Conductor {
         guard masterOn else { return }
         for rule in loadRules()
         where rule.enabled && rule.trigger == trigger
-            && !resting(rule) {
-            markFired(rule)
+            && !resting(rule, fire) {
+            let count = markFired(rule, fire)
+            // Escalation: the third firing against
+            // the same host promotes a mere journal
+            // mark to raising the second sense — a
+            // reflex that has fired twice on one
+            // host has earned a louder voice.
+            var chosen = rule
+            if count >= 3, rule.action == "journalMark" {
+                chosen.action = "tighten"
+                Journal.log("emcon", "conductor",
+                            "reflex promoted — \(rule.name) "
+                            + "has fired \(count) times on "
+                            + "\(fire.host ?? "the wire"); a "
+                            + "mark becomes the second sense")
+            }
+            let firing = chosen
             DispatchQueue.main.async {
-                perform(rule: rule, emcon: emcon, fire: fire)
+                perform(rule: firing, emcon: emcon, fire: fire)
             }
         }
     }
@@ -146,14 +203,31 @@ enum Conductor {
             evaluate(trigger: "fingerprinted", emcon: emcon,
                      fire: fire)
         }
-        let rows = emcon.events.filter {
-            ($0.source.components(separatedBy: " ").first
-                ?? $0.source) == host
+        // Seen sources, kept as a set of the
+        // conductor's own. "New" used to be
+        // inferred from the display event log's
+        // row count, so a source could read as new
+        // again whenever the log turned over. The
+        // set is seeded once from the log's current
+        // hosts, so no known source re-fires as
+        // new on the first run of the new memory.
+        let seenKey = "conductorSeenSources"
+        let firstRun = UserDefaults.standard.object(
+            forKey: seenKey) == nil
+        var seen = Set(UserDefaults.standard.stringArray(
+            forKey: seenKey) ?? [])
+        if firstRun {
+            seen = Set(emcon.events.map {
+                $0.source.components(separatedBy: " ").first
+                    ?? $0.source })
         }
-        if rows.count <= 1 {
+        if !seen.contains(host) {
             evaluate(trigger: "newSource", emcon: emcon,
                      fire: fire)
         }
+        seen.insert(host)
+        UserDefaults.standard.set(Array(seen),
+                                  forKey: seenKey)
     }
 
     static func onVault(emcon: Emcon) {

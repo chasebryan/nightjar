@@ -75,9 +75,23 @@ struct HuntView: View {
     private var rssi: Double? {
         row?.rssiSmooth ?? row?.rssiLast.map(Double.init)
     }
+    /// Strength against the target's OWN session
+    /// range: the weakest it has been heard is the
+    /// floor, its closest-ever the ceiling. The old
+    /// absolute map swore a weak-radio device could
+    /// never read as close — never heard above
+    /// −70 all session, it could never be CLOSE
+    /// even with the hunter standing on it.
     private var strength: Double {
         guard let rssi = rssi else { return 0 }
-        return min(1, max(0, (rssi + 95) / 60))
+        guard let closest = row?.rssiClosest else {
+            return min(1, max(0, (rssi + 95) / 60))
+        }
+        let heard = row?.rssiHistory ?? []
+        let floor = Double(min(heard.min() ?? Int(rssi),
+                               Int(rssi)))
+        let span = max(10, Double(closest) - floor)
+        return min(1, max(0, (rssi - floor) / span))
     }
     private var age: TimeInterval? {
         row.map { now.timeIntervalSince1970 - $0.lastSeen }
@@ -88,6 +102,21 @@ struct HuntView: View {
     }
     private var proximity: String {
         guard let rssi = rssi else { return "NOT HEARD" }
+        // Once the session knows the target, bands
+        // are distances from its own best: within
+        // ~6 dB of the closest it has ever been
+        // heard IS on top of it, whatever the
+        // absolute number says.
+        if let closest = row?.rssiClosest,
+           (row?.sightings ?? 0) >= 5 {
+            switch Double(closest) - rssi {
+            case ...6: return "ON TOP OF IT"
+            case 6..<14: return "CLOSE"
+            case 14..<26: return "NEAR"
+            case 26..<40: return "FAR"
+            default: return "EDGE OF EARSHOT"
+            }
+        }
         switch rssi {
         case -45...0: return "ON TOP OF IT"
         case -60 ..< -45: return "CLOSE"
@@ -165,8 +194,10 @@ struct HuntView: View {
                 Spacer()
                 Text("Beeps quicken and rise as the signal "
                      + "strengthens; a thump means you're near. "
-                     + "Walk slow — RSSI is a compass that "
-                     + "points in loudness, not direction.")
+                     + "The pitch bends up while you're closing "
+                     + "and down while you drift away. Walk "
+                     + "slow — RSSI is a compass that points "
+                     + "in loudness, not direction.")
                     .font(.caption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
@@ -193,9 +224,26 @@ struct HuntView: View {
         guard Date().timeIntervalSince(lastBeep) >= interval
         else { return }
         lastBeep = Date()
-        tone.beep(frequency: 550 + strength * 750)
+        // The second channel: trend. The beep used
+        // to encode level only, so walking AWAY
+        // sounded exactly like walking toward at
+        // the same strength. The pitch now bends
+        // with the row's own approach/recede trend
+        // — up when closing, down when drifting —
+        // and a hunter who was near and is receding
+        // gets a double thump to turn around by.
+        let trend = row?.trend
+        let bend: Double = trend == "approaching" ? 120
+            : (trend == "receding" ? -120 : 0)
+        tone.beep(frequency: 550 + strength * 750 + bend)
         if strength > 0.7 {
             haptics.impactOccurred(intensity: strength)
+        }
+        if trend == "receding", strength > 0.5 {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.18) { [haptics] in
+                haptics.impactOccurred(intensity: 0.6)
+            }
         }
         _ = rssi
     }
