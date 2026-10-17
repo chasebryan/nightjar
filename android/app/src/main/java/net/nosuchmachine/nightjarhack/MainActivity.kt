@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -70,6 +72,18 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.border
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import kotlin.random.Random
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -229,74 +243,189 @@ fun AppRoot(app: NightjarApp) {
                 )
             }
         }
-        if (showBoot) {
+        AnimatedVisibility(visible = showBoot, exit = fadeOut()) {
             BootSplash(app) { showBoot = false }
         }
     }
 }
 
-/// The OS-style boot splash — Jolly Roger, wordmark, real
-/// boot lines, progress, tap to skip. Same theatre as iOS.
+/// The OS-style boot splash — mirror of iOS BootView: black, the
+/// Jolly Roger as the machine's emblem, a monospaced wordmark, and
+/// a boot log that types itself line by line over a progress bar,
+/// every line true for this device. Tap anywhere skips; fades out.
+
+private data class BootLine(val text: String, val tone: Tone) {
+    enum class Tone { CMD, OK, WARN, OFF }
+}
+
+private fun bootToneColor(tone: BootLine.Tone): Color = when (tone) {
+    BootLine.Tone.CMD -> Color(0.92f, 0.92f, 0.92f)
+    BootLine.Tone.OK -> Color(0.35f, 1.0f, 0.45f)
+    BootLine.Tone.WARN -> Color(1.0f, 0.72f, 0.25f)
+    BootLine.Tone.OFF -> Color(0.55f, 0.55f, 0.55f)
+}
+
 @Composable
 fun BootSplash(app: NightjarApp, onDone: () -> Unit) {
-    var progress by remember { mutableStateOf(0f) }
-    LaunchedEffect(Unit) {
-        val started = System.currentTimeMillis()
-        while (System.currentTimeMillis() - started < 2000) {
-            progress = (System.currentTimeMillis() - started) / 2000f
-            delay(50)
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val prefs = rememberPrefs()
+    val bookCount by app.book.items.collectAsState()
+
+    val lines = remember(bookCount.size) {
+        val out = mutableListOf<BootLine>()
+        out += BootLine("> nightjar-hack // android", BootLine.Tone.CMD)
+        out += BootLine(
+            "[ ok ] host      ${Build.MANUFACTURER} ${Build.MODEL}",
+            BootLine.Tone.OK)
+        val ip = app.mouth.localIPAddress()
+        if (ip != null) {
+            out += BootLine("[ ok ] net $ip", BootLine.Tone.OK)
+        } else {
+            out += BootLine("[ -- ] net no address yet", BootLine.Tone.OFF)
         }
+        out += BootLine(
+            "[ ok ] library   ${bookCount.size} payloads loaded",
+            BootLine.Tone.OK)
+        val bleGranted = if (Build.VERSION.SDK_INT >= 31) {
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.BLUETOOTH_SCAN
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+        out += if (bleGranted) {
+            BootLine("[ ok ] ble permission granted", BootLine.Tone.OK)
+        } else {
+            BootLine("[ -- ] ble permission not determined",
+                     BootLine.Tone.OFF)
+        }
+        out += if (prefs.bool("serveStealth", false)) {
+            BootLine("[ ok ] stealth   ON — unlisted, silent",
+                     BootLine.Tone.OK)
+        } else {
+            BootLine("[ -- ] stealth   off", BootLine.Tone.OFF)
+        }
+        val backdropOk = runCatching {
+            context.assets.open("background.jpg").close(); true
+        }.getOrDefault(false)
+        out += if (backdropOk) {
+            BootLine("[ ok ] backdrop jolly roger", BootLine.Tone.OK)
+        } else {
+            BootLine("[ -- ] backdrop image missing", BootLine.Tone.OFF)
+        }
+        out += BootLine("> systems nominal — welcome back",
+                        BootLine.Tone.CMD)
+        out.toList()
+    }
+
+    var shown by remember { mutableIntStateOf(0) }
+    var cursorOn by remember { mutableStateOf(true) }
+    var done by remember { mutableStateOf(false) }
+
+    LaunchedEffect(lines) {
+        while (!done) {
+            delay(420)
+            cursorOn = !cursorOn
+        }
+    }
+    LaunchedEffect(lines) {
+        for (i in lines.indices) {
+            delay(Random.nextLong(110, 211))
+            shown = i + 1
+            haptics.performHapticFeedback(
+                HapticFeedbackType.TextHandleMove)
+        }
+        delay(550)
+        done = true
         onDone()
     }
-    val ip = remember { app.mouth.localIPAddress() }
-    val bookCount by app.book.items.collectAsState()
+
+    val progress by animateFloatAsState(
+        targetValue = if (lines.isEmpty()) 0f
+                      else shown.toFloat() / lines.size,
+        animationSpec = tween(durationMillis = 250),
+        label = "bootProgress"
+    )
+
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .clickable { onDone() },
+        modifier = Modifier.fillMaxSize().background(Color.Black)
+            .clickable { if (!done) { done = true; onDone() } },
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.weight(1f))
             Image(
-                painter = painterResource(R.mipmap.ic_launcher),
+                painter = rememberAsyncImagePainter(
+                    model = "file:///android_asset/background.jpg"),
                 contentDescription = "nightjar-hack",
-                modifier = Modifier.height(120.dp)
+                modifier = Modifier.size(216.dp).shadow(18.dp)
+                    .border(1.dp, Color.White.copy(alpha = 0.14f)),
+                contentScale = ContentScale.Crop
             )
-            Spacer(Modifier.height(12.dp))
             Text(
                 "nightjar-hack",
-                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(top = 20.dp),
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold, fontSize = 20.sp),
                 color = Color.White
             )
             Text(
-                "// android",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily = FontFamily.Monospace
-                ),
-                color = IosColors.Accent
+                "ANDROID BUILD · FIELD UNIT",
+                modifier = Modifier.padding(top = 4.dp),
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace, fontSize = 10.sp),
+                color = Color(0.45f, 0.45f, 0.45f)
             )
-            Spacer(Modifier.height(24.dp))
-            Column(modifier = Modifier.padding(horizontal = 48.dp)) {
-                MonoText("[ ok ] host ${Build.MANUFACTURER} ${Build.MODEL}")
-                MonoText("[ ok ] net ${ip ?: "no address"}")
-                MonoText("[ ok ] library ${bookCount.size} payloads loaded")
-                MonoText("[ ok ] bluetooth ${if (app.post.bluetoothOn.value) "ready" else "pending"}")
-            }
-            Spacer(Modifier.height(24.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(3.dp)
-                    .background(Color.DarkGray)
+            Column(
+                modifier = Modifier.width(300.dp).height(168.dp)
+                    .padding(top = 30.dp),
+                horizontalAlignment = Alignment.Start
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(progress)
-                        .height(3.dp)
-                        .background(IosColors.Accent)
+                for (i in 0 until minOf(shown, lines.size)) {
+                    Text(
+                        lines[i].text,
+                        modifier = Modifier.padding(bottom = 5.dp),
+                        style = TextStyle(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.sp),
+                        color = bootToneColor(lines[i].tone)
+                    )
+                }
+                Text(
+                    "\u2588",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp),
+                    color = bootToneColor(BootLine.Tone.OK)
+                        .copy(alpha = if (cursorOn) 1f else 0f)
                 )
             }
+            Box(
+                modifier = Modifier.width(300.dp).height(3.dp)
+                    .padding(top = 14.dp)
+                    .background(Color.White.copy(alpha = 0.12f))
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(progress)
+                        .height(3.dp)
+                        .background(bootToneColor(BootLine.Tone.OK))
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                "TAP TO SKIP",
+                modifier = Modifier.padding(bottom = 26.dp),
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace, fontSize = 10.sp),
+                color = Color(0.35f, 0.35f, 0.35f)
+            )
         }
     }
 }
