@@ -43,6 +43,7 @@
 			files = (
 				4E0A0001000000000000A043 /* MLXLLM in Frameworks */,
 				4E0A0001000000000000A044 /* MLXLMCommon in Frameworks */,
+				4E0A0001000000000000A046 /* MLXHuggingFace in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,6 +107,7 @@
 			packageProductDependencies = (
 				4E0A0001000000000000A041 /* MLXLLM */,
 				4E0A0001000000000000A042 /* MLXLMCommon */,
+				4E0A0001000000000000A045 /* MLXHuggingFace */,
 			);
 			productName = nightjar;
 			productReference = 4E0A0001000000000000A004 /* nightjar.app */;
@@ -474,6 +476,7 @@
 /* Begin PBXBuildFile section */
 		4E0A0001000000000000A043 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0A0001000000000000A041 /* MLXLLM */; };
 		4E0A0001000000000000A044 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0A0001000000000000A042 /* MLXLMCommon */; };
+		4E0A0001000000000000A046 /* MLXHuggingFace in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0A0001000000000000A045 /* MLXHuggingFace */; };
 /* End PBXBuildFile section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -481,8 +484,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
 			requirement = {
-				branch = main;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -497,6 +500,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4E0A0001000000000000A040 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
 			productName = MLXLMCommon;
+		};
+		4E0A0001000000000000A045 /* MLXHuggingFace */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E0A0001000000000000A040 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXHuggingFace;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
