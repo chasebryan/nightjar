@@ -8,7 +8,11 @@
   are now explicit arguments. Her bench and her
   Weights downloads speak the new API (via the
   package's MLXHuggingFace integration, now also
-  linked), and the project pins the package to
+  linked — plus the HuggingFace and
+  Tokenizers packages those loading macros
+  expand against, declared on the target as
+  MLX 3.x requires), and the project pins
+  the package to
   the 3.x line so a future major can't arrive
   unannounced again.
 
