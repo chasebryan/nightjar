@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **One intelligence.** Her benches work in
+  unison now: in Council mode (her menu) one
+  mind drafts and the other verifies it
+  against the house before she speaks; Apple-
+  only and weights-only remain, for operators
+  who want one voice. Her grounding is a full
+  sitrep — exposure score and its loudest
+  part, Serve, the ear, the wire's unknowns,
+  the latest of the log — and she is chartered
+  as the guide to the whole instrument: ask
+  how or where and she teaches from her
+  manual, ending the lesson with an offer to
+  perform it. Any MLX model on the hub can
+  join her bench by name, beside the catalog.
+  And she has a **Forge** (her menu): real
+  packets assembled to order — HTTP, DNS,
+  SSDP, MQTT, a banner probe — plus whatever
+  her minds draft from a plain brief, all of
+  it kept in the armory for Send to fire. Her
+  bar no longer overlays the conversation at
+  all: it stands in the layout, solid dark
+  glass, and her portrait now crossfades
+  between moods after a breath's dwell instead
+  of cutting.
+
 - **Her bar thinks.** A first cut at vital
   signs — shortcut chips — was replaced the
   same night with continuous analysis: a live
