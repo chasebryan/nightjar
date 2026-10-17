@@ -481,7 +481,7 @@ struct AssaultIgnitionView: View {
             forResourcesOfType: "gif", inDirectory: nil)
             .first(where: {
                 $0.lowercased().contains("assault") }) {
-            return try? Data(contentsOfFile: path)
+            return try? Data(contentsOf: URL(fileURLWithPath: path))
         }
         return nil
     }
