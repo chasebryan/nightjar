@@ -1795,8 +1795,8 @@ extension SkelliCenter {
         let allowed = CharacterSet(
             charactersIn: "0123456789.+-*/x×÷() ")
         guard !expr.isEmpty,
-              expr.unicodeScalars.allSatisfy {
-                  allowed.contains($0) },
+              expr.unicodeScalars.allSatisfy({
+                  allowed.contains($0) }),
               expr.contains(where: { $0.isNumber }),
               explicit
                 || expr.contains(where: {
