@@ -1,31 +1,18 @@
 # nightjar-hack for Android
 
-The Kotlin/Jetpack Compose Android app for the **v3.0.0** release.
-Package: `net.nosuchmachine.nightjarhack`; version code: **300**.
-Requires **Android 8.0 (API 26) or newer** and Bluetooth LE.
+**Discontinued (October 2026).** Android development has
+stopped, and the APK will not be continued at this time.
+The port never reached the flagship's standard — build
+after build failed at the last mile, and the final
+builds would not reliably install or open — so the
+effort has returned to the iOS app. See the
+[Android](../README.md#android) section of the main
+README.
 
-## Download and install
+What follows is kept as the archive of the attempt: the
+v3.0.0 port's contents and build notes. The release APK
+is withdrawn and is not the current instrument.
 
-[**Download nightjar-hack v3.0.0 APK**](https://github.com/chasebryan/nightjar-hack/releases/download/v3.0.0/nightjar-hack-v3.0.0.apk)
-
-Open the link on your Android phone, open the downloaded APK, and allow
-installation from your browser/file manager if Android asks. No ZIP extraction,
-Android Studio, or account is needed to download the public release asset.
-For USB installation: `adb install -r nightjar-hack-v3.0.0.apk`.
-
-This is a release build, signed with the dedicated Nightjar Android release
-key. The previous repository APK (v2.6.0) used a different debug certificate:
-**export any sessions, presets, or other data you want to keep before
-uninstalling that build**, then install v3.0.0. Uninstalling removes app data.
-Future APKs signed with the same release key can update v3.0.0 in place.
-
-The APK packages the Android implementation present at the v3.0.0 tag,
-with corrected version metadata and a standard Gradle build. Its six tabs
-are **Listen, Send, Serve, Scan, Sessions, and More**. It does **not** include
-the iOS-only v3.0.0 Recon tab, EMCON, canary/Honeydrop, Knocktalk, Chirp,
-brush pass, Blink, or time-capsule features. A shared version number does
-not imply feature parity. See [the release notes](RELEASE.md) for build
-provenance, verification, and the signing certificate.
 
 ## What's here
 
