@@ -174,6 +174,32 @@ Below the steps, the Send tab keeps working:
 
 ## Also in the app
 
+- **Skelli.** Her own tab, first in the bar: a
+  specialist for the house whose knowledge is this
+  app's own manual, whose senses are its live
+  state, and whose hands are its real controls —
+  sweeps, going dark, the drill, listening,
+  serving, naming devices — with a memory that
+  persists between conversations, and a browser
+  that researches the open web through
+  machine-friendly sources only, citing what it
+  finds. For open conversation she consults
+  trained models in cascade — Apple's on-device
+  model (iOS 26, where the phone carries it), then
+  an open-weights model from her Weights sheet,
+  then the browser — and everything she thinks
+  with runs on the phone. See *Building the
+  current build*, below, for what she asks of
+  your gear.
+- **The intelligence wave (4.2.0).** The **Map** —
+  devices placed in rooms on a floor plan, with a
+  compass that homes on them. The **Subconscious**
+  — the house correlating its own nights, learning
+  house facts over time, and answering questions
+  about them. The **Instrument** — the operator
+  read through HealthKit (heart rate, sleep, an
+  Apple Watch as a purely passive sensor), feeding
+  the Subconscious's baseline.
 - **The look — and the boot.** The Jolly Roger flies behind
   everything: forms and lists are transparent over the backdrop
   (dimmed slightly for readability) and the app is pinned to dark
@@ -292,9 +318,78 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
   cropped square on the face. Its file (`IMG_1434.png`) lives in the
   AppIcon set; the same PNG also sits at the repo root as uploaded.
 
+## Building the current build
+
+`main` is ahead of the 4.2.0 release, and it
+carries new build requirements. In the order
+you'll meet them:
+
+- **Xcode 26.** Skelli's Apple-model layer is
+  written against the iOS 26 SDK (Foundation
+  Models). It is compile-gated — an older Xcode
+  builds the app with that mind absent rather
+  than failing — but Xcode 26 is the supported
+  setup, and the only one where her status line
+  can read *model on*.
+- **The Metal Toolchain component.** MLX compiles
+  Metal shaders during its build, and Xcode 26
+  makes the Metal toolchain a separate,
+  downloadable component. A build that stops
+  with *"The Metal Toolchain was not installed
+  and could not compile the Metal source files"*
+  needs it installed once per Mac: click the
+  error's own Download button, or Xcode →
+  Settings → Components → Metal Toolchain, or
+  run `xcodebuild -downloadComponent
+  MetalToolchain` in Terminal.
+- **The MLX package resolves itself.**
+  `mlx-swift-lm` is declared in
+  `nightjar.xcodeproj` — a package reference plus
+  the **MLXLLM** and **MLXLMCommon** products on
+  the `nightjar` target — so opening the project
+  and building is the whole procedure: Xcode
+  fetches and compiles it and writes
+  `Package.resolved`. Nobody adds a package by
+  hand. The first build is long because MLX is
+  large; later builds are not. The reference
+  tracks the package's `main` branch.
+- **iOS 17 deployment floor.** The project now
+  targets iOS 17.0 (it was 16.0 through 4.2.0)
+  because MLX requires iOS 17. Nothing in the
+  app needed the lower floor, and the purist
+  core builds exactly as before.
+- **The phone, for her minds.** The app runs on
+  iOS 17+. Her Apple mind needs iOS 26, an Apple
+  Intelligence iPhone (15 Pro or later), and
+  Apple Intelligence enabled; the model runs
+  on-device, and nothing she hears leaves the
+  phone. Her weights bench needs only the app
+  itself: models are picked and downloaded in
+  her menu → **Weights** — the sheet recommends
+  one by the phone's memory, downloads come
+  from the Hugging Face hub into the app's own
+  cache, and models are selected, swapped, or
+  deleted there. A folder named `SkelliWeights`
+  staged into the app bundle also works as a
+  bench when nothing has been downloaded.
+
+### If your gear can't run this: v4.0.0
+
+The `v4.0.0` tag predates all of the above.
+Check it out (`git checkout v4.0.0`) and the
+project is the old shape: iOS 16 deployment
+floor, no packages, no Metal toolchain, no
+Xcode 26 requirement, and the Install steps
+below verbatim. It is the complete 4.0.0
+flagship — everything in this document except
+the 4.2.0 intelligence wave and Skelli.
+
 ## Install (sideload, same as upstream)
 
 1. Clone this repo, open `ios/nightjar.xcodeproj` in Xcode.
+   (On the current build, the first build fetches the
+   MLX package and may prompt for the Metal Toolchain —
+   see *Building the current build*, above.)
 2. Select the `nightjar` target → Signing & Capabilities → check
    *Automatically manage signing* and pick your Personal Team.
    The bundle ID is `net.nosuchmachine.nightjarhack`, so this app
@@ -326,8 +421,13 @@ project keep working):
   snatching, planting, and the Send/Serve tabs (new).
 - `nightjar/ReconView.swift` — the Scan tab: scanner, sweep, feed,
   TLS and DNS tools, Bonjour resolution, pcap dissector (new).
+- `nightjar/Skelli.swift` — Skelli's tab: her engine,
+  knowledge, memory, browser, and her minds — Apple's
+  on-device model and the MLX weights bench (new).
 - `nightjar/Feedback.swift` — the narration toasts, the haptics,
-  the Jolly Roger backdrop, and the boot splash (new).
+  the Jolly Roger backdrop, and the boot splash (new). Skelli's
+  web-research engine, small-favors layer, and the Weights
+  catalog and sheet also live here.
 - `nightjarTests/` — upstream decoder/log tests, plus `DroneTests`
   (vectors shared in spirit with `tests/test_remoteid.py`),
   `HackTests` (payloads, framing, target parsing) and
