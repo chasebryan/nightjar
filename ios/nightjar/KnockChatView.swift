@@ -139,6 +139,14 @@ struct KnockChatView: View {
                         }
                 }
             }
+            .sheet(isPresented: $blinkShowing) {
+                BlinkSenderView(frames: blinkFrames)
+            }
+            .sheet(isPresented: $blinkReceiving) {
+                BlinkReceiverView { data, suite in
+                    openBlinkPayload(data, suite: suite)
+                }
+            }
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
                 chat.purge()
@@ -613,14 +621,6 @@ struct KnockChatView: View {
                      + "sealed with it, like everything else "
                      + "here.")
                     .font(.callout).foregroundStyle(.secondary)
-            }
-        }
-        .sheet(isPresented: $blinkShowing) {
-            BlinkSenderView(frames: blinkFrames)
-        }
-        .sheet(isPresented: $blinkReceiving) {
-            BlinkReceiverView { data, suite in
-                openBlinkPayload(data, suite: suite)
             }
         }
     }
