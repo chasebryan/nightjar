@@ -1937,9 +1937,6 @@ struct SkelliAvatar: View {
     var mood: SkelliMood = .idle
     var size: CGFloat = 96
     @ObservedObject private var themes = ThemeCenter.shared
-    @EnvironmentObject private var emcon: Emcon
-    @EnvironmentObject private var mouth: Mouth
-    @EnvironmentObject private var post: ListeningPost
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) {
@@ -2346,6 +2343,9 @@ final class SkelliFilmView: UIView {
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
     @ObservedObject private var themes = ThemeCenter.shared
+    @EnvironmentObject private var emcon: Emcon
+    @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var post: ListeningPost
     @State private var input = ""
     @State private var showDirectory = false
     @State private var showMemory = false
@@ -2412,7 +2412,7 @@ struct SkelliView: View {
                 .frame(width: 2, height: 2)
                 .allowsHitTesting(false)
         }
-        .toolbarVisibility(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     /// Her pinned presence — the film, her name, and
