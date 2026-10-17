@@ -349,6 +349,17 @@
   stays and the section reports itself dormant
   instead of breaking the build.
 
+- **Your own boot.** Colours gains a Boot
+  screen section: the backdrop behind the
+  boot log is yours to choose — the provided
+  reel, your own GIF or image (copied into
+  the app, never off the device), or plain
+  black — and the log's text arrives five
+  ways: line by line (the classic), a
+  typewriter, a glyph scramble that resolves
+  line by line, a fade, or all at once. A
+  tap still skips.
+
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
 - **The great presenter audit.** Every sheet, cover,
