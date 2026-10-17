@@ -1660,42 +1660,11 @@ struct ScanView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Scan")
-            .fullScreenCover(isPresented: $mapShown) {
-                MapView(model: model)
-            }
-            .sheet(item: $dossierSheet) { presentation in
-                DossierSheetView(presentation: presentation)
-            }
-            .sheet(item: $editingNeighbor) { neighbor in
-                NeighborNameEditor(
-                    store: NeighborhoodStore.shared,
-                    neighbor: neighbor)
-            }
             .onAppear {
                 model.startDiscovery()
                 NEHotspotNetwork.fetchCurrent { network in
                     DispatchQueue.main.async { ssid = network?.ssid }
                 }
-            }
-            .fileImporter(isPresented: $showPcapImporter,
-                          allowedContentTypes: [.data]) { result in
-                guard case .success(let url) = result,
-                      url.startAccessingSecurityScopedResource()
-                else { return }
-                defer { url.stopAccessingSecurityScopedResource() }
-                guard let data = try? Data(contentsOf: url),
-                      let decoded = PcapKit.dissect(
-                        data, name: url.lastPathComponent) else {
-                    toasts.show("That file is not a libpcap capture",
-                                error: true)
-                    return
-                }
-                pcapSummary = decoded.summary
-                pcapLines = decoded.lines
-                mouth.logRecon("pcap", url.lastPathComponent,
-                               lines: decoded.summary
-                                      + Array(decoded.lines.prefix(100)))
-                toasts.show("Dissected \(url.lastPathComponent)")
             }
             .onDisappear { model.stopDiscovery() }
             .onChange(of: model.scanning) { scanning in
@@ -1743,6 +1712,37 @@ struct ScanView: View {
                                    lines: dns.lines)
                 }
             }
+        }
+        .fullScreenCover(isPresented: $mapShown) {
+            MapView(model: model)
+        }
+        .sheet(item: $dossierSheet) { presentation in
+            DossierSheetView(presentation: presentation)
+        }
+        .sheet(item: $editingNeighbor) { neighbor in
+            NeighborNameEditor(
+                store: NeighborhoodStore.shared,
+                neighbor: neighbor)
+        }
+        .fileImporter(isPresented: $showPcapImporter,
+                      allowedContentTypes: [.data]) { result in
+            guard case .success(let url) = result,
+                  url.startAccessingSecurityScopedResource()
+            else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+            guard let data = try? Data(contentsOf: url),
+                  let decoded = PcapKit.dissect(
+                    data, name: url.lastPathComponent) else {
+                toasts.show("That file is not a libpcap capture",
+                            error: true)
+                return
+            }
+            pcapSummary = decoded.summary
+            pcapLines = decoded.lines
+            mouth.logRecon("pcap", url.lastPathComponent,
+                           lines: decoded.summary
+                                  + Array(decoded.lines.prefix(100)))
+            toasts.show("Dissected \(url.lastPathComponent)")
         }
     }
 
