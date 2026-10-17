@@ -419,6 +419,12 @@ class Serve(private val context: Context, private val mouth: Mouth) {
         noteArrival(generation.get(), "ble", "ble://$from", data, stealthNow)
     }
 
+    /** A finished canary session files its transcript into
+     *  the same inbox, under its persona's name. */
+    fun injectCanaryArrival(persona: String, peer: String, data: ByteArray) {
+        noteArrival(generation.get(), "canary-$persona", peer, data, stealthNow)
+    }
+
     val inboxJsonl: String
         get() = _inbox.value.joinToString("\n") { arrival ->
             val entry = org.json.JSONObject()
