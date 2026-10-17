@@ -279,6 +279,21 @@ final class KnockChat: ObservableObject {
         update(message.id) { $0.state = "delivered" }
     }
 
+    /// A duel message in reply settles the outgoing duel
+    /// message it answers — the herald's traffic confirms
+    /// itself the same way the ventriloquist's does.
+    func settleDuel(duelID: String, peer rawPeer: String) {
+        let peer = Self.peerKey(rawPeer)
+        guard let messages = threads[peer],
+              let message = messages.last(where: {
+                  $0.outgoing
+                      && DuelCodec.id(of: $0.text) == duelID
+              }) else { return }
+        ackTimers[message.id]?.invalidate()
+        ackTimers[message.id] = nil
+        update(message.id) { $0.state = "delivered" }
+    }
+
     func handleAck(from rawSource: String, hash: [Int]) {
         let peer = Self.peerKey(rawSource)
         guard let message = threads[peer]?.last(where: {
