@@ -9,6 +9,14 @@
   dossiers, and a sweep lights the house up room by room.
   Placement is the operator's testimony — the app keeps
   it and never invents a location of its own.
+- **Every road leads to the Map (iOS).** The Map is
+  populated by anything any feature discovers, through one
+  LAN-guarded door in the Neighborhood store: recon
+  answers, replies the mouth collects (every centipede
+  hop among them), knocktalk peers, honeydrop takers —
+  alongside the sweeps, Bonjour resolutions, and arrivals
+  that already fed it. Relay labels, the ghost, and
+  anything off this wire are turned away at the door.
 - **Given names (iOS).** Every device on the wire can be
   given the operator's own name and a mark to tell it
   apart — and the name follows the device everywhere it
