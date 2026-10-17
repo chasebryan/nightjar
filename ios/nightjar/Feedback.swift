@@ -2949,8 +2949,13 @@ extension SkelliMind {
             + " FACTS (what she has learned),"
             + " BRIEF (her Subconscious brief),"
             + " CODE (write code or a script for"
-            + " him), THEME:<a colour theme's"
-            + " name> (recolour the app). If he is"
+            + " him), FORGE (build or forge a"
+            + " packet or payload for him),"
+            + " REMEMBER:<the fact, briefly, in"
+            + " his own words> (he wants something"
+            + " kept in her memory), THEME:<a colour"
+            + " theme's name> (recolour the app)."
+            + " If he is"
             + " chatting, asking a question, or"
             + " wants information rather than an"
             + " action, answer NONE. One token,"
@@ -2998,6 +3003,11 @@ extension SkelliMind {
             return name.isEmpty
                 ? nil : "THEME:" + name
         }
+        let spokenLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        if spokenLine.lowercased().hasPrefix("remember:") {
+            let fact = String(spokenLine.dropFirst(9)).trimmingCharacters(in: .whitespaces)
+            return fact.isEmpty ? nil : "REMEMBER:" + fact
+        }
         let map: [(String, String)] = [
             ("SELFSCAN", "how exposed"),
             ("STOPSERVE", "stop serving"),
@@ -3019,6 +3029,7 @@ extension SkelliMind {
             ("FACTS", "facts"),
             ("BRIEF", "brief"),
             ("CODE", "CODE"),
+            ("FORGE", "FORGE"),
         ]
         for (token, phrase) in map where t == token {
             return phrase
@@ -3116,6 +3127,17 @@ extension SkelliCenter {
                     seconds: 3)
             await MainActor.run {
                 if let hit {
+                    if hit.hasPrefix("REMEMBER:") {
+                        let fact = String(hit.dropFirst(9))
+                        remember(fact)
+                        say("Kept: " + fact + ". It stays with me across conversations.")
+                        return
+                    }
+                    if hit == "FORGE" {
+                        if forgeAsk(q, raw: raw) {
+                            return
+                        }
+                    }
                     if hit == "CODE" {
                         consultCode(q)
                         return
@@ -3138,6 +3160,196 @@ extension SkelliCenter {
             }
         }
         return true
+    }
+}
+
+// MARK: - The late gate: the forge and the bench
+
+/// Hands outside her pattern cascade get their
+/// chance here — after every pattern, before the
+/// semantic reading.
+extension SkelliCenter {
+
+    func lateGate(_ q: String, raw: String) -> Bool {
+        if forgeAsk(q, raw: raw) { return true }
+        if weightsAsk(q) { return true }
+        return secondReading(q, raw: raw)
+    }
+
+    /// "Forge me a DNS packet for the gateway" —
+    /// she builds it herself, in conversation: the
+    /// same ForgeKit the sheet drives, kept the
+    /// same way.
+    func forgeAsk(_ q: String, raw: String) -> Bool {
+        let wantsForge = q.contains("forge")
+            || ((q.contains("packet") || q.contains("payload"))
+                && (q.contains("build") || q.contains("make")
+                    || q.contains("craft") || q.contains("create")))
+        guard wantsForge else { return false }
+        // The gateway, by the house convention: this
+        // wire's .1, from the phone's own address.
+        let gateway = Mouth.localIPAddress().map { ip -> String in
+            var parts = ip.split(separator: ".")
+            guard parts.count == 4 else { return ip }
+            parts[3] = "1"
+            return parts.joined(separator: ".")
+        }
+        let words = q.split(separator: " ").map {
+            $0.trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?\"'"))
+        }
+        let ip = words.first(where: { word in
+            word.split(separator: ".").count == 4
+                && word.allSatisfy { $0.isNumber || $0 == "." }
+        })
+        let domain = words.first(where: { word in
+            word.contains(".") && word != ip
+                && word.contains(where: { $0.isLetter })
+        })
+        let host = ip ?? (q.contains("gateway") ? gateway : nil)
+        let built: ForgeKit.Built
+        if q.contains("dns") {
+            let name: String
+            if let domain {
+                name = domain
+            } else if q.contains("gateway"), let gateway {
+                // Asked for the gateway: a reverse
+                // question, by name.
+                name = gateway.split(separator: ".").reversed()
+                    .joined(separator: ".") + ".in-addr.arpa"
+            } else {
+                name = "example.com"
+            }
+            built = ForgeKit.dns(host: name)
+        } else if q.contains("ssdp") {
+            built = ForgeKit.ssdp()
+        } else if q.contains("mqtt") {
+            built = ForgeKit.mqtt(clientID: "nightjar")
+        } else if q.contains("http") {
+            built = ForgeKit.http(method: q.contains(" post ") ? "POST" : "GET",
+                                  host: host ?? domain ?? "192.168.4.1",
+                                  path: "/", body: "")
+        } else if q.contains("banner") || q.contains("probe") {
+            built = ForgeKit.probe()
+        } else if let custom = ForgePatternStore.load().first(where: {
+            q.contains($0.name.lowercased())
+        }) {
+            var text = custom.template
+            let swaps: [(String, String)] = [
+                ("{host}", host ?? "192.168.4.1"), ("{path}", "/"),
+                ("{domain}", domain ?? "example.com"),
+                ("{client}", "nightjar"), ("{method}", "GET"),
+            ]
+            for (hole, value) in swaps {
+                text = text.replacingOccurrences(of: hole, with: value)
+            }
+            built = ForgeKit.Built(name: "Forged — " + custom.name,
+                                   source: custom.source, text: text)
+        } else {
+            forgeDraft(raw)
+            return true
+        }
+        keepForged(built)
+        return true
+    }
+
+    /// A keep is a keep, from her hands or the
+    /// sheet's: armory takes the payload,
+    /// Deliveries takes the file.
+    private func keepForged(_ built: ForgeKit.Built) {
+        PayloadBook().add(SavedPayload(name: built.name, source: built.source,
+                                       text: built.text, xorKey: "",
+                                       useGzip: false, framing: "raw"))
+        DeliveriesCenter.shared.add(name: built.name, text: built.text,
+                                    ext: built.source == "hex" ? "hex" : "txt")
+        say("Forged and kept: " + built.name
+            + " — \(ForgeKit.byteCount(of: built)) bytes. It is in the "
+            + "armory, filed in Deliveries, ready to fire from Send.")
+    }
+
+    /// A forge she holds no pattern for goes to her
+    /// benches under the forge's own charter — the
+    /// same draft the Forge sheet asks for.
+    private func forgeDraft(_ raw: String) {
+        guard SkelliMind.isAvailable || SkelliMind.weightsReady else {
+            say("My patterns are HTTP, DNS, SSDP, MQTT, and a banner "
+                + "probe — name one and I will build it. With a bench "
+                + "awake I can also draft from a plain brief.")
+            return
+        }
+        activity = "Forging…"
+        Task {
+            let text = await SkelliMind.rawAnswer(
+                instructions: "You are the forge inside nightjar-hack. The operator describes a payload; produce ONLY the payload itself — raw protocol text, or space-separated hex bytes for a binary payload. No explanation, no code fences. If the brief is unclear, produce the closest standard probe.",
+                prompt: raw)
+            await MainActor.run {
+                guard let text, !text.isEmpty else {
+                    say("No bench could draft that just now.")
+                    return
+                }
+                let hexish = text.split(separator: " ").allSatisfy {
+                    $0.count == 2 && $0.allSatisfy { $0.isHexDigit }
+                }
+                keepForged(ForgeKit.Built(name: "Forged — draft",
+                                          source: hexish ? "hex" : "text",
+                                          text: text))
+            }
+        }
+    }
+
+    /// Her bench, run from conversation: fetch a
+    /// model, put one on the bench, or report its
+    /// state — the same shared center the sheet
+    /// drives.
+    func weightsAsk(_ q: String) -> Bool {
+        guard q.contains("weight") || q.contains("model")
+                || q.contains("qwen") || q.contains("llama")
+        else { return false }
+        let center = WeightsCenter.shared
+        func option() -> WeightsOption? {
+            if q.contains("llama") || q.contains("3b") { return WeightsCenter.catalog[1] }
+            if q.contains("1.7") { return WeightsCenter.catalog[2] }
+            if q.contains("7b") { return WeightsCenter.catalog[3] }
+            if q.contains("0.6") { return WeightsCenter.catalog[4] }
+            if q.contains("qwen") || q.contains("4b") { return WeightsCenter.catalog[0] }
+            return nil
+        }
+        if q.contains("download") || q.contains("fetch") || q.contains("install") {
+            let pick = option() ?? center.recommended
+            if center.downloaded.contains(pick.id) {
+                say(pick.name + " is already on the phone.")
+                return true
+            }
+            center.download(pick)
+            say("Fetching " + pick.name + " — \(pick.sizeGB) GB from the "
+                + "hub. It joins the bench when it lands; tell me to use "
+                + "it and I will put it on.")
+            return true
+        }
+        if q.contains("use ") || q.contains("select") || q.contains("switch") {
+            guard let pick = option() else { return false }
+            if center.downloaded.contains(pick.id) {
+                center.select(pick)
+                say(pick.name + " is on the bench.")
+            } else {
+                center.download(pick)
+                say(pick.name + " is not on the phone yet — fetching it "
+                    + "now. When it lands, tell me to use it and I will "
+                    + "put it on the bench.")
+            }
+            return true
+        }
+        if q.contains("which") || q.contains("what") || q.contains("have") {
+            let carried = WeightsCenter.catalog
+                .filter { center.downloaded.contains($0.id) }.map { $0.name }
+            let current = WeightsCenter.catalog
+                .first(where: { $0.id == center.selectedID })?.name
+            say("On the bench: " + (current ?? "none chosen")
+                + ". On the phone: "
+                + (carried.isEmpty ? "no weights yet" : carried.joined(separator: ", "))
+                + ".")
+            return true
+        }
+        return false
     }
 }
 
