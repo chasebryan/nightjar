@@ -22,6 +22,7 @@ struct Insight: Identifiable {
             : id.hasPrefix("absent-") ? "absence"
             : id.hasPrefix("due-") ? "forecast"
             : id.hasPrefix("pattern-") ? "pattern"
+            : id.hasPrefix("operator-") ? "operator"
             : id
     }
     /// "85%" — computed here, so no view ever has to do
@@ -37,6 +38,23 @@ struct Insight: Identifiable {
     var confidence: Double
 }
 
+/// A durable conclusion — the consolidation's product.
+/// Not a count but a belief, kept with its evidence and
+/// its birthday, contradicted in the open when the
+/// house breaks it, and forgettable by the operator,
+/// whose forgetting is also kept (a buried fact is not
+/// re-derived behind his back).
+struct HouseFact: Codable, Identifiable {
+    var id: String
+    var text: String
+    var evidence: String
+    var learnedAt: Date
+    /// Structured memory, for the contradiction watch.
+    var ip: String? = nil
+    var windowStart: Int? = nil
+    var windowEnd: Int? = nil
+}
+
 // MARK: - The center
 
 final class SubconsciousCenter: ObservableObject {
@@ -47,6 +65,8 @@ final class SubconsciousCenter: ObservableObject {
     /// Enough sealed history to have a sense of normal.
     @Published var awake = false
     @Published var eventCount = 0
+    /// The consolidation's conclusions, published.
+    @Published var facts: [HouseFact] = []
 
     private struct State: Codable {
         var seenDrift: [String: Int] = [:]
@@ -54,6 +74,10 @@ final class SubconsciousCenter: ObservableObject {
         /// [right, wrong]. The mind's one memory of its own
         /// mistakes — confidence bends toward the record.
         var verdicts: [String: [Int]]? = nil
+        /// What the consolidation has concluded.
+        var facts: [HouseFact]? = nil
+        /// Facts the operator has forgotten on purpose.
+        var buriedFacts: [String]? = nil
     }
 
     /// How far a kind's verdicts bend its confidence:
@@ -128,6 +152,25 @@ final class SubconsciousCenter: ObservableObject {
             object: nil, queue: .main) { [weak self] _ in
             self?.refresh()
         }
+        NotificationCenter.default.addObserver(
+            forName: InstrumentCenter.baselinesUpdated,
+            object: nil, queue: .main) { [weak self] _ in
+            self?.refresh()
+        }
+        facts = state.facts ?? []
+    }
+
+    /// Forget one learned fact — and remember the
+    /// forgetting, so the consolidation does not simply
+    /// teach it again tomorrow.
+    func forgetFact(_ id: String) {
+        state.facts = (state.facts ?? []).filter { $0.id != id }
+        var buried = state.buriedFacts ?? []
+        if !buried.contains(id) { buried.append(id) }
+        state.buriedFacts = buried
+        facts = state.facts ?? []
+        persist()
+        refresh()
     }
 
     private func persist() {
@@ -138,12 +181,179 @@ final class SubconsciousCenter: ObservableObject {
 
     // MARK: the reading
 
+    /// The consolidation: read the fortnight and write
+    /// down what it concludes — durable facts, kept with
+    /// their evidence and their birthdays. A fact keeps
+    /// its first birthday across re-derivations; a fact
+    /// the operator buried stays buried.
+    private func consolidate(events: [NightEvent],
+                             neighbors: [Neighbor],
+                             now: Date) {
+        let buried = Set(state.buriedFacts ?? [])
+        let fortnightAgo = now.addingTimeInterval(
+            -14 * 24 * 3600)
+        let fortnight = events.filter { $0.when > fortnightAgo }
+        var derived: [HouseFact] = []
+        let cal = Calendar.current
+
+        // The house's quiet hours.
+        let days = Set(fortnight.map {
+            cal.startOfDay(for: $0.when) }).count
+        if days >= 8 {
+            var profile = [Int](repeating: 0, count: 24)
+            for e in fortnight {
+                profile[cal.component(.hour, from: e.when)] += 1
+            }
+            let mean = Double(fortnight.count) / 24.0
+            let quiet = profile.map { Double($0) < mean * 0.25 }
+            var bestStart = 0, bestLen = 0
+            var runStart = 0, runLen = 0
+            for i in 0..<48 {
+                if quiet[i % 24] {
+                    if runLen == 0 { runStart = i }
+                    runLen += 1
+                    if runLen > bestLen {
+                        bestLen = runLen
+                        bestStart = runStart
+                    }
+                } else { runLen = 0 }
+            }
+            if bestLen >= 4 {
+                derived.append(HouseFact(
+                    id: "fact-quiet",
+                    text: "The house is quiet between "
+                        + "\(bestStart % 24):00 and "
+                        + "\((bestStart + bestLen) % 24):00.",
+                    evidence: "\(days) days of record",
+                    learnedAt: now,
+                    windowStart: bestStart % 24,
+                    windowEnd: (bestStart + bestLen) % 24))
+            }
+        }
+
+        // A regular's rhythm.
+        func mentions(of ip: String) -> [NightEvent] {
+            fortnight.filter { $0.text.contains(ip) }
+        }
+        var rhythms = 0
+        for neighbor in neighbors.sorted(by: {
+            $0.sightings > $1.sightings }).prefix(3)
+        where neighbor.sightings >= 15 && rhythms < 2 {
+            let seen = mentions(of: neighbor.ip)
+            guard seen.count >= 12 else { continue }
+            var hist = [Int](repeating: 0, count: 24)
+            for e in seen {
+                hist[cal.component(.hour, from: e.when)] += 1
+            }
+            var bestW = 0, bestSum = -1
+            for w in 0..<24 {
+                let sum = (0..<6).reduce(0) {
+                    $0 + hist[(w + $1) % 24] }
+                if sum > bestSum { bestSum = sum; bestW = w }
+            }
+            let share = Double(bestSum) / Double(seen.count)
+            if share >= 0.65 {
+                rhythms += 1
+                derived.append(HouseFact(
+                    id: "fact-rhythm-\(neighbor.ip)",
+                    text: "\(neighbor.displayName) keeps "
+                        + "the hours \(bestW):00–"
+                        + "\((bestW + 6) % 24):00 — "
+                        + "\(Int(share * 100))% of its "
+                        + "appearances fall there.",
+                    evidence: "\(seen.count) appearances "
+                        + "in the log",
+                    learnedAt: now, ip: neighbor.ip,
+                    windowStart: bestW,
+                    windowEnd: (bestW + 6) % 24))
+            }
+        }
+
+        // Two who stir together.
+        let talkative = neighbors
+            .map { ($0, mentions(of: $0.ip)) }
+            .filter { $0.1.count >= 8 }
+            .sorted { $0.1.count > $1.1.count }
+            .prefix(8)
+        pairSearch: for i in talkative.indices {
+            for j in talkative.indices where j > i {
+                let a = talkative[i], b = talkative[j]
+                var coDays = Set<Date>()
+                for ea in a.1 where b.1.contains(where: {
+                    abs($0.when.timeIntervalSince(ea.when))
+                        < 45 * 60
+                }) {
+                    coDays.insert(cal.startOfDay(for: ea.when))
+                }
+                let daysA = Set(a.1.map {
+                    cal.startOfDay(for: $0.when) }).count
+                let daysB = Set(b.1.map {
+                    cal.startOfDay(for: $0.when) }).count
+                if coDays.count >= 4,
+                   Double(coDays.count)
+                       >= 0.6 * Double(min(daysA, daysB)) {
+                    derived.append(HouseFact(
+                        id: "fact-pair-\(a.0.ip)-\(b.0.ip)",
+                        text: "\(a.0.displayName) and "
+                            + "\(b.0.displayName) stir "
+                            + "together — on \(coDays.count) "
+                            + "days of record they were never "
+                            + "far apart. One wakes the "
+                            + "other, or both answer the "
+                            + "same master.",
+                        evidence: "\(coDays.count) shared days",
+                        learnedAt: now))
+                    break pairSearch
+                }
+            }
+        }
+
+        // The foreign hands' habits.
+        let cadence = fortnight.filter {
+            $0.module == "emcon" && $0.kind == "cadence" }
+        if cadence.count >= 3 {
+            if cadence.allSatisfy({
+                (2...6).contains(
+                    cal.component(.weekday, from: $0.when)) }) {
+                derived.append(HouseFact(
+                    id: "fact-foreign",
+                    text: "Foreign hands have only ever "
+                        + "come on weekdays.",
+                    evidence: "\(cadence.count) cadence flags",
+                    learnedAt: now))
+            } else if cadence.allSatisfy({
+                cal.component(.hour, from: $0.when) < 5 }) {
+                derived.append(HouseFact(
+                    id: "fact-foreign",
+                    text: "Foreign hands have only ever "
+                        + "come in the small hours.",
+                    evidence: "\(cadence.count) cadence flags",
+                    learnedAt: now))
+            }
+        }
+
+        // Merge: keep birthdays, respect burials, cap it.
+        let existing = Dictionary(uniqueKeysWithValues:
+            (state.facts ?? []).map { ($0.id, $0) })
+        var merged: [HouseFact] = []
+        for fact in derived where !buried.contains(fact.id) {
+            var f = fact
+            if let old = existing[fact.id] {
+                f.learnedAt = old.learnedAt
+            }
+            merged.append(f)
+        }
+        state.facts = Array(merged.prefix(12))
+        facts = state.facts ?? []
+    }
+
     func refresh() {
         // Keep the sleep window fresh; when it changes,
         // the notification above rebuilds this reading
         // with it. Silent and empty when the Instrument
         // has nothing — privacy means exactly that.
         InstrumentCenter.shared.fetchSleep()
+        InstrumentCenter.shared.fetchBaselines()
         let events = Journal.events(limit: 4000)
             .sorted { $0.when < $1.when }
         eventCount = events.count
@@ -154,6 +364,8 @@ final class SubconsciousCenter: ObservableObject {
         var found: [Insight] = []
 
         let neighbors = NeighborhoodStore.shared.neighbors
+        consolidate(events: events, neighbors: neighbors,
+                    now: now)
 
         // New faces on the wire.
         let fresh = neighbors.filter { $0.firstSeen > dayAgo }
@@ -458,6 +670,115 @@ final class SubconsciousCenter: ObservableObject {
                     + 0.11 * Double(threads.count))))
         }
 
+        // The contradiction watch: facts the house has
+        // broken since they were learned.
+        let dayEvents = events.filter { $0.when > dayAgo }
+        for fact in state.facts ?? [] {
+            if fact.id == "fact-quiet",
+               let start = fact.windowStart,
+               let end = fact.windowEnd {
+                let inside = dayEvents.filter { e in
+                    let h = Calendar.current.component(
+                        .hour, from: e.when)
+                    return start < end
+                        ? (h >= start && h < end)
+                        : (h >= start || h < end)
+                }
+                if inside.count >= 3 {
+                    found.append(Insight(
+                        id: "against-fact-quiet",
+                        when: inside.last?.when ?? now,
+                        title: "Against its own record",
+                        body: "The house knows itself quiet "
+                            + "between \(start):00 and "
+                            + "\(end):00 — but "
+                            + "\(inside.count) events landed "
+                            + "inside those hours in the "
+                            + "last day. Either the rhythm "
+                            + "is changing, or something new "
+                            + "is keeping the hours.",
+                        citations: inside.suffix(3)
+                            .map(Self.cite),
+                        confidence: 0.6))
+                }
+            }
+            if fact.id.hasPrefix("fact-rhythm"),
+               let ip = fact.ip,
+               let start = fact.windowStart,
+               let end = fact.windowEnd,
+               let neighbor = neighbors.first(
+                   where: { $0.ip == ip }),
+               now.timeIntervalSince(neighbor.lastSeen)
+                   < 24 * 3600 {
+                let h = Calendar.current.component(
+                    .hour, from: neighbor.lastSeen)
+                let inWindow = start < end
+                    ? (h >= start && h < end)
+                    : (h >= start || h < end)
+                if !inWindow {
+                    found.append(Insight(
+                        id: "against-" + fact.id,
+                        when: neighbor.lastSeen,
+                        title: "Against its own record",
+                        body: "\(neighbor.displayName) was "
+                            + "seen at "
+                            + neighbor.lastSeen.formatted(
+                                date: .omitted,
+                                time: .shortened)
+                            + " — outside the hours the "
+                            + "house knows it by (\(start)"
+                            + ":00–\(end):00).",
+                        citations: [],
+                        confidence: 0.55))
+                }
+            }
+        }
+
+        // The operator, read against himself.
+        let instrument = InstrumentCenter.shared
+        if let base = instrument.restingBaseline,
+           let latest = instrument.restingLatest,
+           latest - base >= 5 {
+            found.append(Insight(
+                id: "operator-body",
+                when: now,
+                title: "The operator ran hot",
+                body: "Your resting heart read "
+                    + "\(Int(latest.rounded())) against "
+                    + "your own fortnight baseline of "
+                    + "\(Int(base.rounded()))"
+                    + (nightEvents.count >= 3
+                       ? ", on a night the house was "
+                         + "awake after midnight" : "")
+                    + ". A correlation, printed as one — "
+                    + "not a cause.",
+                citations: [],
+                confidence: 0.55))
+        } else if let baseHours = instrument.sleepBaselineHours,
+                  let window = instrument.lastSleep {
+            let slept = window.end.timeIntervalSince(
+                window.start) / 3600
+            if baseHours - slept >= 1.5 {
+                found.append(Insight(
+                    id: "operator-sleep",
+                    when: window.end,
+                    title: "A short night",
+                    body: "You slept "
+                        + InstrumentCenter.durationLine(window)
+                        + " against your usual "
+                        + String(format: "%.1f", baseHours)
+                        + " hours"
+                        + (nightEvents.count >= 3
+                           ? ", and the house was awake "
+                             + "for much of it" : "")
+                        + ". Noted because tired operators "
+                        + "and busy houses so often arrive "
+                        + "together.",
+                    citations: [],
+                    confidence: 0.5))
+            }
+        }
+
         // The operator's verdicts bend every confidence,
         // then the ranking: stories first, strength next,
         // recency last.
@@ -468,19 +789,44 @@ final class SubconsciousCenter: ObservableObject {
                     * weight(forKind: insight.kind))
             return bent
         }
+        // Learned priority: confidence, bent by the
+        // verdicts' precision for its kind — the kinds
+        // the operator confirms rise; the kinds he
+        // dismisses sink. Stories keep their boost.
+        func priority(_ insight: Insight) -> Double {
+            let v = state.verdicts?[insight.kind] ?? [0, 0]
+            let right = Double(v.first ?? 0)
+            let wrong = Double(v.count > 1 ? v[1] : 0)
+            let total = right + wrong
+            let taught = total == 0 ? 1.0
+                : 0.6 + 0.7 * (right / total)
+            let story = insight.id.hasPrefix("pattern-")
+                ? 1.15 : 1.0
+            return insight.confidence * taught * story
+        }
         insights = found.sorted {
-            let a = $0.id.hasPrefix("pattern-") ? 1 : 0
-            let b = $1.id.hasPrefix("pattern-") ? 1 : 0
-            if a != b { return a > b }
-            if $0.confidence != $1.confidence {
-                return $0.confidence > $1.confidence
-            }
+            let pa = priority($0), pb = priority($1)
+            if pa != pb { return pa > pb }
             return $0.when > $1.when
         }
         brief = Self.composeBrief(events: events,
                                   neighbors: neighbors,
                                   insights: insights,
                                   now: now)
+        // What the operator has taught it to trust,
+        // when a taught kind stands among the findings.
+        for insight in insights {
+            let v = state.verdicts?[insight.kind] ?? [0, 0]
+            let right = v.first ?? 0
+            let wrong = v.count > 1 ? v[1] : 0
+            if right + wrong >= 3,
+               Double(right) / Double(right + wrong) >= 0.75 {
+                brief += " It leads with the kind of "
+                    + "finding you have confirmed "
+                    + "\(right) of \(right + wrong) times."
+                break
+            }
+        }
         persist()
     }
 
@@ -578,6 +924,88 @@ final class SubconsciousCenter: ObservableObject {
                 $0.module == "emcon" && $0.kind == "cadence"
             }
         }
+        // While you slept: the record, windowed by the
+        // Instrument's own testimony.
+        if q.contains("asleep") || q.contains("while i slept")
+            || q.contains("while you slept") {
+            if let w = InstrumentCenter.shared.lastSleep {
+                return events.filter {
+                    $0.when >= w.start && $0.when <= w.end }
+            }
+            return []
+        }
+        // The Instrument answers for itself.
+        if q.contains("sleep") || q.contains("heart")
+            || q.contains("resting") || q.contains("oxygen") {
+            let inst = InstrumentCenter.shared
+            var parts: [String] = []
+            if let w = inst.lastSleep {
+                parts.append("Last night you slept "
+                    + InstrumentCenter.durationLine(w)
+                    + " (asleep "
+                    + w.start.formatted(date: .omitted,
+                                         time: .shortened)
+                    + " → "
+                    + w.end.formatted(date: .omitted,
+                                       time: .shortened)
+                    + ")"
+                    + (inst.sleepBaselineHours.map {
+                        ", against your usual "
+                            + String(format: "%.1f", $0)
+                            + " hours" } ?? ""))
+            }
+            if let hr = inst.restingHeartRate {
+                parts.append("resting heart \(hr.value)"
+                    + (inst.restingBaseline.map {
+                        ", baseline "
+                        + "\(Int($0.rounded()))" } ?? ""))
+            }
+            if let o2 = inst.oxygen {
+                parts.append("blood oxygen \(o2.value)")
+            }
+            let text = parts.isEmpty
+                ? "The Instrument has no readings yet — "
+                  + "it reads from EMCON, once you let "
+                  + "the house read it."
+                : "The Instrument says: "
+                  + parts.joined(separator: "; ") + "."
+            return [NightEvent(id: UUID().uuidString,
+                               when: Date(), module: "instrument",
+                               kind: "reading", text: text)]
+        }
+        // First appearance of a device.
+        if q.contains("first") {
+            if let neighbor = neighborsForAsk().first(where: {
+                q.contains($0.ip)
+                    || q.contains($0.displayName.lowercased())
+                    || ($0.name.map {
+                        q.contains($0.lowercased()) } ?? false)
+            }) {
+                let mine = events.filter {
+                    $0.text.contains(neighbor.ip) }
+                if let oldest = mine.last { return [oldest] }
+            }
+        }
+        // Who is on the wire at all.
+        if q.contains("who is on") || q.contains("on my wire")
+            || q.contains("on my network")
+            || q.contains("on the wire") {
+            let all = neighborsForAsk()
+            let names = all.sorted {
+                $0.lastSeen > $1.lastSeen }.prefix(6).map {
+                "\($0.displayName) (\($0.ip))" }
+            let text = all.isEmpty
+                ? "The wire knows nobody yet."
+                : "The wire knows \(all.count) device"
+                  + (all.count == 1 ? "" : "s")
+                  + ": " + names.joined(separator: ", ")
+                  + (all.count > 6 ? "\u{2026}" : "") + "."
+            return [NightEvent(id: UUID().uuidString,
+                               when: Date(),
+                               module: "neighborhood",
+                               kind: "answer", text: text)]
+        }
+
         // About a device: named by address or by any of
         // its names — yours included.
         if let neighbor = neighborsForAsk().first(where: {
@@ -690,6 +1118,49 @@ struct SubconsciousView: View {
                     Text(mind.brief)
                         .font(.callout)
                 }
+                Section(header: Text("What the house has learned"),
+                        footer: Text("Durable conclusions "
+                            + "from the consolidation — each "
+                            + "kept with its evidence and its "
+                            + "birthday. Forget one and the "
+                            + "mind remembers the forgetting: "
+                            + "it will not quietly re-teach "
+                            + "it tomorrow.")) {
+                    if mind.facts.isEmpty {
+                        Text("Nothing yet. As the record "
+                             + "deepens, the mind writes "
+                             + "down what it concludes — "
+                             + "quiet hours, a regular's "
+                             + "rhythm, two who stir "
+                             + "together — and keeps it here.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(mind.facts) { fact in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading,
+                                   spacing: 2) {
+                                Text(fact.text)
+                                    .font(.callout)
+                                Text(fact.evidence
+                                     + " · learned "
+                                     + fact.learnedAt.formatted(
+                                        date: .abbreviated,
+                                        time: .omitted))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(role: .destructive) {
+                                mind.forgetFact(fact.id)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Forget this fact")
+                        }
+                    }
+                }
                 Section(header: Text("Findings")) {
                     if mind.insights.isEmpty {
                         Text("No findings. Either the house is "
@@ -794,8 +1265,9 @@ struct SubconsciousView: View {
                 Section(header: Text("Housekeeping"),
                         footer: Text("The mind's only memory "
                             + "of itself: which drift it has "
-                            + "already reckoned, and your "
-                            + "verdicts on its findings.")) {
+                            + "already reckoned, your verdicts "
+                            + "on its findings, and the facts "
+                            + "it has learned.")) {
                     Button(role: .destructive) {
                         confirmReset = true
                     } label: {
@@ -821,8 +1293,9 @@ struct SubconsciousView: View {
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("Drift it has already reckoned will be "
-                     + "reported once more, and confidences "
-                     + "go back to their unbent values.")
+                     + "reported once more, confidences go "
+                     + "back to their unbent values, and every "
+                     + "learned fact is forgotten.")
             }
             .onAppear { mind.refresh() }
         }
