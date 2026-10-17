@@ -27,6 +27,11 @@
   Depth (sweep / +Bonjour / full) and rest between
   passes are the operator's. It runs while the app is
   awake; sleep pauses it, waking resumes it.
+  Arming plays an ignition reel full-screen — the
+  operator's GIF (an "Assault" asset or assault.gif)
+  over the run's first pass, tap to skip, with a
+  flickering skull card standing in until the reel
+  is bundled.
 - **The Compass and the Matrix (iOS).** The Map is a
   matrix now — black field, dot grid in the house colors,
   a slow radar sweep, rooms and devices glowing by their
