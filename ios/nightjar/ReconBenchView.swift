@@ -10,11 +10,14 @@ struct ReconBenchView: View {
     @EnvironmentObject private var book: PayloadBook
     @StateObject private var recon = Recon()
 
-    @State private var host = ""
-    @State private var ports = ""
-    @State private var knockUDP = false
-    @State private var jobs = 24.0
-    @State private var timeout = 1.5
+    // Persisted since the War Chest arrived: a chest
+    // captures and recalls the bench's posture, so the
+    // fields live under keys now, not in the view.
+    @AppStorage("reconHost") private var host = ""
+    @AppStorage("reconPorts") private var ports = ""
+    @AppStorage("reconKnockUDP") private var knockUDP = false
+    @AppStorage("reconJobs") private var jobs = 24.0
+    @AppStorage("reconTimeout") private var timeout = 1.5
     @State private var showPresets = false
     @State private var presetFilter = ""
     @State private var connectLine = ""

@@ -130,6 +130,11 @@ struct SendView: View {
     @State private var presetNameDraft = ""
     @State private var showPresetImporter = false
     @State private var presetExportURL: URL?
+    @State private var chests: [NJChest] = NJChestStore.load()
+    @State private var selectedChestID = ""
+    @State private var chestNameDraft = ""
+    @State private var showChestImporter = false
+    @State private var chestExportURL: URL?
     @State private var centipedeSweepPort = "80,443,22,445,62078,8080"
     @AppStorage("centipedeSweepTarget") private var centipedeSweepTarget = ""
     @AppStorage("serveTcpPort") private var serveTcpPort = "9000"
@@ -754,6 +759,73 @@ struct SendView: View {
                         }
                     }
                     .font(.caption)
+                    Text("War Chest — whole-app loadouts")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .onAppear {
+                            NJChestStore.migratePresetsIfNeeded()
+                            chests = NJChestStore.load()
+                            refreshChestExport()
+                        }
+                    Text("A chest dresses the whole house — "
+                        + "Send, Serve, Recon, stealth — in one "
+                        + "tap. Applying loads configuration "
+                        + "only; it starts nothing.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if !chests.isEmpty {
+                        Picker("Chest", selection: $selectedChestID) {
+                            Text("Choose…").tag("")
+                            ForEach(chests) { chest in
+                                Text(chest.name).tag(chest.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        HStack {
+                            Button("Apply chest") {
+                                Haptics.tap()
+                                applySelectedChest()
+                            }
+                            .disabled(selectedChestID.isEmpty)
+                            Button("Delete", role: .destructive) {
+                                Haptics.tap()
+                                deleteSelectedChest()
+                            }
+                            .disabled(selectedChestID.isEmpty)
+                        }
+                        .font(.caption)
+                    }
+                    HStack {
+                        TextField("New chest name",
+                                  text: $chestNameDraft)
+                            .font(.body.monospaced())
+                        Button("Save current") {
+                            Haptics.tap()
+                            saveCurrentChest()
+                        }
+                        .disabled(chestNameDraft
+                            .trimmingCharacters(
+                                in: .whitespaces).isEmpty)
+                    }
+                    .font(.caption)
+                    HStack {
+                        if let url = chestExportURL {
+                            Button {
+                                shareItem = ShareItem(items: [url])
+                            } label: {
+                                Label("Share chests",
+                                      systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        Button {
+                            Haptics.tap()
+                            showChestImporter = true
+                        } label: {
+                            Label("Import chests",
+                                  systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .font(.caption)
                     TextField("Scope — blank = this phone's /24",
                               text: $traceScope)
                         .textInputAutocapitalization(.never)
@@ -1127,6 +1199,10 @@ struct SendView: View {
             .fileImporter(isPresented: $showPresetImporter,
                           allowedContentTypes: [.json]) { result in
                 importPresets(result)
+            }
+            .fileImporter(isPresented: $showChestImporter,
+                          allowedContentTypes: [.json]) { result in
+                importChests(result)
             }
             .alert("Could not build the payload", isPresented: .constant(showError != nil)) {
                 Button("OK") { showError = nil }
@@ -1523,6 +1599,86 @@ struct SendView: View {
         NJPresetStore.save(presets)
         refreshPresetExport()
         toasts.show("Imported \(incoming.count) preset(s)")
+    }
+
+    // MARK: - War Chest
+
+    private var selectedChest: NJChest? {
+        chests.first { $0.id == selectedChestID }
+    }
+
+    private func refreshChestExport() {
+        chestExportURL = NJChestStore.exportURL(chests)
+    }
+
+    /// Apply ≠ arm: the chest re-dresses the house's
+    /// configuration; nothing is started by it.
+    private func applySelectedChest() {
+        guard let chest = selectedChest else { return }
+        chest.apply(mouth: mouth)
+        toasts.show("Chest applied — \(chest.name) "
+                    + "(nothing started)")
+    }
+
+    private func saveCurrentChest() {
+        let name = chestNameDraft
+            .trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let snapshot = NJChest.capture(
+            id: chests.first { $0.name == name }?.id
+                ?? UUID().uuidString,
+            name: name)
+        if let index = chests.firstIndex(where: {
+            $0.id == snapshot.id
+        }) {
+            chests[index] = snapshot
+        } else {
+            chests.append(snapshot)
+        }
+        NJChestStore.save(chests)
+        selectedChestID = snapshot.id
+        chestNameDraft = ""
+        refreshChestExport()
+        toasts.show("Chest saved — \(name)")
+    }
+
+    private func deleteSelectedChest() {
+        guard let chest = selectedChest else { return }
+        chests.removeAll { $0.id == chest.id }
+        NJChestStore.save(chests)
+        selectedChestID = ""
+        refreshChestExport()
+        toasts.show("Chest deleted — \(chest.name)")
+    }
+
+    /// Import merges by id, as presets do.
+    private func importChests(_ result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer {
+            if scoped {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        guard let data = try? Data(contentsOf: url),
+              let incoming = NJChestStore.decode(data)
+        else {
+            toasts.show("That file is not a chests file",
+                        error: true)
+            return
+        }
+        for chest in incoming {
+            if let index = chests.firstIndex(where: {
+                $0.id == chest.id
+            }) {
+                chests[index] = chest
+            } else {
+                chests.append(chest)
+            }
+        }
+        NJChestStore.save(chests)
+        refreshChestExport()
+        toasts.show("Imported \(incoming.count) chest(s)")
     }
 
     /// Release a Network Trace with the section's settings.
