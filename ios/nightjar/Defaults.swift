@@ -61,6 +61,7 @@ enum SaneDefaults {
         "knocktalkRetentionHours", "knocktalkSuite",
         "knocktalkRelayEnabled", "knocktalkRelayURL",
         "knocktalkRelayToken", "knocktalkRelayBox",
+        "cadenceSealOn", "cadence.profiles",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
     ]
