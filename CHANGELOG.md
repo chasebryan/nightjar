@@ -411,6 +411,10 @@
   her own capabilities, so her answers
   know her hands.
 
+- **Swipe the keyboard away.** Anywhere in
+  the app, over any screen, sheet or form:
+  one swipe down and the keyboard folds.
+
 ## 4.2.0 — 2026-10-17 — the sleepwalker
 
 - **The great presenter audit.** Every sheet, cover,
