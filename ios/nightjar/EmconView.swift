@@ -7,6 +7,8 @@ struct EmconView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var emcon: Emcon
     @StateObject private var spar = Recon()
+    @StateObject private var assault = AssaultCenter()
+    @State private var armAssault = false
 
     @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
@@ -28,6 +30,8 @@ struct EmconView: View {
     var body: some View {
         List {
             statusSection
+            NetAssaultSectionView(center: assault,
+                                  armRequest: $armAssault)
             drillSection
             emissionsSection
             selfReconSection
@@ -69,6 +73,24 @@ struct EmconView: View {
         }
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
+        }
+        .confirmationDialog(
+            "Turn loose the net-assault?",
+            isPresented: $armAssault,
+            titleVisibility: .visible) {
+            Button("Begin the assault", role: .destructive) {
+                assault.arm()
+            }
+            Button("Not yet", role: .cancel) {}
+        } message: {
+            Text("Pass after pass it will sweep this wire, "
+                 + "let it announce itself, and knock the "
+                 + "full census against every known device "
+                 + "— for as long as you leave it armed. "
+                 + "Anything watching for exactly this will "
+                 + "see the phone coming, and on networks "
+                 + "you do not own that attention may arrive "
+                 + "with questions attached.")
         }
         .onAppear {
             emcon.restoreIfNeeded()
