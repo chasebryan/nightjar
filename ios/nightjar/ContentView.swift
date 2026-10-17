@@ -7,52 +7,54 @@ struct ContentView: View {
     @EnvironmentObject private var mouth: Mouth
     @State private var tab = 0
     @State private var showBoot = true
+    @ObservedObject private var themes = ThemeCenter.shared
 
     var body: some View {
         ZStack {
             AppBackdrop()
             TabView(selection: $tab) {
             ListenView(tab: $tab)
-                .appThemed()
+                .appThemed(.listen)
                 .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
             SendView()
-                .appThemed()
+                .appThemed(.send)
                 .tabItem { Label("Send", systemImage: "paperplane") }
                 .tag(1)
             ServeView()
-                .appThemed()
+                .appThemed(.serve)
                 .tabItem { Label("Serve", systemImage: "tray.and.arrow.down") }
                 .tag(2)
             SessionsView()
-                .appThemed()
+                .appThemed(.sessions)
                 .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
                 .tag(3)
             // Declaration order is the More list's order:
             // About heads it — it is the app's identity and its
             // options hub. Tags are unchanged by position.
             AboutView()
-                .appThemed()
+                .appThemed(.about)
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(5)
             ScanView(tab: $tab)
-                .appThemed()
+                .appThemed(.scan)
                 .tabItem { Label("Scan", systemImage: "scope") }
                 .tag(4)
             ReconBenchView(tab: $tab)
-                .appThemed()
+                .appThemed(.recon)
                 .tabItem { Label("Recon", systemImage: "target") }
                 .tag(6)
             EmconView()
-                .appThemed()
+                .appThemed(.emcon)
                 .tabItem { Label("EMCON", systemImage: "shield.slash") }
                 .tag(7)
             KnockChatView()
-                .appThemed()
+                .appThemed(.knocktalk)
                 .tabItem { Label("Knocktalk",
                                  systemImage: "message.badge.waveform") }
                 .tag(8)
         }
+        .tint(themes.current.accent)
         .onChange(of: tab) { _ in Haptics.select() }
         .onChange(of: mouth.reconHandoff) { handoff in
             // Counter-knock pivot: a tripwire row tapped in EMCON
@@ -833,6 +835,22 @@ struct AboutView: View {
                     }
                     .disabled(updater.checking)
 #endif
+                }
+                Section(header: Text("Colours")) {
+                    NavigationLink {
+                        ColoursView()
+                    } label: {
+                        Label("Themes & backdrops",
+                              systemImage: "paintpalette")
+                    }
+                    Text("Six themes ship with the app and "
+                         + "you can tailor your own; every tab "
+                         + "may wear its own backdrop — the "
+                         + "living wallpaper, the Jolly Roger, "
+                         + "the plain theme colour, or your own "
+                         + "image or GIF.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 Section(header: Text("Backdrop")) {
                     if let reel = Wallpaper.image {
