@@ -1,27 +1,10 @@
 import Combine
 import Foundation
+import PDFKit
 import SwiftUI
+import WebKit
 
 /// Skelli — the house's specialist.
-///
-/// Not a general intelligence and never pretending to
-/// be: a specialist for this one application, at home
-/// in it. Her knowledge is the app's own manual, her
-/// senses are the app's live state — the wire, the
-/// log, the mind, the instrument — and her hands are
-/// the app's own controls, worked through the same
-/// organs the tabs use. She keeps a memory of what
-/// she is told, and the conversation itself, between
-/// visits. The house is answered first, always; when
-/// a question leaves it, she researches through
-/// her own browser on the phone's connection and
-/// brings the answer back with its source named —
-/// with house particulars scrubbed from anything
-/// sent outward.
-///
-/// Loud and destructive levers keep their own
-/// confirmations: Skelli walks the operator to them
-/// and names why, rather than pulling them herself.
 
 extension Notification.Name {
     static let houseNavigate = Notification.Name(
@@ -506,8 +489,6 @@ struct SkelliNote: Identifiable, Codable {
 }
 
 /// Her persistence: the conversation and her notes in
-/// one small file in Documents. Capped, clearable by
-/// the operator, and wiped by her reset.
 enum SkelliStore {
     struct Saved: Codable {
         var lines: [SkelliLine] = []
@@ -544,6 +525,959 @@ enum SkelliMood {
     case idle, thinking, working, speaking
 }
 
+enum SkelliWeb {
+    struct Finding {
+        var text: String
+        var source: String
+        var url: String
+        var score: Int = 0
+        var preformatted: Bool = false
+    }
+
+    static func research(_ query: String,
+                         completion: @escaping (String) -> Void) {
+        let group = DispatchGroup()
+        let collect = DispatchQueue(label: "skelli.web.collect")
+        var instant: Finding?
+        var wiki: Finding?
+        var scouted: Finding?
+        var pages: [Finding] = []
+        var walls = 0
+        let terms = searchTerms(query)
+
+        if let url = endpoint("https://api.duckduckgo.com/",
+                              items: [
+                                  URLQueryItem(name: "q",
+                                               value: query),
+                                  URLQueryItem(name: "format",
+                                               value: "json"),
+                                  URLQueryItem(name: "no_html",
+                                               value: "1"),
+                                  URLQueryItem(name: "skip_disambig",
+                                               value: "1"),
+                              ]) {
+            group.enter()
+            fetchJSON(url) { dict in
+                let found = duckDuckGoFinding(dict)
+                collect.sync { instant = found }
+                group.leave()
+            }
+        }
+        if let url = endpoint("https://en.wikipedia.org/w/api.php",
+                              items: [
+                                  URLQueryItem(name: "action",
+                                               value: "query"),
+                                  URLQueryItem(name: "generator",
+                                               value: "search"),
+                                  URLQueryItem(name: "gsrsearch",
+                                               value: query),
+                                  URLQueryItem(name: "gsrlimit",
+                                               value: "3"),
+                                  URLQueryItem(name: "prop",
+                                               value: "extracts|info"),
+                                  URLQueryItem(name: "exintro",
+                                               value: "1"),
+                                  URLQueryItem(name: "explaintext",
+                                               value: "1"),
+                                  URLQueryItem(name: "inprop",
+                                               value: "url"),
+                                  URLQueryItem(name: "format",
+                                               value: "json"),
+                              ]) {
+            group.enter()
+            fetchJSON(url) { dict in
+                let found = wikipediaFinding(dict)
+                collect.sync { wiki = found }
+                group.leave()
+            }
+        }
+
+        group.enter()
+        scout(query: query, terms: terms) { found in
+            collect.sync { scouted = found }
+            group.leave()
+        }
+
+        group.enter()
+        if let lite = endpoint(
+            "https://lite.duckduckgo.com/lite/",
+            items: [URLQueryItem(name: "q", value: query)]) {
+            fetchText(lite) { html in
+                let results = html.map(liteResults) ?? []
+                for result in results.prefix(3) {
+                    group.enter()
+                    gatherPage(result, terms: terms) {
+                        finding, hitWall in
+                        collect.sync {
+                            if let finding = finding {
+                                pages.append(finding)
+                            }
+                            if hitWall { walls += 1 }
+                        }
+                        group.leave()
+                    }
+                }
+                group.leave()
+            }
+        } else {
+            group.leave()
+        }
+
+        group.notify(queue: .main) {
+            completion(compose(query: query, scout: scouted,
+                               pages: pages, instant: instant,
+                               wiki: wiki, walls: walls))
+        }
+    }
+
+    // MARK: fetching
+
+    private static func endpoint(
+        _ base: String, items: [URLQueryItem]) -> URL? {
+        var components = URLComponents(string: base)
+        components?.queryItems = items
+        return components?.url
+    }
+
+    private static func fetchData(
+        _ url: URL,
+        completion: @escaping (Data?, HTTPURLResponse?) -> Void) {
+        var request = URLRequest(url: url,
+                                 timeoutInterval: 12)
+        request.setValue(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 "
+                + "like Mac OS X) AppleWebKit/605.1.15 "
+                + "(KHTML, like Gecko) Version/17.0 "
+                + "Mobile/15E148 Safari/604.1 Skelli",
+            forHTTPHeaderField: "User-Agent")
+        URLSession.shared.dataTask(with: request) {
+            data, response, _ in
+            completion(data, response as? HTTPURLResponse)
+        }.resume()
+    }
+
+    private static func fetchText(
+        _ url: URL, completion: @escaping (String?) -> Void) {
+        fetchData(url) { data, response in
+            guard let http = response,
+                  (200...299).contains(http.statusCode),
+                  let data = data
+            else {
+                completion(nil)
+                return
+            }
+            completion(
+                String(data: data, encoding: .utf8)
+                    ?? String(data: data,
+                              encoding: .isoLatin1))
+        }
+    }
+
+    private static func fetchJSON(
+        _ url: URL,
+        completion: @escaping ([String: Any]?) -> Void) {
+        fetchData(url) { data, response in
+            guard let http = response,
+                  (200...299).contains(http.statusCode),
+                  let data = data,
+                  let object = try? JSONSerialization
+                      .jsonObject(with: data),
+                  let dict = object as? [String: Any]
+            else {
+                completion(nil)
+                return
+            }
+            completion(dict)
+        }
+    }
+
+    // MARK: the instant parsers
+
+    private static func duckDuckGoFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let dict = dict else { return nil }
+        let source = (dict["AbstractSource"] as? String)
+            ?? "DuckDuckGo"
+        if let answer = dict["Answer"] as? String,
+           !answer.isEmpty {
+            return Finding(text: answer, source: source,
+                           url: (dict["AbstractURL"]
+                               as? String)
+                               ?? "https://duckduckgo.com")
+        }
+        if let abstract = dict["AbstractText"] as? String,
+           !abstract.isEmpty {
+            return Finding(text: abstract, source: source,
+                           url: (dict["AbstractURL"]
+                               as? String)
+                               ?? "https://duckduckgo.com")
+        }
+        return firstTopic(dict["RelatedTopics"])
+    }
+
+    private static func firstTopic(_ any: Any?) -> Finding? {
+        guard let topics = any as? [[String: Any]] else {
+            return nil
+        }
+        for topic in topics {
+            if let text = topic["Text"] as? String,
+               !text.isEmpty {
+                return Finding(
+                    text: text, source: "DuckDuckGo",
+                    url: (topic["FirstURL"] as? String)
+                        ?? "https://duckduckgo.com")
+            }
+            if let nested = firstTopic(topic["Topics"]) {
+                return nested
+            }
+        }
+        return nil
+    }
+
+    private static func wikipediaFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let query = dict?["query"] as? [String: Any],
+              let pages = query["pages"]
+                  as? [String: [String: Any]]
+        else { return nil }
+        let ordered = pages.values.sorted {
+            (($0["index"] as? Int) ?? 99)
+                < (($1["index"] as? Int) ?? 99)
+        }
+        for page in ordered {
+            if let extract = page["extract"] as? String,
+               !extract.isEmpty {
+                return Finding(
+                    text: extract, source: "Wikipedia",
+                    url: (page["fullurl"] as? String)
+                        ?? "https://en.wikipedia.org")
+            }
+        }
+        return nil
+    }
+
+    // MARK: the scouts — friendly doors, chosen by intent
+
+    private static func scout(
+        query: String, terms: [String],
+        completion: @escaping (Finding?) -> Void) {
+        let q = query.lowercased()
+
+        if let number = firstCapture(
+            "rfc\\s*#?\\s*(\\d{1,5})", in: q),
+           let url = URL(string: "https://www.rfc-editor.org"
+                         + "/rfc/rfc" + number + ".txt") {
+            fetchText(url) { text in
+                completion(text.map {
+                    Finding(
+                        text: bestExcerpt(
+                            $0, terms: terms + ["abstract"],
+                            maxChars: 640),
+                        source: "RFC " + number
+                            + " — the RFC Editor",
+                        url: "https://www.rfc-editor.org"
+                            + "/info/rfc" + number,
+                        score: 100, preformatted: true)
+                })
+            }
+            return
+        }
+
+        if q.contains("arxiv") || q.contains("paper")
+            || q.contains("study")
+            || q.contains("journal article") {
+            let encoded = query.addingPercentEncoding(
+                withAllowedCharacters:
+                    .urlQueryAllowed) ?? query
+            if let url = URL(string: "https://export.arxiv.org"
+                             + "/api/query?search_query=all:"
+                             + encoded
+                             + "&start=0&max_results=2") {
+                fetchText(url) { xml in
+                    completion(xml.flatMap(arxivFinding))
+                }
+                return
+            }
+        }
+
+        if q.contains("book") || q.contains("author")
+            || q.contains("novel") || q.contains("isbn") {
+            if let url = endpoint(
+                "https://openlibrary.org/search.json",
+                items: [URLQueryItem(name: "q",
+                                     value: query),
+                        URLQueryItem(name: "limit",
+                                     value: "3")]) {
+                fetchJSON(url) { dict in
+                    completion(openLibraryFinding(dict))
+                }
+                return
+            }
+        }
+
+        if q.contains("github") || q.contains("repository")
+            || q.contains("repositories")
+            || q.contains(" repo ")
+            || q.hasSuffix(" repo") {
+            if let url = endpoint(
+                "https://api.github.com/search/repositories",
+                items: [URLQueryItem(name: "q",
+                                     value: query),
+                        URLQueryItem(name: "sort",
+                                     value: "stars"),
+                        URLQueryItem(name: "per_page",
+                                     value: "3")]) {
+                fetchJSON(url) { dict in
+                    completion(githubFinding(dict))
+                }
+                return
+            }
+        }
+
+        if q.contains("stack overflow")
+            || q.contains("stackoverflow") {
+            let cleaned = q
+                .replacingOccurrences(
+                    of: "stack overflow", with: "")
+                .replacingOccurrences(
+                    of: "stackoverflow", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            if let url = endpoint(
+                "https://api.stackexchange.com/2.3"
+                    + "/search/advanced",
+                items: [URLQueryItem(name: "order",
+                                     value: "desc"),
+                        URLQueryItem(name: "sort",
+                                     value: "relevance"),
+                        URLQueryItem(name: "q",
+                                     value: cleaned),
+                        URLQueryItem(name: "site",
+                                     value: "stackoverflow"),
+                        URLQueryItem(name: "pagesize",
+                                     value: "3")]) {
+                fetchJSON(url) { dict in
+                    completion(stackExchangeFinding(dict))
+                }
+                return
+            }
+        }
+
+        completion(nil)
+    }
+
+    private static func arxivFinding(_ xml: String)
+        -> Finding? {
+        let entries = regexMatches(
+            "(?s)<entry>(.*?)</entry>", in: xml)
+        guard !entries.isEmpty else { return nil }
+        var lines: [String] = []
+        var firstURL = "https://arxiv.org"
+        for entry in entries.prefix(2) {
+            let block = entry[1]
+            let title = clean(decodeEntities(
+                firstCapture("<title>(.*?)</title>",
+                             in: block) ?? ""))
+            let summary = clean(decodeEntities(
+                firstCapture("<summary>(.*?)</summary>",
+                             in: block) ?? ""))
+            let link = firstCapture("<id>(.*?)</id>",
+                                    in: block) ?? firstURL
+            if lines.isEmpty { firstURL = link }
+            lines.append(title + " — "
+                         + excerpt(summary, maxChars: 300))
+        }
+        return Finding(text: lines.joined(separator: "\n"),
+                       source: "arXiv", url: firstURL,
+                       score: 60, preformatted: true)
+    }
+
+    private static func openLibraryFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let docs = dict?["docs"]
+                as? [[String: Any]], !docs.isEmpty
+        else { return nil }
+        var lines: [String] = []
+        var firstURL = "https://openlibrary.org"
+        for doc in docs.prefix(3) {
+            let title = (doc["title"] as? String)
+                ?? "Untitled"
+            let authors = (doc["author_name"]
+                as? [String])?.joined(separator: ", ")
+            let year = doc["first_publish_year"] as? Int
+            var line = title
+            if let authors = authors { line += " by " + authors }
+            if let year = year { line += " (\(year))" }
+            lines.append(line)
+            if lines.count == 1,
+               let key = doc["key"] as? String {
+                firstURL = "https://openlibrary.org" + key
+            }
+        }
+        return Finding(text: lines.joined(separator: "\n"),
+                       source: "Open Library", url: firstURL,
+                       score: 60, preformatted: true)
+    }
+
+    private static func githubFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let items = dict?["items"]
+                as? [[String: Any]], !items.isEmpty
+        else { return nil }
+        var lines: [String] = []
+        var firstURL = "https://github.com"
+        for item in items.prefix(3) {
+            let name = (item["full_name"] as? String)
+                ?? "unknown"
+            let stars = (item["stargazers_count"] as? Int)
+                ?? 0
+            let about = (item["description"] as? String)
+                ?? "no description"
+            lines.append(name + " (★\(stars)): " + about)
+            if lines.count == 1,
+               let url = item["html_url"] as? String {
+                firstURL = url
+            }
+        }
+        return Finding(text: lines.joined(separator: "\n"),
+                       source: "GitHub", url: firstURL,
+                       score: 60, preformatted: true)
+    }
+
+    private static func stackExchangeFinding(
+        _ dict: [String: Any]?) -> Finding? {
+        guard let items = dict?["items"]
+                as? [[String: Any]], !items.isEmpty
+        else { return nil }
+        var lines: [String] = []
+        var firstURL = "https://stackoverflow.com"
+        for item in items.prefix(3) {
+            let title = clean(decodeEntities(
+                stripTags((item["title"] as? String) ?? "")))
+            let answers = (item["answer_count"] as? Int)
+                ?? 0
+            lines.append(title + " — \(answers) answer"
+                         + (answers == 1 ? "" : "s"))
+            if lines.count == 1,
+               let link = item["link"] as? String {
+                firstURL = link
+            }
+        }
+        return Finding(text: lines.joined(separator: "\n"),
+                       source: "Stack Overflow", url: firstURL,
+                       score: 60, preformatted: true)
+    }
+
+    // MARK: her browser — search, visit, read
+
+    private static func liteResults(_ html: String)
+        -> [(title: String, url: URL)] {
+        var out: [(title: String, url: URL)] = []
+        var seen = Set<String>()
+        for match in regexMatches(
+            "(?is)<a[^>]+href=\"([^\"]+)\"[^>]*>(.*?)</a>",
+            in: html) {
+            var href = match[1]
+            if let marker = href.range(of: "uddg=") {
+                let tail = href[marker.upperBound...]
+                let raw = tail.split(separator: "&")
+                    .first.map(String.init) ?? ""
+                href = raw.removingPercentEncoding ?? raw
+            }
+            guard href.hasPrefix("http"),
+                  let url = URL(string: href),
+                  let host = url.host,
+                  !host.contains("duckduckgo.com"),
+                  !skippedDomain(host),
+                  !seen.contains(href)
+            else { continue }
+            let title = clean(decodeEntities(
+                stripTags(match[2])))
+            guard title.count >= 3 else { continue }
+            seen.insert(href)
+            out.append((title: title, url: url))
+        }
+        return out
+    }
+
+    private static func skippedDomain(_ host: String)
+        -> Bool {
+        ["nytimes.com", "wsj.com", "ft.com",
+         "bloomberg.com", "linkedin.com",
+         "facebook.com", "instagram.com", "x.com",
+         "twitter.com", "pinterest.com", "quora.com",
+         "scribd.com", "researchgate.net"]
+            .contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    private static func gatherPage(
+        _ result: (title: String, url: URL),
+        terms: [String],
+        completion: @escaping (Finding?, Bool) -> Void) {
+        fetchData(result.url) { data, response in
+            guard let data = data, let http = response,
+                  (200...299).contains(http.statusCode)
+            else {
+                completion(nil, false)
+                return
+            }
+            let mime = http.mimeType ?? ""
+            if mime.contains("pdf")
+                || result.url.pathExtension
+                    .lowercased() == "pdf" {
+                if let text = pdfText(data) {
+                    completion(Finding(
+                        text: bestExcerpt(text, terms: terms),
+                        source: result.title,
+                        url: result.url.absoluteString,
+                        score: score(text, terms: terms),
+                        preformatted: true), false)
+                } else {
+                    completion(nil, false)
+                }
+                return
+            }
+            guard let html = String(data: data,
+                                    encoding: .utf8)
+                    ?? String(data: data,
+                              encoding: .isoLatin1)
+            else {
+                completion(nil, false)
+                return
+            }
+            if hostile(html) {
+                completion(nil, true)
+                return
+            }
+            let title = pageTitle(html) ?? result.title
+            let extracted = extractText(html)
+            if extracted.count >= 600 {
+                completion(Finding(
+                    text: bestExcerpt(extracted,
+                                      terms: terms),
+                    source: title,
+                    url: result.url.absoluteString,
+                    score: score(extracted, terms: terms),
+                    preformatted: true), false)
+                return
+            }
+            DispatchQueue.main.async {
+                SkelliWebRenderer.shared.render(
+                    url: result.url) { rendered in
+                    if let rendered = rendered,
+                       rendered.count > extracted.count {
+                        if hostile(rendered) {
+                            completion(nil, true)
+                            return
+                        }
+                        completion(Finding(
+                            text: bestExcerpt(rendered,
+                                              terms: terms),
+                            source: title,
+                            url: result.url.absoluteString,
+                            score: score(rendered,
+                                         terms: terms),
+                            preformatted: true), false)
+                    } else if extracted.count >= 200 {
+                        completion(Finding(
+                            text: bestExcerpt(extracted,
+                                              terms: terms),
+                            source: title,
+                            url: result.url.absoluteString,
+                            score: score(extracted,
+                                         terms: terms),
+                            preformatted: true), false)
+                    } else {
+                        completion(nil, false)
+                    }
+                }
+            }
+        }
+    }
+
+    private static func hostile(_ page: String) -> Bool {
+        let low = page.lowercased()
+        return ["are you a robot", "verify you are human",
+                "unusual traffic from your computer",
+                "challenge-platform",
+                "checking your browser before accessing",
+                "request blocked",
+                "please complete the security check",
+                "enable javascript and cookies to continue"]
+            .contains { low.contains($0) }
+    }
+
+    private static func pageTitle(_ html: String)
+        -> String? {
+        guard let raw = firstCapture(
+            "(?is)<title[^>]*>(.*?)</title>", in: html)
+        else { return nil }
+        let title = clean(decodeEntities(stripTags(raw)))
+        return title.isEmpty ? nil
+            : String(title.prefix(90))
+    }
+
+    private static func extractText(_ html: String)
+        -> String {
+        var s = html
+        for tag in ["script", "style", "noscript", "svg",
+                    "header", "footer", "nav", "aside",
+                    "form", "iframe"] {
+            s = regexReplace(
+                s, "(?is)<" + tag + "\\b[^>]*>.*?</"
+                    + tag + ">", " ")
+        }
+        s = regexReplace(s, "(?is)<br\\s*/?>", "\n")
+        s = regexReplace(
+            s, "(?is)</(p|div|li|h1|h2|h3|h4|tr)>", "\n")
+        s = decodeEntities(stripTags(s))
+        let lines = s.components(separatedBy: "\n")
+            .map { clean($0) }
+            .filter { $0.count >= 25 }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func pdfText(_ data: Data) -> String? {
+        guard data.count <= 12_000_000,
+              let doc = PDFDocument(data: data)
+        else { return nil }
+        var out = ""
+        for index in 0..<doc.pageCount {
+            if let page = doc.page(at: index),
+               let text = page.string {
+                out += text + "\n"
+            }
+            if out.count > 24_000 { break }
+        }
+        return out.isEmpty ? nil : out
+    }
+
+    // MARK: composing the answer
+
+    private static func compose(query: String,
+                                scout: Finding?,
+                                pages: [Finding],
+                                instant: Finding?,
+                                wiki: Finding?,
+                                walls: Int) -> String {
+        var blocks: [String] = []
+        if let scout = scout {
+            blocks.append(block(scout))
+        }
+        for page in pages.sorted(by: {
+            $0.score > $1.score
+        }) {
+            if blocks.count >= 3 { break }
+            blocks.append(block(page))
+        }
+        if !blocks.isEmpty {
+            var out = "I went out through my browser. "
+                + "What holds up:\n\n"
+                + blocks.joined(separator: "\n\n")
+            if walls > 0 {
+                out += "\n\n(" + "\(walls) result"
+                    + (walls == 1 ? "" : "s")
+                    + " hid behind a wall or a check — "
+                    + "I walk past those, and work the "
+                    + "sources that let me in cleanly.)"
+            }
+            return out
+        }
+        if let instant = instant {
+            var lines = ["From the web — "
+                         + instant.source + ":",
+                         excerpt(instant.text),
+                         "Source: " + instant.url]
+            if let wiki = wiki, wiki.url != instant.url {
+                lines.append("Also: " + wiki.source
+                             + " — " + wiki.url)
+            }
+            return lines.joined(separator: "\n")
+        }
+        if let wiki = wiki {
+            return "From the web — " + wiki.source + ":\n"
+                + excerpt(wiki.text)
+                + "\nSource: " + wiki.url
+        }
+        var failure = "I went out through my browser "
+            + "for '" + query + "' and the sources "
+            + "that let a machine in cleanly — the "
+            + "open indexes, the lite index, the pages "
+            + "themselves — brought nothing solid back."
+        if walls > 0 {
+            failure += " " + "\(walls) result"
+                + (walls == 1 ? "" : "s")
+                + " hid behind a wall or a check; I "
+                + "don't climb those."
+        }
+        failure += " Rephrase it, or name the thing "
+            + "more plainly, and I'll go again."
+        return failure
+    }
+
+    private static func block(_ finding: Finding)
+        -> String {
+        "— " + finding.source + ": " + finding.text
+            + "\nSource: " + finding.url
+    }
+
+    // MARK: text work
+
+    private static func searchTerms(_ query: String)
+        -> [String] {
+        let stop: Set<String> = [
+            "what", "is", "the", "a", "an", "of", "for",
+            "in", "on", "to", "and", "or", "how", "does",
+            "do", "did", "who", "when", "where", "why",
+            "can", "could", "should", "would", "tell",
+            "me", "about", "search", "web", "online",
+            "research", "look", "up", "find", "explain",
+        ]
+        var seen = Set<String>()
+        var out: [String] = []
+        for word in query.lowercased().components(
+            separatedBy: CharacterSet.alphanumerics
+                .inverted) {
+            if word.count >= 3, !stop.contains(word),
+               !seen.contains(word) {
+                seen.insert(word)
+                out.append(word)
+            }
+        }
+        return Array(out.prefix(8))
+    }
+
+    private static func score(_ text: String,
+                              terms: [String]) -> Int {
+        let low = text.lowercased()
+        var total = 0
+        for term in terms {
+            total += min(
+                low.components(separatedBy: term)
+                    .count - 1, 8)
+        }
+        return total
+    }
+
+    private static func sentences(_ text: String)
+        -> [String] {
+        clean(text).components(separatedBy: ". ")
+            .map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            .filter { !$0.isEmpty }
+            .map { $0.hasSuffix(".") ? $0 : $0 + "." }
+    }
+
+    private static func bestExcerpt(_ text: String,
+                                    terms: [String],
+                                    maxChars: Int = 520)
+        -> String {
+        let all = sentences(text)
+        guard !all.isEmpty else {
+            return excerpt(text, maxChars: maxChars)
+        }
+        var best = 0
+        var bestScore = -1
+        for (index, sentence) in all.enumerated() {
+            let value = score(sentence, terms: terms)
+            if value > bestScore {
+                bestScore = value
+                best = index
+            }
+        }
+        if bestScore <= 0 {
+            return excerpt(text, maxChars: maxChars)
+        }
+        var out = all[best]
+        var step = 1
+        while out.count < maxChars, step <= all.count {
+            if best + step < all.count {
+                out += " " + all[best + step]
+            }
+            if out.count >= maxChars { break }
+            if best - step >= 0 {
+                out = all[best - step] + " " + out
+            }
+            step += 1
+        }
+        return out.count > maxChars + 160
+            ? excerpt(out, maxChars: maxChars) : out
+    }
+
+    private static func excerpt(_ text: String,
+                                maxChars: Int = 720)
+        -> String {
+        let cleaned = clean(text)
+        if cleaned.count <= maxChars { return cleaned }
+        var out = ""
+        for part in cleaned.components(separatedBy: ". ") {
+            let sentence = part.hasSuffix(".")
+                ? part : part + "."
+            if out.isEmpty {
+                if sentence.count > maxChars { break }
+                out = sentence
+            } else if (out + " " + sentence).count
+                        <= maxChars {
+                out += " " + sentence
+            } else {
+                break
+            }
+            if out.count > maxChars - 120 { break }
+        }
+        return out.isEmpty
+            ? String(cleaned.prefix(maxChars)) + "…"
+            : out
+    }
+
+    private static func clean(_ text: String) -> String {
+        text.components(
+            separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private static func stripTags(_ html: String)
+        -> String {
+        regexReplace(html, "(?s)<[^>]+>", " ")
+    }
+
+    private static func decodeEntities(_ text: String)
+        -> String {
+        var out = text
+        for (entity, replacement) in [
+            ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+            ("&quot;", "\""), ("&apos;", "'"),
+            ("&#39;", "'"), ("&#x27;", "'"),
+            ("&nbsp;", " "), ("&#8217;", "’"),
+            ("&#8220;", "“"), ("&#8221;", "”"),
+            ("&#8211;", "–"), ("&#8212;", "—"),
+            ("&#038;", "&"),
+        ] {
+            out = out.replacingOccurrences(
+                of: entity, with: replacement)
+        }
+        return out
+    }
+
+    private static func regexReplace(_ s: String,
+                                     _ pattern: String,
+                                     _ template: String)
+        -> String {
+        s.replacingOccurrences(of: pattern, with: template,
+                               options: .regularExpression)
+    }
+
+    private static func regexMatches(_ pattern: String,
+                                     in s: String)
+        -> [[String]] {
+        guard let re = try? NSRegularExpression(
+            pattern: pattern) else { return [] }
+        let range = NSRange(s.startIndex..., in: s)
+        return re.matches(in: s, range: range).map {
+            match in
+            (0..<match.numberOfRanges).map { index in
+                guard let r = Range(
+                    match.range(at: index), in: s)
+                else { return "" }
+                return String(s[r])
+            }
+        }
+    }
+
+    private static func firstCapture(_ pattern: String,
+                                     in s: String)
+        -> String? {
+        regexMatches(pattern, in: s)
+            .first.flatMap {
+                $0.count > 1 && !$0[1].isEmpty
+                    ? $0[1] : nil
+            }
+    }
+}
+
+final class SkelliWebRenderer: NSObject,
+                               WKNavigationDelegate {
+    static let shared = SkelliWebRenderer()
+
+    private weak var webView: WKWebView?
+    private var completion: ((String?) -> Void)?
+    private var timeout: DispatchWorkItem?
+
+    func attach(_ view: WKWebView) {
+        webView = view
+        view.navigationDelegate = self
+    }
+
+    func render(url: URL,
+                completion: @escaping (String?) -> Void) {
+        guard let view = webView, self.completion == nil
+        else {
+            completion(nil)
+            return
+        }
+        self.completion = completion
+        view.stopLoading()
+        view.load(URLRequest(url: url,
+                             timeoutInterval: 15))
+        let work = DispatchWorkItem { [weak self] in
+            self?.finish(nil)
+        }
+        timeout = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 18, execute: work)
+    }
+
+    func webView(_ webView: WKWebView,
+                 didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript(
+            "document.body ? document.body.innerText : ''"
+        ) { [weak self] result, _ in
+            self?.finish(result as? String)
+        }
+    }
+
+    func webView(_ webView: WKWebView,
+                 didFail navigation: WKNavigation!,
+                 withError error: Error) {
+        finish(nil)
+    }
+
+    func webView(_ webView: WKWebView,
+                 didFailProvisionalNavigation
+                     navigation: WKNavigation!,
+                 withError error: Error) {
+        finish(nil)
+    }
+
+    private func finish(_ text: String?) {
+        timeout?.cancel()
+        timeout = nil
+        let done = completion
+        completion = nil
+        webView?.stopLoading()
+        done?(text)
+    }
+}
+
+struct SkelliWebHost: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        config.defaultWebpagePreferences
+            .allowsContentJavaScript = true
+        let view = WKWebView(
+            frame: CGRect(x: 0, y: 0, width: 2, height: 2),
+            configuration: config)
+        view.alpha = 0.02
+        view.isUserInteractionEnabled = false
+        SkelliWebRenderer.shared.attach(view)
+        return view
+    }
+
+    func updateUIView(_ uiView: WKWebView,
+                      context: Context) { }
+}
+
 // MARK: - The center
 
 final class SkelliCenter: ObservableObject {
@@ -553,7 +1487,6 @@ final class SkelliCenter: ObservableObject {
     @Published var notes: [SkelliNote] = []
     @Published var mood: SkelliMood = .idle
     /// Her outward eye, on unless the operator
-    /// closes it. Survives launches; Reset restores it.
     @Published var webResearchEnabled: Bool = true {
         didSet {
             UserDefaults.standard.set(
@@ -568,8 +1501,6 @@ final class SkelliCenter: ObservableObject {
     private var sweepWatch: AnyCancellable?
     private var idleWork: DispatchWorkItem?
     /// The conversation's short-term memory: the device
-    /// under discussion, and an offered action awaiting
-    /// a yes.
     private var lastDeviceIP: String?
     private var pendingAction: (() -> Void)?
 
@@ -583,8 +1514,6 @@ final class SkelliCenter: ObservableObject {
     }
 
     /// The app hands over its own organs at first light,
-    /// so the specialist works the real controls, not
-    /// stand-ins.
     func wire(mouth: Mouth, emcon: Emcon,
               post: ListeningPost) {
         self.mouth = mouth
@@ -612,7 +1541,6 @@ final class SkelliCenter: ObservableObject {
     }
 
     /// The operator empties the conversation. Her notes
-    /// stay — forgetting those is its own act.
     func clearConversation() {
         lines = []
         pendingAction = nil
@@ -621,7 +1549,6 @@ final class SkelliCenter: ObservableObject {
     }
 
     /// Back to her defaults: no conversation, no notes,
-    /// nothing pending. The house itself is untouched.
     func resetToDefaults() {
         lines = []
         notes = []
@@ -658,7 +1585,6 @@ final class SkelliCenter: ObservableObject {
                                  text: text))
         persist()
         // Thinking is always on — a short, real beat
-        // while she consults the house, then the answer.
         mood = .thinking
         let q = text.lowercased()
         DispatchQueue.main.asyncAfter(
@@ -668,7 +1594,6 @@ final class SkelliCenter: ObservableObject {
     }
 
     /// The directory's way in: the entry itself,
-    /// verbatim from the manual.
     func askAbout(_ entry: SkelliEntry) {
         lines.append(SkelliLine(fromOperator: true,
                                  text: entry.title))
@@ -734,7 +1659,6 @@ final class SkelliCenter: ObservableObject {
                 return
             }
             // No note matched — fall through; the
-            // clear-guidance below may be the intent.
         }
 
         // Greetings and the tour.
@@ -757,8 +1681,6 @@ final class SkelliCenter: ObservableObject {
         }
 
         // Explanations go to the manual before the
-        // senses — "what is the mind" wants the
-        // manual, not the brief.
         if q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.contains("how does")
             || q.contains("explain") {
@@ -948,7 +1870,6 @@ final class SkelliCenter: ObservableObject {
         }
 
         // A device, in depth — every organ's word
-        // on it, composed.
         if let neighbor = matchDevice(q) {
             lastDeviceIP = neighbor.ip
             say(deviceReport(neighbor))
@@ -1000,15 +1921,10 @@ final class SkelliCenter: ObservableObject {
         }
 
         // Beyond the house: research it through the
-        // phone's own connection.
         researchWeb(for: q)
     }
 
     /// What the house cannot answer, the web might —
-    /// through this phone's own connection. The query
-    /// is scrubbed first: house details (private
-    /// addresses, .local names, anything key-shaped)
-    /// are never sent outward.
     private func researchWeb(for q: String) {
         guard webResearchEnabled else {
             say("That's outside the house, and my "
@@ -1040,8 +1956,6 @@ final class SkelliCenter: ObservableObject {
     }
 
     /// Build the outward query: command words off,
-    /// house particulars out. Nil when what remains
-    /// is too thin — or too private — to send.
     private static func webQuery(from q: String) -> String? {
         let lowered = q.lowercased()
         if ["password", "pairing key", "secret",
@@ -1168,7 +2082,6 @@ final class SkelliCenter: ObservableObject {
 
     private func roomLine(_ neighbor: Neighbor) -> String {
         // A placement is a position; the room is
-        // derived from it, by the Map's own reckoning.
         if let room = MapStore.shared.room(of: neighbor.ip) {
             return "\(neighbor.displayName) sits in "
                 + room.name + " — your placement, kept "
@@ -1653,13 +2566,7 @@ final class SkelliCenter: ObservableObject {
 
 // MARK: - Her body
 
-/// Skelli, drawn and alive: a skull at a laptop, in
-/// the house's own line-art tradition. One Canvas,
-/// driven by the clock and her mood — breathing and
-/// blinking at rest, eyes up and dots circling while
-/// she thinks, hands typing while she works, jaw
-/// moving while she speaks. The glow is the theme's
-/// own accent, so she wears the house's colours.
+/// Skelli, drawn from the original: the skeleton in
 struct SkelliAvatar: View {
     var mood: SkelliMood = .idle
     var size: CGFloat = 96
@@ -1674,36 +2581,140 @@ struct SkelliAvatar: View {
                          .timeIntervalSinceReferenceDate)
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: size * 0.75, height: size)
     }
 
     private func draw(context: GraphicsContext,
                       canvas: CGSize, t: TimeInterval) {
-        let u = canvas.width / 100
+        let u = canvas.width / 75
         let accent = themes.current.accent
-        let bone = Color(red: 0.91, green: 0.89,
-                         blue: 0.84)
-        let boneDim = Color(red: 0.78, green: 0.75,
-                            blue: 0.68)
-        let dark = Color(red: 0.08, green: 0.09,
-                         blue: 0.11)
-        let hood = Color(red: 0.16, green: 0.18,
-                         blue: 0.22)
-        let detail = size >= 48
+        let bone = Color(red: 0.93, green: 0.92,
+                         blue: 0.89)
+        let boneShade = Color(red: 0.79, green: 0.78,
+                              blue: 0.72)
+        let black = Color(red: 0.05, green: 0.05,
+                          blue: 0.07)
+        let navy = Color(red: 0.16, green: 0.24,
+                         blue: 0.42)
+        let navyDark = Color(red: 0.10, green: 0.16,
+                             blue: 0.30)
+        let steel = Color(red: 0.36, green: 0.42,
+                          blue: 0.50)
+        let steelDark = Color(red: 0.24, green: 0.29,
+                              blue: 0.36)
+        let shoe = Color(red: 0.23, green: 0.27,
+                           blue: 0.36)
+        let detail = size >= 56
 
-        // Breathing.
         let bob = mood == .speaking
-            ? sin(t * 2.2) * 0.7
-            : sin(t * 1.3) * 1.2
+            ? sin(t * 2.2) * 0.5 : sin(t * 1.3) * 0.8
         let dy = bob * u
+        let faceDX = mood == .thinking
+            ? sin(t * 0.8) * 0.9 * u : 0
+        let faceDY = (mood == .working ? 1.1 : 0) * u
 
-        // The hood, behind everything.
+        // Legs and sneakers — the ground she stands on.
+        for side in [-1.0, 1.0] {
+            let hipX = (37.5 + side * 6.5) * u
+            let kneeX = (37.5 + side * 6.8) * u
+            var leg = Path()
+            leg.move(to: CGPoint(x: hipX, y: 80 * u))
+            leg.addLine(to: CGPoint(x: kneeX, y: 90 * u))
+            leg.addLine(to: CGPoint(x: kneeX, y: 96 * u))
+            context.stroke(leg, with: .color(boneShade),
+                           style: StrokeStyle(
+                               lineWidth: 4.2 * u,
+                               lineCap: .round,
+                               lineJoin: .round))
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: kneeX - 2 * u, y: 88.2 * u,
+                    width: 4 * u, height: 4 * u)),
+                with: .color(bone))
+            context.fill(
+                Path(roundedRect: CGRect(
+                    x: kneeX - 6.8 * u, y: 95.6 * u,
+                    width: 13.5 * u, height: 4.4 * u),
+                     cornerRadius: 2 * u),
+                with: .color(shoe))
+            if detail {
+                for lace in 0..<2 {
+                    let lx = kneeX
+                        + (-2.2 + Double(lace) * 3.4) * u
+                    var mark = Path()
+                    mark.move(to: CGPoint(x: lx, y: 96.6 * u))
+                    mark.addLine(to: CGPoint(
+                        x: lx + 1.6 * u, y: 98 * u))
+                    context.stroke(
+                        mark, with: .color(black.opacity(0.5)),
+                        lineWidth: max(0.7, 0.7 * u))
+                }
+            }
+        }
+
+        // The pelvis, below the hem.
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: 30 * u, y: 75 * u + dy * 0.4,
+                width: 15 * u, height: 7.5 * u)),
+            with: .color(boneShade))
+
+        // The open hoodie: two panels, a hem, and the
+        for panelX in [17.0, 41.0] {
+            context.fill(
+                Path(roundedRect: CGRect(
+                    x: panelX * u, y: 41 * u + dy,
+                    width: 17 * u, height: 33 * u),
+                     cornerRadius: 5 * u),
+                with: .color(navy))
+        }
         context.fill(
             Path(roundedRect: CGRect(
-                x: 14 * u, y: 6 * u + dy,
-                width: 72 * u, height: 66 * u),
-                 cornerRadius: 30 * u),
-            with: .color(hood))
+                x: 33.5 * u, y: 42 * u + dy,
+                width: 8 * u, height: 27 * u),
+                 cornerRadius: 3 * u),
+            with: .color(black.opacity(0.85)))
+        if detail {
+            for rib in 0..<4 {
+                let ry = (46 + Double(rib) * 5.5) * u + dy
+                var arc = Path()
+                arc.move(to: CGPoint(x: 33.8 * u, y: ry))
+                arc.addQuadCurve(
+                    to: CGPoint(x: 41.2 * u, y: ry),
+                    control: CGPoint(x: 37.5 * u,
+                                     y: ry + 2.6 * u))
+                context.stroke(
+                    arc, with: .color(bone),
+                    style: StrokeStyle(lineWidth: 1.9 * u,
+                                       lineCap: .round))
+            }
+            var sternum = Path()
+            sternum.move(to: CGPoint(x: 37.5 * u,
+                                     y: 44 * u + dy))
+            sternum.addLine(to: CGPoint(x: 37.5 * u,
+                                        y: 66 * u + dy))
+            context.stroke(sternum, with: .color(bone),
+                           lineWidth: 2.2 * u)
+        }
+        context.fill(
+            Path(roundedRect: CGRect(
+                x: 17 * u, y: 68 * u + dy,
+                width: 41 * u, height: 6.5 * u),
+                 cornerRadius: 3 * u),
+            with: .color(navyDark))
+
+        // The hood, up and framing the skull.
+        context.fill(
+            Path(roundedRect: CGRect(
+                x: 15 * u, y: 3 * u + dy,
+                width: 45 * u, height: 40 * u),
+                 cornerRadius: 17 * u),
+            with: .color(navy))
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: 19.5 * u, y: 7 * u + dy,
+                width: 36 * u, height: 34 * u)),
+            with: .color(navyDark))
 
         // Thinking: three dots circle above the hood.
         if mood == .thinking {
@@ -1712,151 +2723,144 @@ struct SkelliAvatar: View {
                 let a = 0.35 + 0.65 * max(0, sin(phase))
                 context.fill(
                     Path(ellipseIn: CGRect(
-                        x: (38 + Double(i) * 11) * u - 2 * u,
-                        y: 0.5 * u + dy * 0.4,
+                        x: (26 + Double(i) * 11) * u - 2 * u,
+                        y: 0.2 * u,
                         width: 4 * u, height: 4 * u)),
                     with: .color(accent.opacity(a)))
             }
         }
 
-        // The cranium.
+        // The skull: cranium, grin, and the empty
+        let fx = faceDX
+        let fy = dy + faceDY
         context.fill(
             Path(ellipseIn: CGRect(
-                x: 29 * u, y: 16 * u + dy,
-                width: 42 * u, height: 38 * u)),
+                x: 24 * u + fx, y: 9 * u + fy,
+                width: 27 * u, height: 24 * u)),
             with: .color(bone))
-
-        // The jaw — it moves while she speaks.
         let jawDy = mood == .speaking
-            ? abs(sin(t * 9)) * 1.6 * u : 0
+            ? abs(sin(t * 9)) * 1.1 * u : 0
         context.fill(
             Path(roundedRect: CGRect(
-                x: 38 * u, y: 48 * u + dy + jawDy,
-                width: 24 * u, height: 12 * u),
-                 cornerRadius: 4 * u),
-            with: .color(boneDim))
+                x: 28.5 * u + fx, y: 28.5 * u + fy + jawDy,
+                width: 18 * u, height: 9.5 * u),
+                 cornerRadius: 3.5 * u),
+            with: .color(bone))
+        var grin = Path()
+        grin.move(to: CGPoint(x: 30 * u + fx,
+                              y: 33.5 * u + fy + jawDy))
+        grin.addLine(to: CGPoint(x: 45 * u + fx,
+                                 y: 33.5 * u + fy + jawDy))
+        context.stroke(grin, with: .color(black.opacity(0.65)),
+                       lineWidth: max(0.8, 0.9 * u))
         if detail {
-            for i in 1...3 {
-                let x = (38 + Double(i) * 6) * u
-                var teeth = Path()
-                teeth.move(to: CGPoint(x: x,
-                                       y: 50 * u + dy + jawDy))
-                teeth.addLine(to: CGPoint(
-                    x: x, y: 58 * u + dy + jawDy))
-                context.stroke(teeth, with: .color(
-                    dark.opacity(0.35)), lineWidth: 1)
+            for tooth in 1...4 {
+                let tx = (30 + Double(tooth) * 3) * u + fx
+                var tick = Path()
+                tick.move(to: CGPoint(
+                    x: tx, y: 33.5 * u + fy + jawDy))
+                tick.addLine(to: CGPoint(
+                    x: tx, y: 36.3 * u + fy + jawDy))
+                context.stroke(
+                    tick, with: .color(black.opacity(0.4)),
+                    lineWidth: max(0.6, 0.6 * u))
             }
         }
-
-        // Eyes: sockets, then pupils that live.
         let cycle = t.truncatingRemainder(dividingBy: 3.9)
-        let open = cycle < 3.74 ? 1.0 : 0.12
+        let open = cycle < 3.74 ? 1.0 : 0.15
         for side in [-1.0, 1.0] {
-            let ex = (50 + side * 10) * u
-            let ey = 34 * u + dy
+            let ex = (37.5 + side * 6.8) * u + fx
             context.fill(
                 Path(ellipseIn: CGRect(
-                    x: ex - 6 * u,
-                    y: ey - 6.5 * u * open,
-                    width: 12 * u,
-                    height: 13 * u * open)),
-                with: .color(dark))
-            // Where the gaze goes is the mood's.
-            var gx = 0.0, gy = 0.0
-            switch mood {
-            case .thinking:
-                gx = sin(t * 0.9) * 1.6
-                gy = -2.2
-            case .working:
-                gy = 2.4
-            case .speaking:
-                gx = sin(t * 0.6) * 0.8
-            case .idle:
-                gx = sin(t * 0.4) * 0.7
-            }
-            context.fill(
-                Path(ellipseIn: CGRect(
-                    x: ex + gx * u - 4.5 * u,
-                    y: ey + gy * u - 4.5 * u,
-                    width: 9 * u, height: 9 * u)),
-                with: .color(accent.opacity(0.22)))
-            context.fill(
-                Path(ellipseIn: CGRect(
-                    x: ex + gx * u - 2.1 * u,
-                    y: ey + gy * u - 2.1 * u,
-                    width: 4.2 * u, height: 4.2 * u)),
-                with: .color(accent))
+                    x: ex - 4.3 * u,
+                    y: 22.7 * u + fy - 5.2 * u * open,
+                    width: 8.6 * u,
+                    height: 10.4 * u * open)),
+                with: .color(black))
         }
-
-        // The nose.
         var nose = Path()
-        nose.move(to: CGPoint(x: 50 * u, y: 44 * u + dy))
-        nose.addLine(to: CGPoint(x: 46.5 * u,
-                                 y: 50 * u + dy))
-        nose.addLine(to: CGPoint(x: 53.5 * u,
-                                 y: 50 * u + dy))
+        nose.move(to: CGPoint(x: 37.5 * u + fx,
+                              y: 26 * u + fy))
+        nose.addLine(to: CGPoint(x: 35 * u + fx,
+                                 y: 30.5 * u + fy))
+        nose.addLine(to: CGPoint(x: 40 * u + fx,
+                                 y: 30.5 * u + fy))
         nose.closeSubpath()
-        context.fill(nose, with: .color(dark.opacity(0.7)))
+        context.fill(nose, with: .color(black))
 
-        // Arms to the keyboard — typing while she works.
+        // Arms: navy sleeves down to bone hands that
         let tapA = mood == .working
-            ? sin(t * 11) * 2.2 * u : 0
+            ? sin(t * 11) * 1.3 * u : 0
         let tapB = mood == .working
-            ? cos(t * 11) * 2.2 * u : 0
-        for (from, to, tap) in [
-            (CGPoint(x: 26 * u, y: 62 * u + dy),
-             CGPoint(x: 40 * u, y: 76 * u), tapA),
-            (CGPoint(x: 74 * u, y: 62 * u + dy),
-             CGPoint(x: 60 * u, y: 76 * u), tapB)] {
-            var arm = Path()
-            arm.move(to: from)
-            arm.addLine(to: CGPoint(x: to.x,
-                                    y: to.y + tap))
-            context.stroke(arm, with: .color(boneDim),
+            ? cos(t * 11) * 1.3 * u : 0
+        for (shoulder, wrist, hand, tap) in [
+            (CGPoint(x: 20 * u, y: 45 * u),
+             CGPoint(x: 22.5 * u, y: 60 * u),
+             CGPoint(x: 21.5 * u, y: 69 * u), tapA),
+            (CGPoint(x: 55 * u, y: 45 * u),
+             CGPoint(x: 52.5 * u, y: 60 * u),
+             CGPoint(x: 53.5 * u, y: 69 * u), tapB)] {
+            var sleeve = Path()
+            sleeve.move(to: CGPoint(x: shoulder.x,
+                                    y: shoulder.y + dy))
+            sleeve.addLine(to: CGPoint(x: wrist.x,
+                                       y: wrist.y + dy))
+            context.stroke(sleeve, with: .color(navy),
                            style: StrokeStyle(
-                               lineWidth: 5 * u,
+                               lineWidth: 7 * u,
+                               lineCap: .round))
+            var forearm = Path()
+            forearm.move(to: CGPoint(x: wrist.x,
+                                     y: wrist.y + dy))
+            forearm.addLine(to: CGPoint(
+                x: hand.x, y: hand.y + dy + tap))
+            context.stroke(forearm, with: .color(boneShade),
+                           style: StrokeStyle(
+                               lineWidth: 3.4 * u,
                                lineCap: .round))
         }
 
-        // The laptop: screen, glow, code, base.
-        context.fill(
-            Path(roundedRect: CGRect(
-                x: 30 * u, y: 66 * u,
-                width: 40 * u, height: 25 * u),
-                 cornerRadius: 2.5 * u),
-            with: .color(Color(red: 0.06, green: 0.07,
-                               blue: 0.09)))
-        context.stroke(
-            Path(roundedRect: CGRect(
-                x: 30 * u, y: 66 * u,
-                width: 40 * u, height: 25 * u),
-                 cornerRadius: 2.5 * u),
-            with: .color(accent.opacity(0.8)),
-            lineWidth: max(1, 1.1 * u))
+        // The gray laptop, held — its back to us.
+        let lapBob = mood == .working
+            ? sin(t * 11) * 0.3 * u : 0
+        let lid = CGRect(x: 19.5 * u,
+                         y: 55 * u + dy + lapBob,
+                         width: 36 * u, height: 21 * u)
+        context.fill(Path(roundedRect: lid,
+                          cornerRadius: 2.2 * u),
+                     with: .color(steel))
+        context.stroke(Path(roundedRect: lid,
+                            cornerRadius: 2.2 * u),
+                       with: .color(steelDark),
+                       lineWidth: max(0.8, 0.9 * u))
+        var base = Path()
+        base.move(to: CGPoint(x: 18 * u,
+                              y: 76 * u + dy + lapBob))
+        base.addLine(to: CGPoint(x: 57 * u,
+                                 y: 76 * u + dy + lapBob))
+        base.addLine(to: CGPoint(x: 59.5 * u,
+                                 y: 79 * u + dy + lapBob))
+        base.addLine(to: CGPoint(x: 15.5 * u,
+                                 y: 79 * u + dy + lapBob))
+        base.closeSubpath()
+        context.fill(base, with: .color(steelDark))
+
+        // Her fingers over the laptop's near edge —
         if detail {
-            for row in 0..<3 {
-                let shift = mood == .working
-                    ? Double((Int(t * 3) + row) % 3 - 1) * 2
-                    : 0
-                let wdt = [16.0, 11.0, 13.0][row]
-                context.fill(
-                    Path(roundedRect: CGRect(
-                        x: (35 + shift) * u,
-                        y: (71 + Double(row) * 6) * u,
-                        width: wdt * u, height: 2.6 * u),
-                         cornerRadius: 1.3 * u),
-                    with: .color(accent.opacity(
-                        row == 0 ? 0.9 : 0.5)))
+            for (hx, tap) in [(24.0, tapA), (28.5, tapB),
+                              (46.5, tapB), (51.0, tapA)] {
+                var finger = Path()
+                finger.move(to: CGPoint(
+                    x: hx * u, y: 74.5 * u + dy + lapBob))
+                finger.addLine(to: CGPoint(
+                    x: hx * u,
+                    y: 78.5 * u + dy + lapBob + tap))
+                context.stroke(
+                    finger, with: .color(bone),
+                    style: StrokeStyle(lineWidth: 2 * u,
+                                       lineCap: .round))
             }
         }
-        var base = Path()
-        base.move(to: CGPoint(x: 26 * u, y: 91 * u))
-        base.addLine(to: CGPoint(x: 74 * u, y: 91 * u))
-        base.addLine(to: CGPoint(x: 79 * u, y: 98 * u))
-        base.addLine(to: CGPoint(x: 21 * u, y: 98 * u))
-        base.closeSubpath()
-        context.fill(base, with: .color(
-            Color(red: 0.11, green: 0.12, blue: 0.15)))
     }
 }
 
@@ -1873,89 +2877,97 @@ struct SkelliView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                header
-                Divider()
-                transcript
-                inputBar
+            screen
+        }
+        .sheet(isPresented: $showDirectory) {
+            SkelliDirectoryView()
+        }
+        .sheet(isPresented: $showMemory) {
+            SkelliMemoryView()
+        }
+        .confirmationDialog(
+            "Clear this conversation?",
+            isPresented: $confirmClear,
+            titleVisibility: .visible) {
+            Button("Clear conversation",
+                   role: .destructive) {
+                skelli.clearConversation()
             }
-            .overlay(alignment: .bottomLeading) {
-                SkelliWebHost()
-                    .frame(width: 2, height: 2)
-                    .allowsHitTesting(false)
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("The transcript goes. What Skelli "
+                 + "remembers stays — forgetting that "
+                 + "is its own act, under Reset.")
+        }
+        .confirmationDialog(
+            "Reset Skelli to her defaults?",
+            isPresented: $confirmReset,
+            titleVisibility: .visible) {
+            Button("Reset Skelli", role: .destructive) {
+                skelli.resetToDefaults()
             }
-            .navigationTitle("Skelli")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showDirectory = true
-                        } label: {
-                            Label("Directory of the house",
-                                  systemImage: "book")
-                        }
-                        Button {
-                            showMemory = true
-                        } label: {
-                            Label("What Skelli remembers",
-                                  systemImage: "brain")
-                        }
-                        Toggle("Web research",
-                               isOn: $skelli.webResearchEnabled)
-                        Divider()
-                        Button(role: .destructive) {
-                            confirmClear = true
-                        } label: {
-                            Label("Clear conversation",
-                                  systemImage: "trash")
-                        }
-                        Button(role: .destructive) {
-                            confirmReset = true
-                        } label: {
-                            Label("Reset Skelli",
-                                  systemImage:
-                                    "arrow.counterclockwise")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Conversation and everything she "
+                 + "has been told, forgotten. The "
+                 + "house itself — its records, its "
+                 + "organs — is untouched.")
+        }
+    }
+
+    private var screen: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            transcript
+            inputBar
+        }
+        .overlay(alignment: .bottomLeading) {
+            SkelliWebHost()
+                .frame(width: 2, height: 2)
+                .allowsHitTesting(false)
+        }
+        .navigationTitle("Skelli")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                menu
             }
-            .sheet(isPresented: $showDirectory) {
-                SkelliDirectoryView()
+        }
+    }
+
+    private var menu: some View {
+        Menu {
+            Button {
+                showDirectory = true
+            } label: {
+                Label("Directory of the house",
+                      systemImage: "book")
             }
-            .sheet(isPresented: $showMemory) {
-                SkelliMemoryView()
+            Button {
+                showMemory = true
+            } label: {
+                Label("What Skelli remembers",
+                      systemImage: "brain")
             }
-            .confirmationDialog(
-                "Clear this conversation?",
-                isPresented: $confirmClear,
-                titleVisibility: .visible) {
-                Button("Clear conversation",
-                       role: .destructive) {
-                    skelli.clearConversation()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("The transcript goes. What Skelli "
-                     + "remembers stays — forgetting that "
-                     + "is its own act, under Reset.")
+            Toggle("Web research",
+                   isOn: $skelli.webResearchEnabled)
+            Divider()
+            Button(role: .destructive) {
+                confirmClear = true
+            } label: {
+                Label("Clear conversation",
+                      systemImage: "trash")
             }
-            .confirmationDialog(
-                "Reset Skelli to her defaults?",
-                isPresented: $confirmReset,
-                titleVisibility: .visible) {
-                Button("Reset Skelli", role: .destructive) {
-                    skelli.resetToDefaults()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Conversation and everything she "
-                     + "has been told, forgotten. The "
-                     + "house itself — its records, its "
-                     + "organs — is untouched.")
+            Button(role: .destructive) {
+                confirmReset = true
+            } label: {
+                Label("Reset Skelli",
+                      systemImage:
+                        "arrow.counterclockwise")
             }
+        } label: {
+            Image(systemName: "ellipsis.circle")
         }
     }
 
@@ -1970,7 +2982,7 @@ struct SkelliView: View {
                         center: .center,
                         startRadius: 4, endRadius: 52))
                     .frame(width: 104, height: 104)
-                SkelliAvatar(mood: skelli.mood, size: 84)
+                SkelliAvatar(mood: skelli.mood, size: 96)
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text("Skelli")
@@ -2025,7 +3037,7 @@ struct SkelliView: View {
                                 Spacer(minLength: 48)
                             } else {
                                 SkelliAvatar(
-                                    mood: .idle, size: 30)
+                                    mood: .idle, size: 40)
                                     .padding(.top, 2)
                             }
                             VStack(alignment: line.fromOperator
@@ -2064,7 +3076,7 @@ struct SkelliView: View {
                     if skelli.mood == .thinking {
                         HStack(spacing: 8) {
                             SkelliAvatar(mood: .thinking,
-                                         size: 30)
+                                         size: 40)
                             Text("thinking…")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
