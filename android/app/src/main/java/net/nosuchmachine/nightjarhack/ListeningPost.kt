@@ -38,7 +38,9 @@ data class DeviceRow(
     var rssiSmooth: Double? = null,
     var txPowerLast: Int? = null,
     var serviceUUIDs: List<String> = emptyList(),
-    var rotatingAddress: Boolean = false
+    var rotatingAddress: Boolean = false,
+    var flare: Boolean = false,
+    var flareLastSeen: Double? = null
 ) {
     fun observe(s: Sighting) {
         sightings += 1
@@ -72,6 +74,26 @@ data class DeviceRow(
             }
         }
         rotatingAddress = rotatingAddress || classification.rotatingPhone
+        // Flare recognition: only checked when a pairing key
+        // exists, and only against FFF0 service data — three
+        // HMACs against the neighboring windows.
+        val flareKey = KnockKeyStore.key
+        if (flareKey != null) {
+            for ((uuid, bytes) in s.serviceData) {
+                if (uuid.startsWith("0000fff0") &&
+                    Flare.matches(bytes, flareKey)) {
+                    if (!flare) {
+                        Journal.log(
+                            "listen", "flare",
+                            "a flare answered — a holder of the " +
+                                "pairing key is in radio range " +
+                                "(address $id)")
+                    }
+                    flare = true
+                    flareLastSeen = s.seenAt
+                }
+            }
+        }
     }
 
     val label: String get() = name ?: preferredLabel ?: kind
