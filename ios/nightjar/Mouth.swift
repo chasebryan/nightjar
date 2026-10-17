@@ -728,10 +728,20 @@ final class Mouth: NSObject, ObservableObject {
     /// advertising on Bonjour (reachable by address only, like the
     /// CLI), and arrivals join the inbox silently — nothing banners,
     /// pings, or pops without the user's explicit say-so. Persisted
-    /// in UserDefaults so the views and the engine share one switch.
-    var stealth: Bool {
-        get { UserDefaults.standard.bool(forKey: "stealthMode") }
-        set { UserDefaults.standard.set(newValue, forKey: "stealthMode") }
+    /// in UserDefaults so the views and the engine share one switch —
+    /// and @Published, because a switch no view can see change is a
+    /// switch the exposure score cannot feel: toggling stealth used
+    /// to leave every card and score frozen at its old reading.
+    @Published var stealth = UserDefaults.standard.bool(forKey: "stealthMode") {
+        didSet { UserDefaults.standard.set(stealth, forKey: "stealthMode") }
+    }
+
+    /// How many Serve listeners are actually up right now — the
+    /// exposure score weighs the real count, not a flat guess.
+    var serveListenerCount: Int {
+        guard serveRunning, let params = lastServeParams else { return 0 }
+        return [params.tcp, params.udp, params.http]
+            .compactMap { $0 }.count
     }
 
     /// Flip stealth, restarting the listeners if they are running so
