@@ -28,7 +28,11 @@ lock, a second phone.
   The app keeps a hash of the tag, never its contents. Tap
   it to check in the dead hand, tap it to raise the knock
   vault, or stand it guard over Knocktalk itself. The
-  factor is possession, like every key ever cut.
+  factor is possession, like every key ever cut. NFC
+  reading requires a paid developer team's profile;
+  under free Personal Team signing the Coin ships
+  dormant — present, honest about why, and live the
+  moment the app is signed by a paid team.
 - **Last Testament (iOS Knocktalk).** A message under two
   locks: an RSW time capsule, and the dead hand. The phone
   will not even begin the grind until the hand has fallen
