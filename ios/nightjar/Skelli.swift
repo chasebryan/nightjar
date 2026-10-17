@@ -1822,7 +1822,7 @@ private enum SkelliWeights {
                     prompt: String) async -> String? {
         do {
             let box = try await loadedContainer()
-            let result = try await box.perform {
+            let text = try await box.perform {
                 context in
                 let userInput = UserInput(chat: [
                     .system(instructions),
@@ -1833,14 +1833,21 @@ private enum SkelliWeights {
                 var parameters = GenerateParameters()
                 parameters.maxTokens = 240
                 parameters.temperature = 0.6
-                return try MLXLMCommon.generate(
+                let stream = try MLXLMCommon.generate(
                     input: input,
                     parameters: parameters,
-                    context: context) { _ in .more }
+                    context: context)
+                var raw = ""
+                for await generation in stream {
+                    if let chunk = generation.chunk {
+                        raw += chunk
+                    }
+                }
+                let trimmed = raw.trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : trimmed
             }
-            let text = result.output.trimmingCharacters(
-                in: .whitespacesAndNewlines)
-            return text.isEmpty ? nil : text
+            return text
         } catch {
             return nil
         }
