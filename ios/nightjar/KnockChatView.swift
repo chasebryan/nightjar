@@ -58,6 +58,7 @@ struct KnockChatView: View {
     @State private var capsuleNote = ""
     @State private var grindControl = GrindControl()
     @State private var blinkReceiving = false
+    @State private var shareItem: ShareItem?
 
     /// A blink names its suite in every frame; open with the
     /// carried suite first, the other second.
@@ -122,31 +123,6 @@ struct KnockChatView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("Knocktalk")
-            .sheet(isPresented: $navActive) {
-                // A conversation is a sheet, not a push — the
-                // same cure Colours and the dossiers took for
-                // the doubled back chevron inside More-tab
-                // screens. One stack, one Done.
-                NavigationStack {
-                    ConversationView(peer: openedPeer ?? "")
-                        .toolbar {
-                            ToolbarItem(
-                                placement: .confirmationAction) {
-                                Button("Done") {
-                                    navActive = false
-                                }
-                            }
-                        }
-                }
-            }
-            .sheet(isPresented: $blinkShowing) {
-                BlinkSenderView(frames: blinkFrames)
-            }
-            .sheet(isPresented: $blinkReceiving) {
-                BlinkReceiverView { data, suite in
-                    openBlinkPayload(data, suite: suite)
-                }
-            }
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
                 chat.purge()
@@ -171,6 +147,63 @@ struct KnockChatView: View {
                 }
             }
         }
+        .sheet(isPresented: $navActive) {
+            // A conversation is a sheet, not a push — the
+            // same cure Colours and the dossiers took for
+            // the doubled back chevron inside More-tab
+            // screens. One stack, one Done.
+            NavigationStack {
+                ConversationView(peer: openedPeer ?? "")
+                    .toolbar {
+                        ToolbarItem(
+                            placement: .confirmationAction) {
+                            Button("Done") {
+                                navActive = false
+                            }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $blinkShowing) {
+            BlinkSenderView(frames: blinkFrames)
+        }
+        .sheet(isPresented: $blinkReceiving) {
+            BlinkReceiverView { data, suite in
+                openBlinkPayload(data, suite: suite)
+            }
+        }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: item.items)
+        }
+        .fileImporter(
+            isPresented: $chirpImporting,
+            allowedContentTypes: [.wav, .mp3, .mpeg4Audio,
+                                  .audio]) { result in
+            guard case .success(let url) = result else { return }
+            chirpFileNote = "decoding…"
+            DispatchQueue.global(qos: .userInitiated).async {
+                let scoped = url
+                    .startAccessingSecurityScopedResource()
+                let payload = ChirpMail.decode(fileURL: url)
+                if scoped {
+                    url.stopAccessingSecurityScopedResource()
+                }
+                DispatchQueue.main.async {
+                    if let payload = payload {
+                        chirpFileNote = openChirpPayload(payload)
+                            ? "decoded — filed in the Chirp "
+                                + "thread below"
+                            : "that file carries a chirp that "
+                                + "does not open with your "
+                                + "pairing key"
+                    } else {
+                        chirpFileNote = "no complete chirp "
+                            + "heard in that file"
+                    }
+                }
+            }
+        }
+
     }
 
     private var keySetupSection: some View {
@@ -461,7 +494,9 @@ struct KnockChatView: View {
                 }
                 .disabled(chirpDraft.isEmpty || chirpTooLong)
                 if let wav = chirpWavURL {
-                    ShareLink(item: wav) {
+                    Button {
+                        shareItem = ShareItem(items: [wav])
+                    } label: {
                         Label("Share the chirp (.wav)",
                               systemImage: "waveform")
                     }
@@ -477,34 +512,6 @@ struct KnockChatView: View {
                 Text("Set up a pairing key above — chirps are "
                      + "sealed with it, exactly like knocks.")
                     .font(.callout).foregroundStyle(.secondary)
-            }
-        }
-        .fileImporter(
-            isPresented: $chirpImporting,
-            allowedContentTypes: [.wav, .mp3, .mpeg4Audio,
-                                  .audio]) { result in
-            guard case .success(let url) = result else { return }
-            chirpFileNote = "decoding…"
-            DispatchQueue.global(qos: .userInitiated).async {
-                let scoped = url
-                    .startAccessingSecurityScopedResource()
-                let payload = ChirpMail.decode(fileURL: url)
-                if scoped {
-                    url.stopAccessingSecurityScopedResource()
-                }
-                DispatchQueue.main.async {
-                    if let payload = payload {
-                        chirpFileNote = openChirpPayload(payload)
-                            ? "decoded — filed in the Chirp "
-                                + "thread below"
-                            : "that file carries a chirp that "
-                                + "does not open with your "
-                                + "pairing key"
-                    } else {
-                        chirpFileNote = "no complete chirp "
-                            + "heard in that file"
-                    }
-                }
             }
         }
     }
@@ -768,7 +775,9 @@ struct KnockChatView: View {
                         .lineLimit(4)
                         .textSelection(.enabled)
                     HStack {
-                        ShareLink(item: blob) {
+                        Button {
+                            shareItem = ShareItem(items: [blob])
+                        } label: {
                             Label("Share capsule",
                                   systemImage: "square.and.arrow.up")
                         }
