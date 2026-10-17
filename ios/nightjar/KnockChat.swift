@@ -78,6 +78,14 @@ final class KnockChat: ObservableObject {
     private var relayDeclaring = false
     @Published private(set) var relayStatus = ""
 
+    /// Cadence Seal verdicts by peer, set by the EMCON routing
+    /// as messages land. Display only — the seal never blocks.
+    @Published private(set) var cadenceNotes: [String: String] = [:]
+
+    func setCadenceNote(peer: String, note: String) {
+        cadenceNotes[peer] = note
+    }
+
     init() {
         threads = Self.loadThreads()
         purge()
