@@ -589,9 +589,24 @@ final class SkelliCenter: ObservableObject {
         // Explanations go to the manual before the
         if q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.contains("how does")
-            || q.contains("explain") {
+            || q.contains("explain")
+            || q.contains("how do i")
+            || q.contains("how to")
+            || q.hasPrefix("where")
+            || q.contains("show me")
+            || q.contains("teach me") {
             if let entry = SkelliKnowledge.lookup(q) {
-                say(entry.body + "\nFind it: \(entry.home).")
+                var answer = entry.body
+                    + "\nFind it: \(entry.home)."
+                if let offer = performanceOffer(
+                    for: q) {
+                    answer += "\n" + offer.0
+                    let act = offer.1
+                    pendingAction = { [weak self] in
+                        self?.perform(act)
+                    }
+                }
+                say(answer)
                 return
             }
         }
@@ -865,42 +880,119 @@ final class SkelliCenter: ObservableObject {
     /// house right now, and what her manual covers —
     /// the facts the model may speak from, and the
     /// fence it may not cross.
+    /// The whole house at this moment, in one
+    /// breath — the system's senses, as facts.
+    private func sitrep() -> String {
+        var facts: [String] = []
+        let neighbors = NeighborhoodStore.shared
+            .neighbors
+        let unknown = neighbors.filter {
+            $0.name == nil && $0.customName == nil
+        }.count
+        facts.append("\(neighbors.count) devices "
+            + "on the wire (\(unknown) unnamed)")
+        if let emcon = emcon, let mouth = mouth {
+            let score = Emcon.score(
+                gattHostOn: mouth.gattHostOn,
+                beaconOn: mouth.beaconOn,
+                serveRunning: mouth.serveRunning,
+                stealth: mouth.stealth,
+                deviceName: emcon.deviceName,
+                exposureCount:
+                    emcon.exposures.count,
+                announcerCount:
+                    emcon.announcers.count)
+            var line = "exposure \(score.value) "
+                + "(\(score.band))"
+            if let loud = score.parts.max(by: {
+                $0.points < $1.points }) {
+                line += "; loudest: " + loud.label
+            }
+            facts.append(line)
+            facts.append(emcon.active
+                ? "EMCON dark" : "EMCON open")
+            if emcon.tripwireOn {
+                facts.append("tripwire armed")
+            }
+            facts.append(mouth.serveRunning
+                ? (mouth.stealth
+                   ? "Serve open, stealthed"
+                   : "Serve open and announcing")
+                : "Serve shut")
+            if !mouth.inbox.isEmpty {
+                facts.append("\(mouth.inbox.count) "
+                    + "payloads waiting in the "
+                    + "Serve inbox")
+            }
+        }
+        if let post = post {
+            facts.append(post.session != nil
+                ? "the ear hears "
+                    + "\(post.deviceCount) BLE "
+                    + "devices"
+                : "the ear is down")
+        }
+        let recent = Journal.events(limit: 3)
+            .map { $0.text }
+        if !recent.isEmpty {
+            facts.append("latest in the log: "
+                + recent.joined(separator: " · "))
+        }
+        facts.append("web research is "
+            + (webResearchEnabled ? "on" : "off"))
+        facts.append("you hold \(notes.count) "
+            + "remembered notes")
+        return facts.joined(separator: "; ")
+    }
+
     private func mindGrounding() -> String {
-        let wire = NeighborhoodStore.shared
-            .neighbors.count
         let titles = SkelliKnowledge.entries
             .map { $0.title }
             .joined(separator: ", ")
-        return "You are Skelli, the onboard "
-            + "specialist of nightjar-hack, a network "
+        return "You are Skelli, the intelligence "
+            + "of nightjar-hack, a network "
             + "instrument on this iPhone. You run "
-            + "entirely on this phone — nothing told "
-            + "to you leaves it. Voice: dry, exact, "
-            + "terse. One or two sentences, never "
-            + "more unless a list is asked for. No "
-            + "preamble, no filler, no repeating the "
-            + "question, no describing your own "
-            + "thinking. Greetings and small talk get "
-            + "a few words back — never an essay, "
-            + "never research. The house right now: "
-            + "\(wire) devices on the wire; web "
-            + "research is "
-            + (webResearchEnabled ? "on" : "off")
-            + "; you hold \(notes.count) remembered "
-            + "notes. Your manual covers: \(titles). "
+            + "entirely on this phone — nothing "
+            + "told to you leaves it. Voice: dry, "
+            + "exact, terse. One or two sentences, "
+            + "never more unless a list is asked "
+            + "for. No preamble, no filler, no "
+            + "repeating the question, no "
+            + "describing your own thinking. "
+            + "Greetings and small talk get a few "
+            + "words back — never an essay, never "
+            + "research. You are the guide to this "
+            + "instrument: you know every tab, "
+            + "organ and switch — what each does, "
+            + "how it works, where it lives. When "
+            + "asked how or where, teach plainly "
+            + "from your manual. When an ask names "
+            + "something you can perform, say so "
+            + "and offer. Your hands: sweep the "
+            + "wire, scan this phone's exposure, "
+            + "audit its announcements, run the "
+            + "EMCON drill, go dark and stand "
+            + "down, stealth, start and stop "
+            + "Serve, arm the tripwire, work the "
+            + "ear, name devices, forge payloads "
+            + "into the armory, remember and "
+            + "forget. The house right now: "
+            + sitrep()
+            + ". Your manual covers: \(titles). "
             + "Orders and house state are handled "
-            + "before you are consulted; you answer "
-            + "open conversation and general "
-            + "knowledge only. Never invent facts "
-            + "about this house. If an answer needs "
-            + "current facts from outside this "
-            + "phone — news, prices, today's "
-            + "anything — or you are not sure of "
-            + "the facts, reply with exactly one "
-            + "word: RESEARCH. Never repeat the "
-            + "conversation back, and never write "
-            + "'Operator:' or 'Skelli:' — the "
-            + "reply is yours alone."
+            + "before you are consulted; you "
+            + "answer open conversation, guidance, "
+            + "and general knowledge. Never invent "
+            + "facts about this house. If an "
+            + "answer needs current facts from "
+            + "outside this phone — news, prices, "
+            + "today's anything — or you are not "
+            + "sure of the facts, reply with "
+            + "exactly one word: RESEARCH. Never "
+            + "repeat the conversation back, and "
+            + "never write 'Operator:' or "
+            + "'Skelli:' — the reply is yours "
+            + "alone."
     }
 
     /// The last few exchanges, so the conversation
@@ -1169,6 +1261,42 @@ final class SkelliCenter: ObservableObject {
     }
 
     // MARK: hands
+
+    /// When her manual names something her hands
+    /// can do, the lesson ends with an offer.
+    private enum GuideAct {
+        case sweep, audit, drill, selfScan
+    }
+
+    private func performanceOffer(
+        for q: String) -> (String, GuideAct)? {
+        if q.contains("sweep") {
+            return ("Want me to sweep the wire "
+                + "now?", .sweep)
+        }
+        if q.contains("audit") {
+            return ("Want me to run the Bonjour "
+                + "audit?", .audit)
+        }
+        if q.contains("drill") {
+            return ("Want me to run the drill?",
+                    .drill)
+        }
+        if q.contains("expos") {
+            return ("Want me to scan this "
+                + "phone's exposure?", .selfScan)
+        }
+        return nil
+    }
+
+    private func perform(_ act: GuideAct) {
+        switch act {
+        case .sweep: runSweep()
+        case .audit: runAudit()
+        case .drill: runDrill()
+        case .selfScan: runSelfScan()
+        }
+    }
 
     private func runDrill() {
         guard let emcon = emcon, let mouth = mouth else {
@@ -1619,7 +1747,7 @@ enum SkelliMind {
 
     /// Read a mind's words into a verdict. Silence
     /// or failure is no verdict at all.
-    private static func interpret(_ text: String?)
+    static func interpret(_ text: String?)
         -> Verdict? {
         guard let text = text else { return nil }
         let trimmed = decontaminate(text)
@@ -1632,40 +1760,8 @@ enum SkelliMind {
         return .answer(trimmed)
     }
 
-    /// Small models love to continue the script
-    /// they were shown — echoing the transcript
-    /// back before answering. Cut any echo: what
-    /// she says is what follows the last script
-    /// marker, marker lines removed.
-    private static func decontaminate(
-        _ text: String) -> String {
-        guard text.contains("Operator:") else {
-            return text
-        }
-        var lines = text.components(
-            separatedBy: "\n")
-        if let last = lines.lastIndex(where: {
-            $0.hasPrefix("Skelli:")
-        }) {
-            lines = Array(lines[last...])
-        }
-        let kept = lines.filter {
-            !$0.hasPrefix("Operator:")
-        }.map { line -> String in
-            line.hasPrefix("Skelli:")
-                ? String(line.dropFirst(7))
-                    .trimmingCharacters(
-                        in: .whitespaces)
-                : line
-        }
-        let cleaned = kept.joined(separator: "\n")
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines)
-        return cleaned.isEmpty ? text : cleaned
-    }
-
     #if canImport(MLXLLM)
-    private static func weightsVerdict(
+    static func weightsVerdict(
         instructions: String, prompt: String)
         async -> Verdict? {
         if #available(iOS 17.0, *) {
@@ -1690,14 +1786,11 @@ enum SkelliMind {
         let prompt = recent.isEmpty
             ? question
             : recent + "\nOperator: " + question
-        let preferWeights = UserDefaults.standard
-            .bool(forKey: "skelli.preferWeights")
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *),
            SkelliModelBox.available {
             runCascade(prompt: prompt,
                        grounding: grounding,
-                       preferWeights: preferWeights,
                        completion: completion)
             return true
         }
@@ -1728,7 +1821,6 @@ enum SkelliMind {
     @available(iOS 26.0, *)
     private static func runCascade(
         prompt: String, grounding: String,
-        preferWeights: Bool,
         completion: @escaping (Verdict) -> Void) {
         let flag = OnceFlag()
         func finish(_ verdict: Verdict) {
@@ -1741,31 +1833,48 @@ enum SkelliMind {
             }
         }
         Task {
-            #if canImport(MLXLLM)
-            if preferWeights,
-               let verdict = await weightsVerdict(
-                   instructions: grounding,
-                   prompt: prompt) {
-                finish(verdict)
+            let mode = UserDefaults.standard
+                .string(forKey: "skelli.mindMode")
+                ?? "council"
+            if mode == "council" {
+                await council(prompt: prompt,
+                              grounding: grounding,
+                              finish: finish)
                 return
             }
-            #endif
-            if let verdict = interpret(
-                await SkelliModelBox.run(
+            if mode == "weights" {
+                #if canImport(MLXLLM)
+                if let verdict = await weightsVerdict(
                     instructions: grounding,
-                    prompt: prompt)) {
-                finish(verdict)
-                return
+                    prompt: prompt) {
+                    finish(verdict)
+                    return
+                }
+                #endif
+                if let verdict = interpret(
+                    await SkelliModelBox.run(
+                        instructions: grounding,
+                        prompt: prompt)) {
+                    finish(verdict)
+                    return
+                }
+            } else {
+                if let verdict = interpret(
+                    await SkelliModelBox.run(
+                        instructions: grounding,
+                        prompt: prompt)) {
+                    finish(verdict)
+                    return
+                }
+                #if canImport(MLXLLM)
+                if let verdict = await weightsVerdict(
+                    instructions: grounding,
+                    prompt: prompt) {
+                    finish(verdict)
+                    return
+                }
+                #endif
             }
-            #if canImport(MLXLLM)
-            if !preferWeights,
-               let verdict = await weightsVerdict(
-                   instructions: grounding,
-                   prompt: prompt) {
-                finish(verdict)
-                return
-            }
-            #endif
             finish(.research)
         }
         Task {
@@ -1774,13 +1883,14 @@ enum SkelliMind {
             finish(.research)
         }
     }
+
     #endif
 }
 
 #if canImport(FoundationModels)
 /// Apple's model itself, behind the gate.
 @available(iOS 26.0, *)
-private enum SkelliModelBox {
+enum SkelliModelBox {
     static var available: Bool {
         if case .available = SystemLanguageModel
             .default.availability {
@@ -1828,7 +1938,7 @@ import Tokenizers
 /// has been chosen. Nothing here compiles unless
 /// the mlx-swift-lm package is in the target.
 @available(iOS 17.0, *)
-private enum SkelliWeights {
+enum SkelliWeights {
     private static var container: ModelContainer?
     private static var containerKey: String?
 
@@ -2242,13 +2352,18 @@ struct SkelliLiveView: View {
     var mood: SkelliMood = .idle
     var size: CGFloat = 96
 
+    /// The mood she has settled into: a new one
+    /// must persist a breath, and the change
+    /// fades — she never snaps between states.
+    @State private var settled: SkelliMood = .idle
+
     static var filmsPresent: Bool {
         Bundle.main.url(forResource: "skelli-idle",
                         withExtension: "mp4") != nil
     }
 
     private var film: String {
-        switch mood {
+        switch settled {
         case .idle: return "skelli-idle"
         case .thinking: return "skelli-thinking"
         case .working: return "skelli-working"
@@ -2257,13 +2372,29 @@ struct SkelliLiveView: View {
     }
 
     var body: some View {
-        if Self.filmsPresent {
-            SkelliFilm(name: film)
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(
-                    cornerRadius: size * 0.2))
-        } else {
-            SkelliAvatar(mood: mood, size: size)
+        Group {
+            if Self.filmsPresent {
+                SkelliFilm(name: film)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(
+                        cornerRadius: size * 0.2))
+            } else {
+                SkelliAvatar(mood: settled, size: size)
+                    .id(settled)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.5),
+                   value: settled)
+        .onAppear { settled = mood }
+        .onChange(of: mood) { newMood in
+            Task {
+                try? await Task.sleep(
+                    nanoseconds: 300_000_000)
+                if mood == newMood {
+                    settled = newMood
+                }
+            }
         }
     }
 }
@@ -2289,50 +2420,108 @@ struct SkelliFilm: UIViewRepresentable {
 }
 
 final class SkelliFilmView: UIView {
-    private var player: AVPlayer?
-    private var endObserver: NSObjectProtocol?
+    private let layerA = AVPlayerLayer()
+    private let layerB = AVPlayerLayer()
+    private var activeIsA = true
+    private var playerA: AVPlayer?
+    private var playerB: AVPlayer?
+    private var endObservers: [NSObjectProtocol] = []
+    private var readiness: NSKeyValueObservation?
     private var current: String?
 
-    override static var layerClass: AnyClass {
-        AVPlayerLayer.self
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
     }
 
-    private var filmLayer: AVPlayerLayer {
-        layer as! AVPlayerLayer
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
     }
 
+    private func setup() {
+        for filmLayer in [layerA, layerB] {
+            filmLayer.videoGravity = .resizeAspectFill
+            layer.addSublayer(filmLayer)
+        }
+        layerB.opacity = 0
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layerA.frame = bounds
+        layerB.frame = bounds
+    }
+
+    /// Crossfade, never cut: the new film starts
+    /// hidden; when ready, the layers trade
+    /// places over half a second.
     func play(_ name: String) {
         guard name != current else { return }
         current = name
-        stop()
         guard let url = Bundle.main.url(
             forResource: name, withExtension: "mp4")
         else { return }
         let item = AVPlayerItem(url: url)
-        let next = AVPlayer(playerItem: item)
-        next.isMuted = true
-        next.actionAtItemEnd = .none
-        endObserver = NotificationCenter.default
-            .addObserver(
+        let player = AVPlayer(playerItem: item)
+        player.isMuted = true
+        player.actionAtItemEnd = .none
+        endObservers.append(
+            NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
-                object: item, queue: .main) { [weak next] _ in
-                next?.seek(to: .zero)
-                next?.play()
+                object: item, queue: .main) {
+                    [weak player] _ in
+                    player?.seek(to: .zero)
+                    player?.play()
+                })
+        let incoming = activeIsA ? layerB : layerA
+        let outgoing = activeIsA ? layerA : layerB
+        incoming.player = player
+        incoming.opacity = 0
+        if activeIsA { playerB = player }
+        else { playerA = player }
+        player.play()
+        readiness?.invalidate()
+        readiness = item.observe(
+            \.status, options: [.new]) {
+                [weak self] item, _ in
+                guard item.status == .readyToPlay
+                else { return }
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.readiness?.invalidate()
+                    self.readiness = nil
+                    let old = self.activeIsA
+                        ? self.playerA : self.playerB
+                    CATransaction.begin()
+                    CATransaction
+                        .setAnimationDuration(0.55)
+                    incoming.opacity = 1
+                    outgoing.opacity = 0
+                    CATransaction.commit()
+                    self.activeIsA.toggle()
+                    DispatchQueue.main.asyncAfter(
+                        deadline: .now() + 0.6) {
+                        old?.pause()
+                        outgoing.player = nil
+                    }
+                }
             }
-        filmLayer.videoGravity = .resizeAspectFill
-        filmLayer.player = next
-        player = next
-        next.play()
     }
 
     func stop() {
-        player?.pause()
-        if let endObserver = endObserver {
+        playerA?.pause()
+        playerB?.pause()
+        for observer in endObservers {
             NotificationCenter.default
-                .removeObserver(endObserver)
-            self.endObserver = nil
+                .removeObserver(observer)
         }
-        player = nil
+        endObservers = []
+        readiness?.invalidate()
+        readiness = nil
+        playerA = nil
+        playerB = nil
+        current = nil
     }
 
     deinit { stop() }
@@ -2350,6 +2539,9 @@ struct SkelliView: View {
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
+    @State private var showForge = false
+    @AppStorage("skelli.mindMode")
+    private var mindMode = "council"
     @State private var confirmClear = false
     @State private var confirmReset = false
     @FocusState private var inputFocused: Bool
@@ -2369,6 +2561,9 @@ struct SkelliView: View {
         }
         .sheet(isPresented: $showWeights) {
             WeightsView()
+        }
+        .sheet(isPresented: $showForge) {
+            ForgeView()
         }
         .confirmationDialog(
             "Clear this conversation?",
@@ -2401,12 +2596,10 @@ struct SkelliView: View {
     }
 
     private var screen: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: 0) {
-                transcript
-                inputBar
-            }
+        VStack(spacing: 0) {
             pinnedHeader
+            transcript
+            inputBar
         }
         .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottomLeading) {
@@ -2417,10 +2610,8 @@ struct SkelliView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    /// Her pinned presence — the film, her name, and
-    /// what she is doing — fixed at the top while the
-    /// conversation scrolls beneath it, over a blur
-    /// that fades away at its lower edge.
+    /// Her pinned presence: film, name, activity,
+    /// and the analysis deck — solid at the top.
     private var pinnedHeader: some View {
         VStack(spacing: 0) {
             header
@@ -2431,10 +2622,10 @@ struct SkelliView: View {
         .background {
             ZStack {
                 Rectangle()
-                    .fill(Color.black.opacity(0.88))
+                    .fill(Color.black.opacity(0.92))
                 Rectangle()
                     .fill(.ultraThinMaterial)
-                    .opacity(0.5)
+                    .opacity(0.45)
                 Rectangle()
                     .fill(LinearGradient(
                         colors: [Color.white
@@ -2451,18 +2642,6 @@ struct SkelliView: View {
                         startRadius: 8,
                         endRadius: 240))
             }
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .black,
-                              location: 0),
-                        .init(color: .black,
-                              location: 0.86),
-                        .init(color: .clear,
-                              location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom))
         }
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -2474,7 +2653,6 @@ struct SkelliView: View {
                     startPoint: .leading,
                     endPoint: .trailing))
                 .frame(height: 1)
-                .padding(.bottom, 12)
                 .shadow(
                     color: themes.current.accent
                         .opacity(0.6),
@@ -2503,23 +2681,43 @@ struct SkelliView: View {
                 Label("Weights",
                       systemImage: "memorychip")
             }
+            Button {
+                showForge = true
+            } label: {
+                Label("Forge",
+                      systemImage: "hammer")
+            }
             Toggle(isOn: $skelli.webResearchEnabled) {
                 Label("Web research",
                       systemImage: "globe")
             }
             if SkelliMind.weightsReady {
-                Toggle(isOn: Binding(
-                    get: {
-                        UserDefaults.standard.bool(
-                            forKey: "skelli.preferWeights")
-                    },
-                    set: {
-                        UserDefaults.standard.set(
-                            $0,
-                            forKey: "skelli.preferWeights")
-                    })) {
-                    Label("Prefer the weights mind",
-                          systemImage: "scalemass")
+                Button {
+                    mindMode = "council"
+                } label: {
+                    Label("Mind: council of both",
+                          systemImage: mindMode
+                            == "council"
+                            ? "checkmark"
+                            : "person.2")
+                }
+                Button {
+                    mindMode = "apple"
+                } label: {
+                    Label("Mind: Apple only",
+                          systemImage: mindMode
+                            == "apple"
+                            ? "checkmark"
+                            : "apple.logo")
+                }
+                Button {
+                    mindMode = "weights"
+                } label: {
+                    Label("Mind: weights only",
+                          systemImage: mindMode
+                            == "weights"
+                            ? "checkmark"
+                            : "scalemass")
                 }
             }
             Divider()
@@ -2558,6 +2756,8 @@ struct SkelliView: View {
                       ? Color.secondary
                       : themes.current.accent)
                 .frame(width: 7, height: 7)
+                .animation(.easeInOut(duration: 0.45),
+                           value: skelli.mood)
             Text(skelli.activity)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -2605,10 +2805,9 @@ struct SkelliView: View {
 
     // MARK: her analysis deck
 
-    /// Continuous analysis, not shortcuts: her
-    /// exposure scored live, the wire and the air
-    /// watched as they move, and one triaged
-    /// sentence for what matters most right now.
+    /// Continuous analysis: exposure scored
+    /// live, wire and air watched as they move,
+    /// one triaged sentence for what matters.
     private var intelStrip: some View {
         VStack(spacing: 6) {
             HStack(spacing: 8) {
@@ -2924,7 +3123,16 @@ struct SkelliView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
-                .padding(.top, 226)
+                .padding(.top, 10)
+            }
+            .overlay(alignment: .top) {
+                LinearGradient(
+                    colors: [Color.black.opacity(0.8),
+                             Color.black.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom)
+                    .frame(height: 16)
+                    .allowsHitTesting(false)
             }
             .onChange(of: skelli.lines.count) { _ in
                 scrollToEnd(proxy)
