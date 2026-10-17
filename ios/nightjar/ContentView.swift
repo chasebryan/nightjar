@@ -18,7 +18,7 @@ struct ContentView: View {
             SkelliView()
                 .appThemed(.skelli)
                 .tabItem { Label("Skelli",
-                                 systemImage: "skull") }
+                                 systemImage: "brain.head.profile") }
                 .tag(9)
             ListenView(tab: $tab)
                 .appThemed(.listen)
@@ -32,17 +32,18 @@ struct ContentView: View {
                 .appThemed(.serve)
                 .tabItem { Label("Serve", systemImage: "tray.and.arrow.down") }
                 .tag(2)
-            SessionsView()
-                .appThemed(.sessions)
-                .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
-                .tag(3)
             // Declaration order is the More list's order:
-            // About heads it — it is the app's identity and its
-            // options hub. Tags are unchanged by position.
+            // About heads it — it is the app's identity and
+            // its options hub — and Sessions sits under it.
+            // Tags are unchanged by position.
             AboutView()
                 .appThemed(.about)
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(5)
+            SessionsView()
+                .appThemed(.sessions)
+                .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
+                .tag(3)
             ScanView(tab: $tab)
                 .appThemed(.scan)
                 .tabItem { Label("Scan", systemImage: "scope") }
