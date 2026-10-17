@@ -317,6 +317,39 @@ final class KnockEngine {
     private var gradedAt: [String: Date] = [:]
     private var vaultTrail: [String: [(String, Date)]] = [:]
 
+    // Cadence Seal state: every knock's time, per source, and
+    // how far into that train the last completed message ran —
+    // so a finished message's rhythm can be cut out and graded.
+    private var knockTimes: [String: [Date]] = [:]
+    private var cadenceMarks: [String: Int] = [:]
+    private(set) var lastCadence: [String: CadenceSample] = [:]
+
+    private func recordKnockTime(_ source: String, _ when: Date) {
+        var times = knockTimes[source] ?? []
+        times.append(when)
+        if times.count > 2000 {
+            let drop = times.count - 2000
+            times.removeFirst(drop)
+            cadenceMarks[source] = max(
+                0, (cadenceMarks[source] ?? 0) - drop)
+        }
+        knockTimes[source] = times
+    }
+
+    /// Cut the just-finished message's knock train out of the
+    /// record and grade its rhythm. Called immediately before a
+    /// message is emitted, so the reader of the output can grade
+    /// the same message's cadence from `lastCadence`.
+    private func sealCadence(source: String) {
+        let times = knockTimes[source] ?? []
+        let start = min(cadenceMarks[source] ?? 0, times.count)
+        let segment = Array(times[start...])
+        cadenceMarks[source] = times.count
+        if let sample = CadenceMath.sample(times: segment) {
+            lastCadence[source] = sample
+        }
+    }
+
     /// The vault combination: three protocol digits spoken in
     /// order, from one source, inside twenty seconds. The DEFAULT
     /// is printed in the app and in this source — it is a
@@ -330,6 +363,7 @@ final class KnockEngine {
               verdict: String, when: Date = Date()) {
         guard proto == "TCP" else { return }
         noteVault(source: source, verdict: verdict, when: when)
+        recordKnockTime(source, when)
         if port == Knocktalk.syncPort {
             // A sync delimits frames: flush whatever the previous
             // frame accumulated before opening the next one. The
@@ -345,6 +379,7 @@ final class KnockEngine {
             return
         }
         guard let nibble = Knocktalk.nibble(of: port) else { return }
+        recordKnockTime(source, when)
         if sessions[source] != nil {
             sessions[source]?.nibbles.append(nibble)
             sessions[source]?.lastKnock = when
@@ -402,6 +437,7 @@ final class KnockEngine {
         // v1 whole-message frame.
         if let key = KnockKeyStore.key,
            let text = Knocktalk.decode(nibbles: n, key: key) {
+            sealCadence(source: source)
             onOutput?(.message(KnockMessage(
                 id: UUID().uuidString, when: Date(), source: source,
                 text: text), ackHash: nil))
@@ -484,6 +520,7 @@ final class KnockEngine {
         } else if let key = KnockKeyStore.key,
            let text = Knocktalk.open(sealed: sealed, key: key,
                                      suite: finalSuite) {
+            sealCadence(source: source)
             onOutput?(.message(KnockMessage(
                 id: UUID().uuidString, when: Date(), source: source,
                 text: text),
