@@ -18,6 +18,7 @@ extension SkelliCenter {
     /// taught. Questions never reach it as orders:
     /// the cascade's question lanes run earlier.
     func handsGate(_ q: String, raw: String) -> Bool {
+        if deleteAsk(q) { return true }
         if forgeAsk(q, raw: raw) { return true }
         if weightsAsk(q) { return true }
         return false
@@ -26,6 +27,147 @@ extension SkelliCenter {
     func lateGate(_ q: String, raw: String) -> Bool {
         if handsGate(q, raw: raw) { return true }
         return secondReading(q, raw: raw)
+    }
+
+    /// "Delete the DNS packet you forged" — what
+    /// she built, she can also strike: armory
+    /// payloads (hers, and customs of his) and
+    /// taught patterns, by name, the Deliveries
+    /// copy going too. It runs first among her
+    /// hands — "the packet you forged" must
+    /// never be read as a fresh order to forge.
+    func deleteAsk(_ q: String) -> Bool {
+        guard q.contains("delete")
+                || q.contains("remove")
+                || q.contains("throw away")
+                || q.contains("get rid of")
+                || q.contains("drop ")
+        else { return false }
+
+        // How strongly a name is meant by the words
+        // he used: shared name-words, stopwords
+        // aside.
+        func score(_ name: String) -> Int {
+            let stop: Set<String> = ["the", "for", "and", "with"]
+            return name.lowercased()
+                .split(whereSeparator: {
+                    !$0.isLetter && !$0.isNumber
+                })
+                .filter {
+                    $0.count > 2
+                        && !stop.contains(String($0))
+                }
+                .filter { q.contains($0) }
+                .count
+        }
+        let bulk = q.contains(" all ")
+            || q.hasSuffix(" all")
+            || q.contains("everything")
+            || q.contains(" every ")
+
+        // Her taught patterns.
+        let customs = ForgePatternStore.load()
+        if q.contains("pattern") {
+            if bulk {
+                ForgePatternStore.save([])
+                say("Struck all \(customs.count) "
+                    + "taught patterns. She builds "
+                    + "from her five built-ins again.")
+                return true
+            }
+            let doomed = customs.filter {
+                score($0.name) >= 1
+            }
+            guard let hit = doomed.max(by: {
+                score($0.name) < score($1.name)
+            }) else {
+                say(customs.isEmpty
+                    ? "She holds no taught patterns "
+                        + "to strike."
+                    : "Which pattern? She holds: "
+                        + customs.map { $0.name }
+                            .joined(separator: ", ")
+                        + ".")
+                return true
+            }
+            ForgePatternStore.save(customs.filter {
+                $0.id != hit.id
+            })
+            say("Struck the pattern: " + hit.name + ".")
+            return true
+        }
+
+        // The armory.
+        let book = PayloadBook()
+        if bulk && (q.contains("forged")
+                    || q.contains("hers")
+                    || q.contains("you made")
+                    || q.contains("you built")) {
+            let doomed = book.items.filter {
+                $0.name.hasPrefix("Forged — ")
+            }
+            guard !doomed.isEmpty else {
+                say("Nothing of hers sits in the "
+                    + "armory to strike.")
+                return true
+            }
+            var indices = IndexSet()
+            for item in doomed {
+                if let index = book.items
+                    .firstIndex(of: item) {
+                    indices.insert(index)
+                }
+            }
+            book.remove(at: indices)
+            for item in doomed {
+                strikeDelivery(item.name)
+            }
+            say("Struck from the armory: "
+                + doomed.map { $0.name }
+                    .joined(separator: "; ")
+                + ". Deliveries copies went too.")
+            return true
+        }
+        let scored = book.items
+            .map { (item: $0, score: score($0.name)) }
+            .filter { $0.score >= 1 }
+            .sorted { a, b in
+                a.score != b.score
+                    ? a.score > b.score
+                    : !a.item.builtIn && b.item.builtIn
+            }
+        guard let hit = scored.first else {
+            let hers = book.items
+                .filter { $0.name.hasPrefix("Forged — ") }
+                .map { $0.name }
+            say("Nothing in the armory matches that."
+                + (hers.isEmpty
+                    ? ""
+                    : " Hers on the shelf: "
+                        + hers.joined(separator: "; ")
+                        + "."))
+            return true
+        }
+        if let index = book.items
+            .firstIndex(of: hit.item) {
+            book.remove(at: IndexSet(integer: index))
+        }
+        strikeDelivery(hit.item.name)
+        say("Struck from the armory: " + hit.item.name
+            + (hit.item.builtIn
+                ? " — a built-in; Restore in the "
+                    + "Send payload list brings it back."
+                : ". Its Deliveries copy went too."))
+        return true
+    }
+
+    /// A forged keep lives twice — armory and
+    /// Deliveries — and a strike takes both.
+    private func strikeDelivery(_ name: String) {
+        let center = DeliveriesCenter.shared
+        for item in center.items where item.name == name {
+            center.remove(item)
+        }
     }
 
     /// "Forge me a DNS packet for the gateway" —
