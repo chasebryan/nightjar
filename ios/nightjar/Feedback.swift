@@ -2529,3 +2529,65 @@ extension SkelliMind {
         return cleaned.isEmpty ? text : cleaned
     }
 }
+
+// MARK: - Her programming hand
+
+/// She is the operator's programming partner:
+/// code asks are recognised in her response
+/// chain and answered by the benches under a
+/// coder's charter — complete, runnable, no
+/// placeholders — through the same raw channel
+/// her Forge borrows.
+extension SkelliCenter {
+
+    func isCodeAsk(_ q: String) -> Bool {
+        let marks = [
+            "write me", "write a function",
+            "write a script", "write a program",
+            "write code", "code me",
+            "function that", "function to",
+            "script that", "script to",
+            "in python", "in swift",
+            "in javascript", "regex for",
+            "a regex", "build me a tool",
+            "build me a script",
+        ]
+        return marks.contains { q.contains($0) }
+    }
+
+    func consultCode(_ q: String) {
+        activity = "Writing…"
+        Task {
+            let text = await SkelliMind.rawAnswer(
+                instructions: "You are Skelli, "
+                    + "the operator's programming "
+                    + "partner inside "
+                    + "nightjar-hack. Write "
+                    + "complete, correct, runnable "
+                    + "code for what is asked — no "
+                    + "placeholders, no truncation. "
+                    + "The code first, then at "
+                    + "most two short lines on how "
+                    + "to run or use it. Prose "
+                    + "terse. If no language is "
+                    + "named, choose the most "
+                    + "natural: Python for "
+                    + "scripts, Swift for iOS, "
+                    + "JavaScript for the web.",
+                prompt: q)
+            await MainActor.run {
+                if let text = text,
+                   !text.isEmpty {
+                    say(text)
+                } else {
+                    say("No bench could write "
+                        + "that just now. The "
+                        + "Forge's Workbench holds "
+                        + "the bench's editor — "
+                        + "briefs wait there for a "
+                        + "ready mind.")
+                }
+            }
+        }
+    }
+}
