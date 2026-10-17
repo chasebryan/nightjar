@@ -57,6 +57,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -178,7 +180,7 @@ fun AppRoot(app: NightjarApp) {
                         Triple("Scan", Icons.Outlined.MyLocation, 3),
                         Triple("Recon", Icons.Outlined.TrackChanges, 6),
                         Triple("EMCON", Icons.Outlined.Shield, 7),
-                        Triple("Knock", Icons.Outlined.TouchApp, 8)
+                        Triple("Knocktalk", Icons.Outlined.TouchApp, 8)
                     )
                     for ((label, icon, index) in items) {
                         NavigationBarItem(
@@ -445,6 +447,7 @@ fun ListenTab(app: NightjarApp, goToSend: () -> Unit) {
     val prefs = rememberPrefs()
     var label by prefString(prefs, "listenLabel", "")
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var huntId by remember { mutableStateOf<String?>(null) }
     var now by remember { mutableStateOf(ListeningPost.nowSeconds()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -453,9 +456,15 @@ fun ListenTab(app: NightjarApp, goToSend: () -> Unit) {
         }
     }
 
+    val huntTarget = huntId
+    if (huntTarget != null) {
+        HuntView(app, huntTarget) { huntId = null }
+        return
+    }
+
     val selectedRow = rows.firstOrNull { it.id == selectedId }
     if (selectedRow != null) {
-        DeviceDetail(app, selectedRow, now, onBack = { selectedId = null }, goToSend)
+        DeviceDetail(app, selectedRow, now, onBack = { selectedId = null }, goToSend, onHunt = { huntId = it })
         return
     }
 
@@ -550,7 +559,7 @@ fun DeviceRowCard(row: DeviceRow, now: Double, onClick: () -> Unit, onWrite: () 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    row.label + if (row.trackerShaped) " 🏷" else "",
+                    row.label + (if (row.trackerShaped) " 🏷" else "") + (if (row.flare) " 🔥" else ""),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
@@ -621,7 +630,8 @@ fun metaLineOf(row: DeviceRow): String {
 @Composable
 fun DeviceDetail(
     app: NightjarApp, snapshot: DeviceRow, now: Double,
-    onBack: () -> Unit, goToSend: () -> Unit
+    onBack: () -> Unit, goToSend: () -> Unit,
+    onHunt: (String) -> Unit
 ) {
     val rows by app.post.rows.collectAsState()
     val row = rows.firstOrNull { it.id == snapshot.id } ?: snapshot
@@ -674,6 +684,11 @@ fun DeviceDetail(
                         } ?: "—"
                     )
                     FactRow("Trend", row.trend ?: "—")
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick = { onHunt(row.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Hunt this signal") }
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "RSSI history — last ${row.rssiHistory.size} sightings",
@@ -952,6 +967,7 @@ fun shareFile(app: NightjarApp, file: File) {
 @Composable
 fun AboutTab(app: NightjarApp) {
     val ip = app.mouth.localIPAddress()
+    var confirmReset by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -991,5 +1007,66 @@ fun AboutTab(app: NightjarApp) {
                 )
             }
         }
+        item {
+            IosPanelCard {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        "Defaults census",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        "Every setting in the app — " +
+                            "${SaneDefaults.keys.size} keys — has a " +
+                            "sane default. A reset restores " +
+                            "configuration only: payloads, presets, " +
+                            "sessions and logs are not touched.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { confirmReset = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Reset all settings to sane defaults") }
+                }
+            }
+        }
+    }
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Reset all settings?") },
+            text = {
+                Text(
+                    "Every setting returns to its sane default. " +
+                        "EMCON stands down, the GATT host disarms, " +
+                        "and stealth turns off. Payloads, presets, " +
+                        "sessions and logs are not touched."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        SaneDefaults.reset(app)
+                        confirmReset = false
+                        app.mouth.toast(
+                            "Settings reset — sane defaults restored")
+                    }
+                ) {
+                    Text(
+                        "Reset to sane defaults",
+                        color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmReset = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
