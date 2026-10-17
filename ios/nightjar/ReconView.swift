@@ -1228,6 +1228,7 @@ struct ScanView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var mouth: Mouth
     @StateObject private var model = ScanModel()
+    @State private var dossierSheet: DossierPresentation?
     @StateObject private var tls = TLSInspector()
     @StateObject private var dns = DNSModel()
     @State private var host = ""
@@ -1450,8 +1451,8 @@ struct ScanView: View {
                 if !model.sweepHosts.isEmpty || !model.discovered.isEmpty {
                     Section(header: Text("Dossiers")) {
                         ForEach(sweptIPs, id: \.self) { ip in
-                            NavigationLink {
-                                DossierView(
+                            Button {
+                                dossierSheet = DossierPresentation(
                                     title: knownName(for: ip), ip: ip,
                                     wifiLines: [
                                         "Answered the sweep on port "
@@ -1463,8 +1464,8 @@ struct ScanView: View {
                             }
                         }
                         ForEach(model.discovered) { service in
-                            NavigationLink {
-                                DossierView(
+                            Button {
+                                dossierSheet = DossierPresentation(
                                     title: service.name, ip: nil,
                                     wifiLines: [
                                         "Announces itself via Bonjour: "
@@ -1482,6 +1483,9 @@ struct ScanView: View {
                              + "Bluetooth, and a Recon knock on "
                              + "demand.")
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .sheet(item: $dossierSheet) { presentation in
+                        DossierSheetView(presentation: presentation)
                     }
                 }
 
