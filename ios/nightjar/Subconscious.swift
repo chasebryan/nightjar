@@ -588,7 +588,7 @@ final class SubconsciousCenter: ObservableObject {
 
 struct SubconsciousSectionView: View {
     @ObservedObject private var mind = SubconsciousCenter.shared
-    @State private var showMind = false
+    @Binding var showMind: Bool
 
     var body: some View {
         Section(header: Text("The Subconscious — the mind "
@@ -626,9 +626,6 @@ struct SubconsciousSectionView: View {
             }
         }
         .onAppear { mind.refresh() }
-        .sheet(isPresented: $showMind) {
-            SubconsciousView()
-        }
     }
 }
 
