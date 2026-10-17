@@ -167,6 +167,18 @@ enum Journal {
         }
         return Array(parsed.suffix(limit).reversed())
     }
+
+    /// Start the ledger over: the file is deleted on the
+    /// journal's own queue, so no append can interleave,
+    /// and the chain head forgets — the next line written
+    /// opens a fresh chain and names no parent.
+    static func clear() {
+        queue.sync {
+            try? FileManager.default.removeItem(at: fileURL)
+            lastHash = nil
+            chainLoaded = true
+        }
+    }
 }
 
 /// The morning brief: the sealed log distilled to the lines
@@ -278,6 +290,8 @@ struct NightLogView: View {
     @State private var events: [NightEvent] = []
     @State private var report: Journal.ChainReport?
     @State private var shareItem: ShareItem?
+    @State private var entriesOpen = false
+    @State private var confirmClear = false
 
     private var reportText: String? {
         guard let report = report else { return nil }
@@ -350,27 +364,61 @@ struct NightLogView: View {
                      + "a time.")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            ForEach(events) { event in
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(event.module.uppercased())
-                            .font(.caption.weight(.bold))
-                        Text(event.kind)
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(event.when.formatted(
-                            date: .omitted, time: .standard))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text(event.text).font(.callout)
-                    HStack(spacing: 6) {
-                        Text(event.when.formatted(
-                            date: .abbreviated, time: .omitted))
-                        if let h = event.h {
-                            Text("· sealed " + String(h.prefix(10)))
+            if !events.isEmpty {
+                Section {
+                    Button {
+                        withAnimation { entriesOpen.toggle() }
+                    } label: {
+                        HStack {
+                            Label("Entries",
+                                  systemImage: "list.bullet")
+                            Spacer()
+                            Text("\(events.count)")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: entriesOpen
+                                  ? "chevron.up" : "chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
+                    if entriesOpen {
+                        ForEach(events) { event in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(event.module.uppercased())
+                                        .font(.caption.weight(.bold))
+                                    Text(event.kind)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text(event.when.formatted(
+                                        date: .omitted,
+                                        time: .standard))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Text(event.text).font(.callout)
+                                HStack(spacing: 6) {
+                                    Text(event.when.formatted(
+                                        date: .abbreviated,
+                                        time: .omitted))
+                                    if let h = event.h {
+                                        Text("· sealed "
+                                             + String(h.prefix(10)))
+                                    }
+                                }
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    Button(role: .destructive) {
+                        confirmClear = true
+                    } label: {
+                        Label("Clear the log",
+                              systemImage: "trash")
+                    }
                 }
             }
             if !events.isEmpty {
@@ -385,6 +433,23 @@ struct NightLogView: View {
         .navigationTitle("Night log")
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)
+        }
+        .confirmationDialog(
+            "Clear the night log?",
+            isPresented: $confirmClear,
+            titleVisibility: .visible) {
+            Button("Clear \(events.count) entries",
+                   role: .destructive) {
+                Journal.clear()
+                events = []
+                report = nil
+                entriesOpen = false
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("The sealed log file is deleted and the "
+                 + "seal chain starts fresh. This cannot be "
+                 + "undone.")
         }
         .onAppear { events = Journal.events() }
     }
