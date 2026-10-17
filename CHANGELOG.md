@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **Skelli, her weights managed in the app
+  (iOS).** Her bench no longer asks the operator
+  to stage files by hand: her menu's Weights
+  sheet carries the catalog she supports, names
+  the model this phone should carry (judged by
+  its memory), and downloads it from the
+  Hugging Face hub into the app's own cache at
+  a tap — progress shown, selected on arrival,
+  deletable from the same screen. The cascade
+  speaks to the chosen download; a hand-staged
+  SkelliWeights folder still serves when
+  nothing has been chosen. Only the package
+  itself (mlx-swift-lm, one Xcode step at build
+  time) stands outside the app; everything
+  after installation is hers.
+
 - **Skelli, terser and sharper (iOS).** One
   written indicator of work (the activity line);
   her status line is facts only, and no
