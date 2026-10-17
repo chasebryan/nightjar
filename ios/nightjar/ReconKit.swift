@@ -100,6 +100,10 @@ final class Recon: NSObject, ObservableObject {
                 })
                 mouth.uiSuccess("Knock: \(open.count) open of \(ports.count)")
             }
+            for hit in open {
+                NeighborhoodStore.shared.discover(
+                    source: host, port: hit.port, via: "recon")
+            }
         }
     }
 
