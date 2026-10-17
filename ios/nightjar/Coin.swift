@@ -161,6 +161,31 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
     func readerSessionDidBecomeActive(
         _ session: NFCNDEFReaderSession) {}
 
+    /// The protocol's required detection path. The coin's
+    /// real work rides the tag-level path below; a message
+    /// that arrives whole is treated as a plain tap read,
+    /// and a mint asked of it is refused honestly.
+    func readerSession(_ session: NFCNDEFReaderSession,
+                       didDetectNDEFs messages: [NFCNDEFMessage]) {
+        guard let message = messages.first else {
+            session.invalidate(
+                errorMessage: "That tag said nothing.")
+            return
+        }
+        let hash = Self.hash(of: message)
+        switch mode {
+        case .tap:
+            act(hash: hash, session: session)
+        case .claim:
+            claim(hash: hash, session: session)
+        case .mint:
+            finish(false,
+                   "The mint needs the tag itself, not its "
+                   + "message — hold it steady and try again.",
+                   session: session)
+        }
+    }
+
     func readerSession(_ session: NFCNDEFReaderSession,
                        didInvalidateWithError error: Error) {
         let code = (error as NSError).code
