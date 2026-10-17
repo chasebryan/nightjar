@@ -263,6 +263,22 @@ final class KnockChat: ObservableObject {
         }
     }
 
+    /// A voice-throw receipt settles the throw's delivery:
+    /// the receipt IS the confirmation, spoken in sentences
+    /// where an ACK is four nibbles.
+    func settleThrow(instructionID: String, peer rawPeer: String) {
+        let peer = Self.peerKey(rawPeer)
+        guard let messages = threads[peer],
+              let message = messages.last(where: {
+                  $0.outgoing
+                      && VoiceThrowCodec.instructionID(of: $0.text)
+                          == instructionID
+              }) else { return }
+        ackTimers[message.id]?.invalidate()
+        ackTimers[message.id] = nil
+        update(message.id) { $0.state = "delivered" }
+    }
+
     func handleAck(from rawSource: String, hash: [Int]) {
         let peer = Self.peerKey(rawSource)
         guard let message = threads[peer]?.last(where: {
