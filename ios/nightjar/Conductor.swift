@@ -39,6 +39,7 @@ enum Conductor {
         ("vault", "The knock vault opens"),
         ("newSource", "A new source knocks"),
         ("anyKnock", "Any knock"),
+        ("foreignHands", "Foreign hands, repeatedly"),
     ]
 
     static let actions: [(id: String, label: String)] = [
@@ -232,6 +233,16 @@ enum Conductor {
 
     static func onVault(emcon: Emcon) {
         evaluate(trigger: "vault", emcon: emcon, fire: Fire())
+    }
+
+    /// The Cadence Seal's streak escalation calls
+    /// here: right key, wrong hands, three verdicts
+    /// running — the clone scenario the seal exists
+    /// for, offered to any reflex the operator has
+    /// armed against it.
+    static func onForeignHands(emcon: Emcon, host: String) {
+        evaluate(trigger: "foreignHands", emcon: emcon,
+                 fire: Fire(host: host))
     }
 
     static func onHoneydrop(emcon: Emcon, peer: String) {

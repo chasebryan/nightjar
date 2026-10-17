@@ -164,7 +164,15 @@ enum CadenceSeal {
             sum += z * z
         }
         let distance = sqrt(sum / Double(sample.features.count))
-        if distance < matchThreshold {
+        // The threshold breathes with the profile's
+        // depth: three samples make a crude estimate
+        // of a hand's variance, and the flat 2.2
+        // judged a young profile's owner foreign for
+        // estimation error, not for wrong hands. The
+        // grace retires as the samples accumulate.
+        let threshold = matchThreshold
+            + Double(max(0, 10 - profile.samples)) * 0.06
+        if distance < threshold {
             profile.learn(sample.features)
             profiles[peer] = profile
             save(profiles)

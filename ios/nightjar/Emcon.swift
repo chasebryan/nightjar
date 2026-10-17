@@ -149,10 +149,6 @@ final class Emcon: ObservableObject {
     @Published private(set) var heardCount = 0
     @Published private(set) var lastAuditAt: Date?
     @Published private(set) var drilling = false
-    /// The score as it stood the moment before going
-    /// dark — the header reads the fall from it, so
-    /// engaging EMCON shows what it actually bought.
-    @Published private(set) var scoreBeforeDark: Score?
     @Published private(set) var drillBefore: Snapshot?
     @Published private(set) var drillAfter: Snapshot?
     /// What the drill itself switched off, by name —
@@ -261,28 +257,17 @@ final class Emcon: ObservableObject {
                       serveRunning: Bool, stealth: Bool,
                       deviceName: String,
                       exposureCount: Int,
-                      announcerCount: Int,
-                      assaultOn: Bool = false,
-                      serveListeners: Int = 1,
-                      probingOn: Bool = false) -> Score {
+                      announcerCount: Int) -> Score {
         var parts: [Score.Part] = []
         func weigh(_ label: String, _ points: Int) {
             guard points > 0 else { return }
             parts.append(Score.Part(label: label, points: points))
         }
-        if assaultOn { weigh("Net-Assault running", 30) }
         if gattHostOn { weigh("GATT host", 25) }
         if beaconOn { weigh("BLE beacon", 20) }
-        if probingOn { weigh("Active probing", 10) }
         if serveRunning {
-            let extra = max(0, serveListeners - 1)
-            let counted = serveListeners > 1
-                ? " ×\(serveListeners)" : ""
-            if stealth {
-                weigh("Serve, stealth" + counted, 4 + extra)
-            } else {
-                weigh("Serve, listed" + counted, 20 + 3 * extra)
-            }
+            weigh(stealth ? "Serve, stealth" : "Serve, listed",
+                  stealth ? 4 : 20)
         }
         if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
             weigh("Personal name", 12)
@@ -354,18 +339,6 @@ final class Emcon: ObservableObject {
     /// tripwire. Serve listeners keep running if they were running,
     /// but under stealth — unlisted, silent arrivals.
     func activate(mouth: Mouth) {
-        // The reading before the fall, taken from the
-        // figures as they stand — engaging EMCON
-        // must be able to show what it bought.
-        scoreBeforeDark = Self.score(
-            gattHostOn: mouth.gattHostOn,
-            beaconOn: mouth.beaconOn,
-            serveRunning: mouth.serveRunning,
-            stealth: mouth.stealth,
-            deviceName: deviceName,
-            exposureCount: exposures.count,
-            announcerCount: announcers.count,
-            serveListeners: mouth.serveListenerCount)
         active = true
         UserDefaults.standard.set(true, forKey: Self.activeKey)
         mouth.setStealth(true)
@@ -380,7 +353,6 @@ final class Emcon: ObservableObject {
     /// beacon are left exactly as they are — re-arming an emission
     /// is always a deliberate act in its own tab.
     func deactivate() {
-        scoreBeforeDark = nil
         active = false
         UserDefaults.standard.set(false, forKey: Self.activeKey)
         stopTripwire()
@@ -1529,6 +1501,47 @@ final class Emcon: ObservableObject {
                         "FOREIGN HANDS from \(message.source) — "
                         + "right key, wrong rhythm (distance "
                         + String(format: "%.1f", score) + ")")
+            // A foreign verdict is no longer a dead
+            // end. The streak is counted per peer,
+            // and the third in a row escalates for
+            // real — the second sense rises and the
+            // conductor hears of it — because right
+            // key, wrong hands, REPEATEDLY is the
+            // clone scenario the seal exists for.
+            // One stray verdict (a new phone, a
+            // congested relay) stays a note, as
+            // before; the seal still never blocks.
+            let streakKey = "cadenceForeignStreaks"
+            var streaks = UserDefaults.standard
+                .dictionary(forKey: streakKey)
+                as? [String: Int] ?? [:]
+            let streak = (streaks[peer] ?? 0) + 1
+            streaks[peer] = streak
+            UserDefaults.standard.set(streaks,
+                                      forKey: streakKey)
+            if streak == 3 {
+                Journal.log("emcon", "cadence",
+                            "ESCALATION — three foreign "
+                            + "verdicts running from "
+                            + "\(message.source); the "
+                            + "second sense rises")
+                raiseSense(reason: "cadence: foreign "
+                    + "hands from \(message.source), "
+                    + "three verdicts running")
+                Conductor.onForeignHands(emcon: self,
+                                         host: peer)
+            }
+        case .match:
+            // A matching hand clears the streak.
+            let streakKey = "cadenceForeignStreaks"
+            var streaks = UserDefaults.standard
+                .dictionary(forKey: streakKey)
+                as? [String: Int] ?? [:]
+            if streaks[peer] != nil {
+                streaks[peer] = 0
+                UserDefaults.standard.set(streaks,
+                                          forKey: streakKey)
+            }
         case .learning(let have, let need) where have == need:
             Journal.log("emcon", "cadence",
                         "cadence enrolled for \(message.source) — "

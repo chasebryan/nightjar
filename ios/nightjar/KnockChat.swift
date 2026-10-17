@@ -66,6 +66,83 @@ final class KnockChat: ObservableObject {
     private var sealedStore: [String: Data] = [:]
     private var repairRounds: [String: Int] = [:]
     private var ackTimers: [String: Timer] = [:]
+    private var sendStarted: [String: Date] = [:]
+    private var sendKnocks: [String: Int] = [:]
+
+    // MARK: - the delivery ledger
+
+    /// What deliveries to each peer actually cost —
+    /// the airtime per knock and the fragment loss
+    /// rate, learned from every send this center
+    /// settles or repairs. The deadline and the
+    /// repair budget used to be computed from a
+    /// fiction (0.55 s per knock for every peer,
+    /// two repair rounds for every message); they
+    /// are read off this ledger now, with the old
+    /// constants standing as floors.
+    private static let ledgerKey = "knockDeliveryLedger"
+
+    private struct PeerDelivery {
+        var perKnock: Double = 0.55
+        var lossRate: Double = 0
+        var samples: Int = 0
+    }
+
+    private func peerDelivery(_ peer: String) -> PeerDelivery {
+        let all = UserDefaults.standard.dictionary(
+            forKey: Self.ledgerKey)
+            as? [String: [String: Double]] ?? [:]
+        guard let entry = all[peer] else {
+            return PeerDelivery() }
+        return PeerDelivery(
+            perKnock: entry["perKnock"] ?? 0.55,
+            lossRate: entry["lossRate"] ?? 0,
+            samples: Int(entry["samples"] ?? 0))
+    }
+
+    private func savePeerDelivery(_ peer: String,
+                                  _ stats: PeerDelivery) {
+        var all = UserDefaults.standard.dictionary(
+            forKey: Self.ledgerKey)
+            as? [String: [String: Double]] ?? [:]
+        all[peer] = ["perKnock": stats.perKnock,
+                     "lossRate": stats.lossRate,
+                     "samples": Double(stats.samples)]
+        UserDefaults.standard.set(all, forKey: Self.ledgerKey)
+    }
+
+    private func noteDelivered(_ message: ChatMessage) {
+        guard let started = sendStarted[message.id],
+              let knocks = sendKnocks[message.id],
+              knocks > 0 else { return }
+        sendStarted[message.id] = nil
+        sendKnocks[message.id] = nil
+        let sample = Date().timeIntervalSince(started)
+            / Double(knocks)
+        var stats = peerDelivery(message.peer)
+        stats.perKnock = stats.samples == 0 ? sample
+            : stats.perKnock * 0.6 + sample * 0.4
+        stats.samples += 1
+        savePeerDelivery(message.peer, stats)
+    }
+
+    private func noteLoss(peer: String, missing: Int,
+                          total: Int) {
+        guard total > 0 else { return }
+        var stats = peerDelivery(peer)
+        stats.lossRate = stats.lossRate * 0.6
+            + (Double(missing) / Double(total)) * 0.4
+        savePeerDelivery(peer, stats)
+    }
+
+    /// Every road to "delivered" runs through here,
+    /// so the ledger hears about each arrival.
+    private func settleDelivered(_ message: ChatMessage) {
+        ackTimers[message.id]?.invalidate()
+        ackTimers[message.id] = nil
+        update(message.id) { $0.state = "delivered" }
+        noteDelivered(message)
+    }
     private let saveQueue = DispatchQueue(label: "nightjar.knockchat.save")
     private var senderForwarding: AnyCancellable?
 
@@ -230,7 +307,17 @@ final class KnockChat: ObservableObject {
         // per drain, so chain through a wrapper: poll on the
         // sender's published state instead — simpler and honest.
         let knocks = next.frames.reduce(0) { $0 + $1.count }
-        let deadline = TimeInterval(Knocktalk.etaSeconds(knocks: knocks)) + 90
+        sendStarted[id] = Date()
+        sendKnocks[id] = knocks
+        // The deadline is read off this peer's
+        // ledger entry — never tighter than the
+        // old fiction's deadline, looser when the
+        // peer has proven slower than 0.55 s a
+        // knock.
+        let stats = peerDelivery(next.peer)
+        let deadline = max(
+            TimeInterval(Knocktalk.etaSeconds(knocks: knocks)) + 90,
+            Double(knocks) * stats.perKnock * 1.6 + 30)
         ackTimers[id]?.invalidate()
         ackTimers[id] = Timer.scheduledTimer(
             withTimeInterval: deadline, repeats: false) { [weak self] _ in
@@ -283,9 +370,7 @@ final class KnockChat: ObservableObject {
                       && VoiceThrowCodec.instructionID(of: $0.text)
                           == instructionID
               }) else { return }
-        ackTimers[message.id]?.invalidate()
-        ackTimers[message.id] = nil
-        update(message.id) { $0.state = "delivered" }
+        settleDelivered(message)
     }
 
     /// A duel message in reply settles the outgoing duel
@@ -298,9 +383,7 @@ final class KnockChat: ObservableObject {
                   $0.outgoing
                       && DuelCodec.id(of: $0.text) == duelID
               }) else { return }
-        ackTimers[message.id]?.invalidate()
-        ackTimers[message.id] = nil
-        update(message.id) { $0.state = "delivered" }
+        settleDelivered(message)
     }
 
     func handleAck(from rawSource: String, hash: [Int]) {
@@ -319,14 +402,26 @@ final class KnockChat: ObservableObject {
             $0.outgoing
                 && ($0.state == "awaiting" || $0.state == "sending")
         }), let sealed = sealedStore[message.id] else { return }
+        let all = Knocktalk.fragmentFrames(
+            sealed: sealed, suite: message.suite ?? Knocktalk.suiteChaCha)
+        noteLoss(peer: peer, missing: missing.count,
+                 total: all.count)
         let rounds = repairRounds[message.id] ?? 0
-        guard rounds < 2 else {
+        // The repair budget scales with the
+        // message and the peer's proven loss —
+        // two rounds at base, more for long
+        // messages and lossy peers. A
+        // sixteen-fragment message through a
+        // lossy relay was being failed by the
+        // same budget as a two-fragment note on
+        // a quiet wire.
+        let budget = 2 + min(3, all.count / 6)
+            + (peerDelivery(peer).lossRate > 0.25 ? 1 : 0)
+        guard rounds < budget else {
             update(message.id) { $0.state = "failed" }
             return
         }
         repairRounds[message.id] = rounds + 1
-        let all = Knocktalk.fragmentFrames(
-            sealed: sealed, suite: message.suite ?? Knocktalk.suiteChaCha)
         let wanted = missing.filter { $0 >= 0 && $0 < all.count }
         guard !wanted.isEmpty else { return }
         update(message.id) { $0.state = "sending" }
