@@ -1,6 +1,7 @@
 package net.nosuchmachine.nightjarhack
 
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -87,9 +88,21 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
     var sparWasFuzzing by remember { mutableStateOf(false) }
     var sparSummary by remember { mutableStateOf<String?>(null) }
 
+    var proberSelection by remember {
+        mutableStateOf<ProberFile?>(null)
+    }
+    var conductorOn by prefBool(prefs, "conductorOn", false)
+    var rules by remember {
+        mutableStateOf<List<Conductor.Rule>>(emptyList())
+    }
+    var newTrigger by remember { mutableStateOf("fingerprinted") }
+    var newAction by remember { mutableStateOf("pivotRecon") }
+
     LaunchedEffect(Unit) {
         emcon.restoreIfNeeded()
         emcon.deadHandEvaluate()
+        Conductor.seedIfNeeded(prefs)
+        rules = Conductor.loadRules(prefs)
     }
     LaunchedEffect(sparFuzzing) {
         if (!sparFuzzing && sparWasFuzzing) {
@@ -632,6 +645,194 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
             }
         }
 
+        // MARK: prober files
+        item { IosSectionHeader("Prober files") }
+        item {
+            IosPanelCard {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val files = ProberFiles.build(events)
+                    if (files.isEmpty()) {
+                        Text(
+                            "No probers yet. When something " +
+                                "knocks, its file opens here.",
+                            color = IosColors.SecondaryLabel)
+                    } else {
+                        for (file in files) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        proberSelection = file
+                                        ProberFiles.markSeen(
+                                            file, prefs)
+                                    },
+                                horizontalArrangement =
+                                    Arrangement.SpaceBetween,
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        file.host,
+                                        fontWeight = FontWeight.Medium)
+                                    Text(
+                                        "${file.knocks} knock(s) · " +
+                                            "${file.ports.size} port(s)" +
+                                            if (file.drops > 0) {
+                                                " · took ${file.drops} " +
+                                                    "drop(s)"
+                                            } else {
+                                                ""
+                                            } +
+                                            " · last " +
+                                            timeFormat.format(
+                                                Date(file.lastSeenMs)),
+                                        style = MaterialTheme.typography
+                                            .bodySmall,
+                                        color = IosColors.SecondaryLabel)
+                                }
+                                if (ProberFiles.changed(file, prefs)) {
+                                    Text(
+                                        "CHANGED",
+                                        style = MaterialTheme.typography
+                                            .labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFF9F0A))
+                                }
+                                Text(
+                                    "›",
+                                    color = IosColors.TertiaryLabel)
+                            }
+                        }
+                    }
+                    Text(
+                        "A dossier for everyone who has knocked — " +
+                            "assembled from the tripwire log this " +
+                            "phone keeps. It covers what the log " +
+                            "still holds.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IosColors.SecondaryLabel)
+                }
+            }
+        }
+        proberSelection?.let { file ->
+            item {
+                IosPanelCard {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Prober file — ${file.host}",
+                                fontWeight = FontWeight.SemiBold)
+                            TextButton(onClick = {
+                                proberSelection = null
+                            }) { Text("Close") }
+                        }
+                        LabeledRow("Address", file.host)
+                        LabeledRow("Knocks", "${file.knocks}")
+                        LabeledRow(
+                            "First seen",
+                            SimpleDateFormat(
+                                "MMM d, HH:mm", Locale.US)
+                                .format(Date(file.firstSeenMs)))
+                        LabeledRow(
+                            "Last seen",
+                            SimpleDateFormat(
+                                "MMM d, HH:mm", Locale.US)
+                                .format(Date(file.lastSeenMs)))
+                        if (file.drops > 0) {
+                            LabeledRow(
+                                "Honeydrops taken", "${file.drops}")
+                        }
+                        Text(
+                            "Doors tried",
+                            fontWeight = FontWeight.SemiBold)
+                        for ((port, count) in file.portsByTraffic) {
+                            LabeledRow("Port $port", "×$count")
+                        }
+                        if (file.verdicts.isNotEmpty()) {
+                            Text(
+                                "First words heard",
+                                fontWeight = FontWeight.SemiBold)
+                            for (verdict in file.verdicts) {
+                                Text(verdict)
+                            }
+                        }
+                        if (file.links.isNotEmpty()) {
+                            Text(
+                                "Same hands?",
+                                fontWeight = FontWeight.SemiBold)
+                            for (link in file.links) {
+                                Column {
+                                    Text(
+                                        link.host,
+                                        fontWeight = FontWeight.Medium)
+                                    for (shared in link.shared) {
+                                        Text(
+                                            "· $shared",
+                                            style = MaterialTheme
+                                                .typography.bodySmall,
+                                            color = IosColors
+                                                .SecondaryLabel)
+                                    }
+                                }
+                            }
+                            Text(
+                                "Correlation over this phone's " +
+                                    "own tripwire log: shared " +
+                                    "habits suggest, they never " +
+                                    "prove. Two tenants of one " +
+                                    "NAT can share every trait " +
+                                    "here and still be strangers.",
+                                style = MaterialTheme.typography
+                                    .bodySmall,
+                                color = IosColors.SecondaryLabel)
+                        }
+                        val favorite = file.favoritePort
+                        if (favorite != null &&
+                            !file.host.startsWith("127.")) {
+                            Button(
+                                onClick = {
+                                    app.reconHandoff.value = Triple(
+                                        file.host, favorite,
+                                        System.nanoTime())
+                                    proberSelection = null
+                                    goToRecon()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Knock back at port $favorite") }
+                        }
+                        OutlinedButton(onClick = {
+                            val send = Intent(Intent.ACTION_SEND)
+                                .setType("text/plain")
+                                .putExtra(Intent.EXTRA_TEXT, file.text)
+                            context.startActivity(
+                                Intent.createChooser(
+                                    send, "Prober file"))
+                        }) { Text("Share this file") }
+                        Text(
+                            "An address is a claim about a " +
+                                "network, not an identity — " +
+                                "addresses are borrowed, shared, " +
+                                "and spoofed. The file records " +
+                                "what knocked, never who.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IosColors.SecondaryLabel)
+                    }
+                }
+            }
+        }
+
         // MARK: home-turf memory
         item { IosSectionHeader("Home-turf memory") }
         item {
@@ -733,6 +934,128 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
                             "or a honeydrop is taken: answer in " +
                             "character arms whether or not its " +
                             "switch is set. Nothing else changes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IosColors.SecondaryLabel)
+                }
+            }
+        }
+
+        // MARK: the conductor
+        item { IosSectionHeader("The conductor") }
+        item {
+            IosPanelCard {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Conductor")
+                        Switch(
+                            checked = conductorOn,
+                            onCheckedChange = { conductorOn = it })
+                    }
+                    for (rule in rules) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(rule.name)
+                                Text(
+                                    Conductor.triggerLabel(rule.trigger) +
+                                        " → " +
+                                        Conductor.actionLabel(rule.action),
+                                    style = MaterialTheme.typography
+                                        .bodySmall,
+                                    color = IosColors.SecondaryLabel)
+                            }
+                            Switch(
+                                checked = rule.enabled,
+                                onCheckedChange = { on ->
+                                    rules = rules.map {
+                                        if (it.id == rule.id) {
+                                            it.copy(enabled = on)
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                    Conductor.saveRules(prefs, rules)
+                                })
+                            TextButton(onClick = {
+                                rules = rules.filter {
+                                    it.id != rule.id
+                                }
+                                Conductor.saveRules(prefs, rules)
+                            }) {
+                                Text("Delete", color = IosColors.Error)
+                            }
+                        }
+                    }
+                    Text(
+                        "When",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold)
+                    for (row in Conductor.triggers.chunked(2)) {
+                        Row(
+                            horizontalArrangement =
+                                Arrangement.spacedBy(6.dp)
+                        ) {
+                            for ((id, label) in row) {
+                                FilterChip(
+                                    selected = newTrigger == id,
+                                    onClick = { newTrigger = id },
+                                    label = { Text(label) })
+                            }
+                        }
+                    }
+                    Text(
+                        "Then",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold)
+                    for (row in Conductor.actions.chunked(2)) {
+                        Row(
+                            horizontalArrangement =
+                                Arrangement.spacedBy(6.dp)
+                        ) {
+                            for ((id, label) in row) {
+                                FilterChip(
+                                    selected = newAction == id,
+                                    onClick = { newAction = id },
+                                    label = { Text(label) })
+                            }
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            val rule = Conductor.Rule(
+                                id = java.util.UUID.randomUUID()
+                                    .toString(),
+                                name = Conductor.triggerLabel(newTrigger) +
+                                    " → " +
+                                    Conductor.actionLabel(newAction),
+                                trigger = newTrigger,
+                                action = newAction,
+                                enabled = true)
+                            rules = rules + rule
+                            Conductor.saveRules(prefs, rules)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Add the reflex") }
+                    Text(
+                        "Reflexes you arm once, fired without " +
+                            "you: a trigger on the wire, an action " +
+                            "the instrument already knows. Each " +
+                            "rule rests five minutes between " +
+                            "firings, every firing is journaled, " +
+                            "and actions needing a mouth or a " +
+                            "target degrade to the journal line " +
+                            "alone when they have neither. Firing " +
+                            "the bench stays your press — a reflex " +
+                            "can load Recon, never pull its trigger.",
                         style = MaterialTheme.typography.bodySmall,
                         color = IosColors.SecondaryLabel)
                 }
@@ -1151,6 +1474,17 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
                 color = IosColors.SecondaryLabel,
                 modifier = Modifier.padding(horizontal = 4.dp))
         }
+    }
+}
+
+@Composable
+private fun LabeledRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label)
+        Text(value, color = IosColors.SecondaryLabel)
     }
 }
 
