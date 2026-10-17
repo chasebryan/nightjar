@@ -2091,6 +2091,29 @@ final class WeightsCenter: ObservableObject {
             ?? [])
     }
 
+    /// Any MLX model on the hub, named by hand,
+    /// can join her bench — the catalog is a
+    /// starting shelf, not a fence.
+    static func customOption(id: String)
+        -> WeightsOption {
+        WeightsOption(
+            id: id,
+            name: id.components(
+                separatedBy: "/").last ?? id,
+            sizeGB: 0,
+            note: "Brought by hand.")
+    }
+
+    /// The weights on this phone that the
+    /// catalog didn't name.
+    var customDownloaded: [WeightsOption] {
+        let known = Set(Self.catalog.map { $0.id })
+        return downloaded
+            .filter { !known.contains($0) }
+            .sorted()
+            .map { Self.customOption(id: $0) }
+    }
+
     /// The bench this phone should carry, judged
     /// by the memory it has to carry it in.
     var recommended: WeightsOption {
@@ -2192,6 +2215,7 @@ final class WeightsCenter: ObservableObject {
 struct WeightsView: View {
     @StateObject private var center = WeightsCenter.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var customID = ""
 
     var body: some View {
         NavigationStack {
@@ -2234,6 +2258,43 @@ struct WeightsView: View {
                             option in
                             row(option)
                         }
+                    }
+                    if !center.customDownloaded
+                        .isEmpty {
+                        Section("Brought by hand") {
+                            ForEach(
+                                center.customDownloaded
+                            ) { option in
+                                row(option)
+                            }
+                        }
+                    }
+                    Section("Any weights on the hub") {
+                        TextField(
+                            "mlx-community/…",
+                            text: $customID)
+                            .font(.callout)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(
+                                .never)
+                        Button("Download it") {
+                            let id = customID
+                                .trimmingCharacters(
+                                    in: .whitespacesAndNewlines)
+                            if id.contains("/") {
+                                center.download(
+                                    WeightsCenter
+                                        .customOption(
+                                            id: id))
+                                customID = ""
+                            }
+                        }
+                        Text("Any MLX-format model "
+                            + "on the Hugging Face "
+                            + "hub — hers to run the "
+                            + "moment it lands.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     Section {
                         Text("Downloads come from the "
@@ -2322,5 +2383,149 @@ struct WeightsView: View {
             }
             .font(.caption.weight(.semibold))
         }
+    }
+}
+
+// MARK: - Her council chamber
+
+/// The minds in unison live here so Skelli.swift
+/// stays shippable: the council (one bench
+/// drafts, the other refines), the raw bench
+/// answer her Forge borrows, and the echo
+/// cleaner every reply passes through.
+extension SkelliMind {
+
+    #if canImport(FoundationModels)
+    /// The benches in unison: one drafts, the
+    /// other verifies it against the grounding
+    /// and speaks the final word. A draft that
+    /// asks for research is escalated untouched —
+    /// a referee doesn't answer for it.
+    @available(iOS 26.0, *)
+    static func council(
+        prompt: String, grounding: String,
+        finish: @escaping (Verdict) -> Void) async {
+        var draft: String?
+        var draftedByWeights = false
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *),
+           SkelliWeights.canSpeak {
+            draft = await SkelliWeights.ask(
+                instructions: grounding,
+                prompt: prompt)
+            draftedByWeights = draft != nil
+        }
+        #endif
+        if draft == nil {
+            draft = await SkelliModelBox.run(
+                instructions: grounding,
+                prompt: prompt)
+        }
+        guard let draftText = draft,
+              let draftVerdict = interpret(draftText)
+        else {
+            finish(.research)
+            return
+        }
+        if case .research = draftVerdict {
+            finish(.research)
+            return
+        }
+        let refineInstructions = grounding
+            + " A colleague drafted the reply "
+            + "below. Verify it against the facts; "
+            + "correct it if it is wrong; keep it "
+            + "terse. Return only the final reply."
+        let refinePrompt = "The operator asked: "
+            + prompt + "\nDraft reply: " + draftText
+        var refined: String?
+        if draftedByWeights {
+            refined = await SkelliModelBox.run(
+                instructions: refineInstructions,
+                prompt: refinePrompt)
+        }
+        #if canImport(MLXLLM)
+        if refined == nil, !draftedByWeights,
+           #available(iOS 17.0, *),
+           SkelliWeights.canSpeak {
+            refined = await SkelliWeights.ask(
+                instructions: refineInstructions,
+                prompt: refinePrompt)
+        }
+        #endif
+        if let refined = refined,
+           let verdict = interpret(refined) {
+            finish(verdict)
+        } else {
+            finish(draftVerdict)
+        }
+    }
+    #endif
+
+    /// A raw answer for her workbench — no
+    /// verdict, no research: the best bench's
+    /// words, cleaned. The weights draft first
+    /// (the forge wants the local mind), Apple's
+    /// bench behind them.
+    static func rawAnswer(instructions: String,
+                          prompt: String)
+        async -> String? {
+        #if canImport(MLXLLM)
+        if #available(iOS 17.0, *),
+           SkelliWeights.canSpeak,
+           let text = await SkelliWeights.ask(
+               instructions: instructions,
+               prompt: prompt) {
+            let cleaned = decontaminate(text)
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            if !cleaned.isEmpty { return cleaned }
+        }
+        #endif
+        #if canImport(FoundationModels)
+        if #available(iOS 26.0, *),
+           SkelliModelBox.available,
+           let text = await SkelliModelBox.run(
+               instructions: instructions,
+               prompt: prompt) {
+            let cleaned = decontaminate(text)
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            if !cleaned.isEmpty { return cleaned }
+        }
+        #endif
+        return nil
+    }
+
+    /// Small models love to continue the script
+    /// they were shown — echoing the transcript
+    /// back before answering. Cut any echo: what
+    /// she says is what follows the last script
+    /// marker, marker lines removed.
+    static func decontaminate(
+        _ text: String) -> String {
+        guard text.contains("Operator:") else {
+            return text
+        }
+        var lines = text.components(
+            separatedBy: "\n")
+        if let last = lines.lastIndex(where: {
+            $0.hasPrefix("Skelli:")
+        }) {
+            lines = Array(lines[last...])
+        }
+        let kept = lines.filter {
+            !$0.hasPrefix("Operator:")
+        }.map { line -> String in
+            line.hasPrefix("Skelli:")
+                ? String(line.dropFirst(7))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                : line
+        }
+        let cleaned = kept.joined(separator: "\n")
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? text : cleaned
     }
 }
