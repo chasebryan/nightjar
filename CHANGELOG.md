@@ -38,24 +38,30 @@
   confirmations — Skelli walks the operator to them
   and names why. Asked outside the house, she says
   so.
-- **Skelli researches (iOS).** What the house
-  cannot answer, she now looks up through the
-  phone's own network connection: DuckDuckGo's
-  instant answers and Wikipedia are asked in
-  parallel, and the answer comes back condensed
-  to whole sentences with its source named and
-  linked, so it can be judged like any other
-  testimony. 'Search the web for …' forces the
-  outward look; any question the manual, the
-  senses, and the record can't answer takes it
-  on its own. The outward query is scrubbed
-  first — private addresses, .local names, and
-  anything key-shaped are never sent — and web
-  research has its own switch in her menu (on by
-  default; her status line shows it; Reset
-  restores it). Retrieval, stated plainly: she
-  quotes and condenses what a source says; she
-  does not invent.
+- **Skelli's browser (iOS).** She has her own
+  browser now, and a strategist's doctrine for it:
+  only sources that let a machine in cleanly are
+  ever used — no CAPTCHAs answered, no walls
+  climbed, no paywalls picked. Keyless endpoints
+  scout by intent (the RFC Editor for standards,
+  arXiv for papers, Open Library for books,
+  GitHub for code, Stack Exchange for programming
+  questions, instant answers and Wikipedia for
+  the gist); for the open web she searches
+  DuckDuckGo's lite index, visits the top results
+  herself, and reads them — page prose distilled
+  to the passage that answers, PDFs read whole,
+  and script-built pages rendered by her private
+  WKWebView (non-persistent: no cookies, no
+  accounts, no history) and read off the render.
+  Walled results are counted and walked past,
+  not through; another source almost always
+  holds the same truth in the open. Answers
+  arrive as cited findings, sources named and
+  linked. The outward query stays scrubbed of
+  house particulars, and the Web research switch
+  in her menu still governs the whole outward
+  eye.
 - **The mind, consolidated (iOS).** The
   Subconscious now writes down what it concludes:
   durable house facts — the quiet hours, a
