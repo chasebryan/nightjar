@@ -2555,6 +2555,36 @@ extension SkelliCenter {
         return marks.contains { q.contains($0) }
     }
 
+    /// "Go bloodwork", "arctic theme" — she
+    /// recolours the house on a word, through
+    /// the same door Colours uses.
+    func applyThemeAsk(_ q: String) -> Bool {
+        let themed = q.contains("theme")
+            || q.contains("colour")
+            || q.contains("color")
+            || q.hasPrefix("go ")
+            || q.contains("switch to")
+            || q.contains("change to")
+        guard themed else { return false }
+        for theme in ThemeCenter.shared.allThemes {
+            let name = theme.name.lowercased()
+            var hit = q.contains(name)
+            if !hit, let first = name
+                .split(separator: " ").first,
+               first.count > 3 {
+                hit = q.contains(first)
+            }
+            if hit {
+                ThemeCenter.shared.apply(theme)
+                say("Colours changed — "
+                    + theme.name
+                    + " is the house now.")
+                return true
+            }
+        }
+        return false
+    }
+
     func consultCode(_ q: String) {
         activity = "Writing…"
         Task {
@@ -2579,6 +2609,10 @@ extension SkelliCenter {
                 if let text = text,
                    !text.isEmpty {
                     say(text)
+                    DeliveriesCenter.shared.add(
+                        name: "Code — "
+                            + String(q.prefix(28)),
+                        text: text, ext: "txt")
                 } else {
                     say("No bench could write "
                         + "that just now. The "
