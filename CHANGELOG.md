@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **Her bar thinks.** A first cut at vital
+  signs — shortcut chips — was replaced the
+  same night with continuous analysis: a live
+  EMCON exposure score with its loudest
+  contributor named, the wire and the BLE air
+  as moving panels (device counts with
+  history, unknowns and newcomers counted),
+  and one triaged verdict line that speaks
+  the most important fact in the house —
+  an exposure, a waiting payload, a new
+  device, an announcing Serve — or the latest
+  line of the house log. The glass is dark
+  now, with a lit hem, and the transcript
+  clears the bar's true height.
+
 - **Her bar is an instrument now.** Skelli's
   pinned header is sealed to the top of the
   screen — nothing scrolls above or around it —
