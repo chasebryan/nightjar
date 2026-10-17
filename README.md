@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**5.0.0.**
+**6.0.0 — "the open mind."**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -42,7 +42,15 @@ against. It boots over a living reel — the boot log typing itself across the f
   runs code in her **Workbench**, files everything
   she makes in **Deliveries**, and understands plain
   intent in plain words: no modes to pick, no
-  phrasing to memorize.
+  phrasing to memorize. As of 6.0.0 her hands answer
+  in the conversation too: *forge me a DNS packet for
+  the gateway* builds a real packet and keeps it,
+  *download the 7B* works her weights bench,
+  *delete the packet you forged* strikes it again,
+  and *remember, the printer is not to be trusted* —
+  said any natural way, punctuation and all — is
+  written to her notes for real. Orders are
+  performed, not taught back to you.
 - **Listen** — the purist half: receive-only BLE, sessions in
   the same JSONL the Mac tools read, a wide decoder bench for
   the air (MiBeacon, BTHome, Ruuvi, drone Remote ID, and
@@ -62,12 +70,19 @@ against. It boots over a living reel — the boot log typing itself across the f
 - **Scan** — connect scanner, /24 sweep, observation feed,
   TLS inspector, DNS toolkit, Bonjour, a pcap dissector, and
   **device dossiers** with knock baselines and drift watch.
+  Its **Net-Assault** knocks by significance — the
+  changed and the never-knocked first — and remembers
+  what it has already asked.
   Below them, **the Neighborhood** keeps standing files
   on every device on your wire, fed by observation alone.
 - **Recon** — the probe bench: protocol-speaking knocks, a
   connect console, a seeded fuzzer, and a probe library that
   hands off to Send.
-- **EMCON** — the defensive tab: an exposure score, a silence
+- **EMCON** — the defensive tab: an exposure score that
+  feels the room — it counts Net-Assault, active
+  probing, every Serve listener, and the stealth
+  switch itself, live, and going dark reports the
+  band you fell from — a silence
   switch, a self-audit, a fingerprinting tripwire, prober
   files, a knock vault that fires operator-chosen macros,
   the dead hand, self-sparring, night maneuvers, and Answer
@@ -79,7 +94,9 @@ against. It boots over a living reel — the boot log typing itself across the f
   claimed — works as a physical key for dead-hand
   check-ins and the vault.
 - **Knocktalk** — encrypted chat where the knock ORDER is
-  the channel: AEAD sealed boxes with delivery repair, a
+  the channel: AEAD sealed boxes with delivery repair
+  budgeted from each peer's own measured rhythm and
+  loss, a
   burn timer, per-operator cipher choice, an optional relay
   server (`tools/knocktalk-relay/`), and four more carriers
   for the same sealed box: **Chirp** (sound), **brush pass**
@@ -101,16 +118,63 @@ against. It boots over a living reel — the boot log typing itself across the f
   door for anyone who wants to chip in toward the
   costs.
 
-## Two ways in: the current build, or v4.0.0
+## What's new in 6.0.0 — "the open mind"
 
-The code on `main` is ahead of the last release, and
-it asks more of your gear. There are two supported
-ways in, and which one is yours depends on your Mac
-and your phone.
+6.0.0 is an intelligence release. Nothing was
+bolted on; everything already there was audited in
+its own code and taught from what it already
+observes:
 
-**The current build** (this repo, `main`) adds Skelli
-on top of everything in 4.2.0 — the Map, the
-Subconscious, the Instrument. Building it requires:
+- **Her hands, in conversation** — the Forge and
+  the weights bench answer in Skelli's chat, facts
+  are remembered in plain words, and forged things
+  can be struck by asking. Orders are performed,
+  not taught. (This carries everything prepared as
+  5.0.5, which was never tagged on its own.)
+- **The exposure score feels the room** — EMCON's
+  number counts Serve's listeners, Net-Assault,
+  active probing, and the stealth switch itself,
+  live; going dark reports the fall it bought.
+- **The house remembers better** — the
+  Consolidation keeps facts the fortnight stops
+  re-deriving, counts the Steward's rulings, and
+  watches pairings as well as hours; the Instrument
+  reckons baselines from complete days only, and
+  HRV and wrist temperature speak at last.
+- **The wire works smarter** — Net-Assault knocks
+  by significance and remembers; identification
+  weighs all its evidence before it names a thing;
+  Recon knocks in two phases, and its fuzzer breeds
+  from the payloads that earned replies; the
+  Neighborhood writes itself once per sighting, not
+  five times.
+- **Reflexes with judgment** — Knocktalk times
+  each peer by that peer's own rhythm; deliveries
+  and repairs are budgeted from a per-peer ledger;
+  a third foreign-hands verdict raises the second
+  sense; the Conductor's rests deepen per host and
+  jitter; the Canary arms the lures its own probers
+  keep asking for; the Hunt judges closeness
+  against the target's own strength.
+
+And one question settled: a new living-wallpaper
+reel — the red bloom — was tried as the default
+and stepped down at the operator's word. The orb
+keeps the wallpaper; the bloom is kept in `assets/`
+under its own name.
+
+## Two ways in: 6.0.0, or v4.0.0
+
+6.0.0 is the current release, and it asks more of
+your gear than the older line did. There are two
+supported ways in, and which one is yours depends
+on your Mac and your phone.
+
+**The current build** (this repo, `main`, the
+6.0.0 release) carries Skelli and everything in
+4.2.0 — the Map, the Subconscious, the Instrument —
+plus 5.0.0's Deliveries and 6.0.0's intelligence
+pass. Building it requires:
 
 - **Xcode 26** on the Mac. Skelli's Apple-model code
   is written against the iOS 26 SDK.

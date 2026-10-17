@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 5.0.0
+# nightjar-hack for iOS — 6.0.0
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -200,6 +200,37 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
+- **What 6.0.0 added.** An intelligence pass over
+  the whole instrument, and her hands in
+  conversation. Skelli's chat now performs the
+  Forge and the weights bench directly — *forge me
+  a DNS packet for the gateway* builds and keeps a
+  real packet, *download the 7B* and *use the
+  Llama* run the bench, *delete the packet you
+  forged* strikes it, and a fact dictated in plain
+  words (*remember, the printer is not to be
+  trusted*) is written to her notes; orders are
+  performed, not taught. EMCON's exposure score
+  counts Net-Assault, active probing, every Serve
+  listener, and the stealth switch itself, live,
+  and going dark reports the band it fell from. The
+  Consolidation keeps facts the fortnight stops
+  re-deriving, counts the Steward's rulings, and
+  watches pairings against their own record; the
+  Instrument reckons baselines from complete days
+  only, HRV and wrist temperature included. On the
+  wire: Net-Assault knocks by significance and
+  remembers; identification weighs all its evidence
+  before naming; Recon knocks in two phases and the
+  fuzzer breeds from payloads that earned replies;
+  Knocktalk delivery and repair run on a per-peer
+  measured ledger; a third foreign-hands verdict
+  raises the second sense; the Conductor's rests
+  deepen per host, jittered; the Canary arms the
+  lures its probers keep asking for; the Hunt
+  judges closeness against the target's own
+  strength. (6.0.0 also carries everything prepared
+  as 5.0.5, which was never tagged on its own.)
 - **The look — and the boot.** **Colours** (in About)
   dresses the house: six themes, the operator's own
   tailoring, and a backdrop for every tab — the living
@@ -324,9 +355,9 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 ## Building the current build
 
-`main` is ahead of the 4.2.0 release, and it
-carries new build requirements. In the order
-you'll meet them:
+`main` carries 6.0.0, and with it the build
+requirements that arrived with Skelli in 5.0.0.
+In the order you'll meet them:
 
 - **Xcode 26.** Skelli's Apple-model layer is
   written against the iOS 26 SDK (Foundation
