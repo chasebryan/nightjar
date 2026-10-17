@@ -36,6 +36,8 @@ final class InstrumentCenter: ObservableObject {
     static let shared = InstrumentCenter()
     static let sleepUpdated = Notification.Name(
         "instrument.sleep.updated")
+    static let baselinesUpdated = Notification.Name(
+        "instrument.baselines.updated")
 
     enum Phase: Equatable {
         case unknown
@@ -54,6 +56,12 @@ final class InstrumentCenter: ObservableObject {
     @Published private(set) var wristTemp: VitalReading?
     @Published private(set) var stepsToday: Int?
     @Published private(set) var lastSleep: SleepWindow?
+    /// The operator against himself: fortnight means,
+    /// learned from the same store. Nil until enough
+    /// days of record exist to mean anything.
+    @Published private(set) var restingBaseline: Double?
+    @Published private(set) var sleepBaselineHours: Double?
+    @Published private(set) var restingLatest: Double?
     @Published private(set) var watchName: String?
     @Published private(set) var lastReadAt: Date?
 
@@ -153,6 +161,7 @@ final class InstrumentCenter: ObservableObject {
         }
         fetchSteps()
         fetchSleep()
+        fetchBaselines()
         DispatchQueue.main.async { [weak self] in
             self?.lastReadAt = Date()
         }
@@ -181,6 +190,10 @@ final class InstrumentCenter: ObservableObject {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if let sample = sample {
+                    if id == .restingHeartRate {
+                        self.restingLatest = sample.quantity
+                            .doubleValue(for: unit)
+                    }
                     let reading = format(
                         sample.quantity.doubleValue(for: unit),
                         sample.endDate,
@@ -215,6 +228,123 @@ final class InstrumentCenter: ObservableObject {
             }
         }
         store.execute(query)
+    }
+
+    /// The operator's fortnight baselines: mean daily
+    /// resting heart rate and mean night's sleep, each
+    /// only once at least five days of record stand
+    /// behind them. The Subconscious reads the operator
+    /// against these.
+    func fetchBaselines() {
+        guard phase == .reading || phase == .unknown else {
+            return
+        }
+        // Resting heart, daily means over the fortnight.
+        if let type = HKObjectType.quantityType(
+            forIdentifier: .restingHeartRate) {
+            let cal = Calendar.current
+            let anchor = cal.startOfDay(for: Date())
+            let predicate = HKQuery.predicateForSamples(
+                withStart: anchor.addingTimeInterval(
+                    -14 * 24 * 3600),
+                end: nil, options: .strictStartDate)
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage,
+                anchorDate: anchor,
+                intervalComponents: DateComponents(day: 1))
+            query.initialResultsHandler = { [weak self] _, results, _ in
+                var daily: [Double] = []
+                let bpm = HKUnit.count().unitDivided(
+                    by: .minute())
+                results?.enumerateStatistics(
+                    from: anchor.addingTimeInterval(
+                        -14 * 24 * 3600),
+                    to: Date()) { stats, _ in
+                    if let avg = stats.averageQuantity() {
+                        daily.append(avg.doubleValue(for: bpm))
+                    }
+                }
+                guard daily.count >= 5 else { return }
+                let mean = daily.reduce(0, +)
+                    / Double(daily.count)
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    let changed = self.restingBaseline != mean
+                    self.restingBaseline = mean
+                    if changed {
+                        NotificationCenter.default.post(
+                            name: Self.baselinesUpdated,
+                            object: nil)
+                    }
+                }
+            }
+            store.execute(query)
+        }
+        // Sleep: cluster the fortnight's asleep samples
+        // into nights, average the real ones.
+        if let type = HKObjectType.categoryType(
+            forIdentifier: .sleepAnalysis) {
+            let predicate = HKQuery.predicateForSamples(
+                withStart: Date().addingTimeInterval(
+                    -14 * 24 * 3600),
+                end: nil, options: .strictStartDate)
+            let sort = [NSSortDescriptor(
+                key: HKSampleSortIdentifierStartDate,
+                ascending: true)]
+            let query = HKSampleQuery(
+                sampleType: type, predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: sort) { [weak self] _, samples, _ in
+                let asleep = (samples as? [HKCategorySample]
+                    ?? []).filter {
+                    [.asleepUnspecified, .asleepCore,
+                     .asleepDeep, .asleepREM].contains(
+                        HKCategoryValueSleepAnalysis(
+                            rawValue: $0.value) ?? .inBed)
+                }.sorted { $0.startDate < $1.startDate }
+                var nights: [TimeInterval] = []
+                var start: Date?, end: Date?
+                for sample in asleep {
+                    if let e = end,
+                       sample.startDate.timeIntervalSince(e)
+                           > 90 * 60 {
+                        if let st = start {
+                            nights.append(
+                                e.timeIntervalSince(st))
+                        }
+                        start = sample.startDate
+                        end = sample.endDate
+                    } else {
+                        if start == nil {
+                            start = sample.startDate
+                        }
+                        end = max(end ?? sample.endDate,
+                                  sample.endDate)
+                    }
+                }
+                if let st = start, let e = end {
+                    nights.append(e.timeIntervalSince(st))
+                }
+                let real = nights.filter { $0 >= 3 * 3600 }
+                guard real.count >= 5 else { return }
+                let meanHours = real.reduce(0, +)
+                    / Double(real.count) / 3600
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    let changed = self
+                        .sleepBaselineHours != meanHours
+                    self.sleepBaselineHours = meanHours
+                    if changed {
+                        NotificationCenter.default.post(
+                            name: Self.baselinesUpdated,
+                            object: nil)
+                    }
+                }
+            }
+            store.execute(query)
+        }
     }
 
     /// The most recent night's sleep, as a window: walk back
