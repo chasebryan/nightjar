@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **The exposure score feels the room
+  now.** Stealth was a switch no view
+  could see move, so the EMCON card —
+  and Skelli's deck — sat frozen at
+  their old reading while the posture
+  changed underneath them. Stealth is
+  a published state now; the score
+  also weighs what it used to be blind
+  to (a running Net-Assault, active
+  probing, the true count of Serve
+  listeners), and going dark records
+  the reading it fell from, so the
+  card shows the fall it bought.
+
 ## 5.0.5 — 2026-10-17 — the open hand
 
 - **Her hands, in conversation.** The
