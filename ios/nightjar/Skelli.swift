@@ -2353,6 +2353,8 @@ struct SkelliView: View {
     @State private var confirmClear = false
     @State private var confirmReset = false
     @FocusState private var inputFocused: Bool
+    @State private var wireHistory: [Int] = []
+    @State private var airHistory: [Int] = []
 
     var body: some View {
         NavigationStack {
@@ -2429,27 +2431,25 @@ struct SkelliView: View {
         .background {
             ZStack {
                 Rectangle()
+                    .fill(Color.black.opacity(0.88))
+                Rectangle()
                     .fill(.ultraThinMaterial)
+                    .opacity(0.5)
                 Rectangle()
                     .fill(LinearGradient(
-                        colors: [
-                            themes.current.tint
-                                .opacity(0.5),
-                            themes.current.tint
-                                .opacity(0.22),
-                            themes.current.tint
-                                .opacity(0.05)
-                        ],
+                        colors: [Color.white
+                                     .opacity(0.05),
+                                 .clear],
                         startPoint: .top,
                         endPoint: .bottom))
                 Rectangle()
                     .fill(RadialGradient(
                         colors: [themes.current.accent
-                                     .opacity(0.16),
+                                     .opacity(0.10),
                                  .clear],
                         center: .topLeading,
                         startRadius: 8,
-                        endRadius: 260))
+                        endRadius: 240))
             }
             .mask(
                 LinearGradient(
@@ -2457,12 +2457,28 @@ struct SkelliView: View {
                         .init(color: .black,
                               location: 0),
                         .init(color: .black,
-                              location: 0.82),
+                              location: 0.86),
                         .init(color: .clear,
                               location: 1)
                     ],
                     startPoint: .top,
                     endPoint: .bottom))
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [.clear,
+                             themes.current.accent
+                                 .opacity(0.55),
+                             .clear],
+                    startPoint: .leading,
+                    endPoint: .trailing))
+                .frame(height: 1)
+                .padding(.bottom, 12)
+                .shadow(
+                    color: themes.current.accent
+                        .opacity(0.6),
+                    radius: 4)
         }
     }
 
@@ -2587,123 +2603,256 @@ struct SkelliView: View {
         .padding(.bottom, 2)
     }
 
-    // MARK: her vital signs
+    // MARK: her analysis deck
 
-    /// The bar earns its height: the house's live
-    /// state in one strip — EMCON posture, the
-    /// wire, the Serve door, the ear, which mind
-    /// is awake, the night's log — each a door to
-    /// the organ it reports.
+    /// Continuous analysis, not shortcuts: her
+    /// exposure scored live, the wire and the air
+    /// watched as they move, and one triaged
+    /// sentence for what matters most right now.
     private var intelStrip: some View {
-        ScrollView(.horizontal,
-                   showsIndicators: false) {
+        VStack(spacing: 6) {
             HStack(spacing: 8) {
-                chip(icon: "eye.slash.fill",
-                     label: "EMCON",
-                     value: emconChip,
-                     hot: emcon.active) { go(7) }
-                chip(icon: "network",
-                     label: "WIRE",
-                     value: "\(NeighborhoodStore.shared.neighbors.count)",
-                     hot: false) { go(0) }
-                chip(icon: "antenna.radiowaves.left.and.right",
-                     label: "SERVE",
-                     value: serveChip,
-                     hot: mouth.serveRunning) { go(2) }
-                chip(icon: "ear.fill",
-                     label: "EAR",
-                     value: post.session != nil
-                         ? "\(post.deviceCount)" : "off",
-                     hot: post.session != nil) { go(0) }
-                chip(icon: "brain",
-                     label: "MIND",
-                     value: mindChip,
-                     hot: SkelliMind.isAvailable
-                         || SkelliMind.weightsReady) {
-                    showWeights = true
-                }
-                chip(icon: "book.fill",
-                     label: "LOG",
-                     value: "\(logCount)",
-                     hot: false) { go(5) }
+                exposurePanel
+                wirePanel
+                airPanel
             }
-            .padding(.horizontal)
-            .padding(.vertical, 6)
+            verdictLine
         }
+        .padding(.horizontal)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .onReceive(Timer.publish(
+            every: 5, on: .main, in: .common)
+            .autoconnect()) { _ in sample() }
+        .onAppear { sample() }
     }
 
-    private func chip(icon: String, label: String,
-                      value: String, hot: Bool,
-                      action: @escaping () -> Void)
+    private func panel<Content: View>(
+        label: String,
+        @ViewBuilder content: () -> Content)
         -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10,
-                                  weight: .semibold))
-                Text(value)
-                    .font(.system(size: 12,
-                                  weight: .semibold))
-                    .monospacedDigit()
-                Text(label)
-                    .font(.system(size: 9,
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(size: 8.5, weight: .bold))
+                .tracking(1.2)
+                .foregroundStyle(.secondary)
+            content()
+        }
+        .frame(maxWidth: .infinity,
+               alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.045)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.white.opacity(0.09),
+                        lineWidth: 0.75))
+    }
+
+    private func panelValue(_ text: String)
+        -> some View {
+        Text(text)
+            .font(.system(size: 17, weight: .bold,
+                          design: .rounded))
+            .monospacedDigit()
+    }
+
+    private func panelSub(_ text: String)
+        -> some View {
+        Text(text)
+            .font(.system(size: 9.5))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+    }
+
+    private func meter(_ fraction: Double)
+        -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.10))
+                Capsule()
+                    .fill(themes.current.accent)
+                    .frame(width: max(
+                        2, geo.size.width
+                            * min(1, max(0, fraction))))
+            }
+        }
+        .frame(height: 3)
+    }
+
+    private func sparkBars(_ values: [Int])
+        -> some View {
+        let peak = max(1, values.max() ?? 1)
+        return HStack(alignment: .bottom,
+                      spacing: 1.5) {
+            ForEach(Array(values.enumerated()),
+                    id: \.offset) { _, v in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(themes.current.accent
+                        .opacity(0.55))
+                    .frame(width: 3,
+                           height: 3 + 11
+                            * CGFloat(v)
+                            / CGFloat(peak))
+            }
+        }
+        .frame(height: 15, alignment: .bottom)
+    }
+
+    private var liveScore: Emcon.Score {
+        Emcon.score(
+            gattHostOn: mouth.gattHostOn,
+            beaconOn: mouth.beaconOn,
+            serveRunning: mouth.serveRunning,
+            stealth: mouth.stealth,
+            deviceName: emcon.deviceName,
+            exposureCount: emcon.exposures.count,
+            announcerCount: emcon.announcers.count)
+    }
+
+    private var exposurePanel: some View {
+        let score = liveScore
+        let loudest = score.parts.max(by: {
+            $0.points < $1.points })?.label
+        return panel(label: "EXPOSURE") {
+            HStack(alignment: .firstTextBaseline,
+                   spacing: 4) {
+                panelValue("\(score.value)")
+                Text(score.band.uppercased())
+                    .font(.system(size: 8.5,
                                   weight: .semibold))
                     .foregroundStyle(.secondary)
             }
-            .foregroundStyle(hot
-                ? themes.current.accent
-                : Color.primary)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                Capsule().fill(hot
-                    ? themes.current.accent
-                        .opacity(0.16)
-                    : Color.white.opacity(0.06)))
-            .overlay(
-                Capsule().stroke(hot
-                    ? themes.current.accent
-                        .opacity(0.45)
-                    : Color.white.opacity(0.10),
-                    lineWidth: 0.75))
+            meter(Double(score.value) / 100)
+            panelSub(loudest
+                ?? "nothing announcing")
         }
-        .buttonStyle(.plain)
     }
 
-    private func go(_ tab: Int) {
-        NotificationCenter.default.post(
-            name: .houseNavigate, object: nil,
-            userInfo: ["tab": tab])
+    private var wirePanel: some View {
+        let neighbors = NeighborhoodStore.shared
+            .neighbors
+        let unknown = neighbors.filter {
+            $0.name == nil && $0.customName == nil
+        }.count
+        let fresh = neighbors.filter {
+            Date().timeIntervalSince($0.firstSeen)
+                < 600
+        }.count
+        var sub = unknown > 0
+            ? "\(unknown) unknown" : "all named"
+        if fresh > 0 { sub += " · \(fresh) new" }
+        return panel(label: "WIRE") {
+            HStack(alignment: .bottom, spacing: 6) {
+                panelValue("\(neighbors.count)")
+                sparkBars(wireHistory)
+            }
+            panelSub(sub)
+        }
     }
 
-    private var emconChip: String {
-        var value = emcon.active ? "GHOST" : "OPEN"
+    private var airPanel: some View {
+        panel(label: "AIR · BLE") {
+            HStack(alignment: .bottom, spacing: 6) {
+                panelValue("\(post.deviceCount)")
+                sparkBars(airHistory)
+            }
+            panelSub(post.session != nil
+                ? "\(post.sightingCount) sightings"
+                : "ear down")
+        }
+    }
+
+    private var verdictLine: some View {
+        HStack(spacing: 6) {
+            Image(systemName: verdictIcon)
+                .font(.system(size: 10,
+                              weight: .semibold))
+                .foregroundStyle(
+                    themes.current.accent)
+            Text(verdict)
+                .font(.system(size: 11.5))
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer()
+        }
+    }
+
+    private var verdictIcon: String {
         if !emcon.exposures.isEmpty {
-            value += " ·\(emcon.exposures.count)"
+            return "exclamationmark.triangle.fill"
         }
-        return value
-    }
-
-    private var serveChip: String {
-        var value = mouth.serveRunning ? "OPEN" : "SHUT"
         if !mouth.inbox.isEmpty {
-            value += " ·\(mouth.inbox.count)"
+            return "envelope.fill"
         }
-        return value
+        if NeighborhoodStore.shared.neighbors
+            .contains(where: {
+                Date().timeIntervalSince(
+                    $0.firstSeen) < 600 }) {
+            return "sparkles"
+        }
+        if mouth.serveRunning && !mouth.stealth {
+            return "antenna.radiowaves.left.and.right"
+        }
+        return "checkmark.shield.fill"
     }
 
-    private var mindChip: String {
-        if SkelliMind.weightsReady {
-            return "WEIGHTS"
+    private var verdict: String {
+        if !emcon.exposures.isEmpty {
+            let n = emcon.exposures.count
+            var text = "\(n) exposure"
+                + (n == 1 ? "" : "s")
+                + " announce you"
+            if let worst = emcon.exposures.first {
+                text += " — " + worst.service
+                    + " on " + worst.host
+            }
+            return text
         }
-        return SkelliMind.isAvailable ? "APPLE" : "—"
+        if !mouth.inbox.isEmpty {
+            let n = mouth.inbox.count
+            return "\(n) payload"
+                + (n == 1 ? "" : "s")
+                + " waiting in the Serve inbox"
+        }
+        let fresh = NeighborhoodStore.shared
+            .neighbors.filter {
+                Date().timeIntervalSince(
+                    $0.firstSeen) < 600
+            }.sorted { $0.firstSeen > $1.firstSeen }
+        if let new = fresh.first {
+            return "New on the wire: "
+                + new.displayName
+        }
+        if mouth.serveRunning && !mouth.stealth {
+            return "Serve is open and announcing — "
+                + "your loudest emission"
+        }
+        if let event = Journal.events(limit: 1)
+            .first {
+            return event.text
+        }
+        return emcon.active
+            ? "All quiet. You are dark, and the "
+                + "wire is known."
+            : "All quiet on the wire."
     }
 
-    private var logCount: Int {
-        let since = Date()
-            .addingTimeInterval(-12 * 3600)
-        return Journal.events(limit: 300)
-            .filter { $0.when > since }.count
+    private func sample() {
+        wireHistory.append(
+            NeighborhoodStore.shared.neighbors.count)
+        if wireHistory.count > 28 {
+            wireHistory.removeFirst(
+                wireHistory.count - 28)
+        }
+        airHistory.append(post.deviceCount)
+        if airHistory.count > 28 {
+            airHistory.removeFirst(
+                airHistory.count - 28)
+        }
     }
 
     private var statusLine: String {
@@ -2775,7 +2924,7 @@ struct SkelliView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
-                .padding(.top, 188)
+                .padding(.top, 226)
             }
             .onChange(of: skelli.lines.count) { _ in
                 scrollToEnd(proxy)
