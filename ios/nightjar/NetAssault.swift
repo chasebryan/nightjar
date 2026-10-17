@@ -323,8 +323,15 @@ struct NetAssaultSectionView: View {
         }
     }
 
+    // Rows, not one stuffed cell: this section's content
+    // used to live in a single VStack inside a single list
+    // cell — copy, warning, both pickers, and both buttons
+    // in one row. When the report button appeared after a
+    // run, the cell's hit geometry went stale and taps on
+    // it landed on the Arm button. As real rows, every
+    // control is measured and hit on its own.
     private var idlePitch: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Group {
             Text("Every organ in the house, one continuous "
                  + "autonomous run: sweep the wire on "
                  + "rotating ports, let it announce itself, "
@@ -386,11 +393,10 @@ struct NetAssaultSectionView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
     }
 
     private var runningDashboard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Group {
             Text(center.phase)
                 .font(.callout.weight(.bold))
                 .foregroundStyle(themeCenter.current.glow)
@@ -431,7 +437,6 @@ struct NetAssaultSectionView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
         .onAppear { mind.refresh() }
     }
 
