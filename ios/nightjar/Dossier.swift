@@ -82,6 +82,7 @@ struct DossierView: View {
     @StateObject private var recon = Recon()
     @State private var baseline: DossierBaselines.Baseline?
     @State private var knockedOnce = false
+    @State private var shareItem: ShareItem?
     @State private var driftOpened: [String] = []
     @State private var driftClosed: [String] = []
 
@@ -311,13 +312,18 @@ struct DossierView: View {
                 }
             }
             Section {
-                ShareLink(item: dossierText) {
+                Button {
+                    shareItem = ShareItem(items: [dossierText])
+                } label: {
                     Label("Share the dossier",
                           systemImage: "square.and.arrow.up")
                 }
             }
         }
         .navigationTitle(title)
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: item.items)
+        }
         .onAppear {
             if let ip = ip {
                 baseline = DossierBaselines.baseline(for: ip)
