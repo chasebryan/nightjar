@@ -343,7 +343,6 @@
 				DEVELOPMENT_TEAM = YTDT6Z8JGU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				CODE_SIGN_ENTITLEMENTS = nightjar/nightjar.entitlements;
 				INFOPLIST_FILE = Support/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "nightjar-hack";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -375,7 +374,6 @@
 				DEVELOPMENT_TEAM = YTDT6Z8JGU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				CODE_SIGN_ENTITLEMENTS = nightjar/nightjar.entitlements;
 				INFOPLIST_FILE = Support/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "nightjar-hack";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
