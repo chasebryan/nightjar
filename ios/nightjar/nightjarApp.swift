@@ -33,6 +33,8 @@ struct NightjarApp: App {
                                 + "by \(peer)")
                         Conductor.onHoneydrop(emcon: emcon,
                                               peer: peer)
+                        NeighborhoodStore.shared.discover(
+                            source: peer, via: "the honeydrop")
                     }
                     Journal.onEvent = { event in
                         emcon.steward.consume(event)
