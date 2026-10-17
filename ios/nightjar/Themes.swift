@@ -217,14 +217,16 @@ final class ThemeCenter: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
+        var savedCustoms: [AppTheme] = []
         if let data = defaults.data(forKey: customsKey),
            let saved = try? JSONDecoder().decode(
                [AppTheme].self, from: data) {
-            customs = saved
+            savedCustoms = saved
         }
+        customs = savedCustoms
         let wanted = defaults.string(forKey: selectedKey)
         current = AppTheme.builtIns.first { $0.id == wanted }
-            ?? customs.first { $0.id == wanted }
+            ?? savedCustoms.first { $0.id == wanted }
             ?? .phosphor
     }
 
