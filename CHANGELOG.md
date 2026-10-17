@@ -29,6 +29,18 @@
   same section, behind a confirmation: the file is
   deleted on the journal's own queue and the seal
   chain starts fresh.
+- **The clear-and-fold doctrine.** What the Night log
+  got, everything collected now gets. Clears, each
+  behind a confirmation: the Neighborhood (devices,
+  names, drift — and their Map placements), the Map
+  itself (rooms and placements; the devices stay),
+  the Subconscious's memory (drift baselines and the
+  operator's verdicts), every Knocktalk thread, and
+  every cadence profile (the seal's reset, previously
+  unwired). Folds, so no screen is a forced march:
+  the Neighborhood board and Scan's dossiers open
+  by a counted door, and EMCON's tripwire feed and
+  prober files show six with a door to the rest.
 - **The Map (iOS Scan).** A special section of its own:
   the house on one canvas. The operator names rooms and
   places each neighbor where the device physically sits;
