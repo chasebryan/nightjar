@@ -284,22 +284,40 @@ struct ListenView: View {
 #if !STORE_BUILD
 struct UpdateBanner: View {
     let release: UpdateChecker.Release
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("Update available — \(release.name)", systemImage: "arrow.down.circle.fill")
                 .font(.body.weight(.medium))
                 .foregroundStyle(.tint)
-            Text("A newer nightjar is out. A sideloaded app can't update "
-                 + "itself — open the project in Xcode and press Run to rebuild. "
-                 + "Your logs are kept.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Link(destination: release.url) {
-                Label("View release", systemImage: "arrow.up.right.square")
-                    .font(.callout)
+            if let install = release.installURL {
+                Text("This release carries an over-the-air build. "
+                     + "iOS installs it over this one — your logs, "
+                     + "notes and settings stay.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    openURL(install)
+                } label: {
+                    Label("Update now",
+                          systemImage: "arrow.down.circle.fill")
+                        .font(.callout.weight(.semibold))
+                }
+                .padding(.top, 2)
+            } else {
+                Text("A newer nightjar is out. This release has no "
+                     + "over-the-air build, so it installs the Xcode "
+                     + "way — open the project and press Run. "
+                     + "Your logs are kept.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Link(destination: release.url) {
+                    Label("View release", systemImage: "arrow.up.right.square")
+                        .font(.callout)
+                }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
         }
         .padding(.vertical, 2)
     }
@@ -839,6 +857,7 @@ struct SessionRowView: View {
 
 struct AboutView: View {
 #if !STORE_BUILD
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var updater: UpdateChecker
 #endif
     @EnvironmentObject private var mouth: Mouth
@@ -878,9 +897,18 @@ struct AboutView: View {
                     }
 #if !STORE_BUILD
                     if let release = updater.available {
-                        Link(destination: release.url) {
-                            Label("Update available — \(release.name)",
-                                  systemImage: "arrow.up.right.square")
+                        if let install = release.installURL {
+                            Button {
+                                openURL(install)
+                            } label: {
+                                Label("Update to \(release.name) — install now",
+                                      systemImage: "arrow.down.circle.fill")
+                            }
+                        } else {
+                            Link(destination: release.url) {
+                                Label("Update available — \(release.name)",
+                                      systemImage: "arrow.up.right.square")
+                            }
                         }
                     }
                     Button {
