@@ -181,6 +181,8 @@ final class Emcon: ObservableObject {
     let voiceThrow = VoiceThrowCenter()
     /// The sparring season's ghost lives here.
     let season = Season()
+    /// The duel arena's referee and herald.
+    let duel = DuelCenter()
 
     /// The watch officer: reads every knock against the
     /// whole situation and answers under its charter.
@@ -1481,8 +1483,14 @@ final class Emcon: ObservableObject {
     private func handleKnockOutput(_ output: KnockEngine.Output) {
         switch output {
         case .message(let message, let ackHash):
-            // The ventriloquist gets first refusal: a throw or
-            // its receipt is business, not conversation.
+            // The duel herald and the ventriloquist get
+            // first refusal: their messages are business,
+            // not conversation.
+            if duel.intercept(text: message.text,
+                              source: message.source,
+                              chat: chat, emcon: self) {
+                break
+            }
             if voiceThrow.intercept(text: message.text,
                                     source: message.source,
                                     chat: chat) {
