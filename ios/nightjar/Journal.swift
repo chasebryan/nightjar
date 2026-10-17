@@ -277,6 +277,7 @@ enum MorningBrief {
 struct NightLogView: View {
     @State private var events: [NightEvent] = []
     @State private var report: Journal.ChainReport?
+    @State private var shareItem: ShareItem?
 
     private var reportText: String? {
         guard let report = report else { return nil }
@@ -312,8 +313,10 @@ struct NightLogView: View {
                         ForEach(brief, id: \.self) { line in
                             Text(line).font(.callout)
                         }
-                        ShareLink(item: MorningBrief.text(
-                            events: events)) {
+                        Button {
+                            shareItem = ShareItem(items: [
+                                MorningBrief.text(events: events)])
+                        } label: {
                             Label("Share the brief",
                                   systemImage: "square.and.arrow.up")
                         }
@@ -371,13 +374,18 @@ struct NightLogView: View {
                 }
             }
             if !events.isEmpty {
-                ShareLink(item: Journal.fileURL) {
+                Button {
+                    shareItem = ShareItem(items: [Journal.fileURL])
+                } label: {
                     Label("Share the night log (JSONL)",
                           systemImage: "square.and.arrow.up")
                 }
             }
         }
         .navigationTitle("Night log")
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: item.items)
+        }
         .onAppear { events = Journal.events() }
     }
 }
