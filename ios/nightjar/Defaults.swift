@@ -67,6 +67,13 @@ enum SaneDefaults {
         "season.state",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
+        // Colours
+        "theme.selected", "theme.customs",
+        "theme.backdrop.everywhere", "theme.backdrop.listen",
+        "theme.backdrop.send", "theme.backdrop.serve",
+        "theme.backdrop.sessions", "theme.backdrop.scan",
+        "theme.backdrop.recon", "theme.backdrop.emcon",
+        "theme.backdrop.knocktalk", "theme.backdrop.about",
     ]
 
     /// Restore every setting to its sane default and reconcile the
