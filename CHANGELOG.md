@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.0.5 — 2026-10-17 — the open hand
+
 - **Her hands, in conversation.** The
   Forge and the Weights bench answer in
   chat now, not only in their sheets:
@@ -16,6 +18,19 @@
   reflex or by the second reading
   alike. An operator who never leaves
   her tab loses nothing.
+- **Orders before lessons.** An
+  imperative that names her hands is
+  performed, not taught: the manual
+  no longer steps in front of a plain
+  order (a DNS forge had been answered
+  with a tour of the Scan tab).
+  Questions still get the lesson.
+- **What she builds, she can strike.**
+  "Delete the packet you forged,"
+  "delete all you forged," a custom
+  payload or a taught pattern by name
+  — struck from the armory, its
+  Deliveries copy going with it.
 
 ## 5.0.0 — 2026-10-17 — the awakening
 
