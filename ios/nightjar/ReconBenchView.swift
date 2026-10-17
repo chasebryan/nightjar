@@ -72,8 +72,8 @@ struct ReconBenchView: View {
             .onChange(of: mouth.reconHandoff) { _ in
                 consumeReconHandoff()
             }
-            .sheet(isPresented: $showPresets) { presetSheet }
         }
+        .sheet(isPresented: $showPresets) { presetSheet }
     }
 
     // MARK: knock
