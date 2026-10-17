@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased
+## 6.0.0 — 2026-10-17 — the red bloom
+
+- **A new living wallpaper.** The
+  reel behind every tab is a red
+  bloom now: a seed of points on
+  black that multiplies outward
+  into a widening constellation,
+  rings, and folds home to the
+  seed — 615×615, a seamless
+  nineteen-second loop, wearing
+  wallpaper.gif's name so every
+  backdrop, fallback, and report
+  that already knew the name
+  wears the new reel without a
+  seam. The retired orb stays in
+  the repository's assets; the
+  Jolly Roger still stands as a
+  choice in Colours.
+- **Everything prepared as 5.0.5
+  rides in this release** — her
+  hands in conversation (the
+  section below); it was never
+  tagged on its own.
 
 - **The awareness organs reckon
   honestly (intelligence batch 2).**
