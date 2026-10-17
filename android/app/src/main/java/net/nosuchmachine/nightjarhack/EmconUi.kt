@@ -66,6 +66,7 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
     val hometurfNotes by emcon.hometurfNotes.collectAsState()
     val senseUntil by emcon.senseUntil.collectAsState()
     val senseReason by emcon.senseReason.collectAsState()
+    val knockPatterns by emcon.knockPatterns.collectAsState()
     val vaultOpenUntil by emcon.vaultOpenUntil.collectAsState()
     val vaultCombo by emcon.vaultCombo.collectAsState()
     val vaultAction by emcon.vaultAction.collectAsState()
@@ -1161,6 +1162,60 @@ fun EmconTab(app: NightjarApp, goToRecon: () -> Unit) {
             ManeuversSection(scoreValue = score.value, emcon = emcon,
                 serveRunning = serveRunning,
                 serveTCPPort = serveTCPPort, sparSeeds = sparSeeds)
+        }
+
+        // MARK: knock traffic
+        item { IosSectionHeader("Knock traffic") }
+        item {
+            IosPanelCard {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (knockPatterns.isEmpty()) {
+                        Text(
+                            "Nothing yet. Knock sequences the " +
+                                "wire spells at this phone — " +
+                                "opened messages land in the " +
+                                "Knocktalk tab; what cannot be " +
+                                "opened is graded here.",
+                            color = IosColors.SecondaryLabel)
+                    } else {
+                        for (pattern in knockPatterns) {
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        pattern.source,
+                                        fontWeight = FontWeight.Medium)
+                                    Text(
+                                        timeFormat.format(
+                                            Date(pattern.whenMs)) +
+                                            " · ${pattern.knocks} knocks",
+                                        style = MaterialTheme.typography
+                                            .bodySmall,
+                                        color = IosColors.SecondaryLabel)
+                                }
+                                Text(
+                                    pattern.note,
+                                    style = MaterialTheme.typography
+                                        .bodySmall,
+                                    color = IosColors.SecondaryLabel)
+                            }
+                        }
+                    }
+                    Text(
+                        "Decoded messages are never kept here — " +
+                            "they live in the Knocktalk tab, under " +
+                            "its burn timer. This list keeps only " +
+                            "the shapes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = IosColors.SecondaryLabel)
+                }
+            }
         }
 
         // MARK: knock vault
