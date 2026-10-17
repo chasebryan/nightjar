@@ -172,6 +172,7 @@ struct MapView: View {
     @State private var addingRoom = false
     @State private var newRoomName = ""
     @State private var dossierNeighbor: Neighbor?
+    @State private var editingNeighbor: Neighbor?
 
     var body: some View {
         NavigationStack {
@@ -211,6 +212,11 @@ struct MapView: View {
                     newRoomName = ""
                 }
                 Button("Cancel", role: .cancel) {}
+            }
+            .sheet(item: $editingNeighbor) { neighbor in
+                NeighborNameEditor(
+                    store: NeighborhoodStore.shared,
+                    neighbor: neighbor)
             }
             .sheet(item: $dossierNeighbor) { neighbor in
                 NavigationStack {
@@ -345,7 +351,17 @@ struct MapView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                if let ip = selectedIP {
+                if let ip = selectedIP,
+                   let neighbor = neighborhood.neighbors.first(
+                       where: { $0.ip == ip }) {
+                    Button("Name\u{2026}") {
+                        editingNeighbor = neighbor
+                    }
+                    .font(.caption.weight(.semibold))
+                    Button("Dossier") {
+                        dossierNeighbor = neighbor
+                    }
+                    .font(.caption.weight(.semibold))
                     Button("Unplace") {
                         store.unplace(ip: ip)
                         selectedIP = nil
@@ -422,9 +438,15 @@ private struct NodeChip: View {
 
     var body: some View {
         VStack(spacing: 1) {
-            Text(neighbor.displayName)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                if let mark = neighbor.customMark {
+                    Image(systemName: mark)
+                        .font(.caption2)
+                }
+                Text(neighbor.displayName)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+            }
             Text(caption)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
