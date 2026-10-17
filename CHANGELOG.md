@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+- **Skelli, terser and sharper (iOS).** One
+  written indicator of work (the activity line);
+  her status line is facts only, and no
+  transcript row narrates her thinking. One
+  response per message: research and the
+  asynchronous actions (sweep, self-scan, audit)
+  no longer announce themselves in bubbles —
+  the single bubble is the answer. Her name is
+  lifted off the tail of a message as well as
+  the head ("hi skelli" is a greeting now, and
+  answers in a fifth of a second), and her
+  social ear is matched by shape, not by exact
+  string — greetings, farewells, thanks,
+  acknowledgements and apologies all land.
+  Apple's model is woken when her tab opens, a
+  thirty-second watchdog keeps any mind from
+  holding an answer hostage, and her grounding
+  orders brevity: one or two sentences, no
+  preamble. Her browser's findings are scored
+  on whole words, so pages that merely contain
+  the letters of the question earn nothing, and
+  its entity table is complete — no raw
+  `&mdash;` reaches the operator again.
+- **Skelli, the weights bench (iOS).** Her mind
+  is now a cascade: Apple's on-device model
+  speaks first, and an open-weights model —
+  staged by the operator as a folder named
+  SkelliWeights in the app bundle (Hugging Face
+  layout), run through MLX (the mlx-swift-lm
+  package) and kept resident once woken —
+  speaks when Apple's cannot, or first when
+  the menu's "Prefer the weights mind" is on.
+  Her status line reads "weights on" when the
+  bench exists. Nothing either mind hears
+  leaves the phone.
+
 - **Skelli, a trained mind (iOS).** Where her
   engine's knowledge ends, she now consults
   Apple's on-device model (Foundation Models,
