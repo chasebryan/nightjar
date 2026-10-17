@@ -1231,6 +1231,8 @@ struct ScanView: View {
     @State private var dossierSheet: DossierPresentation?
     @State private var mapShown = false
     @State private var editingNeighbor: Neighbor?
+    @State private var clearNeighborhood = false
+    @State private var dossiersOpen = false
     @StateObject private var tls = TLSInspector()
     @StateObject private var dns = DNSModel()
     @State private var host = ""
@@ -1452,6 +1454,22 @@ struct ScanView: View {
 
                 if !model.sweepHosts.isEmpty || !model.discovered.isEmpty {
                     Section(header: Text("Dossiers")) {
+                        Button {
+                            withAnimation { dossiersOpen.toggle() }
+                        } label: {
+                            HStack {
+                                Label("Devices", systemImage: "folder")
+                                Spacer()
+                                Text("\(sweptIPs.count + model.discovered.count)")
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: dossiersOpen
+                                      ? "chevron.up" : "chevron.down")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                        if dossiersOpen {
                         ForEach(sweptIPs, id: \.self) { ip in
                             Button {
                                 dossierSheet = DossierPresentation(
@@ -1479,6 +1497,7 @@ struct ScanView: View {
                                       systemImage: "folder.badge.gear")
                             }
                         }
+                        }
                         Text("One page per device, every organ's "
                              + "testimony: what Scan heard, whether "
                              + "Listen has heard the name over "
@@ -1492,7 +1511,8 @@ struct ScanView: View {
                 NeighborhoodSectionView(
                     store: NeighborhoodStore.shared,
                     editing: $editingNeighbor,
-                    dossier: $dossierSheet)
+                    dossier: $dossierSheet,
+                    clearRequest: $clearNeighborhood)
 
                 Section(header: Text("Observation feed")) {
                     if model.watching {
@@ -1723,6 +1743,22 @@ struct ScanView: View {
             NeighborNameEditor(
                 store: NeighborhoodStore.shared,
                 neighbor: neighbor)
+        }
+        .confirmationDialog(
+            "Clear the Neighborhood?",
+            isPresented: $clearNeighborhood,
+            titleVisibility: .visible) {
+            Button("Forget every neighbor",
+                   role: .destructive) {
+                NeighborhoodStore.shared.clear()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Every device the house has learned — "
+                 + "names, marks, drift and all — is "
+                 + "forgotten, and their Map placements "
+                 + "with them. The wire will populate its "
+                 + "own cast again.")
         }
         .fileImporter(isPresented: $showPcapImporter,
                       allowedContentTypes: [.data]) { result in
