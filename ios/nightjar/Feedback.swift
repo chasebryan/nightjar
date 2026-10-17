@@ -8,6 +8,11 @@ import WebKit
 import MLXLLM
 import MLXLMCommon
 #endif
+#if canImport(MLXHuggingFace)
+import MLXHuggingFace
+import HuggingFace
+import Tokenizers
+#endif
 import WebKit
 
 /// Little in-app banners that say what just happened, then fade —
@@ -2098,6 +2103,9 @@ final class WeightsCenter: ObservableObject {
                         id: option.id)
                     _ = try await LLMModelFactory
                         .shared.loadContainer(
+                            from: #hubDownloader(),
+                            using:
+                                #huggingFaceTokenizerLoader(),
                             configuration: config) { p in
                         DispatchQueue.main.async {
                             self.progress[option.id] =
