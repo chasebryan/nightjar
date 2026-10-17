@@ -562,7 +562,9 @@ final class SkelliCenter: ObservableObject {
 
         // Greetings and the tour.
         if ["hello", "hi", "hey"].contains(q)
-            || q.contains("who are you") {
+            || q.contains("who are you")
+            || q.contains("what are you")
+            || q.contains("your name") {
             say("Skelli. I answer from the system "
                 + "itself: its "
                 + "manual, its live state, its "
@@ -574,7 +576,12 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if q.contains("what can you do")
-            || q == "help" || q.contains("capabilit") {
+            || q == "help" || q.contains("capabilit")
+            || q.contains("what do you do")
+            || q.contains("your job")
+            || q.contains("your purpose")
+            || q.contains("around here")
+            || q.contains("you do here") {
             say(capabilities)
             return
         }
@@ -890,7 +897,10 @@ final class SkelliCenter: ObservableObject {
             + "phone — news, prices, today's "
             + "anything — or you are not sure of "
             + "the facts, reply with exactly one "
-            + "word: RESEARCH"
+            + "word: RESEARCH. Never repeat the "
+            + "conversation back, and never write "
+            + "'Operator:' or 'Skelli:' — the "
+            + "reply is yours alone."
     }
 
     /// The last few exchanges, so the conversation
@@ -1612,13 +1622,46 @@ enum SkelliMind {
     private static func interpret(_ text: String?)
         -> Verdict? {
         guard let text = text else { return nil }
-        let trimmed = text.trimmingCharacters(
-            in: .whitespacesAndNewlines)
+        let trimmed = decontaminate(text)
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
         if trimmed.hasPrefix("RESEARCH") {
             return .research
         }
         return .answer(trimmed)
+    }
+
+    /// Small models love to continue the script
+    /// they were shown — echoing the transcript
+    /// back before answering. Cut any echo: what
+    /// she says is what follows the last script
+    /// marker, marker lines removed.
+    private static func decontaminate(
+        _ text: String) -> String {
+        guard text.contains("Operator:") else {
+            return text
+        }
+        var lines = text.components(
+            separatedBy: "\n")
+        if let last = lines.lastIndex(where: {
+            $0.hasPrefix("Skelli:")
+        }) {
+            lines = Array(lines[last...])
+        }
+        let kept = lines.filter {
+            !$0.hasPrefix("Operator:")
+        }.map { line -> String in
+            line.hasPrefix("Skelli:")
+                ? String(line.dropFirst(7))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                : line
+        }
+        let cleaned = kept.joined(separator: "\n")
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? text : cleaned
     }
 
     #if canImport(MLXLLM)
@@ -1894,6 +1937,9 @@ struct SkelliAvatar: View {
     var mood: SkelliMood = .idle
     var size: CGFloat = 96
     @ObservedObject private var themes = ThemeCenter.shared
+    @EnvironmentObject private var emcon: Emcon
+    @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var post: ListeningPost
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) {
@@ -2360,16 +2406,13 @@ struct SkelliView: View {
             }
             pinnedHeader
         }
+        .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottomLeading) {
             SkelliWebHost()
                 .frame(width: 2, height: 2)
                 .allowsHitTesting(false)
         }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                menu
-            }
-        }
+        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
     /// Her pinned presence — the film, her name, and
@@ -2380,14 +2423,33 @@ struct SkelliView: View {
         VStack(spacing: 0) {
             header
             activityBar
+            intelStrip
         }
+        .padding(.top, 50)
         .background {
             ZStack {
                 Rectangle()
                     .fill(.ultraThinMaterial)
                 Rectangle()
-                    .fill(themes.current.tint
-                        .opacity(0.35))
+                    .fill(LinearGradient(
+                        colors: [
+                            themes.current.tint
+                                .opacity(0.5),
+                            themes.current.tint
+                                .opacity(0.22),
+                            themes.current.tint
+                                .opacity(0.05)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom))
+                Rectangle()
+                    .fill(RadialGradient(
+                        colors: [themes.current.accent
+                                     .opacity(0.16),
+                                 .clear],
+                        center: .topLeading,
+                        startRadius: 8,
+                        endRadius: 260))
             }
             .mask(
                 LinearGradient(
@@ -2395,7 +2457,7 @@ struct SkelliView: View {
                         .init(color: .black,
                               location: 0),
                         .init(color: .black,
-                              location: 0.7),
+                              location: 0.82),
                         .init(color: .clear,
                               location: 1)
                     ],
@@ -2404,7 +2466,8 @@ struct SkelliView: View {
         }
     }
 
-    private var menu: some View {
+    /// Her options, living inside her own bar.
+    private var menuButton: some View {
         Menu {
             Button {
                 showDirectory = true
@@ -2458,7 +2521,17 @@ struct SkelliView: View {
                         "arrow.counterclockwise")
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Image(systemName: "ellipsis")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(themes.current.accent)
+                .frame(width: 34, height: 34)
+                .background(
+                    Circle().fill(.ultraThinMaterial))
+                .overlay(
+                    Circle().stroke(
+                        themes.current.accent
+                            .opacity(0.4),
+                        lineWidth: 1))
         }
     }
 
@@ -2479,17 +2552,24 @@ struct SkelliView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(RadialGradient(
                         colors: [themes.current.accent
-                                     .opacity(0.3),
+                                     .opacity(0.36),
                                  .clear],
                         center: .center,
-                        startRadius: 4, endRadius: 52))
-                    .frame(width: 104, height: 104)
-                SkelliLiveView(mood: skelli.mood, size: 96)
+                        startRadius: 4, endRadius: 46))
+                    .frame(width: 92, height: 92)
+                SkelliLiveView(mood: skelli.mood,
+                               size: 64)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle().stroke(
+                            themes.current.accent
+                                .opacity(0.55),
+                            lineWidth: 1.5))
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text("Skelli")
@@ -2497,11 +2577,133 @@ struct SkelliView: View {
                 Text(statusLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
             Spacer()
+            menuButton
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.top, 4)
+        .padding(.bottom, 2)
+    }
+
+    // MARK: her vital signs
+
+    /// The bar earns its height: the house's live
+    /// state in one strip — EMCON posture, the
+    /// wire, the Serve door, the ear, which mind
+    /// is awake, the night's log — each a door to
+    /// the organ it reports.
+    private var intelStrip: some View {
+        ScrollView(.horizontal,
+                   showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip(icon: "eye.slash.fill",
+                     label: "EMCON",
+                     value: emconChip,
+                     hot: emcon.active) { go(7) }
+                chip(icon: "network",
+                     label: "WIRE",
+                     value: "\(NeighborhoodStore.shared.neighbors.count)",
+                     hot: false) { go(0) }
+                chip(icon: "antenna.radiowaves.left.and.right",
+                     label: "SERVE",
+                     value: serveChip,
+                     hot: mouth.serveRunning) { go(2) }
+                chip(icon: "ear.fill",
+                     label: "EAR",
+                     value: post.session != nil
+                         ? "\(post.deviceCount)" : "off",
+                     hot: post.session != nil) { go(0) }
+                chip(icon: "brain",
+                     label: "MIND",
+                     value: mindChip,
+                     hot: SkelliMind.isAvailable
+                         || SkelliMind.weightsReady) {
+                    showWeights = true
+                }
+                chip(icon: "book.fill",
+                     label: "LOG",
+                     value: "\(logCount)",
+                     hot: false) { go(5) }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+        }
+    }
+
+    private func chip(icon: String, label: String,
+                      value: String, hot: Bool,
+                      action: @escaping () -> Void)
+        -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10,
+                                  weight: .semibold))
+                Text(value)
+                    .font(.system(size: 12,
+                                  weight: .semibold))
+                    .monospacedDigit()
+                Text(label)
+                    .font(.system(size: 9,
+                                  weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .foregroundStyle(hot
+                ? themes.current.accent
+                : Color.primary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                Capsule().fill(hot
+                    ? themes.current.accent
+                        .opacity(0.16)
+                    : Color.white.opacity(0.06)))
+            .overlay(
+                Capsule().stroke(hot
+                    ? themes.current.accent
+                        .opacity(0.45)
+                    : Color.white.opacity(0.10),
+                    lineWidth: 0.75))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func go(_ tab: Int) {
+        NotificationCenter.default.post(
+            name: .houseNavigate, object: nil,
+            userInfo: ["tab": tab])
+    }
+
+    private var emconChip: String {
+        var value = emcon.active ? "GHOST" : "OPEN"
+        if !emcon.exposures.isEmpty {
+            value += " ·\(emcon.exposures.count)"
+        }
+        return value
+    }
+
+    private var serveChip: String {
+        var value = mouth.serveRunning ? "OPEN" : "SHUT"
+        if !mouth.inbox.isEmpty {
+            value += " ·\(mouth.inbox.count)"
+        }
+        return value
+    }
+
+    private var mindChip: String {
+        if SkelliMind.weightsReady {
+            return "WEIGHTS"
+        }
+        return SkelliMind.isAvailable ? "APPLE" : "—"
+    }
+
+    private var logCount: Int {
+        let since = Date()
+            .addingTimeInterval(-12 * 3600)
+        return Journal.events(limit: 300)
+            .filter { $0.when > since }.count
     }
 
     private var statusLine: String {
@@ -2573,7 +2775,7 @@ struct SkelliView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
-                .padding(.top, 146)
+                .padding(.top, 188)
             }
             .onChange(of: skelli.lines.count) { _ in
                 scrollToEnd(proxy)
