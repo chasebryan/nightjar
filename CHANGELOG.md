@@ -76,6 +76,18 @@ lock, a second phone.
 The release where the instrument starts speaking in other
 voices — and learns to keep silence like a professional.
 
+- **Colours (iOS).** The app's wardrobe, in the More
+  section: six built-in themes (Phosphor, Bloodwork,
+  Ultraviolet, Arctic Signal, Amber Deck, Bone) driving
+  the accent of every control and a tint washed over the
+  backdrop, plus a theme editor to tailor your own. Every
+  tab may wear its own backdrop — the living wallpaper,
+  the Jolly Roger the app was born wearing, the plain
+  theme colour, or the operator's own image or GIF,
+  copied onto the device and never uploaded anywhere.
+  The same pass fixes the Knocktalk tab, whose lists had
+  never worn the backdrop at all.
+
 - **EMCON (iOS).** A defensive posture tab: an exposure
   score (0 GHOST – 100 BEACONING) computed from the phone's
   own live emissions, a silence switch (stealth on, GATT
