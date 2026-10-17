@@ -11,6 +11,7 @@ struct EmconView: View {
     @State private var armAssault = false
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
+    @State private var shareItem: ShareItem?
 
     @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
@@ -82,6 +83,9 @@ struct EmconView: View {
         }
         .sheet(isPresented: $shareAssaultReport) {
             ShareSheet(items: [assault.report])
+        }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: item.items)
         }
         .confirmationDialog(
             "Turn loose the net-assault?",
@@ -523,7 +527,10 @@ struct EmconView: View {
                         }
                     }
                 }
-                ShareLink(item: Emcon.tripwireReportURL) {
+                Button {
+                    shareItem = ShareItem(
+                        items: [Emcon.tripwireReportURL])
+                } label: {
                     Label("Share the log",
                           systemImage: "square.and.arrow.up")
                 }
