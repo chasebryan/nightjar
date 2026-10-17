@@ -947,7 +947,7 @@ struct ConversationView: View {
                     VStack(alignment: message.outgoing
                            ? .trailing : .leading, spacing: 2) {
                         Text(VoiceThrowCodec.displayText(
-                            message.text))
+                            DuelCodec.displayText(message.text)))
                             .font(.callout)
                         Text(caption(for: message))
                             .font(.caption2)
