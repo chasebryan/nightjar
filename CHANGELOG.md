@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+## 4.0.0 — 2026-10-16
+
+The release where the instrument grows a second of
+everything: a second factor, a second mouth, a second
+lock, a second phone.
+
+- **Cadence Seal (iOS Knocktalk).** The pairing key decides
+  what opens; cadence decides what is believed. The engine
+  profiles each peer's knock timing — pacing, pauses,
+  hesitations — from its first messages, then flags any
+  later message that arrives in foreign hands: right key,
+  wrong rhythm. It never blocks a message; it marks it,
+  shows the verdict in the thread, and seals the warning
+  into the night log.
+- **Throw Your Voice (iOS Knocktalk).** One phone stays
+  silent while a paired phone speaks for it. The hand seals
+  a small instruction into an ordinary Knocktalk message;
+  the mouth — if it has been lent — performs the send from
+  its own radios and knocks a receipt back the same road,
+  which settles the throw in the thread. Payloads are
+  signals: a word, a command, a wake-up.
+- **The Coin (iOS EMCON).** Any NDEF tag — a transit card,
+  a hotel key, a blank — can be claimed as a physical key.
+  The app keeps a hash of the tag, never its contents. Tap
+  it to check in the dead hand, tap it to raise the knock
+  vault, or stand it guard over Knocktalk itself. The
+  factor is possession, like every key ever cut.
+- **Last Testament (iOS Knocktalk).** A message under two
+  locks: an RSW time capsule, and the dead hand. The phone
+  will not even begin the grind until the hand has fallen
+  and stayed down for the author's chosen span. The
+  capsule never leaves the phone's keeping — a capsule
+  alone can be ground by anyone holding it, so the
+  testament holds it until both locks agree.
+- **Sparring Season (iOS EMCON).** Self-sparring grown
+  into a campaign: nine ghost visits across seven days —
+  loud ones that spell, quiet ones that slip under the
+  grader, and two polite attempts with the vault
+  combination printed in the manual. Every visit runs
+  through the real defenses, the score is kept in the
+  open, and the week closes with a grade sealed into the
+  night log.
+- **The Neighborhood (iOS Scan).** Standing files on
+  every device on the operator's own wire, fed only by
+  observation: sweeps Scan ran, Bonjour announcements that
+  resolved, knocks at this phone's own door. First
+  sightings, new ports, and changed names are journaled
+  as drift; each neighbor opens into its full dossier.
+- **Duel Mode (iOS EMCON).** Two of the operator's
+  phones, one wire, three scored rounds. The host's phone
+  is the ground — its arena dealt from the surface it
+  truly runs, padded with decoys — and the guest strikes
+  three ports a round. The defender's own event log
+  referees: an answered strike scores for the blade, a
+  heard strike for the ground, and an answer nobody heard
+  slips a bonus.
+- **The face (iOS).** The boot screen is a reel now: the
+  operator's film plays full-screen while the true boot
+  log types itself over it in glowing phosphor, loading
+  in twenty-six lit blocks. Inside, the Jolly Roger
+  wallpaper is retired for a living one — a second reel,
+  decoded once and shared by every tab, looping from its
+  beginning to its end and back, forever.
+
+
 ## 3.0.0 — 2026-10-16 — the ventriloquist
 
 The release where the instrument starts speaking in other
