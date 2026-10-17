@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- **Skelli, alive (iOS).** Her model is no longer
+  a drawing: the tab fronts her with the same 3D
+  animation that fronts the assistant — resting,
+  conjuring a thought, at her desk, talking — the
+  films chosen by her state and looped (they ride
+  the bundle as skelli-*.mp4; the drawing stands in
+  until the films are in the tree). She learned
+  small favors: 'say Hello, world!' and she says
+  exactly that, in your own capitals — plus repeat,
+  spell, dress a line up or down, count its letters
+  or words, reckon small sums, and tell the time —
+  caught before the machinery so a small ask never
+  earns a large answer, and thinking takes as long
+  as the ask needs. The keyboard drops when a
+  message is sent. Her name appears once, in her
+  header, with no subtitle; beneath it a status
+  line narrates what she is doing at every moment —
+  thinking, sweeping, reading a page — the way a
+  good instrument should. The Night log opens from
+  Sessions as a sheet with a single Done (no second
+  back chevron) and wears the house wallpaper like
+  every other section.
+
 - **Skelli (iOS).** The house's specialist, with
   her own tab first in the bar — and a face: drawn
   alive in the house's line art, a skull at her
