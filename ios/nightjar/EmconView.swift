@@ -12,6 +12,7 @@ struct EmconView: View {
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
     @State private var shareItem: ShareItem?
+    @State private var tripShowAll = false
 
     @AppStorage("emconEscalation") private var escalationArmed = false
     @AppStorage("emconCheckName") private var checkName = false
@@ -498,7 +499,9 @@ struct EmconView: View {
                      + "tripwire never replies.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                ForEach(emcon.events) { event in
+                ForEach(tripShowAll
+                        ? emcon.events
+                        : Array(emcon.events.prefix(6))) { event in
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("\(event.source) → \(event.proto)"
@@ -527,6 +530,17 @@ struct EmconView: View {
                         }
                     }
                 }
+                if emcon.events.count > 6 {
+                    Button {
+                        withAnimation { tripShowAll.toggle() }
+                    } label: {
+                        Label(tripShowAll
+                              ? "Show fewer"
+                              : "Show all \(emcon.events.count) knocks",
+                              systemImage: tripShowAll
+                                ? "chevron.up" : "chevron.down")
+                    }
+                }
                 Button {
                     shareItem = ShareItem(
                         items: [Emcon.tripwireReportURL])
@@ -549,6 +563,7 @@ struct EmconView: View {
     // MARK: - prober files
 
     @State private var proberSelection: ProberFile?
+    @State private var proberShowAll = false
 
     private var proberFilesSection: some View {
         let files = ProberFiles.build(events: emcon.events)
@@ -562,7 +577,9 @@ struct EmconView: View {
                      + "its file opens here.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                ForEach(files) { file in
+                ForEach(proberShowAll
+                        ? files
+                        : Array(files.prefix(6))) { file in
                     Button {
                         proberSelection = file
                     } label: {
@@ -593,6 +610,17 @@ struct EmconView: View {
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
+                    }
+                }
+                if files.count > 6 {
+                    Button {
+                        withAnimation { proberShowAll.toggle() }
+                    } label: {
+                        Label(proberShowAll
+                              ? "Show fewer"
+                              : "Show all \(files.count) files",
+                              systemImage: proberShowAll
+                                ? "chevron.up" : "chevron.down")
                     }
                 }
             }
