@@ -13,10 +13,11 @@ import SwiftUI
 /// organs the tabs use. She keeps a memory of what
 /// she is told, and the conversation itself, between
 /// visits. The house is answered first, always; when
-/// a question leaves it, she may research through
-/// the phone's own network connection and bring the
-/// answer back with its source named — with house
-/// particulars scrubbed from anything sent outward.
+/// a question leaves it, she researches through
+/// her own browser on the phone's connection and
+/// brings the answer back with its source named —
+/// with house particulars scrubbed from anything
+/// sent outward.
 ///
 /// Loud and destructive levers keep their own
 /// confirmations: Skelli walks the operator to them
@@ -543,234 +544,6 @@ enum SkelliMood {
     case idle, thinking, working, speaking
 }
 
-/// Her outward eye: research through the phone's own
-/// network connection, for the questions the house
-/// cannot answer. Two keyless public sources —
-/// DuckDuckGo's instant answers and Wikipedia — are
-/// asked in parallel, and whatever comes back is
-/// composed with its source named, so the operator
-/// can judge it. Retrieval only: she quotes and
-/// condenses what a source says, and the source line
-/// rides with every answer.
-enum SkelliWeb {
-    struct Finding {
-        var text: String
-        var source: String
-        var url: String
-    }
-
-    static func research(_ query: String,
-                         completion: @escaping (String) -> Void) {
-        let group = DispatchGroup()
-        var ddg: Finding?
-        var wiki: Finding?
-
-        if let url = endpoint("https://api.duckduckgo.com/",
-                              items: [
-                                  URLQueryItem(name: "q",
-                                               value: query),
-                                  URLQueryItem(name: "format",
-                                               value: "json"),
-                                  URLQueryItem(name: "no_html",
-                                               value: "1"),
-                                  URLQueryItem(name: "skip_disambig",
-                                               value: "1"),
-                              ]) {
-            group.enter()
-            fetchJSON(url) { dict in
-                ddg = duckDuckGoFinding(dict)
-                group.leave()
-            }
-        }
-        if let url = endpoint("https://en.wikipedia.org/w/api.php",
-                              items: [
-                                  URLQueryItem(name: "action",
-                                               value: "query"),
-                                  URLQueryItem(name: "generator",
-                                               value: "search"),
-                                  URLQueryItem(name: "gsrsearch",
-                                               value: query),
-                                  URLQueryItem(name: "gsrlimit",
-                                               value: "3"),
-                                  URLQueryItem(name: "prop",
-                                               value: "extracts|info"),
-                                  URLQueryItem(name: "exintro",
-                                               value: "1"),
-                                  URLQueryItem(name: "explaintext",
-                                               value: "1"),
-                                  URLQueryItem(name: "inprop",
-                                               value: "url"),
-                                  URLQueryItem(name: "format",
-                                               value: "json"),
-                              ]) {
-            group.enter()
-            fetchJSON(url) { dict in
-                wiki = wikipediaFinding(dict)
-                group.leave()
-            }
-        }
-        group.notify(queue: .main) {
-            completion(compose(query: query, ddg: ddg,
-                               wiki: wiki))
-        }
-    }
-
-    private static func endpoint(
-        _ base: String, items: [URLQueryItem]) -> URL? {
-        var components = URLComponents(string: base)
-        components?.queryItems = items
-        return components?.url
-    }
-
-    private static func fetchJSON(
-        _ url: URL,
-        completion: @escaping ([String: Any]?) -> Void) {
-        var request = URLRequest(url: url,
-                                 timeoutInterval: 12)
-        request.setValue(
-            "nightjar-hack Skelli (on-device research)",
-            forHTTPHeaderField: "User-Agent")
-        URLSession.shared.dataTask(with: request) {
-            data, response, _ in
-            guard let http = response as? HTTPURLResponse,
-                  (200...299).contains(http.statusCode),
-                  let data = data,
-                  let object = try? JSONSerialization
-                      .jsonObject(with: data),
-                  let dict = object as? [String: Any]
-            else {
-                completion(nil)
-                return
-            }
-            completion(dict)
-        }.resume()
-    }
-
-    private static func duckDuckGoFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let dict = dict else { return nil }
-        let source = (dict["AbstractSource"] as? String)
-            ?? "DuckDuckGo"
-        if let answer = dict["Answer"] as? String,
-           !answer.isEmpty {
-            return Finding(text: answer, source: source,
-                           url: (dict["AbstractURL"]
-                               as? String)
-                               ?? "https://duckduckgo.com")
-        }
-        if let abstract = dict["AbstractText"] as? String,
-           !abstract.isEmpty {
-            return Finding(text: abstract, source: source,
-                           url: (dict["AbstractURL"]
-                               as? String)
-                               ?? "https://duckduckgo.com")
-        }
-        if let topic = firstTopic(dict["RelatedTopics"]) {
-            return topic
-        }
-        return nil
-    }
-
-    private static func firstTopic(_ any: Any?) -> Finding? {
-        guard let topics = any as? [[String: Any]] else {
-            return nil
-        }
-        for topic in topics {
-            if let text = topic["Text"] as? String,
-               !text.isEmpty {
-                return Finding(
-                    text: text, source: "DuckDuckGo",
-                    url: (topic["FirstURL"] as? String)
-                        ?? "https://duckduckgo.com")
-            }
-            if let nested = firstTopic(topic["Topics"]) {
-                return nested
-            }
-        }
-        return nil
-    }
-
-    private static func wikipediaFinding(
-        _ dict: [String: Any]?) -> Finding? {
-        guard let query = dict?["query"] as? [String: Any],
-              let pages = query["pages"]
-                  as? [String: [String: Any]]
-        else { return nil }
-        let ordered = pages.values.sorted {
-            (($0["index"] as? Int) ?? 99)
-                < (($1["index"] as? Int) ?? 99)
-        }
-        for page in ordered {
-            if let extract = page["extract"] as? String,
-               !extract.isEmpty {
-                return Finding(
-                    text: extract, source: "Wikipedia",
-                    url: (page["fullurl"] as? String)
-                        ?? "https://en.wikipedia.org")
-            }
-        }
-        return nil
-    }
-
-    private static func compose(query: String,
-                                ddg: Finding?,
-                                wiki: Finding?) -> String {
-        if let ddg = ddg {
-            var lines = ["From the web — " + ddg.source
-                         + ":", excerpt(ddg.text),
-                         "Source: " + ddg.url]
-            if let wiki = wiki, wiki.url != ddg.url {
-                lines.append("Also: " + wiki.source
-                             + " — " + wiki.url)
-            }
-            return lines.joined(separator: "\n")
-        }
-        if let wiki = wiki {
-            return "From the web — " + wiki.source + ":\n"
-                + excerpt(wiki.text)
-                + "\nSource: " + wiki.url
-        }
-        return "I looked outward for '" + query
-            + "' through this phone's connection, and "
-            + "the public sources I can reach — "
-            + "DuckDuckGo's instant answers and "
-            + "Wikipedia — had nothing solid to bring "
-            + "back. Rephrase it, or name the thing "
-            + "more plainly, and I'll look again."
-    }
-
-    /// Condense a source's prose: whole sentences,
-    /// capped, so a web answer reads like an answer
-    /// and not a paste.
-    private static func excerpt(_ text: String,
-                                maxChars: Int = 720)
-        -> String {
-        let cleaned = text
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        if cleaned.count <= maxChars { return cleaned }
-        var out = ""
-        for part in cleaned.components(separatedBy: ". ") {
-            let sentence = part.hasSuffix(".")
-                ? part : part + "."
-            if out.isEmpty {
-                if sentence.count > maxChars { break }
-                out = sentence
-            } else if (out + " " + sentence).count
-                        <= maxChars {
-                out += " " + sentence
-            } else {
-                break
-            }
-            if out.count > maxChars - 120 { break }
-        }
-        return out.isEmpty
-            ? String(cleaned.prefix(maxChars)) + "…"
-            : out
-    }
-}
-
 // MARK: - The center
 
 final class SkelliCenter: ObservableObject {
@@ -1256,9 +1029,11 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
-        say("Beyond the house — looking outward "
-            + "through this phone's connection. What "
-            + "comes back will name its source.")
+        say("Beyond the house — opening my "
+            + "browser. I work the sources that let "
+            + "a machine in cleanly — no walls "
+            + "climbed, no checks answered — and "
+            + "what comes back names where it stood.")
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
         }
@@ -1351,10 +1126,14 @@ final class SkelliCenter: ObservableObject {
             + "I keep it across conversations. And "
             + "when a question is beyond the house, I "
             + "research it through this phone's own "
-            + "network connection — DuckDuckGo's "
-            + "instant answers and Wikipedia — and "
-            + "bring the answer back with its source: "
-            + "'search the web for …' forces the "
+            + "network connection, through my own "
+            + "browser: it searches, visits, and "
+            + "reads the pages itself — standards, "
+            + "papers, books, code, and the open web "
+            + "— working only the sources that let a "
+            + "machine in cleanly, and bringing the "
+            + "answer back with its sources named. "
+            + "'Search the web for …' forces the "
             + "outward look. House particulars are "
             + "never sent out; the switch is in my "
             + "menu."
@@ -2099,6 +1878,11 @@ struct SkelliView: View {
                 Divider()
                 transcript
                 inputBar
+            }
+            .overlay(alignment: .bottomLeading) {
+                SkelliWebHost()
+                    .frame(width: 2, height: 2)
+                    .allowsHitTesting(false)
             }
             .navigationTitle("Skelli")
             .navigationBarTitleDisplayMode(.inline)
