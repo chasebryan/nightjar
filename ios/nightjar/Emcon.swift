@@ -1433,6 +1433,35 @@ final class Emcon: ObservableObject {
 
     // MARK: - sequence engine outputs
 
+    /// Cadence Seal: grade the rhythm of the message that just
+    /// landed. The engine cut the sample out of the knock train
+    /// before it emitted the message; the key decided the
+    /// message opens — the cadence decides whether the hands
+    /// are believed.
+    private func gradeCadence(of message: KnockMessage) {
+        guard CadenceSeal.enabled,
+              let sample = knockEngine.lastCadence[message.source]
+        else { return }
+        let peer = KnockChat.peerKey(message.source)
+        let verdict = CadenceSeal.record(peer: peer, sample: sample)
+        if let note = CadenceSeal.note(for: verdict) {
+            chat.setCadenceNote(peer: peer, note: note)
+        }
+        switch verdict {
+        case .foreign(let score):
+            Journal.log("emcon", "cadence",
+                        "FOREIGN HANDS from \(message.source) — "
+                        + "right key, wrong rhythm (distance "
+                        + String(format: "%.1f", score) + ")")
+        case .learning(let have, let need) where have == need:
+            Journal.log("emcon", "cadence",
+                        "cadence enrolled for \(message.source) — "
+                        + "\(need) samples learned")
+        default:
+            break
+        }
+    }
+
     private func handleKnockOutput(_ output: KnockEngine.Output) {
         switch output {
         case .message(let message, let ackHash):
@@ -1443,6 +1472,7 @@ final class Emcon: ObservableObject {
             Journal.log("emcon", "knocktalk",
                         "message received from \(message.source) — "
                         + "\(message.text.count) characters")
+            gradeCadence(of: message)
         case .ack(let source, let hash):
             chat.handleAck(from: source, hash: hash)
             Journal.log("emcon", "knocktalk",
