@@ -109,57 +109,123 @@ struct AnimatedImageView: UIViewRepresentable {
     func updateUIView(_ view: UIImageView, context: Context) {}
 }
 
-/// The app's backdrop: the living wallpaper over near-black,
-/// dimmed a touch so text stays readable. Until the reel
-/// lands in the bundle, the retired Jolly Roger stands in —
-/// the app is never naked for want of a flourish.
+/// The app's backdrop, wearing whatever Colours says this
+/// slot wears: the living wallpaper, the Jolly Roger, the
+/// plain theme colour, or the operator's own art — washed
+/// with the theme's tint and dimmed by its measure, so text
+/// stays readable over any of them.
 struct AppBackdrop: View {
+    var slot: BackdropSlot? = nil
+    @Environment(\.backdropSlot) private var ambientSlot
+    @ObservedObject private var themes = ThemeCenter.shared
+
+    private var resolvedSlot: BackdropSlot {
+        slot ?? ambientSlot
+    }
+
     var body: some View {
         // GeometryReader pins the backdrop to exactly the size
         // it is offered. A bare scaledToFill image inside a
         // ZStack reports its natural size and blows the whole
         // layout out to match — frame + clip keep it tame.
+        let theme = themes.current
+        let choice = themes.effectiveChoice(for: resolvedSlot)
         GeometryReader { geo in
             ZStack {
                 Color(white: 0.03)
-                if let wallpaper = Wallpaper.image {
-                    AnimatedImageView(image: wallpaper)
-                        .frame(width: geo.size.width,
-                               height: geo.size.height)
-                        .clipped()
-                } else {
-                    Image("AppBackground")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geo.size.width,
-                               height: geo.size.height)
-                        .clipped()
-                }
-                Rectangle().fill(Color.black.opacity(0.18))
+                backdrop(choice: choice, theme: theme, geo: geo)
+                Rectangle().fill(theme.tint)
+                    .opacity(theme.tintStrength)
+                Rectangle().fill(Color.black.opacity(theme.dim))
             }
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
     }
+
+    @ViewBuilder
+    private func backdrop(choice: BackdropChoice,
+                          theme: AppTheme,
+                          geo: GeometryProxy) -> some View {
+        switch choice {
+        case .living, .inherit:
+            if let wallpaper = Wallpaper.image {
+                AnimatedImageView(image: wallpaper)
+                    .frame(width: geo.size.width,
+                           height: geo.size.height)
+                    .clipped()
+            } else {
+                skull(geo)
+            }
+        case .skull:
+            skull(geo)
+        case .custom:
+            if let image = BackdropMedia.image(
+                for: resolvedSlot) {
+                if image.images != nil {
+                    AnimatedImageView(image: image)
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                } else {
+                    Image(uiImage: image)
+                        .resizable().scaledToFill()
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                }
+            } else if let wallpaper = Wallpaper.image {
+                AnimatedImageView(image: wallpaper)
+                    .frame(width: geo.size.width,
+                           height: geo.size.height)
+                    .clipped()
+            } else {
+                skull(geo)
+            }
+        case .plain:
+            LinearGradient(
+                colors: [theme.tint, Color.black],
+                startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    @ViewBuilder
+    private func skull(_ geo: GeometryProxy) -> some View {
+        if UIImage(named: "AppBackground") != nil {
+            Image("AppBackground")
+                .resizable()
+                .scaledToFill()
+                .frame(width: geo.size.width,
+                       height: geo.size.height)
+                .clipped()
+        }
+    }
 }
 
-/// The themed-screen recipe, applied per tab: transparent scroll
-/// backgrounds AND the backdrop painted behind that very screen.
-/// (Painting it only behind the TabView is not enough — on
-/// current iOS the tab container fills its own frame opaquely,
-/// so an ancestor's backdrop never shows through. Behind each
-/// tab's own root, with its list transparent, it does.)
+/// The themed-screen recipe, applied per tab: transparent
+/// scroll backgrounds AND the backdrop painted behind that
+/// very screen, in that tab's own slot. (Painting it only
+/// behind the TabView is not enough — on current iOS the tab
+/// container fills its own frame opaquely, so an ancestor's
+/// backdrop never shows through. Behind each tab's own root,
+/// with its list transparent, it does.)
 struct AppThemed: ViewModifier {
+    var slot: BackdropSlot = .everywhere
+
     func body(content: Content) -> some View {
         content
+            .environment(\.backdropSlot, slot)
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
     }
 }
 
 extension View {
-    func appThemed() -> some View { modifier(AppThemed()) }
+    func appThemed(_ slot: BackdropSlot = .everywhere)
+        -> some View {
+        modifier(AppThemed(slot: slot))
+    }
 }
 
 /// Boot splash: the boot reel plays full-screen — the
