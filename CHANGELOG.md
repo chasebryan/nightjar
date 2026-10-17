@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **The great presenter audit.** Every sheet, cover,
+  dialog, importer, and share in the app was inventoried
+  and moved to the one level that has never failed on
+  device: the screen's outermost view. Scan's Map cover,
+  dossier and name sheets, and pcap importer, the Recon
+  bench's protocol library, Knocktalk's conversation,
+  blink, and chirp importer, and Send's preset importer
+  all hang on their NavigationStacks now; and every
+  share that lived inside a list — the tripwire log, the
+  morning brief, the night log, dossiers, prober files,
+  session files, presets, trace exports, the crawl
+  logbook, the inbox, chirps, and capsules — is now a
+  button that raises the share sheet from the screen's
+  root, the way the after-action report learned to.
 - **The Map (iOS Scan).** A special section of its own:
   the house on one canvas. The operator names rooms and
   places each neighbor where the device physically sits;
