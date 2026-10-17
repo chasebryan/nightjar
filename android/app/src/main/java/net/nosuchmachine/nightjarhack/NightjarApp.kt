@@ -16,6 +16,7 @@ class NightjarApp : Application() {
     lateinit var scanner: PortScanner
     lateinit var recon: Recon
     lateinit var emcon: Emcon
+    lateinit var steward: Steward
     lateinit var traceStore: TraceBookStore
     lateinit var tracer: NetworkTracer
 
@@ -76,6 +77,14 @@ class NightjarApp : Application() {
         emcon.pivotSink = { host, port ->
             reconHandoff.value = Triple(host, port, System.nanoTime())
         }
+        // The steward stands above the conductor: fed every
+        // knock after it, and every line the journal seals.
+        steward = Steward(conductorPrefs, emcon)
+        emcon.stewardHook = { _, source, port, proto, verdict, mine ->
+            steward.onKnock(source, port, proto, verdict, mine)
+        }
+        Journal.onEvent = { event -> steward.consume(event) }
+        steward.shiftChange()
         // The dead hand falls at an opening, before anything
         // else: if a check-in is overdue, this launch burns
         // and goes dark.
