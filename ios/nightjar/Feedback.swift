@@ -620,3 +620,15 @@ struct CentipedeSplashView: View {
         }
     }
 }
+
+/// One share payload, identifiable so a screen's root can
+/// present the share sheet for it with `.sheet(item:)`.
+/// Shares in this app are doors: a button in a list raises
+/// one of these, and the sheet itself hangs off the
+/// screen's outermost view — a bare ShareLink buried in a
+/// list section cannot find a presentation host here and
+/// dies silently under the finger.
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let items: [Any]
+}
