@@ -1578,6 +1578,17 @@ enum SkelliMind {
         return false
     }
 
+    /// Whether the MLX package rode into this
+    /// build at all — her Weights sheet says so
+    /// plainly when it didn't.
+    static var benchBuiltIn: Bool {
+        #if canImport(MLXLLM)
+        return true
+        #else
+        return false
+        #endif
+    }
+
     static var weightsReady: Bool {
         #if canImport(MLXLLM)
         if #available(iOS 17.0, *) {
@@ -1759,26 +1770,48 @@ private enum SkelliModelBox {
 import MLXLLM
 import MLXLMCommon
 
-/// Her weights bench: an open-weights model the
-/// operator stages into the app bundle — a folder
-/// named SkelliWeights in the Hugging Face layout
-/// (config, safetensors, tokenizer) — loaded
-/// through MLX and kept resident once woken.
-/// Nothing here compiles unless the mlx-swift-lm
-/// package is in the target; absent the package or
-/// the folder, she simply has no bench.
+/// Her weights bench: open-weights models run
+/// through MLX. The operator picks one in her
+/// Weights sheet; it downloads from the Hugging
+/// Face hub into the app's own cache, is selected
+/// there, and is kept resident once woken. A
+/// folder named SkelliWeights staged into the
+/// bundle still serves as a bench when nothing
+/// has been chosen. Nothing here compiles unless
+/// the mlx-swift-lm package is in the target.
 @available(iOS 17.0, *)
 private enum SkelliWeights {
     private static var container: ModelContainer?
+    private static var containerKey: String?
+
+    /// The model chosen in her Weights sheet.
+    static var selectedID: String? {
+        UserDefaults.standard.string(
+            forKey: "skelli.weightsModel")
+    }
+
+    /// The chosen model, once its download has
+    /// finished — the cascade only ever speaks to
+    /// a bench that is actually on the phone.
+    static var downloadedSelection: String? {
+        guard let id = selectedID else { return nil }
+        let downloaded = UserDefaults.standard
+            .stringArray(
+                forKey: "skelli.weightsDownloaded")
+            ?? []
+        return downloaded.contains(id) ? id : nil
+    }
+
+    static var folderURL: URL? {
+        Bundle.main.url(forResource: "SkelliWeights",
+                        withExtension: nil)
+    }
 
     static var canSpeak: Bool {
         container != nil
-            || Bundle.main.url(
-                forResource: "SkelliWeights",
-                withExtension: nil) != nil
+            || downloadedSelection != nil
+            || folderURL != nil
     }
-
-    static var loaded: Bool { container != nil }
 
     static func ask(instructions: String,
                     prompt: String) async -> String? {
@@ -1810,20 +1843,28 @@ private enum SkelliWeights {
 
     private static func loadedContainer()
         async throws -> ModelContainer {
-        if let container = container { return container }
-        guard let url = Bundle.main.url(
-            forResource: "SkelliWeights",
-            withExtension: nil)
-        else { throw WeightsError.noFolder }
-        let config = ModelConfiguration(directory: url)
+        let key = downloadedSelection ?? "folder"
+        if let container = container,
+           containerKey == key {
+            return container
+        }
+        let config: ModelConfiguration
+        if let id = downloadedSelection {
+            config = ModelConfiguration(id: id)
+        } else if let folder = folderURL {
+            config = ModelConfiguration(directory: folder)
+        } else {
+            throw WeightsError.noBench
+        }
         let box = try await LLMModelFactory.shared
             .loadContainer(configuration: config)
         container = box
+        containerKey = key
         return box
     }
 
     private enum WeightsError: Error {
-        case noFolder
+        case noBench
     }
 }
 #endif
@@ -2244,6 +2285,7 @@ struct SkelliView: View {
     @State private var input = ""
     @State private var showDirectory = false
     @State private var showMemory = false
+    @State private var showWeights = false
     @State private var confirmClear = false
     @State private var confirmReset = false
     @FocusState private var inputFocused: Bool
@@ -2258,6 +2300,9 @@ struct SkelliView: View {
         }
         .sheet(isPresented: $showMemory) {
             SkelliMemoryView()
+        }
+        .sheet(isPresented: $showWeights) {
+            WeightsView()
         }
         .confirmationDialog(
             "Clear this conversation?",
@@ -2354,6 +2399,12 @@ struct SkelliView: View {
             } label: {
                 Label("Memory",
                       systemImage: "brain")
+            }
+            Button {
+                showWeights = true
+            } label: {
+                Label("Weights",
+                      systemImage: "memorychip")
             }
             Toggle(isOn: $skelli.webResearchEnabled) {
                 Label("Web research",
