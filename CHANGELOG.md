@@ -82,6 +82,26 @@
   and draws its mutations by
   their yield.
 
+- **The organs learn
+  (intelligence batch 4).**
+  Knocktalk finalizes each peer's
+  frames on that peer's own
+  measured rhythm. Deliveries are
+  budgeted from a per-peer ledger
+  — deadlines and repair rounds
+  from observed airtime and loss,
+  not constants. A Cadence foreign
+  verdict counts now: three
+  running raise the second sense
+  and reach the Conductor as a
+  trigger of their own. The
+  Conductor's rest doubles per
+  rule and host, jittered; the
+  Canary arms the lures its own
+  probers keep asking for; the
+  Hunt judges closeness against
+  the target's own strength.
+
 ## 5.0.5 — 2026-10-17 — the open hand
 
 - **Her hands, in conversation.** The
