@@ -115,6 +115,67 @@ enum ForgeKit {
     }
 }
 
+/// A payload pattern of her own — or yours:
+/// a template with {host}, {path}, {domain},
+/// {client} and {method} holes she fills from
+/// the forge's own fields. Patterns are data,
+/// kept on the phone; she gains new shapes
+/// without a rebuild.
+struct ForgePattern: Identifiable, Codable {
+    var id = UUID()
+    var name: String
+    var source: String
+    var template: String
+}
+
+enum ForgePatternStore {
+    private static let key = "skelli.forgePatterns"
+
+    static func load() -> [ForgePattern] {
+        guard let data = UserDefaults.standard
+            .data(forKey: key),
+              let saved = try? JSONDecoder().decode(
+                  [ForgePattern].self, from: data)
+        else { return [] }
+        return saved
+    }
+
+    static func save(_ all: [ForgePattern]) {
+        if let data = try? JSONEncoder().encode(all) {
+            UserDefaults.standard.set(data,
+                                      forKey: key)
+        }
+    }
+}
+
+/// A tool she keeps: JavaScript she wrote,
+/// runnable on the spot with an input string.
+struct ForgeTool: Identifiable, Codable {
+    var id = UUID()
+    var name: String
+    var code: String
+}
+
+enum ForgeToolStore {
+    private static let key = "skelli.forgeTools"
+
+    static func load() -> [ForgeTool] {
+        guard let data = UserDefaults.standard
+            .data(forKey: key),
+              let saved = try? JSONDecoder().decode(
+                  [ForgeTool].self, from: data)
+        else { return [] }
+        return saved
+    }
+
+    static func save(_ all: [ForgeTool]) {
+        if let data = try? JSONEncoder().encode(all) {
+            UserDefaults.standard.set(data,
+                                      forKey: key)
+        }
+    }
+}
+
 struct ForgeView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
@@ -137,6 +198,16 @@ struct ForgeView: View {
     @State private var draftingCode = false
     @State private var runningCode = false
     @State private var shareItem: ShareItem?
+    @State private var customs: [ForgePattern] =
+        ForgePatternStore.load()
+    @State private var newPatternName = ""
+    @State private var newPatternSource = "text"
+    @State private var newPatternTemplate = ""
+    @State private var tools: [ForgeTool] =
+        ForgeToolStore.load()
+    @State private var toolInput = ""
+    @State private var toolOutput = ""
+    @State private var toolOutputID: UUID?
     @State private var drafting = false
     @State private var draft = ""
     @State private var draftSource = "text"
@@ -147,7 +218,34 @@ struct ForgeView: View {
         "MQTT connect", "Banner probe",
     ]
 
+    private var isCustom: Bool {
+        pattern >= patterns.count
+    }
+
     private var built: ForgeKit.Built {
+        if isCustom {
+            let custom = customs[
+                pattern - patterns.count]
+            var text = custom.template
+            let swaps: [(String, String)] = [
+                ("{host}", host.isEmpty
+                    ? "192.168.4.1" : host),
+                ("{path}", path.isEmpty
+                    ? "/" : path),
+                ("{domain}", domain.isEmpty
+                    ? "example.com" : domain),
+                ("{client}", clientID.isEmpty
+                    ? "nightjar" : clientID),
+                ("{method}", method),
+            ]
+            for (hole, value) in swaps {
+                text = text.replacingOccurrences(
+                    of: hole, with: value)
+            }
+            return ForgeKit.Built(
+                name: "Forged — " + custom.name,
+                source: custom.source, text: text)
+        }
         switch pattern {
         case 0:
             return ForgeKit.http(
@@ -187,8 +285,15 @@ struct ForgeView: View {
                                 id: \.self) { i in
                             Text(patterns[i]).tag(i)
                         }
+                        ForEach(
+                            customs.indices,
+                            id: \.self) { i in
+                            Text(customs[i].name)
+                                .tag(patterns.count
+                                     + i)
+                        }
                     }
-                    if pattern == 0 {
+                    if pattern == 0 || isCustom {
                         TextField("Host or IP",
                                   text: $host)
                         TextField("Path", text: $path)
@@ -202,11 +307,11 @@ struct ForgeView: View {
                         }
                         .pickerStyle(.segmented)
                     }
-                    if pattern == 1 {
+                    if pattern == 1 || isCustom {
                         TextField("Domain",
                                   text: $domain)
                     }
-                    if pattern == 3 {
+                    if pattern == 3 || isCustom {
                         TextField("Client ID",
                                   text: $clientID)
                     }
@@ -231,6 +336,76 @@ struct ForgeView: View {
                 .onChange(of: pattern) { _ in
                     keptPattern = false
                     keepName = ""
+                }
+                Section("Her own patterns") {
+                    Text("Teach her a new shape: "
+                        + "a template with "
+                        + "{host}, {path}, "
+                        + "{domain}, {client} and "
+                        + "{method} holes. It "
+                        + "joins her patterns "
+                        + "above, hers from then "
+                        + "on — no rebuild, "
+                        + "nothing to break.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("Pattern name",
+                              text: $newPatternName)
+                    Picker("Form",
+                           selection: $newPatternSource) {
+                        Text("Text").tag("text")
+                        Text("Hex").tag("hex")
+                    }
+                    .pickerStyle(.segmented)
+                    TextEditor(
+                        text: $newPatternTemplate)
+                        .font(.system(
+                            .caption,
+                            design: .monospaced))
+                        .frame(minHeight: 80)
+                    Button("Teach her this pattern") {
+                        let name = newPatternName
+                            .trimmingCharacters(
+                                in: .whitespacesAndNewlines)
+                        guard !name.isEmpty,
+                              !newPatternTemplate
+                                .isEmpty
+                        else { return }
+                        customs.append(ForgePattern(
+                            name: name,
+                            source: newPatternSource,
+                            template: newPatternTemplate))
+                        ForgePatternStore.save(
+                            customs)
+                        pattern = patterns.count
+                            + customs.count - 1
+                        newPatternName = ""
+                        newPatternTemplate = ""
+                        toasts.show(
+                            "She knows it now.")
+                    }
+                    ForEach(customs) { custom in
+                        HStack {
+                            Text(custom.name)
+                                .font(.callout)
+                            Spacer()
+                            Button(role: .destructive) {
+                                customs.removeAll {
+                                    $0.id == custom.id
+                                }
+                                ForgePatternStore.save(
+                                    customs)
+                                if pattern
+                                    >= patterns.count
+                                        + customs.count {
+                                    pattern = 0
+                                }
+                            } label: {
+                                Image(systemName:
+                                    "trash")
+                            }
+                        }
+                    }
                 }
                 Section("From a brief") {
                     TextField(
@@ -341,12 +516,78 @@ struct ForgeView: View {
                                     items: [codeDraft])
                             }
                         }
+                        if codeLang == "JavaScript" {
+                            Button("Keep as a tool") {
+                                let name = codeBrief
+                                    .trimmingCharacters(
+                                        in: .whitespacesAndNewlines)
+                                tools.append(ForgeTool(
+                                    name: name.isEmpty
+                                        ? "Tool"
+                                        : String(name
+                                            .prefix(28)),
+                                    code: codeDraft))
+                                ForgeToolStore.save(
+                                    tools)
+                                toasts.show(
+                                    "Kept as a tool — "
+                                    + "it waits below.")
+                            }
+                        }
                         if !codeOutput.isEmpty {
                             Text(codeOutput)
                                 .font(.system(
                                     .caption,
                                     design: .monospaced))
                                 .textSelection(.enabled)
+                        }
+                    }
+                }
+                if !tools.isEmpty {
+                    Section("Her tools") {
+                        Text("JavaScript she "
+                            + "keeps, runnable with "
+                            + "an input — it "
+                            + "arrives in her code "
+                            + "as `input`.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("Input for the run",
+                                  text: $toolInput)
+                        ForEach(tools) { tool in
+                            VStack(alignment: .leading,
+                                   spacing: 4) {
+                                HStack {
+                                    Text(tool.name)
+                                        .font(.callout)
+                                    Spacer()
+                                    Button("Run") {
+                                        runTool(tool)
+                                    }
+                                    Button(
+                                        role: .destructive
+                                    ) {
+                                        tools.removeAll {
+                                            $0.id == tool.id
+                                        }
+                                        ForgeToolStore
+                                            .save(tools)
+                                    } label: {
+                                        Image(systemName:
+                                            "trash")
+                                    }
+                                }
+                                if toolOutputID
+                                    == tool.id,
+                                   !toolOutput.isEmpty {
+                                    Text(toolOutput)
+                                        .font(.system(
+                                            .caption,
+                                            design: .monospaced))
+                                        .textSelection(
+                                            .enabled)
+                                }
+                            }
                         }
                     }
                 }
@@ -393,8 +634,33 @@ struct ForgeView: View {
                     .trimmingCharacters(
                         in: .whitespacesAndNewlines)
                 codeDraft = text
+                let exts = ["Swift": "swift",
+                            "Python": "py",
+                            "JavaScript": "js",
+                            "Shell": "sh",
+                            "Other": "txt"]
+                DeliveriesCenter.shared.add(
+                    name: "Built — "
+                        + String(ask.prefix(28)),
+                    text: text,
+                    ext: exts[lang] ?? "txt")
             }
         }
+    }
+
+    private func runTool(_ tool: ForgeTool) {
+        toolOutputID = tool.id
+        toolOutput = "Running…"
+        let code = tool.code
+        let input = toolInput
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                let output = JSRunner.run(
+                    code, input: input)
+                DispatchQueue.main.async {
+                    toolOutput = output
+                }
+            }
     }
 
     private func runCode() {
@@ -414,13 +680,18 @@ struct ForgeView: View {
                       name: String) {
         let trimmed = name.trimmingCharacters(
             in: .whitespacesAndNewlines)
+        let finalName = trimmed.isEmpty
+            ? built.name : trimmed
         mouth.add(SavedPayload(
-            name: trimmed.isEmpty
-                ? built.name : trimmed,
+            name: finalName,
             source: built.source,
             text: built.text,
             xorKey: "", useGzip: false,
             framing: "raw"))
+        DeliveriesCenter.shared.add(
+            name: finalName, text: built.text,
+            ext: built.source == "hex"
+                ? "hex" : "txt")
         toasts.show("Kept in the armory.")
     }
 
@@ -459,6 +730,10 @@ struct ForgeView: View {
                     .trimmingCharacters(
                         in: .whitespacesAndNewlines)
                 draft = text
+                DeliveriesCenter.shared.add(
+                    name: "Draft — "
+                        + String(ask.prefix(28)),
+                    text: text, ext: "txt")
                 let hexish = !text.isEmpty
                     && text.allSatisfy {
                         $0.isHexDigit
@@ -479,11 +754,17 @@ struct ForgeView: View {
 enum JSRunner {
 
     static func run(_ code: String) -> String {
+        run(code, input: "")
+    }
+
+    static func run(_ code: String,
+                    input: String) -> String {
         let semaphore = DispatchSemaphore(value: 0)
         var result = ""
         DispatchQueue.global(qos: .userInitiated)
             .async {
-                result = evaluate(code)
+                result = evaluate(code,
+                                  input: input)
                 semaphore.signal()
             }
         if semaphore.wait(
@@ -495,7 +776,8 @@ enum JSRunner {
     }
 
     private static func evaluate(
-        _ code: String) -> String {
+        _ code: String,
+        input: String = "") -> String {
         let context = JSContext()!
         var logs: [String] = []
         var failure: String?
@@ -510,6 +792,13 @@ enum JSRunner {
             }
         context.setObject(
             log, forKeyedSubscript: "log" as NSString)
+        if let literal = try? JSONEncoder()
+            .encode(input),
+           let text = String(
+               data: literal, encoding: .utf8) {
+            _ = context.evaluateScript(
+                "var input = " + text + ";")
+        }
         _ = context.evaluateScript(
             "var console = { log: log, "
             + "error: log, warn: log };")
