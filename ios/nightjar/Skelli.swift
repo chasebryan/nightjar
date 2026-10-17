@@ -6,18 +6,18 @@ import SwiftUI
 ///
 /// Not a general intelligence and never pretending to
 /// be: a specialist for this one application, at home
-/// in it. Its knowledge is the app's own manual, its
-/// senses are the app's live state — the wire, the log,
-/// the mind, the instrument — and its hands are the
-/// app's own controls, worked through the same organs
-/// the tabs use. It answers only from those, and when
-/// a question leaves the house it says so.
+/// in it. Her knowledge is the app's own manual, her
+/// senses are the app's live state — the wire, the
+/// log, the mind, the instrument — and her hands are
+/// the app's own controls, worked through the same
+/// organs the tabs use. She keeps a memory of what
+/// she is told, and the conversation itself, between
+/// visits. She answers only from those, and when a
+/// question leaves the house she says so.
 ///
 /// Loud and destructive levers keep their own
 /// confirmations: Skelli walks the operator to them
-/// and names why, rather than pulling them itself.
-/// Everything it does directly, it does in the open,
-/// and its acts are journaled under its own name.
+/// and names why, rather than pulling them herself.
 
 extension Notification.Name {
     static let houseNavigate = Notification.Name(
@@ -487,10 +487,57 @@ enum SkelliKnowledge {
 
 // MARK: - The transcript
 
-struct SkelliLine: Identifiable {
+struct SkelliLine: Identifiable, Codable {
     var id = UUID()
     var fromOperator: Bool
     var text: String
+    var when = Date()
+}
+
+/// One thing she has been told and keeps.
+struct SkelliNote: Identifiable, Codable {
+    var id = UUID()
+    var text: String
+    var learnedAt = Date()
+}
+
+/// Her persistence: the conversation and her notes in
+/// one small file in Documents. Capped, clearable by
+/// the operator, and wiped by her reset.
+enum SkelliStore {
+    struct Saved: Codable {
+        var lines: [SkelliLine] = []
+        var notes: [SkelliNote] = []
+    }
+
+    static var fileURL: URL {
+        FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("skelli.json")
+    }
+
+    static func load() -> Saved {
+        guard let data = try? Data(contentsOf: fileURL),
+              let saved = try? JSONDecoder().decode(
+                  Saved.self, from: data)
+        else { return Saved() }
+        return saved
+    }
+
+    static func save(_ saved: Saved) {
+        if let data = try? JSONEncoder().encode(saved) {
+            try? data.write(to: fileURL, options: .atomic)
+        }
+    }
+
+    static func wipe() {
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+}
+
+/// What her face is doing — the avatar reads it.
+enum SkelliMood {
+    case idle, thinking, working, speaking
 }
 
 // MARK: - The center
@@ -499,34 +546,91 @@ final class SkelliCenter: ObservableObject {
     static let shared = SkelliCenter()
 
     @Published var lines: [SkelliLine] = []
+    @Published var notes: [SkelliNote] = []
+    @Published var mood: SkelliMood = .idle
     private(set) var mouth: Mouth?
     private(set) var emcon: Emcon?
+    private(set) var post: ListeningPost?
     private let scanner = ScanModel()
     private var sweepWatch: AnyCancellable?
+    private var idleWork: DispatchWorkItem?
+    /// The conversation's short-term memory: the device
+    /// under discussion, and an offered action awaiting
+    /// a yes.
+    private var lastDeviceIP: String?
+    private var pendingAction: (() -> Void)?
+
+    init() {
+        let saved = SkelliStore.load()
+        lines = saved.lines
+        notes = saved.notes
+    }
 
     /// The app hands over its own organs at first light,
     /// so the specialist works the real controls, not
     /// stand-ins.
-    func wire(mouth: Mouth, emcon: Emcon) {
+    func wire(mouth: Mouth, emcon: Emcon,
+              post: ListeningPost) {
         self.mouth = mouth
         self.emcon = emcon
+        self.post = post
     }
 
-    func greetIfNeeded() {
-        guard lines.isEmpty else { return }
-        say("I'm Skelli — the house's specialist. I "
-            + "know every tab, organ, and switch in "
-            + "this application; I read the wire, the "
-            + "log, the mind, and the instrument live; "
-            + "and I can work the controls — sweeps, "
-            + "scans, posture, serve. Ask me anything "
-            + "about the system, or tell me to do "
-            + "something.")
+    private func persist() {
+        SkelliStore.save(SkelliStore.Saved(
+            lines: Array(lines.suffix(300)), notes: notes))
     }
 
     func say(_ text: String) {
         lines.append(SkelliLine(fromOperator: false,
                                  text: text))
+        persist()
+        mood = .speaking
+        idleWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            if self?.mood == .speaking { self?.mood = .idle }
+        }
+        idleWork = work
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 1.4, execute: work)
+    }
+
+    /// The operator empties the conversation. Her notes
+    /// stay — forgetting those is its own act.
+    func clearConversation() {
+        lines = []
+        pendingAction = nil
+        lastDeviceIP = nil
+        persist()
+    }
+
+    /// Back to her defaults: no conversation, no notes,
+    /// nothing pending. The house itself is untouched.
+    func resetToDefaults() {
+        lines = []
+        notes = []
+        pendingAction = nil
+        lastDeviceIP = nil
+        mood = .idle
+        SkelliStore.wipe()
+    }
+
+    func remember(_ text: String) {
+        let trimmed = text.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        notes.append(SkelliNote(text: trimmed))
+        persist()
+    }
+
+    func forgetNote(id: UUID) {
+        notes.removeAll { $0.id == id }
+        persist()
+    }
+
+    func forgetNotes(at offsets: IndexSet) {
+        notes.remove(atOffsets: offsets)
+        persist()
     }
 
     func ask(_ raw: String) {
@@ -535,7 +639,15 @@ final class SkelliCenter: ObservableObject {
         guard !text.isEmpty else { return }
         lines.append(SkelliLine(fromOperator: true,
                                  text: text))
-        respond(to: text.lowercased())
+        persist()
+        // Thinking is always on — a short, real beat
+        // while she consults the house, then the answer.
+        mood = .thinking
+        let q = text.lowercased()
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.45) { [weak self] in
+            self?.respond(to: q)
+        }
     }
 
     /// The directory's way in: the entry itself,
@@ -555,14 +667,66 @@ final class SkelliCenter: ObservableObject {
     // MARK: the routing
 
     private func respond(to q: String) {
+        // An offered action, awaiting a word.
+        if let pending = pendingAction {
+            if ["yes", "yeah", "yep", "do it", "go",
+                 "go ahead", "ok", "okay", "sure"]
+                    .contains(q) || q.hasPrefix("yes") {
+                pendingAction = nil
+                pending()
+                return
+            }
+            if q == "no" || q == "nope"
+                || q.contains("never mind") {
+                pendingAction = nil
+                say("Understood — left as it is.")
+                return
+            }
+        }
+
+        // Being told things: her long memory.
+        if q.hasPrefix("remember ") {
+            var note = String(q.dropFirst(9))
+            if note.hasPrefix("that ") {
+                note = String(note.dropFirst(5))
+            }
+            if note.isEmpty {
+                say("Remember what? Tell me, and "
+                    + "it's kept.")
+            } else {
+                remember(note)
+                say("Kept: " + note + ". It stays with "
+                    + "me across conversations — ask "
+                    + "'what do you remember', or tell "
+                    + "me to forget it.")
+            }
+            return
+        }
+        if q.contains("what do you remember")
+            || q.contains("your memory")
+            || q.contains("what have you learned") {
+            say(notesReport())
+            return
+        }
+        if q.hasPrefix("forget ") {
+            let needle = String(q.dropFirst(7))
+            if let hit = notes.first(where: {
+                $0.text.contains(needle) }) {
+                forgetNote(id: hit.id)
+                say("Forgotten: " + hit.text + ".")
+                return
+            }
+            // No note matched — fall through; the
+            // clear-guidance below may be the intent.
+        }
+
         // Greetings and the tour.
         if ["hello", "hi", "hey"].contains(q)
             || q.contains("who are you") {
-            say("Skelli. Specialist for this house and "
-                + "nothing else — which is why I can be "
-                + "trusted about it: everything I tell "
-                + "you is read from the system itself. "
-                + "Ask 'what can you do' for the tour.")
+            say("Skelli — the house's specialist. I "
+                + "answer from the system itself: its "
+                + "manual, its live state, its "
+                + "controls. Ask 'what can you do'.")
             return
         }
         if q.contains("what can you do")
@@ -649,6 +813,26 @@ final class SkelliCenter: ObservableObject {
             || q.contains("disarm the tripwire") {
             emcon?.stopTripwire()
             say("Tripwire stood down.")
+            return
+        }
+        if q.contains("drill") {
+            runDrill()
+            return
+        }
+        if q.contains("start listening")
+            || q.contains("listen on") {
+            startListening()
+            return
+        }
+        if q.contains("stop listening")
+            || q.contains("listen off") {
+            post?.stop()
+            say("The ear is closed. Its sessions keep "
+                + "what they heard.")
+            return
+        }
+        if (q.contains("name ") || q.contains("call "))
+            && nameDevice(q) {
             return
         }
         if q.contains("assault")
@@ -742,6 +926,34 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // A device, in depth — every organ's word
+        // on it, composed.
+        if let neighbor = matchDevice(q) {
+            lastDeviceIP = neighbor.ip
+            say(deviceReport(neighbor))
+            return
+        }
+        if let ip = lastDeviceIP,
+           let neighbor = NeighborhoodStore.shared
+               .neighbors.first(where: { $0.ip == ip }) {
+            if q.contains("port") {
+                say(neighbor.ports.isEmpty
+                    ? "\(neighbor.displayName) has no "
+                      + "recorded open ports — no knock "
+                      + "of ours has found one answering."
+                    : "\(neighbor.displayName) answers "
+                      + "on: "
+                      + neighbor.ports.map(String.init)
+                          .joined(separator: ", ")
+                      + ".")
+                return
+            }
+            if q.contains("where") {
+                say(roomLine(neighbor))
+                return
+            }
+        }
+
         // The record: the mind's own answering, reused.
         if ["quiet", "foreign", "drift", "first", "asleep",
              "busiest", "missing", "sleep", "heart"]
@@ -789,10 +1001,177 @@ final class SkelliCenter: ObservableObject {
             + "'how does cadence work'. Loud and "
             + "destructive levers — arming Net-Assault, "
             + "clearing records — keep their own "
-            + "confirmations; I'll walk you to those."
+            + "confirmations; I'll walk you to those. "
+            + "I also run the drill ('run the drill') "
+            + "and the ear ('start listening'), and I "
+            + "can name a device: 'name 192.168.4.50 "
+            + "the printer'. Tell me 'remember …' and "
+            + "I keep it across conversations."
+    }
+
+    // MARK: memory and devices
+
+    private func notesReport() -> String {
+        guard !notes.isEmpty else {
+            return "I hold nothing yet. Tell me "
+                + "'remember …' and I keep it — names, "
+                + "habits, how you like things read — "
+                + "across conversations."
+        }
+        return "What I remember:\n"
+            + notes.map {
+                "— \($0.text) (kept "
+                    + $0.learnedAt.formatted(
+                        date: .abbreviated, time: .omitted)
+                    + ")"
+            }.joined(separator: "\n")
+    }
+
+    private func matchDevice(_ q: String) -> Neighbor? {
+        NeighborhoodStore.shared.neighbors.first {
+            q.contains($0.ip)
+                || q.contains($0.displayName.lowercased())
+                || ($0.name.map {
+                    q.contains($0.lowercased()) } ?? false)
+        }
+    }
+
+    private func roomLine(_ neighbor: Neighbor) -> String {
+        if let placement = MapStore.shared
+            .placements[neighbor.ip],
+           let room = MapStore.shared.rooms.first(
+               where: { $0.id == placement.roomID }) {
+            return "\(neighbor.displayName) sits in "
+                + room.name + " — your placement, kept "
+                + "by the Map."
+        }
+        return "\(neighbor.displayName) is unplaced — "
+            + "it waits in the Map's tray for you to "
+            + "say where it sits."
+    }
+
+    private func deviceReport(_ neighbor: Neighbor)
+        -> String {
+        var lines: [String] = []
+        lines.append("\(neighbor.displayName) — "
+            + "\(neighbor.ip).")
+        if let wire = neighbor.name,
+           wire != neighbor.displayName {
+            lines.append("On the wire it answers as "
+                + wire + ".")
+        }
+        lines.append("Seen \(neighbor.sightings) time"
+            + (neighbor.sightings == 1 ? "" : "s")
+            + "; last "
+            + InstrumentCenter.ageLine(neighbor.lastSeen)
+            + ".")
+        lines.append(neighbor.ports.isEmpty
+            ? "No recorded open ports."
+            : "Answers on: "
+              + neighbor.ports.map(String.init)
+                  .joined(separator: ", ") + ".")
+        lines.append(roomLine(neighbor))
+        let acked = MapStore.shared
+            .ackedDrift[neighbor.ip] ?? 0
+        let unacked = max(0, neighbor.drift.count - acked)
+        if !neighbor.drift.isEmpty {
+            lines.append("Drift: "
+                + (neighbor.drift.first ?? "")
+                + (unacked > 0
+                   ? " — \(unacked) unacknowledged."
+                   : " — all acknowledged."))
+        }
+        if neighbor.arrivals > 0 {
+            lines.append("It has knocked at this "
+                + "phone's door \(neighbor.arrivals) "
+                + "time"
+                + (neighbor.arrivals == 1 ? "" : "s")
+                + ".")
+        }
+        if let mention = Journal.events(limit: 400)
+            .first(where: { $0.text.contains(neighbor.ip) }) {
+            lines.append("The log's latest word: "
+                + mention.text + " ("
+                + mention.when.formatted(
+                    date: .abbreviated, time: .shortened)
+                + ")")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func nameDevice(_ q: String) -> Bool {
+        let tokens = q.split(separator: " ")
+            .map(String.init)
+        guard let ipIndex = tokens.firstIndex(where: {
+            let parts = $0.split(separator: ".")
+            return parts.count == 4
+                && parts.allSatisfy {
+                    Int($0) != nil
+                        && (0...255).contains(Int($0) ?? -1)
+                }
+        }) else { return false }
+        let ip = tokens[ipIndex]
+        guard let neighbor = NeighborhoodStore.shared
+            .neighbors.first(where: { $0.ip == ip }) else {
+            say("The wire doesn't know " + ip + " yet — "
+                + "I can only name devices the house "
+                + "has met. A sweep might introduce you.")
+            return true
+        }
+        var words = Array(tokens.dropFirst(ipIndex + 1))
+        if words.first == "the" { words.removeFirst() }
+        let name = words.joined(separator: " ")
+        guard !name.isEmpty else {
+            say("Call it what? 'Name " + ip + " the "
+                + "printer' and it's done.")
+            return true
+        }
+        NeighborhoodStore.shared.rename(
+            ip: ip, to: name, mark: neighbor.customMark)
+        lastDeviceIP = ip
+        say("Named. " + ip + " answers as " + name
+            + " now — on the board, the Map, its "
+            + "dossier, and in the mind's findings. "
+            + "The wire's own name for it is kept "
+            + "underneath, only outranked.")
+        return true
     }
 
     // MARK: hands
+
+    private func runDrill() {
+        guard let emcon = emcon, let mouth = mouth else {
+            say("The drill is EMCON's and its organs "
+                + "haven't reached me yet — open the "
+                + "EMCON tab once and ask again.")
+            return
+        }
+        mood = .working
+        emcon.runDrill(mouth: mouth)
+        say("The drill is running — scan, go dark, "
+            + "scan again. Its readout lands in "
+            + "EMCON's drill section, where the ledger "
+            + "names what went quiet.")
+    }
+
+    private func startListening() {
+        guard let post = post else {
+            say("The ear hasn't reached me yet — open "
+                + "the Listen tab once and ask again.")
+            return
+        }
+        if post.session != nil {
+            say("The ear is already open — "
+                + "\(post.deviceCount) devices in its "
+                + "registry this session.")
+            return
+        }
+        post.start(label: "Skelli")
+        say("The ear is open. It hears passively — "
+            + "it never connects or pairs — and its "
+            + "sightings land in the Listen tab and "
+            + "the log.")
+    }
 
     private func runSweep() {
         guard !scanner.sweeping else {
@@ -804,6 +1183,7 @@ final class SkelliCenter: ObservableObject {
         say("Sweeping the wire on port 80 — the whole "
             + "/24. Answers feed the Neighborhood and "
             + "the Map as they land.")
+        mood = .working
         scanner.sweep(port: 80)
         sweepWatch = scanner.$sweeping
             .dropFirst()
@@ -838,6 +1218,7 @@ final class SkelliCenter: ObservableObject {
         say("Knocking this phone on every census port, "
             + "loopback and its wire address — whatever "
             + "answers is what another operator sees.")
+        mood = .working
         emcon.runSelfScan { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
@@ -870,6 +1251,7 @@ final class SkelliCenter: ObservableObject {
         say("Browsing Bonjour for this phone's own "
             + "announcements — what it calls itself, "
             + "and where it points.")
+        mood = .working
         emcon.runBonjourAudit { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
@@ -930,7 +1312,7 @@ final class SkelliCenter: ObservableObject {
             .prefix(5)
             .map { "\($0.displayName) (\($0.ip))" }
             .joined(separator: ", ")
-        return "The wire knows \(all.count) device"
+        var report = "The wire knows \(all.count) device"
             + (all.count == 1 ? "" : "s")
             + (placed > 0
                ? ", \(placed) of them placed on the Map"
@@ -939,6 +1321,24 @@ final class SkelliCenter: ObservableObject {
             + (all.count > 5 ? "…" : "")
             + ". The Neighborhood board in Scan holds "
             + "them all."
+        if let drifting = all.first(where: {
+            $0.drift.count
+                > (MapStore.shared.ackedDrift[$0.ip] ?? 0)
+        }) {
+            pendingAction = { [weak self] in
+                self?.navigate(to: 4)
+                self?.say("The Map is open — "
+                    + drifting.displayName
+                    + "'s node glows orange until you "
+                    + "tap it and acknowledge the "
+                    + "drift.")
+            }
+            report += "\n" + drifting.displayName
+                + " carries drift the house hasn't "
+                + "acknowledged. Shall I take you to "
+                + "the Map?"
+        }
+        return report
     }
 
     private func nightReport() -> String {
@@ -1117,31 +1517,492 @@ final class SkelliCenter: ObservableObject {
     }
 }
 
-// MARK: - The section
+// MARK: - Her body
+
+/// Skelli, drawn and alive: a skull at a laptop, in
+/// the house's own line-art tradition. One Canvas,
+/// driven by the clock and her mood — breathing and
+/// blinking at rest, eyes up and dots circling while
+/// she thinks, hands typing while she works, jaw
+/// moving while she speaks. The glow is the theme's
+/// own accent, so she wears the house's colours.
+struct SkelliAvatar: View {
+    var mood: SkelliMood = .idle
+    var size: CGFloat = 96
+    @ObservedObject private var themes = ThemeCenter.shared
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) {
+            timeline in
+            Canvas { context, canvas in
+                draw(context: context, canvas: canvas,
+                     t: timeline.date
+                         .timeIntervalSinceReferenceDate)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func draw(context: GraphicsContext,
+                      canvas: CGSize, t: TimeInterval) {
+        let u = canvas.width / 100
+        let accent = themes.current.accent
+        let bone = Color(red: 0.91, green: 0.89,
+                         blue: 0.84)
+        let boneDim = Color(red: 0.78, green: 0.75,
+                            blue: 0.68)
+        let dark = Color(red: 0.08, green: 0.09,
+                         blue: 0.11)
+        let hood = Color(red: 0.16, green: 0.18,
+                         blue: 0.22)
+        let detail = size >= 48
+
+        // Breathing.
+        let bob = mood == .speaking
+            ? sin(t * 2.2) * 0.7
+            : sin(t * 1.3) * 1.2
+        let dy = bob * u
+
+        // The hood, behind everything.
+        context.fill(
+            Path(roundedRect: CGRect(
+                x: 14 * u, y: 6 * u + dy,
+                width: 72 * u, height: 66 * u),
+                 cornerRadius: 30 * u),
+            with: .color(hood))
+
+        // Thinking: three dots circle above the hood.
+        if mood == .thinking {
+            for i in 0..<3 {
+                let phase = t * 2.4 + Double(i) * 0.9
+                let a = 0.35 + 0.65 * max(0, sin(phase))
+                context.fill(
+                    Path(ellipseIn: CGRect(
+                        x: (38 + Double(i) * 11) * u - 2 * u,
+                        y: 0.5 * u + dy * 0.4,
+                        width: 4 * u, height: 4 * u)),
+                    with: .color(accent.opacity(a)))
+            }
+        }
+
+        // The cranium.
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: 29 * u, y: 16 * u + dy,
+                width: 42 * u, height: 38 * u)),
+            with: .color(bone))
+
+        // The jaw — it moves while she speaks.
+        let jawDy = mood == .speaking
+            ? abs(sin(t * 9)) * 1.6 * u : 0
+        context.fill(
+            Path(roundedRect: CGRect(
+                x: 38 * u, y: 48 * u + dy + jawDy,
+                width: 24 * u, height: 12 * u),
+                 cornerRadius: 4 * u),
+            with: .color(boneDim))
+        if detail {
+            for i in 1...3 {
+                let x = (38 + Double(i) * 6) * u
+                var teeth = Path()
+                teeth.move(to: CGPoint(x: x,
+                                       y: 50 * u + dy + jawDy))
+                teeth.addLine(to: CGPoint(
+                    x: x, y: 58 * u + dy + jawDy))
+                context.stroke(teeth, with: .color(
+                    dark.opacity(0.35)), lineWidth: 1)
+            }
+        }
+
+        // Eyes: sockets, then pupils that live.
+        let cycle = t.truncatingRemainder(dividingBy: 3.9)
+        let open = cycle < 3.74 ? 1.0 : 0.12
+        for side in [-1.0, 1.0] {
+            let ex = (50 + side * 10) * u
+            let ey = 34 * u + dy
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: ex - 6 * u,
+                    y: ey - 6.5 * u * open,
+                    width: 12 * u,
+                    height: 13 * u * open)),
+                with: .color(dark))
+            // Where the gaze goes is the mood's.
+            var gx = 0.0, gy = 0.0
+            switch mood {
+            case .thinking:
+                gx = sin(t * 0.9) * 1.6
+                gy = -2.2
+            case .working:
+                gy = 2.4
+            case .speaking:
+                gx = sin(t * 0.6) * 0.8
+            case .idle:
+                gx = sin(t * 0.4) * 0.7
+            }
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: ex + gx * u - 4.5 * u,
+                    y: ey + gy * u - 4.5 * u,
+                    width: 9 * u, height: 9 * u)),
+                with: .color(accent.opacity(0.22)))
+            context.fill(
+                Path(ellipseIn: CGRect(
+                    x: ex + gx * u - 2.1 * u,
+                    y: ey + gy * u - 2.1 * u,
+                    width: 4.2 * u, height: 4.2 * u)),
+                with: .color(accent))
+        }
+
+        // The nose.
+        var nose = Path()
+        nose.move(to: CGPoint(x: 50 * u, y: 44 * u + dy))
+        nose.addLine(to: CGPoint(x: 46.5 * u,
+                                 y: 50 * u + dy))
+        nose.addLine(to: CGPoint(x: 53.5 * u,
+                                 y: 50 * u + dy))
+        nose.closeSubpath()
+        context.fill(nose, with: .color(dark.opacity(0.7)))
+
+        // Arms to the keyboard — typing while she works.
+        let tapA = mood == .working
+            ? sin(t * 11) * 2.2 * u : 0
+        let tapB = mood == .working
+            ? cos(t * 11) * 2.2 * u : 0
+        for (from, to, tap) in [
+            (CGPoint(x: 26 * u, y: 62 * u + dy),
+             CGPoint(x: 40 * u, y: 76 * u), tapA),
+            (CGPoint(x: 74 * u, y: 62 * u + dy),
+             CGPoint(x: 60 * u, y: 76 * u), tapB)] {
+            var arm = Path()
+            arm.move(to: from)
+            arm.addLine(to: CGPoint(x: to.x,
+                                    y: to.y + tap))
+            context.stroke(arm, with: .color(boneDim),
+                           style: StrokeStyle(
+                               lineWidth: 5 * u,
+                               lineCap: .round))
+        }
+
+        // The laptop: screen, glow, code, base.
+        context.fill(
+            Path(roundedRect: CGRect(
+                x: 30 * u, y: 66 * u,
+                width: 40 * u, height: 25 * u),
+                 cornerRadius: 2.5 * u),
+            with: .color(Color(red: 0.06, green: 0.07,
+                               blue: 0.09)))
+        context.stroke(
+            Path(roundedRect: CGRect(
+                x: 30 * u, y: 66 * u,
+                width: 40 * u, height: 25 * u),
+                 cornerRadius: 2.5 * u),
+            with: .color(accent.opacity(0.8)),
+            lineWidth: max(1, 1.1 * u))
+        if detail {
+            for row in 0..<3 {
+                let shift = mood == .working
+                    ? Double((Int(t * 3) + row) % 3 - 1) * 2
+                    : 0
+                let wdt = [16.0, 11.0, 13.0][row]
+                context.fill(
+                    Path(roundedRect: CGRect(
+                        x: (35 + shift) * u,
+                        y: (71 + Double(row) * 6) * u,
+                        width: wdt * u, height: 2.6 * u),
+                         cornerRadius: 1.3 * u),
+                    with: .color(accent.opacity(
+                        row == 0 ? 0.9 : 0.5)))
+            }
+        }
+        var base = Path()
+        base.move(to: CGPoint(x: 26 * u, y: 91 * u))
+        base.addLine(to: CGPoint(x: 74 * u, y: 91 * u))
+        base.addLine(to: CGPoint(x: 79 * u, y: 98 * u))
+        base.addLine(to: CGPoint(x: 21 * u, y: 98 * u))
+        base.closeSubpath()
+        context.fill(base, with: .color(
+            Color(red: 0.11, green: 0.12, blue: 0.15)))
+    }
+}
+
+// MARK: - Her tab
 
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
-    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var themes = ThemeCenter.shared
     @State private var input = ""
-    @State private var directory = false
+    @State private var showDirectory = false
+    @State private var showMemory = false
+    @State private var confirmClear = false
+    @State private var confirmReset = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Skelli", selection: $directory) {
-                    Text("Talk").tag(false)
-                    Text("Directory").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                if directory {
-                    directoryList
-                } else {
-                    talkPane
-                }
+                header
+                Divider()
+                transcript
+                inputBar
             }
             .navigationTitle("Skelli")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button {
+                            showDirectory = true
+                        } label: {
+                            Label("Directory of the house",
+                                  systemImage: "book")
+                        }
+                        Button {
+                            showMemory = true
+                        } label: {
+                            Label("What Skelli remembers",
+                                  systemImage: "brain")
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            confirmClear = true
+                        } label: {
+                            Label("Clear conversation",
+                                  systemImage: "trash")
+                        }
+                        Button(role: .destructive) {
+                            confirmReset = true
+                        } label: {
+                            Label("Reset Skelli",
+                                  systemImage:
+                                    "arrow.counterclockwise")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+            .sheet(isPresented: $showDirectory) {
+                SkelliDirectoryView()
+            }
+            .sheet(isPresented: $showMemory) {
+                SkelliMemoryView()
+            }
+            .confirmationDialog(
+                "Clear this conversation?",
+                isPresented: $confirmClear,
+                titleVisibility: .visible) {
+                Button("Clear conversation",
+                       role: .destructive) {
+                    skelli.clearConversation()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("The transcript goes. What Skelli "
+                     + "remembers stays — forgetting that "
+                     + "is its own act, under Reset.")
+            }
+            .confirmationDialog(
+                "Reset Skelli to her defaults?",
+                isPresented: $confirmReset,
+                titleVisibility: .visible) {
+                Button("Reset Skelli", role: .destructive) {
+                    skelli.resetToDefaults()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Conversation and everything she "
+                     + "has been told, forgotten. The "
+                     + "house itself — its records, its "
+                     + "organs — is untouched.")
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(
+                        colors: [themes.current.accent
+                                     .opacity(0.3),
+                                 .clear],
+                        center: .center,
+                        startRadius: 4, endRadius: 52))
+                    .frame(width: 104, height: 104)
+                SkelliAvatar(mood: skelli.mood, size: 84)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Skelli")
+                    .font(.title3.weight(.semibold))
+                Text("The house's specialist")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text(statusLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private var statusLine: String {
+        let moodWord: String
+        switch skelli.mood {
+        case .thinking: moodWord = "thinking…"
+        case .working: moodWord = "working…"
+        case .speaking: moodWord = "speaking"
+        case .idle: moodWord = "at rest"
+        }
+        let wire = NeighborhoodStore.shared
+            .neighbors.count
+        return moodWord + " · \(wire) on the wire"
+            + (skelli.notes.isEmpty
+               ? ""
+               : " · remembers \(skelli.notes.count)")
+    }
+
+    private var transcript: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if skelli.lines.isEmpty {
+                        Text("Ask about the house, or "
+                            + "give an order.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 24)
+                            .frame(maxWidth: .infinity,
+                                   alignment: .center)
+                    }
+                    ForEach(skelli.lines) { line in
+                        HStack(alignment: .top, spacing: 8) {
+                            if line.fromOperator {
+                                Spacer(minLength: 48)
+                            } else {
+                                SkelliAvatar(
+                                    mood: .idle, size: 30)
+                                    .padding(.top, 2)
+                            }
+                            VStack(alignment: line.fromOperator
+                                       ? .trailing
+                                       : .leading,
+                                   spacing: 3) {
+                                Text(line.text)
+                                    .font(.callout)
+                                    .foregroundStyle(
+                                        line.fromOperator
+                                            ? .white
+                                            : .primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 9)
+                                    .background(
+                                        line.fromOperator
+                                            ? themes.current
+                                                .accent
+                                            : Color.secondary
+                                                .opacity(0.16),
+                                        in: RoundedRectangle(
+                                            cornerRadius: 16))
+                                Text(line.when.formatted(
+                                    date: .omitted,
+                                    time: .shortened))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 4)
+                            }
+                            if !line.fromOperator {
+                                Spacer(minLength: 48)
+                            }
+                        }
+                        .id(line.id)
+                    }
+                    if skelli.mood == .thinking {
+                        HStack(spacing: 8) {
+                            SkelliAvatar(mood: .thinking,
+                                         size: 30)
+                            Text("thinking…")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                    }
+                }
+                .padding()
+            }
+            .onChange(of: skelli.lines.count) { _ in
+                scrollToEnd(proxy)
+            }
+            .onChange(of: skelli.mood) { _ in
+                scrollToEnd(proxy)
+            }
+            .onAppear { scrollToEnd(proxy) }
+        }
+    }
+
+    private func scrollToEnd(_ proxy: ScrollViewProxy) {
+        if let last = skelli.lines.last {
+            withAnimation(.easeOut(duration: 0.25)) {
+                proxy.scrollTo(last.id, anchor: .bottom)
+            }
+        }
+    }
+
+    private var inputBar: some View {
+        HStack(spacing: 10) {
+            TextField("Ask Skelli, or give an order…",
+                      text: $input, axis: .vertical)
+                .lineLimit(1...4)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(send)
+            Button {
+                send()
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(themes.current.accent,
+                                in: Circle())
+            }
+            .disabled(input.trimmingCharacters(
+                in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding()
+    }
+
+    private func send() {
+        let text = input
+        input = ""
+        skelli.ask(text)
+    }
+}
+
+// MARK: - The directory, as a sheet
+
+struct SkelliDirectoryView: View {
+    @ObservedObject private var skelli = SkelliCenter.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(SkelliKnowledge.entries) { entry in
+                Button {
+                    dismiss()
+                    skelli.askAbout(entry)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(entry.title)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.primary)
+                        Text(entry.home)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("The house, indexed")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1149,102 +2010,47 @@ struct SkelliView: View {
                 }
             }
         }
-        .onAppear { skelli.greetIfNeeded() }
     }
+}
 
-    private var directoryList: some View {
-        List(SkelliKnowledge.entries) { entry in
-            Button {
-                directory = false
-                skelli.askAbout(entry)
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.title)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.primary)
-                    Text(entry.home)
-                        .font(.caption)
+// MARK: - Her memory, as a sheet
+
+struct SkelliMemoryView: View {
+    @ObservedObject private var skelli = SkelliCenter.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if skelli.notes.isEmpty {
+                    Text("Nothing yet. Tell Skelli "
+                         + "'remember …' in conversation "
+                         + "and it will be kept here — "
+                         + "and only here.")
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+                ForEach(skelli.notes) { note in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(note.text).font(.callout)
+                        Text("kept " + note.learnedAt
+                            .formatted(date: .abbreviated,
+                                       time: .shortened))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onDelete { offsets in
+                    skelli.forgetNotes(at: offsets)
+                }
+            }
+            .navigationTitle("What Skelli remembers")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
-        .listStyle(.plain)
-    }
-
-    private var talkPane: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(skelli.lines) { line in
-                            HStack {
-                                if line.fromOperator {
-                                    Spacer(minLength: 40)
-                                }
-                                Text(line.text)
-                                    .font(.callout)
-                                    .padding(10)
-                                    .background(
-                                        line.fromOperator
-                                            ? Color.accentColor
-                                                .opacity(0.25)
-                                            : Color.secondary
-                                                .opacity(0.15),
-                                        in: RoundedRectangle(
-                                            cornerRadius: 12))
-                                if !line.fromOperator {
-                                    Spacer(minLength: 40)
-                                }
-                            }
-                            .id(line.id)
-                        }
-                    }
-                    .padding()
-                }
-                .onChange(of: skelli.lines.count) { _ in
-                    if let last = skelli.lines.last {
-                        withAnimation {
-                            proxy.scrollTo(last.id,
-                                           anchor: .bottom)
-                        }
-                    }
-                }
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(["Who's on my wire?",
-                             "Sweep the wire",
-                             "What knocked last night?",
-                             "How did I sleep?",
-                             "What has the mind learned?",
-                             "How exposed am I?",
-                             "What can you do?"],
-                            id: \.self) { chip in
-                        Button(chip) { skelli.ask(chip) }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 6)
-            }
-            HStack(spacing: 8) {
-                TextField("Ask Skelli, or give an order…",
-                          text: $input)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit(send)
-                Button("Ask") { send() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(input.trimmingCharacters(
-                        in: .whitespaces).isEmpty)
-            }
-            .padding()
-        }
-    }
-
-    private func send() {
-        let text = input
-        input = ""
-        skelli.ask(text)
     }
 }
