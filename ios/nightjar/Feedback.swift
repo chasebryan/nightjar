@@ -2298,6 +2298,21 @@ final class WeightsCenter: ObservableObject {
     @Published var progress: [String: Double] = [:]
     @Published var states: [String: String] = [:]
 
+    /// Downloads happen one at a time, in the order
+    /// they were asked for. The old road ran them
+    /// all at once — and worse, "downloading" went
+    /// through the model *loader*, so every finished
+    /// download heaved its whole model into memory
+    /// while the others were still arriving. Stack a
+    /// 7B on top of that and iOS reclaimed the app —
+    /// and because "downloaded" was only written at
+    /// the very end, the kill took finished and
+    /// half-finished downloads alike off the books.
+    /// Now: fetching is fetching (files only), the
+    /// line is a line, and the disk is the truth.
+    private var queue: [WeightsOption] = []
+    private var draining = false
+
     init() {
         selectedID = UserDefaults.standard.string(
             forKey: "skelli.weightsModel")
@@ -2305,6 +2320,91 @@ final class WeightsCenter: ObservableObject {
             .stringArray(
                 forKey: "skelli.weightsDownloaded")
             ?? [])
+        reconcileWithDisk()
+    }
+
+    // MARK: - The disk is the truth
+
+    /// Where the hub cache lives in this app's
+    /// sandbox — the same ground the downloader
+    /// itself uses (Library/Caches/huggingface/hub).
+    static var hubCacheRoot: URL {
+        let caches = FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask).first!
+        return caches.appendingPathComponent(
+            "huggingface/hub")
+    }
+
+    static func repoDirectory(id: String) -> URL {
+        hubCacheRoot.appendingPathComponent(
+            "models--" + id.replacingOccurrences(
+                of: "/", with: "--"))
+    }
+
+    /// A model counts as carried when its snapshot
+    /// is whole: the main ref resolves, the snapshot
+    /// holds a config and at least one weights file,
+    /// and no blob still wears its .incomplete name.
+    static func isCompleteOnDisk(id: String) -> Bool {
+        let fm = FileManager.default
+        let repo = repoDirectory(id: id)
+        guard let commit = try? String(
+            contentsOf: repo.appendingPathComponent(
+                "refs/main"), encoding: .utf8)
+        else { return false }
+        let hash = commit.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        guard !hash.isEmpty else { return false }
+        let snapshot = repo.appendingPathComponent(
+            "snapshots/\(hash)")
+        guard fm.fileExists(atPath: snapshot
+            .appendingPathComponent("config.json").path)
+        else { return false }
+        let files = (try? fm.contentsOfDirectory(
+            atPath: snapshot.path)) ?? []
+        guard files.contains(where: {
+            $0.hasSuffix(".safetensors") })
+        else { return false }
+        let blobs = (try? fm.contentsOfDirectory(
+            atPath: repo.appendingPathComponent(
+                "blobs").path)) ?? []
+        return !blobs.contains(where: {
+            $0.hasSuffix(".incomplete") })
+    }
+
+    /// Rebuild the carried list from the cache
+    /// itself. Every complete snapshot counts —
+    /// including one whose download finished in a
+    /// session that died before it could write the
+    /// list down — and anything partial or purged
+    /// stops claiming to be here.
+    private func reconcileWithDisk() {
+        var found = Set<String>()
+        let fm = FileManager.default
+        if let dirs = try? fm.contentsOfDirectory(
+            atPath: Self.hubCacheRoot.path) {
+            for dir in dirs
+            where dir.hasPrefix("models--") {
+                let id = String(dir.dropFirst(
+                    "models--".count))
+                    .replacingOccurrences(
+                        of: "--", with: "/")
+                if Self.isCompleteOnDisk(id: id) {
+                    found.insert(id)
+                }
+            }
+        }
+        for id in downloaded
+        where Self.isCompleteOnDisk(id: id) {
+            found.insert(id)
+        }
+        if found != downloaded {
+            downloaded = found
+        }
+        if let sel = selectedID, !found.contains(sel) {
+            selectedID = nil
+        }
     }
 
     /// Any MLX model on the hub, named by hand,
@@ -2345,43 +2445,24 @@ final class WeightsCenter: ObservableObject {
             / 1_073_741_824
     }
 
+    // MARK: - The line
+
     func download(_ option: WeightsOption) {
         #if canImport(MLXLLM)
         if #available(iOS 17.0, *) {
-            guard progress[option.id] == nil
+            guard progress[option.id] == nil,
+                  !queue.contains(where: {
+                      $0.id == option.id })
             else { return }
-            states[option.id] = "Downloading…"
+            queue.append(option)
             progress[option.id] = 0
-            Task {
-                do {
-                    let config = ModelConfiguration(
-                        id: option.id)
-                    _ = try await LLMModelFactory
-                        .shared.loadContainer(
-                            from: #hubDownloader(),
-                            using:
-                                #huggingFaceTokenizerLoader(),
-                            configuration: config) { p in
-                        DispatchQueue.main.async {
-                            self.progress[option.id] =
-                                p.fractionCompleted
-                        }
-                    }
-                    await MainActor.run {
-                        self.progress[option.id] = nil
-                        self.downloaded.insert(option.id)
-                        self.selectedID = option.id
-                        self.states[option.id] = "Ready."
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.progress[option.id] = nil
-                        self.states[option.id] =
-                            "Failed — check the "
-                            + "connection and try again."
-                    }
-                }
-            }
+            states[option.id] =
+                Self.isCompleteOnDisk(id: option.id)
+                ? "Already on the phone."
+                : (draining || queue.count > 1
+                    ? "In line…"
+                    : "Downloading…")
+            drainQueue()
         } else {
             states[option.id] = "The bench needs "
                 + "iOS 17 or later."
@@ -2389,6 +2470,90 @@ final class WeightsCenter: ObservableObject {
         #else
         states[option.id] = "The bench isn't in "
             + "this build."
+        #endif
+    }
+
+    private func drainQueue() {
+        guard !draining else { return }
+        draining = true
+        Task {
+            while !queue.isEmpty {
+                let next = queue.removeFirst()
+                await fetch(next)
+            }
+            draining = false
+        }
+    }
+
+    private func fetch(_ option: WeightsOption) async {
+        if Self.isCompleteOnDisk(id: option.id) {
+            await MainActor.run {
+                progress[option.id] = nil
+                downloaded.insert(option.id)
+                if selectedID == nil {
+                    selectedID = option.id
+                }
+                states[option.id] = "Ready."
+            }
+            return
+        }
+        await MainActor.run {
+            states[option.id] = "Downloading…"
+            progress[option.id] = 0
+        }
+        do {
+            try await Self.pull(option.id) { fraction in
+                DispatchQueue.main.async {
+                    self.progress[option.id] = fraction
+                }
+            }
+            await MainActor.run {
+                progress[option.id] = nil
+                downloaded.insert(option.id)
+                if selectedID == nil {
+                    selectedID = option.id
+                }
+                states[option.id] = "Ready."
+            }
+        } catch {
+            await MainActor.run {
+                progress[option.id] = nil
+                states[option.id] =
+                    "Failed — check the "
+                    + "connection and try again."
+            }
+        }
+    }
+
+    /// Fetch the files, and only the files: nothing
+    /// is loaded into memory here. (Loading is the
+    /// minds' business, one model at a time, when a
+    /// conversation actually calls for it.)
+    private static func pull(
+        _ id: String,
+        progress: @escaping (Double) -> Void
+    ) async throws {
+        #if canImport(HuggingFace)
+        guard let repo = Repo.ID(rawValue: id) else {
+            throw NSError(
+                domain: "WeightsCenter", code: 1,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "Not a hub address: \(id)"])
+        }
+        _ = try await HubClient.default.downloadSnapshot(
+            of: repo, kind: .model, revision: "main",
+            maxConcurrentDownloads: 4
+        ) { p in
+            progress(p.fractionCompleted)
+        }
+        #else
+        let config = ModelConfiguration(id: id)
+        _ = try await LLMModelFactory.shared.loadContainer(
+            from: #hubDownloader(),
+            using: #huggingFaceTokenizerLoader(),
+            configuration: config) { p in
+            progress(p.fractionCompleted)
+        }
         #endif
     }
 
@@ -2402,6 +2567,12 @@ final class WeightsCenter: ObservableObject {
             selectedID = nil
         }
         states[option.id] = nil
+        progress[option.id] = nil
+        queue.removeAll { $0.id == option.id }
+        try? FileManager.default.removeItem(
+            at: Self.repoDirectory(id: option.id))
+        // Sweep the grounds older builds may have
+        // used, so a removal is a removal.
         let folder = "models--" + option.id
             .replacingOccurrences(of: "/", with: "--")
         var bases: [URL] = []
