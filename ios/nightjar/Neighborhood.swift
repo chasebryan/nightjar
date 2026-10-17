@@ -192,7 +192,7 @@ final class NeighborhoodStore: ObservableObject {
                     neighbor.ports.append(answer.port)
                     neighbor.ports.sort()
                     if !isNew {
-                        noteDrift(&neighbor,
+                        self.noteDrift(&neighbor,
                                   "answered on port "
                                   + "\(answer.port) "
                                   + "(\(ScanModel.serviceNames[answer.port] ?? "unknown")) "
@@ -207,7 +207,7 @@ final class NeighborhoodStore: ObservableObject {
     func recordBonjour(ip: String, name: String, label: String) {
         upsert(ip: ip) { neighbor, isNew in
             if let old = neighbor.name, old != name, !isNew {
-                noteDrift(&neighbor,
+                self.noteDrift(&neighbor,
                           "announces itself as \u{201C}\(name)\u{201D} now — "
                           + "it was \u{201C}\(old)\u{201D}")
             }
@@ -218,7 +218,7 @@ final class NeighborhoodStore: ObservableObject {
             if !neighbor.announcements.contains(line) {
                 neighbor.announcements.append(line)
                 if !isNew {
-                    noteDrift(&neighbor,
+                    self.noteDrift(&neighbor,
                               "began announcing \(label)")
                 }
             }
