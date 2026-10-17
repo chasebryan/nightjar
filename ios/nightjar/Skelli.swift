@@ -498,6 +498,9 @@ final class SkelliCenter: ObservableObject {
                 }
             }
         }
+        if q.hasPrefix("please ") {
+            q = String(q.dropFirst(7))
+        }
         if q.isEmpty {
             say("Here. Ask about the house, or give "
                 + "an order.")
@@ -526,7 +529,7 @@ final class SkelliCenter: ObservableObject {
         if smallFavor(q, raw: raw) { return }
 
         // Being told things: her long memory.
-        if q.hasPrefix("remember ") {
+        if q.hasPrefix("remember ") || q.hasPrefix("remember,") || q.hasPrefix("remember:") || q == "remember" {
             var note = String(q.dropFirst(9))
             if note.hasPrefix("that ") {
                 note = String(note.dropFirst(5))
@@ -851,7 +854,7 @@ final class SkelliCenter: ObservableObject {
         }
         // No pattern caught it: one semantic
         // reading before it is conversation.
-        if again, secondReading(q, raw: raw) {
+        if again, lateGate(q, raw: raw) {
             return
         }
         consultMindOrResearch(q)
