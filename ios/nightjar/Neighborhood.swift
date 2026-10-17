@@ -284,8 +284,8 @@ final class NeighborhoodStore: ObservableObject {
 /// each opening into its full dossier.
 struct NeighborhoodSectionView: View {
     @ObservedObject var store: NeighborhoodStore
-    @State private var editing: Neighbor?
-    @State private var dossierSheet: DossierPresentation?
+    @Binding var editing: Neighbor?
+    @Binding var dossier: DossierPresentation?
 
     var body: some View {
         Section(header: Text("The Neighborhood — this wire, kept"),
@@ -303,7 +303,7 @@ struct NeighborhoodSectionView: View {
             }
             ForEach(store.neighbors) { neighbor in
                 Button {
-                    dossierSheet = DossierPresentation(
+                    dossier = DossierPresentation(
                         title: neighbor.displayName,
                         ip: neighbor.ip,
                         wifiLines: store.wifiLines(for: neighbor))
@@ -332,12 +332,6 @@ struct NeighborhoodSectionView: View {
                     }
                 }
             }
-        }
-        .sheet(item: $editing) { neighbor in
-            NeighborNameEditor(store: store, neighbor: neighbor)
-        }
-        .sheet(item: $dossierSheet) { presentation in
-            DossierSheetView(presentation: presentation)
         }
     }
 
