@@ -62,6 +62,17 @@
   house particulars, and the Web research switch
   in her menu still governs the whole outward
   eye.
+- **Skelli, corrected (iOS).** From her first
+  browser build's three faults: the browser is
+  folded back into Skelli.swift itself, so it can
+  never fall out of a build again; her model is
+  redrawn from the original — navy hoodie up,
+  empty black sockets, the grin, the ribcage in
+  the open front, the gray laptop in bone hands,
+  sneakers — replacing the generic skull she
+  wore for a night; and her tab icon is now a
+  symbol the system actually carries. In the
+  More list, Sessions sits under About.
 - **The mind, consolidated (iOS).** The
   Subconscious now writes down what it concludes:
   durable house facts — the quiet hours, a
