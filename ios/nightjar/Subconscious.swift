@@ -84,6 +84,18 @@ final class SubconsciousCenter: ObservableObject {
         refresh()
     }
 
+    /// Forget everything the mind has learned about
+    /// itself: the drift baselines it has already
+    /// reckoned, and every verdict the operator has
+    /// handed down. The reading itself is untouched —
+    /// it re-derives from the log and the wire, and
+    /// starts reckoning fresh.
+    func reset() {
+        state = State()
+        persist()
+        refresh()
+    }
+
     /// What the record says about a kind, for display.
     func verdictLine(for insight: Insight) -> String? {
         let v = state.verdicts?[insight.kind] ?? [0, 0]
@@ -635,6 +647,7 @@ struct SubconsciousView: View {
     @ObservedObject private var mind = SubconsciousCenter.shared
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var confirmReset = false
     @State private var results: [NightEvent]?
 
     var body: some View {
@@ -745,12 +758,38 @@ struct SubconsciousView: View {
                         }
                     }
                 }
+                Section(header: Text("Housekeeping"),
+                        footer: Text("The mind's only memory "
+                            + "of itself: which drift it has "
+                            + "already reckoned, and your "
+                            + "verdicts on its findings.")) {
+                    Button(role: .destructive) {
+                        confirmReset = true
+                    } label: {
+                        Label("Reset the mind's memory",
+                              systemImage: "trash")
+                    }
+                }
             }
             .navigationTitle("The Subconscious")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .confirmationDialog(
+                "Reset the mind's memory?",
+                isPresented: $confirmReset,
+                titleVisibility: .visible) {
+                Button("Forget baselines and verdicts",
+                       role: .destructive) {
+                    mind.reset()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Drift it has already reckoned will be "
+                     + "reported once more, and confidences "
+                     + "go back to their unbent values.")
             }
             .onAppear { mind.refresh() }
         }
