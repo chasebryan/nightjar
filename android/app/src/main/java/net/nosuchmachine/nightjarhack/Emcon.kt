@@ -144,6 +144,15 @@ class Emcon(
     /// The dead hand's burn, once Knocktalk exists to burn.
     var burnHook: (() -> Unit)? = null
 
+    /// Loading the bench on a knocked source: the conductor's
+    /// pivotRecon. Loading is an action; firing stays a
+    /// human press.
+    var pivotSink: ((host: String, port: Int) -> Unit)? = null
+
+    /// Fired when the knock vault opens — the conductor
+    /// listens here, as on iOS.
+    var vaultHook: ((Emcon) -> Unit)? = null
+
     /// The judgment layer's ears (conductor, steward), fed
     /// every knock after the sense checks, as on iOS.
     var conductorHook: ((emcon: Emcon, source: String, port: Int,
@@ -586,6 +595,25 @@ class Emcon(
             prefs.string("serveReplyText", "ack"),
             stealth
         )
+    }
+
+    private var serveJob: Job? = null
+
+    /** The conductor's raiseServe reflex: Serve up for sixty
+     * seconds, then back down — only if the reflex raised
+     * it. Returns the journal detail line. */
+    fun raiseServeTimed(): String {
+        if (serve.running.value) return "Serve was already up"
+        startServeFromSettings(prefs.bool("serveStealth", false))
+        if (!serve.running.value) {
+            return "Serve would not rise — the line alone"
+        }
+        serveJob?.cancel()
+        serveJob = scope.launch {
+            delay(60_000)
+            if (serve.running.value) serve.stop()
+        }
+        return "Serve raised for sixty seconds"
     }
 
     /** Force Serve stealth: the pref, the live flag, and —
@@ -1439,6 +1467,7 @@ class Emcon(
             "emcon", "vault",
             "combination spoken by $source — macro: " +
                 vaultActionLabel(_vaultAction.value) + detail)
+        vaultHook?.invoke(this)
     }
 
     fun sealVault() {
