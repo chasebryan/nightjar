@@ -107,6 +107,25 @@ final class MapStore: ObservableObject {
         save()
     }
 
+    /// Keep only the given addresses' placements and
+    /// drift acknowledgements — the rest are ghosts of
+    /// devices the house no longer keeps.
+    func prune(to ips: Set<String>) {
+        placements = placements.filter { ips.contains($0.key) }
+        ackedDrift = ackedDrift.filter { ips.contains($0.key) }
+        save()
+    }
+
+    /// The map starts over: no rooms, no placements.
+    /// The Neighborhood itself is untouched — the
+    /// devices remain; only where they sat is forgotten.
+    func reset() {
+        rooms = []
+        placements = [:]
+        ackedDrift = [:]
+        save()
+    }
+
     func ackDrift(ip: String, count: Int) {
         ackedDrift[ip] = count
         save()
@@ -171,6 +190,7 @@ struct MapView: View {
     @State private var dossierNeighbor: Neighbor?
     @State private var editingNeighbor: Neighbor?
     @State private var huntTarget: AirTarget?
+    @State private var confirmReset = false
     @EnvironmentObject var post: ListeningPost
     @ObservedObject private var themeCenter = ThemeCenter.shared
 
@@ -201,10 +221,29 @@ struct MapView: View {
                             Label("Add a room",
                                   systemImage: "square.dashed")
                         }
+                        Button(role: .destructive) {
+                            confirmReset = true
+                        } label: {
+                            Label("Reset the map\u{2026}",
+                                  systemImage: "trash")
+                        }
                     } label: {
                         Label("More", systemImage: "ellipsis.circle")
                     }
                 }
+            }
+            .confirmationDialog(
+                "Reset the map?",
+                isPresented: $confirmReset,
+                titleVisibility: .visible) {
+                Button("Remove every room and placement",
+                       role: .destructive) {
+                    store.reset()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("The devices stay in the Neighborhood — "
+                     + "only where they sat is forgotten.")
             }
             .alert("Name the room", isPresented: $addingRoom) {
                 TextField("Living room", text: $newRoomName)
