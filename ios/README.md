@@ -384,6 +384,25 @@ below verbatim. It is the complete 4.0.0
 flagship — everything in this document except
 the 4.2.0 intelligence wave and Skelli.
 
+## Staying installed — and updating from inside the app
+
+A build run from Xcode on a free Personal Team account is
+signed for **7 days**; when the certificate lapses the app
+won't launch until it's rebuilt. Two roads out, both carried
+in `ota/` at the repo root:
+
+- **Ad hoc over-the-air (paid Developer Program).** Profiles
+  live a year, installs come from a link, and when a release
+  carries its `nightjar-hack.ipa` + `manifest.plist`, the
+  app's own update banner and About's Version section become
+  a true **Update** button — iOS installs the new build over
+  the old, data intact. One-time UDID registration; the full
+  ritual, plus an armable CI workflow, is in `ota/README.md`.
+- **SideStore (free).** Re-signs on the phone itself before
+  the 7 days lapse. Add the repo as a source and releases
+  surface there:
+  `https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json`
+
 ## Install (sideload, same as upstream)
 
 1. Clone this repo, open `ios/nightjar.xcodeproj` in Xcode.
