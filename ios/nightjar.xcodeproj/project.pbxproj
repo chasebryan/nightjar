@@ -354,6 +354,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = nightjar/nightjar.entitlements;
 				MARKETING_VERSION = 4.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.nosuchmachine.nightjarhack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -385,6 +386,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_ENTITLEMENTS = nightjar/nightjar.entitlements;
 				MARKETING_VERSION = 4.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.nosuchmachine.nightjarhack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
