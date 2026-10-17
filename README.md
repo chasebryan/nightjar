@@ -20,7 +20,7 @@ development has been discontinued (see
 
 Nine tabs, one instrument. This is where nightjar-hack is
 developed, and the standard everything else is measured
-against. It boots over a living reel — the boot log typing itself across the film — and wears a live wallpaper behind every tab. Build and install notes live in
+against. It boots over a living reel — the boot log typing itself across the film — and wears a living wallpaper behind its tabs, under whatever theme and backdrop the operator dresses it in from Colours. Build and install notes live in
 [ios/README.md](ios/README.md).
 
 - **Listen** — the purist half: receive-only BLE, sessions in
@@ -72,8 +72,10 @@ against. It boots over a living reel — the boot log typing itself across the f
   the dead hand must have fallen before the phone will
   grind.
 - **About** — the options hub: identity, the authorized-use
-  statement, the privacy policy, and the sane-defaults
-  census, resettable in one confirmed action.
+  statement, the privacy policy, the sane-defaults census
+  (resettable in one confirmed action), and **Colours** —
+  six themes plus the operator's own tailoring, and a
+  backdrop of its own for every tab.
 
 ## Sideload the iOS app
 
