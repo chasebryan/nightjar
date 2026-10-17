@@ -156,6 +156,22 @@ struct ListenView: View {
                         idleRows
                     }
                 }
+                Section {
+                    NavigationLink {
+                        SigintStationView()
+                    } label: {
+                        Label("SIGINT Station — the fused "
+                            + "picture",
+                              systemImage:
+                                "antenna.radiowaves.left.and.right")
+                    }
+                    Text("Everything this phone can hear — "
+                        + "the air, the wire, the Night log — "
+                        + "in one registry, one timeline, "
+                        + "recorded watches.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if post.isListening || !post.rows.isEmpty {
                     Section(header: Text(post.isListening ? "In earshot" : "Last session")) {
                         if post.rows.isEmpty {
