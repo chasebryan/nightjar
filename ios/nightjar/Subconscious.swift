@@ -121,6 +121,13 @@ final class SubconsciousCenter: ObservableObject {
                State.self, from: data) {
             state = saved
         }
+        // When the Instrument learns the night's sleep,
+        // the night readings are entitled to it.
+        NotificationCenter.default.addObserver(
+            forName: InstrumentCenter.sleepUpdated,
+            object: nil, queue: .main) { [weak self] _ in
+            self?.refresh()
+        }
     }
 
     private func persist() {
@@ -132,6 +139,11 @@ final class SubconsciousCenter: ObservableObject {
     // MARK: the reading
 
     func refresh() {
+        // Keep the sleep window fresh; when it changes,
+        // the notification above rebuilds this reading
+        // with it. Silent and empty when the Instrument
+        // has nothing — privacy means exactly that.
+        InstrumentCenter.shared.fetchSleep()
         let events = Journal.events(limit: 4000)
             .sorted { $0.when < $1.when }
         eventCount = events.count
@@ -214,6 +226,27 @@ final class SubconsciousCenter: ObservableObject {
         if nightEvents.count >= 3 {
             let modules = Set(nightEvents.map(\.module))
                 .sorted().joined(separator: ", ")
+            // The Instrument's testimony, when it has any:
+            // asleep for it, still up for it, or no word.
+            var sleepClause = ""
+            if let window = InstrumentCenter.shared.lastSleep {
+                let span = window.start.formatted(
+                        date: .omitted, time: .shortened)
+                    + "–" + window.end.formatted(
+                        date: .omitted, time: .shortened)
+                if nightEvents.contains(where: {
+                    $0.when >= window.start && $0.when <= window.end
+                }) {
+                    sleepClause = " The instrument says you "
+                        + "were asleep for it (" + span
+                        + ") — so it was not you."
+                } else if let last = nightEvents.last?.when,
+                          window.start > last {
+                    sleepClause = " The instrument says you "
+                        + "were still up for it — you slept "
+                        + span + "."
+                }
+            }
             found.append(Insight(
                 id: "night-hours",
                 when: nightEvents.last?.when ?? now,
@@ -221,7 +254,7 @@ final class SubconsciousCenter: ObservableObject {
                 body: "\(nightEvents.count) sealed events "
                     + "between midnight and five — \(modules). "
                     + "If that was you, it is a rhythm. If it "
-                    + "was not, it is a question.",
+                    + "was not, it is a question." + sleepClause,
                 citations: nightEvents.suffix(3).map(Self.cite),
                 confidence: 0.6))
         }
