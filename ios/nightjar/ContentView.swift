@@ -781,6 +781,7 @@ struct AboutView: View {
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
     @AppStorage("postName") private var postName = "phone"
     @State private var confirmReset = false
+    @State private var showColours = false
 
     var body: some View {
         NavigationStack {
@@ -837,11 +838,17 @@ struct AboutView: View {
 #endif
                 }
                 Section(header: Text("Colours")) {
-                    NavigationLink {
-                        ColoursView()
+                    Button {
+                        showColours = true
                     } label: {
-                        Label("Themes & backdrops",
-                              systemImage: "paintpalette")
+                        HStack {
+                            Label("Themes & backdrops",
+                                  systemImage: "paintpalette")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                     Text("Six themes ship with the app and "
                          + "you can tailor your own; every tab "
@@ -935,6 +942,19 @@ struct AboutView: View {
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
             .navigationTitle("About")
+            .sheet(isPresented: $showColours) {
+                NavigationStack {
+                    ColoursView()
+                        .toolbar {
+                            ToolbarItem(
+                                placement: .confirmationAction) {
+                                Button("Done") {
+                                    showColours = false
+                                }
+                            }
+                        }
+                }
+            }
             .confirmationDialog("Reset all settings?",
                                 isPresented: $confirmReset) {
                 Button("Reset to sane defaults", role: .destructive) {
