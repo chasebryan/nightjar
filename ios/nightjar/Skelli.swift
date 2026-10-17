@@ -458,6 +458,24 @@ final class SkelliCenter: ObservableObject {
 
     private func respond(to q: String,
                          raw: String) {
+        // Addressed by name: "Skelli, what's up" is
+        // speech to her, not a search about her.
+        var q = q
+        if q.hasPrefix("skelli") {
+            let rest = q.dropFirst(6)
+            if rest.isEmpty
+                || " ,.!?:".contains(rest.first!) {
+                q = String(rest).trimmingCharacters(
+                    in: CharacterSet(
+                        charactersIn: " ,.!?:"))
+            }
+        }
+        if q.isEmpty {
+            say("Here. Ask about the house, or give "
+                + "an order.")
+            return
+        }
+
         // An offered action, awaiting a word.
         if let pending = pendingAction {
             if ["yes", "yeah", "yep", "do it", "go",
@@ -1917,8 +1935,10 @@ struct SkelliView: View {
                 Label("Memory",
                       systemImage: "brain")
             }
-            Toggle("Web research",
-                   isOn: $skelli.webResearchEnabled)
+            Toggle(isOn: $skelli.webResearchEnabled) {
+                Label("Web research",
+                      systemImage: "globe")
+            }
             Divider()
             Button(role: .destructive) {
                 confirmClear = true
