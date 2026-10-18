@@ -3058,7 +3058,10 @@ struct SkelliView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false,
+                               vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
             menuButton
         }
