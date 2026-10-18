@@ -41,6 +41,13 @@ enum ChirpModem {
     /// (frame sync only — the AEAD tag inside the payload is
     /// the real integrity check).
     static func symbols(forPayload payload: Data) -> [Int] {
+        // The frame's length byte is one byte and
+        // the protocol caps a payload at maxPayload;
+        // an over-long payload gets silence, never
+        // a trapping conversion.
+        guard payload.count <= maxPayload else {
+            return []
+        }
         var body: [UInt8] = [UInt8(payload.count)]
         body.append(contentsOf: payload)
         let crc = crc16(body)

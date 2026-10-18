@@ -327,6 +327,14 @@ final class AssaultCenter: ObservableObject {
         switch stage {
         case .sweeping:
             if !model.sweeping && !model.scanning {
+                // The stage should never outlive its
+                // queue — but a tick that finds it
+                // empty finishes the stage instead of
+                // reaching into a drained queue.
+                guard !sweepQueue.isEmpty else {
+                    finishSweepStage()
+                    return
+                }
                 sweepQueue.removeFirst()
                 if !sweepQueue.isEmpty {
                     sweepNext()

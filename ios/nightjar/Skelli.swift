@@ -3299,11 +3299,38 @@ enum SkelliWeights {
 
     /// One load in flight, ever: two asks landing
     /// together once raced two loads of the same
-    /// model into MLX — the gate makes the second
-    /// ask await the first's container instead.
-    private static var loadTask:
-        Task<ModelContainer, Error>?
-    private static var loadKey: String?
+    /// model into MLX. The check-and-set that
+    /// guards the load lives on an actor, so two
+    /// asks arriving in the same instant cannot
+    /// both slip past it — the second awaits the
+    /// first's container instead of loading again.
+    private actor LoadGate {
+        private var inFlight:
+            Task<ModelContainer, Error>?
+        private var inFlightKey: String?
+
+        func task(for key: String,
+                  make: @Sendable () async throws
+                      -> ModelContainer)
+            -> Task<ModelContainer, Error> {
+            if let inFlight, inFlightKey == key {
+                return inFlight
+            }
+            let task = Task { try await make() }
+            inFlight = task
+            inFlightKey = key
+            return task
+        }
+
+        func clear(ifKey key: String) {
+            if inFlightKey == key {
+                inFlight = nil
+                inFlightKey = nil
+            }
+        }
+    }
+
+    private static let loadGate = LoadGate()
 
     private static func loadedContainer()
         async throws -> ModelContainer {
@@ -3312,21 +3339,16 @@ enum SkelliWeights {
            containerKey == key {
             return container
         }
-        if let loadTask = loadTask, loadKey == key {
-            return try await loadTask.value
+        let task = await loadGate.task(for: key) {
+            try await makeContainer()
         }
-        let task = Task { try await makeContainer() }
-        loadTask = task
-        loadKey = key
         do {
             let box = try await task.value
             container = box
             containerKey = key
-            loadTask = nil
             return box
         } catch {
-            loadTask = nil
-            loadKey = nil
+            await loadGate.clear(ifKey: key)
             throw error
         }
     }

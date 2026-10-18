@@ -134,6 +134,7 @@ struct BlinkSenderView: View {
                 }
             }
             .onReceive(timer) { _ in
+                guard !frames.isEmpty else { return }
                 index = (index + 1) % frames.count
             }
         }

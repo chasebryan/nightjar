@@ -132,8 +132,10 @@ final class SubconsciousCenter: ObservableObject {
     }
 
     private static var fileURL: URL {
-        FileManager.default.urls(
-            for: .documentDirectory, in: .userDomainMask)[0]
+        (FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask)
+            .first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("subconscious.json")
     }
 

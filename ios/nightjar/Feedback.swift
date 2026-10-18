@@ -2984,6 +2984,7 @@ extension SkelliCenter {
     private struct ExprParser {
         var c: [Character]
         var i = 0
+        var depth = 0
 
         init(_ text: String) { c = Array(text) }
 
@@ -3029,6 +3030,13 @@ extension SkelliCenter {
         }
 
         mutating func factor() -> Double? {
+            // Every recursion path passes through
+            // here; the counter keeps a wall of
+            // brackets or minus signs from taking
+            // the stack with it.
+            depth += 1
+            defer { depth -= 1 }
+            guard depth <= 64 else { return nil }
             ws()
             guard i < c.count else { return nil }
             if c[i] == "-" {
@@ -3153,7 +3161,8 @@ final class WeightsCenter: ObservableObject {
     static var hubCacheRoot: URL {
         let caches = FileManager.default.urls(
             for: .cachesDirectory,
-            in: .userDomainMask).first!
+            in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return caches.appendingPathComponent(
             "huggingface/hub")
     }

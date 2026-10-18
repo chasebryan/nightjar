@@ -41,6 +41,13 @@ enum MathEngine {
                 .trimmingCharacters(in: .whitespaces)
         }
         guard !text.isEmpty else { return nil }
+        // No honest question is two thousand
+        // characters of mathematics; past that the
+        // parse is refused, not attempted — the cap
+        // and the parser's depth bound below are
+        // what stand between a pasted wall of
+        // brackets and the stack.
+        guard text.count <= 2_000 else { return nil }
         // "15% of 240" — a shape of its own.
         if let shaped = percentOf(text) { return shaped }
         if text.contains("=") {
@@ -134,6 +141,7 @@ enum MathEngine {
     private final class Parser {
         private let chars: [Character]
         private var pos = 0
+        private var depth = 0
         private let x: Double?
         private let radians: Bool
 
@@ -224,6 +232,15 @@ enum MathEngine {
         }
 
         private func unary() -> Double? {
+            // Every descent — brackets, signs,
+            // powers, nested calls — passes through
+            // here once, so this counter bounds the
+            // whole recursion: a message built of
+            // ten thousand opening brackets fails
+            // the parse instead of the stack.
+            depth += 1
+            defer { depth -= 1 }
+            guard depth <= 64 else { return nil }
             if peek == "-" {
                 pos += 1
                 guard let value = unary() else {
