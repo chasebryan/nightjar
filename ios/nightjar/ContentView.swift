@@ -2,6 +2,46 @@ import Combine
 import SwiftUI
 import UIKit
 
+/// The tab beat, keyed to the one event every
+/// road into a tab must produce: its content
+/// appearing on screen. Four mechanisms keyed
+/// to the selection WRITE all failed the same
+/// way on the operator's device — observers in
+/// the tab roots, the platform's sensory
+/// feedback trigger, and a custom binding's
+/// setter each fired for visible-bar taps and
+/// never for picks made in the system's More
+/// list, which UIKit resolves internally
+/// without ever writing through SwiftUI's
+/// selection. (His own flight recorder proved
+/// it: bar picks logged, while the More pick
+/// that opened the very console he exported
+/// the log from left no trace.) Appearance
+/// cannot be bypassed — a tab the operator is
+/// looking at has appeared — so the beat rides
+/// it: the first appearance after launch only
+/// primes the register (no beat for the tab the
+/// house reopens on), a reappearance of the
+/// same tab (back from background) stays
+/// silent, and every genuine change of tab
+/// answers with a press-strength beat.
+enum TabBeat {
+    private static var primed = false
+    private static var lastShown: Int?
+
+    static func shown(_ tag: Int) {
+        if !primed {
+            primed = true
+            lastShown = tag
+            return
+        }
+        guard lastShown != tag else { return }
+        lastShown = tag
+        Haptics.press()
+        DevLog.event("tab", "\(tag) (appeared)")
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @ObservedObject private var board = ProcessBoard.shared
@@ -40,63 +80,31 @@ struct ContentView: View {
     }
     @ObservedObject private var themes = ThemeCenter.shared
 
-    /// The tab selection with the beat inside its
-    /// setter. Every change of tab — a bar tap, a
-    /// pick from the system's More list, any road
-    /// the platform offers — is written through
-    /// this setter by the TabView itself, so the
-    /// selection haptic rides the one chokepoint
-    /// nothing can bypass. Two view-level roads
-    /// were tried and both missed More-list picks
-    /// on the operator's device: an onChange in
-    /// the tab roots, and the platform's own
-    /// sensoryFeedback trigger on the TabView —
-    /// its change-diffing never delivered. Writes
-    /// that set the property directly (house
-    /// navigation) pass silently, as they should:
-    /// the beat answers a finger, not the house.
-    private var tabSelection: Binding<Int> {
-        Binding(
-            get: { tab },
-            set: { newValue in
-                if newValue != tab {
-                    // A medium impact — the strength
-                    // of the house's primary-action
-                    // beats, the ones the operator
-                    // confirms he feels. The flight
-                    // recorder proved this setter
-                    // fires on his taps while a light
-                    // impact and the selection voice
-                    // both went unfelt, so the tab
-                    // beat speaks at press strength.
-                    Haptics.press()
-                    DevLog.event("tab", "\(newValue)")
-                }
-                tab = newValue
-            })
-    }
-
     var body: some View {
         ZStack {
             AppBackdrop()
-            TabView(selection: tabSelection) {
+            TabView(selection: $tab) {
             SkelliView()
                 .appThemed(.skelli)
                 .tabItem { Label(L("Skelli"),
                                  systemImage: "brain.head.profile") }
                 .tag(9)
+                .onAppear { TabBeat.shown(9) }
             ListenView(tab: $tab)
                 .appThemed(.listen)
                 .tabItem { Label(L("Listen"), systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
+                .onAppear { TabBeat.shown(0) }
             SendView()
                 .appThemed(.send)
                 .tabItem { Label(L("Send"), systemImage: "paperplane") }
                 .tag(1)
+                .onAppear { TabBeat.shown(1) }
             ServeView()
                 .appThemed(.serve)
                 .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
                 .tag(2)
+                .onAppear { TabBeat.shown(2) }
             // Declaration order is the More list's order:
             // About heads it — it is the app's identity and
             // its options hub — and Sessions sits under it.
@@ -105,18 +113,22 @@ struct ContentView: View {
                 .appThemed(.about)
                 .tabItem { Label(L("About"), systemImage: "info.circle") }
                 .tag(5)
+                .onAppear { TabBeat.shown(5) }
             SessionsView()
                 .appThemed(.sessions)
                 .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
                 .tag(3)
+                .onAppear { TabBeat.shown(3) }
             ScanView(tab: $tab)
                 .appThemed(.scan)
                 .tabItem { Label(L("Scan"), systemImage: "scope") }
                 .tag(4)
+                .onAppear { TabBeat.shown(4) }
             ReconBenchView(tab: $tab)
                 .appThemed(.recon)
                 .tabItem { Label(L("Recon"), systemImage: "target") }
                 .tag(6)
+                .onAppear { TabBeat.shown(6) }
             EmconView()
                 .appThemed(.emcon)
                 .tabItem {
@@ -129,21 +141,25 @@ struct ContentView: View {
                         .symbolVariant(.slash)
                 }
                 .tag(7)
+                .onAppear { TabBeat.shown(7) }
             KnockChatView()
                 .appThemed(.knocktalk)
                 .tabItem { Label(L("Knocktalk"),
                                  systemImage: "message.badge.waveform") }
                 .tag(8)
+                .onAppear { TabBeat.shown(8) }
             MacrosView()
                 .appThemed(.macros)
                 .tabItem { Label(L("Macros"),
                                  systemImage: "puzzlepiece.extension.fill") }
                 .tag(10)
+                .onAppear { TabBeat.shown(10) }
             CryptoView()
                 .appThemed(.vault)
                 .tabItem { Label(L("Vault"),
                                  systemImage: "lock.fill") }
                 .tag(11)
+                .onAppear { TabBeat.shown(11) }
         }
         .tint(themes.current.accent)
         .onAppear {
