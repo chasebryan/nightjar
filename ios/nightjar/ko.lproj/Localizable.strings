@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " 이 집을 지킨 지 제법 됐다.";
 " We have talked a hundred times over." = " 우린 이미 백 번은 얘기했다.";
 " Winter's hand is on the house." = " 겨울의 손이 집 위에 있다.";
+"%@ holds over the house." = "%@가 집을 덮고 있다.";
+"Day %lld of this house." = "이 집에서 %lld일째.";
+"Ear down. %lld sightings on the record." = "귀가 내려가 있다. 기록에 %lld건의 관측.";
+"Ear up — %lld sightings on the record." = "귀가 열려 있다 — 기록에 %lld건의 관측.";
+"Full moon over the house." = "집 위의 보름달.";
+"Quiet for %lld minutes." = "%lld분째 고요.";
+"Ready." = "준비됨.";
+"The house found something today." = "집이 오늘 무언가를 찾았다.";
+"The moon is dark tonight." = "오늘 밤 달이 어둡다.";
+"Watching the wire — %lld up, %lld unnamed." = "회선을 지켜보는 중 — %lld대, 무명 %lld대.";
+"Watching the wire — %lld up, every one named." = "회선을 지켜보는 중 — %lld대, 전부 이름이 있다.";
+"Watching. The wire is empty." = "지켜보는 중. 회선은 비었다.";

@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " 这房子我们守了有一阵子了。";
 " We have talked a hundred times over." = " 我们已经谈过一百遍了。";
 " Winter's hand is on the house." = " 冬天的手按在房子上。";
+"%@ holds over the house." = "%@ 笼罩着这房子。";
+"Day %lld of this house." = "在这房子里的第 %lld 天。";
+"Ear down. %lld sightings on the record." = "耳已收。记录里有 %lld 次观测。";
+"Ear up — %lld sightings on the record." = "耳听着 — 记录里有 %lld 次观测。";
+"Full moon over the house." = "房子上方一轮满月。";
+"Quiet for %lld minutes." = "安静了 %lld 分钟。";
+"Ready." = "就绪。";
+"The house found something today." = "房子今天找到了点东西。";
+"The moon is dark tonight." = "今晚月暗。";
+"Watching the wire — %lld up, %lld unnamed." = "守望线路 — %lld 台在线，%lld 台无名。";
+"Watching the wire — %lld up, every one named." = "守望线路 — %lld 台在线，全都有名。";
+"Watching. The wire is empty." = "守望中。线上无人。";

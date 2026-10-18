@@ -7193,6 +7193,12 @@ struct SkelliView: View {
     @State private var avatarPressed = false
     @AppStorage("skelli.minimalChat")
     private var minimalChat = false
+    /// The activity dot's pulse: view state
+    /// only, restarted at a new cadence
+    /// whenever her mood changes.
+    @State private var dotPulse = false
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
@@ -7622,22 +7628,67 @@ struct SkelliView: View {
         .buttonStyle(.plain)
     }
 
+    /// The activity line, alive (2026-10-18):
+    /// the dot carries her state — the accent,
+    /// quick, while she works; amber when the
+    /// wire wants attention (an unnamed soul,
+    /// a raised EMCON); a slow accent breathe
+    /// at a clear watch — and the text is her
+    /// composed readout of the watch whenever
+    /// no work is narrating itself. It was a
+    /// piece of text with a dot; now both the
+    /// dot and the text know things.
     private var activityBar: some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(skelli.mood == .idle
-                      ? Color.secondary
-                      : themes.current.accent)
-                .frame(width: 7, height: 7)
-                .animation(.easeInOut(duration: 0.45),
-                           value: skelli.mood)
-            Text(skelli.activity)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
+        let busy = skelli.mood != .idle
+        let attention = !busy
+            && (SkelliVoice.unnamedCount() > 0
+                || emcon.condition >= .bravo)
+        let dotColor: Color = busy
+            ? themes.current.accent
+            : (attention
+                ? Color.orange
+                : themes.current.accent
+                    .opacity(0.75))
+        return TimelineView(
+            .periodic(from: .now, by: 20)) { context in
+            let display = skelli.activity == "Ready."
+                ? skelli.idleReadout(at: context.date)
+                : skelli.activity
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 7, height: 7)
+                    .scaleEffect(
+                        dotPulse && !reduceMotion
+                            ? (busy ? 1.35 : 1.18)
+                            : 1.0)
+                    .animation(
+                        reduceMotion ? nil
+                            : .easeInOut(
+                                duration: busy
+                                    ? 0.8 : 2.0)
+                                .repeatForever(
+                                    autoreverses: true),
+                        value: dotPulse)
+                Text(display)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.opacity)
+                    .animation(
+                        .easeInOut(duration: 0.45),
+                        value: display)
+                Spacer()
+            }
         }
         .padding(.horizontal)
         .padding(.vertical, 4)
+        .onAppear { dotPulse = true }
+        .onChange(of: skelli.mood) { _ in
+            dotPulse = false
+            DispatchQueue.main.async {
+                dotPulse = true
+            }
+        }
     }
 
     /// The emergency stop — always in reach in her

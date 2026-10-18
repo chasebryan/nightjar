@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " この家をもうしばらく守ってきた。";
 " We have talked a hundred times over." = " もう百回は話した。";
 " Winter's hand is on the house." = " 冬の手が家にかかっている。";
+"%@ holds over the house." = "%@が家を覆っている。";
+"Day %lld of this house." = "この家で%lld日目。";
+"Ear down. %lld sightings on the record." = "耳は伏せている。記録に%lld件の観測。";
+"Ear up — %lld sightings on the record." = "耳は起きている — 記録に%lld件の観測。";
+"Full moon over the house." = "家の上に満月。";
+"Quiet for %lld minutes." = "%lld分間の静けさ。";
+"Ready." = "準備完了。";
+"The house found something today." = "家は今日、何かを見つけた。";
+"The moon is dark tonight." = "今夜は月が暗い。";
+"Watching the wire — %lld up, %lld unnamed." = "回線を見張り中 — %lld台、うち%lld台が無名。";
+"Watching the wire — %lld up, every one named." = "回線を見張り中 — %lld台、全て名がある。";
+"Watching. The wire is empty." = "見張り中。回線は空。";

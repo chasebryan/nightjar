@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " हम इस घर को अब कुछ समय से संभाल रहे हैं।";
 " We have talked a hundred times over." = " हम सौ बार बात कर चुके हैं।";
 " Winter's hand is on the house." = " सर्दी का हाथ घर पर है।";
+"%@ holds over the house." = "%@ घर पर लागू है।";
+"Day %lld of this house." = "इस घर का दिन %lld।";
+"Ear down. %lld sightings on the record." = "कान नीचे। रिकॉर्ड में %lld झलक।";
+"Ear up — %lld sightings on the record." = "कान खुले — रिकॉर्ड में %lld झलक।";
+"Full moon over the house." = "घर के ऊपर पूरा चाँद।";
+"Quiet for %lld minutes." = "%lld मिनट से खामोशी।";
+"Ready." = "तैयार।";
+"The house found something today." = "घर को आज कुछ मिला।";
+"The moon is dark tonight." = "आज रात चाँद अधेरे में है।";
+"Watching the wire — %lld up, %lld unnamed." = "लाइन पर नज़र — %lld मौजूद, %lld बेनाम।";
+"Watching the wire — %lld up, every one named." = "लाइन पर नज़र — %lld मौजूद, सबके नाम हैं।";
+"Watching. The wire is empty." = "निगरानी में। लाइन खाली है।";

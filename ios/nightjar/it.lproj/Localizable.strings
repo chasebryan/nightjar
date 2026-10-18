@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " Teniamo questa casa da un po', ormai.";
 " We have talked a hundred times over." = " Abbiamo parlato cento volte, ormai.";
 " Winter's hand is on the house." = " La mano dell'inverno è sulla casa.";
+"%@ holds over the house." = "%@ vige sulla casa.";
+"Day %lld of this house." = "Giorno %lld di questa casa.";
+"Ear down. %lld sightings on the record." = "Orecchio abbassato. %lld avvistamenti nel registro.";
+"Ear up — %lld sightings on the record." = "Orecchio teso — %lld avvistamenti nel registro.";
+"Full moon over the house." = "Luna piena sopra la casa.";
+"Quiet for %lld minutes." = "Silenzio da %lld minuti.";
+"Ready." = "Pronta.";
+"The house found something today." = "La casa ha trovato qualcosa oggi.";
+"The moon is dark tonight." = "La luna è buia stanotte.";
+"Watching the wire — %lld up, %lld unnamed." = "Veglio sulla rete — %lld presenti, %lld senza nome.";
+"Watching the wire — %lld up, every one named." = "Veglio sulla rete — %lld presenti, tutti con nome.";
+"Watching. The wire is empty." = "Veglio. La rete è vuota.";

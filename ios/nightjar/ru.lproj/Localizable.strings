@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " Мы держим этот дом уже давно.";
 " We have talked a hundred times over." = " Мы говорили уже сто раз.";
 " Winter's hand is on the house." = " Рука зимы лежит на доме.";
+"%@ holds over the house." = "%@ держится над домом.";
+"Day %lld of this house." = "День %lld этого дома.";
+"Ear down. %lld sightings on the record." = "Слух опущен. %lld наблюдений в журнале.";
+"Ear up — %lld sightings on the record." = "Слух поднят — %lld наблюдений в журнале.";
+"Full moon over the house." = "Полная луна над домом.";
+"Quiet for %lld minutes." = "Тишина уже %lld минут.";
+"Ready." = "Готова.";
+"The house found something today." = "Дом сегодня кое-что нашёл.";
+"The moon is dark tonight." = "Луна сегодня тёмная.";
+"Watching the wire — %lld up, %lld unnamed." = "Наблюдаю сеть — %lld на связи, %lld безымянных.";
+"Watching the wire — %lld up, every one named." = "Наблюдаю сеть — %lld на связи, все названы.";
+"Watching. The wire is empty." = "Наблюдаю. Сеть пуста.";

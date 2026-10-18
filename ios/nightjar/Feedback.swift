@@ -4671,6 +4671,93 @@ extension SkelliCenter {
         }
     }
 
+    /// The idle readout: when no work is being
+    /// narrated, the activity line composes
+    /// what she is actually watching — true
+    /// fragments from her own instruments,
+    /// rotated by the clock in twenty-second
+    /// turns so the line lives. (2026-10-18:
+    /// the line read "Ready." at every idle
+    /// moment — a piece of text with a dot.
+    /// Now it is the watch, stated.) Work
+    /// still narrates itself the moment it
+    /// starts; this speaks only for the
+    /// quiet between.
+    func idleReadout(at date: Date) -> String {
+        var fragments: [String] = []
+        let neighbors = NeighborhoodStore
+            .shared.neighbors
+        let unnamed = SkelliVoice.unnamedCount()
+        if neighbors.isEmpty {
+            fragments.append(
+                L("Watching. The wire is empty."))
+        } else if unnamed > 0 {
+            fragments.append(String(format:
+                L("Watching the wire — %lld up, %lld unnamed."),
+                neighbors.count, unnamed))
+        } else {
+            fragments.append(String(format:
+                L("Watching the wire — %lld up, every one named."),
+                neighbors.count))
+        }
+        if let post = post {
+            if post.session != nil {
+                fragments.append(String(format:
+                    L("Ear up — %lld sightings on the record."),
+                    post.sightingCount))
+            } else {
+                fragments.append(String(format:
+                    L("Ear down. %lld sightings on the record."),
+                    post.sightingCount))
+            }
+        }
+        if let emcon, emcon.condition != .open {
+            fragments.append(String(format:
+                L("%@ holds over the house."),
+                emcon.condition.declared))
+        }
+        if let spoke = UserDefaults.standard
+            .object(forKey: "heart.lastSpoke")
+                as? Date {
+            let quiet = date
+                .timeIntervalSince(spoke)
+            if quiet >= 1200 {
+                fragments.append(String(format:
+                    L("Quiet for %lld minutes."),
+                    Int(quiet / 60)))
+            }
+        }
+        let phase = Almanac.moonPhase(at: date).name
+        if phase == "Full moon" {
+            fragments.append(
+                L("Full moon over the house."))
+        }
+        if phase == "New moon" {
+            fragments.append(
+                L("The moon is dark tonight."))
+        }
+        if let triumph = UserDefaults.standard
+            .object(forKey: "heart.lastTriumph")
+                as? Date,
+           Calendar.current.isDateInToday(triumph) {
+            fragments.append(
+                L("The house found something today."))
+        }
+        let heart = SkelliHeart.shared
+        if heart.daysKnown >= 2 {
+            fragments.append(String(format:
+                L("Day %lld of this house."),
+                heart.daysKnown))
+        }
+        guard !fragments.isEmpty else {
+            return L("Ready.")
+        }
+        let bucket = Int(
+            date.timeIntervalSince1970 / 20)
+        return fragments[abs(bucket)
+            % fragments.count]
+    }
+
     func secondReading(_ q: String,
                        raw: String) -> Bool {
         guard SkelliMind.isAvailable

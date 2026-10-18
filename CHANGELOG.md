@@ -464,6 +464,23 @@
   portrait, it is the
   same glass — only
   its height changes.
+- **The watch, stated.**
+  The activity line is
+  alive: its dot pulses
+  quick in the accent
+  while she works,
+  turns amber when the
+  wire wants attention,
+  and breathes slowly
+  at a clear watch —
+  and its text, between
+  work, is her own
+  readout of the watch:
+  the wire's census,
+  the ear, the EMCON
+  overhead, the quiet,
+  the moon, the day of
+  the house.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

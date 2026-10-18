@@ -1689,3 +1689,15 @@
 " We have kept this house a while now." = " نحرس هذا البيت منذ مدة الآن.";
 " We have talked a hundred times over." = " تحدثنا مئة مرة حتى الآن.";
 " Winter's hand is on the house." = " يد الشتاء على البيت.";
+"%@ holds over the house." = "%@ قائم فوق البيت.";
+"Day %lld of this house." = "اليوم %lld في هذا البيت.";
+"Ear down. %lld sightings on the record." = "الأذن منزلة. %lld مشاهدة في السجل.";
+"Ear up — %lld sightings on the record." = "الأذن منصتة — %lld مشاهدة في السجل.";
+"Full moon over the house." = "بدر فوق البيت.";
+"Quiet for %lld minutes." = "هدوء منذ %lld دقيقة.";
+"Ready." = "جاهزة.";
+"The house found something today." = "وجد البيت شيئًا اليوم.";
+"The moon is dark tonight." = "القمر مظلم الليلة.";
+"Watching the wire — %lld up, %lld unnamed." = "أراقب الخط — %lld حاضرًا، %lld بلا اسم.";
+"Watching the wire — %lld up, every one named." = "أراقب الخط — %lld حاضرًا، وكلهم مسمّون.";
+"Watching. The wire is empty." = "أراقب. الخط خالٍ.";
