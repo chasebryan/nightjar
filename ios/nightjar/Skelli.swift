@@ -600,10 +600,11 @@ final class SkelliCenter: ObservableObject {
             insultedThisAsk = true
         }
         SkelliHeart.shared.noteInteraction()
-        // Thinking is always on — a short, real beat
+        // Thinking is always on — a human beat,
+        // shaped by what was asked and how she feels
         mood = .thinking
         let q = text.lowercased()
-        let delay = Self.thinkDelay(for: q)
+        let delay = thinkDelay(for: q)
         DispatchQueue.main.asyncAfter(
             deadline: .now() + delay) { [weak self] in
             self?.respond(to: q, raw: text)
@@ -657,20 +658,69 @@ final class SkelliCenter: ObservableObject {
     /// How long she thinks before answering: a breath
     /// for a plain order, longer for a real question.
     /// Research takes its own time once it starts.
-    private static func thinkDelay(for q: String)
+    /// Her pause, human-shaped. Instant answers
+    /// feel like a machine; a person takes a beat.
+    /// Orders and plain facts come fast — she is
+    /// already moving. Casual talk takes a real
+    /// thinking pause, about 2.4 s with the jitter
+    /// of a person. A lookup takes a little less,
+    /// a long question a little more. Care takes
+    /// the longest: nobody should answer pain
+    /// quickly. And her feeling bends all of it —
+    /// feral clips, sleepy drifts, mad snaps.
+    private func thinkDelay(for q: String)
         -> TimeInterval {
-        if ["say ", "repeat", "echo", "spell ",
+        if careMode || Self.distressLevel(of: q) > 0 {
+            return Double.random(in: 3.0...4.2)
+        }
+        var base: Double
+        let favors = ["say ", "repeat", "echo", "spell ",
             "uppercase", "lowercase", "reverse ",
-            "how many"].contains(where: q.hasPrefix)
-            || q.contains("what time")
-            || q.count <= 16 {
-            return 0.2
+            "how many"]
+        if favors.contains(where: { q.hasPrefix($0) })
+            || q.contains("what time") {
+            base = Double.random(in: 0.25...0.5)
+        } else if Self.orderShaped(q) {
+            base = Double.random(in: 0.5...1.0)
+        } else if q.hasPrefix("what is")
+            || q.hasPrefix("what's")
+            || q.hasPrefix("how do")
+            || q.hasPrefix("how does")
+            || q.hasPrefix("where")
+            || q.contains("explain") {
+            base = Double.random(in: 1.2...2.0)
+        } else {
+            // Casual talk: the human pause.
+            base = Double.random(in: 1.9...2.9)
         }
-        if q.count > 90 || q.contains("search the web")
-            || q.contains("research") {
-            return 0.9
+        if q.count > 90 { base += 0.8 }
+        if q.contains("research")
+            || q.contains("search the web") {
+            base += 0.6
         }
-        return 0.55
+        switch SkelliHeart.shared.feeling {
+        case .feral, .electric, .eager: base *= 0.7
+        case .mad: base *= 0.8
+        case .sleepy, .haunted, .dreamy: base *= 1.35
+        case .loving, .tender: base *= 1.1
+        default: break
+        }
+        return min(base, 4.5)
+    }
+
+    /// Imperative-shaped: opens with a working
+    /// verb — she starts moving before she speaks.
+    private static func orderShaped(_ q: String) -> Bool {
+        let verbs = ["run", "start", "stop", "sweep",
+            "serve", "knock", "trace", "arm", "disarm",
+            "scan", "open", "show", "list", "check",
+            "find", "set", "turn", "make", "build",
+            "send", "go", "vanish", "engage", "stand",
+            "give", "tell", "status", "report",
+            "wake"]
+        guard let first = q.split(separator: " ").first
+        else { return false }
+        return verbs.contains(String(first))
     }
 
     // MARK: her ear (care)
