@@ -3639,40 +3639,44 @@ struct SkelliView: View {
     }
 
     private var batteryPanel: some View {
+        // One panel, one return: the generic panel
+        // helper makes two returns of it two different
+        // concrete types, which an opaque some View
+        // cannot hold — so value and sub are settled
+        // first and the panel is built once.
         let reporting = post.rows.filter {
             $0.batteries.contains {
                 $0.component == "device" } }
-        guard let weakest = reporting.min(by: {
+        let weakest = reporting.min(by: {
             ($0.batteries.first {
                 $0.component == "device" }?.percent ?? 10_000)
                 < ($1.batteries.first {
                     $0.component == "device" }?.percent
-                   ?? 10_000) }),
-              let reading = weakest.batteries.first(
-                where: { $0.component == "device" })
-        else {
-            return panel(label: "BATTERY") {
-                panelValue("—")
-                panelSub("none reporting")
+                   ?? 10_000) })
+        let reading = weakest.flatMap { w in
+            w.batteries.first {
+                $0.component == "device" } }
+        var value = "—"
+        var sub = "none reporting"
+        if let weakest, let reading {
+            let name = weakest.name
+                ?? weakest.preferredLabel ?? weakest.kind
+            sub = name
+            if let forecast = weakest.batteryForecastText {
+                sub += " · " + forecast
             }
-        }
-        let name = weakest.name
-            ?? weakest.preferredLabel ?? weakest.kind
-        var sub = name
-        if let forecast = weakest.batteryForecastText {
-            sub += " · " + forecast
+            if let percent = reading.percent {
+                value = "\(percent)%"
+            } else if let millivolts = reading.millivolts {
+                value = "\(millivolts)"
+                sub = "mV · " + sub
+            } else {
+                value = reading.state ?? "—"
+            }
         }
         return panel(label: "BATTERY") {
-            if let percent = reading.percent {
-                panelValue("\(percent)%")
-                panelSub(sub)
-            } else if let millivolts = reading.millivolts {
-                panelValue("\(millivolts)")
-                panelSub("mV · " + sub)
-            } else {
-                panelValue(reading.state ?? "—")
-                panelSub(sub)
-            }
+            panelValue(value)
+            panelSub(sub)
         }
     }
 

@@ -209,7 +209,7 @@ enum CryptoFiles {
         bytes[10] ^= UInt8((value >> 8) & 0xFF)
         bytes[11] ^= UInt8(value & 0xFF)
         return try ChaChaPoly.Nonce(
-            dataRepresentation: Data(bytes))
+            data: Data(bytes))
     }
 
     private static func sealChunk(_ plain: Data,
@@ -233,7 +233,7 @@ enum CryptoFiles {
         else { return nil }
         var combined = nonce.withUnsafeBytes {
             Data($0) }
-        combined.append(sealed)
+        combined.append(contentsOf: sealed)
         guard let box = try? ChaChaPoly.SealedBox(
             combined: combined) else { return nil }
         return try? ChaChaPoly.open(box, using: key)
@@ -263,8 +263,8 @@ enum CryptoFiles {
             var out = Data()
             var length = UInt16(data.count).bigEndian
             withUnsafeBytes(of: &length) {
-                out.append($0) }
-            out.append(data)
+                out.append(contentsOf: $0) }
+            out.append(contentsOf: data)
             return out
         }
         func passwordKey() -> SymmetricKey? {
@@ -277,8 +277,8 @@ enum CryptoFiles {
         }
         if protection.involvesPassword {
             var it = UInt32(iterations).bigEndian
-            withUnsafeBytes(of: &it) { header.append($0) }
-            header.append(salt)
+            withUnsafeBytes(of: &it) { header.append(contentsOf: $0) }
+            header.append(contentsOf: salt)
         }
         switch protection {
         case .password, .either:
@@ -286,7 +286,7 @@ enum CryptoFiles {
                   let wrap = CryptoSuite.seal(
                     .chacha, key: key, data: fileKeyData)
             else { throw CryptoFileError.needsPassword }
-            header.append(wrapped(wrap))
+            header.append(contentsOf: wrapped(wrap))
         default:
             break
         }
@@ -297,7 +297,7 @@ enum CryptoFiles {
                 data: fileKeyData) else {
                 throw CryptoFileError.corrupt
             }
-            header.append(wrapped(wrap))
+            header.append(contentsOf: wrapped(wrap))
         case .bothRequired:
             // The kept half: random bytes the Vault
             // key wraps; the password's half is the
@@ -319,7 +319,7 @@ enum CryptoFiles {
                 data: half) else {
                 throw CryptoFileError.corrupt
             }
-            header.append(wrapped(wrap))
+            header.append(contentsOf: wrapped(wrap))
             try sealBody(input: inHandle, output: output,
                          header: header,
                          contentKey: realKey,
@@ -349,9 +349,9 @@ enum CryptoFiles {
             guard let wrap = CryptoSuite.seal(
                 .aes, key: wrapKey, data: fileKeyData)
             else { throw CryptoFileError.corrupt }
-            header.append(ephemeral.publicKey
-                .rawRepresentation)
-            header.append(wrapped(wrap))
+            header.append(contentsOf:
+                ephemeral.publicKey.rawRepresentation)
+            header.append(contentsOf: wrapped(wrap))
         }
         try sealBody(input: inHandle, output: output,
                      header: header, contentKey: fileKey,
@@ -365,9 +365,9 @@ enum CryptoFiles {
     ) throws {
         var header = header
         let baseNonce = CryptoSuite.randomBytes(12)
-        header.append(baseNonce)
+        header.append(contentsOf: baseNonce)
         var size = UInt32(chunkSize).bigEndian
-        withUnsafeBytes(of: &size) { header.append($0) }
+        withUnsafeBytes(of: &size) { header.append(contentsOf: $0) }
         FileManager.default.createFile(
             atPath: output.path, contents: nil)
         guard let outHandle = try? FileHandle(

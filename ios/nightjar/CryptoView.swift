@@ -224,9 +224,9 @@ struct CryptoView: View {
     }
 
     private func takePickedFile(
-        _ result: Result<[URL], Error>) {
-        guard case .success(let urls) = result,
-              let url = urls.first else { return }
+        _ result: Result<URL, Error>) {
+        guard case .success(let url) = result
+        else { return }
         fileNotice = nil
         producedFile = nil
         pickedFile = url

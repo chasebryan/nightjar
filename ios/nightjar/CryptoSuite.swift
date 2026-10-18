@@ -171,7 +171,7 @@ enum CryptoSuite {
                     t[i] ^= u[i]
                 }
             }
-            derived.append(t)
+            derived.append(contentsOf: t)
             blockIndex += 1
         }
         return Data(derived.prefix(bytes))
@@ -248,9 +248,9 @@ enum CryptoSuite {
         out.append(0x01)
         out.append(cipher == .chacha ? 0x01 : 0x02)
         var it = UInt32(iterations).bigEndian
-        withUnsafeBytes(of: &it) { out.append($0) }
-        out.append(salt)
-        out.append(sealed)
+        withUnsafeBytes(of: &it) { out.append(contentsOf: $0) }
+        out.append(contentsOf: salt)
+        out.append(contentsOf: sealed)
         return out
     }
 
@@ -409,7 +409,7 @@ enum CryptoSuite {
         else { return nil }
         var out = Data(ephemeral.publicKey
             .rawRepresentation)
-        out.append(sealed)
+        out.append(contentsOf: sealed)
         return out
     }
 

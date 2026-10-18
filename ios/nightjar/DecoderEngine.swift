@@ -191,7 +191,7 @@ enum DecoderEngine {
                 ?? []),
            frame.frameType == 0x20,
            let count = frame.advCount,
-           let uptime = frame.uptimeSeconds {
+           let uptime = frame.uptimeS {
             let hours = uptime / 3600
             out.evidence.append(hours >= 1
                 ? "beacon bookkeeping: \(count) "
