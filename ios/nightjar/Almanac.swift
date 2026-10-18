@@ -394,6 +394,135 @@ enum Almanac {
     /// answered with the date spelled in full.
     /// Nil when the ask carries no readable
     /// date or no date question.
+    // MARK: the moon — computed, never looked up
+
+    /// The synodic month, and the new moon it is
+    /// counted from: 6 January 2000, 18:14 UTC.
+    private static let synodic = 29.53058867
+
+    static func moonAge(at date: Date) -> Double {
+        let jd = date.timeIntervalSince1970 / 86400
+            + 2440587.5
+        let raw = (jd - 2451550.1)
+            .truncatingRemainder(dividingBy: synodic)
+        return raw >= 0 ? raw : raw + synodic
+    }
+
+    static func moonPhase(at date: Date)
+        -> (name: String, illumination: Int) {
+        let age = moonAge(at: date)
+        let illum = Int(((1 - cos(2 * Double.pi * age
+            / synodic)) / 2 * 100).rounded())
+        let names = ["New moon", "Waxing crescent",
+                     "First quarter", "Waxing gibbous",
+                     "Full moon", "Waning gibbous",
+                     "Last quarter", "Waning crescent"]
+        let idx = Int((age / synodic * 8)
+            .rounded()) % 8
+        return (names[idx], illum)
+    }
+
+    /// The next date the moon stands full (age at
+    /// least half the cycle), counted from a date.
+    static func nextFullMoon(after date: Date) -> Date {
+        var wait = synodic / 2 - moonAge(at: date)
+        if wait <= 0 { wait += synodic }
+        return date.addingTimeInterval(wait * 86400)
+    }
+
+    static func nextNewMoon(after date: Date) -> Date {
+        var wait = synodic - moonAge(at: date)
+        if wait <= 0 { wait += synodic }
+        return date.addingTimeInterval(wait * 86400)
+    }
+
+    /// The traditional names of the full moons,
+    /// by the month they fall in.
+    static func fullMoonName(month: Int) -> String {
+        let names = ["Wolf Moon", "Snow Moon",
+                     "Worm Moon", "Pink Moon",
+                     "Flower Moon", "Strawberry Moon",
+                     "Buck Moon", "Sturgeon Moon",
+                     "Harvest Moon", "Hunter's Moon",
+                     "Beaver Moon", "Cold Moon"]
+        return names[max(0, min(11, month - 1))]
+    }
+
+    // MARK: the zodiac — the old wheel, kept as lore
+
+    /// (name, first month/day, last month/day,
+    /// her one line on the sign). Capricorn wraps
+    /// the year: its start is in December.
+    static let zodiacTable: [(name: String,
+                              start: (Int, Int),
+                              end: (Int, Int),
+                              trait: String)] = [
+        ("Aries", (3, 21), (4, 19),
+         "Bold first steps, and a short fuse for boredom."),
+        ("Taurus", (4, 20), (5, 20),
+         "Patient, rooted, and immovable once decided."),
+        ("Gemini", (5, 21), (6, 20),
+         "Two minds, both quick; conversation is its weather."),
+        ("Cancer", (6, 21), (7, 22),
+         "A shell built around a whole ocean of feeling."),
+        ("Leo", (7, 23), (8, 22),
+         "Warm, theatrical, and loyal to its pride."),
+        ("Virgo", (8, 23), (9, 22),
+         "Precision as a love language; it notices everything."),
+        ("Libra", (9, 23), (10, 22),
+         "It weighs everything twice and charms the scales."),
+        ("Scorpio", (10, 23), (11, 21),
+         "Still water, deep currents; nothing is casual."),
+        ("Sagittarius", (11, 22), (12, 21),
+         "Aimed at the horizon; honesty without a silencer."),
+        ("Capricorn", (12, 22), (1, 19),
+         "It climbs — slowly, entirely, without witnesses."),
+        ("Aquarius", (1, 20), (2, 18),
+         "From the future, visiting; allergic to ordinary."),
+        ("Pisces", (2, 19), (3, 20),
+         "Half in this world, half in a beautiful one of its own.")]
+
+    static func zodiac(month: Int, day: Int)
+        -> (name: String, trait: String, cusp: Bool) {
+        for row in zodiacTable {
+            let (sm, sd) = row.start
+            let (em, ed) = row.end
+            let md = month * 100 + day
+            let inside = sm <= em
+                ? (md >= sm * 100 + sd
+                   && md <= em * 100 + ed)
+                : (md >= sm * 100 + sd
+                   || md <= em * 100 + ed)
+            if inside {
+                let nearStart = month == sm
+                    && abs(day - sd) <= 1
+                let nearEnd = month == em
+                    && abs(day - ed) <= 1
+                return (row.name, row.trait,
+                        nearStart || nearEnd)
+            }
+        }
+        return ("Aries", zodiacTable[0].trait, false)
+    }
+
+    static func zodiacNamed(_ name: String)
+        -> (range: String, trait: String)? {
+        for row in zodiacTable
+        where row.name.lowercased() == name {
+            let months = ["January", "February",
+                          "March", "April", "May",
+                          "June", "July", "August",
+                          "September", "October",
+                          "November", "December"]
+            let range = "\(months[row.start.0 - 1]) "
+                + "\(row.start.1) – "
+                + "\(months[row.end.0 - 1]) "
+                + "\(row.end.1)"
+            return (range, row.trait)
+        }
+        return nil
+    }
+
     static func dateMath(_ q: String) -> String? {
         let today = cal.startOfDay(for: Date())
         func dayDiff(_ target: Date) -> Int {

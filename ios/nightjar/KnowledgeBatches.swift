@@ -18,6 +18,16 @@ import Foundation
 extension SkelliKnowledge {
     static let batches: [SkelliEntry] = [
 
+        SkelliEntry(
+            id: "sky",
+            title: "The sky — moon, planets, the wheel",
+            home: "the almanac in her head — ask her the moon, a sign, a planet",
+            keywords: ["astrology", "zodiac",
+                       "moon phases", "planets",
+                       "solar system", "horoscope",
+                       "floriography",
+                       "language of flowers"],
+            body: "She keeps the sky the way she keeps the calendar: exactly. The moon's phase, age, and lit fraction are computed in her almanac for tonight, for a named month, or for a named place's own tonight; the full moons carry their traditional names. The planets she answers from the stable facts — eight of them, Mercury out to Neptune. The zodiac she holds as lore, respectfully: a sun sign from a date (her operator's kept birthday included), each sign's dates and her one line on it, cusps admitted honestly. And she speaks the language of flowers — what a bloom means, and which bloom carries an apology, a declaration, a sympathy. Ask her."),
         // MARK: Batch one — doctrine: how she decides
 
         SkelliEntry(

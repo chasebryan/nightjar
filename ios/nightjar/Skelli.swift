@@ -2472,6 +2472,15 @@ final class SkelliCenter: ObservableObject {
         if assaultAsk(q) {
             return
         }
+        // The sky and the garden — the moon, the
+        // wheel, the planets, the language of
+        // flowers — stand ahead of the clear
+        // gate, whose bare "forget" would
+        // otherwise swallow the forget-me-not
+        // whole.
+        if skyBloomAsk(q) {
+            return
+        }
         if q.contains("clear") || q.contains("delete")
             || q.contains("reset") || q.contains("forget") {
             // What she built, she strikes herself:

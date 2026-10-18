@@ -257,6 +257,27 @@
   is answered in its
   own words, with
   respect.
+- **She knows the sky.**
+  The moon's phase is
+  computed, not looked
+  up — tonight, a named
+  month's, or another
+  city's own tonight,
+  full moons by their
+  traditional names.
+  The zodiac is kept as
+  lore and read from a
+  date — yours included,
+  if you've told her.
+  The planets are
+  answered exactly. And
+  she speaks the
+  language of flowers:
+  what a bloom means,
+  and which one carries
+  an apology, a
+  declaration, a
+  sympathy.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
