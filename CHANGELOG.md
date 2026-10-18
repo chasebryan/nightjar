@@ -225,6 +225,27 @@
   on the ProcessBoard;
   Vanish stops a crew
   like anything else.
+- **The boot, re-voiced.**
+  The film is untouched —
+  the bird still flies —
+  but the text now speaks
+  as a key ceremony for a
+  crypto release: the
+  manifest names its
+  Keyholder, its Bedrock,
+  its Rendezvous and its
+  Witnesses; the Veil is
+  drawn or lifted; the
+  hour is an Epoch; the
+  sphere no longer loads
+  the night, it derives
+  it; the subtitle stands
+  UNDER SEAL until the
+  finale breaks it — and
+  the manifest seals
+  itself with a tenth
+  line, the build's own
+  provenance.
 - **The organized house.**
   About is regrouped —
   Version, Your setup,

@@ -504,59 +504,70 @@ struct BootView: View {
     private var lines: [BootLine] {
         // Plain statements of fact, set like a
         // plaque — no prompt glyphs, no brackets,
-        // no slashes: the machine stating its name
-        // and its condition, nothing more.
+        // no slashes — but voiced as what the boot
+        // now is: a key ceremony. The house does
+        // not load; it derives itself, names its
+        // keyholder and its witnesses, and seals
+        // the manifest with its own provenance.
         var out: [BootLine] = [
-            BootLine(text: "Host — \(UIDevice.current.name)",
+            BootLine(text: "Keyholder — \(UIDevice.current.name)",
                      tone: .ok),
-            BootLine(text: "System — iOS "
+            BootLine(text: "Bedrock — iOS "
                         + UIDevice.current.systemVersion,
                      tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
-            out.append(BootLine(text: "Address — \(ip)",
+            out.append(BootLine(text: "Rendezvous — \(ip)",
                                 tone: .ok))
         } else {
-            out.append(BootLine(text: "No address yet",
+            out.append(BootLine(text: "No rendezvous yet",
                                 tone: .off))
         }
         let neighbors = NeighborhoodStore.shared
             .neighbors.count
         out.append(BootLine(
-            text: "Neighbors — \(neighbors) known",
+            text: "Witnesses — \(neighbors) known",
             tone: neighbors > 0 ? .ok : .off))
         out.append(BootLine(
-            text: "Library — \(book.items.count) payloads loaded",
+            text: "Arsenal — \(book.items.count) payloads loaded",
             tone: .ok))
         switch CBManager.authorization {
         case .allowedAlways:
             out.append(BootLine(
-                text: "Bluetooth — permission granted",
+                text: "Ears — permission granted",
                 tone: .ok))
         case .denied, .restricted:
             out.append(BootLine(
-                text: "Bluetooth — permission denied",
+                text: "Ears — permission denied",
                 tone: .warn))
         default:
             out.append(BootLine(
-                text: "Bluetooth — permission undecided",
+                text: "Ears — permission undecided",
                 tone: .off))
         }
         out.append(stealthMode
-            ? BootLine(text: "Stealth — on, unlisted and silent",
+            ? BootLine(text: "Veil — drawn, unlisted and silent",
                        tone: .ok)
-            : BootLine(text: "Stealth — off", tone: .off))
+            : BootLine(text: "Veil — lifted", tone: .off))
         if Wallpaper.image != nil
             || UIImage(named: "AppBackground") != nil {
-            out.append(BootLine(text: "Wallpaper — loaded",
+            out.append(BootLine(text: "Curtain — in place",
                                 tone: .ok))
         } else {
-            out.append(BootLine(text: "Wallpaper — missing",
+            out.append(BootLine(text: "Curtain — missing",
                                 tone: .off))
         }
         out.append(BootLine(
-            text: "Time — \(Self.clockFormatter.string(from: Date()))",
+            text: "Epoch — \(Self.clockFormatter.string(from: Date()))",
             tone: .ok))
+        // The seal on the manifest: the build's
+        // own provenance, stamped in as it was
+        // built — the ceremony certifying itself.
+        if let stamp = SourceStamp.shortCommit {
+            out.append(BootLine(
+                text: "Provenance — \(stamp)",
+                tone: .ok))
+        }
         // The closing line — "the world is yours" —
         // is not a log line: it is the finale,
         // delivered by the title block itself on
@@ -862,7 +873,7 @@ struct BootView: View {
                                 radius: 5, x: 0, y: 1)
                     Text(finale
                          ? "the world is yours"
-                         : "FIELD UNIT")
+                         : "UNDER SEAL")
                         .font(.system(.caption2,
                                       design: .monospaced))
                         .tracking(2)
@@ -878,7 +889,7 @@ struct BootView: View {
                 Spacer()
                 VStack(spacing: 10) {
                     orbView
-                    Text("LOADING THE NIGHT")
+                    Text("DERIVING THE NIGHT")
                         .font(.system(.caption2,
                                       design: .monospaced))
                         .tracking(3)
