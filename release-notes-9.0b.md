@@ -67,3 +67,16 @@
   on the heels of a refusal
   gets its reason in her own
   voice.
+- **She warms up slowly.** Pride
+  is a reservoir now, not a
+  trophy flash: deeds fill it a
+  measure at a time — praise
+  included — and no single
+  knock or finding crowns her.
+  Feelings hold their scene,
+  twelve minutes, instead of
+  flipping at a threshold, and
+  a slow energy under them all
+  follows the day: the small
+  hours answer slower, a wired
+  afternoon quicker.

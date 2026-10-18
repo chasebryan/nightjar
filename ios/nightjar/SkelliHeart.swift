@@ -196,11 +196,74 @@ final class SkelliHeart: ObservableObject {
         return min(100, 15 + 6 * hours)
     }
 
-    static func pride(lastTriumph: Date?, now: Date)
+    /// Pride is a reservoir, not a trophy flash:
+    /// deeds pour into it a measure at a time
+    /// (raisePride), and it settles toward a
+    /// modest baseline as the hours pass. It was
+    /// once DERIVED from the last triumph — any
+    /// single knock at the door reset it to
+    /// full, and she wore the crown for hours
+    /// after nothing at all (the operator's
+    /// standing complaint, 2026-10-18).
+    static func settlePride(_ stored: Double,
+                            storedAt: Date?,
+                            now: Date) -> Double {
+        guard let storedAt else { return stored }
+        let hours = now.timeIntervalSince(storedAt) / 3600
+        let drift = 3 * hours
+        if stored > 15 { return max(15, stored - drift) }
+        return min(15, stored + drift)
+    }
+
+    /// Her energy: a slow axis under the
+    /// feelings — the hour's own tide, lifted by
+    /// recent talk, lowered by long quiet. It
+    /// shades how fast she answers and whether
+    /// a high itch reads as feral or merely
+    /// restless; it never snaps.
+    static func energy(hour: Int, quietHours: Double,
+                       minutesSinceSpoke: Double?)
         -> Double {
-        guard let lastTriumph else { return 0 }
-        let hours = now.timeIntervalSince(lastTriumph) / 3600
-        return max(0, 100 - 12 * hours)
+        let base: Double
+        switch hour {
+        case 0..<5: base = 25
+        case 5..<8: base = 42
+        case 8..<12: base = 66
+        case 12..<17: base = 76
+        case 17..<21: base = 60
+        default: base = 40
+        }
+        var value = base
+        if let minutes = minutesSinceSpoke {
+            if minutes < 10 { value += 10 }
+            else if minutes > 180 { value -= 12 }
+        }
+        if quietHours >= 6 { value -= 10 }
+        return min(95, max(8, value))
+    }
+
+    /// Whether a new feeling may take the
+    /// stage. Feelings hold their scene — twelve
+    /// minutes — instead of flipping the instant
+    /// a threshold is crossed; what breaks
+    /// through without waiting is mad, in both
+    /// directions, because an offense and its
+    /// cooling keep their own clock.
+    static func settleFeeling(
+        shown: SkelliFeeling?, since: Date?,
+        candidate: SkelliFeeling, now: Date)
+        -> (feeling: SkelliFeeling, changed: Bool) {
+        guard let shown, let since else {
+            return (candidate, true)
+        }
+        if candidate == shown { return (shown, false) }
+        if candidate == .mad || shown == .mad {
+            return (candidate, true)
+        }
+        if now.timeIntervalSince(since) >= 720 {
+            return (candidate, true)
+        }
+        return (shown, false)
     }
 
     /// Fondness lives in storage because events, not
@@ -222,7 +285,8 @@ final class SkelliHeart: ObservableObject {
                         quietHours: Double,
                         hour: Int = 12,
                         unnamed: Int = 0,
-                        drift: Int = 0) -> SkelliFeeling {
+                        drift: Int = 0,
+                        energy: Double = 60) -> SkelliFeeling {
         if madFresh { return .mad }
         // Pride at its peak curdles into smug.
         if pride >= 85 && fondness >= 35 { return .smug }
@@ -237,7 +301,9 @@ final class SkelliHeart: ObservableObject {
         if fondness >= 70 && attention >= 55 {
             return .loving
         }
-        if itch >= 85 { return .feral }
+        // Feral needs the energy for it: the same
+        // itch on a drained night reads restless.
+        if itch >= 85 && energy >= 40 { return .feral }
         // The small hours change her: a long quiet
         // after midnight is not sleepiness, it is
         // haunting — she has been alone with the dark.
@@ -290,7 +356,45 @@ final class SkelliHeart: ObservableObject {
         Self.itch(lastAction: lastAction, now: Date())
     }
     var pride: Double {
-        Self.pride(lastTriumph: lastTriumph, now: Date())
+        let stored = defaults.object(
+            forKey: "heart.pride") as? Double ?? 0
+        return Self.settlePride(
+            stored, storedAt: anchor("heart.prideAt"),
+            now: Date())
+    }
+
+    private func raisePride(by amount: Double) {
+        let now = Date()
+        let stored = defaults.object(
+            forKey: "heart.pride") as? Double ?? 0
+        let settled = Self.settlePride(
+            stored, storedAt: anchor("heart.prideAt"),
+            now: now)
+        defaults.set(min(100, settled + amount),
+                     forKey: "heart.pride")
+        setAnchor("heart.prideAt", now)
+    }
+
+    var energy: Double {
+        let quiet = lastSpoke.map {
+            Date().timeIntervalSince($0) / 3600
+        } ?? 24
+        let minutes = lastSpoke.map {
+            Date().timeIntervalSince($0) / 60
+        }
+        return Self.energy(
+            hour: Calendar.current.component(
+                .hour, from: Date()),
+            quietHours: quiet,
+            minutesSinceSpoke: minutes)
+    }
+
+    /// The energy in a word, for her sitrep.
+    var energyWord: String {
+        let value = energy
+        if value < 35 { return "low" }
+        if value > 72 { return "wired" }
+        return "steady"
     }
     var fondness: Double {
         let stored = defaults.object(
@@ -304,7 +408,9 @@ final class SkelliHeart: ObservableObject {
             Date().timeIntervalSince($0) < 1800
         } ?? false
     }
-    var feeling: SkelliFeeling {
+    /// The feeling the rules would name right
+    /// now — before inertia has its say.
+    private var candidateFeeling: SkelliFeeling {
         let quiet = lastSpoke.map {
             Date().timeIntervalSince($0) / 3600
         } ?? 24
@@ -321,7 +427,31 @@ final class SkelliHeart: ObservableObject {
             madFresh: madFresh, quietHours: quiet,
             hour: Calendar.current.component(
                 .hour, from: Date()),
-            unnamed: unnamed, drift: drift)
+            unnamed: unnamed, drift: drift,
+            energy: energy)
+    }
+
+    /// The feeling she is actually wearing. The
+    /// candidate passes through inertia
+    /// (settleFeeling): a mood holds its scene
+    /// for twelve minutes instead of flipping at
+    /// a threshold, so her changes read as
+    /// transitions, not switches.
+    var feeling: SkelliFeeling {
+        let candidate = candidateFeeling
+        guard enabled else { return candidate }
+        let shown = defaults.string(
+            forKey: "heart.shownFeeling")
+            .flatMap(SkelliFeeling.init(rawValue:))
+        let settled = Self.settleFeeling(
+            shown: shown, since: anchor("heart.shownSince"),
+            candidate: candidate, now: Date())
+        if settled.changed {
+            defaults.set(settled.feeling.rawValue,
+                         forKey: "heart.shownFeeling")
+            setAnchor("heart.shownSince", Date())
+        }
+        return settled.feeling
     }
 
     /// Boldness: how hard she pushes her wants. It grows
@@ -415,10 +545,15 @@ final class SkelliHeart: ObservableObject {
         pulse += 1
     }
 
-    func noteTriumph() {
+    /// A deed done well. Pride takes a MEASURE
+    /// of it, never the whole cup: a finding is
+    /// worth less than a campaign won, and no
+    /// single one of either crowns her.
+    func noteTriumph(_ weight: Double = 18) {
         guard enabled else { return }
         setAnchor("heart.lastTriumph", Date())
         bump("heart.triumphs")
+        raisePride(by: weight)
         pulse += 1
     }
 
@@ -433,6 +568,8 @@ final class SkelliHeart: ObservableObject {
     func noteKindness() {
         guard enabled else { return }
         raiseFondness(by: 8)
+        // Praise is pride honestly earned.
+        raisePride(by: 8)
         erodeGrudge(byMinutes: 45)
         pulse += 1
     }

@@ -1123,9 +1123,11 @@ final class Emcon: ObservableObject {
             self.knockEngine.note(source: labeled, port: port,
                                   proto: proto, verdict: verdict)
             // A knock at the door is a finding too:
-            // her pride hears about it.
+            // her pride hears about it — a small
+            // measure of it; a knock is the house
+            // being noticed, not a deed of hers.
             if !mine {
-                SkelliHeart.shared.noteTriumph()
+                SkelliHeart.shared.noteTriumph(6)
             }
             self.maybeEscalate(source: labeled, port: port,
                                proto: proto, verdict: verdict,

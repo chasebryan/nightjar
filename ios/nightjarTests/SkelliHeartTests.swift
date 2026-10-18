@@ -33,10 +33,64 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(
             SkelliHeart.itch(lastAction: nil, now: now),
             65, accuracy: 0.01)
+    }
+
+    func testPrideSettlesTowardModesty() {
+        // The reservoir drains at 3 an hour
+        // toward a baseline of 15 — one triumph
+        // no longer crowns her for an afternoon.
         XCTAssertEqual(
-            SkelliHeart.pride(
-                lastTriumph: hoursAgo(5), now: now),
-            40, accuracy: 0.01)
+            SkelliHeart.settlePride(
+                75, storedAt: hoursAgo(5), now: now),
+            60, accuracy: 0.01)
+        XCTAssertEqual(
+            SkelliHeart.settlePride(
+                75, storedAt: hoursAgo(100), now: now),
+            15, accuracy: 0.01)
+        XCTAssertEqual(
+            SkelliHeart.settlePride(
+                0, storedAt: nil, now: now),
+            0, accuracy: 0.01)
+    }
+
+    func testFeelingsHoldTheirScene() {
+        let shownAt = now.addingTimeInterval(-300)
+        // Five minutes into a mood, a new
+        // candidate waits.
+        let held = SkelliHeart.settleFeeling(
+            shown: .content, since: shownAt,
+            candidate: .proud, now: now)
+        XCTAssertEqual(held.feeling, .content)
+        XCTAssertFalse(held.changed)
+        // Thirteen minutes in, the scene turns.
+        let turned = SkelliHeart.settleFeeling(
+            shown: .content,
+            since: now.addingTimeInterval(-780),
+            candidate: .proud, now: now)
+        XCTAssertEqual(turned.feeling, .proud)
+        XCTAssertTrue(turned.changed)
+        // Mad breaks through at once, both ways.
+        let flashed = SkelliHeart.settleFeeling(
+            shown: .content, since: shownAt,
+            candidate: .mad, now: now)
+        XCTAssertEqual(flashed.feeling, .mad)
+        let cooled = SkelliHeart.settleFeeling(
+            shown: .mad, since: shownAt,
+            candidate: .content, now: now)
+        XCTAssertEqual(cooled.feeling, .content)
+    }
+
+    func testEnergyFollowsTheDay() {
+        XCTAssertLessThan(
+            SkelliHeart.energy(
+                hour: 3, quietHours: 9,
+                minutesSinceSpoke: 400),
+            35)
+        XCTAssertGreaterThan(
+            SkelliHeart.energy(
+                hour: 13, quietHours: 0,
+                minutesSinceSpoke: 5),
+            72)
     }
 
     func testFondnessSettlesTowardBaseline() {

@@ -758,6 +758,13 @@ final class SkelliCenter: ObservableObject {
         case .loving, .tender: base *= 1.1
         default: break
         }
+        // Her energy shades the pause too: a
+        // drained hour answers a breath slower,
+        // a wired one a breath quicker — drift,
+        // never a snap.
+        let energy = SkelliHeart.shared.energy
+        if energy < 35 { base *= 1.2 }
+        else if energy > 72 { base *= 0.9 }
         return min(base, 4.5)
     }
 
@@ -1968,7 +1975,8 @@ final class SkelliCenter: ObservableObject {
                 + "\(heart.feeling.word) — attention "
                 + "\(Int(heart.attention)), itch "
                 + "\(Int(heart.itch)), pride "
-                + "\(Int(heart.pride))")
+                + "\(Int(heart.pride)), energy "
+                + heart.energyWord)
         }
         if let emcon = emcon, let mouth = mouth {
             let score = emcon.currentScore(mouth: mouth)
