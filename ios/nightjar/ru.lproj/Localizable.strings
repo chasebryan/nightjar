@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "Погода для мыслей. Провод держу я.";
 "Careful — flattery works on me." = "Осторожно: лесть на меня действует.";
 "Mm. Keep agreeing with me. I dare you." = "Мм. Продолжай соглашаться. Спорим, не осмелишься.";
+"%lld days ago." = "%lld дн. назад.";
+"%lld days from today." = "Через %lld дн.";
+"1 day ago." = "1 день назад.";
+"1 day from today." = "Через 1 день.";
+"That is today." = "Это сегодня.";

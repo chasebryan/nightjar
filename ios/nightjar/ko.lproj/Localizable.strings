@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "생각하는 날씨야. 회선은 내가 잡을게.";
 "Careful — flattery works on me." = "조심해——아첨은 나한테 통해.";
 "Mm. Keep agreeing with me. I dare you." = "음. 계속 동의해 봐. 할 수 있으면.";
+"%lld days ago." = "%lld일 전.";
+"%lld days from today." = "오늘로부터 %lld일 후.";
+"1 day ago." = "1일 전.";
+"1 day from today." = "오늘로부터 1일 후.";
+"That is today." = "바로 오늘이야.";

@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "Temps de réflexion. Je tiens le fil.";
 "Careful — flattery works on me." = "Attention — la flatterie marche sur moi.";
 "Mm. Keep agreeing with me. I dare you." = "Mm. Continue de me donner raison. Je t'y invite.";
+"%lld days ago." = "Il y a %lld jours.";
+"%lld days from today." = "À %lld jours d'aujourd'hui.";
+"1 day ago." = "Il y a 1 jour.";
+"1 day from today." = "À 1 jour d'aujourd'hui.";
+"That is today." = "C'est aujourd'hui.";

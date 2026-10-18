@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "طقس تفكير. سأمسك السلك.";
 "Careful — flattery works on me." = "احذر — الإطراء ينفع معي.";
 "Mm. Keep agreeing with me. I dare you." = "مم. واصل موافقتي. أتحداك.";
+"%lld days ago." = "قبل %lld يومًا.";
+"%lld days from today." = "بعد %lld يومًا من اليوم.";
+"1 day ago." = "قبل يوم واحد.";
+"1 day from today." = "بعد يوم واحد من اليوم.";
+"That is today." = "إنه اليوم.";

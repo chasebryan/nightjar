@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "Denk-Wetter. Ich halte die Leitung.";
 "Careful — flattery works on me." = "Vorsicht — Schmeichelei wirkt bei mir.";
 "Mm. Keep agreeing with me. I dare you." = "Mm. Stimm mir weiter zu. Wenn du dich traust.";
+"%lld days ago." = "Vor %lld Tagen.";
+"%lld days from today." = "In %lld Tagen.";
+"1 day ago." = "Vor 1 Tag.";
+"1 day from today." = "In 1 Tag.";
+"That is today." = "Das ist heute.";

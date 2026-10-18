@@ -386,6 +386,95 @@ enum Almanac {
         return f.string(from: date)
     }
 
+    /// Date arithmetic for any date, not only
+    /// her named days: "how many days until
+    /// march 3", "how long since june 5",
+    /// "what day is december 25", "what date
+    /// is it in 30 days". Exact calendar math,
+    /// answered with the date spelled in full.
+    /// Nil when the ask carries no readable
+    /// date or no date question.
+    static func dateMath(_ q: String) -> String? {
+        let today = cal.startOfDay(for: Date())
+        func dayDiff(_ target: Date) -> Int {
+            cal.dateComponents(
+                [.day], from: today,
+                to: cal.startOfDay(for: target)).day
+                ?? 0
+        }
+        func countPhrase(_ days: Int) -> String {
+            if days == 0 { return L("That is today.") }
+            if days > 0 {
+                return days == 1
+                    ? L("1 day from today.")
+                    : String(format: L("%lld days from today."), days)
+            }
+            return days == -1
+                ? L("1 day ago.")
+                : String(format: L("%lld days ago."), -days)
+        }
+        // "in 30 days" / "30 days from now" /
+        // "30 days ago": a count and a direction.
+        if q.contains("days") {
+            let tokens = q.split(separator: " ")
+            for (i, token) in tokens.enumerated() {
+                guard let n = Int(token),
+                      i + 1 < tokens.count,
+                      tokens[i + 1].hasPrefix("day")
+                else { continue }
+                let ago = q.contains("ago")
+                guard ago || q.hasPrefix("in ")
+                        || q.contains("from now")
+                        || q.contains("what date")
+                        || q.contains("what day")
+                else { continue }
+                let target = cal.date(
+                    byAdding: .day,
+                    value: ago ? -n : n,
+                    to: today)!
+                return spell(target) + " — "
+                    + countPhrase(dayDiff(target))
+            }
+        }
+        // A month date, read by the same parser
+        // that reads a told birthday.
+        guard let told = parseToldBirthday(q)
+        else { return nil }
+        let questiony = q.contains("how many days")
+            || q.contains("how long")
+            || q.contains("what day")
+            || q.contains("what date")
+            || q.contains("when")
+            || q.contains("until")
+            || q.contains("since")
+        guard questiony else { return nil }
+        let thisYear = cal.component(.year,
+                                     from: Date())
+        func occurrence(_ year: Int) -> Date? {
+            makeDate(year, told.month, told.day)
+        }
+        if q.contains("since"), told.year == nil {
+            var target = occurrence(thisYear)!
+            if dayDiff(target) > 0 {
+                target = occurrence(thisYear - 1)!
+            }
+            return spell(target) + " — "
+                + countPhrase(dayDiff(target))
+        }
+        if let year = told.year {
+            guard let target = occurrence(year)
+            else { return nil }
+            return spell(target) + " — "
+                + countPhrase(dayDiff(target))
+        }
+        var target = occurrence(thisYear)!
+        if dayDiff(target) < 0 {
+            target = occurrence(thisYear + 1)!
+        }
+        return spell(target) + " — "
+            + countPhrase(dayDiff(target))
+    }
+
     /// "today" / "tomorrow" / "in 68 days" /
     /// "3 days ago", for a date against now.
     static func whenPhrase(_ date: Date,

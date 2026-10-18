@@ -1947,6 +1947,18 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Exact reasoning before the manual: a
+        // conversion or a date sum is computed
+        // on the spot, never recited about.
+        if let converted = MathEngine.conversion(q) {
+            say(converted)
+            return
+        }
+        if let dated = Almanac.dateMath(q) {
+            say(dated)
+            return
+        }
+
         // Explanations go to the manual before the
         if q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.contains("how does")

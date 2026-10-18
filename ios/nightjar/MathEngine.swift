@@ -70,6 +70,257 @@ enum MathEngine {
         return String(format: "%.10g", v)
     }
 
+    // MARK: - conversions
+
+    /// One unit: its spoken tokens, dimension,
+    /// and the exact factor to the dimension's
+    /// base (metre, gram, millilitre, byte,
+    /// second, metre/second). Temperature is
+    /// handled apart — it is a formula, not a
+    /// factor.
+    private struct Unit {
+        let symbol: String
+        let dim: String
+        let factor: Double
+    }
+
+    private static let units: [String: Unit] = {
+        var table: [String: Unit] = [:]
+        func add(_ tokens: [String], _ symbol: String,
+                 _ dim: String, _ factor: Double) {
+            for t in tokens {
+                table[t] = Unit(symbol: symbol,
+                                dim: dim, factor: factor)
+            }
+        }
+        // Length, base metre.
+        add(["mm", "millimeter", "millimeters",
+             "millimetre", "millimetres"],
+            "mm", "length", 0.001)
+        add(["cm", "centimeter", "centimeters",
+             "centimetre", "centimetres"],
+            "cm", "length", 0.01)
+        add(["m", "meter", "meters", "metre",
+             "metres"], "m", "length", 1)
+        add(["km", "kilometer", "kilometers",
+             "kilometre", "kilometres"],
+            "km", "length", 1000)
+        add(["in", "inch", "inches"],
+            "in", "length", 0.0254)
+        add(["ft", "foot", "feet"],
+            "ft", "length", 0.3048)
+        add(["yd", "yard", "yards"],
+            "yd", "length", 0.9144)
+        add(["mi", "mile", "miles"],
+            "mi", "length", 1609.344)
+        // Mass, base gram.
+        add(["g", "gram", "grams"], "g", "mass", 1)
+        add(["kg", "kilogram", "kilograms"],
+            "kg", "mass", 1000)
+        add(["oz", "ounce", "ounces"],
+            "oz", "mass", 28.349523125)
+        add(["lb", "lbs", "pound", "pounds"],
+            "lb", "mass", 453.59237)
+        // Volume, base millilitre.
+        add(["ml", "milliliter", "milliliters",
+             "millilitre", "millilitres"],
+            "ml", "volume", 1)
+        add(["l", "liter", "liters", "litre",
+             "litres"], "l", "volume", 1000)
+        add(["floz", "fluidounce", "fluidounces"],
+            "fl oz", "volume", 29.5735295625)
+        add(["cup", "cups"], "cup", "volume",
+            236.5882365)
+        add(["pt", "pint", "pints"], "pt",
+            "volume", 473.176473)
+        add(["qt", "quart", "quarts"], "qt",
+            "volume", 946.352946)
+        add(["gal", "gallon", "gallons"], "gal",
+            "volume", 3785.411784)
+        // Data, base byte (1024 steps — the
+        // computing house's measure).
+        add(["bit", "bits"], "bit", "data", 0.125)
+        add(["b", "byte", "bytes"], "B", "data", 1)
+        add(["kb", "kib"], "KB", "data", 1024)
+        add(["mb", "mib"], "MB", "data",
+            1024 * 1024)
+        add(["gb", "gib"], "GB", "data",
+            1024 * 1024 * 1024)
+        add(["tb", "tib"], "TB", "data",
+            1024 * 1024 * 1024 * 1024)
+        // Time, base second.
+        add(["s", "sec", "secs", "second",
+             "seconds"], "s", "time", 1)
+        add(["min", "mins", "minute", "minutes"],
+            "min", "time", 60)
+        add(["h", "hr", "hrs", "hour", "hours"],
+            "h", "time", 3600)
+        add(["day", "days"], "days", "time", 86400)
+        add(["wk", "wks", "week", "weeks"],
+            "wk", "time", 604800)
+        add(["yr", "yrs", "year", "years"],
+            "yr", "time", 31557600)
+        // Speed, base metre per second.
+        add(["m/s", "mps"], "m/s", "speed", 1)
+        add(["km/h", "kmh", "kph"], "km/h",
+            "speed", 1000.0 / 3600.0)
+        add(["mph"], "mph", "speed", 0.44704)
+        add(["kn", "knot", "knots"], "kn",
+            "speed", 1852.0 / 3600.0)
+        return table
+    }()
+
+    /// Temperature, apart: the three scales by
+    /// token.
+    private static func tempUnit(_ token: String)
+        -> String? {
+        switch token {
+        case "c", "celsius", "centigrade": return "°C"
+        case "f", "fahrenheit": return "°F"
+        case "k", "kelvin", "kelvins": return "K"
+        default: return nil
+        }
+    }
+
+    /// Words with the digits pried apart from
+    /// the letters, so "5mi" and "72f" parse
+    /// like "5 mi" and "72 f".
+    private static func spaced(_ text: String)
+        -> [String] {
+        var out: [String] = []
+        for word in text.split(separator: " ") {
+            var current = ""
+            var wasDigit: Bool? = nil
+            for ch in word {
+                let isDigit = ch.isNumber || ch == "."
+                if let w = wasDigit, w != isDigit,
+                   !current.isEmpty {
+                    out.append(current)
+                    current = ""
+                }
+                wasDigit = isDigit
+                current.append(ch)
+            }
+            if !current.isEmpty {
+                out.append(current)
+            }
+        }
+        return out
+    }
+
+    /// A conversion ask, answered in one exact
+    /// line — or nil when the message is not
+    /// exactly number + unit + bridge + unit.
+    static func conversion(_ q: String)
+        -> String? {
+        var text = q.lowercased()
+            .trimmingCharacters(in: .whitespaces)
+        if text.hasSuffix("?") {
+            text = String(text.dropLast())
+        }
+        for prefix in ["please ", "convert ",
+                       "what is ", "what's ",
+                       "whats "] {
+            if text.hasPrefix(prefix) {
+                text = String(text.dropFirst(
+                    prefix.count))
+                break
+            }
+        }
+        // "how many km in 5 miles" — the target
+        // is named before the bridge.
+        var flipped = false
+        for prefix in ["how many ", "how much "] {
+            if text.hasPrefix(prefix) {
+                text = String(text.dropFirst(
+                    prefix.count))
+                flipped = true
+                break
+            }
+        }
+        text = text.replacingOccurrences(
+            of: "degrees ", with: "")
+        text = text.replacingOccurrences(
+            of: "degree ", with: "")
+        text = text.replacingOccurrences(
+            of: "fl oz", with: "floz")
+        var tokens = spaced(text)
+            .filter { $0 != "please" }
+        // A minus sign rides with its number.
+        if tokens.count >= 2 {
+            var merged: [String] = []
+            var i = 0
+            while i < tokens.count {
+                if tokens[i] == "-",
+                   i + 1 < tokens.count,
+                   Double(tokens[i + 1]) != nil {
+                    merged.append("-" + tokens[i + 1])
+                    i += 2
+                } else {
+                    merged.append(tokens[i])
+                    i += 1
+                }
+            }
+            tokens = merged
+        }
+        // Two shapes, nothing else:
+        //   plain:   number unit bridge unit
+        //   flipped: unit bridge number unit
+        // ("how many km in 5 miles").
+        let value: Double
+        let source: String
+        let targetToken: String
+        if flipped {
+            guard tokens.count == 4,
+                  tokens[1] == "to" || tokens[1] == "in",
+                  let v = Double(tokens[2]) else {
+                return nil
+            }
+            value = v
+            source = tokens[3]
+            targetToken = tokens[0]
+        } else {
+            guard tokens.count == 4,
+                  tokens[2] == "to" || tokens[2] == "in",
+                  let v = Double(tokens[0]) else {
+                return nil
+            }
+            value = v
+            source = tokens[1]
+            targetToken = tokens[3]
+        }
+        // Temperature?
+        if let fromT = tempUnit(source),
+           let toT = tempUnit(targetToken) {
+            let celsius: Double
+            switch fromT {
+            case "°F": celsius = (value - 32) * 5 / 9
+            case "K": celsius = value - 273.15
+            default: celsius = value
+            }
+            let out: Double
+            switch toT {
+            case "°F": out = celsius * 9 / 5 + 32
+            case "K": out = celsius + 273.15
+            default: out = celsius
+            }
+            guard let f = format(value),
+                  let o = format(out) else {
+                return nil
+            }
+            return "\(f) \(fromT) = \(o) \(toT)."
+        }
+        guard let from = units[source],
+              let to = units[targetToken],
+              from.dim == to.dim else {
+            return nil
+        }
+        let out = value * from.factor / to.factor
+        guard let f = format(value),
+              let o = format(out) else { return nil }
+        return "\(f) \(from.symbol) = \(o) \(to.symbol)."
+    }
+
     // MARK: - the percent shape
 
     private static func percentOf(_ text: String)

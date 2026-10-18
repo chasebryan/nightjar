@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "सोच का मौसम। तार मैं थामे हूँ।";
 "Careful — flattery works on me." = "सावधान — चापलूसी मुझ पर चलती है।";
 "Mm. Keep agreeing with me. I dare you." = "हम्म। मुझसे सहमत होते रहो। हिम्मत है तो।";
+"%lld days ago." = "%lld दिन पहले।";
+"%lld days from today." = "आज से %lld दिन बाद।";
+"1 day ago." = "1 दिन पहले।";
+"1 day from today." = "आज से 1 दिन बाद।";
+"That is today." = "वह आज ही है।";

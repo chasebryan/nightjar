@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "Tempo da pensieri. Tengo io il filo.";
 "Careful — flattery works on me." = "Attento: le lusinghe funzionano con me.";
 "Mm. Keep agreeing with me. I dare you." = "Mm. Continua a darmi ragione. Ti sfido.";
+"%lld days ago." = "%lld giorni fa.";
+"%lld days from today." = "Tra %lld giorni.";
+"1 day ago." = "1 giorno fa.";
+"1 day from today." = "Tra 1 giorno.";
+"That is today." = "È oggi.";

@@ -1619,3 +1619,8 @@
 "Thinking weather. I'll hold the wire." = "Clima de pensar. Yo sostengo el cable.";
 "Careful — flattery works on me." = "Cuidado: los halagos me funcionan.";
 "Mm. Keep agreeing with me. I dare you." = "Mm. Sigue dándome la razón. Te reto.";
+"%lld days ago." = "Hace %lld días.";
+"%lld days from today." = "A %lld días de hoy.";
+"1 day ago." = "Hace 1 día.";
+"1 day from today." = "A 1 día de hoy.";
+"That is today." = "Es hoy.";
