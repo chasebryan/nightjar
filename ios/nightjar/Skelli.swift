@@ -376,6 +376,40 @@ enum SkelliStore {
     struct Saved: Codable {
         var lines: [SkelliLine] = []
         var notes: [SkelliNote] = []
+        /// The soft clear's keeping: conversations
+        /// she has had, out of sight on the
+        /// screen, still hers underneath.
+        var archive: [SkelliLine] = []
+
+        enum CodingKeys: String, CodingKey {
+            case lines, notes, archive
+        }
+
+        init(lines: [SkelliLine] = [],
+             notes: [SkelliNote] = [],
+             archive: [SkelliLine] = []) {
+            self.lines = lines
+            self.notes = notes
+            self.archive = archive
+        }
+
+        // Tolerant by hand: a store written
+        // before the archive existed must load
+        // whole — lines, notes, and all — with
+        // the archive simply empty.
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(
+                keyedBy: CodingKeys.self)
+            lines = try c.decodeIfPresent(
+                [SkelliLine].self,
+                forKey: .lines) ?? []
+            notes = try c.decodeIfPresent(
+                [SkelliNote].self,
+                forKey: .notes) ?? []
+            archive = try c.decodeIfPresent(
+                [SkelliLine].self,
+                forKey: .archive) ?? []
+        }
     }
 
     static var fileURL: URL {
@@ -410,6 +444,11 @@ final class SkelliCenter: ObservableObject {
 
     @Published var lines: [SkelliLine] = []
     @Published var notes: [SkelliNote] = []
+    /// What the soft clear keeps: the
+    /// conversation so far, out of sight. Not
+    /// published — the screen never renders it;
+    /// only her sense of the talk reads it.
+    private(set) var archive: [SkelliLine] = []
     @Published var mood: SkelliMood = .idle
     @Published var activity: String = "Ready."
     /// After an emergency halt, her late callbacks —
@@ -523,6 +562,7 @@ final class SkelliCenter: ObservableObject {
         let saved = SkelliStore.load()
         lines = saved.lines
         notes = saved.notes
+        archive = saved.archive
         webResearchEnabled = (UserDefaults.standard
             .object(forKey: "skelli.webResearch")
             as? Bool) ?? true
@@ -586,7 +626,9 @@ final class SkelliCenter: ObservableObject {
 
     private func persist() {
         SkelliStore.save(SkelliStore.Saved(
-            lines: Array(lines.suffix(300)), notes: notes))
+            lines: Array(lines.suffix(300)),
+            notes: notes,
+            archive: Array(archive.suffix(300))))
     }
 
     func say(_ text: String) {
@@ -633,12 +675,32 @@ final class SkelliCenter: ObservableObject {
     /// The operator empties the conversation. An
     /// emptied board annoys her — it is not an
     /// offense, and she does not hold it like one.
+    /// The archive goes too: a hard clear that
+    /// secretly kept the talk would be a lie.
     func clearConversation() {
         SkelliHeart.shared.noteAnnoyance(
             "wiped our conversation")
         lines = []
+        archive = []
         pendingAction = nil
         lastDeviceIP = nil
+        persist()
+    }
+
+    /// The soft clear (Chase, 2026-10-18): the
+    /// screen empties and NOTHING is forgotten.
+    /// The conversation moves into her archive —
+    /// her sense of where the talk left off
+    /// (recentLines reads through it), her notes,
+    /// and her heart all stand, and no annoyance
+    /// is filed: tidying a screen is not wiping
+    /// a slate. Forgetting stays where it has
+    /// always lived — the hard clear, and Reset.
+    func softClearConversation() {
+        archive = Array(
+            (archive + lines).suffix(300))
+        lines = []
+        pendingAction = nil
         persist()
     }
 
@@ -646,6 +708,7 @@ final class SkelliCenter: ObservableObject {
     func resetToDefaults() {
         SkelliHeart.shared.noteOffense("reset my memory")
         lines = []
+        archive = []
         notes = []
         pendingAction = nil
         lastDeviceIP = nil
@@ -2984,6 +3047,18 @@ final class SkelliCenter: ObservableObject {
             // every other clear, delete, reset and
             // forget is answered by the guidance
             // below, exactly as before.
+            // The soft clear is not a strike at
+            // all — nothing dies — so it needs
+            // no confirmation and files no
+            // annoyance: the screen empties, and
+            // she keeps the conversation entire.
+            if softClearAsk(q) {
+                softClearConversation()
+                say("Screen's clear. I remember "
+                    + "all of it — the talk is "
+                    + "right where we left it.")
+                return
+            }
             if q.contains("delete")
                 && (q.contains("pattern")
                     || q.contains("armory")
@@ -3989,7 +4064,7 @@ final class SkelliCenter: ObservableObject {
     /// The last few exchanges, so the conversation
     /// she is in is the one she answers in.
     func recentLines() -> String {
-        lines.suffix(6).map { line in
+        (archive + lines).suffix(6).map { line in
             (line.fromOperator
              ? "Operator: " : "Skelli: ") + line.text
         }.joined(separator: "\n")
@@ -5286,6 +5361,12 @@ final class SkelliCenter: ObservableObject {
     /// respond()) strikes it, his no keeps it. The
     /// confirmations that used to live behind five
     /// different doors happen here now, in the open.
+    /// The soft clear's shapes: 'soft clear',
+    /// or the words the other way round.
+    private func softClearAsk(_ q: String) -> Bool {
+        q.contains("soft clear") || q.contains("clear soft")
+    }
+
     private func clearAsk(_ q: String) -> Bool {
         func offer(_ what: String,
                    strike: @escaping () -> String) {
@@ -5396,7 +5477,9 @@ final class SkelliCenter: ObservableObject {
             + "here, on your word: the Night log, "
             + "the Neighborhood, the Map, Knocktalk's "
             + "threads or cadence profiles, or the "
-            + "mind's memory. Reset-all-settings "
+            + "mind's memory. Or say 'soft clear' — "
+            + "the screen empties and I keep the "
+            + "conversation. Reset-all-settings "
             + "stays in About — that one is the "
             + "house's own foundation, and its tap "
             + "stays yours."
@@ -7217,6 +7300,7 @@ struct SkelliView: View {
     @AppStorage("skelli.agents")
     private var agentsEnabled = false
     @State private var confirmClear = false
+    @State private var confirmSoftClear = false
     @State private var confirmReset = false
     @FocusState private var inputFocused: Bool
     @State private var wireHistory: [Int] = []
@@ -7256,6 +7340,17 @@ struct SkelliView: View {
             Button(L("Cancel"), role: .cancel) { }
         } message: {
             Text(L("The transcript goes. What she remembers stays — forgetting that is its own act, under Reset."))
+        }
+        .confirmationDialog(
+            L("Soft clear?"),
+            isPresented: $confirmSoftClear,
+            titleVisibility: .visible) {
+            Button(L("Soft clear")) {
+                skelli.softClearConversation()
+            }
+            Button(L("Cancel"), role: .cancel) { }
+        } message: {
+            Text(L("The screen empties. She keeps the conversation — her memory of it, her notes, and her sense of where you left off all stay. Forgetting is Reset's act, not this one's."))
         }
         .confirmationDialog(
             L("Reset to defaults?"),
@@ -7595,6 +7690,25 @@ struct SkelliView: View {
                             }
                         }
                         optionsCard(nil) {
+                            Button {
+                                openDoor {
+                                    confirmSoftClear = true
+                                }
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "eraser")
+                                        .font(.system(size: 17))
+                                        .foregroundStyle(
+                                            themes.current.accent)
+                                        .frame(width: 26)
+                                    Text(L("Soft clear"))
+                                    Spacer()
+                                }
+                                .contentShape(Rectangle())
+                                .padding(.vertical, 11)
+                            }
+                            .buttonStyle(.plain)
+                            rowDivider
                             dangerRow(L("Clear conversation"),
                                       "trash") {
                                 openDoor { confirmClear = true }

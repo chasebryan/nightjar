@@ -564,6 +564,35 @@
   watch. The ticker,
   rebuilt clock-driven,
   cannot stall.
+- **Four thousand
+  makers, named.** The
+  Bluetooth company
+  table now carries
+  the SIG's entire
+  assigned registry —
+  4,021 makers — so a
+  broadcast from
+  almost anything can
+  be named, not just
+  the famous few. The
+  house's short names
+  still win where both
+  exist.
+- **The soft clear.**
+  Her options gain a
+  Soft clear: the
+  screen empties and
+  nothing is
+  forgotten — the
+  conversation moves
+  into her keeping,
+  and she still knows
+  where the talk left
+  off. By voice, too:
+  "soft clear." The
+  hard clear and Reset
+  still forget, as
+  they always have.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

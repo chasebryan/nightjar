@@ -167,6 +167,23 @@ final class DecoderTests: XCTestCase {
         XCTAssertEqual(Vendors.companyName(0xBEEF), "0xBEEF")
     }
 
+    func testCompanyRegistryCoversTheSIGList() {
+        // The whole assigned registry rides
+        // along: thousands of makers the curated
+        // table never named are decodable now.
+        XCTAssertGreaterThan(
+            CompanyRegistry.names.count, 4000)
+        XCTAssertEqual(
+            Vendors.companyName(0x0005), "3Com")
+        XCTAssertEqual(
+            Vendors.companyName(0x060F),
+            "Signify Netherlands B.V.")
+        // The house's curated short names still
+        // outrank the registry's legal names.
+        XCTAssertEqual(
+            Vendors.companyName(0x009E), "Bose")
+    }
+
     func testDeviceRowTrendAndRange() {
         var row = DeviceRow(sighting: Sighting(seenAt: 1, address: "A", name: nil, rssi: -85))
         for (index, rssi) in [-84, -83, -60, -58, -55].enumerated() {

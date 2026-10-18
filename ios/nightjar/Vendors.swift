@@ -32,7 +32,12 @@ enum Vendors {
     ]
 
     static func companyName(_ id: UInt16) -> String {
-        return companyNames[id] ?? String(format: "0x%04X", id)
+        // The house's curated short names first,
+        // then the SIG's entire registry
+        // (CompanyRegistry), then the honest hex.
+        return companyNames[id]
+            ?? CompanyRegistry.names[id]
+            ?? String(format: "0x%04X", id)
     }
 
     /// MS-CDP beacon device types.
