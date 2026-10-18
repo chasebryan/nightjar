@@ -19,6 +19,12 @@ extension SkelliCenter {
     /// the cascade's question lanes run earlier.
     func handsGate(_ q: String, raw: String) -> Bool {
         if deleteAsk(q) { return true }
+        // Macros next: "macro" is a word no other bench
+        // speaks, and a build's steps carry the forge's
+        // and the war rooms' verbs inside them — the
+        // playlist must claim the sentence before its
+        // steps can be mistaken for single orders.
+        if macroAsk(q, raw: raw) { return true }
         if forgeAsk(q, raw: raw) { return true }
         // The war rooms before the weights bench: the
         // bench's verbs are the fuzziest in the house
@@ -138,6 +144,671 @@ extension SkelliCenter {
             }
         }
         return Array(out.prefix(12))
+    }
+
+    // MARK: - Macro hands
+
+    /// Macros, by voice: run, stop, list, delete —
+    /// and build them from the operator's dictated
+    /// steps. The same MacroStore and MacroRunner the
+    /// Macros tab drives; nothing here is a second
+    /// system.
+    func macroAsk(_ q: String, raw: String) -> Bool {
+        guard q.contains("macro") else { return false }
+        let runner = MacroRunner.shared
+
+        if q.contains("status") || q.contains("how is the macro")
+            || q.contains("macro doing") {
+            if runner.running {
+                say("Running “\(runner.currentMacroName)” — "
+                    + "\(runner.currentStep).")
+            } else if !runner.lastSummary.isEmpty {
+                say("No macro is running. Last run: "
+                    + runner.lastSummary)
+            } else {
+                say("No macro is running, and none has run "
+                    + "yet this session.")
+            }
+            return true
+        }
+
+        if q.contains("delete") || q.contains("forget")
+            || q.contains("remove") {
+            var macros = MacroStore.load()
+            guard let target = bestMacro(in: q, from: macros)
+            else {
+                say(macros.isEmpty
+                    ? "There are no macros to delete."
+                    : "Which macro? The library holds: "
+                        + macroNames(macros) + ".")
+                return true
+            }
+            macros.removeAll { $0.id == target.id }
+            MacroStore.save(macros)
+            Journal.log("macro", "deleted",
+                        "“\(target.name)” deleted by voice")
+            say("Deleted “\(target.name)”.")
+            return true
+        }
+
+        if q.contains("list") || q.contains("what macros")
+            || q.contains("which macros")
+            || q.contains("show me the macros") {
+            let macros = MacroStore.load()
+            if macros.isEmpty {
+                say("No macros yet. Dictate the steps — "
+                    + "“build a macro called Night Post: "
+                    + "go dark; wait 30; sweep” — and I "
+                    + "will build it.")
+            } else {
+                say("The library: " + macros.map {
+                    "“\($0.name)” (\($0.blocks.count) block"
+                    + ($0.blocks.count == 1 ? "" : "s") + ")"
+                }.joined(separator: ", ") + ".")
+            }
+            return true
+        }
+
+        if q.contains("build") || q.contains("make")
+            || q.contains("create") || q.contains("new macro") {
+            buildMacro(q, raw: raw)
+            return true
+        }
+
+        if q.contains("add") && q.contains(" to ") {
+            addStepToMacro(q)
+            return true
+        }
+
+        if q.contains("stop") || q.contains("halt") {
+            if runner.running {
+                let name = runner.currentMacroName
+                runner.stop()
+                say("Stopped “\(name)”.")
+            } else {
+                say("No macro is running.")
+            }
+            return true
+        }
+
+        if q.contains("run") || q.contains("play")
+            || q.contains("start") {
+            guard let mouth = mouth, let post = post,
+                  let emcon = emcon else { return false }
+            if runner.running {
+                say("“\(runner.currentMacroName)” is "
+                    + "already running — stop it first.")
+                return true
+            }
+            let macros = MacroStore.load()
+            guard let target = bestMacro(in: q, from: macros)
+            else {
+                say(macros.isEmpty
+                    ? "There are no macros to run yet."
+                    : "Which macro? The library holds: "
+                        + macroNames(macros) + ".")
+                return true
+            }
+            let book = PayloadBook()
+            let problems = MacroValidator.problems(
+                in: target, book: book)
+            guard problems.isEmpty else {
+                say("“\(target.name)” is not ready: "
+                    + problems[0])
+                return true
+            }
+            runner.run(target, mouth: mouth, post: post,
+                       emcon: emcon, book: book)
+            say("Running “\(target.name)” — "
+                + "\(target.blocks.count) blocks.")
+            return true
+        }
+        return false
+    }
+
+    private func macroNames(_ macros: [Macro]) -> String {
+        macros.map { "“\($0.name)”" }
+            .joined(separator: ", ")
+    }
+
+    private func bestMacro(in q: String,
+                           from macros: [Macro]) -> Macro? {
+        macros
+            .map { ($0, warNameScore($0.name, in: q)) }
+            .filter { $0.1 > 0 }
+            .max { $0.1 < $1.1 }?.0
+    }
+
+    // MARK: building from dictated steps
+
+    private func buildMacro(_ q: String, raw: String) {
+        let book = PayloadBook()
+        var macros = MacroStore.load()
+
+        // The name, in the operator's own case.
+        var name = ""
+        let lowerRaw = raw.lowercased()
+        for marker in ["called ", "named "] {
+            if let range = lowerRaw.range(of: marker) {
+                var tail = String(raw[range.upperBound...])
+                if let cut = tail.firstIndex(of: ":") {
+                    tail = String(tail[..<cut])
+                }
+                if let cut = tail.firstIndex(of: ",") {
+                    tail = String(tail[..<cut])
+                }
+                name = tail.trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                if !name.isEmpty { break }
+            }
+        }
+        if name.isEmpty {
+            var n = macros.count + 1
+            name = "Field Macro \(n)"
+            while macros.contains(where: { $0.name == name }) {
+                n += 1
+                name = "Field Macro \(n)"
+            }
+        }
+
+        // Dressing, from the preamble (before the steps).
+        var icon = "puzzlepiece.extension.fill"
+        var colorHex = "148040"
+        let preamble = String(q.prefix(while: {
+            $0 != ":" && $0 != ";"
+        }))
+        let iconWords: [(String, String)] = [
+            ("bolt", "bolt.fill"), ("moon", "moon.fill"),
+            ("star", "star.fill"), ("shield", "shield.fill"),
+            ("flame", "flame.fill"), ("fire", "flame.fill"),
+            ("eye", "eye.fill"), ("ear", "ear.fill"),
+            ("bell", "bell.fill"), ("key", "key.fill"),
+            ("lock", "lock.fill"), ("snow", "snowflake"),
+            ("leaf", "leaf.fill"), ("crown", "crown.fill"),
+            ("globe", "globe"), ("play", "play.fill"),
+            ("list", "list.bullet"), ("sun", "sun.max.fill"),
+            ("cloud", "cloud.fill"), ("drop", "drop.fill"),
+            ("mask", "theatermasks.fill"),
+            ("target", "target"), ("scope", "scope"),
+            ("wave", "waveform"),
+            ("antenna", "antenna.radiowaves.left.and.right"),
+            ("plane", "paperplane.fill"),
+            ("puzzle", "puzzlepiece.extension.fill"),
+        ]
+        for (word, symbol) in iconWords
+        where preamble.contains(word) {
+            icon = symbol
+            break
+        }
+        let colorWords: [(String, String)] = [
+            ("red", "8E1F1F"), ("orange", "C2451E"),
+            ("gold", "C9962E"), ("yellow", "C9962E"),
+            ("green", "148040"), ("blue", "1E6FC2"),
+            ("purple", "6C3BD4"), ("violet", "6C3BD4"),
+            ("pink", "C22E6E"), ("gray", "5A6B7A"),
+            ("grey", "5A6B7A"), ("teal", "7FB3C8"),
+            ("white", "B8B2A7"),
+        ]
+        for (word, hex) in colorWords
+        where preamble.contains(word) {
+            colorHex = hex
+            break
+        }
+
+        // The steps.
+        var stepsText = q
+        if let colon = q.firstIndex(of: ":") {
+            stepsText = String(q[q.index(after: colon)...])
+        }
+        var phrases: [String]
+        if stepsText.contains(";") {
+            phrases = stepsText.split(separator: ";")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+        } else if stepsText.contains(" then ") {
+            phrases = stepsText.components(
+                separatedBy: " then ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+        } else if stepsText.contains(", ") {
+            phrases = stepsText.components(separatedBy: ", ")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+        } else {
+            phrases = [stepsText.trimmingCharacters(
+                in: .whitespaces)]
+        }
+        phrases = phrases.filter { !$0.isEmpty }
+
+        var blocks: [MacroBlock] = []
+        var unplaced: [String] = []
+        for phrase in phrases {
+            // A fragment of bare numbers right after a
+            // knock is that knock's remaining ports.
+            if let last = blocks.last, last.kind == "knock",
+               phrase.allSatisfy({
+                   $0.isNumber || $0 == " " || $0 == ","
+               }), !phrase.isEmpty {
+                var merged = last
+                let extra = phrase.split(
+                    separator: " ").compactMap {
+                    Int($0.trimmingCharacters(
+                        in: CharacterSet(charactersIn: ",")))
+                }
+                let ports = (last.intList("ports") + extra)
+                    .filter { (1...65535).contains($0) }
+                merged.config["ports"] = ports.map {
+                    String($0)
+                }.joined(separator: ", ")
+                blocks[blocks.count - 1] = merged
+                continue
+            }
+            if let block = macroStep(phrase, book: book) {
+                blocks.append(block)
+            } else {
+                unplaced.append(phrase)
+            }
+        }
+
+        guard !blocks.isEmpty else {
+            say("I couldn't place any of those steps. "
+                + "Steps I know: send, serve, beacon, "
+                + "gatt, listen, sweep, knock, fuzz, go "
+                + "dark, stealth, the banshee, a persona, "
+                + "a costume, a chest, a Helm button, the "
+                + "war room, a SIGINT watch, a challenge, "
+                + "a defense, wait, wait for an arrival, "
+                + "wait for a sighting, note, announce, "
+                + "stop — separated by semicolons.")
+            return
+        }
+
+        let macro = Macro(name: name, icon: icon,
+                          colorHex: colorHex,
+                          note: "Built by voice.",
+                          blocks: blocks)
+        macros.append(macro)
+        MacroStore.save(macros)
+        Journal.log("macro", "built",
+                    "“\(name)” built by voice — "
+                    + "\(blocks.count) blocks")
+        var reply = "Built “\(name)” — \(blocks.count) "
+            + "block\(blocks.count == 1 ? "" : "s"): "
+            + blocks.map {
+                MacroCatalog.spec($0.kind).title
+            }.joined(separator: ", ") + "."
+        if !unplaced.isEmpty {
+            reply += " I couldn't place: "
+                + unplaced.map { "“\($0)”" }
+                    .joined(separator: ", ")
+                + " — the editor can add them."
+        }
+        reply += " Say “run macro \(name)” when ready."
+        say(reply)
+    }
+
+    private func addStepToMacro(_ q: String) {
+        let parts = q.components(separatedBy: " to ")
+        guard parts.count >= 2 else { return }
+        let macroWords = parts[parts.count - 1]
+        var stepText = parts.dropLast()
+            .joined(separator: " to ")
+        if stepText.hasPrefix("add ") {
+            stepText = String(stepText.dropFirst(4))
+        }
+        if stepText.hasPrefix("a ") {
+            stepText = String(stepText.dropFirst(2))
+        }
+        if stepText.hasPrefix("the ") {
+            stepText = String(stepText.dropFirst(4))
+        }
+        var macros = MacroStore.load()
+        guard let target = bestMacro(in: macroWords,
+                                     from: macros) else {
+            say("Which macro? The library holds: "
+                + macroNames(macros) + ".")
+            return
+        }
+        guard let block = macroStep(
+            stepText.trimmingCharacters(in: .whitespaces),
+            book: PayloadBook()) else {
+            say("I couldn't place that step. Steps I "
+                + "know: send, serve, beacon, gatt, "
+                + "listen, sweep, knock, fuzz, go dark, "
+                + "stealth, the banshee, a persona, a "
+                + "costume, a chest, a Helm button, the "
+                + "war room, a SIGINT watch, a "
+                + "challenge, a defense, wait, wait for "
+                + "an arrival, note, announce, stop.")
+            return
+        }
+        guard let index = macros.firstIndex(
+            where: { $0.id == target.id }) else { return }
+        macros[index].blocks.append(block)
+        macros[index].modifiedAt = Date()
+        MacroStore.save(macros)
+        say("Added “\(MacroCatalog.spec(block.kind).title)” "
+            + "to “\(target.name)” — now "
+            + "\(macros[index].blocks.count) blocks.")
+    }
+
+    // MARK: one dictated step → one block
+
+    private func macroStep(_ rawStep: String,
+                           book: PayloadBook) -> MacroBlock? {
+        var s = rawStep.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("and ") { s = String(s.dropFirst(4)) }
+        if s.hasPrefix("then ") { s = String(s.dropFirst(5)) }
+        func block(_ kind: String,
+                   _ extra: [String: String] = [:])
+            -> MacroBlock {
+            var config = MacroCatalog.defaults(for: kind)
+            for (key, value) in extra { config[key] = value }
+            return MacroBlock(kind: kind, config: config)
+        }
+        func numbers(in text: String) -> [Double] {
+            text.split { !$0.isNumber && $0 != "." }
+                .compactMap { Double($0) }
+        }
+        func trimNum(_ d: Double) -> String {
+            d == d.rounded() ? String(Int(d)) : String(d)
+        }
+        func ipv4(in text: String) -> String? {
+            text.split(separator: " ").map(String.init)
+                .first { token in
+                    let parts = token.split(separator: ".")
+                    return parts.count == 4 && parts.allSatisfy {
+                        Int($0) != nil
+                    }
+                }
+        }
+        func tail(after marker: String, in text: String)
+            -> String? {
+            guard let range = text.range(of: marker)
+            else { return nil }
+            let value = text[range.upperBound...]
+                .trimmingCharacters(in: .whitespaces)
+            return value.isEmpty ? nil : value
+        }
+        func bestName(_ names: [String], in text: String)
+            -> String? {
+            names.map { ($0, warNameScore($0, in: text)) }
+                .filter { $0.1 > 0 }
+                .max { $0.1 < $1.1 }?.0
+        }
+
+        // Passive first — waits carry other verbs inside
+        // them ("wait for serve to answer" must not
+        // become a Serve block).
+        if s.contains("wait for") || s.contains("arrival")
+            && s.contains("wait") {
+            if s.contains("sighting") || s.contains("device")
+                || s.contains("see") {
+                var extra: [String: String] = [:]
+                if let match = tail(after: "matching ",
+                                    in: s) ?? tail(
+                                        after: "named ", in: s) {
+                    extra["match"] = match
+                }
+                if let n = numbers(in: s).last {
+                    extra["seconds"] = trimNum(n)
+                }
+                if s.contains("stop the playlist")
+                    || s.contains("stop on timeout") {
+                    extra["onTimeout"] = "Stop the playlist"
+                }
+                return block("waitSighting", extra)
+            }
+            var extra: [String: String] = [:]
+            if let n = numbers(in: s).last {
+                extra["seconds"] = trimNum(n)
+            }
+            if s.contains("stop the playlist")
+                || s.contains("stop on timeout") {
+                extra["onTimeout"] = "Stop the playlist"
+            }
+            return block("waitInbox", extra)
+        }
+        if s.hasPrefix("wait") || s.hasPrefix("pause")
+            || s.hasPrefix("hold") {
+            var seconds = numbers(in: s).first ?? 10
+            if s.contains("minute") { seconds *= 60 }
+            return block("wait", ["seconds": trimNum(seconds)])
+        }
+        if s.hasPrefix("note") {
+            let text = tail(after: "note", in: s)?
+                .trimmingCharacters(
+                    in: CharacterSet(charactersIn: " :"))
+                ?? ""
+            return block("note", ["text": text])
+        }
+        if s.hasPrefix("announce") || s.hasPrefix("notify") {
+            let verb = s.hasPrefix("announce")
+                ? "announce" : "notify"
+            let text = tail(after: verb, in: s)?
+                .trimmingCharacters(
+                    in: CharacterSet(charactersIn: " :"))
+                ?? ""
+            return block("announce", ["text": text])
+        }
+        if s == "stop" || s == "stop the playlist"
+            || s == "end" || s == "end the playlist" {
+            return block("stop")
+        }
+
+        // Posture.
+        if s.contains("go dark") || s == "dark"
+            || s.contains("emcon on") {
+            return block("emconOn")
+        }
+        if s.contains("stand down") || s.contains("emcon off") {
+            return block("emconOff")
+        }
+        if s.contains("stealth") {
+            return block("stealth",
+                         ["on": s.contains("off")
+                            ? "off" : "on"])
+        }
+        if s.contains("banshee") || s.contains("scream")
+            || s.contains("cease") {
+            let cease = s.contains("cease")
+                || s.contains("silence")
+                || s.contains("stop")
+            return block("banshee",
+                         ["mode": cease ? "Cease" : "Scream"])
+        }
+
+        // Serve.
+        if s.contains("serve") {
+            if s.contains("stop") || s.contains("down")
+                || s.contains("off") {
+                return block("serveStop")
+            }
+            var extra: [String: String] = [:]
+            if s.contains("stealth on") {
+                extra["stealth"] = "On"
+            } else if s.contains("stealth off") {
+                extra["stealth"] = "Off"
+            }
+            return block("serveStart", extra)
+        }
+
+        // Air.
+        if s.contains("beacon") {
+            if s.contains("stop") || s.contains("off")
+                || s.contains("down") {
+                return block("beaconStop")
+            }
+            var extra: [String: String] = [:]
+            if let payload = bestName(
+                book.items.map { $0.name }, in: s) {
+                extra["payload"] = payload
+            }
+            if let airName = tail(after: "named ", in: s)
+                ?? tail(after: "as ", in: s) {
+                extra["name"] = airName
+            }
+            return block("beaconStart", extra)
+        }
+        if s.contains("gatt") {
+            if s.contains("stop") || s.contains("off")
+                || s.contains("down") {
+                return block("gattStop")
+            }
+            var extra: [String: String] = [:]
+            if let payload = bestName(
+                book.items.map { $0.name }, in: s) {
+                extra["payload"] = payload
+            }
+            if let airName = tail(after: "named ", in: s)
+                ?? tail(after: "as ", in: s) {
+                extra["name"] = airName
+            }
+            return block("gattStart", extra)
+        }
+
+        // Listen & Recon.
+        if s.contains("listen") {
+            if s.contains("stop") || s.contains("off")
+                || s.contains("close") {
+                return block("listenStop")
+            }
+            var extra: [String: String] = [:]
+            if let label = tail(after: "as ", in: s) {
+                extra["label"] = label
+            }
+            return block("listenStart", extra)
+        }
+        if s.contains("sweep") {
+            return block("sweep")
+        }
+        if s.contains("knock") {
+            guard let host = ipv4(in: s) else { return nil }
+            let words = s.replacingOccurrences(
+                of: host, with: " ")
+            let ports = numbers(in: words)
+                .map { Int($0) }
+                .filter { (1...65535).contains($0) }
+            var extra: [String: String] = [
+                "host": host,
+                "ports": ports.map { String($0) }
+                    .joined(separator: ", "),
+            ]
+            if s.contains("udp") { extra["udp"] = "on" }
+            return block("knock", extra)
+        }
+        if s.contains("fuzz") {
+            if s.contains("stop") || s.contains("off") {
+                return block("fuzzStop")
+            }
+            var extra: [String: String] = [:]
+            if let token = s.split(separator: " ")
+                .map(String.init)
+                .first(where: { $0.contains(":")
+                    || $0.contains(".") }) {
+                extra["target"] = token
+            }
+            if let n = numbers(in: s).last, n >= 10,
+               s.contains("packet") {
+                extra["count"] = trimNum(n)
+            }
+            return block("fuzzStart", extra)
+        }
+
+        // The war rooms.
+        if s.contains("assault") {
+            let disarm = s.contains("disarm")
+                || s.contains("off") || s.contains("down")
+            return block("assault",
+                         ["mode": disarm ? "Disarm" : "Arm"])
+        }
+        if s.contains("war room") {
+            return block("warRoom",
+                         ["mode": s.contains("stop")
+                            ? "Stop" : "Start"])
+        }
+        if s.contains("sigint")
+            || s.contains("watch") && s.contains("station") {
+            var extra: [String: String] = [:]
+            if s.contains("air") && !s.contains("wire") {
+                extra["scope"] = "air"
+            } else if s.contains("wire")
+                        && !s.contains("air") {
+                extra["scope"] = "wire"
+            }
+            if let watchName = tail(after: "called ", in: s)
+                ?? tail(after: "named ", in: s) {
+                extra["name"] = watchName
+            }
+            return block("sigintWatch", extra)
+        }
+        if s.contains("challenge") {
+            guard let ip = ipv4(in: s) else { return nil }
+            return block("warChallenge", ["ip": ip])
+        }
+        if s.contains("defen") {
+            let ports = numbers(in: s).map { Int($0) }
+                .filter { (1...65535).contains($0) }
+            var extra: [String: String] = [
+                "doors": ports.map { String($0) }
+                    .joined(separator: ", "),
+            ]
+            if let decoys = tail(after: "decoys ", in: s) {
+                extra["decoys"] = decoys
+            }
+            return block("warDefense", extra)
+        }
+        if s.contains("chest") {
+            guard let chest = bestName(
+                MacroNames.chestNames(), in: s) else {
+                return nil
+            }
+            return block("chestApply", ["chest": chest])
+        }
+        if s.contains("persona") {
+            if s.contains("drop") || s.contains("take off")
+                || s.contains("remove") {
+                return block("persona", ["mode": "Drop"])
+            }
+            guard let persona = bestName(
+                MacroNames.personaNames(), in: s) else {
+                return nil
+            }
+            return block("persona",
+                         ["mode": "Don", "name": persona])
+        }
+        if s.contains("costume") || s.contains("wear") {
+            let name = bestName(MacroNames.costumeNames(),
+                                in: s)
+                ?? tail(after: "costume ", in: s)
+                ?? tail(after: "wear ", in: s)
+                ?? ""
+            guard !name.isEmpty else { return nil }
+            return block("costume", ["name": name])
+        }
+        if s.contains("helm") || s.contains("fire") {
+            guard let remote = bestName(
+                MacroNames.remoteNames(), in: s),
+                  let button = bestName(
+                    MacroNames.helmButtons(remote: remote),
+                    in: s) else {
+                return nil
+            }
+            return block("helmFire",
+                         ["remote": remote, "button": button])
+        }
+        if s.contains("send") {
+            guard let payload = bestName(
+                book.items.map { $0.name }, in: s) else {
+                return nil
+            }
+            var extra: [String: String] = ["payload": payload]
+            if let target = tail(after: "to ", in: s)?
+                .split(separator: " ").first {
+                extra["target"] = String(target)
+            } else if let host = ipv4(in: s) {
+                extra["target"] = host
+            }
+            return block("sendPayload", extra)
+        }
+        return nil
     }
 
     /// The war rooms, by voice — the 7.0.0 campaign under

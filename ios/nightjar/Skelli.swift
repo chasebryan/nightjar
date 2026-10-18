@@ -151,6 +151,18 @@ enum SkelliKnowledge {
                        "persona", "disguise", "beacon name"],
             body: "The names and shapes this device wears. A costume renames the beacon and the GATT host; a mimicry persona dresses the whole device as a class of thing — a printer, a TV, a speaker — name, greeting and Serve dress together, until the shape is dropped and the wardrobe it found is restored. The rack also dresses the phone as the network's own gear — an access point, a gateway, a mesh node, a media server, a hub — worn on the air name, the listeners, the replies, and a listed posture; iOS lets no app broadcast an SSID, so the access point is a service presence in character, never a fake radio. Generic shapes only: the device's own addresses stay its own, nothing copies a real device's identity, and there are no fake trackers in the rack."),
         SkelliEntry(
+            id: "macros", title: "Macros",
+            home: "the Macros tab",
+            keywords: ["macro", "macros", "playlist",
+                       "automation", "blocks", "sequence"],
+            body: "Playlists of the house's own moves, built block by block — the app's whole instrument as Lego. Every engine is a block kind; a block folds open where it sits to be configured — pickers, toggles and fields that drop down and close back up — and blocks drag into order, repeat if asked, and run in sequence under one runner. A macro is the operator's own: a name, an icon, a colour, a note. Three templates wait in the library, the library exports and imports as nightjar-macros.json (imports land as copies), and every run is journaled and leaves a run log on screen. You build them too: 'build a macro called Night Post: go dark; wait 30; sweep' — and you run, stop, list and delete them by voice. A block that cannot run stops the run and says why; nothing pretends."),
+        SkelliEntry(
+            id: "macroblocks", title: "Macro blocks",
+            home: "the Macros tab",
+            keywords: ["macro block", "what blocks",
+                       "what can a macro", "block kinds"],
+            body: "The block catalog. Send & Serve: send a payload (book payload, target, read-the-reply), start Serve (standing settings, or custom TCP/UDP/HTTP doors with a stealth choice), stop Serve, start/stop the beacon and GATT hosting (a book payload or literal text, wearing an air name), fire a Helm button (remote, button), apply a War Chest. Posture: go dark (EMCON on), stand down EMCON, stealth on/off, the Banshee (scream or cease), wear a costume name, don or drop a mimicry persona. Listen & Recon: start/stop listening (a session label), sweep the wire (the standing trace, waited out), a Recon knock (host, ports, UDP too), start/stop the fuzzer (target, packets, length, mutations — the runner's own bench). The War Rooms: Net-Assault arm/disarm, a War Room run start/stop, a SIGINT watch (name, scope mixed/air/wire), a War Games challenge (defender address, their port, my control port), a War Games defense (real doors as ports — 9001/udp speaks its protocol — and decoy names). Flow & Passive: wait (seconds), wait for an arrival in the Serve inbox, wait for a sighting (any new device, or a name match — the ear must be listening), a journal note, an announcement (a local notification with your text), and stop the playlist. Every block also carries a repeat count."),
+        SkelliEntry(
             id: "tripwire", title: "The tripwire & prober files",
             home: "the EMCON tab",
             keywords: ["tripwire", "prober", "knocked me",
@@ -1071,7 +1083,11 @@ final class SkelliCenter: ObservableObject {
             + "raise and cease the Banshee, and "
             + "dress this device from the Spoofy "
             + "rack — costumes and whole mimicry "
-            + "shapes. You are also the "
+            + "shapes. Your macro hands: build "
+            + "playlists block by block from the "
+            + "operator's dictated steps, run them, "
+            + "stop them, and report their runs. "
+            + "You are also the "
             + "operator's programming partner: "
             + "you write complete, correct code "
             + "for anything asked. The house "

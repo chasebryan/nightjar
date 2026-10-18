@@ -82,6 +82,11 @@ struct ContentView: View {
                 .tabItem { Label("Knocktalk",
                                  systemImage: "message.badge.waveform") }
                 .tag(8)
+            MacrosView()
+                .appThemed(.macros)
+                .tabItem { Label("Macros",
+                                 systemImage: "puzzlepiece.extension.fill") }
+                .tag(10)
         }
         .tint(themes.current.accent)
         .onAppear {
