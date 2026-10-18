@@ -2152,6 +2152,7 @@ final class SkelliCenter: ObservableObject {
                 && deleteAsk(q) {
                 return
             }
+            if clearAsk(q) { return }
             say(clearGuidance(for: q))
             return
         }
@@ -4074,57 +4075,128 @@ final class SkelliCenter: ObservableObject {
         return true
     }
 
-    // MARK: guidance for the levers that stay the operator's
+    // MARK: the clears — hers to strike, on his word
 
-    private func clearGuidance(for q: String) -> String {
+    /// The clears are hers to strike — on his word,
+    /// twice. The first ask names exactly what dies
+    /// and offers the deed as a pending action; his
+    /// yes (the usual words, heard at the top of
+    /// respond()) strikes it, his no keeps it. The
+    /// confirmations that used to live behind five
+    /// different doors happen here now, in the open.
+    private func clearAsk(_ q: String) -> Bool {
+        func offer(_ what: String,
+                   strike: @escaping () -> String) {
+            self.pendingAction = { [weak self] in
+                self?.say(strike())
+            }
+            self.say(what + " It can't be undone. "
+                + "Say 'yes' and I'll strike it; "
+                + "'no' keeps it.")
+        }
         if q.contains("night log") || q.contains("journal")
             || q.contains("log") {
-            return "The Night log clears from its own "
-                + "page — the Entries section holds "
-                + "'Clear the log', behind a "
-                + "confirmation, and the seal chain "
-                + "starts fresh. Clears stay your tap."
+            offer("The Night log: every sealed entry "
+                  + "gone, and the seal chain starts "
+                  + "fresh from the next line.") {
+                Journal.clear()
+                return "Struck. The Night log is "
+                    + "empty; the chain starts fresh."
+            }
+            return true
         }
         if q.contains("neighbor") || q.contains("wire")
             || q.contains("devices") {
-            return "The Neighborhood clears from its "
-                + "board in Scan — open the Devices "
-                + "door and 'Clear the Neighborhood' "
-                + "sits at the bottom, behind a "
-                + "confirmation; their Map placements "
-                + "go with them."
+            offer("The Neighborhood: every known "
+                  + "device forgotten, their Map "
+                  + "placements with them. The wire "
+                  + "will re-learn its cast.") {
+                NeighborhoodStore.shared.clear()
+                return "Struck. The Neighborhood is "
+                    + "empty — the wire will re-learn "
+                    + "its cast."
+            }
+            return true
         }
         if q.contains("map") {
-            navigate(to: 4)
-            return "The Map resets from its own More "
-                + "menu — 'Reset the map…' — rooms and "
-                + "placements forgotten, devices kept. "
-                + "Open the Map at the top of Scan."
+            offer("The Map, reset: rooms and "
+                  + "placements forgotten. The "
+                  + "devices themselves stay.") {
+                MapStore.shared.reset()
+                return "Struck. The Map is blank — "
+                    + "no rooms, no placements."
+            }
+            return true
         }
         if q.contains("thread") || q.contains("knocktalk")
             || q.contains("cadence") {
-            return "Knocktalk's Housekeeping holds both "
-                + "doors: 'Clear all threads' and "
-                + "'Forget cadence profiles', each "
-                + "behind a confirmation. The pairing "
-                + "key is never touched."
+            guard let chat = emcon?.chat else {
+                return false
+            }
+            let threads = q.contains("thread")
+                || !q.contains("cadence")
+            let cadence = q.contains("cadence")
+            if threads && cadence {
+                offer("Knocktalk, both doors: every "
+                      + "thread — conversations and "
+                      + "cadence notes — and every "
+                      + "cadence profile. The pairing "
+                      + "key is never touched.") {
+                    chat.clearAllThreads()
+                    CadenceSeal.resetAll()
+                    return "Struck. Threads and "
+                        + "cadence profiles are gone; "
+                        + "the pairing key stands."
+                }
+            } else if cadence {
+                offer("Every cadence profile: the "
+                      + "timing fingerprints learned "
+                      + "for each peer. Threads and "
+                      + "the pairing key stay.") {
+                    CadenceSeal.resetAll()
+                    return "Struck. Every cadence "
+                        + "profile is forgotten; each "
+                        + "hand is learned again from "
+                        + "its next knocks."
+                }
+            } else {
+                offer("Every Knocktalk thread: every "
+                      + "conversation and cadence "
+                      + "note deleted. The pairing "
+                      + "key stays.") {
+                    chat.clearAllThreads()
+                    return "Struck. Knocktalk's "
+                        + "threads are gone; the "
+                        + "pairing key stands."
+                }
+            }
+            return true
         }
         if q.contains("mind") || q.contains("subconscious")
             || q.contains("facts") {
-            return "The mind's memory resets from the "
-                + "Subconscious's own Housekeeping — "
-                + "and single facts can be forgotten "
-                + "one by one in 'What the house has "
-                + "learned', where the forgetting "
-                + "itself is remembered."
+            offer("The mind's memory, reset: its "
+                  + "reckoned drift baselines, your "
+                  + "verdicts, and every learned "
+                  + "fact. The reading re-derives "
+                  + "from the record.") {
+                SubconsciousCenter.shared.reset()
+                return "Struck. The mind starts "
+                    + "fresh — baselines, verdicts, "
+                    + "and learned facts forgotten."
+            }
+            return true
         }
-        return "Every store in the house has its own "
-            + "clear, behind its own confirmation — "
-            + "the Night log, the Neighborhood, the "
-            + "Map, the mind's memory, Knocktalk's "
-            + "threads and cadence profiles, and "
-            + "reset-all-settings in About. Name one "
-            + "and I'll walk you to its door; the tap "
+        return false
+    }
+
+    private func clearGuidance(for q: String) -> String {
+        return "Name the store and I'll strike it "
+            + "here, on your word: the Night log, "
+            + "the Neighborhood, the Map, Knocktalk's "
+            + "threads or cadence profiles, or the "
+            + "mind's memory. Reset-all-settings "
+            + "stays in About — that one is the "
+            + "house's own foundation, and its tap "
             + "stays yours."
     }
 
