@@ -60,7 +60,20 @@ struct ContentView: View {
             get: { tab },
             set: { newValue in
                 if newValue != tab {
-                    Haptics.select()
+                    // A light impact, deliberately
+                    // NOT the selection generator:
+                    // three delivery roads (tab-root
+                    // observers, the platform's own
+                    // selection feedback, this setter
+                    // firing selectionChanged) all
+                    // reached the device as silence,
+                    // while the impact family is the
+                    // one the operator confirms works
+                    // everywhere else in the house.
+                    // The common payload was the
+                    // failure, so the payload changed.
+                    Haptics.tap()
+                    DevLog.note("tab → \(newValue)")
                 }
                 tab = newValue
             })
