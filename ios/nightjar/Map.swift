@@ -271,7 +271,7 @@ struct MapView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 if let watch = station.currentWatch {
-                    watchRibbon(watch.watch.name)
+                    watchRibbon(watch.name)
                 }
                 lensBar
                 canvas
