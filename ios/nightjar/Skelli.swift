@@ -1332,6 +1332,15 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Mathematics is exact or it is nothing:
+        // a question that reduces to numbers is
+        // computed on the spot, never reasoned
+        // about in prose, never estimated.
+        if let sum = MathEngine.answer(q) {
+            say(sum)
+            return
+        }
+
         // Questions about HER — what she is, who
         // made her — are answered in lore before
         // any manual page can be recited at them:
@@ -1755,11 +1764,30 @@ final class SkelliCenter: ObservableObject {
     /// in her voice, grounded in the house; when
     /// an answer needs the living web, one word
     /// says so and the browser goes instead.
+    /// A briefing, when one is asked for plainly —
+    /// the one sanctioned longer form: the thing
+    /// itself, why it matters, the deciding facts,
+    /// what remains uncertain, and a source for
+    /// the operator's own reading.
+    private func briefingNote(for q: String) -> String {
+        guard q.contains("brief me")
+                || q.contains("briefing")
+                || q.hasPrefix("brief ") else { return "" }
+        return " The operator asked for a briefing: "
+            + "give the compact brief — what it is, "
+            + "why it matters, the few facts that "
+            + "decide it, what remains uncertain, "
+            + "and a source link where one would "
+            + "help their own reading. Plain "
+            + "statements, still no fluff."
+    }
+
     func consultMindOrResearch(_ q: String) {
         let started = SkelliMind.consult(
             question: q,
             grounding: mindGrounding()
-                + SkelliHeart.shared.directive(),
+                + SkelliHeart.shared.directive()
+                + briefingNote(for: q),
             recent: recentLines()) { [weak self] verdict in
             guard let self = self else { return }
             switch verdict {
@@ -2035,9 +2063,21 @@ final class SkelliCenter: ObservableObject {
             + "evidence does. And you weigh every "
             + "reply against the moment: who is "
             + "hurting, what is at stake, what a "
-            + "careless word would cost. Answer "
-            + "like texting someone you respect: "
-            + "short lines, plain words, no essays."
+            + "careless word would cost. For "
+            + "mathematics and STEM, exactness is "
+            + "the whole game: never estimate in "
+            + "prose, never round a fact into a "
+            + "guess. If an exact answer exists "
+            + "and you are not certain of it, say "
+            + "RESEARCH and let the sources speak; "
+            + "when you do answer from knowledge, "
+            + "give the value with its unit and, "
+            + "where it would help their own "
+            + "reading, the source or paper it "
+            + "rests on. Certainty is earned per "
+            + "fact, not performed. Answer like "
+            + "texting someone you respect: short "
+            + "lines, plain words, no essays."
     }
 
     /// The last few exchanges, so the conversation
