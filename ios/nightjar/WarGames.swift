@@ -629,8 +629,10 @@ final class WarGamesCenter: ObservableObject {
     }
 
     private func writeReport(_ report: WarMatchReport) -> URL? {
-        let directory = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = (FileManager.default
+            .urls(for: .documentDirectory,
+                  in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("WarGames", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
@@ -649,8 +651,10 @@ final class WarGamesCenter: ObservableObject {
     /// My card as a shareable file, for the import road.
     func myCardURL() -> URL? {
         guard let card = myCard else { return nil }
-        let directory = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = (FileManager.default
+            .urls(for: .documentDirectory,
+                  in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("WarGames", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)

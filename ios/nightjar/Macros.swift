@@ -92,8 +92,9 @@ enum MacroStore {
         guard let data = try? encoder.encode(envelope) else {
             return nil
         }
-        let url = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = (FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("nightjar-macros.json")
         do {
             try data.write(to: url, options: .atomic)

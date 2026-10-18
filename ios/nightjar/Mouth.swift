@@ -578,8 +578,9 @@ final class Mouth: NSObject, ObservableObject {
     // MARK: Exchange history (persistent, exportable)
 
     static var exchangesURL: URL {
-        FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        (FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("exchanges.jsonl")
     }
 

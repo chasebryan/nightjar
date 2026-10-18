@@ -522,8 +522,10 @@ final class WarRun: ObservableObject {
             reconHits: reconHits,
             trace: trace,
             limitations: WarRoomExport.limitations)
-        let directory = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = (FileManager.default
+            .urls(for: .documentDirectory,
+                  in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("WarRoom", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)

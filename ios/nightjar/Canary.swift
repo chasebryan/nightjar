@@ -684,8 +684,10 @@ struct CanaryLesson: Codable, Identifiable {
 /// — small, capped, and erasable from the Serve tab.
 enum CanaryLessons {
     private static var fileURL: URL {
-        FileManager.default.urls(
-            for: .documentDirectory, in: .userDomainMask)[0]
+        (FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask).first
+         ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("canary-lessons.json")
     }
 

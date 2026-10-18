@@ -27,7 +27,7 @@ struct SessionSummary: Identifiable, Equatable {
 /// cable.
 enum SessionStore {
     static var directory: URL {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let documents = (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory)
         let folder = documents.appendingPathComponent("sessions", isDirectory: true)
         if !FileManager.default.fileExists(atPath: folder.path) {
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

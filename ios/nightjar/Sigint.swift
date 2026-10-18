@@ -609,8 +609,9 @@ final class SigintStation: ObservableObject {
     // MARK: files
 
     private var sigintDirectory: URL {
-        let directory = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = (FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("Sigint", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)
@@ -666,8 +667,9 @@ final class SigintStation: ObservableObject {
     }
 
     private func loadWatches() {
-        let url = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = (FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("Sigint")
             .appendingPathComponent("watches.json")
         guard let data = try? Data(contentsOf: url) else { return }

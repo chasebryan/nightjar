@@ -454,8 +454,9 @@ final class TraceBookStore {
     static let shared = TraceBookStore()
 
     static var logbookURL: URL {
-        FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        (FileManager.default
+            .urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("network-trace-logbook.json")
     }
     var logbookURL: URL { TraceBookStore.logbookURL }
@@ -852,8 +853,10 @@ enum TraceExportWriter {
     /// Write one run's export to Documents/Traces/ and hand
     /// back where it landed (nil when the write failed).
     static func write(_ export: TraceExport) -> URL? {
-        let directory = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = (FileManager.default
+            .urls(for: .documentDirectory,
+                  in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory)
             .appendingPathComponent("Traces", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true)

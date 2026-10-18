@@ -3417,6 +3417,17 @@ enum SkelliWeights {
            containerKey == key {
             return container
         }
+        // A different bench was chosen: release
+        // the resident model BEFORE the new one
+        // loads. Two multi-gigabyte models held
+        // at once — the old one in this static,
+        // the new one streaming in — is how a
+        // model switch dies by jetsam mid-load,
+        // and the operator reads it as a crash.
+        if container != nil {
+            container = nil
+            containerKey = nil
+        }
         let task = await loadGate.task(for: key) {
             try await makeContainer()
         }
@@ -3841,7 +3852,22 @@ final class SkelliFilmView: UIView {
     private var activeIsA = true
     private var playerA: AVPlayer?
     private var playerB: AVPlayer?
-    private var endObservers: [NSObjectProtocol] = []
+    /// The player mid-crossfade: loaded, assigned
+    /// to the hidden layer, not yet on screen.
+    /// Her mood can turn twice inside one fade, so
+    /// every later step of a fade is checked
+    /// against this identity before it touches a
+    /// layer — a step landing for a superseded
+    /// player retires THAT player, never the one
+    /// now on screen.
+    private var pending: AVPlayer?
+    /// End-of-film observers, one per live
+    /// player, retired with it. An observer per
+    /// mood change kept for the view's whole life
+    /// was a slow leak wearing a crossfade's
+    /// clothes.
+    private var endTokens:
+        [ObjectIdentifier: NSObjectProtocol] = [:]
     private var readiness: NSKeyValueObservation?
     private var current: String?
 
@@ -3875,6 +3901,18 @@ final class SkelliFilmView: UIView {
     func play(_ name: String) {
         guard name != current else { return }
         current = name
+        // A fade that never landed is superseded:
+        // retire its player before the new one
+        // takes the hidden layer. (While a player
+        // is pending, activeIsA cannot have
+        // toggled — toggles happen only when a
+        // fade lands — so the hidden layer is
+        // still the one it was assigned to.)
+        if let stale = pending {
+            retire(stale,
+                   from: activeIsA ? layerB : layerA)
+            pending = nil
+        }
         guard let url = Bundle.main.url(
             forResource: name, withExtension: "mp4")
         else { return }
@@ -3882,14 +3920,15 @@ final class SkelliFilmView: UIView {
         let player = AVPlayer(playerItem: item)
         player.isMuted = true
         player.actionAtItemEnd = .none
-        endObservers.append(
+        endTokens[ObjectIdentifier(player)] =
             NotificationCenter.default.addObserver(
                 forName: .AVPlayerItemDidPlayToEndTime,
                 object: item, queue: .main) {
                     [weak player] _ in
                     player?.seek(to: .zero)
                     player?.play()
-                })
+                }
+        pending = player
         let incoming = activeIsA ? layerB : layerA
         let outgoing = activeIsA ? layerA : layerB
         incoming.player = player
@@ -3900,11 +3939,15 @@ final class SkelliFilmView: UIView {
         readiness?.invalidate()
         readiness = item.observe(
             \.status, options: [.new]) {
-                [weak self] item, _ in
-                guard item.status == .readyToPlay
+                [weak self, weak player] item, _ in
+                guard item.status == .readyToPlay,
+                      let self, let player,
+                      self.pending === player
                 else { return }
                 DispatchQueue.main.async {
-                    guard let self = self else { return }
+                    guard self.pending === player
+                    else { return }
+                    self.pending = nil
                     self.readiness?.invalidate()
                     self.readiness = nil
                     let old = self.activeIsA
@@ -3918,25 +3961,49 @@ final class SkelliFilmView: UIView {
                     self.activeIsA.toggle()
                     DispatchQueue.main.asyncAfter(
                         deadline: .now() + 0.6) {
-                        old?.pause()
-                        outgoing.player = nil
+                        [weak self] in
+                        self?.retire(old,
+                                     from: outgoing)
                     }
                 }
             }
     }
 
-    func stop() {
-        playerA?.pause()
-        playerB?.pause()
-        for observer in endObservers {
-            NotificationCenter.default
-                .removeObserver(observer)
+    /// A player leaving the screen: paused,
+    /// unlayered only if the layer still holds
+    /// THAT player, dereferenced, and its
+    /// end-of-film observer removed.
+    private func retire(_ player: AVPlayer?,
+                        from layer: AVPlayerLayer) {
+        guard let player else { return }
+        player.pause()
+        if layer.player === player {
+            layer.player = nil
         }
-        endObservers = []
+        if layer === layerA, playerA === player {
+            playerA = nil
+        }
+        if layer === layerB, playerB === player {
+            playerB = nil
+        }
+        if let token = endTokens.removeValue(
+            forKey: ObjectIdentifier(player)) {
+            NotificationCenter.default
+                .removeObserver(token)
+        }
+    }
+
+    func stop() {
+        pending = nil
+        retire(playerA, from: layerA)
+        retire(playerB, from: layerB)
+        for token in endTokens.values {
+            NotificationCenter.default
+                .removeObserver(token)
+        }
+        endTokens = [:]
         readiness?.invalidate()
         readiness = nil
-        playerA = nil
-        playerB = nil
         current = nil
     }
 
