@@ -620,6 +620,39 @@ struct DeveloperSheet: View {
                         }
                     }
                 }
+                Section(header: Text("Haptics test")) {
+                    // Each button fires ONLY its
+                    // named beat, straight from the
+                    // tap — no UI beat of its own —
+                    // so what the operator feels (or
+                    // does not) maps one-to-one to a
+                    // generator and a strength.
+                    Button("Tap — light impact") {
+                        Haptics.tap()
+                    }
+                    Button("Tick — rigid at 0.3") {
+                        Haptics.tick()
+                    }
+                    Button("Select — rigid at 0.7") {
+                        Haptics.select()
+                    }
+                    Button("Press — medium impact") {
+                        Haptics.press()
+                    }
+                    Button("Heavy — heavy impact") {
+                        Haptics.heavy()
+                    }
+                    Button("Success — notification") {
+                        Haptics.success()
+                    }
+                    Button("Error — notification") {
+                        Haptics.error()
+                    }
+                    Button("Raw selection — retired "
+                           + "generator") {
+                        Haptics.rawSelection()
+                    }
+                }
                 Section {
                     Button("Clear all developer "
                            + "records",

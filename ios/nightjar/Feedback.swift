@@ -1615,6 +1615,21 @@ enum Haptics {
         }
     }
 
+    /// Diagnosis only: the retired selection
+    /// generator, kept prepared and fired raw
+    /// from the developer console's haptics
+    /// test, so its silence or speech on a
+    /// given device is measured, not argued.
+    private static let rawSelectionGen =
+        UISelectionFeedbackGenerator()
+
+    static func rawSelection() {
+        onMain {
+            rawSelectionGen.selectionChanged()
+            rawSelectionGen.prepare()
+        }
+    }
+
     /// A deliberate press — a primary action taken.
     static func press() {
         onMain {
