@@ -7,9 +7,9 @@
             "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
             "name": "nightjar-hack",
             "tintColor": "148040",
-            "version": "9.0a",
+            "version": "9.0b",
             "versionDate": "2026-10-20",
-            "versionDescription": "9.0a. The whole house in twelve tongues — every room, every view, and Skelli's own voice, chosen once in a first-boot welcome and kept in a language room of its own in About; her minds' thinking never reaches the transcript again. Carries the persona stack: nineteen feelings, grudges and care, exact minds, tone reading, and the end-to-end sweep. Adds a developer section of its own: a flight recorder and a crash log that explains itself, exportable as one file."
+            "versionDescription": "9.0b \u2014 gamma. The crash-proofing release: two full sweeps, the weights bench taught to keep its footing \u2014 loads refused when headroom is short, generations that cancel under memory pressure and watch their own oxygen \u2014 and backdrop films decoded on a fixed budget. No invented errands: a second reading dispatches only on the operator's own words, and \u201cdon't forget\u201d keeps what it is told. Haptics rebuilt so every beat lands. Her manners kept: no scaffolding, no speaker labels in her speech, and a why answered in her own voice."
         }
     ],
     "identifier": "net.nosuchmachine.nightjarhack.source",

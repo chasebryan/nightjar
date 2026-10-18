@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**9.0a**
+**9.0b**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
