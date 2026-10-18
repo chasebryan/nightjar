@@ -1,5 +1,89 @@
 # Changelog
 
+## 8.0b — 2026-10-17 — the vanishing
+
+- **The new boot film.**
+  The reel is new — 167
+  frames, portrait, authored
+  to play exactly once — and
+  the boot is now a ceremony
+  timed to it. The film
+  streams frame by frame
+  (one frame of memory, not
+  six hundred megabytes of
+  decoded film), the log's
+  styles stretch across its
+  6.68 seconds, the loading
+  bar fills on the film's own
+  clock, and the title
+  assembles — letters wide
+  and dim drawing together,
+  brightening — until, on
+  the last frame, the
+  subtitle gives way to the
+  finale: "> the world is
+  yours", one held beat,
+  then the fade into the app.
+- **Vanish — the emergency
+  stop.** A mutable button in
+  her pinned header: STOP
+  while anything runs,
+  Vanish when idle. One tap —
+  or the words vanish, panic,
+  stop everything, go silent —
+  halts everything she is
+  doing and takes the house
+  to full stealth: Serve, the
+  beacon and the GATT host
+  down, stealth on, EMCON
+  dark with the tripwire
+  armed. She stays hushed
+  until the operator speaks.
+- **Stealth is the
+  presumption.** She presumes
+  stealth is always desired
+  unless the operator
+  specifically says to be
+  loud — in her grounding,
+  and in her hands: a Serve
+  she raises by voice goes up
+  unlisted unless the order
+  says loud.
+- **Skelli, taught in
+  batches.** Fifty-nine new
+  manual entries in seven
+  batches beyond the rooms:
+  her doctrine, the radio and
+  wire craft underneath the
+  instruments, the rooms
+  compared, operations whole,
+  failure readings, and a
+  communication-patterns set —
+  how orders are actually
+  phrased, pronouns,
+  corrections, negation,
+  urgency, quantities, status
+  asks, being taught. Lookup,
+  her Directory and her mind
+  read them automatically.
+- **Resume, everywhere.** The
+  house reopens exactly where
+  it closed: every tab,
+  Macros included; the macro
+  editor mid-edit, its
+  blocks' fold state kept;
+  and Skelli's half-written
+  line still in her composer.
+- **Her macro ears, fixed.**
+  A dictated build is no
+  longer hijacked by its own
+  last verb — she swept
+  instead of building, once.
+  Natural-speech steps split
+  on "and", and she knows
+  disguise, mimic and pretend
+  for a persona step.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:
@@ -63,65 +147,6 @@
   runner the tab drives. Her
   manual carries the room and
   the whole block catalog.
-- **Skelli, taught in
-  batches.** Fifty-nine new
-  manual entries in seven
-  batches beyond the rooms:
-  her doctrine, the radio and
-  wire craft underneath the
-  instruments, the rooms
-  compared, operations whole,
-  failure readings, and a
-  communication-patterns set —
-  how orders are actually
-  phrased, pronouns,
-  corrections, negation,
-  urgency, quantities, status
-  asks, being taught. Lookup,
-  her Directory and her mind
-  read them automatically.
-- **Stealth is the
-  presumption.** She presumes
-  stealth is always desired
-  unless the operator
-  specifically says to be
-  loud — in her grounding,
-  and in her hands: a Serve
-  she raises by voice goes up
-  unlisted unless the order
-  says loud.
-- **Vanish — the emergency
-  stop.** A mutable button in
-  her pinned header: STOP
-  while anything runs,
-  Vanish when idle. One tap —
-  or the words vanish, panic,
-  stop everything, go silent —
-  halts everything she is
-  doing and takes the house
-  to full stealth: Serve, the
-  beacon and the GATT host
-  down, stealth on, EMCON
-  dark with the tripwire
-  armed. She stays hushed
-  until the operator speaks.
-- **Resume, everywhere.** The
-  house reopens exactly where
-  it closed: every tab,
-  Macros included; the macro
-  editor mid-edit, its
-  blocks' fold state kept;
-  and Skelli's half-written
-  line still in her composer.
-- **Her macro ears, fixed.**
-  A dictated build is no
-  longer hijacked by its own
-  last verb — she swept
-  instead of building, once.
-  Natural-speech steps split
-  on "and", and she knows
-  disguise, mimic and pretend
-  for a persona step.
 - **The whetstone rides
   along.** 8.0a also carries
   the entire 7.7.7 quality

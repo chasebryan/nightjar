@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 8.0a
+# nightjar-hack for iOS — 8.0b
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -200,6 +200,16 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
+- **What 8.0b added.** A new boot film
+  that plays exactly once, with the whole
+  boot ceremony timed to its frames;
+  Skelli taught in fifty-nine new manual
+  batches and presuming stealth unless
+  told loud; Vanish, her one-tap
+  emergency stop to full stealth; resume
+  everywhere — tabs, the macro editor,
+  her composer; and macro dictation that
+  hears whole sentences.
 - **What 8.0a added.** Macros — a tab of
   its own: playlists of the rig's moves
   built block by block. Thirty-two block
@@ -437,7 +447,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 ## Building the current build
 
-`main` carries 8.0a, and with it the build
+`main` carries 8.0b, and with it the build
 requirements that arrived with Skelli in 5.0.0.
 In the order you'll meet them:
 

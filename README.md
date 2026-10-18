@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**8.0a — "the conductor."**
+**8.0b — "the vanishing."**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -117,6 +117,24 @@ against. It boots over a living reel — the boot log typing itself across the f
   (see *Staying current*) and carries a quiet support
   door for anyone who wants to chip in toward the
   costs.
+
+## What's new in 8.0b — "the vanishing"
+
+8.0b dresses the awakening. A new boot film
+plays exactly once, and the whole boot
+ceremony is timed to it — the log, the
+loading bar, the title assembling letter by
+letter — ending on the film's last frame.
+Skelli is taught in batches: fifty-nine new
+manual entries, from doctrine to
+communication patterns, and she now presumes
+stealth unless she is specifically told to
+be loud. Her pinned header carries Vanish —
+one tap halts everything she is doing and
+takes the house to full stealth. The house
+reopens exactly where it closed, down to the
+macro editor's folded blocks, and her macro
+dictation hears whole sentences now.
 
 ## What's new in 8.0a — "the conductor"
 
