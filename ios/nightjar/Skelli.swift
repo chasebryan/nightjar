@@ -948,8 +948,6 @@ final class SkelliCenter: ObservableObject {
             + "on the wire (\(unknown) unnamed)")
         if let emcon = emcon, let mouth = mouth {
             let score = Emcon.score(
-                assaultOn: AssaultCenter.shared.running,
-                serveListeners: mouth.serveListenerCount,
                 gattHostOn: mouth.gattHostOn,
                 beaconOn: mouth.beaconOn,
                 serveRunning: mouth.serveRunning,
@@ -959,8 +957,10 @@ final class SkelliCenter: ObservableObject {
                     emcon.exposures.count,
                 announcerCount:
                     emcon.announcers.count,
+                assaultOn: AssaultCenter.shared.running,
+                serveListeners: mouth.serveListenerCount,
                 probingOn: false,
-                onLan: mouth.localIPAddress() != nil,
+                onLan: Mouth.localIPAddress() != nil,
                 hostName: emcon.hostName)
             var line = "exposure \(score.value) "
                 + "(\(score.band))"
