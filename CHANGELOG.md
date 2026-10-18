@@ -34,6 +34,17 @@
   film fills the whole screen
   now, edge to edge — no black
   bar at the top.
+- **A working boot.** The
+  subtitle under the name is
+  drawn fresh each boot from
+  a deck of phrases, the
+  manifest carries the
+  version, the ceremony can
+  no longer be skipped — and
+  while the film plays, the
+  house warms its stores, so
+  the first ask meets warm
+  machinery.
 
 ## 9.0b — 2026-10-20 — gamma
 

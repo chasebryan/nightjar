@@ -428,6 +428,438 @@ enum BootMedia {
     }
 }
 
+/// The boot's subtitle: not a fixed seal but a
+/// drawn card — one of four hundred and four
+/// phrases in the house's plaque voice, chosen
+/// fresh at every boot and held for the whole
+/// ceremony. (The finale still trades it for its
+/// own line.) The pool rides as one block of
+/// text, split at first use: a single string is
+/// cheaper for the type-checker than four
+/// hundred literals, and reads like what it is —
+/// a deck. The phrases pass through the house's
+/// `L()` seam like every other line; until a
+/// table carries them they render in English,
+/// never blank.
+enum BootSubtitles {
+    private static let block = """
+    IT LISTENS FIRST
+    SEALED AT THE SOURCE
+    NOTHING HERE IS DECORATED
+    THE HOUSE IS AWAKE
+    KEYS BEFORE DOORS
+    CARRY IT QUIETLY
+    NO NAMES ON THE WIRE
+    THE LONG WAY HOME
+    EVERYTHING IN ITS PLACE
+    THE DARK IS A ROOM
+    PATIENT AS STONE
+    WHAT THE WIRE CARRIES
+    A QUIET HOUSE IN A LOUD WORLD
+    FIRST, LISTEN
+    UNDER NO FLAG
+    SEALED, NOT HIDDEN
+    THE MERIDIAN HOLDS
+    COUNTED AND KEPT
+    THE STATIC HAS A GRAMMAR
+    EARS BEFORE HANDS
+    THE NIGHT SHIFT
+    BOARDED AND DARK
+    A HOUSE THAT LISTENS
+    THE QUIET TRADE
+    NOTHING LEAVES UNSEALED
+    THE LEDGER IS HONEST
+    DARK BY DEFAULT
+    THE WIRE REMEMBERS
+    KEPT UNDER THE HOUSE
+    A SEAL, NOT A LOCK
+    THE WEATHER INSIDE
+    LISTENING IS A DISCIPLINE
+    THE SLOW FREQUENCY
+    NO LIGHT WITHOUT LEAVE
+    THE HOUSE KEEPS ITS WORD
+    ASH AND ARCHIVE
+    THE THRESHOLD IS KEPT
+    QUIET HANDS, OPEN EARS
+    THE LONG STATIC
+    SEALED IN THE DARK
+    WHAT THE NIGHT CARRIES
+    A LANTERN, LOWERED
+    THE COMPASS RESTS
+    NOTHING HERE IS LOUD
+    THE ARCHIVE BREATHES
+    KEPT, NOT KEPT SECRET
+    THE DISTANCE IS MEASURED
+    AN HONEST LEDGER
+    THE GATE STANDS OPEN INWARD
+    WINTER IN THE WALLS
+    THE EMBER LEDGER
+    STILL ON THE WIRE
+    THE ROOM BEHIND THE ROOM
+    A MAP OF LISTENING
+    THE CURRENT REMEMBERS
+    HOLD THE FREQUENCY
+    THE NIGHT IS A HARBOR
+    SEALED WITH PATIENCE
+    THE FIELD AT NIGHT
+    NOTHING DECORATED
+    THE HOUSE STANDS ITS WATCH
+    A KEY FOR EVERY DOOR
+    THE QUIET CURRENT
+    READ THE WEATHER FIRST
+    THE STAIR GOES DOWN
+    KEPT IN THE WALLS
+    THE WELL IS DEEP
+    A SEALED ROOM, AN OPEN EAR
+    THE ROAD AT 3 AM
+    NOTHING UNCOUNTED
+    THE SKY IS AN ANTENNA
+    LOW LIGHT, LONG EARS
+    THE HARBOR AT NIGHT
+    SEALED AND CARRIED
+    THE ORCHARD AFTER DARK
+    A COLD ROOM FOR HOT KEYS
+    THE QUARRY OF STATIC
+    PATIENT CIRCUITRY
+    THE HOUSE REMEMBERS THE WAY
+    EVERY DOOR ACCOUNTED
+    THE TIDE LEDGER
+    LISTEN PAST THE STATIC
+    THE GLASS IS LISTENING
+    A WATCH, NOT A SIEGE
+    THE NIGHT LEDGER
+    KEPT UNDER SEAL AND STONE
+    THE SLOW SIGNAL
+    NOTHING HERE PERFORMS
+    THE ROOM KEEPS ITS COUNSEL
+    A QUIET INSTRUMENT
+    THE WIRE IS PATIENT
+    SEALED BEFORE SPOKEN
+    THE HOUR IS KEPT
+    AN EAR AT EVERY WALL
+    THE MAP IS NOT THE HOUSE
+    CARRIED, NOT SENT
+    THE DARK KEEPS RECEIPTS
+    A HOUSE OF LISTENING
+    THE SIGNAL IS A GUEST
+    NOTHING ARRIVES UNCOUNTED
+    THE THRESHOLD REMEMBERS
+    QUIET AS KEPT
+    THE WEATHER ON THE WIRE
+    SEALED IN PLAIN SIGHT
+    THE LONG DARK STAIR
+    A LEDGER OF WEATHER
+    THE HOUSE AT ITS POST
+    EVERY KEY ANSWERED FOR
+    THE NIGHT IS INSTRUMENTED
+    STILL LISTENING
+    THE GATE IS A QUESTION
+    KEPT CLOSE, CARRIED QUIET
+    THE FREQUENCY IS A ROOM
+    ASHES AND SIGNALS
+    THE WALLS HAVE EARS, KEPT
+    A SEAL IS A PROMISE
+    THE DISTANCE LISTENS
+    NOTHING LOST, NOTHING LOUD
+    THE STAIR REMEMBERS FEET
+    SEALED TWICE
+    THE HOUSE, DERIVING ITSELF
+    AN ARCHIVE OF NIGHTS
+    THE QUIET LEDGER
+    PATIENT AS STATIC
+    THE ROOM BELOW THE ROOM
+    CARRY NOTHING UNSEALED
+    THE WIRE KEEPS THE HOUR
+    A KEY IS A KEPT WORD
+    THE HARBOR LIGHTS, LOWERED
+    UNDER SEAL
+    UNDER GLASS
+    UNDER STONE
+    UNDER SNOW
+    UNDER ASH
+    UNDER SALT
+    UNDER IRON
+    UNDER NIGHT
+    UNDER LOCK
+    UNDER OATH
+    UNDER ICE
+    UNDER DUST
+    UNDER BONE
+    UNDER PINE
+    UNDER MOSS
+    UNDER FROST
+    UNDER RAIN
+    UNDER EARTH
+    UNDER STARS
+    UNDER SILENCE
+    UNDER WATER
+    UNDER LEAD
+    UNDER VELVET
+    UNDER OAK
+    SMOKE AND STATIC
+    SALT AND SIGNAL
+    GLASS AND WEATHER
+    IRON AND PATIENCE
+    NIGHT AND WIRE
+    KEY AND LEDGER
+    EMBER AND ASH
+    TIDE AND STONE
+    MAP AND DISTANCE
+    LANTERN AND DARK
+    QUIET AND THUNDER
+    SNOW AND CIRCUIT
+    BONE AND COPPER
+    RAIN AND FREQUENCY
+    OATH AND ARCHIVE
+    DUST AND MERIDIAN
+    PINE AND STATIC
+    FROST AND SIGNAL
+    SALT AND DISTANCE
+    STONE AND CURRENT
+    ASH AND ORCHARD
+    VELVET AND IRON
+    GLASS AND CURRENT
+    NIGHT AND LEDGER
+    KEY AND WEATHER
+    SEA AND SIGNAL
+    FIELD AND STATIC
+    ROOF AND WEATHER
+    WELL AND STONE
+    GATE AND QUESTION
+    ROAD AND WEATHER
+    HOUR AND STATIC
+    MAP AND WEATHER
+    SKY AND LEDGER
+    ROOM AND STATIC
+    EMBER AND SIGNAL
+    TIDE AND SIGNAL
+    IRON AND WEATHER
+    SNOW AND LEDGER
+    QUIET AND CURRENT
+    QUIET WIRE
+    QUIET WEATHER
+    QUIET LEDGER
+    QUIET WELL
+    PATIENT WIRE
+    PATIENT WEATHER
+    PATIENT LEDGER
+    PATIENT WELL
+    HOLLOW WIRE
+    HOLLOW WEATHER
+    HOLLOW LEDGER
+    HOLLOW WELL
+    VELVET WIRE
+    VELVET WEATHER
+    VELVET LEDGER
+    VELVET WELL
+    IRON WIRE
+    IRON WEATHER
+    IRON LEDGER
+    IRON WELL
+    AMBER WIRE
+    AMBER WEATHER
+    AMBER LEDGER
+    AMBER WELL
+    FROZEN WIRE
+    FROZEN WEATHER
+    FROZEN LEDGER
+    FROZEN WELL
+    SILENT WIRE
+    SILENT WEATHER
+    SILENT LEDGER
+    SILENT WELL
+    HIDDEN WIRE
+    HIDDEN WEATHER
+    HIDDEN LEDGER
+    HIDDEN WELL
+    RESTLESS WIRE
+    RESTLESS WEATHER
+    RESTLESS LEDGER
+    RESTLESS WELL
+    ANCIENT WIRE
+    ANCIENT WEATHER
+    ANCIENT LEDGER
+    ANCIENT WELL
+    NARROW WIRE
+    NARROW WEATHER
+    NARROW LEDGER
+    NARROW WELL
+    GENTLE WIRE
+    GENTLE WEATHER
+    GENTLE LEDGER
+    GENTLE WELL
+    PALE WIRE
+    PALE WEATHER
+    PALE LEDGER
+    PALE WELL
+    LOW WIRE
+    LOW WEATHER
+    LOW LEDGER
+    LOW WELL
+    SLOW WIRE
+    SLOW WEATHER
+    SLOW LEDGER
+    SLOW WELL
+    DEEP WIRE
+    DEEP WEATHER
+    DEEP LEDGER
+    DEEP WELL
+    FAR WIRE
+    FAR WEATHER
+    FAR LEDGER
+    FAR WELL
+    THIN WIRE
+    THIN WEATHER
+    THIN LEDGER
+    THIN WELL
+    SOFT WIRE
+    SOFT WEATHER
+    SOFT LEDGER
+    SOFT WELL
+    COPPER WIRE
+    COPPER WEATHER
+    COPPER LEDGER
+    COPPER WELL
+    IVORY WIRE
+    IVORY WEATHER
+    IVORY LEDGER
+    IVORY WELL
+    ASHEN WIRE
+    ASHEN WEATHER
+    ASHEN LEDGER
+    ASHEN WELL
+    STONE WIRE
+    STONE WEATHER
+    STONE LEDGER
+    STONE WELL
+    GLASS WIRE
+    GLASS WEATHER
+    GLASS LEDGER
+    GLASS WELL
+    SALT WIRE
+    SALT WEATHER
+    SALT LEDGER
+    SALT WELL
+    SMOKE WIRE
+    SMOKE WEATHER
+    SMOKE LEDGER
+    SMOKE WELL
+    WINTER WIRE
+    WINTER WEATHER
+    WINTER LEDGER
+    WINTER WELL
+    MORTAL WIRE
+    MORTAL WEATHER
+    MORTAL LEDGER
+    MORTAL WELL
+    THE WIRE LISTENS
+    THE WIRE WAITS
+    THE WIRE COUNTS
+    THE WIRE HOLDS
+    THE WIRE DREAMS
+    THE DARK LISTENS
+    THE DARK WAITS
+    THE DARK COUNTS
+    THE DARK HOLDS
+    THE DARK DREAMS
+    THE HOUSE LISTENS
+    THE HOUSE WAITS
+    THE HOUSE COUNTS
+    THE HOUSE HOLDS
+    THE HOUSE DREAMS
+    THE NIGHT LISTENS
+    THE NIGHT WAITS
+    THE NIGHT COUNTS
+    THE NIGHT HOLDS
+    THE NIGHT DREAMS
+    THE STATIC LISTENS
+    THE STATIC WAITS
+    THE STATIC COUNTS
+    THE STATIC HOLDS
+    THE STATIC DREAMS
+    THE SIGNAL LISTENS
+    THE SIGNAL WAITS
+    THE SIGNAL COUNTS
+    THE SIGNAL HOLDS
+    THE SIGNAL DREAMS
+    THE LEDGER LISTENS
+    THE LEDGER WAITS
+    THE LEDGER COUNTS
+    THE LEDGER HOLDS
+    THE LEDGER DREAMS
+    THE THRESHOLD LISTENS
+    THE THRESHOLD WAITS
+    THE THRESHOLD COUNTS
+    THE THRESHOLD HOLDS
+    THE THRESHOLD DREAMS
+    THE CURRENT LISTENS
+    THE CURRENT WAITS
+    THE CURRENT COUNTS
+    THE CURRENT HOLDS
+    THE CURRENT DREAMS
+    THE HARBOR LISTENS
+    THE HARBOR WAITS
+    THE HARBOR COUNTS
+    THE HARBOR HOLDS
+    THE HARBOR DREAMS
+    THE ARCHIVE LISTENS
+    THE ARCHIVE WAITS
+    THE ARCHIVE COUNTS
+    THE ARCHIVE HOLDS
+    THE ARCHIVE DREAMS
+    THE FREQUENCY LISTENS
+    THE FREQUENCY WAITS
+    THE FREQUENCY COUNTS
+    THE FREQUENCY HOLDS
+    THE FREQUENCY DREAMS
+    HOUSE OF GLASS
+    HOUSE OF SIGNAL
+    HOUSE OF KEYS
+    REPUBLIC OF GLASS
+    REPUBLIC OF SIGNAL
+    REPUBLIC OF KEYS
+    ARCHIVE OF GLASS
+    ARCHIVE OF SIGNAL
+    ARCHIVE OF KEYS
+    LEDGER OF GLASS
+    LEDGER OF SIGNAL
+    LEDGER OF KEYS
+    MAP OF GLASS
+    MAP OF SIGNAL
+    MAP OF KEYS
+    FIELD OF GLASS
+    FIELD OF SIGNAL
+    FIELD OF KEYS
+    ROOM OF GLASS
+    ROOM OF SIGNAL
+    ROOM OF KEYS
+    GARDEN OF GLASS
+    GARDEN OF SIGNAL
+    GARDEN OF KEYS
+    WEATHER OF GLASS
+    WEATHER OF SIGNAL
+    WEATHER OF HOURS
+    CIRCUIT OF STATIC
+    CIRCUIT OF WEATHER
+    CIRCUIT OF HOURS
+    HARBOR OF STATIC
+    HARBOR OF WEATHER
+    HARBOR OF HOURS
+    STAIR OF STATIC
+    STAIR OF WEATHER
+    """
+
+    static let all: [String] = block
+        .components(separatedBy: "\n")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+
+    /// One card from the deck, drawn for a boot.
+    static func random() -> String {
+        all.randomElement() ?? "UNDER SEAL"
+    }
+}
+
 struct BootView: View {
     let onDone: () -> Void
 
@@ -448,6 +880,9 @@ struct BootView: View {
     @State private var cursorOn = true
     @State private var filmProgress: Double = 0
     @State private var finale = false
+    /// This boot's subtitle, drawn once from the
+    /// deck when the ceremony is raised.
+    @State private var subtitle = BootSubtitles.random()
     /// The backdrop, loaded exactly once at the
     /// boot's start and served from state after:
     /// the film's bytes and its measured duration.
@@ -551,6 +986,8 @@ struct BootView: View {
             BootLine(text: String(format: L("Keyholder — %@"), UIDevice.current.name),
                      tone: .ok),
             BootLine(text: String(format: L("Bedrock — iOS %@"), UIDevice.current.systemVersion),
+                     tone: .ok),
+            BootLine(text: String(format: L("Nightjar — %@"), AppInfo.version),
                      tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
@@ -905,7 +1342,7 @@ struct BootView: View {
                                 radius: 5, x: 0, y: 1)
                     Text(finale
                          ? L("the world is yours")
-                         : L("UNDER SEAL"))
+                         : L(subtitle))
                         .font(.system(.caption2,
                                       design: .monospaced))
                         .tracking(2)
@@ -937,15 +1374,6 @@ struct BootView: View {
                     .frame(maxWidth: .infinity,
                            alignment: .leading)
                     .frame(height: 198, alignment: .topLeading)
-                    Text(L("TAP TO SKIP"))
-                        .font(.system(.caption2,
-                                      design: .monospaced))
-                        .tracking(2)
-                        .foregroundStyle(Color(white: 0.45))
-                        .shadow(color: .black.opacity(0.9),
-                                radius: 3)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 18)
                 }
                 .padding(.horizontal, 26)
                 .padding(.bottom, 30)
@@ -954,8 +1382,11 @@ struct BootView: View {
             .frame(width: geo.size.width,
                    height: geo.size.height)
         }
-        .contentShape(Rectangle())
-        .onTapGesture { onDone() }
+        // No skipping: the ceremony runs its
+        // course — it is working time, not a
+        // curtain — and the house already offers
+        // the off switch in About for anyone who
+        // wants no boot at all.
         .task {
             // The backdrop is read exactly ONCE, here —
             // its bytes and duration then live in state.
@@ -969,6 +1400,21 @@ struct BootView: View {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
+            }
+            // The ceremony's minutes are working
+            // minutes: while the film plays, warm
+            // the machinery every tab is about to
+            // need — the weights ledger reconciled
+            // against the disk, her saved words
+            // read in, the house key derived — so
+            // the first real ask meets a warm
+            // house. Detached and quiet: the boot
+            // never waits on it, and none of it
+            // touches the film or the text.
+            Task.detached(priority: .utility) {
+                _ = WeightsCenter.shared
+                _ = SkelliStore.load()
+                _ = CryptoSuite.identity()
             }
             let blink = Task {
                 while !Task.isCancelled {
