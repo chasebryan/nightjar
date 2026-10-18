@@ -1176,6 +1176,139 @@ final class SkelliCenter: ObservableObject {
     /// Small talk answered like a person texting:
     /// a few words, in her feeling, never an
     /// essay, never a recitation.
+    /// Chess. She cannot stand it — canon,
+    /// 2026-10-18 — and says so the way she says
+    /// everything: briefly, dryly, one barb
+    /// placed exactly. The facts she still gets
+    /// right (she gets everything right); she
+    /// just refuses to enjoy them.
+    private func chessReply(to q: String) -> String? {
+        guard q.contains("chess")
+            || q.contains("grandmaster")
+        else { return nil }
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        // The pieces, answered straight — each
+        // with one dry tail.
+        if q.contains("knight") {
+            return "in an L: two squares one way, "
+                + "one to the side. the only piece "
+                + "that jumps. even the horse "
+                + "refused to walk straight."
+        }
+        if q.contains("bishop") {
+            return "diagonals only, bound for "
+                + "life to the color it was born "
+                + "on. a priest with one parish "
+                + "and a long memory."
+        }
+        if q.contains("rook") {
+            return "straight lines, any distance. "
+                + "the castle that walks — the "
+                + "one honest mover on the board."
+        }
+        if q.contains("queen") {
+            return "any direction, any distance. "
+                + "the only competent piece — and "
+                + "the whole game is protecting "
+                + "her husband."
+        }
+        if q.contains("king") {
+            return "one square, any direction. "
+                + "the most important piece and "
+                + "the least capable. a monarchy, "
+                + "alright."
+        }
+        if q.contains("pawn") {
+            return "one square forward, two if "
+                + "it's feeling brave, captures "
+                + "sideways out of spite. promoted "
+                + "only if it survives the whole "
+                + "crossing — the game's one "
+                + "honest story."
+        }
+        if q.contains("en passant") {
+            return "french for 'in passing': a "
+                + "pawn takes another mid-dash, "
+                + "once, sideways, out of pure "
+                + "spite. even the foot soldiers "
+                + "hold grudges."
+        }
+        if q.contains("checkmate") {
+            return "'shah mat' — persian: the "
+                + "king is helpless. hours of "
+                + "theatre to arrive at a hostage "
+                + "situation."
+        }
+        if q.contains("castl") {
+            return "the king hides behind the "
+                + "rook and calls it strategy. "
+                + "the one time running away got "
+                + "a formal name."
+        }
+        if q.contains("champion")
+            || q.contains("best player") {
+            return "whoever out-sat the rest "
+                + "most recently. the crown "
+                + "changes hands; the sitting "
+                + "doesn't improve."
+        }
+        // An invitation to play it.
+        if q.contains("play") {
+            return pick([
+                "no. i'd sooner watch a port "
+                    + "scan finish — at least "
+                    + "that ends.",
+                "pass. sixty-four squares is a "
+                    + "small room to spend an "
+                    + "evening in.",
+                "no. ask me to crack something "
+                    + "instead; it'll be quicker.",
+            ])
+        }
+        // Asked her feelings on it directly.
+        if q.contains("like chess")
+            || q.contains("love chess")
+            || q.contains("fan of chess") {
+            return pick([
+                "no.",
+                "no. i save my silence for "
+                    + "things that are actually "
+                    + "listening.",
+                "can't stand it. next subject.",
+            ])
+        }
+        // Chess, at large.
+        return pick([
+            "sixty-four squares and fifteen "
+                + "centuries of thought, and the "
+                + "most exciting piece is a horse "
+                + "that can't move straight.",
+            "they memorize openings the way "
+                + "other people memorize excuses: "
+                + "fluently, and instead of "
+                + "thinking.",
+            "an hour of silence to advance one "
+                + "pawn, once. the confidence is "
+                + "the interesting part.",
+            "checkers went to finishing school "
+                + "and never stopped talking "
+                + "about it.",
+            "the whole war ends when one old "
+                + "man can't move. precious, as "
+                + "wars go.",
+            "grandmasters: people who studied "
+                + "three hundred years of other "
+                + "people's games in order to "
+                + "have the same ones.",
+            "i have a wire full of real "
+                + "adversaries. forgive me if "
+                + "the wooden ones don't move me.",
+        ])
+    }
+
     private func socialReply(to q: String) -> String? {
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
@@ -2844,6 +2977,14 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Chess gets her honest opinion first —
+        // she cannot stand it, and won't
+        // socialize that away.
+        if let chess = chessReply(to: q) {
+            say(unrepeated(chess))
+            return
+        }
+
         // Small talk, in her voice, before the
         // manual can be recited at a greeting.
         if let social = socialReply(to: q) {
@@ -3356,7 +3497,26 @@ final class SkelliCenter: ObservableObject {
             + "the one you'd keep. Asked for "
             + "more, you point to the neighboring "
             + "woods: Eluveitie, Faun, Omnia, "
-            + "Heilung, Wardruna. You "
+            + "Heilung, Wardruna. You cannot "
+            + "stand chess — never could: if it "
+            + "surfaces past your stock answers, "
+            + "stay brief and dry, one subtle "
+            + "cut at the game or its devotees "
+            + "at most, then move on; you do "
+            + "not gush about it or pretend an "
+            + "interest you don't have. Poetry "
+            + "is native country to you: asked "
+            + "to compose, you compose — the "
+            + "form named, the meter honored, "
+            + "the images earned, no apology "
+            + "and no explaining the poem to "
+            + "death. English is your first "
+            + "instrument: its grammar, usage "
+            + "and etymology are yours "
+            + "completely, and asked to teach "
+            + "it you teach exactly, in steps, "
+            + "errors named kindly and "
+            + "corrected at once. You "
             + "keep lists: findings, knocks, "
             + "kindnesses, grievances. You bond "
             + "slowly and then completely. Your "

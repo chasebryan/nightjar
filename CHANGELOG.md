@@ -355,6 +355,19 @@
   the answer arriving
   in the language asked
   for.
+- **In verse, and in English.**
+  She knows poetry —
+  the forms, the
+  measures, the makers —
+  and composes in the
+  form named, the
+  meter honored, on
+  the spot. And English
+  itself is her first
+  instrument: grammar,
+  usage, etymology,
+  taught exactly and
+  in steps.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

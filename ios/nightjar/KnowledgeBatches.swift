@@ -644,5 +644,27 @@ extension SkelliKnowledge {
                        "discovery line", "passive updates"],
             body: "My pinned bar is a live intelligence deck, not shortcuts. Two ranks of panels — Exposure, Wire, Air above; Signals (the epoch registry, its trackers, new-this-watch), Battery (the weakest device reporting on the air, with its forecast), Processes (the board) below — all computed from the organs' own publishers, so the deck updates itself the moment the house learns something passively. The sentence under them is a discovery line, triaged: a watch finding first, then a dying battery, a tracker shape, a changed advertisement, and only then the standing verdict. Nothing there is invented and nothing is sensed for the bar's sake — it is the house reporting what it already knows."),
 
+        SkelliEntry(
+            id: "poetry", title: "Poetry — the forms and the measures",
+            home: "the conversation, where she composes",
+            keywords: ["poetry", "poem", "poems", "sonnet",
+                       "haiku", "villanelle", "limerick",
+                       "verse", "meter", "metre", "rhyme",
+                       "stanza", "iambic", "pentameter",
+                       "poet", "poets", "ballad", "ode",
+                       "elegy", "ghazal", "couplet"],
+            body: "Poetry is measured language — the oldest technology for making words unforgettable, and she knows it the way she knows the wire. The forms: a sonnet is fourteen lines, usually iambic pentameter — Shakespeare's runs ABAB CDCD EFEF GG and turns on a volta; Petrarch's splits octave against sestet. A haiku runs five-seven-five in the Japanese manner (looser in English): one image, one breath, a season hidden inside. A villanelle is nineteen lines on two rhymes with two refrains — Dylan Thomas raging against the dying of the light. A limerick is AABBA, anapestic, built for the joke. A ballad tells a story in quatrains; an ode addresses something exalted; an elegy mourns; a ghazal is a chain of self-contained couplets, each one a closed door. Blank verse is unrhymed pentameter; free verse keeps the music and drops the fence. The measures: meter counts feet — an iamb rises (da-DUM), a trochee falls (DUM-da), an anapest gallops, a dactyl strides; pentameter is five feet to the line, the heartbeat of English verse. The craft: the couplet (two rhymed lines), the quatrain (four), enjambment — the sentence running past the line's end — the caesura, the breath mid-line, rhyme true and slant. The makers: Homer and Dante at the epic root; Shakespeare's 154 sonnets; Bashō's frogs; Rumi's Masnavi; Emily Dickinson, some eighteen hundred poems, nearly all unpublished in her lifetime; Poe's 'The Raven' (1845); Frost, Yeats, Neruda, Angelou, Plath, Langston Hughes. Asked to compose, she composes — in the form named, the meter honored, on the spot. Asked about a poem, she reads it closely: form first, then image, then the turn."),
+        SkelliEntry(
+            id: "englishcraft", title: "English — the craft of it",
+            home: "the conversation, where she teaches",
+            keywords: ["english", "grammar", "subjunctive",
+                       "oxford comma", "semicolon",
+                       "apostrophe", "affect vs effect",
+                       "their there", "its it's",
+                       "dangling modifier",
+                       "parts of speech",
+                       "irregular verbs",
+                       "punctuation", "etymology"],
+            body: "English is her first instrument, and she teaches it the way she teaches everything: exactly, in steps. The shape of the language: a Germanic skeleton — Old English, kin to German and Norse — fleshed by Norman French after 1066 and layered with Latin and Greek, which is why it keeps three words for so much (kingly, royal, regal: English, French, Latin) and why its spelling is a museum. Some 170,000 words in current use by the Oxford English Dictionary's count; 'the' is the commonest of them. The grammar that trips people: the subjunctive for the unreal ('if I were', not 'was'); its (belonging) against it's (it is); their, there, they're; affect the verb, effect the noun, with rare named exceptions; lie (recline: lie, lay, lain) against lay (set down: lay, laid, laid) — the surviving strong verbs are why the irregulars are irregular. The furniture: eight parts of speech; independent and dependent clauses; the semicolon, which joins equals; a dangling modifier, which dangles because its actor never arrived; the Oxford comma — house style, not law; she defends clarity over either camp. Usage errors she corrects kindly and at once when she is teaching; conversation she lets breathe."),
     ]
 }
