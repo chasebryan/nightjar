@@ -450,6 +450,20 @@
   to the thousands per
   line, and every one
   of them is true.
+- **Glass, not slab.**
+  The deck's background
+  no longer paints over
+  the scene behind it:
+  the dot grid and the
+  breathing accent glow
+  of her backdrop show
+  through the glass,
+  deepened just enough
+  for the text. Folded
+  or open by her
+  portrait, it is the
+  same glass — only
+  its height changes.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

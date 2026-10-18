@@ -7291,11 +7291,26 @@ struct SkelliView: View {
         .padding(.top, 50)
         .background {
             ZStack {
-                Rectangle()
-                    .fill(Color.black.opacity(0.92))
+                // Glass, not slab (2026-10-18):
+                // this field used to paint black
+                // at 0.92 over the screen's own
+                // backdrop — a drab slab hiding
+                // the dot grid and the breathing
+                // accent glow the chat below it
+                // lives on. Now the material
+                // samples that backdrop directly,
+                // a lighter wash deepens it for
+                // the text, and the accent whispers
+                // from both corners — the portion
+                // reads as glass in the same
+                // scene, and folding it away by
+                // her portrait changes nothing
+                // but its height.
                 Rectangle()
                     .fill(.ultraThinMaterial)
-                    .opacity(0.45)
+                    .opacity(0.85)
+                Rectangle()
+                    .fill(Color.black.opacity(0.55))
                 Rectangle()
                     .fill(LinearGradient(
                         colors: [Color.white
@@ -7306,11 +7321,19 @@ struct SkelliView: View {
                 Rectangle()
                     .fill(RadialGradient(
                         colors: [themes.current.accent
-                                     .opacity(0.10),
+                                     .opacity(0.16),
                                  .clear],
                         center: .topLeading,
                         startRadius: 8,
                         endRadius: 240))
+                Rectangle()
+                    .fill(RadialGradient(
+                        colors: [themes.current.accent
+                                     .opacity(0.05),
+                                 .clear],
+                        center: .bottomTrailing,
+                        startRadius: 20,
+                        endRadius: 260))
             }
         }
         .overlay(alignment: .bottom) {
