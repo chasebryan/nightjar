@@ -379,7 +379,7 @@ final class Gauntlet: ObservableObject {
 
     // MARK: - Building the steps
 
-    private func scaled(_ base: Int,
+    private func self.scaled(_ base: Int,
                         _ intensity: Double) -> Int {
         max(10, Int(Double(base) * intensity))
     }
@@ -523,7 +523,7 @@ final class Gauntlet: ObservableObject {
                         "0000180f", "0000180a"]
                 .map { $0 + sigBaseSuffix }
             var hits = 0
-            for _ in 0..<scaled(600, intensity) {
+            for _ in 0..<self.scaled(600, intensity) {
                 let uuid = fuzz.pick(pool)
                 let data = fuzz.bytes(
                     fuzz.int(20))
@@ -566,7 +566,7 @@ final class Gauntlet: ObservableObject {
                 "0000fe95", "0000180f", "0000fd6f"]
                 .map { $0 + sigBaseSuffix }
             var kinds = Set<String>()
-            for i in 0..<scaled(1500, intensity) {
+            for i in 0..<self.scaled(1500, intensity) {
                 var manufacturer: [UInt16: [UInt8]]
                     = [:]
                 for _ in 0..<fuzz.int(3) {
@@ -679,7 +679,7 @@ final class Gauntlet: ObservableObject {
                     try CryptoFiles.encrypt(
                         input: source, output: sealed,
                         protection: protection,
-                        password: <redacted>
+                        password: password,
                         recipient: nil)
                     let info = try CryptoFiles
                         .inspect(sealed)
@@ -698,7 +698,7 @@ final class Gauntlet: ObservableObject {
                             true)
                     let restored = try CryptoFiles
                         .decrypt(input: sealed,
-                                  password: <redacted>
+                                  password: password,
                                   outputDirectory: outDir)
                     let back = try Data(
                         contentsOf: restored)
@@ -1119,7 +1119,7 @@ final class Gauntlet: ObservableObject {
                 attributes: .concurrent)
             let counter = GauntletCounter()
             let workers = 6
-            let each = scaled(300, intensity)
+            let each = self.scaled(300, intensity)
             for worker in 0..<workers {
                 group.enter()
                 queue.async {
