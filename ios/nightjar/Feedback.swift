@@ -1569,8 +1569,6 @@ enum Haptics {
         UIImpactFeedbackGenerator(style: .heavy)
     private static let softGen =
         UIImpactFeedbackGenerator(style: .soft)
-    private static let selectionGen =
-        UISelectionFeedbackGenerator()
     private static let notificationGen =
         UINotificationFeedbackGenerator()
 
@@ -1601,8 +1599,19 @@ enum Haptics {
 
     static func select() {
         onMain {
-            selectionGen.selectionChanged()
-            selectionGen.prepare()
+            // A crisp rigid impact stands in for
+            // the selection generator, which is
+            // retired: on the operator's device
+            // selectionChanged() was issued again
+            // and again — from tab observers, from
+            // the platform's own sensory feedback,
+            // from the selection binding's setter —
+            // and never once felt, while impact
+            // beats land. A selection in this
+            // house is spoken by the rigid voice at
+            // a clear intensity instead.
+            rigidGen.impactOccurred(intensity: 0.7)
+            rigidGen.prepare()
         }
     }
 

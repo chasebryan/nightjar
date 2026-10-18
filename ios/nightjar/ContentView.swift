@@ -60,19 +60,16 @@ struct ContentView: View {
             get: { tab },
             set: { newValue in
                 if newValue != tab {
-                    // A light impact, deliberately
-                    // NOT the selection generator:
-                    // three delivery roads (tab-root
-                    // observers, the platform's own
-                    // selection feedback, this setter
-                    // firing selectionChanged) all
-                    // reached the device as silence,
-                    // while the impact family is the
-                    // one the operator confirms works
-                    // everywhere else in the house.
-                    // The common payload was the
-                    // failure, so the payload changed.
-                    Haptics.tap()
+                    // A medium impact — the strength
+                    // of the house's primary-action
+                    // beats, the ones the operator
+                    // confirms he feels. The flight
+                    // recorder proved this setter
+                    // fires on his taps while a light
+                    // impact and the selection voice
+                    // both went unfelt, so the tab
+                    // beat speaks at press strength.
+                    Haptics.press()
                     DevLog.event("tab", "\(newValue)")
                 }
                 tab = newValue
