@@ -95,6 +95,7 @@ struct SendView: View {
     @State private var showLog = false
     @State private var showHelm = false
     @State private var showWarRoom = false
+    @State private var showWarGames = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
@@ -290,6 +291,26 @@ struct SendView: View {
                         + "the Trace scope, feeding one "
                         + "timestamped timeline — and one "
                         + "export carries the whole record.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Button {
+                        Haptics.tap()
+                        showWarGames = true
+                    } label: {
+                        Label("War Games — spar with your "
+                            + "other phone",
+                              systemImage: "flag.2.crossed")
+                    }
+                    Text("One phone defends (Serve up, "
+                        + "decoys flying), the other attacks "
+                        + "(trace and knock). The match "
+                        + "protocol rides the Serve inbox, "
+                        + "and the scoring diffs what was "
+                        + "found against what was run and "
+                        + "caught.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1233,6 +1254,9 @@ struct SendView: View {
             }
             .sheet(isPresented: $showWarRoom) {
                 WarRoomView()
+            }
+            .sheet(isPresented: $showWarGames) {
+                WarGamesView()
             }
             .fullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)
