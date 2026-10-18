@@ -28,3 +28,7 @@
   What it found stands fixed
   above; the rest verified
   clean.
+- **Full-bleed.** The boot
+  film fills the whole screen
+  now, edge to edge — no black
+  bar at the top.

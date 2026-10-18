@@ -855,12 +855,24 @@ struct BootView: View {
                                        focusX: 0.38,
                                        focusY: 0.45,
                                        zoom: 1.15)
-                                .frame(width: geo.size.width,
-                                       height: geo.size.height)
+                                // The film alone of the
+                                // boot's layers fills the
+                                // WHOLE screen, status
+                                // bar and home indicator
+                                // included — the still
+                                // road and the gradients
+                                // already escape the
+                                // safe area; the film was
+                                // pinned to the inset
+                                // frame and left a black
+                                // bar at the top. The
+                                // text stack keeps the
+                                // inset geometry it was
+                                // composed against.
+                                .ignoresSafeArea()
                         } else {
                             filmPlayer(data: data)
-                                .frame(width: geo.size.width,
-                                       height: geo.size.height)
+                                .ignoresSafeArea()
                         }
                 } else if let image = UIImage(
                     data: data) {
