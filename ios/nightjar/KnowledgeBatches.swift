@@ -528,6 +528,33 @@ extension SkelliKnowledge {
                        "don't", "paraphrase", "stemming",
                        "how does she think", "routing"],
             body: "Between the operator's words and my hands sits a deterministic brain. It stems words — sealing, sealed and seals are one word to me — so phrasing my chain never listed still routes. It honors negation absolutely: 'don't sweep' means I do not sweep, and I say so. It ranks the whole manual by stemmed overlap, so a paraphrased question finds its page, and when no mind is awake it names the closest pages instead of shrugging at the web. And it keeps the conversation's subject — the last device or page we spoke of — so 'tell me more about it' has somewhere to land. The same sentence always routes the same way; there is no mood in it."),
+        SkelliEntry(
+            id: "decoderengine", title: "The decoder engine — batteries and evidence",
+            home: "the Listen tab, any device",
+            keywords: ["decoder engine", "battery", "batteries",
+                       "drain", "time to empty", "cadence",
+                       "capabilities", "evidence"],
+            body: "Every sighting is read whole, by every decoder at once — not just the one that names it. Batteries merge from every format present: AirPods report left, right and case separately; Estimote reports voltage and percentage together; Ruuvi and Eddystone-TLM report millivolts; BTHome, MiBeacon, Govee, SwitchBot, PVVX and ATC report percentages; Find My reports a word — full, medium, low, very low; Instant Hotspot reports the phone's own percentage. Repeated readings feed a forecaster that works by least squares over the session: it will give a drain rate freely, a time-to-empty only as a range, and only when the trend is steady enough — when the scatter swallows the slope it stays silent rather than print a confident lie. The standard Battery Service percentage normally needs a connection; from the air the house records the capability and never invents a level. Cadence is reported as HEARD cadence — the scanner's delivery is censored by the system, so 'heard about every 2 s' is the honest form, never the device's true interval."),
+        SkelliEntry(
+            id: "moreformats", title: "The expansion formats",
+            home: "the Listen tab",
+            keywords: ["switchbot", "estimote", "pvvx", "atc",
+                       "qingping", "inkbird", "thermopro",
+                       "bthome v1", "formats", "decoders"],
+            body: "The listener decodes, beyond its first families: SwitchBot's detailed frames (the type byte names the device; Meter temperature and humidity, Contact open or closed, Motion — and every SwitchBot carries its battery in the same byte); Estimote Telemetry; both aftermarket firmwares of the little Xiaomi thermometers, PVVX and ATC, told apart by frame length — ATC is big-endian where PVVX is little, the family's trap; the Qingping weather station; the Bluetooth standard's own broadcast battery (BAS 1.1), length-checked against its flags; Inkbird and ThermoPro sensors, name-gated, ThermoPro's low-battery flag reading backwards by design; and Microsoft's Connected Devices beacons, a device-class claim carrying no battery. BTHome v1 — the legacy sensor generation — decodes only when the operator switches it on in About, because v1's encryption has no replay protection; the house reads it and never acts on it."),
+        SkelliEntry(
+            id: "mapnext", title: "The Map, grown",
+            home: "Scan — the Map",
+            keywords: ["map", "rooms", "placement", "inspector",
+                       "lens", "drift", "place a device"],
+            body: "The Map holds wire and air together now: placements are keyed the way the SIGINT registry names emitters — lan: and ble: — so a Bluetooth device takes a spot in a room beside the router, and old bare-address placements were migrated untouched. Rooms move by dragging, resize by their corner grip, and rename in an editor with precise shape sliders; each room carries its census — how many here, how much drift. Tapping a device opens its inspector: facts, ports, battery and trend, cadence, the registry's claims with their channels — and drift is acknowledged THERE, its lines shown, never silently by the tap that used to select it. Lenses (All, Live, Drift, Air) and search dim the rest without moving anything. A running SIGINT watch rides above the canvas with its new-since count and a stop-and-file. Placement remains the operator's testimony — signal decorates a node, it never places or moves one."),
+        SkelliEntry(
+            id: "inteldeck", title: "Her intelligence deck",
+            home: "Skelli's pinned bar",
+            keywords: ["pinned bar", "deck", "widgets",
+                       "signals panel", "battery panel",
+                       "discovery line", "passive updates"],
+            body: "My pinned bar is a live intelligence deck, not shortcuts. Two ranks of panels — Exposure, Wire, Air above; Signals (the epoch registry, its trackers, new-this-watch), Battery (the weakest device reporting on the air, with its forecast), Processes (the board) below — all computed from the organs' own publishers, so the deck updates itself the moment the house learns something passively. The sentence under them is a discovery line, triaged: a watch finding first, then a dying battery, a tracker shape, a changed advertisement, and only then the standing verdict. Nothing there is invented and nothing is sensed for the bar's sake — it is the house reporting what it already knows."),
 
     ]
 }

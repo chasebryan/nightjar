@@ -930,7 +930,7 @@ struct BootView: View {
             // The ceremony is timed against the
             // film: while a film plays, every style
             // is stretched across its one playthrough,
-            // so the last line, the full sphere and the
+            // so the last line, the full print and the
             // finale all land on its last frame.
             // Without a film, the old timings stand.
             let film = filmSeconds

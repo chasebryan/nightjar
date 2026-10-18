@@ -256,3 +256,133 @@
   "What this does" row:
   terse, exact, and open
   only when asked.
+- **Her brain.** Between
+  her words and her hands
+  now sits a deterministic
+  brain. It stems words —
+  sealing, sealed and seals
+  are one word to her — so
+  phrasings her old chain
+  never listed still route;
+  it honors negation
+  absolutely ("don't sweep"
+  means she does not sweep,
+  and says so); it ranks
+  the whole manual by
+  stemmed overlap, so a
+  paraphrased question
+  finds its page, and when
+  no mind is awake it names
+  the closest pages instead
+  of shrugging; and it
+  keeps the conversation's
+  subject, so "tell me more
+  about it" lands somewhere
+  real. Her grounding and
+  her situation report now
+  cover the Vault, the
+  crew, the brain itself,
+  the build's source stamp
+  and everything running.
+- **The decoder engine.**
+  Every sighting is now
+  read whole, by every
+  decoder at once — not
+  just the one that names
+  it. Batteries merge from
+  every format present:
+  AirPods report left,
+  right and case; Estimote
+  reports voltage and
+  percentage together;
+  Ruuvi and Eddystone-TLM
+  report millivolts;
+  a dozen formats report
+  percentages; Find My
+  reports its word. A
+  least-squares forecaster
+  turns repeated readings
+  into a drain rate — and
+  a time-to-empty only as
+  a range, only when the
+  trend earns it, silence
+  when the scatter swallows
+  the slope. Capabilities
+  are read off the service
+  list, the connectable
+  flag is finally captured,
+  cadence is reported as
+  heard cadence, and an
+  unknown payload gets an
+  honest reading of its
+  shape. SIGINT inherits
+  all of it, with
+  low-battery and
+  fast-fall events on its
+  timeline.
+- **The expansion batch.**
+  New decoders, each
+  admitted on its public
+  specification: SwitchBot's
+  detailed frames, decoded
+  by the vendor's type byte
+  (Meter, Contact, Motion —
+  battery in the same byte
+  for all); Estimote
+  Telemetry; both
+  aftermarket firmwares of
+  the Xiaomi thermometers,
+  PVVX and ATC, endianness
+  trap and all; the
+  Qingping weather station;
+  the Bluetooth standard's
+  own broadcast battery;
+  Inkbird and ThermoPro;
+  Microsoft's Connected
+  Devices beacons. BTHome
+  v1 decodes only behind
+  an About toggle carrying
+  its warning — v1's
+  encryption has no replay
+  protection.
+- **The Map, next
+  generation.** Wire and
+  air together: placements
+  speak the registry's
+  emitter-key language, so
+  a Bluetooth device takes
+  its spot beside the
+  router. Rooms drag,
+  resize by their grip, and
+  rename in an editor;
+  each carries its census.
+  Tapping a device opens
+  an inspector — facts,
+  ports, battery, cadence,
+  the registry's claims —
+  and drift is acknowledged
+  there, its lines shown,
+  never silently by a tap
+  again. Lenses and search
+  cut the canvas without
+  moving a node, a running
+  SIGINT watch rides above
+  it, and the sweep honors
+  Reduce Motion.
+- **Her intelligence
+  deck.** The pinned bar
+  is a live deck now: a
+  second rank of panels —
+  Signals, Battery,
+  Processes — computed
+  from the organs' own
+  publishers, updating the
+  moment the house learns
+  something passively; and
+  the verdict sentence is
+  a discovery line,
+  triaged: a watch finding,
+  a dying battery, a
+  tracker shape, a changed
+  advertisement — then the
+  standing word.
