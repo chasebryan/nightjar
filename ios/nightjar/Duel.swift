@@ -439,7 +439,7 @@ struct DuelView: View {
                             } label: {
                                 HStack {
                                     Text("\(port) — "
-                                         + (ScanModel.serviceNames[port] ?? ""))
+                                         + (ScanModel.serviceName(for: port) ?? ""))
                                         .foregroundStyle(.primary)
                                     Spacer()
                                     if center.picked.contains(port) {

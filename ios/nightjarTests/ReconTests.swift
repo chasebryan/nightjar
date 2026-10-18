@@ -27,6 +27,27 @@ final class ReconTests: XCTestCase {
                        "closed")
     }
 
+    func testPortRegistryNamesTheWorld() {
+        // Twelve thousand named services ride
+        // behind the house's curated table: the
+        // registry answers for ports the table
+        // never carried, in both protocols, and
+        // the curated names still win.
+        XCTAssertGreaterThan(
+            PortRegistry.names.count, 12000)
+        XCTAssertEqual(
+            PortRegistry.name(47808), "bacnet")
+        XCTAssertEqual(
+            PortRegistry.name(53, udp: true),
+            "domain")
+        XCTAssertEqual(
+            ScanModel.serviceName(for: 47808),
+            "bacnet")
+        XCTAssertEqual(
+            ScanModel.serviceName(for: 9100),
+            "Printer")
+    }
+
     func testEveryProbeBuilds() {
         for name in ReconPayloads.names {
             XCTAssertNotNil(ReconPayloads.all[name])

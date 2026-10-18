@@ -593,6 +593,27 @@
   hard clear and Reset
   still forget, as
   they always have.
+- **Every port, named;
+  every tag, read.** The
+  global port registry
+  joins the house —
+  12,093 named TCP and
+  UDP services behind
+  the curated table, so
+  the wire's ports are
+  named everywhere
+  they appear. The
+  SIG's service
+  registry floors the
+  BLE side, and round
+  three lands: DULT
+  trackers are known
+  by their service
+  data, and a Find My
+  Device tag now says
+  whether it is near
+  its owner or
+  separated.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

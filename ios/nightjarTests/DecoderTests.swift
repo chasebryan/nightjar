@@ -132,6 +132,66 @@ final class DecoderTests: XCTestCase {
         XCTAssertFalse(Classification.classify(exposure).trackerShaped)
     }
 
+    func testFMDNSeparatedStateIsNamed() {
+        // Round 3: the frame byte is a state.
+        // 0x41 is the tag away from its owner —
+        // the detail must say so, where 0x40
+        // reads near owner.
+        let separated = Sighting(
+            seenAt: 1, address: "D", name: nil, rssi: -60,
+            serviceUUIDs: ["0000feaa-0000-1000-8000-00805f9b34fb"],
+            serviceData: ["0000feaa-0000-1000-8000-00805f9b34fb":
+                            [0x41] + [UInt8](repeating: 0x22, count: 21)])
+        let hit = Classification.classify(separated)
+        XCTAssertEqual(hit.kind, "Find My Device network tag (Google)")
+        XCTAssertEqual(hit.details.first,
+                       "Find My Device network (separated from owner)")
+    }
+
+    func testDULTByServiceDataOnly() {
+        // The unwanted-tracker standard, matched
+        // on service data for 0xFCB2: byte 1
+        // bit 0 clear = separated, set = near
+        // owner. The bare UUID alone must NOT
+        // claim it.
+        let uuid = "0000fcb2-0000-1000-8000-00805f9b34fb"
+        let away = Sighting(
+            seenAt: 1, address: "E", name: nil, rssi: -60,
+            serviceUUIDs: [uuid],
+            serviceData: [uuid: [0x07, 0x00]])
+        let awayHit = Classification.classify(away)
+        XCTAssertEqual(awayHit.kind, "DULT tracker — separated")
+        XCTAssertTrue(awayHit.trackerShaped)
+        let near = Sighting(
+            seenAt: 1, address: "F", name: nil, rssi: -60,
+            serviceUUIDs: [uuid],
+            serviceData: [uuid: [0x07, 0x01]])
+        XCTAssertEqual(Classification.classify(near).kind,
+                       "DULT tracker — near owner")
+        let bare = Sighting(
+            seenAt: 1, address: "G", name: nil, rssi: -60,
+            serviceUUIDs: [uuid])
+        XCTAssertNotEqual(Classification.classify(bare).kind,
+                          "DULT tracker — separated")
+        XCTAssertNotEqual(Classification.classify(bare).kind,
+                          "DULT tracker — near owner")
+    }
+
+    func testServiceRegistryFloor() {
+        // The SIG's registry names what the
+        // curated table never carried (Blecon's
+        // member service), and curated names
+        // still outrank it.
+        XCTAssertGreaterThan(
+            ServiceRegistry.names.count, 70)
+        XCTAssertEqual(
+            ServiceRegistry.names[0xFD0D],
+            "Blecon Advertising Service")
+        XCTAssertEqual(
+            Services.name("0000180d-0000-1000-8000-00805f9b34fb"),
+            "Heart Rate")
+    }
+
     func testEddystoneUrlAndFastPair() {
         let url: [UInt8] = [0x10, 0xF0, 0x03] + Array("example".utf8) + [0x07] + Array("/x".utf8)
         XCTAssertEqual(Services.decodeEddystone(url)?.describe, "Eddystone-URL https://example.com/x")

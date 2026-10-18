@@ -643,7 +643,7 @@ final class TraceBookStore {
                     dossier.services.append(TraceServiceDossier(
                         port: port, proto: proto,
                         serviceName: analysis?.serviceHint
-                            ?? ScanModel.serviceNames[port] ?? "",
+                            ?? ScanModel.serviceName(for: port) ?? "",
                         bannerFirstLine: analysis?.firstLine ?? "",
                         replyPreview: analysis?.preview ?? "",
                         signature: analysis?.signature ?? "",
@@ -1427,7 +1427,7 @@ extension Mouth {
                     bonjourName: nil)
                 self.traceNote("  \(host):\(port) — "
                     + (analysis?.serviceHint
-                       ?? ScanModel.serviceNames[port] ?? "open")
+                       ?? ScanModel.serviceName(for: port) ?? "open")
                     + (tags.isEmpty ? ""
                        : " · tagged \(tags.joined(separator: ", "))"))
                 if !stop {

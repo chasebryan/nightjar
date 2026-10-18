@@ -241,7 +241,7 @@ final class NeighborhoodStore: ObservableObject {
                             self.noteDrift(&neighbor,
                                       "answered on port "
                                       + "\(answer.port) "
-                                      + "(\(ScanModel.serviceNames[answer.port] ?? "unknown")) "
+                                      + "(\(ScanModel.serviceName(for: answer.port) ?? "unknown")) "
                                       + "for the first time")
                         }
                     }
@@ -310,7 +310,7 @@ final class NeighborhoodStore: ObservableObject {
                      + neighbor.lastSeenLine)
         for port in neighbor.ports {
             lines.append("Answered on \(port)/tcp "
-                         + "(\(ScanModel.serviceNames[port] ?? "unknown"))")
+                         + "(\(ScanModel.serviceName(for: port) ?? "unknown"))")
         }
         for announcement in neighbor.announcements {
             lines.append("Announces itself via Bonjour: "

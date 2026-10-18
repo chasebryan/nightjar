@@ -60,6 +60,20 @@ final class ScanModel: ObservableObject {
     static let serviceNames: [Int: String] =
         Dictionary(uniqueKeysWithValues: topPorts)
 
+    /// A port's name, whole: the house's curated
+    /// table first, then the global registry
+    /// (PortRegistry — twelve thousand named
+    /// services), then nothing. Every surface
+    /// that names a port reads through here, so
+    /// the wire's ports are named the same way
+    /// everywhere they appear.
+    static func serviceName(for port: Int,
+                            udp: Bool = false)
+        -> String? {
+        serviceNames[port]
+            ?? PortRegistry.name(port, udp: udp)
+    }
+
     /// Open port -> the library probe that speaks its language,
     /// for the Scan -> Send handoff.
     static let payloadByPort: [Int: String] = [
@@ -139,7 +153,7 @@ final class ScanModel: ObservableObject {
         else { done(nil); return }
         let connection = NWConnection(host: NWEndpoint.Host(host),
                                       port: nwPort, using: .tcp)
-        let service = ScanModel.serviceNames[port] ?? ""
+        let service = ScanModel.serviceName(for: port) ?? ""
         let finishLock = NSLock()
         var finished = false
         var wasReady = false

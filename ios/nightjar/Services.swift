@@ -67,6 +67,7 @@ enum Services {
     static let eddystone: UInt16 = 0xFEAA
     static let exposureNotification: UInt16 = 0xFD6F
     static let smartThingsFind: UInt16 = 0xFD5A
+    static let dultService: UInt16 = 0xFCB2
     static let tile: [UInt16] = [0xFEED, 0xFEEC]
 
     /// Full lowercase form of a short or long UUID string.
@@ -94,7 +95,10 @@ enum Services {
 
     static func name(_ uuid: String) -> String? {
         guard let value = short(uuid) else { return nil }
+        // The house's curated names first, then
+        // the SIG's whole registry.
         return serviceNames[value]
+            ?? ServiceRegistry.names[value]
     }
 
     // MARK: - Eddystone (and Google's Find My Device network)
@@ -110,8 +114,16 @@ enum Services {
     ]
     static let frameNames: [UInt8: String] = [
         0x00: "UID", 0x10: "URL", 0x20: "TLM", 0x30: "EID",
-        0x40: "Find My Device network (20-byte EID)",
-        0x41: "Find My Device network (32-byte EID)",
+        // The frame byte is a STATE, not a size
+        // (decoder round 3, 2026-10-18): 0x40 is
+        // the tag near its owner, 0x41 is the tag
+        // separated from them — the state Android's
+        // own tracker alerts key on. EID lengths
+        // vary (21/22 and 33/34-byte payloads) and
+        // the trailing flags byte is XOR-masked,
+        // so state is the only honest reading.
+        0x40: "Find My Device network (near owner)",
+        0x41: "Find My Device network (separated from owner)",
     ]
 
     struct EddystoneFrame {
@@ -133,7 +145,11 @@ enum Services {
         var isFMDN: Bool { return frameType == 0x40 || frameType == 0x41 }
 
         var describe: String {
-            if isFMDN { return "Find My Device network beacon (Google)" }
+            if isFMDN {
+                return frameType == 0x41
+                    ? "Find My Device network (separated from owner)"
+                    : "Find My Device network (near owner)"
+            }
             switch frameType {
             case 0x00:
                 return "Eddystone-UID \(namespace ?? "")/\(instance ?? "")"
@@ -280,7 +296,29 @@ enum Services {
                                   details: [], trackerShaped: true, rotatingPhone: false,
                                   specificity: 2)
         }
-        let named = Set(shorts.keys.compactMap { serviceNames[$0] }).sorted()
+        // DULT — the Apple/Google unwanted-tracker
+        // standard (decoder round 3, 2026-10-18).
+        // Matched on service DATA for 0xFCB2, never
+        // the bare UUID: the draft's implementers
+        // reject bare-UUID matches as false-
+        // positive prone. Byte 1 bit 0 is the
+        // near-owner flag; byte 0 is a network id
+        // that names no maker, and none is
+        // inferred from it.
+        if let dult = data[dultService], dult.count >= 2 {
+            let nearOwner = dult[1] & 0x01 == 1
+            return Identification(
+                kind: nearOwner
+                    ? "DULT tracker — near owner"
+                    : "DULT tracker — separated",
+                details: ["Detecting Unwanted Location "
+                    + "Trackers standard (Apple / Google)"],
+                trackerShaped: true, rotatingPhone: false,
+                specificity: 3)
+        }
+        let named = Set(shorts.keys.compactMap {
+            serviceNames[$0] ?? ServiceRegistry.names[$0]
+        }).sorted()
         if !named.isEmpty {
             return Identification(kind: "Device advertising " + named.joined(separator: ", "),
                                   details: [], trackerShaped: false, rotatingPhone: false,
