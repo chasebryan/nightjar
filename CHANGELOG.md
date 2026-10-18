@@ -45,6 +45,21 @@
   house warms its stores, so
   the first ask meets warm
   machinery.
+- **Her room, redecorated.**
+  Skelli's tab wears a
+  composed backdrop now — a
+  fine dot grid dissolving
+  into the dark, her accent
+  breathing slowly in the
+  glow, a sheen crossing
+  like light over a panel —
+  and her deck's numbers
+  roll softly as they change.
+  Her Options sheet stands
+  in clean hierarchy: white
+  words, the accent kept to
+  icons, every section
+  headed.
 
 ## 9.0b — 2026-10-20 — gamma
 

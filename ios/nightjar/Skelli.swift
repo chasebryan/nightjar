@@ -4263,6 +4263,104 @@ final class SkelliFilmView: UIView {
 
 // MARK: - Her tab
 
+/// Her room's walls: a composed backdrop in
+/// place of the dim wallpaper murk — a deep,
+/// near-neutral black; a fine dot grid that
+/// dissolves as it falls, a technician's graph
+/// paper barely there; the theme accent
+/// breathing very slowly in a soft radial glow
+/// from the top, echoing her pinned header;
+/// and a sheen crossing the dark like light
+/// over a panel, slower than attention. All
+/// of it travels on opacity and offset — the
+/// compositor's cheap paths — and all of it
+/// holds still when the system asks for
+/// reduced motion.
+struct SkelliBackdrop: View {
+    @ObservedObject private var themes =
+        ThemeCenter.shared
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
+    @State private var breathe = false
+    @State private var sweep = false
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color(red: 0.008, green: 0.012,
+                      blue: 0.010)
+                Canvas { context, size in
+                    let step: CGFloat = 26
+                    var y = step / 2
+                    while y < size.height {
+                        var x = step / 2
+                        while x < size.width {
+                            context.fill(
+                                Path(ellipseIn: CGRect(
+                                    x: x - 1, y: y - 1,
+                                    width: 2, height: 2)),
+                                with: .color(.white
+                                    .opacity(0.05)))
+                            x += step
+                        }
+                        y += step
+                    }
+                }
+                .mask(
+                    LinearGradient(
+                        colors: [.white, .white,
+                                 .clear],
+                        startPoint: .top,
+                        endPoint: .bottom))
+                RadialGradient(
+                    colors: [
+                        themes.current.accent
+                            .opacity(breathe
+                                     ? 0.11 : 0.065),
+                        .clear],
+                    center: .topLeading,
+                    startRadius: 20,
+                    endRadius: geo.size.width * 0.95)
+                RadialGradient(
+                    colors: [
+                        themes.current.accent
+                            .opacity(0.035),
+                        .clear],
+                    center: .bottomTrailing,
+                    startRadius: 30,
+                    endRadius: geo.size.width * 0.8)
+                Rectangle()
+                    .fill(LinearGradient(
+                        colors: [.clear,
+                                 .white.opacity(0.045),
+                                 .clear],
+                        startPoint: .leading,
+                        endPoint: .trailing))
+                    .frame(height: geo.size.height * 0.55)
+                    .rotationEffect(.degrees(-18))
+                    .offset(y: sweep
+                            ? geo.size.height * 0.95
+                            : -geo.size.height * 0.95)
+            }
+            .clipped()
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 7)
+                    .repeatForever(
+                        autoreverses: true)) {
+                    breathe = true
+                }
+                withAnimation(.linear(duration: 18)
+                    .repeatForever(
+                        autoreverses: false)) {
+                    sweep = true
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
     @ObservedObject private var stationLive =
@@ -4352,6 +4450,7 @@ struct SkelliView: View {
             transcript
             inputBar
         }
+        .background { SkelliBackdrop() }
         .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottomLeading) {
             SkelliWebHost()
@@ -4444,39 +4543,77 @@ struct SkelliView: View {
             deadline: .now() + 0.35) { open() }
     }
 
+    /// A door in her options: the accent lives
+    /// in the icon alone, the words stand in
+    /// plain primary, and a quiet chevron says
+    /// it opens. (A bare Label inside a Button
+    /// takes the sheet's tint whole — icon and
+    /// words alike — which is what drowned this
+    /// sheet in green.)
+    private func doorRow(_ title: String,
+                         _ symbol: String,
+                         action: @escaping () -> Void)
+        -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17))
+                    .foregroundStyle(
+                        themes.current.accent)
+                    .frame(width: 26)
+                Text(title)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12,
+                                  weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+    }
+
+    /// A destructive door: red in icon and word
+    /// alike, no chevron — it does not lead
+    /// anywhere, it ends something.
+    private func dangerRow(_ title: String,
+                           _ symbol: String,
+                           action: @escaping () -> Void)
+        -> some View {
+        Button(role: .destructive, action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17))
+                    .foregroundStyle(.red)
+                    .frame(width: 26)
+                Text(title)
+                    .foregroundStyle(.red)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+    }
+
     private var optionsSheet: some View {
         NavigationStack {
             List {
-                Section {
-                    Button {
+                Section(L("Rooms")) {
+                    doorRow(L("Directory of the house"),
+                            "book") {
                         openDoor { showDirectory = true }
-                    } label: {
-                        Label(L("Directory of the house"),
-                              systemImage: "book")
                     }
-                    Button {
+                    doorRow(L("Memory"), "brain") {
                         openDoor { showMemory = true }
-                    } label: {
-                        Label(L("Memory"),
-                              systemImage: "brain")
                     }
-                    Button {
+                    doorRow(L("Weights"), "memorychip") {
                         openDoor { showWeights = true }
-                    } label: {
-                        Label(L("Weights"),
-                              systemImage: "memorychip")
                     }
-                    Button {
+                    doorRow(L("Forge"), "hammer") {
                         openDoor { showForge = true }
-                    } label: {
-                        Label(L("Forge"),
-                              systemImage: "hammer")
                     }
-                    Button {
+                    doorRow(L("Deliveries"),
+                            "shippingbox") {
                         openDoor { showDeliveries = true }
-                    } label: {
-                        Label(L("Deliveries"),
-                              systemImage: "shippingbox")
                     }
                 }
                 Section(L("Switches")) {
@@ -4504,21 +4641,20 @@ struct SkelliView: View {
                     }
                 }
                 Section {
-                    Button(role: .destructive) {
+                    dangerRow(L("Clear conversation"),
+                              "trash") {
                         openDoor { confirmClear = true }
-                    } label: {
-                        Label(L("Clear conversation"),
-                              systemImage: "trash")
                     }
-                    Button(role: .destructive) {
+                    dangerRow(L("Reset to defaults"),
+                              "arrow.counterclockwise") {
                         openDoor { confirmReset = true }
-                    } label: {
-                        Label(L("Reset to defaults"),
-                              systemImage:
-                                "arrow.counterclockwise")
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Color(red: 0.016, green: 0.020,
+                      blue: 0.018))
             .navigationTitle(L("Options"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -4535,15 +4671,23 @@ struct SkelliView: View {
             Haptics.select()
             mindMode = mode
         } label: {
-            HStack {
-                Label(title, systemImage: symbol)
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17))
+                    .foregroundStyle(
+                        themes.current.accent)
+                    .frame(width: 26)
+                Text(title)
+                    .foregroundStyle(.primary)
                 Spacer()
                 if mindMode == mode {
                     Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
                         .foregroundStyle(
                             themes.current.accent)
                 }
             }
+            .contentShape(Rectangle())
         }
     }
 
@@ -4826,11 +4970,17 @@ struct SkelliView: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.045)))
+                .fill(LinearGradient(
+                    colors: [Color.white.opacity(0.065),
+                             Color.white.opacity(0.028)],
+                    startPoint: .top,
+                    endPoint: .bottom)))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.white.opacity(0.09),
                         lineWidth: 0.75))
+        .shadow(color: .black.opacity(0.30),
+                radius: 6, x: 0, y: 2)
     }
 
     private func panelValue(_ text: String)
@@ -4839,6 +4989,9 @@ struct SkelliView: View {
             .font(.system(size: 17, weight: .bold,
                           design: .rounded))
             .monospacedDigit()
+            .contentTransition(.numericText())
+            .animation(.easeInOut(duration: 0.35),
+                       value: text)
     }
 
     private func panelSub(_ text: String)
@@ -4860,6 +5013,8 @@ struct SkelliView: View {
                     .frame(width: max(
                         2, geo.size.width
                             * min(1, max(0, fraction))))
+                    .animation(.easeInOut(duration: 0.5),
+                               value: fraction)
             }
         }
         .frame(height: 3)
@@ -4891,6 +5046,8 @@ struct SkelliView: View {
                 }
             }
             .frame(height: 15, alignment: .bottom)
+            .animation(.easeInOut(duration: 0.45),
+                       value: values)
         }
         .frame(height: 15)
     }
