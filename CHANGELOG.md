@@ -614,6 +614,14 @@
   whether it is near
   its owner or
   separated.
+- **The hunt holds
+  its voice.** Tracker
+  hunt's beep now
+  renders in the audio
+  connection's own
+  format — the crash
+  that killed it on its
+  first beep is fixed.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

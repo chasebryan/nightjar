@@ -17,23 +17,40 @@ final class HuntTone {
             player.play()
             started = true
         }
-        let sampleRate = 44100.0
-        let duration = 0.07
-        let frames = AVAudioFrameCount(sampleRate * duration)
-        guard let format = AVAudioFormat(
-                standardFormatWithSampleRate: sampleRate,
-                channels: 1),
-              let buffer = AVAudioPCMBuffer(
+        // The buffer MUST wear the connection's own
+        // format. The connection was made with a nil
+        // format, so it speaks the mixer's language —
+        // the hardware's sample rate, stereo on this
+        // phone — while this beep used to render at
+        // 44.1 kHz mono and hand that buffer over:
+        // AVFAudio's answer was an exception, "output
+        // format channelCount != buffer format
+        // channelCount", and the hunt died on its
+        // first beep (Chase's crash, 2026-10-18
+        // 11:18). Reading the player's output format
+        // fresh on EVERY beep makes the match true
+        // by construction, route changes included.
+        let format = player.outputFormat(forBus: 0)
+        let sampleRate = format.sampleRate
+        guard sampleRate > 0 else { return }
+        let frames = AVAudioFrameCount(sampleRate * 0.07)
+        guard let buffer = AVAudioPCMBuffer(
                 pcmFormat: format, frameCapacity: frames),
-              let data = buffer.floatChannelData?[0]
+              let channels = buffer.floatChannelData
         else { return }
         buffer.frameLength = frames
-        for i in 0..<Int(frames) {
+        let value: (Int) -> Float = { i in
             let t = Double(i) / sampleRate
             let envelope = sin(Double.pi * Double(i)
                                / Double(frames))
-            data[i] = Float(sin(2 * Double.pi * frequency * t)
-                            * envelope * 0.35)
+            return Float(sin(2 * Double.pi * frequency * t)
+                         * envelope * 0.35)
+        }
+        for i in 0..<Int(frames) {
+            let sample = value(i)
+            for channel in 0..<Int(format.channelCount) {
+                channels[channel][i] = sample
+            }
         }
         player.scheduleBuffer(buffer)
     }
