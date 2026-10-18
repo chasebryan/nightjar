@@ -161,6 +161,12 @@ score put on an honest footing.
   itself is weighed now: on the wire, and
   answering under its own name, before a single
   emission counts.
+- **Spoofy & a wired Skelli** — EMCON's costume
+  rack dresses this device in its own names and
+  class-shaped mimicry personas, and Skelli works
+  every war room herself: chests, the Helm,
+  watches, War Room runs, War Games, the
+  Banshee, the rack.
 
 ## What's new in 6.0.0 — "the open mind"
 

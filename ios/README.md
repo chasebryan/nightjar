@@ -229,6 +229,14 @@ Below the steps, the Send tab keeps working:
   EMCON's exposure score now weighs presence itself —
   on the wire, answering under its own name — before
   emissions, so a quiet joined phone is no ghost.
+  **Spoofy** is EMCON's costume rack — own-name
+  costumes and class-shaped mimicry personas
+  with wardrobe restore — and the war engines
+  are shared singletons: Skelli's hands work
+  the chests, the Helm, SIGINT watches, the
+  War Room, War Games, the Banshee and the
+  rack, her manual and sitrep covering all
+  of it.
 - **What 6.0.0 added.** An intelligence pass over
   the whole instrument, and her hands in
   conversation. Skelli's chat now performs the

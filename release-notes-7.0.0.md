@@ -91,4 +91,47 @@
   emissions. The itemised parts
   under the score say which is
   which.
+- **Spoofy — the costume
+  rack.** EMCON's third door
+  dresses this device in its
+  own names: costume presets
+  and a dice roller for the
+  beacon and GATT host's name,
+  and mimicry personas that
+  dress the whole device as a
+  class of thing — office
+  printer, smart TV, speaker,
+  NAS, thermostat, robot
+  vacuum — air name, greeting,
+  and Serve's listeners and
+  replies all in character at
+  once. Dropping a shape
+  restores the wardrobe it
+  found, whole. Generic shapes
+  only: the device's own
+  addresses stay its own,
+  nothing copies a real
+  device's identity, and there
+  are no fake trackers in the
+  rack.
+- **Skelli, wired to the
+  war.** She works the same
+  shared engines the tabs do —
+  the Banshee, Net-Assault,
+  and her own War Room run are
+  single instances now, so
+  what she starts is what you
+  see. Her war hands apply War
+  Chests, fire Helm buttons by
+  name, start and file SIGINT
+  watches and read their
+  deltas, run the War Room,
+  challenge and score War
+  Games, raise and cease the
+  Banshee, and work the Spoofy
+  rack; her manual covers
+  every new room, and her
+  sitrep reads the whole house
+  — the registry, the watches,
+  the worn shape, the match.
 
