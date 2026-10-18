@@ -3316,10 +3316,12 @@ final class SkelliCenter: ObservableObject {
                 // local hour dressed as the reply.
                 // (Device, 2026-10-18: asked Tokyo,
                 // she said Dothan's hour.)
-                let hit = await PlaceCenter.shared
+                var hit = await PlaceCenter.shared
                     .geocode(place)
-                    ?? await PlaceCenter.shared
+                if hit == nil {
+                    hit = await PlaceCenter.shared
                         .geocode(place)
+                }
                 guard let hit else {
                     DevLog.event("almanac",
                         "time elsewhere failed: \(place)")
