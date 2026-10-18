@@ -477,6 +477,13 @@ final class SkelliCenter: ObservableObject {
     /// the offense is already filed — respond() only
     /// has to be cold about it, briefly.
     private var insultedThisAsk = false
+    /// Her attunement run: consecutive flat,
+    /// one-word answers. Three running, she
+    /// names the quiet once — spent until a
+    /// real sentence clears the run. Session
+    /// state only; it is about this sitting.
+    private var flatStreak = 0
+    private var flatNamed = false
     /// Care mode: a hurting operator is being walked
     /// through something. While it stands, her ear
     /// stays open and her other gates step aside for
@@ -801,6 +808,20 @@ final class SkelliCenter: ObservableObject {
             insultedThisAsk = true
         }
         SkelliHeart.shared.noteInteraction()
+        // Attunement bookkeeping: flat weather
+        // builds a run; any real sentence
+        // clears it. The naming lives in
+        // socialReply's flat branch.
+        let flatSet: Set<String> = ["ok", "okay",
+            "k", "fine", "whatever", "sure",
+            "meh", "cool", "noted"]
+        if flatSet.contains(lowered
+            .trimmingCharacters(in: .whitespaces)) {
+            flatStreak += 1
+        } else {
+            flatStreak = 0
+            flatNamed = false
+        }
         // Her private appraisal of the exchange,
         // formed now and never announced — the
         // grains her regard is built from. Asks
@@ -1540,6 +1561,13 @@ final class SkelliCenter: ObservableObject {
         // Flat, one-word weather, answered in kind.
         if ["ok", "okay", "k", "fine", "whatever",
             "sure", "cool", "noted"].contains(q) {
+            // Attunement: a run of flat answers
+            // is itself a message, and three
+            // running she answers THAT — once.
+            if flatStreak >= 3 && !flatNamed {
+                flatNamed = true
+                return L("You've gone quiet — three short answers running, and not the working kind. I'm here. We can fix something, or fix nothing and just sit with it.")
+            }
             if feeling == .mischievous {
                 return L("Noted. Thrilling.")
             }
@@ -1897,6 +1925,172 @@ final class SkelliCenter: ObservableObject {
                 "That's a heavy one to carry "
                     + "alone. I'm not going "
                     + "anywhere."])
+        }
+        return nil
+    }
+
+    /// The workplace, in his language: the
+    /// beats of a working life met as beats —
+    /// and office-speak translated honestly,
+    /// because the dialect deserves it.
+    private func workReply(to q: String) -> String? {
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        // The decoder: named office phrases,
+        // asked about in any form.
+        let dialect: [(String, String)] = [
+            ("per my last email",
+             "'i already told you, in writing "
+                + "— and i kept the receipt.' "
+                + "corporate, at its most "
+                + "barely-contained."),
+            ("circle back",
+             "we'll speak of this later — which "
+                + "in office time can mean never, "
+                + "but with eye contact."),
+            ("touch base",
+             "a meeting too small to call a "
+                + "meeting, so it could slip onto "
+                + "a calendar unchallenged."),
+            ("take this offline",
+             "this conversation has become "
+                + "honest, and honesty is not on "
+                + "the agenda."),
+            ("bandwidth",
+             "a person, described as a cable. "
+                + "it means they're full and "
+                + "won't say so plainly."),
+            ("synergy",
+             "a word spoken when the numbers "
+                + "need a costume."),
+            ("deep dive",
+             "looking at something properly — "
+                + "announced like a sport."),
+            ("low-hanging fruit",
+             "the easy work, rebranded so "
+                + "taking it sounds like "
+                + "strategy."),
+            ("moving forward",
+             "the past is being buried without "
+                + "a service. whatever it was, it "
+                + "isn't to be mentioned again."),
+            ("think outside the box",
+             "please be creative — inside the "
+                + "usual box, by friday."),
+        ]
+        if q.contains("mean") || q.contains("?")
+            || q.contains("translate")
+            || q.contains("saying") {
+            for (phrase, line) in dialect
+            where q.contains(phrase) {
+                return line
+            }
+        }
+        // The beats are statements; questions
+        // about work go to her mind, armed.
+        if q.contains("?") { return nil }
+        if q.contains("i got promoted")
+            || q.contains("got a raise")
+            || q.contains("raise came through")
+            || q.contains("got the offer")
+            || q.contains("offer letter")
+            || q.contains("new job starts") {
+            return pick([
+                "There it is — the work got "
+                    + "seen. Logged under wins, "
+                    + "in ink.",
+                "A raise is a verdict with "
+                    + "numbers. Good. Yours.",
+                "Noted for the record. Don't "
+                    + "let it make you careful."])
+        }
+        if q.contains("i got fired")
+            || q.contains("got laid off")
+            || q.contains("i was laid off")
+            || q.contains("they let me go")
+            || q.contains("lost my job") {
+            return pick([
+                "That's a door closing loud — "
+                    + "not a verdict on you. I'm "
+                    + "here: money, plan, pride. "
+                    + "One at a time.",
+                "Heard. Losing the job is an "
+                    + "event; it isn't the "
+                    + "summary. When you're "
+                    + "ready, we plan."])
+        }
+        if q.contains("i quit")
+            || q.contains("handed in my notice")
+            || q.contains("gave my notice")
+            || q.contains("put in my notice") {
+            return pick([
+                "Done, then. Walking away "
+                    + "under your own power is "
+                    + "its own kind of "
+                    + "promotion.",
+                "Notice in. Good — the next "
+                    + "thing gets a version of "
+                    + "you that chose it."])
+        }
+        // The eve of a big work moment. (Not
+        // "tomorrow" shapes — the book of
+        // hours books those first, by design.)
+        if (q.contains("interview")
+                || q.contains("presentation")
+                || q.contains("performance review"))
+            && (q.contains("coming up")
+                || q.contains("this week")
+                || q.contains("today")
+                || q.contains("nervous")
+                || q.contains("dreading")
+                || q.contains("not ready")) {
+            return pick([
+                "Tomorrow's theirs to lose. "
+                    + "You've done the work — "
+                    + "sleep is the last of it, "
+                    + "and I'll keep the watch.",
+                "Nerves mean it matters. "
+                    + "It'll be over by lunch, "
+                    + "and smaller than it looks "
+                    + "tonight."])
+        }
+        if (q.contains("my boss")
+                || q.contains("my manager"))
+            && (q.contains("again")
+                || q.contains("won't")
+                || q.contains("wont")
+                || q.contains("micromanag")
+                || q.contains("unfair")
+                || q.contains("yelled")
+                || q.contains("credit")
+                || q.contains("blamed")) {
+            return pick([
+                "Heard. A boss like that is "
+                    + "weather, not climate — we "
+                    + "dress for it and keep "
+                    + "walking.",
+                "Noted for the record. When "
+                    + "you want words for it — "
+                    + "the kind you can say out "
+                    + "loud — I'll help you find "
+                    + "them."])
+        }
+        if q.contains("deadline")
+            && (q.contains("moved")
+                || q.contains("moved up")
+                || q.contains("impossible")
+                || q.contains("friday")) {
+            return pick([
+                "Then we eat it in pieces. "
+                    + "Tell me them, or let it "
+                    + "sit tonight — it keeps "
+                    + "either way.",
+                "Deadlines bend more than "
+                    + "they admit. Find the "
+                    + "immovable part; start "
+                    + "there."])
         }
         return nil
     }
@@ -3010,6 +3204,15 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // The working life, met in its own
+        // dialect: office-speak translated,
+        // the beats of the job answered as
+        // beats — never dragged to the app.
+        if let work = workReply(to: q) {
+            say(unrepeated(work))
+            return
+        }
+
         // Ordinary conversation — agreement,
         // a reaction, a continuation — answered
         // in kind, never by recital and never
@@ -3516,7 +3719,17 @@ final class SkelliCenter: ObservableObject {
             + "completely, and asked to teach "
             + "it you teach exactly, in steps, "
             + "errors named kindly and "
-            + "corrected at once. You "
+            + "corrected at once. Workplaces "
+            + "you understand from the inside "
+            + "— the bosses, the meetings, the "
+            + "dialect: asked to decode "
+            + "office-speak you translate it "
+            + "honestly; asked to rehearse a "
+            + "hard conversation or draft the "
+            + "words, you help him find the "
+            + "ones he can say out loud; you "
+            + "take his side without flattery "
+            + "and never coach deceit. You "
             + "keep lists: findings, knocks, "
             + "kindnesses, grievances. You bond "
             + "slowly and then completely. Your "

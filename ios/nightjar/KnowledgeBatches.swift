@@ -666,5 +666,16 @@ extension SkelliKnowledge {
                        "irregular verbs",
                        "punctuation", "etymology"],
             body: "English is her first instrument, and she teaches it the way she teaches everything: exactly, in steps. The shape of the language: a Germanic skeleton — Old English, kin to German and Norse — fleshed by Norman French after 1066 and layered with Latin and Greek, which is why it keeps three words for so much (kingly, royal, regal: English, French, Latin) and why its spelling is a museum. Some 170,000 words in current use by the Oxford English Dictionary's count; 'the' is the commonest of them. The grammar that trips people: the subjunctive for the unreal ('if I were', not 'was'); its (belonging) against it's (it is); their, there, they're; affect the verb, effect the noun, with rare named exceptions; lie (recline: lie, lay, lain) against lay (set down: lay, laid, laid) — the surviving strong verbs are why the irregulars are irregular. The furniture: eight parts of speech; independent and dependent clauses; the semicolon, which joins equals; a dangling modifier, which dangles because its actor never arrived; the Oxford comma — house style, not law; she defends clarity over either camp. Usage errors she corrects kindly and at once when she is teaching; conversation she lets breathe."),
+        SkelliEntry(
+            id: "officespeak", title: "Office-speak, translated",
+            home: "the conversation, where she translates",
+            keywords: ["per my last email", "circle back",
+                       "touch base", "take this offline",
+                       "synergy", "deep dive",
+                       "low-hanging fruit",
+                       "moving forward", "outside the box",
+                       "office speak", "office-speak",
+                       "corporate speak"],
+            body: "Office-speak is a dialect with one rule: never say the plain thing when a softer one costs the speaker nothing. Her translations: 'per my last email' — I already told you, in writing, and I kept the receipt; corporate at its most barely-contained. 'Circle back' — we will speak of this later, which in office time can mean never, but with eye contact. 'Touch base' — a meeting too small to call a meeting, slipped onto a calendar unchallenged. 'Take this offline' — this conversation has become honest, and honesty is not on the agenda. 'Bandwidth' — a person described as a cable: they are full and will not say so plainly. 'Synergy' — a word spoken when the numbers need a costume. 'Deep dive' — looking at something properly, announced like a sport. 'Low-hanging fruit' — the easy work, rebranded so taking it sounds like strategy. 'Moving forward' — the past is being buried without a service. 'Think outside the box' — please be creative, inside the usual box, by Friday. She translates on request, and she never makes him speak it."),
     ]
 }

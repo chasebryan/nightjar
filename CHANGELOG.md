@@ -368,6 +368,21 @@
   usage, etymology,
   taught exactly and
   in steps.
+- **She knows the working life.**
+  The beats of a job are
+  answered as beats —
+  the promotion, the
+  layoff, the notice,
+  the night before the
+  review — and
+  office-speak is
+  translated honestly
+  ("per my last email":
+  she kept the receipt).
+  And when the answers
+  go flat three running,
+  she notices that too,
+  and names it, once.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
