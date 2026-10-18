@@ -1,5 +1,5 @@
 import XCTest
-@testable import nightjar_hack
+@testable import nightjar
 
 /// Her ear for tone: how a thing was typed is part
 /// of what it said.

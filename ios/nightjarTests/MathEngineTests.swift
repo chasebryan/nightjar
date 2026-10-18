@@ -1,5 +1,5 @@
 import XCTest
-@testable import nightjar_hack
+@testable import nightjar
 
 /// Her arithmetic: exact answers for messages that
 /// are mathematics, silence for everything else.

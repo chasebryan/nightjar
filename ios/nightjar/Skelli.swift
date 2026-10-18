@@ -1550,6 +1550,29 @@ final class SkelliCenter: ObservableObject {
         }
         if q.contains("clear") || q.contains("delete")
             || q.contains("reset") || q.contains("forget") {
+            // What she built, she strikes herself:
+            // a delete that names her own work in
+            // its own words — a taught pattern, a
+            // forged payload, the armory — belongs
+            // to deleteAsk, which leads handsGate
+            // far below and would never see the ask
+            // past this gate. The naming is the
+            // safeguard: deleteAsk always speaks
+            // once its verb shows, so it is only
+            // offered asks that carry its subjects;
+            // every other clear, delete, reset and
+            // forget is answered by the guidance
+            // below, exactly as before.
+            if q.contains("delete")
+                && (q.contains("pattern")
+                    || q.contains("armory")
+                    || q.contains("payload")
+                    || q.contains("forged")
+                    || q.contains("you made")
+                    || q.contains("you built"))
+                && deleteAsk(q) {
+                return
+            }
             say(clearGuidance(for: q))
             return
         }
@@ -1660,6 +1683,7 @@ final class SkelliCenter: ObservableObject {
                         + event.when.formatted(
                             date: .abbreviated,
                             time: .shortened)
+                        + ")"
                 }.joined(separator: "\n"))
                 return
             }

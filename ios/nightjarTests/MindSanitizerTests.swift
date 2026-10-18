@@ -1,5 +1,5 @@
 import XCTest
-@testable import nightjar_hack
+@testable import nightjar
 
 /// The sanitizer's contract: a mind's scaffolding
 /// never reaches the transcript — think blocks go
