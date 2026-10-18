@@ -8,10 +8,10 @@
   to play exactly once — and
   the boot is now a ceremony
   timed to it. The film
-  streams frame by frame
-  (one frame of memory, not
-  six hundred megabytes of
-  decoded film), the log's
+  plays through the
+  platform's own animated
+  player — decoded once, at
+  a capped size — the log's
   styles stretch across its
   6.68 seconds, the sphere
   at the centre fills on the
@@ -30,7 +30,7 @@
   brightening — until, on
   the last frame, the
   subtitle gives way to the
-  finale: "> the world is
+  finale: "the world is
   yours", one held beat,
   then the fade into the app.
 - **The nervous system.**
@@ -129,6 +129,18 @@
   on "and", and she knows
   disguise, mimic and pretend
   for a persona step.
+- **The switches.** In
+  Colours, under Boot: the
+  boot screen itself can be
+  switched off — the app
+  then opens straight onto
+  its tabs — and animated
+  GIFs can be stilled
+  house-wide: the boot film,
+  the wallpaper reel and the
+  splashes then stand as
+  still frames instead of
+  playing.
 
 ## 8.0a — 2026-10-17 — the conductor
 

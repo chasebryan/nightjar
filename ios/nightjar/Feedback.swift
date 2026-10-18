@@ -332,6 +332,14 @@ extension View {
 enum BootMedia {
     static let mediaKey = "boot.media"
     static let textKey = "boot.textStyle"
+    /// Whether the boot ceremony plays at all
+    /// when the app opens.
+    static let enabledKey = "boot.enabled"
+    /// Whether animated GIFs play anywhere in
+    /// the house — the boot film, the wallpaper
+    /// reel, the splashes. Off, every GIF stands
+    /// as a still frame instead.
+    static let gifsKey = "media.gifsEnabled"
 
     static var file: URL {
         let docs = FileManager.default.urls(
@@ -379,6 +387,8 @@ struct BootView: View {
     private var bootMedia = "provided"
     @AppStorage(BootMedia.textKey)
     private var bootText = "lines"
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = true
     @State private var shown = 0
     @State private var typed = 0
     @State private var scrambleStep = 0
@@ -774,7 +784,7 @@ struct BootView: View {
             ZStack {
                 Color.black
                 if let data = loadedData {
-                    if BootMedia.isGIF(data) {
+                    if BootMedia.isGIF(data), gifsEnabled {
                         if bootMedia == "provided" {
                             // This film's bird stands
                             // left of centre in its own
@@ -884,7 +894,8 @@ struct BootView: View {
             // redraw was the crawl.
             let data = backdropData
             loadedData = data
-            if let data = data, BootMedia.isGIF(data) {
+            if let data = data, BootMedia.isGIF(data),
+               gifsEnabled {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
@@ -1255,20 +1266,40 @@ extension UIImage {
 struct GIFPlayerView: UIViewRepresentable {
     let data: Data
     var contentMode: UIView.ContentMode = .scaleAspectFill
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = true
 
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
         view.contentMode = contentMode
         view.clipsToBounds = true
         view.backgroundColor = .black
-        if let image = UIImage.animatedGIF(data: data) {
-            view.image = image
-            view.startAnimating()
-        }
+        configure(view)
         return view
     }
 
-    func updateUIView(_ view: UIImageView, context: Context) {}
+    func updateUIView(_ view: UIImageView, context: Context) {
+        configure(view)
+    }
+
+    /// Play the reel, or — when the house has
+    /// stilled its GIFs — stand its first frame.
+    private func configure(_ view: UIImageView) {
+        if gifsEnabled {
+            if view.isAnimating { return }
+            if let image = UIImage.animatedGIF(data: data) {
+                view.image = image
+                view.startAnimating()
+            }
+        } else {
+            view.stopAnimating()
+            view.animationImages = nil
+            if view.image == nil
+                || view.image?.images != nil {
+                view.image = UIImage(data: data)
+            }
+        }
+    }
 }
 
 /// The boot film's stage: a screen-sized container

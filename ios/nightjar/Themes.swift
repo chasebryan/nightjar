@@ -609,11 +609,30 @@ private struct BootRow: View {
     private var media = "provided"
     @AppStorage(BootMedia.textKey)
     private var textStyle = "lines"
+    @AppStorage(BootMedia.enabledKey)
+    private var bootEnabled = true
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = true
     @State private var pickerItem: PhotosPickerItem?
     @State private var notice: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Toggle("Boot screen", isOn: $bootEnabled)
+            Text("The ceremony that plays when the "
+                 + "app opens — film, sphere and "
+                 + "manifest. Off, the app opens "
+                 + "straight onto its tabs.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Toggle("Animated GIFs", isOn: $gifsEnabled)
+            Text("Off, every GIF in the house — "
+                 + "the boot film, the wallpaper "
+                 + "reel, the splashes — stands as "
+                 + "a still frame instead of "
+                 + "playing.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             HStack {
                 Text("Backdrop")
                 Spacer()

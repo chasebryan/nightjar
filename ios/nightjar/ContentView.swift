@@ -11,6 +11,8 @@ struct ContentView: View {
     @EnvironmentObject private var post: ListeningPost
     @State private var tab: Int
     @State private var showBoot = true
+    @AppStorage(BootMedia.enabledKey)
+    private var bootEnabled = true
 
     init() {
         // The house reopens where you left it:
@@ -148,7 +150,7 @@ struct ContentView: View {
         .sheet(isPresented: $showBoard) {
             ProcessBoardView()
         }
-            if showBoot {
+            if showBoot && bootEnabled {
                 BootView {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showBoot = false
