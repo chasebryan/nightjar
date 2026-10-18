@@ -171,7 +171,7 @@ final class WarRun: ObservableObject {
                book: PayloadBook, config: WarConfig) {
         guard !running else { return }
         guard !mouth.traceBusy else {
-            phase = .blocked
+            phase = .failed
             statusLine = "The trace is already working — "
                 + "a run waits for the wire to free."
             return

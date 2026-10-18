@@ -361,7 +361,7 @@ extension SkelliCenter {
             run.start(mouth: mouth, post: post,
                       recon: Recon(), book: PayloadBook(),
                       config: warRoomConfig())
-            if run.phase == .failed || run.phase == .blocked {
+            if run.phase == .failed {
                 say(run.statusLine
                     ?? "The run did not start.")
             } else {
