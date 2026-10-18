@@ -765,6 +765,9 @@ final class SkelliCenter: ObservableObject {
         let energy = SkelliHeart.shared.energy
         if energy < 35 { base *= 1.2 }
         else if energy > 72 { base *= 0.9 }
+        // At the witching hour she listens a
+        // moment longer between words.
+        if SkelliHeart.spookyHour() { base *= 1.3 }
         return min(base, 4.5)
     }
 
@@ -1969,6 +1972,8 @@ final class SkelliCenter: ObservableObject {
         }.count
         facts.append("\(neighbors.count) devices "
             + "on the wire (\(unknown) unnamed)")
+        facts.append("the operator's local time: "
+            + SkelliHeart.clockFact())
         if SkelliHeart.shared.enabled {
             let heart = SkelliHeart.shared
             facts.append("her temperament: feeling "

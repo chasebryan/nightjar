@@ -2778,6 +2778,21 @@ extension SkelliCenter {
     /// early so a small ask never earns a large answer.
     func smallFavor(_ q: String, raw: String)
         -> Bool {
+        // The clock is a fact, not a
+        // composition: asked the time, she
+        // reads the phone's own wall time and
+        // says it, shaded by the daypart she
+        // keeps. Before this, the question fell
+        // to a bench — and a mind without a
+        // clock invents one.
+        if ["what time is it", "what time is it now",
+            "what's the time", "what is the time",
+            "tell me the time", "the time",
+            "current time", "what time"]
+            .contains(q) {
+            say(SkelliHeart.clockFact() + ".")
+            return true
+        }
         if let spoken = remainder(q, raw: raw, stems: [
             "repeat after me", "respond with",
             "answer with", "repeat", "echo", "print",

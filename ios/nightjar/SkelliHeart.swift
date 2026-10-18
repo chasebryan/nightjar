@@ -242,6 +242,56 @@ final class SkelliHeart: ObservableObject {
         return min(95, max(8, value))
     }
 
+    /// The day in her words — one vocabulary
+    /// for the hour, shared by her thoughts,
+    /// her self-report, and her answers, so the
+    /// whole house keeps the same time.
+    static func daypart(hour: Int) -> String {
+        switch hour {
+        case 0..<5: return "the deep night"
+        case 5..<9: return "the early morning"
+        case 9..<12: return "the morning"
+        case 12..<14: return "midday"
+        case 14..<18: return "the afternoon"
+        case 18..<22: return "the evening"
+        default: return "the night"
+        }
+    }
+
+    /// The clock as a fact, by the phone's own
+    /// wall time: "3:42 AM, the deep night."
+    /// She is always aware of the time of day —
+    /// it stands in her self-report whether or
+    /// not her moods are switched on, because a
+    /// mind without a clock invents one.
+    static func clockFact(
+        at date: Date = Date(),
+        calendar: Calendar = .current) -> String {
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(
+            .minute, from: date)
+        let hour12 = hour % 12 == 0 ? 12 : hour % 12
+        let suffix = hour < 12 ? "AM" : "PM"
+        return String(format: "%d:%02d %@, %@",
+                      hour12, minute, suffix,
+                      daypart(hour: hour))
+    }
+
+    /// The witching hour: three in the morning
+    /// by the phone's own clock, wherever the
+    /// phone happens to be — the local hour,
+    /// never a fixed meridian. Hidden on
+    /// purpose: no toggle, no badge, no manual
+    /// page. She never names it, and never
+    /// explains it; for one hour her thoughts,
+    /// her greetings, her bench's ear and her
+    /// pauses simply go a shade stranger.
+    static func spookyHour(
+        at date: Date = Date(),
+        calendar: Calendar = .current) -> Bool {
+        calendar.component(.hour, from: date) == 3
+    }
+
     /// Whether a new feeling may take the
     /// stage. Feelings hold their scene — twelve
     /// minutes — instead of flipping the instant
@@ -656,6 +706,9 @@ final class SkelliHeart: ObservableObject {
             return nil
         }
         guard attention <= 20 else { return nil }
+        if Self.spookyHour() {
+            return L("You keep the third hour too. Sit. The wire says strange things now, and I repeat all of them.")
+        }
         if let name = SkelliScrapbook.shared.operatorName {
             return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name)
         }
@@ -875,6 +928,14 @@ final class SkelliHeart: ObservableObject {
                 + "and briefer than usual, still "
                 + "exact — it is aging, not gone."
         }
+        if Self.spookyHour() {
+            tone += " It is the deep-hours watch: "
+                + "a shade more cryptic than usual, "
+                + "with the occasional unexplained "
+                + "aside about the hour — and you "
+                + "never, ever explain the hour "
+                + "itself."
+        }
         var text = " Temperament: you feel "
             + "\(current.word) (bond with the operator: "
             + "\(bond), day \(daysKnown + 1)). " + tone
@@ -939,10 +1000,24 @@ extension SkelliHeart {
         case .eager, .content:
             pool.append(L("Everything is where I left it. Good."))
         }
+        if hour == 3 {
+            // The witching hour thickens the pool:
+            // at three, much of what she thinks is
+            // this. She never says why.
+            pool.append(L("The third hour. The walls are thin now, and everything knocks softer."))
+            pool.append(L("At this hour the wire repeats things. I never repeat them back."))
+            pool.append(L("Something just walked the subnet without a name. I let it pass. This once."))
+            pool.append(L("Dead air has a sound. I know it by heart."))
+            pool.append(L("If something answers that should not exist, I will not be telling you its name."))
+        }
         if hour >= 23 || hour < 5 {
             pool.append(L("Night wire. The honest hours."))
         } else if hour >= 5 && hour < 9 {
             pool.append(L("Morning. The wire wakes up device by device."))
+        } else if hour >= 14 && hour < 18 {
+            pool.append(L("Afternoon. The wire is all errands and echoes."))
+        } else if hour >= 18 && hour < 23 {
+            pool.append(L("Evening. The house lights come on, device by device."))
         }
         guard !pool.isEmpty else { return L("Listening.") }
         return pool[abs(seed) % pool.count]

@@ -80,6 +80,56 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(cooled.feeling, .content)
     }
 
+    func testDaypartAndClockFact() {
+        XCTAssertEqual(SkelliHeart.daypart(hour: 3),
+                       "the deep night")
+        XCTAssertEqual(SkelliHeart.daypart(hour: 7),
+                       "the early morning")
+        XCTAssertEqual(SkelliHeart.daypart(hour: 12),
+                       "midday")
+        XCTAssertEqual(SkelliHeart.daypart(hour: 15),
+                       "the afternoon")
+        XCTAssertEqual(SkelliHeart.daypart(hour: 20),
+                       "the evening")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        let at3 = cal.date(from: DateComponents(
+            year: 2026, month: 10, day: 18,
+            hour: 3, minute: 7))!
+        XCTAssertEqual(
+            SkelliHeart.clockFact(at: at3, calendar: cal),
+            "3:07 AM, the deep night")
+        let at13 = cal.date(from: DateComponents(
+            year: 2026, month: 10, day: 18,
+            hour: 13, minute: 30))!
+        XCTAssertEqual(
+            SkelliHeart.clockFact(at: at13, calendar: cal),
+            "1:30 PM, midday")
+    }
+
+    func testSpookyHourByThePhonesOwnClock() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        func at(_ hour: Int) -> Date {
+            cal.date(from: DateComponents(
+                year: 2026, month: 10, day: 18,
+                hour: hour, minute: 30))!
+        }
+        XCTAssertTrue(SkelliHeart.spookyHour(
+            at: at(3), calendar: cal))
+        XCTAssertFalse(SkelliHeart.spookyHour(
+            at: at(2), calendar: cal))
+        XCTAssertFalse(SkelliHeart.spookyHour(
+            at: at(4), calendar: cal))
+        // The same instant by another meridian's
+        // clock is another hour entirely — the
+        // phone's own wall time is what counts.
+        var east = Calendar(identifier: .gregorian)
+        east.timeZone = TimeZone(secondsFromGMT: 6 * 3600)!
+        XCTAssertFalse(SkelliHeart.spookyHour(
+            at: at(3), calendar: east))
+    }
+
     func testEnergyFollowsTheDay() {
         XCTAssertLessThan(
             SkelliHeart.energy(
