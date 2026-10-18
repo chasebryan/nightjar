@@ -1191,10 +1191,16 @@ final class SkelliCenter: ObservableObject {
             case .sleepy, .haunted, .dreamy:
                 return L("Mm. Still up?")
             default:
+                // Composed, not retrieved: the
+                // opener, plus a true clause of
+                // the moment when it offers one.
                 return pick([
                     L("The wire hums. I'm listening."),
                     L("Up. Watching. Ask me something."),
                     L("Same watch, same wire. What's needed?")])
+                    + SkelliVoice.clause(
+                        seed: lines.count * 3 + 1,
+                        heart: heart)
             }
         }
         if q.hasPrefix("good morning") {

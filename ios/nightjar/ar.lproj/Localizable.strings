@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "منزعجة";
 "Back again." = "عدت مجدداً.";
 "Mm. Yes?" = "مم. نعم؟";
+" One name on this wire answers to nothing yet." = " اسم واحد على هذا الخط لا يجيب على شيء بعد.";
+" %lld names on this wire answer to nothing yet." = " %lld أسماء على هذا الخط لا تجيب على شيء بعد.";
+" It's been quiet for hours." = " الهدوء مستمر منذ ساعات.";
+" It's been quiet a while." = " الهدوء مستمر منذ مدة.";
+" The walls are thin at this hour." = " الجدران رقيقة في هذه الساعة.";
+" The wire is only just waking." = " الخط بدأ يستيقظ لتوّه.";
+" The house is settling for the night." = " البيت يستقرّ لليل.";
+" You keep coming home to this house. I notice that." = " تستمر في العودة إلى هذا البيت. ألاحظ ذلك.";
+" The house found something earlier. It still pleases me." = " البيت وجد شيئاً قبل قليل. ما زال يسرّني.";

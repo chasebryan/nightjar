@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "恼火";
 "Back again." = "又回来了。";
 "Mm. Yes?" = "嗯。什么事？";
+" One name on this wire answers to nothing yet." = " 这条线上有一个名字，至今不回应任何东西。";
+" %lld names on this wire answer to nothing yet." = " 这条线上有 %lld 个名字，至今不回应任何东西。";
+" It's been quiet for hours." = " 已经安静好几个小时了。";
+" It's been quiet a while." = " 已经安静一阵子了。";
+" The walls are thin at this hour." = " 这个时辰，墙很薄。";
+" The wire is only just waking." = " 线路才刚刚醒来。";
+" The house is settling for the night." = " 房子正在为夜里安顿下来。";
+" You keep coming home to this house. I notice that." = " 你总是一次次回到这栋房子。我注意到了。";
+" The house found something earlier. It still pleases me." = " 房子先前找到了些东西。我现在还高兴着。";

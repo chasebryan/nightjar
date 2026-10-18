@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "苛立っている";
 "Back again." = "また来たね。";
 "Mm. Yes?" = "ん。何？";
+" One name on this wire answers to nothing yet." = "この回線には、まだ何にも応えない名前が一つある。";
+" %lld names on this wire answer to nothing yet." = "この回線には、まだ何にも応えない名前が%lld個ある。";
+" It's been quiet for hours." = "何時間も静かなままだ。";
+" It's been quiet a while." = "しばらく静かなままだ。";
+" The walls are thin at this hour." = "この時間は壁が薄い。";
+" The wire is only just waking." = "回線はようやく目覚め始めたところだ。";
+" The house is settling for the night." = "家が夜に向けて静まっていく。";
+" You keep coming home to this house. I notice that." = "あなたはこの家に帰ってき続ける。気づいている。";
+" The house found something earlier. It still pleases me." = "家はさっき何かを見つけた。今も嬉しい。";

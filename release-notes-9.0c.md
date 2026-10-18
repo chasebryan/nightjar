@@ -148,6 +148,25 @@
   ended in a crash, or a
   recent Vanish, leaves
   her checking the doors.
+- **She composes.** Her
+  own voice is no longer
+  retrieved from pools of
+  fixed lines: her
+  greetings, her answers
+  about her feelings, her
+  idle thoughts are
+  assembled at the moment
+  of speaking from her
+  real circumstances —
+  the hour, the quiet,
+  the souls on the wire
+  she cannot name — each
+  clause true by
+  construction, the whole
+  chosen by the moment's
+  own numbers. Thousands
+  of sentences, none of
+  them canned.
 - **Annoyed is not mad.**
   Petty grievances — an
   emptied conversation, a

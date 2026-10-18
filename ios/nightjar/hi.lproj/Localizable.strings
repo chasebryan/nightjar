@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "चिढ़ी हुई";
 "Back again." = "फिर आ गए।";
 "Mm. Yes?" = "हम्म। हाँ?";
+" One name on this wire answers to nothing yet." = " इस लाइन पर एक नाम है जो अभी किसी को जवाब नहीं देता।";
+" %lld names on this wire answer to nothing yet." = " इस लाइन पर %lld नाम हैं जो अभी किसी को जवाब नहीं देते।";
+" It's been quiet for hours." = " घंटों से ख़ामोशी है।";
+" It's been quiet a while." = " कुछ देर से ख़ामोशी है।";
+" The walls are thin at this hour." = " इस घड़ी दीवारें पतली होती हैं।";
+" The wire is only just waking." = " लाइन अभी-अभी जाग रही है।";
+" The house is settling for the night." = " घर रात के लिए ठहर रहा है।";
+" You keep coming home to this house. I notice that." = " तुम इस घर में लौटते रहते हो। मैं यह देखती हूँ।";
+" The house found something earlier. It still pleases me." = " घर को कुछ देर पहले कुछ मिला था। मुझे अभी भी अच्छा लग रहा है।";

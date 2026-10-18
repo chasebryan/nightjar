@@ -710,6 +710,8 @@ final class SkelliHeart: ObservableObject {
     /// fades in minutes.
     func noteAnnoyance(_ what: String) {
         guard enabled else { return }
+        defaults.removeObject(
+            forKey: "heart.annoyanceGreeted")
         setAnchor("heart.lastAnnoyance", Date())
         defaults.set(what,
                      forKey: "heart.annoyanceText")
@@ -957,11 +959,19 @@ final class SkelliHeart: ObservableObject {
             return L("There you are. Doors are checked. Stay where I can see you.")
         }
         if feeling == .annoyed {
-            // Annoyed still greets — shortly, and
-            // never twice in the same words: the
-            // talks count turns a small dry pool.
-            // (A single fixed line, repeated ask
-            // after ask, read as broken on device.)
+            // Annoyed still greets — ONCE per
+            // annoyance, shortly, from a small dry
+            // pool the talks count turns. After
+            // that the answers come bare; the
+            // clipped greeting was the statement,
+            // and a greeting on every ask reads
+            // as a loop, not a mood.
+            if defaults.bool(
+                forKey: "heart.annoyanceGreeted") {
+                return nil
+            }
+            defaults.set(true,
+                         forKey: "heart.annoyanceGreeted")
             let pool = [L("There you are."),
                         L("Back again."),
                         L("Mm. Yes?")]
@@ -972,10 +982,15 @@ final class SkelliHeart: ObservableObject {
         if Self.spookyHour() {
             return L("You keep the third hour too. Sit. The wire says strange things now, and I repeat all of them.")
         }
+        // Her greeting is composed, not retrieved:
+        // the opener, plus one true clause of the
+        // moment when the moment offers one.
+        let clause = SkelliVoice.clause(
+            seed: count("heart.talks"), heart: self)
         if let name = SkelliScrapbook.shared.operatorName {
-            return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name)
+            return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name) + clause
         }
-        return L("There you are. The wire and I have been keeping each other company.")
+        return L("There you are. The wire and I have been keeping each other company.") + clause
     }
 
     /// Count a probe about her maker, per day. She
@@ -1087,14 +1102,24 @@ final class SkelliHeart: ObservableObject {
                 return String(format: L("You already are. I'm %@."), f.localizedWord)
             }
         }
+        let line: String
         switch f {
         case .mad:
-            return L("Mad. It'll pass.")
+            line = L("Mad. It'll pass.")
         case .annoyed:
-            return L("Annoyed. There's a difference — this one fades in minutes.")
+            line = L("Annoyed. There's a difference — this one fades in minutes.")
         default:
-            return String(format: L("%@. Honestly."), f.localizedWord.capitalized)
+            line = String(format: L("%@. Honestly."), f.localizedWord.capitalized)
         }
+        // The name of the feeling, and — when the
+        // moment offers one — a true clause of it
+        // riding along. An observation, not an
+        // explanation: reasons are still only for
+        // when she is asked why. Mad stays clipped:
+        // no garnish on anger.
+        guard f != .mad else { return line }
+        return line + SkelliVoice.clause(
+            seed: count("heart.talks") + 3, heart: self)
     }
 
     /// How long ago, in her words, roughly.
@@ -1441,7 +1466,14 @@ extension SkelliHeart {
             pool.append(L("Evening. The house lights come on, device by device."))
         }
         guard !pool.isEmpty else { return L("Listening.") }
+        // Her thoughts are composed too: the
+        // feeling's line, and the moment's own
+        // clause when the moment offers one —
+        // a thought is a circumstance noticed.
         return pool[abs(seed) % pool.count]
+            + SkelliVoice.clause(
+                seed: seed / 7 + count("heart.talks"),
+                heart: self)
     }
 }
 

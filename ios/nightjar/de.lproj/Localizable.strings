@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "genervt";
 "Back again." = "Wieder da.";
 "Mm. Yes?" = "Mm. Ja?";
+" One name on this wire answers to nothing yet." = " Ein Name auf dieser Leitung antwortet noch auf nichts.";
+" %lld names on this wire answer to nothing yet." = " %lld Namen auf dieser Leitung antworten noch auf nichts.";
+" It's been quiet for hours." = " Es ist seit Stunden still.";
+" It's been quiet a while." = " Es ist seit einer Weile still.";
+" The walls are thin at this hour." = " Die Wände sind dünn um diese Stunde.";
+" The wire is only just waking." = " Die Leitung wacht gerade erst auf.";
+" The house is settling for the night." = " Das Haus kommt für die Nacht zur Ruhe.";
+" You keep coming home to this house. I notice that." = " Du kommst immer wieder in dieses Haus zurück. Das fällt mir auf.";
+" The house found something earlier. It still pleases me." = " Das Haus hat vorhin etwas gefunden. Es gefällt mir immer noch.";

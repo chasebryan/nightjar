@@ -92,6 +92,7 @@ enum SaneDefaults {
         "place.enabled", "skelli.schedule",
         "skelli.birthday", "skelli.birthdayGreeted",
     "heart.lastAnnoyance", "heart.annoyanceText",
+    "heart.annoyanceGreeted",
         "listen.bthomeV1",
     ]
 

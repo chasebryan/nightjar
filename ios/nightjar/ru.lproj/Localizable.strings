@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "раздражена";
 "Back again." = "Снова ты.";
 "Mm. Yes?" = "Мм. Да?";
+" One name on this wire answers to nothing yet." = " Одно имя на этой линии пока ни на что не отвечает.";
+" %lld names on this wire answer to nothing yet." = " %lld имён на этой линии пока ни на что не отвечают.";
+" It's been quiet for hours." = " Тишина стоит уже несколько часов.";
+" It's been quiet a while." = " Тишина стоит уже некоторое время.";
+" The walls are thin at this hour." = " В этот час стены тонки.";
+" The wire is only just waking." = " Линия только начинает просыпаться.";
+" The house is settling for the night." = " Дом устраивается на ночь.";
+" You keep coming home to this house. I notice that." = " Ты всё возвращаешься в этот дом. Я это замечаю.";
+" The house found something earlier. It still pleases me." = " Дом недавно кое-что нашёл. Мне это до сих пор приятно.";

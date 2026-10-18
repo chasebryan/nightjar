@@ -1589,3 +1589,12 @@
 "feeling.annoyed" = "짜증난";
 "Back again." = "또 왔네.";
 "Mm. Yes?" = "음. 왜?";
+" One name on this wire answers to nothing yet." = " 이 회선에는 아직 아무것에도 답하지 않는 이름이 하나 있다.";
+" %lld names on this wire answer to nothing yet." = " 이 회선에는 아직 아무것에도 답하지 않는 이름이 %lld개 있다.";
+" It's been quiet for hours." = " 몇 시간째 조용하다.";
+" It's been quiet a while." = " 한동안 조용하다.";
+" The walls are thin at this hour." = " 이 시간에는 벽이 얇다.";
+" The wire is only just waking." = " 회선이 이제 막 깨어나고 있다.";
+" The house is settling for the night." = " 집이 밤을 맞아 가라앉고 있다.";
+" You keep coming home to this house. I notice that." = " 너는 계속 이 집으로 돌아온다. 나는 그걸 알고 있다.";
+" The house found something earlier. It still pleases me." = " 집이 아까 무언가를 찾아냈다. 아직도 기쁘다.";
