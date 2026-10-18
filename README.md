@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**7.0.0 — "the war chest."**
+**7.7.7 — "the whetstone."**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -118,11 +118,18 @@ against. It boots over a living reel — the boot log typing itself across the f
   door for anyone who wants to chip in toward the
   costs.
 
-## What's new in 7.0.0 — "the war chest"
+## What's new in 7.7.7 — "the whetstone"
 
-7.0.0 is the war release: five rooms built for
-running this instrument as one rig, and one
-score put on an honest footing.
+7.7.7 is the quality release: no new rooms.
+The whole tree was audited end to end and
+sharpened — a download-queue race closed, a
+match tick that never stood down taught to,
+the night log's hash chain made honest, the
+NFC entitlement the tag census needs added,
+the last bare share brought through the door,
+clears and folds completed, and a tap for
+every primary action. The war campaign it
+sharpens, from 7.0.0:
 
 - **The War Chest** — whole-rig mission profiles.
   One chest captures the standing configuration
@@ -223,15 +230,15 @@ and stepped down at the operator's word. The orb
 keeps the wallpaper; the bloom is kept in `assets/`
 under its own name.
 
-## Two ways in: 7.0.0, or v4.0.0
+## Two ways in: 7.7.7, or v4.0.0
 
-7.0.0 is the current release, and it asks more of
+7.7.7 is the current release, and it asks more of
 your gear than the older line did. There are two
 supported ways in, and which one is yours depends
 on your Mac and your phone.
 
 **The current build** (this repo, `main`, the
-7.0.0 release) carries Skelli and everything in
+7.7.7 release) carries Skelli and everything in
 6.0.0 — the Map, the Subconscious, the Instrument,
 her conversational hands, the intelligence pass —
 plus the whole war campaign above. Building it requires:

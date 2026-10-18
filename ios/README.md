@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 7.0.0
+# nightjar-hack for iOS — 7.7.7
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -200,6 +200,19 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
+- **What 7.7.7 added.** The whetstone: a
+  quality pass over the whole tree, no new
+  rooms. A race in the weights download line
+  closed; War Games' tick taught to stand
+  down when unheld; the night log's hash
+  chain commits only on a landed write; the
+  NFC entitlement the tag census needs; the
+  EMCON audit's Bonjour types declared; the
+  last bare share through the ShareItem
+  door; clears and folds completed (Canary
+  lessons, the APDU log, Helm's confirmed
+  delete); a tap on every primary action;
+  dead code carried out.
 - **What 7.0.0 added.** The war campaign, and an
   honest score. The **War Chest** captures the whole
   rig's standing configuration — Send, Serve, Recon,
@@ -403,7 +416,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 ## Building the current build
 
-`main` carries 7.0.0, and with it the build
+`main` carries 7.7.7, and with it the build
 requirements that arrived with Skelli in 5.0.0.
 In the order you'll meet them:
 
