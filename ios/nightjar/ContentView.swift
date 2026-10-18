@@ -1004,6 +1004,7 @@ struct AboutView: View {
                             .foregroundStyle(.secondary)
                     }
 #endif
+#if !STORE_BUILD
                     if let release = updater.available {
                         if let install = release.installURL {
                             Button {

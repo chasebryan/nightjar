@@ -551,13 +551,16 @@ final class SkelliCenter: ObservableObject {
         }
         let hour = Calendar.current.component(
             .hour, from: Date())
+        var declared: String? = nil
+        if let emcon, emcon.active {
+            declared = emcon.condition.declared
+        }
         return SkelliHeart.thought(
             feeling: SkelliHeart.shared.feeling,
             neighbors: neighbors.count,
             unnamed: unnamed, drift: drift,
             knocks: emcon?.events.count ?? 0,
-            emconDeclared: (emcon?.active ?? false)
-                ? emcon?.condition.declared : nil,
+            emconDeclared: declared,
             hour: hour,
             seed: Int(Date().timeIntervalSince1970 / 25))
     }
