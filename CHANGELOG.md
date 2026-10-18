@@ -108,16 +108,24 @@
   The JavaScript workbench no
   longer force-unwraps its
   engine.
-- **The census can start.**
+- **The census, honestly.**
   The NFC reader-session
   formats entitlement was
-  missing — the tag census
-  could not have opened a
-  session without it. The
-  EMCON audit's five Bonjour
-  service types are declared
-  now, so those rows can
-  answer.
+  missing — and putting it
+  back was tried and reverted
+  within the day: a Personal
+  (free) Team cannot hold
+  the NFC Tag Reading
+  capability, and Xcode
+  refuses to provision the
+  app with it present. The
+  census opens NFC sessions
+  on a build signed by a
+  team holding the capability.
+  The EMCON audit's five
+  Bonjour service types are
+  declared now, so those rows
+  can answer.
 - **One door, every clear.**
   The last bare ShareLink —
   the mouth log's export —

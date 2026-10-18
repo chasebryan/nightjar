@@ -4,10 +4,15 @@
 <dict>
 	<key>com.apple.developer.healthkit</key>
 	<true/>
-	<key>com.apple.developer.nfc.readersession.formats</key>
-	<array>
-		<string>NDEF</string>
-		<string>TAG</string>
-	</array>
+	<!-- No com.apple.developer.nfc.readersession.formats
+	     here on purpose: Xcode refuses to provision it
+	     for a Personal (free) Team — "Personal
+	     development teams do not support the NFC Tag
+	     Reading capability" — and its presence blocks
+	     the whole build. The Tag Census opens NFC
+	     sessions only on a build signed by a team
+	     holding the capability; add NDEF + TAG back
+	     when such a team signs. (Removed 2026-10-17
+	     after the 7.7.7 sweep added it.) -->
 </dict>
 </plist>

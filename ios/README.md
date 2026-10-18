@@ -225,8 +225,10 @@ Below the steps, the Send tab keeps working:
   closed; War Games' tick taught to stand
   down when unheld; the night log's hash
   chain commits only on a landed write; the
-  NFC entitlement the tag census needs; the
-  EMCON audit's Bonjour types declared; the
+  NFC entitlement question answered honestly
+  (a free Team cannot hold it, so it stays
+  out — the census needs a capable team);
+  the EMCON audit's Bonjour types declared; the
   last bare share through the ShareItem
   door; clears and folds completed (Canary
   lessons, the APDU log, Helm's confirmed
