@@ -170,6 +170,12 @@ final class WarRun: ObservableObject {
     func start(mouth: Mouth, post: ListeningPost, recon: Recon,
                book: PayloadBook, config: WarConfig) {
         guard !running else { return }
+        guard !mouth.traceBusy else {
+            phase = .blocked
+            statusLine = "The trace is already working — "
+                + "a run waits for the wire to free."
+            return
+        }
         self.mouth = mouth
         self.post = post
         self.recon = recon

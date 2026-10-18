@@ -179,6 +179,10 @@ final class SigintStation: ObservableObject {
 
     // MARK: presence
 
+    /// Whether anything holds the fusion warm — the
+    /// console, a watch, or Skelli's standing ask.
+    var isAttached: Bool { attachCount > 0 }
+
     /// The console is on screen: keep the fusion warm.
     func attach(post: ListeningPost) {
         postRef = post

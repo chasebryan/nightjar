@@ -20,8 +20,12 @@ extension SkelliCenter {
     func handsGate(_ q: String, raw: String) -> Bool {
         if deleteAsk(q) { return true }
         if forgeAsk(q, raw: raw) { return true }
-        if weightsAsk(q) { return true }
+        // The war rooms before the weights bench: the
+        // bench's verbs are the fuzziest in the house
+        // ("use the …"), and a room's name should never
+        // be mistaken for a model.
         if warAsk(q) { return true }
+        if weightsAsk(q) { return true }
         return false
     }
 
@@ -172,6 +176,15 @@ extension SkelliCenter {
         // The SIGINT station — watches and the registry.
         let station = SigintStation.shared
         if q.contains("registry") || q.contains("emitters") {
+            // A sleeping station reads as an empty
+            // registry, which is a lie of omission: wake
+            // the desk and say so. Her attachment holds
+            // it warm for the rest of the session.
+            var woke = false
+            if let post = post, !station.isAttached {
+                station.attach(post: post)
+                woke = true
+            }
             let air = station.emitters
                 .filter { $0.kind == "ble" }.count
             let wire = station.emitters
@@ -183,7 +196,11 @@ extension SkelliCenter {
                 + "emitters this epoch — \(air) in the air, "
                 + "\(wire) on the wire."
                 + (top.isEmpty ? ""
-                   : " Loudest: \(top.joined(separator: ", "))."))
+                   : " Loudest: \(top.joined(separator: ", ")).")
+                + (woke
+                   ? " The station was asleep — it is on "
+                   + "the desk now and stays."
+                   : ""))
             return true
         }
         if q.contains("watch") {
@@ -221,7 +238,12 @@ extension SkelliCenter {
                 say("Watch running (\(scope)). The registry "
                     + "records; stop it and I will read the "
                     + "delta — what arrived, what vanished, "
-                    + "which doors changed.")
+                    + "which doors changed."
+                    + (post.session == nil
+                       ? " The ear is down, so this watch "
+                       + "reads the wire and the log — "
+                       + "start Listen for the air half."
+                       : ""))
                 return true
             }
         }
@@ -269,7 +291,13 @@ extension SkelliCenter {
                 say("The \(chest.name) chest is on — Send, "
                     + "Serve, Recon and the trace wear it. "
                     + "Nothing was started; a chest dresses "
-                    + "the rig, it does not pull a trigger.")
+                    + "the rig, it does not pull a trigger."
+                    + (MimicCenter.shared.activePersona != nil
+                       ? " Note: a Spoofy shape is worn, "
+                       + "and dropping it restores the "
+                       + "wardrobe from before the shape — "
+                       + "this dress would unwind with it."
+                       : ""))
                 return true
             }
             say(chests.isEmpty

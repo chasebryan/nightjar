@@ -312,7 +312,20 @@ final class MimicCenter: ObservableObject {
                 + "own snapshot owns the posture. Cease it "
                 + "first."
         }
-        if activePersona != nil { drop(mouth: mouth) }
+        let prior = wardrobe
+        if activePersona != nil {
+            // Switching shapes: restore the settings
+            // silently and let this don's one restart
+            // wear the new shape — no flash of the
+            // wardrobe between shapes. The new wardrobe
+            // inherits the ORIGINAL found state from the
+            // old one, air payloads and all.
+            restoreWardrobe(mouth: mouth, restartOrgans: false)
+            wardrobe = nil
+            activePersona = nil
+            wornSince = nil
+        }
+        let wasRotating = SpoofyRotator.shared.rotating
         SpoofyRotator.shared.stop()
         let defaults = UserDefaults.standard
         var values: [String: Any] = [:]
@@ -324,14 +337,21 @@ final class MimicCenter: ObservableObject {
         let touchStealth = persona.listed && mouth.stealth
         wardrobe = Wardrobe(
             values: values,
-            wasServing: mouth.serveRunning,
-            wasBeacon: mouth.beaconOn,
-            wasGatt: mouth.gattHostOn,
-            wasStealth: mouth.stealth,
-            stealthTouched: touchStealth,
-            wasBeaconPayload: mouth.currentBeaconPayload,
-            wasGattPayload: mouth.currentGattPayload,
-            wasAirName: mouth.currentAirName)
+            wasServing: prior?.wasServing
+                ?? mouth.serveRunning,
+            wasBeacon: prior?.wasBeacon ?? mouth.beaconOn,
+            wasGatt: prior?.wasGatt ?? mouth.gattHostOn,
+            wasStealth: prior?.wasStealth ?? mouth.stealth,
+            stealthTouched: (prior?.stealthTouched ?? false)
+                || touchStealth,
+            wasBeaconPayload: prior?.wasBeaconPayload
+                ?? mouth.currentBeaconPayload,
+            wasGattPayload: prior?.wasGattPayload
+                ?? mouth.currentGattPayload,
+            wasAirName: prior?.wasAirName
+                ?? mouth.currentAirName)
+        let verdictSuffix = wasRotating
+            ? " The revolving rack stands still." : ""
 
         defaults.set(persona.beaconName, forKey: "beaconName")
         defaults.set(persona.useTCP, forKey: "serveUseTCP")
@@ -363,12 +383,13 @@ final class MimicCenter: ObservableObject {
                     + "“\(persona.beaconName)”")
         let live = mouth.serveRunning || mouth.beaconOn
             || mouth.gattHostOn
-        return live
+        return (live
             ? "Wearing the \(persona.label) — live now, "
             + "in character on every surface it owns."
             : "Wearing the \(persona.label) — the dress "
             + "is set; it goes live when Serve or the "
-            + "air organs next start."
+            + "air organs next start.")
+            + verdictSuffix
     }
 
     @discardableResult
@@ -376,35 +397,8 @@ final class MimicCenter: ObservableObject {
         guard let persona = activePersona else {
             return "No shape is being worn."
         }
-        let defaults = UserDefaults.standard
-        if let wardrobe = wardrobe {
-            for key in Self.keys {
-                if let value = wardrobe.values[key] {
-                    defaults.set(value, forKey: key)
-                } else {
-                    defaults.removeObject(forKey: key)
-                }
-            }
-            if mouth.serveRunning {
-                mouth.stopServe()
-                mouth.startServeFromSettings()
-            }
-            if wardrobe.stealthTouched {
-                mouth.setStealth(wardrobe.wasStealth)
-            }
-            if wardrobe.wasBeacon, mouth.beaconOn {
-                mouth.stopBeacon()
-                mouth.startBeacon(
-                    payload: wardrobe.wasBeaconPayload,
-                    name: wardrobe.wasAirName)
-            }
-            if wardrobe.wasGatt, mouth.gattHostOn {
-                mouth.stopGattHost()
-                mouth.startGattHost(
-                    payload: wardrobe.wasGattPayload,
-                    name: wardrobe.wasAirName)
-            }
-        }
+        let drifted = dressDrifted(from: persona)
+        restoreWardrobe(mouth: mouth, restartOrgans: true)
         wardrobe = nil
         activePersona = nil
         wornSince = nil
@@ -414,6 +408,72 @@ final class MimicCenter: ObservableObject {
         return "Shape dropped — the wardrobe it found is "
             + "restored whole: settings, stealth, and the "
             + "exact payloads the air was carrying."
+            + (drifted
+               ? " Note: the dress changed while the "
+               + "shape was worn — the restore unwound "
+               + "that too."
+               : "")
+    }
+
+    /// Did anything re-dress the rig while the shape was
+    /// worn — a chest applied, a name changed by hand?
+    /// The restore unwinds it either way; the operator
+    /// deserves to be told.
+    private func dressDrifted(from persona: SpoofyPersona)
+        -> Bool {
+        let d = UserDefaults.standard
+        func flag(_ key: String) -> Bool {
+            (d.object(forKey: key) as? Bool) ?? false
+        }
+        func text(_ key: String) -> String {
+            d.string(forKey: key) ?? ""
+        }
+        return flag("serveUseTCP") != persona.useTCP
+            || text("serveTcpPort") != String(persona.tcpPort)
+            || flag("serveUseUDP") != persona.useUDP
+            || text("serveUdpPort") != String(persona.udpPort)
+            || flag("serveUseHTTP") != persona.useHTTP
+            || text("serveHttpPort")
+                != String(persona.httpPort)
+            || text("serveReply") != persona.reply
+            || text("beaconName") != persona.beaconName
+    }
+
+    /// The restore itself. Switching shapes uses it with
+    /// the organs left running, so the wire sees one
+    /// restart — the new shape's — not a flash of the
+    /// wardrobe between shapes.
+    private func restoreWardrobe(mouth: Mouth,
+                                 restartOrgans: Bool) {
+        guard let wardrobe = wardrobe else { return }
+        let defaults = UserDefaults.standard
+        for key in Self.keys {
+            if let value = wardrobe.values[key] {
+                defaults.set(value, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+        guard restartOrgans else { return }
+        if mouth.serveRunning {
+            mouth.stopServe()
+            mouth.startServeFromSettings()
+        }
+        if wardrobe.stealthTouched {
+            mouth.setStealth(wardrobe.wasStealth)
+        }
+        if wardrobe.wasBeacon, mouth.beaconOn {
+            mouth.stopBeacon()
+            mouth.startBeacon(
+                payload: wardrobe.wasBeaconPayload,
+                name: wardrobe.wasAirName)
+        }
+        if wardrobe.wasGatt, mouth.gattHostOn {
+            mouth.stopGattHost()
+            mouth.startGattHost(
+                payload: wardrobe.wasGattPayload,
+                name: wardrobe.wasAirName)
+        }
     }
 
     /// Restart whichever air organ is live, wearing the
@@ -492,6 +552,9 @@ final class SpoofyRotator: ObservableObject {
         else { return }
         index = (index + 1) % names.count
         Spoofy.applyName(names[index], mouth: mouth)
+        Journal.log("spoofy", "rotation",
+                    "the rack turns — now wearing "
+                    + "“\(names[index])”")
     }
 }
 
