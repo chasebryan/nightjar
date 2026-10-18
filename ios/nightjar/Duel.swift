@@ -359,15 +359,12 @@ struct DuelSectionView: View {
     @Binding var showing: Bool
 
     var body: some View {
-        Section(header: Text("Duel — two phones, one wire"),
-                footer: Text("One phone is the ground, the "
-                    + "other the blade: three rounds of strikes "
-                    + "against its real surface, refereed by "
-                    + "its own event log.")) {
+        Section(header: Text(L("Duel — two phones, one wire")),
+                footer: Text(L("One phone is the ground, the other the blade: three rounds of strikes against its real surface, refereed by its own event log."))) {
             Button {
                 showing = true
             } label: {
-                Label("Enter the arena",
+                Label(L("Enter the arena"),
                       systemImage: "figure.fencing")
             }
         }
@@ -389,22 +386,19 @@ struct DuelView: View {
                         .font(.callout.weight(.semibold))
                     if center.phase != "idle"
                         && center.phase != "done" {
-                        Text("Defense \(center.defScore) — "
-                             + "attack \(center.atkScore) · "
-                             + "round \(center.roundNumber)/"
-                             + "\(DuelCenter.roundsTotal)")
+                        Text(String(format: L("Defense %lld — attack %lld · round %lld/%lld"), center.defScore, center.atkScore, center.roundNumber, DuelCenter.roundsTotal))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 if center.phase == "idle" {
-                    Section(header: Text("Host — your phone is the ground")) {
-                        TextField("opponent — IP, or relay:name",
+                    Section(header: Text(L("Host — your phone is the ground"))) {
+                        TextField(L("opponent — IP, or relay:name"),
                                   text: $peerDraft)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .font(.callout.monospaced())
-                        Button("Offer the duel") {
+                        Button(L("Offer the duel")) {
                             Haptics.tap()
                             center.hostDuel(peer: peerDraft,
                                             chat: chat)
@@ -412,28 +406,25 @@ struct DuelView: View {
                         .disabled(peerDraft.trimmingCharacters(
                             in: .whitespaces).isEmpty
                             || KnockKeyStore.key == nil)
-                        Text("Raise EMCON and stand your ground "
-                             + "up first — Serve, the canary, the "
-                             + "tripwire. The arena is dealt from "
-                             + "what you actually run.")
+                        Text(L("Raise EMCON and stand your ground up first — Serve, the canary, the tripwire. The arena is dealt from what you actually run."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 if center.phase == "invited" {
-                    Section(header: Text("A duel is offered")) {
-                        Button("Accept — take up the blade") {
+                    Section(header: Text(L("A duel is offered"))) {
+                        Button(L("Accept — take up the blade")) {
                             Haptics.tap()
                             center.accept(chat: chat)
                         }
-                        Button("Refuse", role: .destructive) {
+                        Button(L("Refuse"), role: .destructive) {
                             center.refuse(chat: chat)
                         }
                     }
                 }
                 if center.isHost, center.phase == "between" {
                     Section {
-                        Button("Deal the next round") {
+                        Button(L("Deal the next round")) {
                             Haptics.tap()
                             center.startRound(chat: chat,
                                               emcon: emcon)
@@ -441,7 +432,7 @@ struct DuelView: View {
                     }
                 }
                 if !center.isHost, center.phase == "round" {
-                    Section(header: Text("Round \(center.roundNumber) — choose \(DuelCenter.strikesPerRound) and strike")) {
+                    Section(header: Text(String(format: L("Round %lld — choose %lld and strike"), center.roundNumber, DuelCenter.strikesPerRound))) {
                         ForEach(center.arena, id: \.self) { port in
                             Button {
                                 toggle(port)
@@ -461,10 +452,10 @@ struct DuelView: View {
                         if center.recon.knocking {
                             HStack {
                                 ProgressView()
-                                Text("Striking…").font(.callout)
+                                Text(L("Striking…")).font(.callout)
                             }
                         } else {
-                            Button("Strike") {
+                            Button(L("Strike")) {
                                 Haptics.tap()
                                 center.strike(chat: chat)
                             }
@@ -475,7 +466,7 @@ struct DuelView: View {
                 }
                 if center.phase == "done" {
                     Section {
-                        Button("Leave the arena") {
+                        Button(L("Leave the arena")) {
                             center.reset()
                             dismiss()
                         }
@@ -483,14 +474,14 @@ struct DuelView: View {
                 }
                 if center.phase != "idle" {
                     Section {
-                        Button("Abandon the duel",
+                        Button(L("Abandon the duel"),
                                role: .destructive) {
                             center.reset()
                         }
                     }
                 }
                 if !center.lines.isEmpty {
-                    Section(header: Text("The duel, as it happened")) {
+                    Section(header: Text(L("The duel, as it happened"))) {
                         ForEach(Array(center.lines.enumerated()),
                                 id: \.offset) { _, line in
                             Text(line).font(.caption)
@@ -498,10 +489,10 @@ struct DuelView: View {
                     }
                 }
             }
-            .navigationTitle("Duel")
+            .navigationTitle(L("Duel"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .onChange(of: center.recon.knocking) { knocking in

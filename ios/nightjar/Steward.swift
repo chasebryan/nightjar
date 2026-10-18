@@ -1217,27 +1217,14 @@ struct StewardSectionView: View {
     @State private var orderAction = "tighten"
 
     var body: some View {
-        Section(header: Text("The steward"),
-                footer: Text("A watch officer under a charter "
-                    + "you write. OBSERVE: it assesses and "
-                    + "files proposals, and touches nothing. "
-                    + "ACT: it runs plans in proportion to "
-                    + "confidence — high runs the whole plan, "
-                    + "medium its first step, low is journaled "
-                    + "and left to you. FULL: it may also "
-                    + "approve its own drafted reflexes and "
-                    + "raise EMCON at your usual hour. Every "
-                    + "judgment is a sealed journal line with "
-                    + "its score and its factors; you audit "
-                    + "it, you amend the charter. It thinks "
-                    + "while the app is open — every opening "
-                    + "is a shift change.")) {
-            Toggle("The steward", isOn: $stewardOn)
+        Section(header: Text(L("The steward")),
+                footer: Text(L("A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change."))) {
+            Toggle(L("The steward"), isOn: $stewardOn)
             if stewardOn {
-                Picker("Latitude", selection: $latitude) {
-                    Text("Observe").tag("observe")
-                    Text("Act").tag("act")
-                    Text("Full").tag("full")
+                Picker(L("Latitude"), selection: $latitude) {
+                    Text(L("Observe")).tag("observe")
+                    Text(L("Act")).tag("act")
+                    Text(L("Full")).tag("full")
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: latitude) { _ in
@@ -1255,8 +1242,7 @@ struct StewardSectionView: View {
                 watchOrdersEditor
                 casesList
                 if Steward.dismissalCount > 0 {
-                    Button("Restore \(Steward.dismissalCount) "
-                           + "dismissed deviation(s)") {
+                    Button(String(format: L("Restore %lld dismissed deviation(s)"), Steward.dismissalCount)) {
                         Steward.clearDismissals()
                     }
                     .font(.callout)
@@ -1277,31 +1263,31 @@ struct StewardSectionView: View {
                     .foregroundStyle(.secondary)
                 HStack(spacing: 16) {
                     if proposal.kind == "plan" {
-                        Button("Enact the plan") {
+                        Button(L("Enact the plan")) {
                             steward.enact(proposal,
                                           emcon: emcon,
                                           mouth: mouth)
                         }
                     } else if proposal.kind == "rule" {
-                        Button("Approve the reflex") {
+                        Button(L("Approve the reflex")) {
                             steward.enact(proposal,
                                           emcon: emcon,
                                           mouth: mouth)
                         }
                     } else if proposal.kind == "charter" {
-                        Button("Amend the charter") {
+                        Button(L("Amend the charter")) {
                             steward.enact(proposal,
                                           emcon: emcon,
                                           mouth: mouth)
                         }
                     } else if proposal.kind == "posture" {
-                        Button("Raise EMCON") {
+                        Button(L("Raise EMCON")) {
                             steward.enact(proposal,
                                           emcon: emcon,
                                           mouth: mouth)
                         }
                     }
-                    Button("Dismiss", role: .destructive) {
+                    Button(L("Dismiss"), role: .destructive) {
                         steward.dismissProposal(proposal)
                     }
                 }
@@ -1317,7 +1303,7 @@ struct StewardSectionView: View {
                 HStack {
                     Text(note).font(.caption)
                     Spacer()
-                    Button("Dismiss") {
+                    Button(L("Dismiss")) {
                         emcon.hometurfDismiss(note)
                     }
                     .font(.caption)
@@ -1328,7 +1314,7 @@ struct StewardSectionView: View {
 
     @ViewBuilder
     private var watchOrdersEditor: some View {
-        Text("Watch orders — your own situations")
+        Text(L("Watch orders — your own situations"))
             .font(.callout.weight(.medium))
         ForEach($steward.orders) { $order in
             HStack {
@@ -1339,7 +1325,7 @@ struct StewardSectionView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Toggle("", isOn: $order.enabled)
+                Toggle(L(""), isOn: $order.enabled)
                     .labelsHidden()
                     .onChange(of: order.enabled) { _ in
                         steward.saveOrders()
@@ -1355,26 +1341,26 @@ struct StewardSectionView: View {
                 .buttonStyle(.borderless)
             }
         }
-        TextField("Order name (e.g. the landlord's box)",
+        TextField(L("Order name (e.g. the landlord's box)"),
                   text: $orderName)
             .font(.callout)
-        TextField("Host contains (blank = any)",
+        TextField(L("Host contains (blank = any)"),
                   text: $orderHost)
             .font(.callout.monospaced())
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
-        TextField("Port (blank = any)", text: $orderPort)
+        TextField(L("Port (blank = any)"), text: $orderPort)
             .font(.callout.monospaced())
             .keyboardType(.numberPad)
-        TextField("First word contains (blank = any)",
+        TextField(L("First word contains (blank = any)"),
                   text: $orderVerdict)
             .font(.callout.monospaced())
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
-        Picker("Then", selection: $orderAction) {
-            Text("Raise the second sense").tag("tighten")
-            Text("Answer in character").tag("answer")
-            Text("Load the bench on them").tag("pivot")
+        Picker(L("Then"), selection: $orderAction) {
+            Text(L("Raise the second sense")).tag("tighten")
+            Text(L("Answer in character")).tag("answer")
+            Text(L("Load the bench on them")).tag("pivot")
         }
         .font(.callout)
         Button {
@@ -1388,7 +1374,7 @@ struct StewardSectionView: View {
             orderName = ""; orderHost = ""
             orderPort = ""; orderVerdict = ""
         } label: {
-            Label("Post the watch order",
+            Label(L("Post the watch order"),
                   systemImage: "plus.circle")
         }
         .font(.callout)
@@ -1411,7 +1397,7 @@ struct StewardSectionView: View {
     private var casesList: some View {
         let open = steward.cases.filter { $0.open }
         if !open.isEmpty {
-            Text("Case files")
+            Text(L("Case files"))
                 .font(.callout.weight(.medium))
             ForEach(open) { entry in
                 VStack(alignment: .leading, spacing: 3) {
@@ -1419,7 +1405,7 @@ struct StewardSectionView: View {
                         Text(entry.hosts.joined(separator: ", "))
                             .font(.callout.weight(.medium))
                         Spacer()
-                        Button("Close") {
+                        Button(L("Close")) {
                             steward.closeCase(entry)
                         }
                         .font(.caption)

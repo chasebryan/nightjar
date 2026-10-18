@@ -325,17 +325,12 @@ struct DeliveriesView: View {
         NavigationStack {
             List(selection: $selected) {
                 Section {
-                    Text("Everything she makes "
-                        + "is filed here — take "
-                        + "one, or zip the lot "
-                        + "and take it all.")
+                    Text(L("Everything she makes is filed here — take one, or zip the lot and take it all."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
                 if center.items.isEmpty {
-                    Text("Nothing filed yet. "
-                        + "What she forges and "
-                        + "builds lands here.")
+                    Text(L("Nothing filed yet. What she forges and builds lands here."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -345,8 +340,7 @@ struct DeliveriesView: View {
                                spacing: 2) {
                             Text(item.file)
                                 .font(.callout)
-                            Text("\(item.bytes) "
-                                + "bytes · "
+                            Text(String(format: L("%lld bytes · "), item.bytes)
                                 + item.made
                                     .formatted(
                                         date: .abbreviated,
@@ -390,21 +384,21 @@ struct DeliveriesView: View {
                             Haptics.tap()
                             zipItems(center.items)
                         }
-                        Button("Clear the shelf",
+                        Button(L("Clear the shelf"),
                                role: .destructive) {
                             confirmClear = true
                         }
                     }
                 }
             }
-            .navigationTitle("Deliveries")
+            .navigationTitle(L("Deliveries"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     EditButton()
                 }
                 ToolbarItem(
                     placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .sheet(item: $shareItem) { item in
@@ -414,11 +408,11 @@ struct DeliveriesView: View {
                 "Clear every delivery?",
                 isPresented: $confirmClear,
                 titleVisibility: .visible) {
-                Button("Clear them all",
+                Button(L("Clear them all"),
                        role: .destructive) {
                     center.clear()
                 }
-                Button("Keep them", role: .cancel) {}
+                Button(L("Keep them"), role: .cancel) {}
             }
         }
     }

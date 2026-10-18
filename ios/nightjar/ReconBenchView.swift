@@ -67,7 +67,7 @@ struct ReconBenchView: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Recon")
+            .navigationTitle(L("Recon"))
             .onAppear {
                 recon.mouth = mouth
                 consumeReconHandoff()
@@ -83,22 +83,22 @@ struct ReconBenchView: View {
 
     @ViewBuilder private var knockSection: some View {
         Section {
-            TextField("host or IP (192.168.1.1)", text: $host)
+            TextField(L("host or IP (192.168.1.1)"), text: $host)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .keyboardType(.URL)
-            TextField("ports — blank for the usual suspects, or 22,80,443 or 1-1024",
+            TextField(L("ports — blank for the usual suspects, or 22,80,443 or 1-1024"),
                       text: $ports)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
-            Toggle("Also knock the UDP service ports", isOn: $knockUDP)
+            Toggle(L("Also knock the UDP service ports"), isOn: $knockUDP)
             HStack {
-                Text("At a time")
+                Text(L("At a time"))
                 Slider(value: $jobs, in: 4...64, step: 4)
                 Text("\(Int(jobs))").monospacedDigit().foregroundStyle(.secondary)
             }
             HStack {
-                Text("Timeout")
+                Text(L("Timeout"))
                 Slider(value: $timeout, in: 0.5...5, step: 0.5)
                 Text(String(format: "%.1fs", timeout))
                     .monospacedDigit().foregroundStyle(.secondary)
@@ -116,20 +116,17 @@ struct ReconBenchView: View {
             .disabled(host.trimmingCharacters(in: .whitespaces).isEmpty
                       || recon.knocking)
             if recon.knocking {
-                Button("Stop") { recon.cancelKnock() }
+                Button(L("Stop")) { recon.cancelKnock() }
             }
         } header: {
-            Text("Knock")
+            Text(L("Knock"))
         } footer: {
-            Text("Connects to each port and speaks the protocol that port "
-                 + "expects. A star means the reply carried the protocol's "
-                 + "own tell — the port answered as that service, not merely "
-                 + "opened. Tap a hit to load it into Send.")
+            Text(L("Connects to each port and speaks the protocol that port expects. A star means the reply carried the protocol's own tell — the port answered as that service, not merely opened. Tap a hit to load it into Send."))
         }
     }
 
     @ViewBuilder private var resultsSection: some View {
-        Section("Open — \(recon.hits.filter { $0.isOpen }.count)") {
+        Section(String(format: L("Open — %lld"), recon.hits.filter { $0.isOpen }.count)) {
             ForEach(recon.hits.filter { $0.isOpen }) { hit in
                 Button {
                     Haptics.select()
@@ -163,7 +160,7 @@ struct ReconBenchView: View {
             mouth.scanHandoffPayload = name
             mouth.scanHandoffHex = data.map { String(format: "%02x", $0) }.joined()
         }
-        toasts.show("Loaded \(hit.label) into Send")
+        toasts.show(String(format: L("Loaded %@ into Send"), hit.label))
         tab = 1
     }
 
@@ -171,7 +168,7 @@ struct ReconBenchView: View {
 
     @ViewBuilder private var connectSection: some View {
         Section {
-            TextField("tcp://host:port", text: $recon.connectTarget)
+            TextField(L("tcp://host:port"), text: $recon.connectTarget)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
             HStack {
@@ -181,18 +178,18 @@ struct ReconBenchView: View {
                 }
                 .disabled(recon.connectTarget.isEmpty)
                 Spacer()
-                Toggle("CRLF", isOn: $connectCRLF).fixedSize()
+                Toggle(L("CRLF"), isOn: $connectCRLF).fixedSize()
             }
             if recon.connected {
                 HStack {
-                    TextField("send a line", text: $connectLine)
+                    TextField(L("send a line"), text: $connectLine)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .onSubmit {
                             recon.sendLine(connectLine, crlf: connectCRLF)
                             connectLine = ""
                         }
-                    Button("Send") {
+                    Button(L("Send")) {
                         Haptics.tap()
                         recon.sendLine(connectLine, crlf: connectCRLF)
                         connectLine = ""
@@ -210,14 +207,13 @@ struct ReconBenchView: View {
                     }
                 }
                 .frame(maxHeight: 220)
-                Button("Clear console") { recon.clearConsole() }
+                Button(L("Clear console")) { recon.clearConsole() }
                     .font(.caption)
             }
         } header: {
-            Text("Connect")
+            Text(L("Connect"))
         } footer: {
-            Text("A console, not a terminal: open the socket, send lines, "
-                 + "watch what comes back. Binary replies print as hexdumps.")
+            Text(L("A console, not a terminal: open the socket, send lines, watch what comes back. Binary replies print as hexdumps."))
         }
     }
 
@@ -225,19 +221,19 @@ struct ReconBenchView: View {
 
     @ViewBuilder private var fuzzSection: some View {
         Section {
-            TextField("target (tcp://host:port or udp://…)", text: $fuzzTarget)
+            TextField(L("target (tcp://host:port or udp://…)"), text: $fuzzTarget)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
-            TextField("seed hex (optional)", text: $fuzzSeed)
+            TextField(L("seed hex (optional)"), text: $fuzzSeed)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
             HStack {
-                Text("Rounds")
+                Text(L("Rounds"))
                 Slider(value: $fuzzCount, in: 10...2000, step: 10)
                 Text("\(Int(fuzzCount))").monospacedDigit().foregroundStyle(.secondary)
             }
             HStack {
-                Text("Mutations")
+                Text(L("Mutations"))
                 Slider(value: $fuzzMutations, in: 1...8, step: 1)
                 Text("\(Int(fuzzMutations))").monospacedDigit().foregroundStyle(.secondary)
             }
@@ -253,7 +249,7 @@ struct ReconBenchView: View {
             }
             .disabled(fuzzTarget.isEmpty || recon.fuzzing)
             if recon.fuzzing {
-                Button("Stop") { recon.stopFuzz() }
+                Button(L("Stop")) { recon.stopFuzz() }
             }
             if !recon.fuzzLines.isEmpty {
                 ScrollView {
@@ -267,10 +263,9 @@ struct ReconBenchView: View {
                 .frame(maxHeight: 200)
             }
         } header: {
-            Text("Fuzz")
+            Text(L("Fuzz"))
         } footer: {
-            Text("Seven mutators, a reproducible seed, and a reply digest "
-                 + "per round. DEAD means the connection was refused or reset.")
+            Text(L("Seven mutators, a reproducible seed, and a reply digest per round. DEAD means the connection was refused or reset."))
         }
     }
 
@@ -282,23 +277,20 @@ struct ReconBenchView: View {
                 Haptics.tap()
                 showPresets = true
             } label: {
-                Label("Protocol library — \(ReconPayloads.all.count) probes",
+                Label(String(format: L("Protocol library — %lld probes"), ReconPayloads.all.count),
                       systemImage: "book")
             }
             Button {
                 Haptics.tap()
                 addAllToLibrary()
             } label: {
-                Label("Add every probe to the payload library",
+                Label(L("Add every probe to the payload library"),
                       systemImage: "square.and.arrow.down")
             }
         } header: {
-            Text("Library")
+            Text(L("Library"))
         } footer: {
-            Text("Wire-exact first words for \(ReconPayloads.portMap.count) "
-                 + "TCP ports and \(ReconPayloads.udpPortMap.count) UDP ports. "
-                 + "Adding them to the payload library makes every one "
-                 + "sendable by hand from the Send tab.")
+            Text(String(format: L("Wire-exact first words for %lld TCP ports and %lld UDP ports. Adding them to the payload library makes every one sendable by hand from the Send tab."), ReconPayloads.portMap.count, ReconPayloads.udpPortMap.count))
         }
     }
 
@@ -314,7 +306,7 @@ struct ReconBenchView: View {
                 xorKey: "", useGzip: false, framing: "raw"))
             added += 1
         }
-        toasts.show("Added \(added) probes to the payload library")
+        toasts.show(String(format: L("Added %lld probes to the payload library"), added))
     }
 
     @ViewBuilder private var presetSheet: some View {
@@ -330,7 +322,7 @@ struct ReconBenchView: View {
                         mouth.scanHandoffPayload = probe.name
                         mouth.scanHandoffHex = probe.build()
                             .map { String(format: "%02x", $0) }.joined()
-                        toasts.show("Loaded \(probe.name) into Send")
+                        toasts.show(String(format: L("Loaded %@ into Send"), probe.name))
                         tab = 1
                     } label: {
                         HStack {
@@ -348,10 +340,10 @@ struct ReconBenchView: View {
                 }
             }
             .searchable(text: $presetFilter)
-            .navigationTitle("Protocol library")
+            .navigationTitle(L("Protocol library"))
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { showPresets = false }
+                    Button(L("Done")) { showPresets = false }
                 }
             }
         }

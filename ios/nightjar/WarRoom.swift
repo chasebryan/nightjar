@@ -645,17 +645,13 @@ struct WarRoomView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Text("One operation: Listen (if the air is "
-                        + "included) and the trace run as one, "
-                        + "then the knock bench works every door "
-                        + "the trace confirmed — all of it on one "
-                        + "timeline, all of it in one export.")
+                    Text(L("One operation: Listen (if the air is included) and the trace run as one, then the knock bench works every door the trace confirmed — all of it on one timeline, all of it in one export."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Section {
-                    Toggle("Include the air — BLE via Listen",
+                    Toggle(L("Include the air — BLE via Listen"),
                            isOn: $includeBLE)
                         .disabled(run.running)
                     if run.running {
@@ -663,7 +659,7 @@ struct WarRoomView: View {
                             Haptics.tap()
                             run.stop()
                         } label: {
-                            Label("Stop the run",
+                            Label(L("Stop the run"),
                                   systemImage: "stop.circle")
                                 .frame(maxWidth: .infinity)
                         }
@@ -673,7 +669,7 @@ struct WarRoomView: View {
                             Haptics.tap()
                             startRun()
                         } label: {
-                            Label("Start the operation",
+                            Label(L("Start the operation"),
                                   systemImage: "play.circle")
                                 .frame(maxWidth: .infinity)
                         }
@@ -682,23 +678,17 @@ struct WarRoomView: View {
                                   || mouth.talkBusy)
                         if mouth.traceBusy || mouth.crawlBusy
                             || mouth.talkBusy {
-                            Text("Another engine is working — "
-                                + "the War Room starts when the "
-                                + "wire is free.")
+                            Text(L("Another engine is working — the War Room starts when the wire is free."))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 } footer: {
-                    Text("Foreground only, on the scope the "
-                        + "Trace section is set to. The run uses "
-                        + "your standing Trace and Recon settings "
-                        + "— a War Chest redresses all of them "
-                        + "at once.")
+                    Text(L("Foreground only, on the scope the Trace section is set to. The run uses your standing Trace and Recon settings — a War Chest redresses all of them at once."))
                 }
 
                 if !run.events.isEmpty {
-                    Section("Timeline — \(run.events.count)") {
+                    Section(String(format: L("Timeline — %lld"), run.events.count)) {
                         ForEach(visibleEvents) { event in
                             HStack(alignment: .firstTextBaseline,
                                    spacing: 8) {
@@ -730,7 +720,7 @@ struct WarRoomView: View {
                             }
                         }
                         if !run.running {
-                            Button("Clear the timeline",
+                            Button(L("Clear the timeline"),
                                    role: .destructive) {
                                 run.clearTimeline()
                                 showAllEvents = false
@@ -740,23 +730,21 @@ struct WarRoomView: View {
                 }
 
                 if let url = run.exportURL {
-                    Section("The record") {
+                    Section(L("The record")) {
                         Button {
                             Haptics.select()
                             shareItem = ShareItem(items: [url])
                         } label: {
-                            Label("Share the War Room export",
+                            Label(L("Share the War Room export"),
                                   systemImage: "square.and.arrow.up")
                         }
-                        Text("One JSON: this timeline, the "
-                            + "knock record, and the trace's own "
-                            + "export embedded whole.")
+                        Text(L("One JSON: this timeline, the knock record, and the trace's own export embedded whole."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .navigationTitle("War Room")
+            .navigationTitle(L("War Room"))
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
@@ -811,8 +799,7 @@ struct WarRoomView: View {
     private func startRun() {
         let discovery = warParsePorts(traceDiscoveryPorts)
         guard !discovery.isEmpty else {
-            toasts.show("The Trace section has no discovery "
-                        + "ports set", error: true)
+            toasts.show(L("The Trace section has no discovery ports set"), error: true)
             return
         }
         let profileText = traceProfilePorts

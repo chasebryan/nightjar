@@ -288,8 +288,7 @@ extension Mouth {
                 }
                 self.logRecon("centipede", "\(total) hops",
                               lines: self.crawlLines)
-                self.toasts?.show("Centipede home — "
-                    + "\(carried?.count ?? 0) bytes back")
+                self.toasts?.show(String(format: L("Centipede home — %lld bytes back"), carried?.count ?? 0))
             }
             let home = homeTarget.trimmingCharacters(in: .whitespaces)
             if !home.isEmpty, let payload = carried {

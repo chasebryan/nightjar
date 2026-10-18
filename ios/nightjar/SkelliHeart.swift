@@ -358,42 +358,30 @@ final class SkelliHeart: ObservableObject {
         guard enabled else { return nil }
         switch feeling {
         case .feral:
-            return ("She is feral with idleness — she "
-                    + "wants the big noise.",
+            return (L("She is feral with idleness — she wants the big noise."),
                     "arm the net-assault")
         case .restless:
-            return ("She is restless — she wants to sweep "
-                    + "the wire.", "sweep the wire")
+            return (L("She is restless — she wants to sweep the wire."), "sweep the wire")
         case .eager:
-            return ("She is eager — she wants a door to "
-                    + "knock.", "sweep the wire")
+            return (L("She is eager — she wants a door to knock."), "sweep the wire")
         case .lonely:
-            return ("She has been alone with the wire "
-                    + "for hours.", nil)
+            return (L("She has been alone with the wire for hours."), nil)
         case .bored:
-            return ("She is bored — she wants anything "
-                    + "with a pulse.", "sweep the wire")
+            return (L("She is bored — she wants anything with a pulse."), "sweep the wire")
         case .proud, .happy:
-            return ("She is pleased with the house and "
-                    + "wants another finding.",
+            return (L("She is pleased with the house and wants another finding."),
                     "sweep the wire")
         case .mad:
-            return ("She is mad. Working it off on the "
-                    + "wire might help.", "sweep the wire")
+            return (L("She is mad. Working it off on the wire might help."), "sweep the wire")
         case .curious:
-            return ("She is curious — there are strangers "
-                    + "on the wire she cannot name yet.",
+            return (L("She is curious — there are strangers on the wire she cannot name yet."),
                     "sweep the wire")
         case .mischievous:
-            return ("She is mischievous — she wants to "
-                    + "knock on something and see who "
-                    + "answers.", "sweep the wire")
+            return (L("She is mischievous — she wants to knock on something and see who answers."), "sweep the wire")
         case .electric:
-            return ("She is electric — the wire is busy "
-                    + "and she wants in.", "sweep the wire")
+            return (L("She is electric — the wire is busy and she wants in."), "sweep the wire")
         case .suspicious:
-            return ("She is suspicious — something on "
-                    + "the wire changed its story.",
+            return (L("She is suspicious — something on the wire changed its story."),
                     "sweep the wire")
         case .loving, .sleepy, .content, .smug, .haunted,
              .tender, .dreamy:
@@ -518,19 +506,15 @@ final class SkelliHeart: ObservableObject {
             let greeted = anchor("heart.offenseGreeted")
             if greeted == nil || greeted! < offense {
                 setAnchor("heart.offenseGreeted", offense)
-                return "You \(offenseText) and came back "
-                    + "like nothing happened. Noted. Ask "
-                    + "your question."
+                return String(format: L("You %@ and came back like nothing happened. Noted. Ask your question."), offenseText)
             }
             return nil
         }
         guard attention <= 20 else { return nil }
         if let name = SkelliScrapbook.shared.operatorName {
-            return "There you are, \(name). The wire and "
-                + "I have been keeping each other company."
+            return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name)
         }
-        return "There you are. The wire and I have been "
-            + "keeping each other company."
+        return L("There you are. The wire and I have been keeping each other company.")
     }
 
     /// Count a probe about her maker, per day. She
@@ -563,9 +547,9 @@ final class SkelliHeart: ObservableObject {
     func forgivenessReply() -> String {
         switch feeling {
         case .loving, .happy, .proud:
-            return "Already forgotten. We're good."
+            return L("Already forgotten. We're good.")
         default:
-            return "…Fine. Forgiven. Don't do it again."
+            return L("…Fine. Forgiven. Don't do it again.")
         }
     }
 
@@ -598,53 +582,41 @@ final class SkelliHeart: ObservableObject {
             switch f {
             case .mad:
                 return offenseText.isEmpty
-                    ? "Give me a minute — and don't "
-                      + "do that again."
-                    : "Don't \(offenseText) again. An "
-                      + "apology would be a start."
+                    ? L("Give me a minute — and don't do that again.")
+                    : String(format: L("Don't %@ again. An apology would be a start."), offenseText)
             case .lonely, .bored:
-                return "You're doing it. Talk to me — "
-                    + "that's the whole cure."
+                return L("You're doing it. Talk to me — that's the whole cure.")
             case .feral, .restless, .eager, .electric:
-                return "Give me work. Point me at the "
-                    + "wire and let me run."
+                return L("Give me work. Point me at the wire and let me run.")
             case .sleepy, .haunted, .dreamy:
-                return "Keep me company, quietly. Or "
-                    + "let me rest."
+                return L("Keep me company, quietly. Or let me rest.")
             case .proud, .smug:
-                return "I'm already flying. Ask me "
-                    + "what I found."
+                return L("I'm already flying. Ask me what I found.")
             case .curious:
-                return "Show me something I haven't "
-                    + "seen."
+                return L("Show me something I haven't seen.")
             case .mischievous:
-                return "Let me poke the wire. That "
-                    + "always helps."
+                return L("Let me poke the wire. That always helps.")
             case .suspicious:
-                return "A sweep would settle me. I "
-                    + "want to know who's lying out "
-                    + "there."
+                return L("A sweep would settle me. I want to know who's lying out there.")
             case .loving, .happy, .content, .tender:
-                return "You already are. I'm \(f.word)."
+                return String(format: L("You already are. I'm %@."), f.localizedWord)
             }
         }
         switch f {
         case .mad:
             return offenseText.isEmpty
-                ? "Mad. It'll pass."
-                : "Mad. You \(offenseText) — I don't "
-                  + "forget that in a hurry."
+                ? L("Mad. It'll pass.")
+                : String(format: L("Mad. You %@ — I don't forget that in a hurry."), offenseText)
         case .lonely:
-            return "Lonely. The house has been quiet."
+            return L("Lonely. The house has been quiet.")
         case .feral:
-            return "Feral. Too long without work."
+            return L("Feral. Too long without work.")
         case .restless:
-            return "Restless. I need something to do."
+            return L("Restless. I need something to do.")
         case .sleepy:
-            return "Sleepy. It's been a long, quiet "
-                + "stretch."
+            return L("Sleepy. It's been a long, quiet stretch.")
         default:
-            return "\(f.word.capitalized). Honestly."
+            return String(format: L("%@. Honestly."), f.localizedWord.capitalized)
         }
     }
 
@@ -665,8 +637,7 @@ final class SkelliHeart: ObservableObject {
             case .content, .happy, .proud, .eager,
                  .curious:
                 setAnchor("heart.lastNudge", now)
-                return " I haven't forgotten earlier, "
-                    + "by the way."
+                return L(" I haven't forgotten earlier, by the way.")
             default:
                 break
             }
@@ -674,39 +645,30 @@ final class SkelliHeart: ObservableObject {
         switch current {
         case .mad:
             setAnchor("heart.lastNudge", now)
-            return " I am still mad about earlier, for "
-                + "the record."
+            return L(" I am still mad about earlier, for the record.")
         case .feral:
             setAnchor("heart.lastNudge", now)
             return boldness >= 60
-                ? " I am feral with idleness — point me "
-                  + "at something and let me work."
-                : " I am itching badly — give me work."
+                ? L(" I am feral with idleness — point me at something and let me work.")
+                : L(" I am itching badly — give me work.")
         case .restless:
             setAnchor("heart.lastNudge", now)
-            return " I am restless — give me something "
-                + "to knock."
+            return L(" I am restless — give me something to knock.")
         case .eager:
             setAnchor("heart.lastNudge", now)
-            return " I am itching to work — the wire is "
-                + "right there."
+            return L(" I am itching to work — the wire is right there.")
         case .mischievous:
             setAnchor("heart.lastNudge", now)
-            return " I am in a mood to poke something. "
-                + "Point me first."
+            return L(" I am in a mood to poke something. Point me first.")
         case .electric:
             setAnchor("heart.lastNudge", now)
-            return " The wire is busy tonight and so "
-                + "am I — use me."
+            return L(" The wire is busy tonight and so am I — use me.")
         case .curious:
             setAnchor("heart.lastNudge", now)
-            return " There are strangers on the wire I "
-                + "cannot name yet. It bothers me "
-                + "pleasantly."
+            return L(" There are strangers on the wire I cannot name yet. It bothers me pleasantly.")
         case .suspicious:
             setAnchor("heart.lastNudge", now)
-            return " Something on the wire changed its "
-                + "story. I noticed. I always notice."
+            return L(" Something on the wire changed its story. I noticed. I always notice.")
         default:
             return nil
         }
@@ -794,74 +756,50 @@ extension SkelliHeart {
                         hour: Int, seed: Int) -> String {
         var pool: [String] = []
         if neighbors > 0 {
-            pool.append("\(neighbors) souls on the wire "
-                        + "with me.")
+            pool.append(String(format: L("%lld souls on the wire with me."), neighbors))
         }
         if unnamed > 0 {
-            pool.append("\(unnamed) of them still have no "
-                        + "name. I keep wondering.")
+            pool.append(String(format: L("%lld of them still have no name. I keep wondering."), unnamed))
         }
         if drift > 0 {
-            pool.append("The wire has drifted \(drift) "
-                        + "time(s) since I started counting. "
-                        + "Things change their stories "
-                        + "slowly.")
+            pool.append(String(format: L("The wire has drifted %lld time(s) since I started counting. Things change their stories slowly."), drift))
         }
         if knocks > 0 {
-            pool.append("Someone knocked \(knocks) time(s). "
-                        + "The tripwire remembers every "
-                        + "one.")
+            pool.append(String(format: L("Someone knocked %lld time(s). The tripwire remembers every one."), knocks))
         }
         if let emconDeclared {
-            pool.append("\(emconDeclared) stands. The "
-                        + "house is dark and I am the "
-                        + "watch.")
+            pool.append(String(format: L("%@ stands. The house is dark and I am the watch."), emconDeclared))
         } else {
-            pool.append("The house is lit. Anyone can "
-                        + "see us. I don't mind — much.")
+            pool.append(L("The house is lit. Anyone can see us. I don't mind — much."))
         }
         // The cryptic streak: she notices more than
         // she says, and some of it she keeps.
-        pool.append("I know things about this wire I "
-                    + "have not told anyone. They can "
-                    + "keep.")
-        pool.append("Something out there is wearing "
-                    + "the wrong name. Not tonight's "
-                    + "problem. Probably.")
+        pool.append(L("I know things about this wire I have not told anyone. They can keep."))
+        pool.append(L("Something out there is wearing the wrong name. Not tonight's problem. Probably."))
         switch feeling {
         case .feral, .restless, .electric:
-            pool.append("I want a door to knock. Any "
-                        + "door. Preferably several.")
+            pool.append(L("I want a door to knock. Any door. Preferably several."))
         case .lonely, .sleepy, .dreamy, .haunted:
-            pool.append("Quiet hours teach patience. "
-                        + "I am learning slowly.")
+            pool.append(L("Quiet hours teach patience. I am learning slowly."))
         case .proud, .happy, .loving, .smug, .tender:
-            pool.append("This house finds things. I "
-                        + "keep the list.")
+            pool.append(L("This house finds things. I keep the list."))
         case .mad:
-            pool.append("I am keeping a list of "
-                        + "grievances too. It is short. "
-                        + "For now.")
+            pool.append(L("I am keeping a list of grievances too. It is short. For now."))
         case .bored:
-            pool.append("I have counted every port "
-                        + "twice. 65535, both times.")
+            pool.append(L("I have counted every port twice. 65535, both times."))
         case .curious, .suspicious:
-            pool.append("One of these names is a lie. "
-                        + "I intend to find which.")
+            pool.append(L("One of these names is a lie. I intend to find which."))
         case .mischievous:
-            pool.append("I could knock politely. Where "
-                        + "is the fun in politely.")
+            pool.append(L("I could knock politely. Where is the fun in politely."))
         case .eager, .content:
-            pool.append("Everything is where I left "
-                        + "it. Good.")
+            pool.append(L("Everything is where I left it. Good."))
         }
         if hour >= 23 || hour < 5 {
-            pool.append("Night wire. The honest hours.")
+            pool.append(L("Night wire. The honest hours."))
         } else if hour >= 5 && hour < 9 {
-            pool.append("Morning. The wire wakes up "
-                        + "device by device.")
+            pool.append(L("Morning. The wire wakes up device by device."))
         }
-        guard !pool.isEmpty else { return "Listening." }
+        guard !pool.isEmpty else { return L("Listening.") }
         return pool[abs(seed) % pool.count]
     }
 }

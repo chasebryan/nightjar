@@ -817,30 +817,30 @@ struct WarGamesView: View {
             List {
                 Section {
                     HStack {
-                        Text("Match")
-                        TextField("WG-XXXX", text: $center.matchID)
+                        Text(L("Match"))
+                        TextField(L("WG-XXXX"), text: $center.matchID)
                             .font(.body.monospaced())
                             .multilineTextAlignment(.trailing)
                             .autocorrectionDisabled()
                     }
                     HStack {
-                        Text("Round")
+                        Text(L("Round"))
                         Spacer()
                         Text("\(center.round)")
                             .font(.body.monospaced())
                     }
-                    Picker("Role", selection: roleBinding) {
-                        Text("Defender").tag("defender")
-                        Text("Attacker").tag("attacker")
+                    Picker(L("Role"), selection: roleBinding) {
+                        Text(L("Defender")).tag("defender")
+                        Text(L("Attacker")).tag("attacker")
                     }
                     .pickerStyle(.segmented)
                     HStack {
-                        Button("New match") {
+                        Button(L("New match")) {
                             Haptics.tap()
                             center.newMatch()
                         }
                         Spacer()
-                        Button("Next round") {
+                        Button(L("Next round")) {
                             Haptics.tap()
                             center.nextRound()
                         }
@@ -850,34 +850,28 @@ struct WarGamesView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } footer: {
-                    Text("Two of your own phones, both "
-                        + "foreground. Control rides the Serve "
-                        + "inbox — both phones serve during a "
-                        + "match.")
+                    Text(L("Two of your own phones, both foreground. Control rides the Serve inbox — both phones serve during a match."))
                 }
 
-                Section("The ring") {
+                Section(L("The ring")) {
                     if mouth.serveRunning {
-                        Label("Serving — this phone can be "
-                            + "challenged and can catch",
+                        Label(L("Serving — this phone can be challenged and can catch"),
                               systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                     } else {
-                        Label("Not serving — the ring is down",
+                        Label(L("Not serving — the ring is down"),
                               systemImage: "exclamationmark.circle")
                             .foregroundStyle(.orange)
                         Button {
                             Haptics.tap()
                             mouth.startServeFromSettings()
                         } label: {
-                            Label("Start Serve from settings",
+                            Label(L("Start Serve from settings"),
                                   systemImage: "play.circle")
                         }
                     }
                     if post.session == nil {
-                        Text("Listen is off — the air game "
-                            + "(decoys) needs it running on the "
-                            + "attacking phone.")
+                        Text(L("Listen is off — the air game (decoys) needs it running on the attacking phone."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -896,7 +890,7 @@ struct WarGamesView: View {
                 }
 
                 if !center.log.isEmpty {
-                    Section("Match log") {
+                    Section(L("Match log")) {
                         ForEach(Array(visibleLog.enumerated()),
                                 id: \.offset) { _, line in
                             Text(line)
@@ -912,7 +906,7 @@ struct WarGamesView: View {
                     }
                 }
             }
-            .navigationTitle("War Games")
+            .navigationTitle(L("War Games"))
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
@@ -943,23 +937,22 @@ struct WarGamesView: View {
     }
 
     @ViewBuilder private var attackerSection: some View {
-        Section("Attack") {
+        Section(L("Attack")) {
             HStack {
-                Text("Defender")
-                TextField("192.168.4.31", text: $peerIP)
+                Text(L("Defender"))
+                TextField(L("192.168.4.31"), text: $peerIP)
                     .font(.body.monospaced())
                     .multilineTextAlignment(.trailing)
                     .autocorrectionDisabled()
             }
             HStack {
-                Text("Match port")
-                TextField("9000", text: $matchPort)
+                Text(L("Match port"))
+                TextField(L("9000"), text: $matchPort)
                     .font(.body.monospaced())
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.numberPad)
             }
-            Text("The defender's Serve TCP port. Your replies "
-                + "come back to this phone's Serve TCP port "
+            Text(L("The defender's Serve TCP port. Your replies come back to this phone's Serve TCP port ")
                 + "(\(serveTcpPort)) — keep this phone serving "
                 + "too.")
                 .font(.caption)
@@ -973,7 +966,7 @@ struct WarGamesView: View {
                     myControlPort: Int(serveTcpPort) ?? 9000,
                     myLabel: myLabel)
             } label: {
-                Label("Challenge the defender",
+                Label(L("Challenge the defender"),
                       systemImage: "flag")
                     .frame(maxWidth: .infinity)
             }
@@ -985,14 +978,14 @@ struct WarGamesView: View {
                 Haptics.tap()
                 beginAttack()
             } label: {
-                Label("Begin the attack",
+                Label(L("Begin the attack"),
                       systemImage: "scope")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .disabled(!center.defenderReady)
             if !center.defenderReady {
-                Text("Enabled when the defender answers READY.")
+                Text(L("Enabled when the defender answers READY."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1000,27 +993,20 @@ struct WarGamesView: View {
     }
 
     @ViewBuilder private var defenderSection: some View {
-        Section("Defense") {
+        Section(L("Defense")) {
             Text("You are serving: "
                 + (serveSummary.isEmpty
                    ? "nothing — turn a listener on in Serve"
                    : serveSummary))
                 .font(.callout)
-            Text("Decoys you're flying — one name per line. "
-                + "Fly them from their own tabs (the BLE "
-                + "beacon's name in Send, the GATT host in "
-                + "Serve); declare them here so the scoring "
-                + "knows what to look for in the attacker's "
-                + "hearing.")
+            Text(L("Decoys you're flying — one name per line. Fly them from their own tabs (the BLE beacon's name in Send, the GATT host in Serve); declare them here so the scoring knows what to look for in the attacker's hearing."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextEditor(text: $decoysText)
                 .font(.body.monospaced())
                 .frame(minHeight: 54)
                 .scrollContentBackground(.hidden)
-            Text("Keep this room open. When the attack lands, "
-                + "your catch log is the inbox; when DONE "
-                + "arrives, your card builds and sends itself.")
+            Text(L("Keep this room open. When the attack lands, your catch log is the inbox; when DONE arrives, your card builds and sends itself."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -1035,9 +1021,9 @@ struct WarGamesView: View {
     }
 
     @ViewBuilder private var cardsSection: some View {
-        Section("Cards") {
+        Section(L("Cards")) {
             HStack {
-                Text("My card")
+                Text(L("My card"))
                 Spacer()
                 Text(center.myCard == nil
                      ? "not filed"
@@ -1045,7 +1031,7 @@ struct WarGamesView: View {
                     .foregroundStyle(.secondary)
             }
             HStack {
-                Text("Their card")
+                Text(L("Their card"))
                 Spacer()
                 Text(center.theirCard == nil
                      ? "not received"
@@ -1059,7 +1045,7 @@ struct WarGamesView: View {
                         shareItem = ShareItem(items: [url])
                     }
                 } label: {
-                    Label("Share my card",
+                    Label(L("Share my card"),
                           systemImage: "square.and.arrow.up")
                 }
             }
@@ -1067,12 +1053,10 @@ struct WarGamesView: View {
                 Haptics.tap()
                 showImporter = true
             } label: {
-                Label("Import their card",
+                Label(L("Import their card"),
                       systemImage: "square.and.arrow.down")
             }
-            Text("Cards normally cross on the wire by "
-                + "themselves. The file road is the fallback — "
-                + "and how a card from anywhere gets scored.")
+            Text(L("Cards normally cross on the wire by themselves. The file road is the fallback — and how a card from anywhere gets scored."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -1081,7 +1065,7 @@ struct WarGamesView: View {
     @ViewBuilder
     private func reportSection(_ report: WarMatchReport)
         -> some View {
-        Section("Round \(report.round) — scored") {
+        Section(String(format: L("Round %lld — scored"), report.round)) {
             Text(report.verdict).font(.headline)
             HStack {
                 VStack {
@@ -1090,7 +1074,7 @@ struct WarGamesView: View {
                     Text(report.attackerLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("attacker").font(.caption2)
+                    Text(L("attacker")).font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -1100,7 +1084,7 @@ struct WarGamesView: View {
                     Text(report.defenderLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("defender").font(.caption2)
+                    Text(L("defender")).font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -1117,8 +1101,7 @@ struct WarGamesView: View {
                 }.joined(separator: ", "))
                     .font(.callout)
             }
-            Text("Caught in the act: \(report.caughtCount) "
-                + "arrival(s)")
+            Text(String(format: L("Caught in the act: %lld arrival(s)"), report.caughtCount))
                 .font(.callout)
             if !report.decoysSeen.isEmpty {
                 Text("Decoys spotted: "
@@ -1135,7 +1118,7 @@ struct WarGamesView: View {
                     Haptics.select()
                     shareItem = ShareItem(items: [url])
                 } label: {
-                    Label("Share the match report",
+                    Label(L("Share the match report"),
                           systemImage: "square.and.arrow.up")
                 }
             }
@@ -1174,8 +1157,7 @@ struct WarGamesView: View {
     private func beginAttack() {
         let discovery = warGamesParsePorts(traceDiscoveryPorts)
         guard !discovery.isEmpty else {
-            toasts.show("The Trace section has no discovery "
-                        + "ports set", error: true)
+            toasts.show(L("The Trace section has no discovery ports set"), error: true)
             return
         }
         let profileText = traceProfilePorts
@@ -1207,16 +1189,15 @@ struct WarGamesView: View {
             url.stopAccessingSecurityScopedResource()
         } }
         guard let data = try? Data(contentsOf: url) else {
-            toasts.show("That file could not be read",
+            toasts.show(L("That file could not be read"),
                         error: true)
             return
         }
         center.importCard(data: data)
         if center.theirCard != nil {
-            toasts.show("Card in — scoring follows")
+            toasts.show(L("Card in — scoring follows"))
         } else {
-            toasts.show("That file is not a card for this "
-                        + "match", error: true)
+            toasts.show(L("That file is not a card for this match"), error: true)
         }
     }
 }

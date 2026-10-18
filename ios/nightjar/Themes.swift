@@ -306,7 +306,7 @@ struct ColoursView: View {
 
     var body: some View {
         List {
-            Section(header: Text("Theme")) {
+            Section(header: Text(L("Theme"))) {
                 LazyVGrid(columns: [GridItem(.flexible()),
                                     GridItem(.flexible())],
                           spacing: 12) {
@@ -318,8 +318,8 @@ struct ColoursView: View {
                         }
                         .contextMenu {
                             if !theme.builtIn {
-                                Button("Edit") { editing = theme }
-                                Button("Delete", role: .destructive) {
+                                Button(L("Edit")) { editing = theme }
+                                Button(L("Delete"), role: .destructive) {
                                     themes.deleteCustom(theme)
                                 }
                             }
@@ -331,34 +331,25 @@ struct ColoursView: View {
                 Button {
                     creating = true
                 } label: {
-                    Label("Create a theme",
+                    Label(L("Create a theme"),
                           systemImage: "paintpalette")
                 }
             }
 
-            Section(header: Text("Backdrops")) {
+            Section(header: Text(L("Backdrops"))) {
                 ForEach(BackdropSlot.allCases) { slot in
                     BackdropRow(slot: slot)
                 }
                 ExplainToggle(
-                    title: "How backdrops work",
-                    text: "Every tab may wear its "
-                        + "own. The Jolly Roger is "
-                        + "the backdrop the app was "
-                        + "born with — retired from "
-                        + "default duty, never from "
-                        + "the wardrobe. Your own "
-                        + "art is copied into the "
-                        + "app and never leaves this "
-                        + "device; a GIF plays, a "
-                        + "photograph holds still.")
+                    title: L("How backdrops work"),
+                    text: L("Every tab may wear its own. The Jolly Roger is the backdrop the app was born with — retired from default duty, never from the wardrobe. Your own art is copied into the app and never leaves this device; a GIF plays, a photograph holds still."))
             }
 
-            Section(header: Text("Boot screen")) {
+            Section(header: Text(L("Boot screen"))) {
                 BootRow()
             }
         }
-        .navigationTitle("Colours")
+        .navigationTitle(L("Colours"))
         .sheet(isPresented: $creating) {
             ThemeEditorView(theme: nil)
         }
@@ -433,7 +424,7 @@ private struct BackdropRow: View {
             HStack {
                 Text(slot.displayName)
                 Spacer()
-                Picker("", selection: binding) {
+                Picker(L(""), selection: binding) {
                     ForEach(choices, id: \.self) { choice in
                         Text(choice.displayName).tag(choice)
                     }
@@ -458,7 +449,7 @@ private struct BackdropRow: View {
                             .font(.callout.weight(.semibold))
                     }
                     if BackdropMedia.exists(for: slot) {
-                        Button("Remove", role: .destructive) {
+                        Button(L("Remove"), role: .destructive) {
                             BackdropMedia.remove(for: slot)
                             themes.revision += 1
                         }
@@ -545,27 +536,27 @@ private struct ThemeEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("The suit, as you cut it")) {
+                Section(header: Text(L("The suit, as you cut it"))) {
                     ThemeCard(theme: draft, selected: false) {}
                         .listRowInsets(EdgeInsets(
                             top: 8, leading: 16,
                             bottom: 8, trailing: 16))
                 }
-                Section(header: Text("Name")) {
-                    TextField("Theme name", text: $name)
+                Section(header: Text(L("Name"))) {
+                    TextField(L("Theme name"), text: $name)
                 }
-                Section(header: Text("Colours")) {
-                    ColorPicker("Accent — the controls",
+                Section(header: Text(L("Colours"))) {
+                    ColorPicker(L("Accent — the controls"),
                                 selection: $accent,
                                 supportsOpacity: false)
-                    ColorPicker("Glow — names and light",
+                    ColorPicker(L("Glow — names and light"),
                                 selection: $glow,
                                 supportsOpacity: false)
-                    ColorPicker("Tint — the backdrop's wash",
+                    ColorPicker(L("Tint — the backdrop's wash"),
                                 selection: $tint,
                                 supportsOpacity: false)
                 }
-                Section(header: Text("Judgement")) {
+                Section(header: Text(L("Judgement"))) {
                     VStack(alignment: .leading) {
                         Text("Tint strength "
                              + "\(Int(tintStrength * 100))%")
@@ -584,10 +575,10 @@ private struct ThemeEditorView: View {
                              ? "New theme" : "Edit theme")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("Save")) {
                         themes.saveCustom(draft)
                         dismiss()
                     }
@@ -617,21 +608,15 @@ private struct BootRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Boot screen", isOn: $bootEnabled)
+            Toggle(L("Boot screen"), isOn: $bootEnabled)
             ExplainToggle(
-                text: "What plays when the app "
-                    + "opens: the film, the print, "
-                    + "and the manifest of true facts "
-                    + "about this device. Off stops "
-                    + "the ceremony entirely — the "
-                    + "app opens straight onto its "
-                    + "tabs, and none of it runs.")
+                text: L("What plays when the app opens: the film, the print, and the manifest of true facts about this device. Off stops the ceremony entirely — the app opens straight onto its tabs, and none of it runs."))
             HStack {
-                Text("Picture")
+                Text(L("Picture"))
                 Spacer()
-                Picker("", selection: $pictureMode) {
-                    Text("Quality").tag("quality")
-                    Text("Performance")
+                Picker(L(""), selection: $pictureMode) {
+                    Text(L("Quality")).tag("quality")
+                    Text(L("Performance"))
                         .tag("performance")
                 }
                 .pickerStyle(.segmented)
@@ -639,37 +624,18 @@ private struct BootRow: View {
                 .frame(width: 200)
             }
             ExplainToggle(
-                text: "Quality decodes the boot "
-                    + "film at 1024 px with the "
-                    + "print at full density, and "
-                    + "the wallpaper reel plays "
-                    + "full-size. Performance "
-                    + "decodes the film at 512 — "
-                    + "about a fifth of the memory — "
-                    + "thins the print, and caps "
-                    + "the reel at 640. Same app, "
-                    + "lighter feet: choose "
-                    + "Performance when the device "
-                    + "runs hot or the boot feels "
-                    + "heavy.")
-            Toggle("Animated GIFs", isOn: $gifsEnabled)
+                text: L("Quality decodes the boot film at 1024 px with the print at full density, and the wallpaper reel plays full-size. Performance decodes the film at 512 — about a fifth of the memory — thins the print, and caps the reel at 640. Same app, lighter feet: choose Performance when the device runs hot or the boot feels heavy."))
+            Toggle(L("Animated GIFs"), isOn: $gifsEnabled)
             ExplainToggle(
-                text: "Off stills every GIF in "
-                    + "the house: the boot film and "
-                    + "the splashes stand on their "
-                    + "first frame, and the "
-                    + "wallpaper reel holds still. "
-                    + "Nothing is removed — the "
-                    + "pictures stay, the motion "
-                    + "goes.")
+                text: L("Off stills every GIF in the house: the boot film and the splashes stand on their first frame, and the wallpaper reel holds still. Nothing is removed — the pictures stay, the motion goes."))
             HStack {
-                Text("Backdrop")
+                Text(L("Backdrop"))
                 Spacer()
-                Picker("", selection: $media) {
-                    Text("Provided film")
+                Picker(L(""), selection: $media) {
+                    Text(L("Provided film"))
                         .tag("provided")
-                    Text("Your own").tag("custom")
-                    Text("None — black")
+                    Text(L("Your own")).tag("custom")
+                    Text(L("None — black"))
                         .tag("none")
                 }
                 .pickerStyle(.menu)
@@ -698,7 +664,7 @@ private struct BootRow: View {
                                 .weight(.semibold))
                     }
                     if BootMedia.exists {
-                        Button("Remove",
+                        Button(L("Remove"),
                                role: .destructive) {
                             BootMedia.remove()
                         }
@@ -707,16 +673,16 @@ private struct BootRow: View {
                 }
             }
             HStack {
-                Text("Log text")
+                Text(L("Log text"))
                 Spacer()
-                Picker("", selection: $textStyle) {
-                    Text("Line by line")
+                Picker(L(""), selection: $textStyle) {
+                    Text(L("Line by line"))
                         .tag("lines")
-                    Text("Typewriter").tag("type")
-                    Text("Scramble")
+                    Text(L("Typewriter")).tag("type")
+                    Text(L("Scramble"))
                         .tag("scramble")
-                    Text("Fade in").tag("fade")
-                    Text("Instant").tag("instant")
+                    Text(L("Fade in")).tag("fade")
+                    Text(L("Instant")).tag("instant")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -727,14 +693,8 @@ private struct BootRow: View {
                     .foregroundStyle(.red)
             }
             ExplainToggle(
-                title: "About your own art",
-                text: "Your own art is copied "
-                    + "into the app and never "
-                    + "leaves this device; a GIF "
-                    + "plays, a photograph holds "
-                    + "still. Changes take hold "
-                    + "from the next launch, and a "
-                    + "tap still skips the boot.")
+                title: L("About your own art"),
+                text: L("Your own art is copied into the app and never leaves this device; a GIF plays, a photograph holds still. Changes take hold from the next launch, and a tap still skips the boot."))
         }
         .onChange(of: pickerItem) { item in
             guard let item else { return }

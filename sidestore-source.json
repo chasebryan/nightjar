@@ -1,1 +1,19 @@
-{"apps":[{"bundleIdentifier":"net.nosuchmachine.nightjarhack","developerName":"chasebryan","downloadURL":"https://github.com/chasebryan/nightjar-hack/releases/latest/download/nightjar-hack.ipa","localizedDescription":"A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk \u2014 and Skelli, the onboard intelligence who runs it all with you.","name":"nightjar-hack","tintColor":"148040","version":"8.0b","versionDate":"2026-10-17","versionDescription":"8.0b \u2014 the vanishing. A new boot film that plays once with the whole boot ceremony timed to it; Skelli taught in 59 new manual batches, presuming stealth unless told loud; Vanish, her emergency stop to full stealth; resume everywhere; her macro ears fixed; a haptic language and a process board that reports every running system from any screen. Carries 8.0a's Macros and the 7.7.7 whetstone sweep."}],"identifier":"net.nosuchmachine.nightjarhack.source","name":"nightjar-hack","news":[],"sourceURL":"https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json"}
+{
+    "apps": [
+        {
+            "bundleIdentifier": "net.nosuchmachine.nightjarhack",
+            "developerName": "chasebryan",
+            "downloadURL": "https://github.com/chasebryan/nightjar-hack/releases/latest/download/nightjar-hack.ipa",
+            "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
+            "name": "nightjar-hack",
+            "tintColor": "148040",
+            "version": "9.0a",
+            "versionDate": "2026-10-20",
+            "versionDescription": "9.0a. The whole house in twelve tongues — every room, every view, and Skelli's own voice, chosen once in a first-boot welcome and kept in a language room of its own in About; her minds' thinking never reaches the transcript again. Carries the persona stack: nineteen feelings, grudges and care, exact minds, tone reading, and the end-to-end sweep."
+        }
+    ],
+    "identifier": "net.nosuchmachine.nightjarhack.source",
+    "name": "nightjar-hack",
+    "news": [],
+    "sourceURL": "https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json"
+}

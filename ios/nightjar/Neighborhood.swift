@@ -339,24 +339,17 @@ struct NeighborhoodSectionView: View {
     @State private var boardOpen = false
 
     var body: some View {
-        Section(header: Text("The Neighborhood — this wire, kept"),
-                footer: Text("Fed only by what this phone "
-                    + "itself observes: sweeps it ran, "
-                    + "announcements it heard, knocks at its own "
-                    + "door. An address is a character, never a "
-                    + "person — and nothing here is followed "
-                    + "off this network.")) {
+        Section(header: Text(L("The Neighborhood — this wire, kept")),
+                footer: Text(L("Fed only by what this phone itself observes: sweeps it ran, announcements it heard, knocks at its own door. An address is a character, never a person — and nothing here is followed off this network."))) {
             if store.neighbors.isEmpty {
-                Text("No neighbors yet. Run a sweep, let "
-                     + "Bonjour resolve, or simply be knocked — "
-                     + "the wire will populate its own cast.")
+                Text(L("No neighbors yet. Run a sweep, let Bonjour resolve, or simply be knocked — the wire will populate its own cast."))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 Button {
                     withAnimation { boardOpen.toggle() }
                 } label: {
                     HStack {
-                        Label("Devices", systemImage: "house")
+                        Label(L("Devices"), systemImage: "house")
                         Spacer()
                         Text("\(store.neighbors.count)")
                             .foregroundStyle(.secondary)
@@ -408,7 +401,7 @@ struct NeighborhoodSectionView: View {
                 Button(role: .destructive) {
                     clearRequest = true
                 } label: {
-                    Label("Clear the Neighborhood",
+                    Label(L("Clear the Neighborhood"),
                           systemImage: "trash")
                 }
             }
@@ -470,7 +463,7 @@ struct NeighborNameEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Its name here"),
+                Section(header: Text(L("Its name here")),
                         footer: Text("The wire calls it "
                             + "\(neighbor.name ?? neighbor.ip). "
                             + "Your name outranks the wire's "
@@ -479,7 +472,7 @@ struct NeighborNameEditor: View {
                               text: $draft)
                         .disableAutocorrection(true)
                 }
-                Section(header: Text("Its mark")) {
+                Section(header: Text(L("Its mark"))) {
                     LazyVGrid(columns: [GridItem(.adaptive(
                         minimum: 52))], spacing: 12) {
                         ForEach(Self.marks, id: \.self) { symbol in
@@ -505,7 +498,7 @@ struct NeighborNameEditor: View {
                 }
                 if neighbor.customName != nil {
                     Section {
-                        Button("Clear the given name",
+                        Button(L("Clear the given name"),
                                role: .destructive) {
                             store.rename(ip: neighbor.ip, to: nil,
                                          mark: nil)
@@ -514,14 +507,14 @@ struct NeighborNameEditor: View {
                     }
                 }
             }
-            .navigationTitle("Name this device")
+            .navigationTitle(L("Name this device"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("Save")) {
                         store.rename(ip: neighbor.ip, to: draft,
                                      mark: mark)
                         dismiss()

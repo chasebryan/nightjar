@@ -272,14 +272,12 @@ struct ForgeView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("She builds; the armory "
-                        + "keeps. Fire what she "
-                        + "forges from the Send tab.")
+                    Text(L("She builds; the armory keeps. Fire what she forges from the Send tab."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Section("From her patterns") {
-                    Picker("Pattern",
+                Section(L("From her patterns")) {
+                    Picker(L("Pattern"),
                            selection: $pattern) {
                         ForEach(patterns.indices,
                                 id: \.self) { i in
@@ -294,35 +292,35 @@ struct ForgeView: View {
                         }
                     }
                     if pattern == 0 || isCustom {
-                        TextField("Host or IP",
+                        TextField(L("Host or IP"),
                                   text: $host)
-                        TextField("Path", text: $path)
-                        Picker("Method",
+                        TextField(L("Path"), text: $path)
+                        Picker(L("Method"),
                                selection: $method) {
-                            Text("GET").tag("GET")
-                            Text("POST").tag("POST")
-                            Text("HEAD").tag("HEAD")
-                            Text("OPTIONS")
+                            Text(L("GET")).tag("GET")
+                            Text(L("POST")).tag("POST")
+                            Text(L("HEAD")).tag("HEAD")
+                            Text(L("OPTIONS"))
                                 .tag("OPTIONS")
                         }
                         .pickerStyle(.segmented)
                     }
                     if pattern == 1 || isCustom {
-                        TextField("Domain",
+                        TextField(L("Domain"),
                                   text: $domain)
                     }
                     if pattern == 3 || isCustom {
-                        TextField("Client ID",
+                        TextField(L("Client ID"),
                                   text: $clientID)
                     }
                     Text(built.text)
                         .font(.system(.caption,
                                       design: .monospaced))
-                    Text("\(ForgeKit.byteCount(of: built)) "
-                        + "bytes · " + built.source)
+                    Text(String(format: L("%lld bytes · "), ForgeKit.byteCount(of: built))
+                        + built.source)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    TextField("Name for the armory",
+                    TextField(L("Name for the armory"),
                               text: $keepName)
                     Button(keptPattern
                            ? "Kept in the armory"
@@ -338,24 +336,16 @@ struct ForgeView: View {
                     keptPattern = false
                     keepName = ""
                 }
-                Section("Her own patterns") {
-                    Text("Teach her a new shape: "
-                        + "a template with "
-                        + "{host}, {path}, "
-                        + "{domain}, {client} and "
-                        + "{method} holes. It "
-                        + "joins her patterns "
-                        + "above, hers from then "
-                        + "on — no rebuild, "
-                        + "nothing to break.")
+                Section(L("Her own patterns")) {
+                    Text(L("Teach her a new shape: a template with {host}, {path}, {domain}, {client} and {method} holes. It joins her patterns above, hers from then on — no rebuild, nothing to break."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("Pattern name",
+                    TextField(L("Pattern name"),
                               text: $newPatternName)
-                    Picker("Form",
+                    Picker(L("Form"),
                            selection: $newPatternSource) {
-                        Text("Text").tag("text")
-                        Text("Hex").tag("hex")
+                        Text(L("Text")).tag("text")
+                        Text(L("Hex")).tag("hex")
                     }
                     .pickerStyle(.segmented)
                     TextEditor(
@@ -364,7 +354,7 @@ struct ForgeView: View {
                             .caption,
                             design: .monospaced))
                         .frame(minHeight: 80)
-                    Button("Teach her this pattern") {
+                    Button(L("Teach her this pattern")) {
                         let name = newPatternName
                             .trimmingCharacters(
                                 in: .whitespacesAndNewlines)
@@ -408,7 +398,7 @@ struct ForgeView: View {
                         }
                     }
                 }
-                Section("From a brief") {
+                Section(L("From a brief")) {
                     TextField(
                         "Tell her what to build…",
                         text: $brief, axis: .vertical)
@@ -419,7 +409,7 @@ struct ForgeView: View {
                         if drafting {
                             ProgressView()
                         } else {
-                            Text("Have her draft it")
+                            Text(L("Have her draft it"))
                         }
                     }
                     .disabled(drafting || brief
@@ -431,10 +421,10 @@ struct ForgeView: View {
                             .font(.system(.caption,
                                           design: .monospaced))
                             .frame(minHeight: 110)
-                        Picker("Form",
+                        Picker(L("Form"),
                                selection: $draftSource) {
-                            Text("Text").tag("text")
-                            Text("Hex").tag("hex")
+                            Text(L("Text")).tag("text")
+                            Text(L("Hex")).tag("hex")
                         }
                         .pickerStyle(.segmented)
                         Button(keptDraft
@@ -451,18 +441,11 @@ struct ForgeView: View {
                         .disabled(keptDraft)
                     }
                 }
-                Section("The workbench") {
-                    Text("Anything else she "
-                        + "builds: tools, scripts, "
-                        + "whole programs — "
-                        + "drafted by her minds, "
-                        + "held here, yours to "
-                        + "take anywhere. "
-                        + "JavaScript runs on the "
-                        + "spot.")
+                Section(L("The workbench")) {
+                    Text(L("Anything else she builds: tools, scripts, whole programs — drafted by her minds, held here, yours to take anywhere. JavaScript runs on the spot."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Picker("Language",
+                    Picker(L("Language"),
                            selection: $codeLang) {
                         ForEach(["Swift", "Python",
                                  "JavaScript",
@@ -482,7 +465,7 @@ struct ForgeView: View {
                         if draftingCode {
                             ProgressView()
                         } else {
-                            Text("Have her build it")
+                            Text(L("Have her build it"))
                         }
                     }
                     .disabled(draftingCode
@@ -506,19 +489,19 @@ struct ForgeView: View {
                                 }
                                 .disabled(runningCode)
                             }
-                            Button("Copy") {
+                            Button(L("Copy")) {
                                 UIPasteboard.general
                                     .string = codeDraft
                                 toasts.show(
                                     "Copied.")
                             }
-                            Button("Share") {
+                            Button(L("Share")) {
                                 shareItem = ShareItem(
                                     items: [codeDraft])
                             }
                         }
                         if codeLang == "JavaScript" {
-                            Button("Keep as a tool") {
+                            Button(L("Keep as a tool")) {
                                 let name = codeBrief
                                     .trimmingCharacters(
                                         in: .whitespacesAndNewlines)
@@ -545,15 +528,11 @@ struct ForgeView: View {
                     }
                 }
                 if !tools.isEmpty {
-                    Section("Her tools") {
-                        Text("JavaScript she "
-                            + "keeps, runnable with "
-                            + "an input — it "
-                            + "arrives in her code "
-                            + "as `input`.")
+                    Section(L("Her tools")) {
+                        Text(L("JavaScript she keeps, runnable with an input — it arrives in her code as `input`."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("Input for the run",
+                        TextField(L("Input for the run"),
                                   text: $toolInput)
                         ForEach(tools) { tool in
                             VStack(alignment: .leading,
@@ -562,7 +541,7 @@ struct ForgeView: View {
                                     Text(tool.name)
                                         .font(.callout)
                                     Spacer()
-                                    Button("Run") {
+                                    Button(L("Run")) {
                                         runTool(tool)
                                     }
                                     Button(
@@ -596,11 +575,11 @@ struct ForgeView: View {
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
-            .navigationTitle("The Forge")
+            .navigationTitle(L("The Forge"))
             .toolbar {
                 ToolbarItem(
                     placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }
@@ -693,7 +672,7 @@ struct ForgeView: View {
             name: finalName, text: built.text,
             ext: built.source == "hex"
                 ? "hex" : "txt")
-        toasts.show("Kept in the armory.")
+        toasts.show(L("Kept in the armory."))
     }
 
     private func draftIt() {

@@ -585,25 +585,25 @@ struct SpoofyView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("The mirror — what the wire calls you") {
-                    LabeledContent("On the wire",
+                Section(L("The mirror — what the wire calls you")) {
+                    LabeledContent(L("On the wire"),
                                    value: hostName + ".local")
-                    LabeledContent("In the air",
+                    LabeledContent(L("In the air"),
                                    value: Spoofy.currentName)
-                    LabeledContent("Beacon",
+                    LabeledContent(L("Beacon"),
                                    value: mouth.beaconOn
                                     ? "live" : "off")
-                    LabeledContent("GATT host",
+                    LabeledContent(L("GATT host"),
                                    value: mouth.gattHostOn
                                     ? "live" : "off")
-                    LabeledContent("Serve",
+                    LabeledContent(L("Serve"),
                                    value: mouth.serveRunning
                                     ? (mouth.stealth
                                        ? "up, stealthed"
                                        : "up, listed")
                                     : "down")
                     if let persona = mimic.activePersona {
-                        Label("Wearing the \(persona.label)",
+                        Label(String(format: L("Wearing the %@"), persona.label),
                               systemImage: "theatermasks.fill")
                             .foregroundStyle(.purple)
                         if let since = mimic.wornSince {
@@ -622,7 +622,7 @@ struct SpoofyView: View {
                     }
                 }
 
-                Section("Costumes — a name for the air") {
+                Section(L("Costumes — a name for the air")) {
                     ForEach(Spoofy.costumeNames
                         + myCostumes, id: \.self) {
                         name in
@@ -657,10 +657,10 @@ struct SpoofyView: View {
                         SpoofyStore.saveCostumes(myCostumes)
                     }
                     HStack {
-                        TextField("Your own costume name",
+                        TextField(L("Your own costume name"),
                                   text: $customName)
                             .autocorrectionDisabled()
-                        Button("Wear") {
+                        Button(L("Wear")) {
                             Haptics.tap()
                             let name = customName
                                 .trimmingCharacters(
@@ -682,30 +682,25 @@ struct SpoofyView: View {
                         toasts.show(Spoofy.applyName(
                             name, mouth: mouth))
                     } label: {
-                        Label("Roll the dice",
+                        Label(L("Roll the dice"),
                               systemImage: "die.face.5")
                     }
-                    Text("A costume sets the name the beacon "
-                        + "and the GATT host wear. Live organs "
-                        + "restart wearing it, with the name "
-                        + "as their greeting. A name you type "
-                        + "is kept on your own rack — swipe "
-                        + "it away to clear it.")
+                    Text(L("A costume sets the name the beacon and the GATT host wear. Live organs restart wearing it, with the name as their greeting. A name you type is kept on your own rack — swipe it away to clear it."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("The revolving rack") {
-                    Picker("A new name every",
+                Section(L("The revolving rack")) {
+                    Picker(L("A new name every"),
                            selection: $rotator.minutes) {
-                        Text("5 min").tag(5)
-                        Text("15 min").tag(15)
-                        Text("30 min").tag(30)
-                        Text("60 min").tag(60)
+                        Text(L("5 min")).tag(5)
+                        Text(L("15 min")).tag(15)
+                        Text(L("30 min")).tag(30)
+                        Text(L("60 min")).tag(60)
                     }
                     .disabled(rotator.rotating)
                     if rotator.rotating {
-                        Button("Stop the rotation",
+                        Button(L("Stop the rotation"),
                                role: .destructive) {
                             Haptics.tap()
                             rotator.stop()
@@ -717,27 +712,24 @@ struct SpoofyView: View {
                             toasts.show(rotator.start(
                                 mouth: mouth))
                         } label: {
-                            Label("Start rotating names",
+                            Label(L("Start rotating names"),
                                   systemImage:
                                     "arrow.triangle.2.circlepath")
                         }
                     }
-                    Text("Rotation turns only this device's "
-                        + "own air name, stepping through "
-                        + "the rack. It stands aside while "
-                        + "a persona is worn.")
+                    Text(L("Rotation turns only this device's own air name, stepping through the rack. It stands aside while a persona is worn."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Mimicry — network gear") {
+                Section(L("Mimicry — network gear")) {
                     if let persona = mimic.activePersona {
                         HStack {
-                            Label("Wearing the \(persona.label)",
+                            Label(String(format: L("Wearing the %@"), persona.label),
                                   systemImage: "theatermasks.fill")
                                 .foregroundStyle(.purple)
                             Spacer()
-                            Button("Drop the shape",
+                            Button(L("Drop the shape"),
                                    role: .destructive) {
                                 Haptics.tap()
                                 toasts.show(mimic.drop(
@@ -749,34 +741,21 @@ struct SpoofyView: View {
                     ForEach(SpoofyPersona.gear) { persona in
                         personaRow(persona)
                     }
-                    Text("The network gear is worn where an "
-                        + "app can wear it — the air name, "
-                        + "the listeners, the replies, a "
-                        + "listed posture. iOS lets no app "
-                        + "broadcast an SSID, so there is no "
-                        + "fake radio here: the access point "
-                        + "is a shape on the wire, not a "
-                        + "transmitter.")
+                    Text(L("The network gear is worn where an app can wear it — the air name, the listeners, the replies, a listed posture. iOS lets no app broadcast an SSID, so there is no fake radio here: the access point is a shape on the wire, not a transmitter."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Mimicry — wear a class whole") {
+                Section(L("Mimicry — wear a class whole")) {
                     ForEach(SpoofyPersona.devices) { persona in
                         personaRow(persona)
                     }
-                    Text("A persona dresses the whole device "
-                        + "as a class of thing: the air name, "
-                        + "the greeting, and Serve's listeners "
-                        + "and replies, all in character. "
-                        + "Dropping the shape restores the "
-                        + "dress it found — ports, replies, "
-                        + "name and all.")
+                    Text(L("A persona dresses the whole device as a class of thing: the air name, the greeting, and Serve's listeners and replies, all in character. Dropping the shape restores the dress it found — ports, replies, name and all."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Mimicry — your own shapes") {
+                Section(L("Mimicry — your own shapes")) {
                     ForEach(myPersonas) { persona in
                         personaRow(persona)
                     }
@@ -792,31 +771,21 @@ struct SpoofyView: View {
                         Haptics.tap()
                         showEditor = true
                     } label: {
-                        Label("Build a shape",
+                        Label(L("Build a shape"),
                               systemImage: "plus.circle")
                     }
-                    Text("Your own personas, built from the "
-                        + "same cloth as the rack's: a name, "
-                        + "a greeting, Serve's dress, and "
-                        + "whether the shape stands listed. "
-                        + "Swipe one away to clear it.")
+                    Text(L("Your own personas, built from the same cloth as the rack's: a name, a greeting, Serve's dress, and whether the shape stands listed. Swipe one away to clear it."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Section {
-                    Text("Costumes dress this device in "
-                        + "generic shapes; its own addresses "
-                        + "stay its own. Nothing here copies a "
-                        + "real device's identity, clones an "
-                        + "advertisement the ear has heard, or "
-                        + "plants a fake tracker — a wardrobe, "
-                        + "not a forgery kit.")
+                    Text(L("Costumes dress this device in generic shapes; its own addresses stay its own. Nothing here copies a real device's identity, clones an advertisement the ear has heard, or plants a fake tracker — a wardrobe, not a forgery kit."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Spoofy")
+            .navigationTitle(L("Spoofy"))
             .onAppear {
                 myCostumes = SpoofyStore.loadCostumes()
                 myPersonas = SpoofyStore.loadPersonas()
@@ -839,7 +808,7 @@ struct SpoofyView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(persona.label)
                     .font(.callout)
-                Text("“\(persona.beaconName)” · "
+                Text(String(format: L("“%@” · "), persona.beaconName)
                     + serveDress(persona))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -901,52 +870,48 @@ struct SpoofyPersonaEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("The shape") {
-                    TextField("Label — “Workshop radio”",
+                Section(L("The shape")) {
+                    TextField(L("Label — “Workshop radio”"),
                               text: $label)
-                    TextField("Air name — what it answers to",
+                    TextField(L("Air name — what it answers to"),
                               text: $beaconName)
                         .autocorrectionDisabled()
-                    TextField("Greeting — the air payload",
+                    TextField(L("Greeting — the air payload"),
                               text: $greeting)
-                    Toggle("Stands listed (stealth off "
-                        + "while worn)", isOn: $listed)
+                    Toggle(L("Stands listed (stealth off while worn)"), isOn: $listed)
                 }
-                Section("Serve's dress") {
-                    Toggle("TCP listener", isOn: $useTCP)
+                Section(L("Serve's dress")) {
+                    Toggle(L("TCP listener"), isOn: $useTCP)
                     if useTCP {
-                        TextField("TCP port", text: $tcpPort)
+                        TextField(L("TCP port"), text: $tcpPort)
                             .keyboardType(.numberPad)
                     }
-                    Toggle("UDP listener", isOn: $useUDP)
+                    Toggle(L("UDP listener"), isOn: $useUDP)
                     if useUDP {
-                        TextField("UDP port", text: $udpPort)
+                        TextField(L("UDP port"), text: $udpPort)
                             .keyboardType(.numberPad)
                     }
-                    Toggle("HTTP listener", isOn: $useHTTP)
+                    Toggle(L("HTTP listener"), isOn: $useHTTP)
                     if useHTTP {
-                        TextField("HTTP port", text: $httpPort)
+                        TextField(L("HTTP port"), text: $httpPort)
                             .keyboardType(.numberPad)
                     }
-                    TextField("What the listeners answer",
+                    TextField(L("What the listeners answer"),
                               text: $reply)
                 }
                 Section {
-                    Text("A shape is a class, never a "
-                        + "specific device — the rack's "
-                        + "line holds for your own cloth "
-                        + "too.")
+                    Text(L("A shape is a class, never a specific device — the rack's line holds for your own cloth too."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Build a shape")
+            .navigationTitle(L("Build a shape"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Keep") {
+                    Button(L("Keep")) {
                         let persona = SpoofyPersona(
                             id: "custom-"
                                 + UUID().uuidString

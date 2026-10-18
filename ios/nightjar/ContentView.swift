@@ -11,6 +11,9 @@ struct ContentView: View {
     @EnvironmentObject private var post: ListeningPost
     @State private var tab: Int
     @State private var showBoot = true
+    @State private var showLanguageWelcome = false
+    @ObservedObject private var languageCenter =
+        LanguageCenter.shared
     @AppStorage(BootMedia.enabledKey)
     private var bootEnabled = true
 
@@ -160,6 +163,16 @@ struct ContentView: View {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showBoot = false
                     }
+                    // The one-time welcome: the
+                    // boot lifts, and a new user's
+                    // first act in the house is
+                    // choosing its tongue.
+                    if !languageCenter.welcomed {
+                        DispatchQueue.main.asyncAfter(
+                            deadline: .now() + 0.6) {
+                            showLanguageWelcome = true
+                        }
+                    }
                 }
                 .transition(.opacity)
                 .zIndex(20)
@@ -167,6 +180,17 @@ struct ContentView: View {
         }
         .scrollContentBackground(.hidden)
         .preferredColorScheme(.dark)
+        .onAppear {
+            if !bootEnabled && !languageCenter.welcomed {
+                showLanguageWelcome = true
+            }
+        }
+        .sheet(isPresented: $showLanguageWelcome,
+               onDismiss: {
+                   LanguageCenter.shared.markWelcomed()
+               }) {
+            LanguageSheet(welcome: true)
+        }
     }
 }
 
@@ -921,6 +945,7 @@ struct AboutView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @ObservedObject private var languageCenter =
         LanguageCenter.shared
+    @State private var showLanguageSheet = false
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
     @AppStorage("listen.bthomeV1") private var bthomeV1 = false
     @AppStorage("postName") private var postName = "phone"
@@ -1018,19 +1043,24 @@ struct AboutView: View {
 #endif
                 }
                 Section(header: Text(L("Language"))) {
-                    Picker(L("App language"),
-                           selection: Binding(
-                            get: { languageCenter.code },
-                            set: { languageCenter.code = $0 })) {
-                        ForEach(LanguageCenter.languages) {
-                            language in
-                            Text(language.name)
-                                .tag(language.code)
+                    Button {
+                        showLanguageSheet = true
+                    } label: {
+                        HStack {
+                            Label(L("App language"),
+                                  systemImage: "globe")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(languageCenter
+                                .effectiveNativeName)
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
                     }
-                    .pickerStyle(.menu)
                     ExplainToggle(
-                        text: L("The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively."))
+                        text: L("The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left."))
                 }
                 Section(header: Text(L("Your setup"))) {
                     ExplainToggle(
@@ -1047,8 +1077,7 @@ struct AboutView: View {
                                 setupShare = ShareItem(
                                     items: [url])
                             } else {
-                                toasts.show("The setup file "
-                                    + "would not write")
+                                toasts.show(L("The setup file would not write"))
                             }
                         }
                     } label: {
@@ -1177,23 +1206,23 @@ struct AboutView: View {
             .sheet(item: $setupShare) { item in
                 ShareSheet(items: item.items)
             }
+            .sheet(isPresented: $showLanguageSheet) {
+                LanguageSheet()
+            }
             .fileImporter(isPresented: $importingSetup,
                           allowedContentTypes: [.json]) { result in
                 guard case .success(let url) = result,
                       url.startAccessingSecurityScopedResource(),
                       let data = try? Data(contentsOf: url)
                 else {
-                    toasts.show("That setup file would "
-                                + "not come")
+                    toasts.show(L("That setup file would not come"))
                     return
                 }
                 url.stopAccessingSecurityScopedResource()
                 if HouseSetup.importData(data) {
-                    toasts.show("Setup restored — relaunch "
-                                + "to see it everywhere")
+                    toasts.show(L("Setup restored — relaunch to see it everywhere"))
                 } else {
-                    toasts.show("That is not a nightjar "
-                                + "setup file")
+                    toasts.show(L("That is not a nightjar setup file"))
                 }
             }
 #if !STORE_BUILD

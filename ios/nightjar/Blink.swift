@@ -118,23 +118,19 @@ struct BlinkSenderView: View {
                         .scaledToFit()
                         .padding()
                 }
-                Text("frame \(index + 1) of \(frames.count) "
-                     + "— looping")
+                Text(String(format: L("frame %lld of %lld — looping"), index + 1, frames.count))
                     .font(.callout.weight(.semibold))
-                Text("Hold this screen to the other phone's "
-                     + "camera. The sequence repeats until "
-                     + "every frame is caught — a missed frame "
-                     + "is just a later frame.")
+                Text(L("Hold this screen to the other phone's camera. The sequence repeats until every frame is caught — a missed frame is just a later frame."))
                     .font(.caption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Spacer()
             }
             .padding()
-            .navigationTitle("Blink")
+            .navigationTitle(L("Blink"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .onReceive(timer) { _ in
@@ -294,8 +290,7 @@ struct BlinkReceiverView: View {
                     .frame(maxHeight: 420)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 if receiver.want > 0 {
-                    Text("frames: \(receiver.got) of "
-                         + "\(receiver.want)")
+                    Text(String(format: L("frames: %lld of %lld"), receiver.got, receiver.want))
                         .font(.callout.weight(.semibold))
                 }
                 Text(receiver.status)
@@ -304,11 +299,11 @@ struct BlinkReceiverView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Receive a blink")
+            .navigationTitle(L("Receive a blink"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .onAppear {

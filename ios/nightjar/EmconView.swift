@@ -40,12 +40,12 @@ struct EmconView: View {
             Section {
                 if banshee.screaming {
                     HStack {
-                        Label("THE BANSHEE IS SCREAMING",
+                        Label(L("THE BANSHEE IS SCREAMING"),
                               systemImage: "speaker.wave.3.fill")
                             .foregroundStyle(.red)
                             .font(.callout.weight(.bold))
                         Spacer()
-                        Button("Cease", role: .destructive) {
+                        Button(L("Cease"), role: .destructive) {
                             Haptics.tap()
                             banshee.cease(mouth: mouth,
                                           assault: assault)
@@ -57,18 +57,11 @@ struct EmconView: View {
                         Haptics.tap()
                         showBanshee = true
                     } label: {
-                        Label("The Banshee — scream on "
-                            + "every channel",
+                        Label(L("The Banshee — scream on every channel"),
                               systemImage: "speaker.wave.3")
                     }
                 }
-                Text("The opposite of everything on this "
-                    + "tab: Serve listed, stealth off, the "
-                    + "beacon shouting, Net-Assault armed, a "
-                    + "broadcast heartbeat — this device "
-                    + "announcing itself at full voice "
-                    + "until you cease it. Ceasing restores "
-                    + "the posture it found.")
+                Text(L("The opposite of everything on this tab: Serve listed, stealth off, the beacon shouting, Net-Assault armed, a broadcast heartbeat — this device announcing itself at full voice until you cease it. Ceasing restores the posture it found."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -77,16 +70,10 @@ struct EmconView: View {
                     Haptics.tap()
                     showSpoofy = true
                 } label: {
-                    Label("Spoofy — the costume rack",
+                    Label(L("Spoofy — the costume rack"),
                           systemImage: "theatermasks")
                 }
-                Text("The names and shapes this device "
-                    + "wears: costumes for the air, and "
-                    + "mimicry personas that dress the "
-                    + "whole device as a class of thing — "
-                    + "or as the network's own gear, "
-                    + "access point included — until you "
-                    + "drop the shape.")
+                Text(L("The names and shapes this device wears: costumes for the air, and mimicry personas that dress the whole device as a class of thing — or as the network's own gear, access point included — until you drop the shape."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -120,26 +107,16 @@ struct EmconView: View {
                     Haptics.tap()
                     showTagCensus = true
                 } label: {
-                    Label("Tag census — read your own "
-                        + "cards and tags",
+                    Label(L("Tag census — read your own cards and tags"),
                           systemImage: "wave.3.right")
                 }
-                Text("What a tag tells any reader, read "
-                    + "whole: its kind, its identifier, its "
-                    + "NDEF records, and an APDU explorer "
-                    + "for ISO 7816 cards. Nothing is "
-                    + "written, emulated, or cloned.")
+                Text(L("What a tag tells any reader, read whole: its kind, its identifier, its NDEF records, and an APDU explorer for ISO 7816 cards. Nothing is written, emulated, or cloned."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             hardeningSection
             Section {
-                Text("EMCON cannot hide this device from the access "
-                     + "point it is joined to, and Apple's own radios "
-                     + "(Find My, AirDrop) answer to Settings, not to "
-                     + "this app. What EMCON strips is everything that "
-                     + "identifies the device — and anyone who probes "
-                     + "it announces themselves to the tripwire.")
+                Text(L("EMCON cannot hide this device from the access point it is joined to, and Apple's own radios (Find My, AirDrop) answer to Settings, not to this app. What EMCON strips is everything that identifies the device — and anyone who probes it announces themselves to the tripwire."))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -187,7 +164,7 @@ struct EmconView: View {
             "Turn loose the net-assault?",
             isPresented: $armAssault,
             titleVisibility: .visible) {
-            Button("Begin the assault", role: .destructive) {
+            Button(L("Begin the assault"), role: .destructive) {
                 assault.arm()
                 // The run starts now; the ignition theatre
                 // lays over its first pass, a breath behind
@@ -197,16 +174,9 @@ struct EmconView: View {
                     assaultIgnition = true
                 }
             }
-            Button("Not yet", role: .cancel) {}
+            Button(L("Not yet"), role: .cancel) {}
         } message: {
-            Text("Pass after pass it will sweep this wire, "
-                 + "let it announce itself, and knock the "
-                 + "full census against every known device "
-                 + "— for as long as you leave it armed. "
-                 + "Anything watching for exactly this will "
-                 + "see the phone coming, and on networks "
-                 + "you do not own that attention may arrive "
-                 + "with questions attached.")
+            Text(L("Pass after pass it will sweep this wire, let it announce itself, and knock the full census against every known device — for as long as you leave it armed. Anything watching for exactly this will see the phone coming, and on networks you do not own that attention may arrive with questions attached."))
         }
         .onAppear {
             emcon.restoreIfNeeded()
@@ -261,12 +231,7 @@ struct EmconView: View {
                         .foregroundStyle(scoreColor)
                 }
             }
-            Text("Exposure, to the decimal — the Standard's "
-                 + "inventory: presence first, then each standing "
-                 + "emission at its fixed weight, then the "
-                 + "evidence, folded by its formula. Nothing is "
-                 + "capped; a fully lit house sums to exactly "
-                 + "100.0.")
+            Text(L("Exposure, to the decimal — the Standard's inventory: presence first, then each standing emission at its fixed weight, then the evidence, folded by its formula. Nothing is capped; a fully lit house sums to exactly 100.0."))
                 .font(.caption).foregroundStyle(.secondary)
             if emcon.active,
                let before = emcon.scoreBeforeDark,
@@ -280,7 +245,7 @@ struct EmconView: View {
                     .foregroundStyle(.green)
             }
             if !score.parts.isEmpty {
-                Text("Why \(score.band):")
+                Text(String(format: L("Why %@:"), score.band))
                     .font(.caption.weight(.semibold))
                 ForEach(score.parts) { part in
                     HStack {
@@ -310,8 +275,7 @@ struct EmconView: View {
                 }
             }
             if emcon.isAway, !emcon.active {
-                Label("Off home turf — this network is not your "
-                      + "marked home. Going dark is advised.",
+                Label(L("Off home turf — this network is not your marked home. Going dark is advised."),
                       systemImage: "exclamationmark.shield")
                     .font(.callout).foregroundStyle(.orange)
                 Button {
@@ -320,7 +284,7 @@ struct EmconView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "shield")
-                        Text("Go dark now")
+                        Text(L("Go dark now"))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -337,26 +301,25 @@ struct EmconView: View {
                                         + " — the house is "
                                         + "re-regulated.")
                         } label: {
-                            Text("Move to \(goal.name)")
+                            Text(String(format: L("Move to %@"), goal.name))
                         }
                     }
                 } label: {
-                    Label("Change condition",
+                    Label(L("Change condition"),
                           systemImage: "arrow.left.arrow.right")
                 }
                 Button(role: .destructive) {
                     Haptics.tap()
                     emcon.deactivate()
-                    toasts.show("EMCON off — tripwire stood down. "
-                                + "Stealth left as it was.")
+                    toasts.show(L("EMCON off — tripwire stood down. Stealth left as it was."))
                 } label: {
-                    Label("Stand down EMCON", systemImage: "shield")
+                    Label(L("Stand down EMCON"), systemImage: "shield")
                 }
             } else if !emcon.isAway {
-                Picker("Condition", selection: $chosenCondition) {
-                    Text("Charlie").tag(EmconCondition.charlie)
-                    Text("Bravo").tag(EmconCondition.bravo)
-                    Text("Alpha").tag(EmconCondition.alpha)
+                Picker(L("Condition"), selection: $chosenCondition) {
+                    Text(L("Charlie")).tag(EmconCondition.charlie)
+                    Text(L("Bravo")).tag(EmconCondition.bravo)
+                    Text(L("Alpha")).tag(EmconCondition.alpha)
                 }
                 .pickerStyle(.segmented)
                 Text(chosenCondition.summary)
@@ -382,8 +345,7 @@ struct EmconView: View {
 
     private func goDark() {
         emcon.activate(mouth: mouth)
-        toasts.show("EMCON active — emissions silenced, "
-                    + "tripwire armed.")
+        toasts.show(L("EMCON active — emissions silenced, tripwire armed."))
     }
 
     private var scoreColor: Color {
@@ -412,24 +374,17 @@ struct EmconView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Text("The gate stands at every funnel: under a "
-                 + "condition, a forbidden organ cannot start "
-                 + "— not by hand, not by macro, not by her, "
-                 + "not by a saved arm returning at launch. "
-                 + "Refusals are journaled. A single payload "
-                 + "you fire yourself is you speaking, and is "
-                 + "not regulated; everything that stands, "
-                 + "advertises, serves, probes or polls is.")
+            Text(L("The gate stands at every funnel: under a condition, a forbidden organ cannot start — not by hand, not by macro, not by her, not by a saved arm returning at launch. Refusals are journaled. A single payload you fire yourself is you speaking, and is not regulated; everything that stands, advertises, serves, probes or polls is."))
                 .font(.caption2).foregroundStyle(.secondary)
         } header: {
-            Text("The Standard")
+            Text(L("The Standard"))
         }
     }
 
     // MARK: - the drill
 
     private var drillSection: some View {
-        Section(header: Text("The drill")) {
+        Section(header: Text(L("The drill"))) {
             Button {
                 Haptics.tap()
                 emcon.runDrill(mouth: mouth)
@@ -452,42 +407,34 @@ struct EmconView: View {
                     + Emcon.silenced(before: before, after: after)
                 let still = Emcon.stillShowing(after)
                 if gone.isEmpty, still.isEmpty {
-                    Text("Before and after agree: nothing was "
-                         + "exposed in the first place.")
+                    Text(L("Before and after agree: nothing was exposed in the first place."))
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
                     if !gone.isEmpty {
-                        Text("Silenced by going dark:")
+                        Text(L("Silenced by going dark:"))
                             .font(.callout.weight(.semibold))
                         ForEach(Array(gone.enumerated()), id: \.offset) { item in
                             Text("— \(item.element)").font(.callout)
                         }
                     } else if !still.isEmpty {
-                        Text("Nothing went quiet.")
+                        Text(L("Nothing went quiet."))
                             .font(.callout).foregroundStyle(.secondary)
                     }
                     if still.isEmpty {
-                        Text("Nothing survived the drill. The second "
-                             + "scan found a clean device.")
+                        Text(L("Nothing survived the drill. The second scan found a clean device."))
                             .font(.callout).foregroundStyle(.secondary)
                     } else {
-                        Text("Still showing:")
+                        Text(L("Still showing:"))
                             .font(.callout.weight(.semibold))
                         ForEach(Array(still.enumerated()), id: \.offset) { item in
                             Text("— \(item.element)").font(.callout)
                         }
-                        Text("These are real listeners on the device "
-                             + "that EMCON does not own — the OS, other "
-                             + "apps, or Serve ports kept under stealth. "
-                             + "The hardening list below is where the "
-                             + "OS ones die.")
+                        Text(L("These are real listeners on the device that EMCON does not own — the OS, other apps, or Serve ports kept under stealth. The hardening list below is where the OS ones die."))
                             .font(.callout).foregroundStyle(.secondary)
                     }
                 }
             } else {
-                Text("One tap: full knock and Bonjour audit, then "
-                     + "EMCON engages, then both run again and the "
-                     + "difference is read out here.")
+                Text(L("One tap: full knock and Bonjour audit, then EMCON engages, then both run again and the difference is read out here."))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -496,7 +443,7 @@ struct EmconView: View {
     // MARK: - emissions
 
     private var emissionsSection: some View {
-        Section(header: Text("Emissions")) {
+        Section(header: Text(L("Emissions"))) {
             emissionRow("Serve listeners",
                         state: mouth.serveRunning
                             ? (mouth.stealth ? "running, unlisted"
@@ -515,9 +462,7 @@ struct EmconView: View {
                         state: mouth.beaconOn ? "ON — ADVERTISING"
                                               : "off",
                         bad: mouth.beaconOn)
-            Text("Going dark forces Serve stealth, disarms the GATT "
-                 + "host and stops the beacon. Coming back never "
-                 + "re-opens one — re-arm each in its own tab.")
+            Text(L("Going dark forces Serve stealth, disarms the GATT host and stops the beacon. Coming back never re-opens one — re-arm each in its own tab."))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -536,15 +481,15 @@ struct EmconView: View {
     // MARK: - self-recon
 
     private var selfReconSection: some View {
-        Section(header: Text("Self-recon — what they see")) {
+        Section(header: Text(L("Self-recon — what they see"))) {
             HStack {
-                Text("Broadcast name")
+                Text(L("Broadcast name"))
                 Spacer()
                 Text(emcon.deviceName).font(.callout)
                     .foregroundStyle(.secondary)
             }
             HStack {
-                Text("LAN address")
+                Text(L("LAN address"))
                 Spacer()
                 Text(emcon.ownIP ?? "not on Wi-Fi").font(.callout)
                     .foregroundStyle(.secondary)
@@ -561,9 +506,7 @@ struct EmconView: View {
                 ProgressView()
             } else if emcon.lastScanAt != nil {
                 if emcon.exposures.isEmpty {
-                    Text("Nothing answered on any probed port, on "
-                         + "loopback or the LAN address. From out "
-                         + "there, this device is a rumor.")
+                    Text(L("Nothing answered on any probed port, on loopback or the LAN address. From out there, this device is a rumor."))
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
                     ForEach(emcon.exposures) { hit in
@@ -581,13 +524,10 @@ struct EmconView: View {
                         }
                     }
                 }
-                Text("★ = the reply carried the service's own tell.")
+                Text(L("★ = the reply carried the service's own tell."))
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                Text("Runs Recon's own knock against this phone — "
-                     + "every registry port, loopback and LAN "
-                     + "address, each port spoken to in its own "
-                     + "protocol.")
+                Text(L("Runs Recon's own knock against this phone — every registry port, loopback and LAN address, each port spoken to in its own protocol."))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -596,7 +536,7 @@ struct EmconView: View {
     // MARK: - Bonjour audit
 
     private var auditSection: some View {
-        Section(header: Text("Announcements — Bonjour audit")) {
+        Section(header: Text(L("Announcements — Bonjour audit"))) {
             Button {
                 Haptics.tap()
                 emcon.runBonjourAudit()
@@ -611,9 +551,7 @@ struct EmconView: View {
                 ProgressView()
             } else if emcon.lastAuditAt != nil {
                 if emcon.announcers.isEmpty {
-                    Text("Heard \(emcon.heardCount) announcement(s) "
-                         + "on this network — none of them is this "
-                         + "device. mDNS has nothing of yours.")
+                    Text(String(format: L("Heard %lld announcement(s) on this network — none of them is this device. mDNS has nothing of yours."), emcon.heardCount))
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
                     ForEach(emcon.announcers) { ad in
@@ -625,17 +563,11 @@ struct EmconView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Text("These are the OS's own megaphones — "
-                         + "AirPlay and friends. EMCON can't switch "
-                         + "them off; the hardening list is where "
-                         + "they die (name, AirDrop).")
+                    Text(L("These are the OS's own megaphones — AirPlay and friends. EMCON can't switch them off; the hardening list is where they die (name, AirDrop)."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Browses the LAN the way the Scan tab does and "
-                     + "flags every announcement that is this "
-                     + "device — by name, or by resolving to this "
-                     + "phone's address.")
+                Text(L("Browses the LAN the way the Scan tab does and flags every announcement that is this device — by name, or by resolving to this phone's address."))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -651,9 +583,9 @@ struct EmconView: View {
     // MARK: - tripwire
 
     private var tripwireSection: some View {
-        Section(header: Text("Tripwire")) {
+        Section(header: Text(L("Tripwire"))) {
             HStack {
-                Text("Listeners")
+                Text(L("Listeners"))
                 Spacer()
                 Text(emcon.tripwireOn
                      ? "\(emcon.watched.count) TCP + "
@@ -667,34 +599,22 @@ struct EmconView: View {
                         .joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Toggle("Answer in character", isOn: $escalationArmed)
-            Text("When a knock fingerprints as a real protocol "
-                 + "— SSH, HTTP, MQTT, SMTP — the tripwire hands "
-                 + "that port to the matching canary for ten "
-                 + "minutes, honeydrop as configured on the "
-                 + "Serve tab, then takes the port back. The "
-                 + "prober's first knock meets silence; their "
-                 + "second meets an actor. A port cools down "
-                 + "for half an hour afterwards.")
+            Toggle(L("Answer in character"), isOn: $escalationArmed)
+            Text(L("When a knock fingerprints as a real protocol — SSH, HTTP, MQTT, SMTP — the tripwire hands that port to the matching canary for ten minutes, honeydrop as configured on the Serve tab, then takes the port back. The prober's first knock meets silence; their second meets an actor. A port cools down for half an hour afterwards."))
                 .font(.caption).foregroundStyle(.secondary)
             if let live = emcon.escalation {
                 HStack {
-                    Text("Answering on \(live.port) as "
-                         + "\(live.persona.uppercased()) until "
+                    Text(String(format: L("Answering on %lld as %@ until "), live.port, live.persona.uppercased())
                          + live.until.formatted(date: .omitted,
                                                 time: .shortened))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.green)
                     Spacer()
-                    Button("Stand down") { emcon.endEscalation() }
+                    Button(L("Stand down")) { emcon.endEscalation() }
                 }
             }
             if emcon.events.isEmpty {
-                Text("Nobody has knocked. When someone runs these "
-                     + "probes against this phone, it lands here — "
-                     + "source, port, and which first words they "
-                     + "used. The log persists across launches. The "
-                     + "tripwire never replies.")
+                Text(L("Nobody has knocked. When someone runs these probes against this phone, it lands here — source, port, and which first words they used. The log persists across launches. The tripwire never replies."))
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(tripShowAll
@@ -724,7 +644,7 @@ struct EmconView: View {
                                 Image(systemName: "scope")
                             }
                             .buttonStyle(.borderless)
-                            .accessibilityLabel("Knock back in Recon")
+                            .accessibilityLabel(L("Knock back in Recon"))
                         }
                     }
                 }
@@ -743,16 +663,15 @@ struct EmconView: View {
                     shareItem = ShareItem(
                         items: [Emcon.tripwireReportURL])
                 } label: {
-                    Label("Share the log",
+                    Label(L("Share the log"),
                           systemImage: "square.and.arrow.up")
                 }
-                Text("Readable text. The same log is kept as JSON "
-                     + "in Documents. The tripwire never replies.")
+                Text(L("Readable text. The same log is kept as JSON in Documents. The tripwire never replies."))
                     .font(.caption).foregroundStyle(.secondary)
                 Button(role: .destructive) {
                     emcon.clearEvents()
                 } label: {
-                    Label("Clear the log", systemImage: "trash")
+                    Label(L("Clear the log"), systemImage: "trash")
                 }
             }
         }
@@ -780,39 +699,22 @@ struct EmconView: View {
     }
 
     private var instrumentSection: some View {
-        Section(header: Text("The Instrument — the operator, read"),
-                footer: Text("The Watch is never asked to do "
-                    + "anything — worn and paired, it already "
-                    + "measures, and the readings wait in this "
-                    + "phone's health store. A reading, not a "
-                    + "live feed: samples arrive at the Watch's "
-                    + "sync cadence, and every value carries "
-                    + "its age. Read-only and on-device; raw "
-                    + "readings are never written to the "
-                    + "night log.")) {
+        Section(header: Text(L("The Instrument — the operator, read")),
+                footer: Text(L("The Watch is never asked to do anything — worn and paired, it already measures, and the readings wait in this phone's health store. A reading, not a live feed: samples arrive at the Watch's sync cadence, and every value carries its age. Read-only and on-device; raw readings are never written to the night log."))) {
             switch instrument.phase {
             case .unavailable:
-                Text("This device has no health store to read.")
+                Text(L("This device has no health store to read."))
                     .font(.callout).foregroundStyle(.secondary)
             case .dormant:
-                Text("This build's signing doesn't carry the "
-                     + "HealthKit entitlement, so the "
-                     + "instrument sleeps — the way the Coin "
-                     + "sleeps under free signing. A signing "
-                     + "that carries it wakes the instrument "
-                     + "with no other change.")
+                Text(L("This build's signing doesn't carry the HealthKit entitlement, so the instrument sleeps — the way the Coin sleeps under free signing. A signing that carries it wakes the instrument with no other change."))
                     .font(.callout).foregroundStyle(.secondary)
             case .unknown:
-                Text("Your Watch already knows the state of "
-                     + "the operator — heart, breath, blood, "
-                     + "sleep. Let the house read it, and that "
-                     + "state stands beside the state of the "
-                     + "house.")
+                Text(L("Your Watch already knows the state of the operator — heart, breath, blood, sleep. Let the house read it, and that state stands beside the state of the house."))
                     .font(.callout).foregroundStyle(.secondary)
                 Button {
                     instrument.requestAccess()
                 } label: {
-                    Label("Let the house read the instrument",
+                    Label(L("Let the house read the instrument"),
                           systemImage: "heart.text.square")
                 }
             case .asking:
@@ -823,9 +725,7 @@ struct EmconView: View {
                 }
             case .reading:
                 if let watch = instrument.watchName {
-                    Text("Reading \(watch), through the "
-                         + "health store it already feeds. It "
-                         + "was never asked to do anything else.")
+                    Text(String(format: L("Reading %@, through the health store it already feeds. It was never asked to do anything else."), watch))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 vitalRow("Heart rate", instrument.heartRate)
@@ -840,7 +740,7 @@ struct EmconView: View {
                          instrument.wristTemp)
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Sleep, last night").font(.callout)
+                        Text(L("Sleep, last night")).font(.callout)
                         Text(instrument.lastSleep.map {
                             "asleep "
                                 + $0.start.formatted(
@@ -858,7 +758,7 @@ struct EmconView: View {
                         .font(.callout.weight(.semibold))
                 }
                 HStack {
-                    Text("Steps today").font(.callout)
+                    Text(L("Steps today")).font(.callout)
                     Spacer()
                     Text(instrument.stepsToday?.formatted() ?? "—")
                         .font(.callout.weight(.semibold))
@@ -866,7 +766,7 @@ struct EmconView: View {
                 Button {
                     instrument.fetchAll()
                 } label: {
-                    Label("Read again", systemImage: "arrow.clockwise")
+                    Label(L("Read again"), systemImage: "arrow.clockwise")
                 }
                 if let read = instrument.lastReadAt {
                     Text("Read " + InstrumentCenter.ageLine(read) + ".")
@@ -888,14 +788,10 @@ struct EmconView: View {
 
     private var proberFilesSection: some View {
         let files = ProberFiles.build(events: emcon.events)
-        return Section(header: Text("Prober files"),
-                footer: Text("A dossier for everyone who has "
-                    + "knocked — assembled from the tripwire "
-                    + "log this phone keeps. It covers what "
-                    + "the log still holds.")) {
+        return Section(header: Text(L("Prober files")),
+                footer: Text(L("A dossier for everyone who has knocked — assembled from the tripwire log this phone keeps. It covers what the log still holds."))) {
             if files.isEmpty {
-                Text("No probers yet. When something knocks, "
-                     + "its file opens here.")
+                Text(L("No probers yet. When something knocks, its file opens here."))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 ForEach(proberShowAll
@@ -909,8 +805,7 @@ struct EmconView: View {
                                 Text(file.host)
                                     .font(.callout.weight(.medium))
                                     .foregroundStyle(.primary)
-                                Text("\(file.knocks) knock(s) · "
-                                     + "\(file.ports.count) port(s)"
+                                Text(String(format: L("%lld knock(s) · %lld port(s)"), file.knocks, file.ports.count)
                                      + (file.drops > 0
                                         ? " · took \(file.drops) "
                                             + "drop(s)" : "")
@@ -923,7 +818,7 @@ struct EmconView: View {
                             }
                             Spacer()
                             if ProberFiles.changed(file) {
-                                Text("CHANGED")
+                                Text(L("CHANGED"))
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(.orange)
                             }
@@ -961,22 +856,13 @@ struct EmconView: View {
     }
 
     private var sparringSection: some View {
-        Section(header: Text("Self-sparring"),
-                footer: Text("The loop fires only at this device: "
-                             + "the target is loopback, and the "
-                             + "mutations are of traffic this phone "
-                             + "actually received.")) {
+        Section(header: Text(L("Self-sparring")),
+                footer: Text(L("The loop fires only at this device: the target is loopback, and the mutations are of traffic this phone actually received."))) {
             if sparSeeds.isEmpty {
-                Text("No captured bytes yet. When the tripwire "
-                     + "catches a knock, its first words are kept — "
-                     + "and become ammunition here: replayed, "
-                     + "mutated, and fired at your own Serve to see "
-                     + "what holds.")
+                Text(L("No captured bytes yet. When the tripwire catches a knock, its first words are kept — and become ammunition here: replayed, mutated, and fired at your own Serve to see what holds."))
                     .font(.caption).foregroundStyle(.secondary)
             } else if !mouth.serveRunning {
-                Text("\(sparSeeds.count) captured probe(s) ready. "
-                     + "Start Serve (TCP :\(serveTCPPort)) on the "
-                     + "Serve tab — sparring fires mutations of a "
+                Text(String(format: L("%lld captured probe(s) ready. Start Serve (TCP :%lld) on the Serve tab — sparring fires mutations of a "), sparSeeds.count, serveTCPPort)
                      + "real capture at your own listener, on "
                      + "loopback, and reads what it answers.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -984,15 +870,14 @@ struct EmconView: View {
                       let seedData = try? PayloadKit.decodeHex(
                         seed.bytesHex ?? "") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Latest capture: \(seed.verdict) — "
-                         + "\(seed.byteCount) B from \(seed.source)")
+                    Text(String(format: L("Latest capture: %@ — %lld B from %@"), seed.verdict, seed.byteCount, seed.source))
                         .font(.caption)
                     if spar.fuzzing {
                         HStack {
                             ProgressView()
-                            Text("Sparring…").font(.callout)
+                            Text(L("Sparring…")).font(.callout)
                         }
-                        Button("Stop") { spar.stopFuzz() }
+                        Button(L("Stop")) { spar.stopFuzz() }
                     } else {
                         Button {
                             sparSummary = "60 mutations of a captured "
@@ -1035,22 +920,15 @@ struct EmconView: View {
     /// framed like speech but could not be opened — sealed,
     /// mangled, or structured like spelling.
     private var knockTrafficSection: some View {
-        Section(header: Text("Knock traffic"),
-                footer: Text("Decoded conversations live in the "
-                             + "Knocktalk tab. What remains here "
-                             + "never opened: framed traffic under "
-                             + "a wrong or missing key, and knock "
-                             + "patterns shaped like speech.")) {
+        Section(header: Text(L("Knock traffic")),
+                footer: Text(L("Decoded conversations live in the Knocktalk tab. What remains here never opened: framed traffic under a wrong or missing key, and knock patterns shaped like speech."))) {
             if emcon.knockPatterns.isEmpty {
-                Text("Nothing sealed or structured has knocked. "
-                     + "A scan sweeps; anything that spells — "
-                     + "and fails to open — lands here.")
+                Text(L("Nothing sealed or structured has knocked. A scan sweeps; anything that spells — and fails to open — lands here."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(emcon.knockPatterns) { pattern in
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(pattern.source) — \(pattern.knocks) "
-                         + "knocks")
+                    Text(String(format: L("%@ — %lld knocks"), pattern.source, pattern.knocks))
                         .font(.caption.weight(.semibold))
                     Text(pattern.note).font(.caption)
                         .foregroundStyle(.secondary)
@@ -1069,26 +947,12 @@ struct EmconView: View {
         ["ssh", "tls", "mqtt", "http", "smtp", "ftp"]
 
     private var vaultSection: some View {
-        Section(header: Text("Knock vault"),
-                footer: Text("Speak the combination from one "
-                             + "other device and the chosen macro "
-                             + "fires. Timed macros ride a "
-                             + "sixty-second window and stand "
-                             + "back down at the seal; anything "
-                             + "you already had running stays "
-                             + "yours. The ear must be listening — "
-                             + "the tripwire, or the relay. The "
-                             + "default "
-                             + "combination is printed in the app — "
-                             + "it is no secret. Change the digits: "
-                             + "the combination is the key. Knocks "
-                             + "from this device itself never count.")) {
-            Text("Speak three protocols, in order, from one other "
-                 + "device, inside 20 seconds — each knock's bytes "
-                 + "recognized as its protocol:")
+        Section(header: Text(L("Knock vault")),
+                footer: Text(L("Speak the combination from one other device and the chosen macro fires. Timed macros ride a sixty-second window and stand back down at the seal; anything you already had running stays yours. The ear must be listening — the tripwire, or the relay. The default combination is printed in the app — it is no secret. Change the digits: the combination is the key. Knocks from this device itself never count."))) {
+            Text(L("Speak three protocols, in order, from one other device, inside 20 seconds — each knock's bytes recognized as its protocol:"))
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(0..<3, id: \.self) { index in
-                Picker("Digit \(index + 1)",
+                Picker(String(format: L("Digit %lld"), index + 1),
                        selection: Binding(
                         get: { emcon.vaultCombo[index] },
                         set: { emcon.setVaultDigit(index, $0) })) {
@@ -1098,7 +962,7 @@ struct EmconView: View {
                     }
                 }
             }
-            Picker("When spoken", selection: Binding(
+            Picker(L("When spoken"), selection: Binding(
                 get: { emcon.vaultAction },
                 set: { emcon.setVaultAction($0) })) {
                 ForEach(Emcon.vaultActions, id: \.self) { action in
@@ -1107,7 +971,7 @@ struct EmconView: View {
             }
             if let until = emcon.vaultOpenUntil {
                 HStack {
-                    Text("Vault")
+                    Text(L("Vault"))
                     Spacer()
                     Text("OPEN — seals "
                          + until.formatted(date: .omitted,
@@ -1115,12 +979,12 @@ struct EmconView: View {
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.green)
                 }
-                Button("Seal now") { emcon.sealVault() }
+                Button(L("Seal now")) { emcon.sealVault() }
             } else {
                 HStack {
-                    Text("Vault")
+                    Text(L("Vault"))
                     Spacer()
-                    Text("sealed")
+                    Text(L("sealed"))
                         .font(.callout).foregroundStyle(.secondary)
                 }
             }
@@ -1132,17 +996,10 @@ struct EmconView: View {
     // MARK: - home-turf memory
 
     private var hometurfSection: some View {
-        Section(header: Text("Home-turf memory"),
-                footer: Text("Learned only while EMCON is up "
-                    + "on the home subnet — three banked nights "
-                    + "hold the pattern, and after that the tab "
-                    + "stops reporting events and starts "
-                    + "reporting deviations. It learns from "
-                    + "the tripwire's hearing alone; a quiet "
-                    + "house teaches it a quiet pattern.")) {
+        Section(header: Text(L("Home-turf memory")),
+                footer: Text(L("Learned only while EMCON is up on the home subnet — three banked nights hold the pattern, and after that the tab stops reporting events and starts reporting deviations. It learns from the tripwire's hearing alone; a quiet house teaches it a quiet pattern."))) {
             if emcon.homeSubnet == nil {
-                Text("No home subnet is marked, so there is "
-                     + "no turf to learn.")
+                Text(L("No home subnet is marked, so there is no turf to learn."))
                     .font(.callout).foregroundStyle(.secondary)
             } else if !emcon.hometurfReady {
                 Text("Learning the pattern — "
@@ -1150,14 +1007,12 @@ struct EmconView: View {
                      + "banked.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                Text("Pattern held: \(emcon.hometurf.nights) "
-                     + "nights · \(emcon.hometurf.sources.count) "
-                     + "sources · \(emcon.hometurf.ports.count) "
+                Text(String(format: L("Pattern held: %lld nights · %lld sources · %lld "), emcon.hometurf.nights, emcon.hometurf.sources.count, emcon.hometurf.ports.count)
                      + "doors · \(emcon.hometurf.verdicts.count) "
                      + "first words.")
                     .font(.callout)
                 if emcon.hometurfNotes.isEmpty {
-                    Text("Nothing off-pattern tonight.")
+                    Text(L("Nothing off-pattern tonight."))
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
                     ForEach(emcon.hometurfNotes, id: \.self) {
@@ -1166,7 +1021,7 @@ struct EmconView: View {
                             .font(.callout)
                     }
                 }
-                Button("Forget the pattern", role: .destructive) {
+                Button(L("Forget the pattern"), role: .destructive) {
                     emcon.hometurfReset()
                 }
             }
@@ -1176,14 +1031,8 @@ struct EmconView: View {
     // MARK: - second sense
 
     private var senseSection: some View {
-        Section(header: Text("Second sense"),
-                footer: Text("The perimeter tightens itself "
-                    + "for thirty minutes when a foreign "
-                    + "nightjar-grade probe speaks to it, or a "
-                    + "honeydrop is taken: answer in character "
-                    + "arms whether or not its switch is set. "
-                    + "Nothing else changes — a tightened "
-                    + "perimeter stays legible.")) {
+        Section(header: Text(L("Second sense")),
+                footer: Text(L("The perimeter tightens itself for thirty minutes when a foreign nightjar-grade probe speaks to it, or a honeydrop is taken: answer in character arms whether or not its switch is set. Nothing else changes — a tightened perimeter stays legible."))) {
             if emcon.senseActive, let until = emcon.senseUntil {
                 Label("Heightened until "
                       + until.formatted(date: .omitted,
@@ -1192,10 +1041,9 @@ struct EmconView: View {
                     .font(.callout.weight(.medium))
                 Text(emcon.senseReason)
                     .font(.caption).foregroundStyle(.secondary)
-                Button("Stand it down") { emcon.senseStandDown() }
+                Button(L("Stand it down")) { emcon.senseStandDown() }
             } else {
-                Text("At ease. The perimeter is at its "
-                     + "ordinary posture.")
+                Text(L("At ease. The perimeter is at its ordinary posture."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -1209,18 +1057,9 @@ struct EmconView: View {
     @State private var newAction = "pivotRecon"
 
     private var conductorSection: some View {
-        Section(header: Text("The conductor"),
-                footer: Text("Reflexes you arm once, fired "
-                    + "without you: a trigger on the wire, an "
-                    + "action the instrument already knows. "
-                    + "Each rule rests five minutes between "
-                    + "firings, every firing is journaled, and "
-                    + "actions needing a mouth or a target "
-                    + "degrade to the journal line alone when "
-                    + "they have neither. Firing the bench "
-                    + "stays your press — a reflex can load "
-                    + "Recon, never pull its trigger.")) {
-            Toggle("Conductor", isOn: $conductorOn)
+        Section(header: Text(L("The conductor")),
+                footer: Text(L("Reflexes you arm once, fired without you: a trigger on the wire, an action the instrument already knows. Each rule rests five minutes between firings, every firing is journaled, and actions needing a mouth or a target degrade to the journal line alone when they have neither. Firing the bench stays your press — a reflex can load Recon, never pull its trigger."))) {
+            Toggle(L("Conductor"), isOn: $conductorOn)
             ForEach($rules) { $rule in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
@@ -1232,7 +1071,7 @@ struct EmconView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Toggle("", isOn: $rule.enabled)
+                    Toggle(L(""), isOn: $rule.enabled)
                         .labelsHidden()
                         .onChange(of: rule.enabled) { _ in
                             Conductor.saveRules(rules)
@@ -1246,12 +1085,12 @@ struct EmconView: View {
                     .buttonStyle(.borderless)
                 }
             }
-            Picker("When", selection: $newTrigger) {
+            Picker(L("When"), selection: $newTrigger) {
                 ForEach(Conductor.triggers, id: \.id) { t in
                     Text(t.label).tag(t.id)
                 }
             }
-            Picker("Then", selection: $newAction) {
+            Picker(L("Then"), selection: $newAction) {
                 ForEach(Conductor.actions, id: \.id) { a in
                     Text(a.label).tag(a.id)
                 }
@@ -1266,7 +1105,7 @@ struct EmconView: View {
                 rules.append(rule)
                 Conductor.saveRules(rules)
             } label: {
-                Label("Add the reflex", systemImage: "plus.circle")
+                Label(L("Add the reflex"), systemImage: "plus.circle")
             }
         }
         .onAppear {
@@ -1367,13 +1206,8 @@ struct EmconView: View {
     }
 
     private var maneuversSection: some View {
-        Section(header: Text("Night maneuvers"),
-                footer: Text("The instrument reports for duty: "
-                    + "the seal chain proves the record, the "
-                    + "census reads the posture, the spar fires "
-                    + "sixty mutations of a real capture at your "
-                    + "own Serve. The grade goes into the sealed "
-                    + "log either way.")) {
+        Section(header: Text(L("Night maneuvers")),
+                footer: Text(L("The instrument reports for duty: the seal chain proves the record, the census reads the posture, the spar fires sixty mutations of a real capture at your own Serve. The grade goes into the sealed log either way."))) {
             Button {
                 runManeuvers()
             } label: {
@@ -1421,26 +1255,15 @@ struct EmconView: View {
     @AppStorage("deadHand.hours") private var deadHandHours = 24
 
     private var deadHandSection: some View {
-        Section(header: Text("Dead hand"),
-                footer: Text("Arm it, then check in here — "
-                    + "deliberately, with the button — before "
-                    + "the interval runs out. If the app is "
-                    + "next opened with the check-in overdue, "
-                    + "the Knocktalk threads burn and EMCON "
-                    + "rises before anything else happens. It "
-                    + "falls at the next OPENING, not at the "
-                    + "deadline: iOS gives no app a background "
-                    + "timer worth trusting. The reminders are "
-                    + "courtesies. Merely opening the app never "
-                    + "counts as a check-in — that is the "
-                    + "point of the hand.")) {
-            Toggle("Arm the dead hand", isOn: $deadHandOn)
+        Section(header: Text(L("Dead hand")),
+                footer: Text(L("Arm it, then check in here — deliberately, with the button — before the interval runs out. If the app is next opened with the check-in overdue, the Knocktalk threads burn and EMCON rises before anything else happens. It falls at the next OPENING, not at the deadline: iOS gives no app a background timer worth trusting. The reminders are courtesies. Merely opening the app never counts as a check-in — that is the point of the hand."))) {
+            Toggle(L("Arm the dead hand"), isOn: $deadHandOn)
                 .onChange(of: deadHandOn) { on in
                     if on { emcon.deadHandArm() }
                     else { emcon.deadHandDisarm() }
                 }
             if deadHandOn {
-                Picker("Check in every",
+                Picker(L("Check in every"),
                        selection: $deadHandHours) {
                     ForEach(Emcon.deadHandHoursOptions,
                             id: \.self) { h in
@@ -1453,9 +1276,7 @@ struct EmconView: View {
                     emcon.deadHandReschedule()
                 }
                 if emcon.deadHandHasFallen {
-                    Text("THE HAND HAS FALLEN — threads "
-                         + "burned, EMCON raised. Check in to "
-                         + "re-arm it.")
+                    Text(L("THE HAND HAS FALLEN — threads burned, EMCON raised. Check in to re-arm it."))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.red)
                 } else if let deadline = emcon.deadHandDeadline {
@@ -1464,8 +1285,7 @@ struct EmconView: View {
                         value: deadline.formatted(
                             date: .abbreviated, time: .shortened))
                     if emcon.deadHandOverdue {
-                        Text("OVERDUE — the hand falls at "
-                             + "the next opening.")
+                        Text(L("OVERDUE — the hand falls at the next opening."))
                             .font(.callout.weight(.semibold))
                             .foregroundStyle(.orange)
                     }
@@ -1473,7 +1293,7 @@ struct EmconView: View {
                 Button {
                     emcon.deadHandCheckIn()
                 } label: {
-                    Label("Check in — I'm here",
+                    Label(L("Check in — I'm here"),
                           systemImage: "hand.raised.fill")
                 }
             }
@@ -1481,16 +1301,16 @@ struct EmconView: View {
     }
 
     private var hardeningSection: some View {
-        Section(header: Text("Hardening — the OS half")) {
+        Section(header: Text(L("Hardening — the OS half"))) {
             HStack {
-                Text("This network")
+                Text(L("This network"))
                 Spacer()
                 Text(emcon.currentSubnet.map { "\($0).0/24" }
                      ?? "not on Wi-Fi")
                     .font(.callout).foregroundStyle(.secondary)
             }
             HStack {
-                Text("Home turf")
+                Text(L("Home turf"))
                 Spacer()
                 Text(emcon.homeSubnet.map { "\($0).0/24" } ?? "unmarked")
                     .font(.callout).foregroundStyle(.secondary)
@@ -1500,10 +1320,9 @@ struct EmconView: View {
                 Button {
                     Haptics.tap()
                     emcon.markHome()
-                    toasts.show("Marked — EMCON will warn you off "
-                                + "home turf.")
+                    toasts.show(L("Marked — EMCON will warn you off home turf."))
                 } label: {
-                    Label("Mark this network as home",
+                    Label(L("Mark this network as home"),
                           systemImage: "house")
                 }
             }
@@ -1511,9 +1330,9 @@ struct EmconView: View {
                 Button(role: .destructive) {
                     Haptics.tap()
                     emcon.unmarkHome()
-                    toasts.show("Home turf unmarked.")
+                    toasts.show(L("Home turf unmarked."))
                 } label: {
-                    Label("Unmark home", systemImage: "house.slash")
+                    Label(L("Unmark home"), systemImage: "house.slash")
                 }
             }
             checklistRow($checkName,
@@ -1539,9 +1358,7 @@ struct EmconView: View {
                          detail: "Settings → Bluetooth. Trade-off: "
                             + "Listen needs Bluetooth on to hear "
                             + "anything — weigh it per situation.")
-            Text("EMCON can verify the broadcast name and the app's "
-                 + "emissions. These five live in Settings — check "
-                 + "them off on your word.")
+            Text(L("EMCON can verify the broadcast name and the app's emissions. These five live in Settings — check them off on your word."))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

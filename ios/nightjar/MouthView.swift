@@ -234,7 +234,7 @@ struct SendView: View {
     @ViewBuilder private var lastReplyView: some View {
         if let reply = mouth.lastReply {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Last reply · \(reply.label) · "
+                Text(String(format: L("Last reply · %@ · "), reply.label)
                      + reply.at.formatted(date: .omitted, time: .standard))
                     .font(.caption.weight(.medium))
                 Text(PayloadKit.hexdump(reply.data))
@@ -257,15 +257,10 @@ struct SendView: View {
                         Haptics.tap()
                         showHelm = true
                     } label: {
-                        Label("The Helm — remotes for "
-                            + "your own gear",
+                        Label(L("The Helm — remotes for your own gear"),
                               systemImage: "dial.medium")
                     }
-                    Text("Named remotes whose buttons fire "
-                        + "the book's payloads at your own "
-                        + "devices — and a place to learn "
-                        + "new buttons from what your gear "
-                        + "sends you.")
+                    Text(L("Named remotes whose buttons fire the book's payloads at your own devices — and a place to learn new buttons from what your gear sends you."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -275,15 +270,10 @@ struct SendView: View {
                         Haptics.tap()
                         showWarRoom = true
                     } label: {
-                        Label("War Room — one operation, "
-                            + "one timeline",
+                        Label(L("War Room — one operation, one timeline"),
                               systemImage: "map")
                     }
-                    Text("Listen, the trace and the knock "
-                        + "bench run as a single operation on "
-                        + "the Trace scope, feeding one "
-                        + "timestamped timeline — and one "
-                        + "export carries the whole record.")
+                    Text(L("Listen, the trace and the knock bench run as a single operation on the Trace scope, feeding one timestamped timeline — and one export carries the whole record."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -293,22 +283,15 @@ struct SendView: View {
                         Haptics.tap()
                         showWarGames = true
                     } label: {
-                        Label("War Games — spar with your "
-                            + "other phone",
+                        Label(L("War Games — spar with your other phone"),
                               systemImage: "flag.2.crossed")
                     }
-                    Text("One phone defends (Serve up, "
-                        + "decoys flying), the other attacks "
-                        + "(trace and knock). The match "
-                        + "protocol rides the Serve inbox, "
-                        + "and the scoring diffs what was "
-                        + "found against what was run and "
-                        + "caught.")
+                    Text(L("One phone defends (Serve up, decoys flying), the other attacks (trace and knock). The match protocol rides the Serve inbox, and the scoring diffs what was found against what was run and caught."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section(header: Text("Step 1 · Destination")) {
+                Section(header: Text(L("Step 1 · Destination"))) {
                     if showPhones && !mouth.nearbyPhones.isEmpty {
                         ForEach(mouth.nearbyPhones, id: \.self) { name in
                             Button {
@@ -326,24 +309,21 @@ struct SendView: View {
                             }
                             .foregroundStyle(.primary)
                         }
-                        Text("…or send to an address instead:")
+                        Text(L("…or send to an address instead:"))
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    TextField("tcp://host:port", text: $target)
+                    TextField(L("tcp://host:port"), text: $target)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
                         .onTapGesture { phoneSelection = nil }
                     if showPhones && mouth.nearbyPhones.isEmpty
                         && phoneSelection == nil {
-                        Text("No nearby phones right now — start serving "
-                             + "on another phone on this Wi-Fi and it "
-                             + "appears here, or type an address.")
+                        Text(L("No nearby phones right now — start serving on another phone on this Wi-Fi and it appears here, or type an address."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     if phoneSelection != nil {
-                        Text("A nearby phone is selected — the address "
-                             + "is ignored until you tap it.")
+                        Text(L("A nearby phone is selected — the address is ignored until you tap it."))
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
                         switch parsed {
@@ -358,7 +338,7 @@ struct SendView: View {
                 }
 
                 if !recentTargets.isEmpty && phoneSelection == nil {
-                    Section(header: Text("Recent addresses")) {
+                    Section(header: Text(L("Recent addresses"))) {
                         ForEach(recentTargets, id: \.self) { recent in
                             Button {
                                 Haptics.select()
@@ -377,7 +357,7 @@ struct SendView: View {
                     }
                 }
 
-                Section(header: Text("Step 2 · Payload")) {
+                Section(header: Text(L("Step 2 · Payload"))) {
                     Button {
                         Haptics.tap()
                         showLibrary = true
@@ -395,35 +375,34 @@ struct SendView: View {
                     }
                     DisclosureGroup("…or build a custom one",
                                     isExpanded: $customExpanded) {
-                        Picker("Encoding", selection: $source) {
-                            Text("Text").tag("text")
-                            Text("Hex").tag("hex")
-                            Text("Base 64").tag("base64")
+                        Picker(L("Encoding"), selection: $source) {
+                            Text(L("Text")).tag("text")
+                            Text(L("Hex")).tag("hex")
+                            Text(L("Base 64")).tag("base64")
                         }
                         .pickerStyle(.segmented)
                         if source == "text" {
-                            TextField("payload", text: $payloadText, axis: .vertical)
+                            TextField(L("payload"), text: $payloadText, axis: .vertical)
                                 .font(.body.monospaced())
                         } else if source == "hex" {
-                            TextField("68 65 6c 6c 6f", text: $payloadHex, axis: .vertical)
+                            TextField(L("68 65 6c 6c 6f"), text: $payloadHex, axis: .vertical)
                                 .font(.body.monospaced())
                                 .textInputAutocapitalization(.never)
                                 .disableAutocorrection(true)
                         } else {
-                            TextField("aGVsbG8=", text: $payloadB64, axis: .vertical)
+                            TextField(L("aGVsbG8="), text: $payloadB64, axis: .vertical)
                                 .font(.body.monospaced())
                                 .textInputAutocapitalization(.never)
                                 .disableAutocorrection(true)
                         }
-                        TextField("XOR key (optional, hex or text)", text: $xorKey)
+                        TextField(L("XOR key (optional, hex or text)"), text: $xorKey)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .font(.body.monospaced())
-                        Toggle("gzip the payload first", isOn: $useGzip)
+                        Toggle(L("gzip the payload first"), isOn: $useGzip)
                     }
                     if selectedPayloadName != nil {
-                        Text("The library payload is loaded — open "
-                             + "Custom to tweak it into your own.")
+                        Text(L("The library payload is loaded — open Custom to tweak it into your own."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     if let data = previewData {
@@ -438,7 +417,7 @@ struct SendView: View {
                                     .font(.caption2.monospaced())
                                     .foregroundStyle(.secondary)
                                 if data.count > 64 {
-                                    Text("… (\(data.count - 64) more bytes)")
+                                    Text(String(format: L("… (%lld more bytes)"), data.count - 64))
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                 }
@@ -449,10 +428,8 @@ struct SendView: View {
 
                 stepThreeSection
 
-                CollapsibleSection("Send to many", isOpen: $openFanout) {
-                    Text("One payload, a whole list of targets — typed, "
-                         + "pasted, imported from a file, or harvested "
-                         + "from the network by the Scan tab.")
+                CollapsibleSection(L("Send to many"), isOpen: $openFanout) {
+                    Text(L("One payload, a whole list of targets — typed, pasted, imported from a file, or harvested from the network by the Scan tab."))
                         .font(.caption).foregroundStyle(.secondary)
                     TextEditor(text: $fanoutTargets)
                         .font(.body.monospaced())
@@ -464,10 +441,9 @@ struct SendView: View {
                             fanoutTargets = (mouth.lastScanTargets
                                 + fanoutList)
                                 .joined(separator: "\n")
-                            toasts.show("Added \(mouth.lastScanTargets.count) "
-                                        + "target(s) from Scan")
+                            toasts.show(String(format: L("Added %lld target(s) from Scan"), mouth.lastScanTargets.count))
                         } label: {
-                            Label("From Scan (\(mouth.lastScanTargets.count))",
+                            Label(String(format: L("From Scan (%lld)"), mouth.lastScanTargets.count),
                                   systemImage: "scope")
                         }
                         .disabled(mouth.lastScanTargets.isEmpty)
@@ -478,7 +454,7 @@ struct SendView: View {
                                     .map { "phone:\($0)" } + fanoutList)
                                 .joined(separator: "\n")
                         } label: {
-                            Label("Phones (\(mouth.nearbyPhones.count))",
+                            Label(String(format: L("Phones (%lld)"), mouth.nearbyPhones.count),
                                   systemImage: "iphone")
                         }
                         .disabled(mouth.nearbyPhones.isEmpty)
@@ -487,7 +463,7 @@ struct SendView: View {
                             Haptics.tap()
                             showImporter = true
                         } label: {
-                            Label("Import", systemImage: "square.and.arrow.down")
+                            Label(L("Import"), systemImage: "square.and.arrow.down")
                         }
                     }
                     .font(.caption)
@@ -519,34 +495,34 @@ struct SendView: View {
                     }
                 }
 
-                CollapsibleSection("Timed delivery", isOpen: $openTiming) {
-                    Picker("When", selection: $timingMode) {
-                        Text("Now").tag("now")
-                        Text("After a delay").tag("delay")
-                        Text("Repeat").tag("repeat")
+                CollapsibleSection(L("Timed delivery"), isOpen: $openTiming) {
+                    Picker(L("When"), selection: $timingMode) {
+                        Text(L("Now")).tag("now")
+                        Text(L("After a delay")).tag("delay")
+                        Text(L("Repeat")).tag("repeat")
                     }
                     .pickerStyle(.segmented)
                     if timingMode == "delay" {
                         HStack {
-                            Text("Fire in (seconds)")
+                            Text(L("Fire in (seconds)"))
                                 .foregroundStyle(.secondary)
-                            TextField("30", text: $timingDelay)
+                            TextField(L("30"), text: $timingDelay)
                                 .keyboardType(.numberPad)
                                 .font(.body.monospaced())
                         }
                     }
                     if timingMode == "repeat" {
                         HStack {
-                            Text("Every (seconds)")
+                            Text(L("Every (seconds)"))
                                 .foregroundStyle(.secondary)
-                            TextField("10", text: $timingInterval)
+                            TextField(L("10"), text: $timingInterval)
                                 .keyboardType(.numberPad)
                                 .font(.body.monospaced())
                         }
                         HStack {
-                            Text("Rounds")
+                            Text(L("Rounds"))
                                 .foregroundStyle(.secondary)
-                            TextField("5", text: $timingRounds)
+                            TextField(L("5"), text: $timingRounds)
                                 .keyboardType(.numberPad)
                                 .font(.body.monospaced())
                         }
@@ -555,29 +531,19 @@ struct SendView: View {
                         HStack {
                             Text(status).font(.caption.monospaced())
                             Spacer()
-                            Button("Cancel") {
+                            Button(L("Cancel")) {
                                 Haptics.tap()
                                 mouth.cancelSchedule()
                             }
                             .font(.caption)
                         }
                     }
-                    Text("Applies to the step-3 send and to fan-out. "
-                         + "Timers run while the app is open — iOS "
-                         + "suspends background apps, so a scheduled "
-                         + "send waits for the app to be on screen.")
+                    Text(L("Applies to the step-3 send and to fan-out. Timers run while the app is open — iOS suspends background apps, so a scheduled send waits for the app to be on screen."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
-                CollapsibleSection("Centipede", isOpen: $openCentipede) {
-                    Text("A route, walked hop by hop. Each line is a "
-                         + "stop: a target, a range, host:80,443 (a "
-                         + "port train), or a bare host (a train "
-                         + "across the usual ports). Chain sends each "
-                         + "hop the previous hop's reply; Seed sends "
-                         + "the step-2 payload everywhere. The phone "
-                         + "makes every send, out and back — nothing "
-                         + "is left behind on any target.")
+                CollapsibleSection(L("Centipede"), isOpen: $openCentipede) {
+                    Text(L("A route, walked hop by hop. Each line is a stop: a target, a range, host:80,443 (a port train), or a bare host (a train across the usual ports). Chain sends each hop the previous hop's reply; Seed sends the step-2 payload everywhere. The phone makes every send, out and back — nothing is left behind on any target."))
                         .font(.caption).foregroundStyle(.secondary)
                     TextEditor(text: $centipedeRoute)
                         .font(.body.monospaced())
@@ -589,10 +555,9 @@ struct SendView: View {
                             centipedeRoute = (mouth.lastScanTargets
                                 + centipedeLines)
                                 .joined(separator: "\n")
-                            toasts.show("Added \(mouth.lastScanTargets.count) "
-                                        + "device(s) from Scan")
+                            toasts.show(String(format: L("Added %lld device(s) from Scan"), mouth.lastScanTargets.count))
                         } label: {
-                            Label("From Scan (\(mouth.lastScanTargets.count))",
+                            Label(String(format: L("From Scan (%lld)"), mouth.lastScanTargets.count),
                                   systemImage: "scope")
                         }
                         .disabled(mouth.lastScanTargets.isEmpty)
@@ -603,7 +568,7 @@ struct SendView: View {
                                     .map { "phone:\($0)" } + centipedeLines)
                                 .joined(separator: "\n")
                         } label: {
-                            Label("Phones (\(mouth.nearbyPhones.count))",
+                            Label(String(format: L("Phones (%lld)"), mouth.nearbyPhones.count),
                                   systemImage: "iphone")
                         }
                         .disabled(mouth.nearbyPhones.isEmpty)
@@ -613,22 +578,22 @@ struct SendView: View {
                             centipedeRoute = (fanoutList + centipedeLines)
                                 .joined(separator: "\n")
                         } label: {
-                            Label("Fan-out list",
+                            Label(L("Fan-out list"),
                                   systemImage: "list.bullet")
                         }
                         .disabled(fanoutList.isEmpty)
                     }
                     .font(.caption)
-                    TextField("Subnet to sweep — blank = this phone's",
+                    TextField(L("Subnet to sweep — blank = this phone's"),
                               text: $centipedeSweepTarget)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                         .font(.body.monospaced())
                     HStack {
-                        Text("Sweep ports")
+                        Text(L("Sweep ports"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("80,443,…", text: $centipedeSweepPort)
+                        TextField(L("80,443,…"), text: $centipedeSweepPort)
                             .keyboardType(.numbersAndPunctuation)
                             .font(.body.monospaced())
                         Button {
@@ -648,32 +613,29 @@ struct SendView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Text("Discovery knocks the listed ports on every "
-                         + "address; each answering host joins the "
-                         + "route as a port train over the ports it "
-                         + "answered on.")
+                    Text(L("Discovery knocks the listed ports on every address; each answering host joins the route as a port train over the ports it answered on."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button {
                         Haptics.tap()
                         addThisPhone()
                     } label: {
-                        Label("Add this phone's Serve as a target",
+                        Label(L("Add this phone's Serve as a target"),
                               systemImage: "iphone")
                     }
                     .font(.caption)
-                    Picker("Mode", selection: $centipedeMode) {
-                        Text("Chain").tag("chain")
-                        Text("Seed").tag("seed")
+                    Picker(L("Mode"), selection: $centipedeMode) {
+                        Text(L("Chain")).tag("chain")
+                        Text(L("Seed")).tag("seed")
                     }
                     .pickerStyle(.segmented)
-                    Toggle("Return to sender (walk the route back)",
+                    Toggle(L("Return to sender (walk the route back)"),
                            isOn: $centipedeReturn)
-                    Toggle("Every device in the list gets its own walk",
+                    Toggle(L("Every device in the list gets its own walk"),
                            isOn: $centipedePerDevice)
-                    Toggle("Smart seed — speak each port's protocol",
+                    Toggle(L("Smart seed — speak each port's protocol"),
                            isOn: $centipedeSmartSeed)
-                    TextField("Deliver homecoming to (optional)",
+                    TextField(L("Deliver homecoming to (optional)"),
                               text: $centipedeHome)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
@@ -683,7 +645,7 @@ struct SendView: View {
                             Haptics.tap()
                             mouth.stopCrawl()
                         } label: {
-                            Label("Stop the centipede",
+                            Label(L("Stop the centipede"),
                                   systemImage: "stop.circle")
                                 .frame(maxWidth: .infinity)
                         }
@@ -718,7 +680,7 @@ struct SendView: View {
                         Text(trailLine).font(.caption.monospaced())
                     }
                     if !mouth.crawlFindings.isEmpty {
-                        Text("Harvest — what the doors said")
+                        Text(L("Harvest — what the doors said"))
                             .font(.caption.weight(.semibold))
                         ForEach(mouth.crawlFindings, id: \.self) { finding in
                             Text(finding).font(.caption.monospaced())
@@ -742,37 +704,28 @@ struct SendView: View {
                     }
                 }
 
-                CollapsibleSection("Network Trace", isOpen: $openTrace) {
-                    Text("Map one whole /24: every address is "
-                         + "knocked, every answering host profiled "
-                         + "door by door, and every endpoint a "
-                         + "banner or reply mentions is followed "
-                         + "(three hops deep) until nothing new is "
-                         + "left — then it stops on its own and "
-                         + "files a trace JSON. Foreground only, "
-                         + "stoppable anytime. Endpoints outside "
-                         + "the /24 are written into the report, "
-                         + "never contacted.")
+                CollapsibleSection(L("Network Trace"), isOpen: $openTrace) {
+                    Text(L("Map one whole /24: every address is knocked, every answering host profiled door by door, and every endpoint a banner or reply mentions is followed (three hops deep) until nothing new is left — then it stops on its own and files a trace JSON. Foreground only, stoppable anytime. Endpoints outside the /24 are written into the report, never contacted."))
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("Presets")
+                    Text(L("Presets"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .onAppear { refreshPresetExport() }
                     if !presets.isEmpty {
-                        Picker("Preset", selection: $selectedPresetID) {
-                            Text("Choose…").tag("")
+                        Picker(L("Preset"), selection: $selectedPresetID) {
+                            Text(L("Choose…")).tag("")
                             ForEach(presets) { preset in
                                 Text(preset.name).tag(preset.id)
                             }
                         }
                         .pickerStyle(.menu)
                         HStack {
-                            Button("Apply preset") {
+                            Button(L("Apply preset")) {
                                 Haptics.tap()
                                 applySelectedPreset()
                             }
                             .disabled(selectedPresetID.isEmpty)
-                            Button("Delete", role: .destructive) {
+                            Button(L("Delete"), role: .destructive) {
                                 Haptics.tap()
                                 deleteSelectedPreset()
                             }
@@ -781,10 +734,10 @@ struct SendView: View {
                         .font(.caption)
                     }
                     HStack {
-                        TextField("New preset name",
+                        TextField(L("New preset name"),
                                   text: $presetNameDraft)
                             .font(.body.monospaced())
-                        Button("Save current") {
+                        Button(L("Save current")) {
                             Haptics.tap()
                             saveCurrentPreset()
                         }
@@ -798,7 +751,7 @@ struct SendView: View {
                             Button {
                                 shareItem = ShareItem(items: [url])
                             } label: {
-                                Label("Share presets",
+                                Label(L("Share presets"),
                                       systemImage: "square.and.arrow.up")
                             }
                         }
@@ -806,12 +759,12 @@ struct SendView: View {
                             Haptics.tap()
                             showPresetImporter = true
                         } label: {
-                            Label("Import presets",
+                            Label(L("Import presets"),
                                   systemImage: "square.and.arrow.down")
                         }
                     }
                     .font(.caption)
-                    Text("War Chest — whole-app loadouts")
+                    Text(L("War Chest — whole-app loadouts"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .onAppear {
@@ -819,27 +772,24 @@ struct SendView: View {
                             chests = NJChestStore.load()
                             refreshChestExport()
                         }
-                    Text("A chest dresses the whole house — "
-                        + "Send, Serve, Recon, stealth — in one "
-                        + "tap. Applying loads configuration "
-                        + "only; it starts nothing.")
+                    Text(L("A chest dresses the whole house — Send, Serve, Recon, stealth — in one tap. Applying loads configuration only; it starts nothing."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if !chests.isEmpty {
-                        Picker("Chest", selection: $selectedChestID) {
-                            Text("Choose…").tag("")
+                        Picker(L("Chest"), selection: $selectedChestID) {
+                            Text(L("Choose…")).tag("")
                             ForEach(chests) { chest in
                                 Text(chest.name).tag(chest.id)
                             }
                         }
                         .pickerStyle(.menu)
                         HStack {
-                            Button("Apply chest") {
+                            Button(L("Apply chest")) {
                                 Haptics.tap()
                                 applySelectedChest()
                             }
                             .disabled(selectedChestID.isEmpty)
-                            Button("Delete", role: .destructive) {
+                            Button(L("Delete"), role: .destructive) {
                                 Haptics.tap()
                                 deleteSelectedChest()
                             }
@@ -848,10 +798,10 @@ struct SendView: View {
                         .font(.caption)
                     }
                     HStack {
-                        TextField("New chest name",
+                        TextField(L("New chest name"),
                                   text: $chestNameDraft)
                             .font(.body.monospaced())
-                        Button("Save current") {
+                        Button(L("Save current")) {
                             Haptics.tap()
                             saveCurrentChest()
                         }
@@ -865,7 +815,7 @@ struct SendView: View {
                             Button {
                                 shareItem = ShareItem(items: [url])
                             } label: {
-                                Label("Share chests",
+                                Label(L("Share chests"),
                                       systemImage: "square.and.arrow.up")
                             }
                         }
@@ -873,39 +823,39 @@ struct SendView: View {
                             Haptics.tap()
                             showChestImporter = true
                         } label: {
-                            Label("Import chests",
+                            Label(L("Import chests"),
                                   systemImage: "square.and.arrow.down")
                         }
                     }
                     .font(.caption)
-                    TextField("Scope — blank = this phone's /24",
+                    TextField(L("Scope — blank = this phone's /24"),
                               text: $traceScope)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                         .font(.body.monospaced())
                     HStack {
-                        Text("Discovery ports")
+                        Text(L("Discovery ports"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("80,443,…",
+                        TextField(L("80,443,…"),
                                   text: $traceDiscoveryPorts)
                             .keyboardType(.numbersAndPunctuation)
                             .font(.body.monospaced())
                     }
                     HStack {
-                        Text("Profile ports")
+                        Text(L("Profile ports"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        TextField("blank = usual ports",
+                        TextField(L("blank = usual ports"),
                                   text: $traceProfilePorts)
                             .keyboardType(.numbersAndPunctuation)
                             .font(.body.monospaced())
                     }
-                    Toggle("Listen for Bonjour while tracing",
+                    Toggle(L("Listen for Bonjour while tracing"),
                            isOn: $traceBonjour)
-                    Toggle("Adaptive — let the rules below steer",
+                    Toggle(L("Adaptive — let the rules below steer"),
                            isOn: $traceAdaptive)
-                    Text("Rules (shared with the Centipede)")
+                    Text(L("Rules (shared with the Centipede)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     TextEditor(text: $traceRules)
@@ -917,7 +867,7 @@ struct SendView: View {
                             Haptics.tap()
                             mouth.stopNetworkTrace()
                         } label: {
-                            Label("Stop the trace",
+                            Label(L("Stop the trace"),
                                   systemImage: "stop.circle")
                                 .frame(maxWidth: .infinity)
                         }
@@ -939,7 +889,7 @@ struct SendView: View {
                             Haptics.tap()
                             startTrace()
                         } label: {
-                            Label("Start network trace",
+                            Label(L("Start network trace"),
                                   systemImage: "point.3.connected.trianglepath.dotted")
                                 .frame(maxWidth: .infinity)
                         }
@@ -950,17 +900,13 @@ struct SendView: View {
                             mouth.traceAutoCentipede = true
                             startTrace()
                         } label: {
-                            Label("Trace & set up the Centipede",
+                            Label(L("Trace & set up the Centipede"),
                                   systemImage: "arrow.triangle.2.circlepath")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
                         .disabled(mouth.crawlBusy || mouth.talkBusy)
-                        Text("Runs the trace, then replaces the "
-                             + "Centipede's route with every door "
-                             + "it found — one port train per host, "
-                             + "ready to release. Nothing else to "
-                             + "configure.")
+                        Text(L("Runs the trace, then replaces the Centipede's route with every door it found — one port train per host, ready to release. Nothing else to configure."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     if let status = mouth.traceStatus {
@@ -975,7 +921,7 @@ struct SendView: View {
                         Button {
                             shareItem = ShareItem(items: [export])
                         } label: {
-                            Label("Download trace JSON",
+                            Label(L("Download trace JSON"),
                                   systemImage: "square.and.arrow.up")
                         }
                         .font(.caption)
@@ -986,16 +932,16 @@ struct SendView: View {
                             shareItem = ShareItem(
                                 items: [TraceBookStore.logbookURL])
                         } label: {
-                            Label("Download the crawl logbook",
+                            Label(L("Download the crawl logbook"),
                                   systemImage: "book.closed")
                         }
                         .font(.caption)
                         Button(role: .destructive) {
                             Haptics.tap()
                             TraceBookStore.shared.clear()
-                            toasts.show("Logbook cleared")
+                            toasts.show(L("Logbook cleared"))
                         } label: {
-                            Label("Clear logbook",
+                            Label(L("Clear logbook"),
                                   systemImage: "trash")
                         }
                         .font(.caption)
@@ -1006,33 +952,26 @@ struct SendView: View {
                     centipedeRoute = route
                     mouth.traceCentipedeRoute = nil
                     openCentipede = true
-                    toasts.show("Centipede configured from the trace")
+                    toasts.show(L("Centipede configured from the trace"))
                 }
 
-                CollapsibleSection("Crosstalk", isOpen: $openTalk) {
-                    Text("Patch two doors together and let them "
-                         + "talk: door A is knocked (its port's "
-                         + "probe when smart seed is on), its reply "
-                         + "is carried verbatim to B, B's reply back "
-                         + "to A — until silence, an echo, a repeat, "
-                         + "or the rounds run out. Any targets the "
-                         + "route parser accepts; a train or range "
-                         + "speaks through its first door.")
+                CollapsibleSection(L("Crosstalk"), isOpen: $openTalk) {
+                    Text(L("Patch two doors together and let them talk: door A is knocked (its port's probe when smart seed is on), its reply is carried verbatim to B, B's reply back to A — until silence, an echo, a repeat, or the rounds run out. Any targets the route parser accepts; a train or range speaks through its first door."))
                         .font(.caption).foregroundStyle(.secondary)
-                    TextField("Door A — tcp://host:port, phone:Name, https://…",
+                    TextField(L("Door A — tcp://host:port, phone:Name, https://…"),
                               text: $talkA)
                         .font(.callout.monospaced())
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
-                    TextField("Door B — the other door",
+                    TextField(L("Door B — the other door"),
                               text: $talkB)
                         .font(.callout.monospaced())
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                     HStack {
-                        Button("Serve as A") { setServeDoor(a: true) }
-                        Button("Serve as B") { setServeDoor(a: false) }
-                        Button("Swap ⇄") {
+                        Button(L("Serve as A")) { setServeDoor(a: true) }
+                        Button(L("Serve as B")) { setServeDoor(a: false) }
+                        Button(L("Swap ⇄")) {
                             Haptics.tap()
                             (talkA, talkB) = (talkB, talkA)
                         }
@@ -1044,7 +983,7 @@ struct SendView: View {
                         Button(role: .destructive) {
                             mouth.stopTalk()
                         } label: {
-                            Label("Hang up",
+                            Label(L("Hang up"),
                                   systemImage: "phone.down.fill")
                                 .frame(maxWidth: .infinity)
                         }
@@ -1060,7 +999,7 @@ struct SendView: View {
                                 smartSeed: centipedeSmartSeed,
                                 probeFor: probeForTarget)
                         } label: {
-                            Label("Start the conversation",
+                            Label(L("Start the conversation"),
                                   systemImage: "bubble.left.and.bubble.right.fill")
                                 .frame(maxWidth: .infinity)
                         }
@@ -1081,7 +1020,7 @@ struct SendView: View {
                     }
                     if let last = mouth.talkHomecoming {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("The last word — \(last.count) bytes")
+                            Text(String(format: L("The last word — %lld bytes"), last.count))
                                 .font(.caption.weight(.semibold))
                             if let text = PayloadKit.printableText(last) {
                                 Text(text)
@@ -1096,13 +1035,10 @@ struct SendView: View {
                     }
                 }
 
-                CollapsibleSection("SnatchSteal", isOpen: $openSnatch) {
-                    Text("Knock on the step-1 target, then take "
-                         + "everything it sends back — full drain, "
-                         + "not the scanner's polite banner peek. "
-                         + "The haul is saved to history.")
+                CollapsibleSection(L("SnatchSteal"), isOpen: $openSnatch) {
+                    Text(L("Knock on the step-1 target, then take everything it sends back — full drain, not the scanner's polite banner peek. The haul is saved to history."))
                         .font(.caption).foregroundStyle(.secondary)
-                    Toggle("Knock first (the step-2 payload)",
+                    Toggle(L("Knock first (the step-2 payload)"),
                            isOn: $snatchKnock)
                     Button {
                         Haptics.tap()
@@ -1118,7 +1054,7 @@ struct SendView: View {
                     .disabled(mouth.snatchBusy)
                     if let result = mouth.snatchResult {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(result.label) — \(result.data.count) bytes")
+                            Text(String(format: L("%@ — %lld bytes"), result.label, result.data.count))
                                 .font(.caption.weight(.semibold))
                             if let text = PayloadKit.printableText(result.data) {
                                 Text(text)
@@ -1134,30 +1070,27 @@ struct SendView: View {
                     }
                 }
 
-                CollapsibleSection("PayPlant", isOpen: $openPlant) {
-                    Text("Leave a payload living on the target: a "
-                         + "service that stores things keeps yours "
-                         + "until someone comes to collect. Verify "
-                         + "with SnatchSteal or the Redis GET check.")
+                CollapsibleSection(L("PayPlant"), isOpen: $openPlant) {
+                    Text(L("Leave a payload living on the target: a service that stores things keeps yours until someone comes to collect. Verify with SnatchSteal or the Redis GET check."))
                         .font(.caption).foregroundStyle(.secondary)
-                    Picker("Plant in", selection: $plantKind) {
-                        Text("MQTT retained").tag("mqtt")
-                        Text("Redis SET").tag("redis")
-                        Text("memcached set").tag("memcached")
+                    Picker(L("Plant in"), selection: $plantKind) {
+                        Text(L("MQTT retained")).tag("mqtt")
+                        Text(L("Redis SET")).tag("redis")
+                        Text(L("memcached set")).tag("memcached")
                     }
                     .pickerStyle(.segmented)
                     if plantKind == "mqtt" {
-                        TextField("Topic", text: $plantTopic)
+                        TextField(L("Topic"), text: $plantTopic)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .font(.body.monospaced())
                     } else {
-                        TextField("Key", text: $plantKey)
+                        TextField(L("Key"), text: $plantKey)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .font(.body.monospaced())
                     }
-                    TextField("Value", text: $plantValue)
+                    TextField(L("Value"), text: $plantValue)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
@@ -1165,7 +1098,7 @@ struct SendView: View {
                         Haptics.tap()
                         plant()
                     } label: {
-                        Label("Plant it in \(target)",
+                        Label(String(format: L("Plant it in %@"), target),
                               systemImage: "leaf.fill")
                             .frame(maxWidth: .infinity)
                     }
@@ -1179,15 +1112,13 @@ struct SendView: View {
                     }
                     .disabled(lastPlant == nil
                               || lastPlant?.service != "redis")
-                    Text("Targets step 1 (tcp://host:port — the "
-                         + "broker or store's port). Replies land "
-                         + "in the readout under step 3.")
+                    Text(L("Targets step 1 (tcp://host:port — the broker or store's port). Replies land in the readout under step 3."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Send")
+            .navigationTitle(L("Send"))
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.plainText, .text]) { result in
                 if case .success(let url) = result,
@@ -1201,7 +1132,7 @@ struct SendView: View {
                             .filter { !$0.isEmpty }
                         fanoutTargets = (imported + fanoutList)
                             .joined(separator: "\n")
-                        toasts.show("Imported \(imported.count) target(s)")
+                        toasts.show(String(format: L("Imported %lld target(s)"), imported.count))
                     }
                 }
             }
@@ -1220,8 +1151,7 @@ struct SendView: View {
             .onChange(of: mouth.nearbyPhones) { names in
                 if let picked = phoneSelection, !names.contains(picked) {
                     phoneSelection = nil
-                    toasts.show("\(picked) left the network — "
-                                + "pick a destination in step 1")
+                    toasts.show(String(format: L("%@ left the network — pick a destination in step 1"), picked))
                 }
             }
             .toolbar {
@@ -1230,7 +1160,7 @@ struct SendView: View {
                         Haptics.tap()
                         showLog = true
                     } label: {
-                        Label("Log", systemImage: "scroll")
+                        Label(L("Log"), systemImage: "scroll")
                     }
                 }
             }
@@ -1265,8 +1195,8 @@ struct SendView: View {
                           allowedContentTypes: [.json]) { result in
                 importChests(result)
             }
-            .alert("Could not build the payload", isPresented: .constant(showError != nil)) {
-                Button("OK") { showError = nil }
+            .alert(L("Could not build the payload"), isPresented: .constant(showError != nil)) {
+                Button(L("OK")) { showError = nil }
             } message: {
                 Text(showError ?? "")
             }
@@ -1275,17 +1205,16 @@ struct SendView: View {
 
     @ViewBuilder private var handoffSection: some View {
         if let label = mouth.pendingWriteLabel {
-            Section(header: Text("From Listen")) {
-                Text("Write this payload to \(label)? It was picked in "
-                     + "the Listen tab — same write as a picked device.")
+            Section(header: Text(L("From Listen"))) {
+                Text(String(format: L("Write this payload to %@? It was picked in the Listen tab — same write as a picked device."), label))
                     .font(.caption).foregroundStyle(.secondary)
                 Button {
                     Haptics.tap()
                     if let data = build() { mouth.writeHandoff(payload: data) }
                 } label: {
-                    Label("Write to \(label)", systemImage: "paperplane.fill")
+                    Label(String(format: L("Write to %@"), label), systemImage: "paperplane.fill")
                 }
-                Button("Dismiss", role: .cancel) {
+                Button(L("Dismiss"), role: .cancel) {
                     Haptics.tap()
                     mouth.clearPendingWrite()
                 }
@@ -1295,9 +1224,9 @@ struct SendView: View {
 
     @ViewBuilder private var stepThreeSection: some View {
         if let phone = phoneSelection {
-            Section(header: Text("Step 3 · Send")) {
+            Section(header: Text(L("Step 3 · Send"))) {
                 framingPicker
-                Toggle("Read a reply", isOn: $readReply)
+                Toggle(L("Read a reply"), isOn: $readReply)
                 Button {
                     Haptics.tap()
                     withTiming(label: "send to \(phone)") {
@@ -1309,7 +1238,7 @@ struct SendView: View {
                         }
                     }
                 } label: {
-                    Label("Send to \(phone)", systemImage: "paperplane.fill")
+                    Label(String(format: L("Send to %@"), phone), systemImage: "paperplane.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -1318,87 +1247,79 @@ struct SendView: View {
         } else {
             switch parsed {
             case .success(let value) where isNetwork(value):
-                Section(header: Text("Step 3 · Send")) {
+                Section(header: Text(L("Step 3 · Send"))) {
                     framingPicker
                     if case .http(_, _) = value {
-                        Picker("Method (http)", selection: $method) {
+                        Picker(L("Method (http)"), selection: $method) {
                             ForEach(["POST", "GET", "PUT", "PATCH", "DELETE", "HEAD"], id: \.self) {
                                 Text($0).tag($0)
                             }
                         }
                     }
-                    Toggle("Read a reply", isOn: $readReply)
+                    Toggle(L("Read a reply"), isOn: $readReply)
                     Button {
                         Haptics.tap()
                         withTiming(label: "send to \(target)") {
                             sendNetwork(value)
                         }
                     } label: {
-                        Label("Send to \(target)", systemImage: "paperplane.fill")
+                        Label(String(format: L("Send to %@"), target), systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     lastReplyView
                 }
             case .success(.bleBeacon):
-                Section(header: Text("Step 3 · BLE beacon")) {
-                    TextField("Advertised name", text: $beaconName)
+                Section(header: Text(L("Step 3 · BLE beacon"))) {
+                    TextField(L("Advertised name"), text: $beaconName)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Text("The payload rides in service data for FFF0 — the slot "
-                         + "iOS lets an app set. Foreground only, and small: "
-                         + "keep it under ~20 bytes.")
+                    Text(L("The payload rides in service data for FFF0 — the slot iOS lets an app set. Foreground only, and small: keep it under ~20 bytes."))
                         .font(.caption).foregroundStyle(.secondary)
                     if mouth.beaconOn {
                         Button(role: .destructive) {
                             Haptics.tap()
                             mouth.stopBeacon()
                         } label: {
-                            Label("Stop beacon", systemImage: "stop.circle.fill")
+                            Label(L("Stop beacon"), systemImage: "stop.circle.fill")
                         }
                     } else {
                         Button {
                             Haptics.tap()
                             if let data = build() { mouth.startBeacon(payload: data, name: beaconName) }
                         } label: {
-                            Label("Start beacon", systemImage: "dot.radiowaves.left.and.right")
+                            Label(L("Start beacon"), systemImage: "dot.radiowaves.left.and.right")
                         }
                         .buttonStyle(.borderedProminent)
                     }
                 }
             case .success(.bleGatt):
-                Section(header: Text("Step 3 · GATT host")) {
-                    TextField("Advertised name", text: $beaconName)
+                Section(header: Text(L("Step 3 · GATT host"))) {
+                    TextField(L("Advertised name"), text: $beaconName)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Text("Hosts service FFF0 with characteristic FFF1 holding "
-                         + "the payload: readable, writable, notifiable. Writes "
-                         + "from a central land in the Serve inbox. Once started "
-                         + "it stays armed — it keeps hosting in the background "
-                         + "and re-arms after a relaunch. Stop it here to disarm.")
+                    Text(L("Hosts service FFF0 with characteristic FFF1 holding the payload: readable, writable, notifiable. Writes from a central land in the Serve inbox. Once started it stays armed — it keeps hosting in the background and re-arms after a relaunch. Stop it here to disarm."))
                         .font(.caption).foregroundStyle(.secondary)
                     if mouth.gattHostOn {
                         Button(role: .destructive) {
                             Haptics.tap()
                             mouth.stopGattHost()
                         } label: {
-                            Label("Stop hosting", systemImage: "stop.circle.fill")
+                            Label(L("Stop hosting"), systemImage: "stop.circle.fill")
                         }
                     } else {
                         Button {
                             Haptics.tap()
                             if let data = build() { mouth.startGattHost(payload: data, name: beaconName) }
                         } label: {
-                            Label("Host payload", systemImage: "server.rack")
+                            Label(L("Host payload"), systemImage: "server.rack")
                         }
                         .buttonStyle(.borderedProminent)
                     }
                 }
             case .success(.bleWrite(_)):
-                Section(header: Text("Step 3 · Write to a peripheral")) {
-                    Text("iOS hides MAC addresses, so pick the device by name "
-                         + "from a scan — the Python side's ble-write://ADDR "
-                         + "becomes a tap here.")
+                Section(header: Text(L("Step 3 · Write to a peripheral"))) {
+                    Text(L("iOS hides MAC addresses, so pick the device by name from a scan — the Python side's ble-write://ADDR becomes a tap here."))
                         .font(.caption).foregroundStyle(.secondary)
                     Button {
                         Haptics.tap()
@@ -1419,7 +1340,7 @@ struct SendView: View {
                             Spacer()
                             Text(device.rssi.map { "\($0) dBm" } ?? "")
                                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                            Button("Write") {
+                            Button(L("Write")) {
                                 Haptics.tap()
                                 if let data = build() { mouth.write(to: device, payload: data) }
                             }
@@ -1428,9 +1349,8 @@ struct SendView: View {
                     }
                 }
             default:
-                Section(header: Text("Step 3 · Send")) {
-                    Text("Fix the address in step 1 and the send "
-                         + "button appears here.")
+                Section(header: Text(L("Step 3 · Send"))) {
+                    Text(L("Fix the address in step 1 and the send button appears here."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -1438,10 +1358,10 @@ struct SendView: View {
     }
 
     private var framingPicker: some View {
-        Picker("Framing", selection: $framing) {
-            Text("raw").tag("raw")
-            Text("len prefix").tag("len")
-            Text("json envelope").tag("json")
+        Picker(L("Framing"), selection: $framing) {
+            Text(L("raw")).tag("raw")
+            Text(L("len prefix")).tag("len")
+            Text(L("json envelope")).tag("json")
         }
     }
 
@@ -1477,7 +1397,7 @@ struct SendView: View {
             .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             .filter { (1...65535).contains($0) }
         guard !ports.isEmpty, ports.count <= 16 else {
-            toasts.show("Give 1–16 sweep ports, comma-separated",
+            toasts.show(L("Give 1–16 sweep ports, comma-separated"),
                         error: true)
             return
         }
@@ -1490,7 +1410,7 @@ struct SendView: View {
             }
             centipedeRoute = (newLines + centipedeLines)
                 .joined(separator: "\n")
-            toasts.show("Added \(found.count) host(s) from discovery")
+            toasts.show(String(format: L("Added %lld host(s) from discovery"), found.count))
         }
     }
 
@@ -1498,7 +1418,7 @@ struct SendView: View {
     /// door — the partner that's always in the room.
     private func setServeDoor(a: Bool) {
         guard let ip = Mouth.localIPAddress() else {
-            toasts.show("No Wi-Fi address on this phone", error: true)
+            toasts.show(L("No Wi-Fi address on this phone"), error: true)
             return
         }
         if a { talkA = "tcp://\(ip):\(serveTcpPort)" }
@@ -1511,12 +1431,12 @@ struct SendView: View {
     /// own listener and carry its reply home.
     private func addThisPhone() {
         guard let ip = Mouth.localIPAddress() else {
-            toasts.show("No Wi-Fi address on this phone", error: true)
+            toasts.show(L("No Wi-Fi address on this phone"), error: true)
             return
         }
         centipedeRoute = (["tcp://\(ip):\(serveTcpPort)"] + centipedeLines)
             .joined(separator: "\n")
-        toasts.show("Added this phone — start Serve, then release")
+        toasts.show(L("Added this phone — start Serve, then release"))
     }
 
     /// The smart seed: for a TCP/UDP target whose port has a
@@ -1590,7 +1510,7 @@ struct SendView: View {
         traceAdaptive = preset.traceAdaptive
         traceRules = preset.traceRules
         centipedeRoute = preset.centipedeRoute
-        toasts.show("Preset applied — \(preset.name)")
+        toasts.show(String(format: L("Preset applied — %@"), preset.name))
     }
 
     /// Save the fields as they stand. A name already on
@@ -1620,7 +1540,7 @@ struct SendView: View {
         selectedPresetID = snapshot.id
         presetNameDraft = ""
         refreshPresetExport()
-        toasts.show("Preset saved — \(name)")
+        toasts.show(String(format: L("Preset saved — %@"), name))
     }
 
     private func deleteSelectedPreset() {
@@ -1629,7 +1549,7 @@ struct SendView: View {
         NJPresetStore.save(presets)
         selectedPresetID = ""
         refreshPresetExport()
-        toasts.show("Preset deleted — \(preset.name)")
+        toasts.show(String(format: L("Preset deleted — %@"), preset.name))
     }
 
     /// Import merges by id: a preset already on the shelf
@@ -1646,7 +1566,7 @@ struct SendView: View {
               let incoming = try? JSONDecoder()
                 .decode([NJPreset].self, from: data)
         else {
-            toasts.show("That file is not a presets file",
+            toasts.show(L("That file is not a presets file"),
                         error: true)
             return
         }
@@ -1659,7 +1579,7 @@ struct SendView: View {
         }
         NJPresetStore.save(presets)
         refreshPresetExport()
-        toasts.show("Imported \(incoming.count) preset(s)")
+        toasts.show(String(format: L("Imported %lld preset(s)"), incoming.count))
     }
 
     // MARK: - War Chest
@@ -1677,8 +1597,7 @@ struct SendView: View {
     private func applySelectedChest() {
         guard let chest = selectedChest else { return }
         chest.apply(mouth: mouth)
-        toasts.show("Chest applied — \(chest.name) "
-                    + "(nothing started)")
+        toasts.show(String(format: L("Chest applied — %@ (nothing started)"), chest.name))
     }
 
     private func saveCurrentChest() {
@@ -1700,7 +1619,7 @@ struct SendView: View {
         selectedChestID = snapshot.id
         chestNameDraft = ""
         refreshChestExport()
-        toasts.show("Chest saved — \(name)")
+        toasts.show(String(format: L("Chest saved — %@"), name))
     }
 
     private func deleteSelectedChest() {
@@ -1709,7 +1628,7 @@ struct SendView: View {
         NJChestStore.save(chests)
         selectedChestID = ""
         refreshChestExport()
-        toasts.show("Chest deleted — \(chest.name)")
+        toasts.show(String(format: L("Chest deleted — %@"), chest.name))
     }
 
     /// Import merges by id, as presets do.
@@ -1724,7 +1643,7 @@ struct SendView: View {
         guard let data = try? Data(contentsOf: url),
               let incoming = NJChestStore.decode(data)
         else {
-            toasts.show("That file is not a chests file",
+            toasts.show(L("That file is not a chests file"),
                         error: true)
             return
         }
@@ -1739,14 +1658,14 @@ struct SendView: View {
         }
         NJChestStore.save(chests)
         refreshChestExport()
-        toasts.show("Imported \(incoming.count) chest(s)")
+        toasts.show(String(format: L("Imported %lld chest(s)"), incoming.count))
     }
 
     /// Release a Network Trace with the section's settings.
     private func startTrace() {
         let discovery = parsePortList(traceDiscoveryPorts)
         guard !discovery.isEmpty else {
-            toasts.show("Give at least one discovery port",
+            toasts.show(L("Give at least one discovery port"),
                         error: true)
             return
         }
@@ -1790,14 +1709,13 @@ struct SendView: View {
             let secs = Double(timingDelay) ?? 30
             mouth.schedule(after: secs, every: nil, rounds: 1,
                            label: label, action: action)
-            toasts.show("Scheduled: \(label) in \(Int(secs))s")
+            toasts.show(String(format: L("Scheduled: %@ in %llds"), label, Int(secs)))
         case "repeat":
             let secs = Double(timingInterval) ?? 10
             let rounds = Int(timingRounds) ?? 5
             mouth.schedule(after: secs, every: secs, rounds: rounds,
                            label: label, action: action)
-            toasts.show("Repeating: \(label) every \(Int(secs))s "
-                        + "× \(rounds)")
+            toasts.show(String(format: L("Repeating: %@ every %llds × %lld"), label, Int(secs), rounds))
         default:
             action()
         }
@@ -1829,7 +1747,7 @@ struct SendView: View {
         // add() replaces a same-name entry in place, so the saved
         // payload is not necessarily the last row — select by name.
         selectedPayloadID = book.items.first { $0.name == trimmed }?.id
-        toasts.show("Saved '\(trimmed)' to the library")
+        toasts.show(String(format: L("Saved '%@' to the library"), trimmed))
     }
 
     /// Manual edits turn a library pick back into a custom payload —
@@ -1850,7 +1768,7 @@ struct SendView: View {
         } else if case .success(let value) = parsed {
             mouth.snatch(target: value, probe: probe, framing: framing)
         } else {
-            toasts.show("SnatchSteal needs a target in step 1",
+            toasts.show(L("SnatchSteal needs a target in step 1"),
                         error: true)
         }
     }
@@ -1860,8 +1778,7 @@ struct SendView: View {
         // http included) is rejected outright.
         guard case .success(let value) = parsed,
               case .tcp(let host, let port, _) = value else {
-            toasts.show("PayPlant needs a tcp:// target in step 1 — "
-                        + "plants are TCP protocols", error: true)
+            toasts.show(L("PayPlant needs a tcp:// target in step 1 — plants are TCP protocols"), error: true)
             return
         }
         let plantedTarget = target
@@ -1869,9 +1786,9 @@ struct SendView: View {
         let report: (Bool) -> Void = { ok in
             DispatchQueue.main.async {
                 if ok {
-                    toasts.show("Planted in \(plantedTarget)")
+                    toasts.show(String(format: L("Planted in %@"), plantedTarget))
                 } else {
-                    toasts.show("Could not plant in \(plantedTarget)",
+                    toasts.show(String(format: L("Could not plant in %@"), plantedTarget),
                                 error: true)
                 }
             }
@@ -1939,14 +1856,14 @@ struct SendView: View {
             // released on the next main-queue turn, after this block
             // (and its onChange deliveries) completes.
             DispatchQueue.main.async { suppressClear = false }
-            toasts.show("Probe bytes loaded — ready in step 3")
+            toasts.show(L("Probe bytes loaded — ready in step 3"))
         } else if let name = mouth.scanHandoffPayload,
            let item = book.items.first(where: { $0.name == name }) {
             mouth.scanHandoffPayload = nil
             load(item)
         } else {
             mouth.scanHandoffPayload = nil
-            toasts.show("From Scan: \(handed) is set in step 1")
+            toasts.show(String(format: L("From Scan: %@ is set in step 1"), handed))
         }
     }
 
@@ -1968,7 +1885,7 @@ struct SendView: View {
         // after this block (and its onChange deliveries) completes.
         selectedPayloadID = item.id
         DispatchQueue.main.async { suppressClear = false }
-        toasts.show("Loaded '\(item.name)' — ready in step 3")
+        toasts.show(String(format: L("Loaded '%@' — ready in step 3"), item.name))
     }
 }
 
@@ -2006,7 +1923,7 @@ struct LibrarySheet: View {
                                 }
                                 Spacer()
                                 if item.builtIn {
-                                    Text("built-in")
+                                    Text(L("built-in"))
                                         .font(.caption2).foregroundStyle(.secondary)
                                 }
                                 Text(item.source)
@@ -2023,21 +1940,21 @@ struct LibrarySheet: View {
                         }
                     }
                     if !book.missingBuiltIns.isEmpty {
-                        Button("Restore built-ins") {
+                        Button(L("Restore built-ins")) {
                             Haptics.tap()
                             book.restoreBuiltIns()
                         }
                     }
                 } header: {
-                    Text("Tap a payload to load it")
+                    Text(L("Tap a payload to load it"))
                 }
 
-                Section(header: Text("Save the current payload")) {
+                Section(header: Text(L("Save the current payload"))) {
                     HStack {
-                        TextField("Name", text: $newName)
+                        TextField(L("Name"), text: $newName)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
-                        Button("Save") {
+                        Button(L("Save")) {
                             Haptics.tap()
                             onSave(newName)
                             newName = ""
@@ -2051,10 +1968,10 @@ struct LibrarySheet: View {
             .searchable(text: $query, prompt: "Search payloads")
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Payload library")
+            .navigationTitle(L("Payload library"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }
@@ -2073,8 +1990,7 @@ struct MouthLogSheet: View {
         NavigationStack {
             List {
                 if mouth.sendLines.isEmpty {
-                    Text("Nothing yet — sends, replies, and listener "
-                         + "events land here.")
+                    Text(L("Nothing yet — sends, replies, and listener events land here."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 ForEach(Array(mouth.sendLines.enumerated()), id: \.offset) { _, line in
@@ -2083,16 +1999,16 @@ struct MouthLogSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Mouth log")
+            .navigationTitle(L("Mouth log"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Clear", role: .destructive) {
+                    Button(L("Clear"), role: .destructive) {
                         Haptics.tap()
                         mouth.clearSendLog()
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
                 if FileManager.default.fileExists(
                     atPath: Mouth.exchangesURL.path) {
@@ -2102,7 +2018,7 @@ struct MouthLogSheet: View {
                             shareItem = ShareItem(
                                 items: [Mouth.exchangesURL])
                         } label: {
-                            Label("Export exchange history (.jsonl)",
+                            Label(L("Export exchange history (.jsonl)"),
                                   systemImage: "square.and.arrow.up")
                         }
                     }
@@ -2111,7 +2027,7 @@ struct MouthLogSheet: View {
                             Haptics.tap()
                             showDeleteConfirm = true
                         } label: {
-                            Label("Delete history",
+                            Label(L("Delete history"),
                                   systemImage: "trash")
                         }
                     }
@@ -2131,12 +2047,9 @@ struct MouthLogSheet: View {
                     mouth.deleteExchangeHistory()
                     Haptics.success()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             } message: {
-                Text("The .jsonl holding every send, scan, sweep, "
-                     + "DNS lookup, snatch, and dissection is "
-                     + "deleted from this phone. This cannot be "
-                     + "undone.")
+                Text(L("The .jsonl holding every send, scan, sweep, DNS lookup, snatch, and dissection is deleted from this phone. This cannot be undone."))
             }
         }
     }
@@ -2168,51 +2081,40 @@ struct ServeView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Stealth"),
-                        footer: Text("Everything keeps working, quietly: "
-                                     + "this phone stops listing itself on "
-                                     + "the Wi-Fi (no Bonjour — reachable "
-                                     + "by IP address only), and arrivals "
-                                     + "slip into the inbox with no banners "
-                                     + "or sounds. BLE hosting must still "
-                                     + "advertise to be reachable; that is "
-                                     + "radio physics, not a setting.")) {
-                    Toggle("Stealth mode", isOn: stealthBinding)
+                Section(header: Text(L("Stealth")),
+                        footer: Text(L("Everything keeps working, quietly: this phone stops listing itself on the Wi-Fi (no Bonjour — reachable by IP address only), and arrivals slip into the inbox with no banners or sounds. BLE hosting must still advertise to be reachable; that is radio physics, not a setting."))) {
+                    Toggle(L("Stealth mode"), isOn: stealthBinding)
                 }
 
-                Section(header: Text("Listeners"),
-                        footer: Text("Foreground only: iOS suspends listeners "
-                                     + "when the app leaves the screen. First use "
-                                     + "asks for local-network permission. While "
-                                     + "TCP serving is on, other phones find this "
-                                     + "one by name — no IP addresses.")) {
-                    Toggle("TCP", isOn: $useTCP)
+                Section(header: Text(L("Listeners")),
+                        footer: Text(L("Foreground only: iOS suspends listeners when the app leaves the screen. First use asks for local-network permission. While TCP serving is on, other phones find this one by name — no IP addresses."))) {
+                    Toggle(L("TCP"), isOn: $useTCP)
                     if useTCP {
-                        TextField("TCP port", text: $tcpPort)
+                        TextField(L("TCP port"), text: $tcpPort)
                             .keyboardType(.numberPad).font(.body.monospaced())
                     }
-                    Toggle("UDP", isOn: $useUDP)
+                    Toggle(L("UDP"), isOn: $useUDP)
                     if useUDP {
-                        TextField("UDP port", text: $udpPort)
+                        TextField(L("UDP port"), text: $udpPort)
                             .keyboardType(.numberPad).font(.body.monospaced())
                     }
-                    Toggle("HTTP", isOn: $useHTTP)
+                    Toggle(L("HTTP"), isOn: $useHTTP)
                     if useHTTP {
-                        TextField("HTTP port", text: $httpPort)
+                        TextField(L("HTTP port"), text: $httpPort)
                             .keyboardType(.numberPad).font(.body.monospaced())
                     }
-                    TextField("Reply (blank = none; HTTP answers ok)", text: $reply)
+                    TextField(L("Reply (blank = none; HTTP answers ok)"), text: $reply)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
-                    Picker("Reply mode", selection: $replyMode) {
-                        Text("Fixed reply").tag("static")
-                        Text("Echo what arrived").tag("echo")
+                    Picker(L("Reply mode"), selection: $replyMode) {
+                        Text(L("Fixed reply")).tag("static")
+                        Text(L("Echo what arrived")).tag("echo")
                     }
-                    Picker("Framing", selection: $framing) {
-                        Text("raw").tag("raw")
-                        Text("len prefix").tag("len")
-                        Text("json envelope").tag("json")
+                    Picker(L("Framing"), selection: $framing) {
+                        Text(L("raw")).tag("raw")
+                        Text(L("len prefix")).tag("len")
+                        Text(L("json envelope")).tag("json")
                     }
                     if let error = mouth.serveError {
                         Text(error).font(.footnote).foregroundStyle(.red)
@@ -2222,14 +2124,14 @@ struct ServeView: View {
                             Haptics.tap()
                             mouth.stopServe()
                         } label: {
-                            Label("Stop serving", systemImage: "stop.circle.fill")
+                            Label(L("Stop serving"), systemImage: "stop.circle.fill")
                         }
                     } else {
                         Button {
                             Haptics.tap()
                             start()
                         } label: {
-                            Label("Start serving", systemImage: "play.circle.fill")
+                            Label(L("Start serving"), systemImage: "play.circle.fill")
                         }
                     }
                     if mouth.serveRunning {
@@ -2249,15 +2151,15 @@ struct ServeView: View {
 
                 CanarySectionView(host: mouth.canary)
 
-                Section(header: Text("Inbox")) {
+                Section(header: Text(L("Inbox"))) {
                     if mouth.inbox.isEmpty {
-                        Text("Nothing received yet.")
+                        Text(L("Nothing received yet."))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     ForEach(mouth.inbox) { item in
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text("\(item.transport) · \(item.data.count) bytes")
+                                Text(String(format: L("%@ · %lld bytes"), item.transport, item.data.count))
                                     .font(.callout.weight(.medium))
                                 Spacer()
                                 Text(item.at, style: .time)
@@ -2275,17 +2177,17 @@ struct ServeView: View {
                             if let text = PayloadKit.printableText(item.data) {
                                 Button {
                                     UIPasteboard.general.string = text
-                                    toasts.show("Copied the payload text")
+                                    toasts.show(L("Copied the payload text"))
                                 } label: {
-                                    Label("Copy text", systemImage: "doc.on.doc")
+                                    Label(L("Copy text"), systemImage: "doc.on.doc")
                                 }
                             }
                             Button {
                                 UIPasteboard.general.string = item.data
                                     .map { String(format: "%02x", $0) }.joined()
-                                toasts.show("Copied the payload as hex")
+                                toasts.show(L("Copied the payload as hex"))
                             } label: {
-                                Label("Copy hex", systemImage: "number")
+                                Label(L("Copy hex"), systemImage: "number")
                             }
                         }
                     }
@@ -2295,10 +2197,10 @@ struct ServeView: View {
                                 shareItem = ShareItem(
                                     items: [inboxFile()])
                             } label: {
-                                Label("Share inbox (.jsonl)", systemImage: "square.and.arrow.up")
+                                Label(L("Share inbox (.jsonl)"), systemImage: "square.and.arrow.up")
                             }
                             Spacer()
-                            Button("Clear", role: .destructive) {
+                            Button(L("Clear"), role: .destructive) {
                                 Haptics.tap()
                                 mouth.clearInbox()
                             }
@@ -2308,14 +2210,14 @@ struct ServeView: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Serve")
+            .navigationTitle(L("Serve"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Haptics.tap()
                         showLog = true
                     } label: {
-                        Label("Log", systemImage: "scroll")
+                        Label(L("Log"), systemImage: "scroll")
                     }
                 }
             }

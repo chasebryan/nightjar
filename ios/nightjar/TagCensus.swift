@@ -257,20 +257,14 @@ struct TagCensusView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("A census of your own cards and "
-                        + "tags: what a tag tells any reader, "
-                        + "read whole and kept only on this "
-                        + "screen. Nothing is written, "
-                        + "emulated, or cloned — iOS allows "
-                        + "this app no such role, and the "
-                        + "census asks for none.")
+                    Text(L("A census of your own cards and tags: what a tag tells any reader, read whole and kept only on this screen. Nothing is written, emulated, or cloned — iOS allows this app no such role, and the census asks for none."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button {
                         Haptics.tap()
                         census.scan()
                     } label: {
-                        Label("Read a tag",
+                        Label(L("Read a tag"),
                               systemImage: "wave.3.right")
                     }
                     Text(census.status)
@@ -278,10 +272,10 @@ struct TagCensusView: View {
                         .foregroundStyle(.secondary)
                 }
                 if let report = census.report {
-                    Section("The tag") {
-                        LabeledContent("Kind", value: report.kind)
+                    Section(L("The tag")) {
+                        LabeledContent(L("Kind"), value: report.kind)
                         if !report.uid.isEmpty {
-                            LabeledContent("Identifier",
+                            LabeledContent(L("Identifier"),
                                            value: report.uid)
                                 .font(.body.monospaced())
                         }
@@ -290,25 +284,23 @@ struct TagCensusView: View {
                         }
                     }
                     if !report.ndef.isEmpty {
-                        Section("NDEF records") {
+                        Section(L("NDEF records")) {
                             ForEach(report.ndef, id: \.self) {
                                 Text($0).font(.caption.monospaced())
                             }
                         }
                     }
                     if report.isISO7816 {
-                        Section("APDU explorer") {
-                            Text("Commands you type, answers "
-                                + "the tag gives — your card, "
-                                + "your questions.")
+                        Section(L("APDU explorer")) {
+                            Text(L("Commands you type, answers the tag gives — your card, your questions."))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            TextField("00 a4 04 00 …",
+                            TextField(L("00 a4 04 00 …"),
                                       text: $apduDraft)
                                 .font(.body.monospaced())
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
-                            Button("Send APDU") {
+                            Button(L("Send APDU")) {
                                 Haptics.tap()
                                 census.sendAPDU(hex: apduDraft)
                             }
@@ -318,7 +310,7 @@ struct TagCensusView: View {
                                     .foregroundStyle(.secondary)
                             }
                             if !census.apduLog.isEmpty {
-                                Button("Clear the log",
+                                Button(L("Clear the log"),
                                        role: .destructive) {
                                     Haptics.tap()
                                     census.clearAPDULog()
@@ -329,7 +321,7 @@ struct TagCensusView: View {
                     }
                 }
             }
-            .navigationTitle("Tag census")
+            .navigationTitle(L("Tag census"))
         }
     }
 }

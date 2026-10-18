@@ -81,7 +81,7 @@ struct CryptoView: View {
             // backdrop played). Same recipe as Knocktalk.
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Vault")
+            .navigationTitle(L("Vault"))
             .onAppear {
                 if identityPublic.isEmpty {
                     let identity = CryptoSuite
@@ -109,7 +109,7 @@ struct CryptoView: View {
     // MARK: - Files
 
     private var filesSection: some View {
-        Section(header: Text("Files")) {
+        Section(header: Text(L("Files"))) {
             Button {
                 importingFile = true
             } label: {
@@ -142,13 +142,13 @@ struct CryptoView: View {
                             text: $filePassword)
                     }
                     Button(action: openPickedFile) {
-                        Label("Open it",
+                        Label(L("Open it"),
                               systemImage: "lock.open.fill")
                             .font(.callout.weight(.semibold))
                     }
                     .disabled(fileBusy)
                 } else {
-                    Picker("Protection",
+                    Picker(L("Protection"),
                            selection: $fileProtection) {
                         ForEach(NJCFProtection.allCases,
                                 id: \.self) { option in
@@ -156,7 +156,7 @@ struct CryptoView: View {
                         }
                     }
                     if fileProtection.involvesPassword {
-                        SecureField("Password",
+                        SecureField(L("Password"),
                                     text: $filePassword)
                     }
                     if fileProtection == .deadDrop {
@@ -169,7 +169,7 @@ struct CryptoView: View {
                                           design: .monospaced))
                     }
                     Button(action: sealPickedFile) {
-                        Label("Seal it",
+                        Label(L("Seal it"),
                               systemImage: "lock.fill")
                             .font(.callout.weight(.semibold))
                     }
@@ -179,8 +179,7 @@ struct CryptoView: View {
             if fileBusy {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Working — large files "
-                         + "take a moment.")
+                    Text(L("Working — large files take a moment."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -195,33 +194,18 @@ struct CryptoView: View {
                                value: producedFile
                                    .lastPathComponent)
                 HStack(spacing: 16) {
-                    Button("Share / send it") {
+                    Button(L("Share / send it")) {
                         shareItem = ShareItem(
                             items: [producedFile])
                     }
-                    Button("Forget the working copy") {
+                    Button(L("Forget the working copy")) {
                         self.producedFile = nil
                     }
                 }
                 .font(.callout)
             }
             ExplainToggle(
-                text: "A file is sealed in chunks "
-                    + "under one random key; the "
-                    + "protection you choose is only "
-                    + "how that key is kept — by a "
-                    + "password (PBKDF2), by this "
-                    + "device's vault key, by either, "
-                    + "by both together (each holds "
-                    + "half the secret), or sealed "
-                    + "to a recipient's public key "
-                    + "for a dead-drop hand-off. The "
-                    + "original filename travels "
-                    + "inside the encryption, and the "
-                    + "finished file is filed in "
-                    + "Deliveries, ready to send by "
-                    + "any road. Opening restores "
-                    + "the file under its own name.")
+                text: L("A file is sealed in chunks under one random key; the protection you choose is only how that key is kept — by a password (PBKDF2), by this device's vault key, by either, by both together (each holds half the secret), or sealed to a recipient's public key for a dead-drop hand-off. The original filename travels inside the encryption, and the finished file is filed in Deliveries, ready to send by any road. Opening restores the file under its own name."))
         }
     }
 
@@ -397,8 +381,8 @@ struct CryptoView: View {
     // MARK: - The workbench
 
     private var workbenchSection: some View {
-        Section(header: Text("The workbench")) {
-            Picker("Preset", selection: $selectedPreset) {
+        Section(header: Text(L("The workbench"))) {
+            Picker(L("Preset"), selection: $selectedPreset) {
                 ForEach(CryptoPreset.all) { preset in
                     Text(preset.name).tag(preset.id)
                 }
@@ -413,26 +397,22 @@ struct CryptoView: View {
             } else if let userPreset {
                 ExplainToggle(
                     title: userPreset.name,
-                    text: "Your configuration: "
+                    text: L("Your configuration: ")
                         + "\(userPreset.cipher) under "
-                        + "a password, PBKDF2-HMAC-"
-                        + "SHA256 at "
+                        + L("a password, PBKDF2-HMAC-SHA256 at ")
                         + "\(userPreset.iterations) "
                         + "rounds, output as "
                         + "\(userPreset.encoding). "
-                        + "Run seals; to open, paste "
-                        + "an envelope and run — the "
-                        + "bench tells a sealed "
-                        + "envelope by its mark.")
+                        + L("Run seals; to open, paste an envelope and run — the bench tells a sealed envelope by its mark."))
             }
             TextEditor(text: $input)
                 .frame(minHeight: 90)
                 .font(.system(.callout,
                               design: .monospaced))
-            Picker("Input is", selection: $inputEncoding) {
-                Text("Text").tag("text")
-                Text("Hex").tag("hex")
-                Text("Base64").tag("base64")
+            Picker(L("Input is"), selection: $inputEncoding) {
+                Text(L("Text")).tag("text")
+                Text(L("Hex")).tag("hex")
+                Text(L("Base64")).tag("base64")
             }
             .pickerStyle(.segmented)
             if needsPassword {
@@ -443,9 +423,7 @@ struct CryptoView: View {
                     text: $password)
             }
             if preset?.operation == .envelopeSeal {
-                TextField("Recipient public key "
-                          + "(base64) — empty seals "
-                          + "to this house",
+                TextField(L("Recipient public key (base64) — empty seals to this house"),
                           text: $recipientKey)
                     .font(.system(.caption,
                                   design: .monospaced))
@@ -466,38 +444,26 @@ struct CryptoView: View {
                                   design: .monospaced))
                     .textSelection(.enabled)
                 HStack(spacing: 16) {
-                    Button("Copy") {
+                    Button(L("Copy")) {
                         UIPasteboard.general.string =
                             output
-                        toasts.show("Copied")
+                        toasts.show(L("Copied"))
                     }
-                    Button("Share") {
+                    Button(L("Share")) {
                         shareItem = ShareItem(
                             items: [output])
                     }
-                    Button("Save to Deliveries") {
+                    Button(L("Save to Deliveries")) {
                         DeliveriesCenter.shared.add(
                             name: "vault-output",
                             text: output, ext: "txt")
-                        toasts.show("Filed in "
-                                    + "Deliveries")
+                        toasts.show(L("Filed in Deliveries"))
                     }
                 }
                 .font(.callout)
             }
             ExplainToggle(
-                text: "Material goes in, a preset "
-                    + "is chosen, the result comes "
-                    + "out below — copyable, "
-                    + "shareable, or filed into "
-                    + "Deliveries. Sealed things "
-                    + "travel as base64 envelopes "
-                    + "that describe their own "
-                    + "construction, so any copy "
-                    + "of the suite can open them "
-                    + "with the password. Nothing "
-                    + "here leaves the device "
-                    + "unless you send it.")
+                text: L("Material goes in, a preset is chosen, the result comes out below — copyable, shareable, or filed into Deliveries. Sealed things travel as base64 envelopes that describe their own construction, so any copy of the suite can open them with the password. Nothing here leaves the device unless you send it."))
         }
     }
 
@@ -518,14 +484,14 @@ struct CryptoView: View {
     // MARK: - The catalogue
 
     private var presetsSection: some View {
-        Section(header: Text("Presets")) {
+        Section(header: Text(L("Presets"))) {
             ForEach(CryptoPreset.all) { preset in
                 HStack {
                     ExplainToggle(
                         title: preset.name,
                         text: preset.detail)
                     Spacer()
-                    Button("Use") {
+                    Button(L("Use")) {
                         selectedPreset = preset.id
                     }
                     .font(.callout.weight(.semibold))
@@ -537,22 +503,22 @@ struct CryptoView: View {
     // MARK: - The operator's own configurations
 
     private var customSection: some View {
-        Section(header: Text("Your configurations")) {
-            TextField("Name it", text: $customName)
-            Picker("Cipher", selection: $customCipher) {
-                Text("ChaCha20-Poly1305")
+        Section(header: Text(L("Your configurations"))) {
+            TextField(L("Name it"), text: $customName)
+            Picker(L("Cipher"), selection: $customCipher) {
+                Text(L("ChaCha20-Poly1305"))
                     .tag("ChaCha20-Poly1305")
-                Text("AES-256-GCM")
+                Text(L("AES-256-GCM"))
                     .tag("AES-256-GCM")
             }
-            Picker("PBKDF2 rounds",
+            Picker(L("PBKDF2 rounds"),
                    selection: $customRounds) {
-                Text("100,000").tag(100_000)
-                Text("210,000").tag(210_000)
-                Text("600,000").tag(600_000)
-                Text("1,000,000").tag(1_000_000)
+                Text(L("100,000")).tag(100_000)
+                Text(L("210,000")).tag(210_000)
+                Text(L("600,000")).tag(600_000)
+                Text(L("1,000,000")).tag(1_000_000)
             }
-            Button("Save this configuration") {
+            Button(L("Save this configuration")) {
                 let name = customName
                     .trimmingCharacters(
                         in: .whitespaces)
@@ -569,18 +535,18 @@ struct CryptoView: View {
                     encoding: "base64"))
                 CryptoUserPreset.save(userPresets)
                 customName = ""
-                toasts.show("Configuration saved")
+                toasts.show(L("Configuration saved"))
             }
             ForEach(userPresets) { custom in
                 HStack {
                     Text(custom.name)
                     Spacer()
-                    Button("Use") {
+                    Button(L("Use")) {
                         selectedPreset =
                             "user:" + custom.id
                     }
                     .font(.callout.weight(.semibold))
-                    Button("Delete",
+                    Button(L("Delete"),
                            role: .destructive) {
                         userPresets.removeAll {
                             $0.id == custom.id
@@ -592,33 +558,25 @@ struct CryptoView: View {
                 }
             }
             ExplainToggle(
-                text: "Your own named "
-                    + "configurations — cipher, "
-                    + "derivation rounds, output "
-                    + "dress — saved beside the "
-                    + "presets and kept with the "
-                    + "house's setup, mirror and "
-                    + "all. A configuration seals "
-                    + "and opens with a password "
-                    + "in the workbench.")
+                text: L("Your own named configurations — cipher, derivation rounds, output dress — saved beside the presets and kept with the house's setup, mirror and all. A configuration seals and opens with a password in the workbench."))
         }
     }
 
     // MARK: - The kept keys
 
     private var keysSection: some View {
-        Section(header: Text("Keys")) {
+        Section(header: Text(L("Keys"))) {
             HStack {
-                Text("Vault key")
+                Text(L("Vault key"))
                 Spacer()
-                Text("AES-256 · in the Keychain")
+                Text(L("AES-256 · in the Keychain"))
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
             HStack {
-                Text("House identity")
+                Text(L("House identity"))
                 Spacer()
-                Text("P-256 · in the Keychain")
+                Text(L("P-256 · in the Keychain"))
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
@@ -631,23 +589,14 @@ struct CryptoView: View {
                 .font(.system(.caption2,
                               design: .monospaced))
                 .textSelection(.enabled)
-            Button("Fresh random hex (32 bytes)") {
+            Button(L("Fresh random hex (32 bytes)")) {
                 output = CryptoSuite.randomHex(32)
             }
-            Button("Fresh password") {
+            Button(L("Fresh password")) {
                 output = CryptoSuite.randomPassword()
             }
             ExplainToggle(
-                text: "Two keys are kept for the "
-                    + "house, both in the "
-                    + "Keychain, neither ever "
-                    + "shown: the Vault's AES-256 "
-                    + "key, and the P-256 identity "
-                    + "whose public half (above) "
-                    + "others seal dead-drops to. "
-                    + "Private keys do not leave "
-                    + "the Keychain — that is the "
-                    + "whole arrangement.")
+                text: L("Two keys are kept for the house, both in the Keychain, neither ever shown: the Vault's AES-256 key, and the P-256 identity whose public half (above) others seal dead-drops to. Private keys do not leave the Keychain — that is the whole arrangement."))
         }
     }
 }

@@ -637,7 +637,7 @@ struct NetAssaultSectionView: View {
             HStack(spacing: 8) {
                 SkullMark(color: themeCenter.current.accent,
                           size: 20)
-                Text("Net-Assault")
+                Text(L("Net-Assault"))
                     .font(.headline)
                     .foregroundStyle(
                         themeCenter.current.accent)
@@ -648,13 +648,7 @@ struct NetAssaultSectionView: View {
                                      ? .red : .secondary)
             }
         } footer: {
-            Text("Runs while the app is awake in front of "
-                 + "you — sleep pauses it, waking resumes it. "
-                 + "It uses only the house's own organs: the "
-                 + "sweep, the browse, the recon bench, the "
-                 + "ear. Nothing is exploited and nothing is "
-                 + "flooded; things are knocked on and "
-                 + "listened to — loudly, and in the open.")
+            Text(L("Runs while the app is awake in front of you — sleep pauses it, waking resumes it. It uses only the house's own organs: the sweep, the browse, the recon bench, the ear. Nothing is exploited and nothing is flooded; things are knocked on and listened to — loudly, and in the open."))
         }
     }
 
@@ -667,56 +661,33 @@ struct NetAssaultSectionView: View {
     // control is measured and hit on its own.
     private var idlePitch: some View {
         Group {
-            Text("Every organ in the house, one continuous "
-                 + "autonomous run: sweep the wire on every "
-                 + "port in the rotation, let it announce "
-                 + "itself, then knock — new and drifted "
-                 + "devices get the full census, settled "
-                 + "ones get their known doors re-asked — "
-                 + "pass after pass, for as long as you "
-                 + "leave it armed. Findings are named, not "
-                 + "just counted: who arrived, who drifted, "
-                 + "who answers, who went silent. Everything "
-                 + "it learns walks the usual roads: the "
-                 + "Neighborhood, the Map, the sealed log, "
-                 + "the mind underneath.")
+            Text(L("Every organ in the house, one continuous autonomous run: sweep the wire on every port in the rotation, let it announce itself, then knock — new and drifted devices get the full census, settled ones get their known doors re-asked — pass after pass, for as long as you leave it armed. Findings are named, not just counted: who arrived, who drifted, who answers, who went silent. Everything it learns walks the usual roads: the Neighborhood, the Map, the sealed log, the mind underneath."))
                 .font(.callout)
-            Label("This is loud. It announces this phone to "
-                  + "every device — and every watcher — on "
-                  + "the wire. On networks you do not own it "
-                  + "may trip intrusion detection, alerts, "
-                  + "and logs with your name on them.",
+            Label(L("This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them."),
                   systemImage: "exclamationmark.shield.fill")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
-            Picker("Depth", selection: $depth) {
-                Text("Sweep").tag(0)
-                Text("+ Bonjour").tag(1)
-                Text("Full").tag(2)
+            Picker(L("Depth"), selection: $depth) {
+                Text(L("Sweep")).tag(0)
+                Text(L("+ Bonjour")).tag(1)
+                Text(L("Full")).tag(2)
             }
             .pickerStyle(.segmented)
-            Picker("Pause between passes",
+            Picker(L("Pause between passes"),
                    selection: $restSeconds) {
-                Text("30s").tag(30.0)
-                Text("75s").tag(75.0)
-                Text("3 min").tag(180.0)
+                Text(L("30s")).tag(30.0)
+                Text(L("75s")).tag(75.0)
+                Text(L("3 min")).tag(180.0)
             }
             .pickerStyle(.segmented)
-            Text("How long the wire rests between one full "
-                 + "pass — sweep, browse, knock — and the "
-                 + "next. Shorter keeps the pressure "
-                 + "continuous; longer revisits on a slower, "
-                 + "quieter cadence. While the wire stays "
-                 + "quiet the rest stretches itself, up to "
-                 + "ten minutes, and snaps back the moment "
-                 + "a pass finds something.")
+            Text(L("How long the wire rests between one full pass — sweep, browse, knock — and the next. Shorter keeps the pressure continuous; longer revisits on a slower, quieter cadence. While the wire stays quiet the rest stretches itself, up to ten minutes, and snaps back the moment a pass finds something."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Picker("Run length", selection: $maxHours) {
-                Text("Until stood down").tag(0.0)
-                Text("1 hour").tag(1.0)
-                Text("3 hours").tag(3.0)
-                Text("8 hours").tag(8.0)
+            Picker(L("Run length"), selection: $maxHours) {
+                Text(L("Until stood down")).tag(0.0)
+                Text(L("1 hour")).tag(1.0)
+                Text(L("3 hours")).tag(3.0)
+                Text(L("8 hours")).tag(8.0)
             }
             .pickerStyle(.segmented)
             Button {
@@ -724,7 +695,7 @@ struct NetAssaultSectionView: View {
             } label: {
                 HStack {
                     SkullMark(color: .red, size: 18)
-                    Text("Arm the net-assault")
+                    Text(L("Arm the net-assault"))
                         .font(.body.weight(.bold))
                     Spacer()
                 }
@@ -738,7 +709,7 @@ struct NetAssaultSectionView: View {
                 // silently under the finger. The sheet
                 // itself hangs off the screen's root.
                 Button { shareRequest = true } label: {
-                    Label("After-action report — last run",
+                    Label(L("After-action report — last run"),
                           systemImage: "square.and.arrow.up")
                 }
             }
@@ -763,13 +734,13 @@ struct NetAssaultSectionView: View {
                      "\(NeighborhoodStore.shared.neighbors.count)")
             }
             if let latest = center.findings.last {
-                Text("Latest: \(latest)")
+                Text(String(format: L("Latest: %@"), latest))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
             if let top = mind.insights.first {
-                Text("The mind, watching: \(top.title)")
+                Text(String(format: L("The mind, watching: %@"), top.title))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -787,7 +758,7 @@ struct NetAssaultSectionView: View {
             } label: {
                 HStack {
                     Image(systemName: "hand.raised.fill")
-                    Text("Stand down")
+                    Text(L("Stand down"))
                         .font(.body.weight(.bold))
                     Spacer()
                 }
@@ -898,11 +869,11 @@ struct AssaultIgnitionView: View {
                     .ignoresSafeArea()
                 VStack(spacing: 16) {
                     SkullMark(color: .red, size: 110)
-                    Text("NET-ASSAULT")
+                    Text(L("NET-ASSAULT"))
                         .font(.title.monospaced().weight(.bold))
                         .tracking(5)
                         .foregroundStyle(.white)
-                    Text("the wire will hear this phone coming")
+                    Text(L("the wire will hear this phone coming"))
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }

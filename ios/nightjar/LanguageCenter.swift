@@ -72,9 +72,80 @@ final class LanguageCenter: ObservableObject {
             ? base : "en"
     }
 
+    // MARK: the one-time welcome
+
+    /// The language choice is offered exactly
+    /// once, on a new device's first boot. The
+    /// marker is a fact about the device, not a
+    /// setting: it stays out of the reset registry
+    /// and the setup mirror on purpose, so wiping
+    /// preferences never replays the welcome and
+    /// only a genuine new install ever sees it.
+    static let welcomedKey = "app.languageWelcomed"
+
+    var welcomed: Bool {
+        UserDefaults.standard.bool(
+            forKey: Self.welcomedKey)
+    }
+
+    func markWelcomed() {
+        UserDefaults.standard.set(true,
+                                  forKey: Self.welcomedKey)
+    }
+
+    /// The native name of the language in force —
+    /// what the About door and the language room
+    /// show as the current tongue.
+    var effectiveNativeName: String {
+        Self.languages.first { $0.code == effective }?
+            .name ?? "English"
+    }
+
+    /// A language's English name, by code — shown
+    /// beside the native name in the language room,
+    /// so a traveller in a foreign-language house
+    /// can still find their own tongue.
+    static func englishName(for code: String) -> String {
+        switch code {
+        case "system": return "System"
+        case "es": return "Spanish"
+        case "fr": return "French"
+        case "de": return "German"
+        case "pt": return "Portuguese"
+        case "it": return "Italian"
+        case "ru": return "Russian"
+        case "ja": return "Japanese"
+        case "ko": return "Korean"
+        case "zh-Hans": return "Chinese (Simplified)"
+        case "ar": return "Arabic"
+        case "hi": return "Hindi"
+        default: return "English"
+        }
+    }
+
     var isRTL: Bool { effective == "ar" }
 
     var locale: Locale { Locale(identifier: effective) }
+
+    /// The chosen language's English name — for
+    /// instructing her bench, which takes its
+    /// orders in English and speaks in anything.
+    var benchLanguageName: String {
+        switch effective {
+        case "es": return "Spanish"
+        case "fr": return "French"
+        case "de": return "German"
+        case "pt": return "Portuguese"
+        case "it": return "Italian"
+        case "ru": return "Russian"
+        case "ja": return "Japanese"
+        case "ko": return "Korean"
+        case "zh-Hans": return "Simplified Chinese"
+        case "ar": return "Arabic"
+        case "hi": return "Hindi"
+        default: return "English"
+        }
+    }
 
     private var bundleCache: [String: Bundle] = [:]
 
@@ -108,4 +179,103 @@ final class LanguageCenter: ObservableObject {
 /// L("Sweep the wire").
 func L(_ key: String) -> String {
     LanguageCenter.t(key)
+}
+
+/// The language room: every tongue the house
+/// speaks, by its own name, with the tongue in
+/// force checked. About's Language section opens
+/// it as a sheet, and a new device's first boot
+/// raises it once — in welcome form — before the
+/// house is ever used, so the first choice is the
+/// user's own. Choosing a language re-renders the
+/// whole house around the choice; the room closes
+/// itself as it lands.
+struct LanguageSheet: View {
+    var welcome: Bool = false
+    @ObservedObject private var center =
+        LanguageCenter.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if welcome {
+                    Section {
+                        Text(L("One choice, now — the whole house speaks it, Skelli included. Change it any time in About."))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    ForEach(LanguageCenter.languages) {
+                        language in
+                        Button {
+                            center.code = language.code
+                            if welcome {
+                                center.markWelcomed()
+                                dismiss()
+                            }
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading,
+                                       spacing: 1) {
+                                    Text(language.name)
+                                        .foregroundStyle(
+                                            .primary)
+                                    if language.code != "system" {
+                                        Text(LanguageCenter
+                                            .englishName(
+                                                for: language.code))
+                                            .font(.caption)
+                                            .foregroundStyle(
+                                                .secondary)
+                                    } else {
+                                        Text(L("Follow the device"))
+                                            .font(.caption)
+                                            .foregroundStyle(
+                                                .secondary)
+                                    }
+                                }
+                                Spacer()
+                                if center.code
+                                    == language.code {
+                                    Image(systemName:
+                                            "checkmark")
+                                        .foregroundStyle(
+                                            .green)
+                                }
+                            }
+                        }
+                    }
+                }
+                Section {
+                    LabeledContent(L("Speaking now"),
+                                   value: center
+                        .effectiveNativeName)
+                    LabeledContent(L("Text direction"),
+                                   value: center.isRTL
+                                   ? L("Right to left")
+                                   : L("Left to right"))
+                }
+                Section {
+                    ExplainToggle(
+                        text: L("Every tab, setting and switch — and Skelli herself, who answers in it too. Anything not yet translated shows in English, never blank. No fonts to install: the device's own fonts carry every script, at every size. Languages that read right to left turn the whole house with them."))
+                }
+            }
+            .navigationTitle(welcome
+                             ? L("Choose your language")
+                             : L("Language"))
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(welcome ? L("Continue")
+                           : L("Done")) {
+                        if welcome {
+                            center.markWelcomed()
+                        }
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
 }

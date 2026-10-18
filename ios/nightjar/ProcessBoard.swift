@@ -153,15 +153,15 @@ final class ProcessBoard: ObservableObject {
         guard audible else { return }
         switch outcome {
         case .done:
-            toasts?.show("\(entry.label) — \(summary)",
+            toasts?.show(String(format: L("%@ — %@"), entry.label, summary),
                          kind: .process)
             Haptics.finish()
         case .failed:
-            toasts?.show("\(entry.label) — \(summary)",
+            toasts?.show(String(format: L("%@ — %@"), entry.label, summary),
                          error: true)
             Haptics.error()
         case .stopped:
-            toasts?.show("\(entry.label) stopped",
+            toasts?.show(String(format: L("%@ stopped"), entry.label),
                          kind: .info)
             Haptics.pulse()
         }
@@ -185,7 +185,7 @@ struct ProcessStripView: View {
                                            blue: 0.4))
                     .symbolEffect(.pulse,
                                   options: .repeating)
-                Text("\(board.active.count) running")
+                Text(String(format: L("%lld running"), board.active.count))
                     .font(.caption.weight(.semibold))
                 if let first = board.active.first {
                     Text(first.label)
@@ -220,7 +220,7 @@ struct ProcessBoardView: View {
         NavigationStack {
             List {
                 if !board.active.isEmpty {
-                    Section("Running") {
+                    Section(L("Running")) {
                         ForEach(board.active) { entry in
                             VStack(alignment: .leading,
                                    spacing: 3) {
@@ -244,7 +244,7 @@ struct ProcessBoardView: View {
                                         .font(.caption)
                                 }
                                 if let stop = entry.stop {
-                                    Button("Stop",
+                                    Button(L("Stop"),
                                            role: .destructive) {
                                         stop()
                                     }
@@ -257,7 +257,7 @@ struct ProcessBoardView: View {
                     }
                 }
                 if !board.recent.isEmpty {
-                    Section("Finished") {
+                    Section(L("Finished")) {
                         ForEach(board.recent) { item in
                             HStack(spacing: 10) {
                                 Image(systemName: item.failed
@@ -297,18 +297,16 @@ struct ProcessBoardView: View {
                     }
                 }
                 if board.active.isEmpty && board.recent.isEmpty {
-                    Text("Nothing is running, and nothing "
-                         + "has finished lately — the "
-                         + "house is quiet.")
+                    Text(L("Nothing is running, and nothing has finished lately — the house is quiet."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("On the board")
+            .navigationTitle(L("On the board"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }

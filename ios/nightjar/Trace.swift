@@ -1861,8 +1861,7 @@ extension Mouth {
                 }
                 self.logRecon("network-trace", "\(base).0/24",
                               lines: self.traceLines)
-                self.toasts?.show("Trace complete — "
-                    + "\(seenHosts.count) host(s) mapped")
+                self.toasts?.show(String(format: L("Trace complete — %lld host(s) mapped"), seenHosts.count))
             }
         }
 

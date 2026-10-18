@@ -1272,14 +1272,8 @@ struct SubconsciousSectionView: View {
     @Binding var showMind: Bool
 
     var body: some View {
-        Section(header: Text("The Subconscious — the mind "
-                             + "underneath"),
-                footer: Text("It reads the whole house — log, "
-                    + "wire, map, rhythms — and names what "
-                    + "breaks the pattern. It never acts and "
-                    + "never phones home; every finding "
-                    + "carries the journal lines it stands "
-                    + "on.")) {
+        Section(header: Text(L("The Subconscious — the mind underneath")),
+                footer: Text(L("It reads the whole house — log, wire, map, rhythms — and names what breaks the pattern. It never acts and never phones home; every finding carries the journal lines it stands on."))) {
             if !mind.awake {
                 Text("Still learning the house — "
                      + "\(mind.eventCount) sealed events so "
@@ -1295,14 +1289,13 @@ struct SubconsciousSectionView: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text("The pattern held. Nothing in the house "
-                     + "broke it.")
+                Text(L("The pattern held. Nothing in the house broke it."))
                     .font(.callout).foregroundStyle(.secondary)
             }
             Button {
                 showMind = true
             } label: {
-                Label("Open the mind",
+                Label(L("Open the mind"),
                       systemImage: "brain.head.profile")
             }
         }
@@ -1322,25 +1315,14 @@ struct SubconsciousView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("The night, understood")) {
+                Section(header: Text(L("The night, understood"))) {
                     Text(mind.brief)
                         .font(.callout)
                 }
-                Section(header: Text("What the house has learned"),
-                        footer: Text("Durable conclusions "
-                            + "from the consolidation — each "
-                            + "kept with its evidence and its "
-                            + "birthday. Forget one and the "
-                            + "mind remembers the forgetting: "
-                            + "it will not quietly re-teach "
-                            + "it tomorrow.")) {
+                Section(header: Text(L("What the house has learned")),
+                        footer: Text(L("Durable conclusions from the consolidation — each kept with its evidence and its birthday. Forget one and the mind remembers the forgetting: it will not quietly re-teach it tomorrow."))) {
                     if mind.facts.isEmpty {
-                        Text("Nothing yet. As the record "
-                             + "deepens, the mind writes "
-                             + "down what it concludes — "
-                             + "quiet hours, a regular's "
-                             + "rhythm, two who stir "
-                             + "together — and keeps it here.")
+                        Text(L("Nothing yet. As the record deepens, the mind writes down what it concludes — quiet hours, a regular's rhythm, two who stir together — and keeps it here."))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -1365,16 +1347,13 @@ struct SubconsciousView: View {
                                 Image(systemName: "trash")
                             }
                             .buttonStyle(.borderless)
-                            .accessibilityLabel("Forget this fact")
+                            .accessibilityLabel(L("Forget this fact"))
                         }
                     }
                 }
-                Section(header: Text("Findings")) {
+                Section(header: Text(L("Findings"))) {
                     if mind.insights.isEmpty {
-                        Text("No findings. Either the house is "
-                             + "at peace, or the mind is still "
-                             + "learning what peace looks like "
-                             + "here.")
+                        Text(L("No findings. Either the house is at peace, or the mind is still learning what peace looks like here."))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -1409,13 +1388,13 @@ struct SubconsciousView: View {
                                     .foregroundStyle(.tertiary)
                             }
                             HStack(spacing: 16) {
-                                Button("True") {
+                                Button(L("True")) {
                                     mind.judge(
                                         insightID: insight.id,
                                         right: true)
                                 }
                                 .font(.caption.weight(.semibold))
-                                Button("Not so") {
+                                Button(L("Not so")) {
                                     mind.judge(
                                         insightID: insight.id,
                                         right: false)
@@ -1427,30 +1406,20 @@ struct SubconsciousView: View {
                         .padding(.vertical, 2)
                     }
                 }
-                Section(header: Text("Ask the house"),
-                        footer: Text("Shapes it can truly "
-                            + "answer: who was about after "
-                            + "midnight · what is new · foreign "
-                            + "hands · what drifted · who has "
-                            + "gone quiet · when the house is "
-                            + "busiest · about <a device> — or "
-                            + "any "
-                            + "words, matched line by line "
-                            + "against the sealed log.")) {
+                Section(header: Text(L("Ask the house")),
+                        footer: Text(L("Shapes it can truly answer: who was about after midnight · what is new · foreign hands · what drifted · who has gone quiet · when the house is busiest · about <a device> — or any words, matched line by line against the sealed log."))) {
                     HStack {
-                        TextField("Ask about your own house",
+                        TextField(L("Ask about your own house"),
                                   text: $query)
                             .disableAutocorrection(true)
-                        Button("Ask") {
+                        Button(L("Ask")) {
                             results = mind.answer(query)
                         }
                         .disabled(query.isEmpty)
                     }
                     if let results {
                         if results.isEmpty {
-                            Text("Nothing in the log answers "
-                                 + "that — and it would rather "
-                                 + "say so than invent.")
+                            Text(L("Nothing in the log answers that — and it would rather say so than invent."))
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
@@ -1470,40 +1439,33 @@ struct SubconsciousView: View {
                         }
                     }
                 }
-                Section(header: Text("Housekeeping"),
-                        footer: Text("The mind's only memory "
-                            + "of itself: which drift it has "
-                            + "already reckoned, your verdicts "
-                            + "on its findings, and the facts "
-                            + "it has learned.")) {
+                Section(header: Text(L("Housekeeping")),
+                        footer: Text(L("The mind's only memory of itself: which drift it has already reckoned, your verdicts on its findings, and the facts it has learned."))) {
                     Button(role: .destructive) {
                         confirmReset = true
                     } label: {
-                        Label("Reset the mind's memory",
+                        Label(L("Reset the mind's memory"),
                               systemImage: "trash")
                     }
                 }
             }
-            .navigationTitle("The Subconscious")
+            .navigationTitle(L("The Subconscious"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .confirmationDialog(
                 "Reset the mind's memory?",
                 isPresented: $confirmReset,
                 titleVisibility: .visible) {
-                Button("Forget baselines and verdicts",
+                Button(L("Forget baselines and verdicts"),
                        role: .destructive) {
                     mind.reset()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             } message: {
-                Text("Drift it has already reckoned will be "
-                     + "reported once more, confidences go "
-                     + "back to their unbent values, and every "
-                     + "learned fact is forgotten.")
+                Text(L("Drift it has already reckoned will be reported once more, confidences go back to their unbent values, and every learned fact is forgotten."))
             }
             .onAppear { mind.refresh() }
         }

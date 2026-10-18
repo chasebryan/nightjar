@@ -138,17 +138,14 @@ struct HuntView: View {
                         .foregroundStyle(.secondary)
                 }
                 if !post.isListening {
-                    Text("The hunt needs live ears.")
+                    Text(L("The hunt needs live ears."))
                         .font(.callout).foregroundStyle(.secondary)
-                    Button("Start listening") {
+                    Button(L("Start listening")) {
                         post.start(label: "hunt")
                     }
                     .buttonStyle(.borderedProminent)
                 } else if row == nil {
-                    Text("Not heard in this session yet. It may "
-                         + "be asleep, out of range — or, if it "
-                         + "rotates its address, gone under a new "
-                         + "one.")
+                    Text(L("Not heard in this session yet. It may be asleep, out of range — or, if it rotates its address, gone under a new one."))
                         .font(.callout).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 } else {
@@ -166,16 +163,16 @@ struct HuntView: View {
                     Grid(alignment: .leading, horizontalSpacing: 16,
                          verticalSpacing: 4) {
                         GridRow {
-                            Text("Closest ever").foregroundStyle(.secondary)
+                            Text(L("Closest ever")).foregroundStyle(.secondary)
                             Text(row?.rssiClosest.map {
                                 "\($0) dBm" } ?? "—")
                         }
                         GridRow {
-                            Text("Sightings").foregroundStyle(.secondary)
+                            Text(L("Sightings")).foregroundStyle(.secondary)
                             Text("\(row?.sightings ?? 0)")
                         }
                         GridRow {
-                            Text("Last heard").foregroundStyle(.secondary)
+                            Text(L("Last heard")).foregroundStyle(.secondary)
                             Text(age.map {
                                 String(format: "%.0f s ago", $0) }
                                 ?? "—")
@@ -183,30 +180,22 @@ struct HuntView: View {
                     }
                     .font(.callout)
                     if row?.rotatingAddress == true {
-                        Text("This advertiser rotates its address "
-                             + "— if it goes quiet mid-hunt, it "
-                             + "may have stepped sideways into a "
-                             + "new identity rather than away.")
+                        Text(L("This advertiser rotates its address — if it goes quiet mid-hunt, it may have stepped sideways into a new identity rather than away."))
                             .font(.caption).foregroundStyle(.orange)
                             .multilineTextAlignment(.center)
                     }
                 }
                 Spacer()
-                Text("Beeps quicken and rise as the signal "
-                     + "strengthens; a thump means you're near. "
-                     + "The pitch bends up while you're closing "
-                     + "and down while you drift away. Walk "
-                     + "slow — RSSI is a compass that points "
-                     + "in loudness, not direction.")
+                Text(L("Beeps quicken and rise as the signal strengthens; a thump means you're near. The pitch bends up while you're closing and down while you drift away. Walk slow — RSSI is a compass that points in loudness, not direction."))
                     .font(.caption).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             .padding()
-            .navigationTitle("Hunt")
+            .navigationTitle(L("Hunt"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .onReceive(tick) { stamp in

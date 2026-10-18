@@ -300,12 +300,8 @@ struct SeasonSectionView: View {
                                       in: .common).autoconnect()
 
     var body: some View {
-        Section(header: Text("Sparring season — a week of ghost"),
-                footer: Text("One drill tests a wall; a season "
-                    + "tests the watch. The ghost visits while "
-                    + "the instrument is awake — a closed app "
-                    + "has no ears, and the season does not "
-                    + "pretend otherwise.")) {
+        Section(header: Text(L("Sparring season — a week of ghost")),
+                footer: Text(L("One drill tests a wall; a season tests the watch. The ghost visits while the instrument is awake — a closed app has no ears, and the season does not pretend otherwise."))) {
             if let state = season.state {
                 Text(season.dayLine).font(.callout)
                 if !state.closed {
@@ -326,29 +322,24 @@ struct SeasonSectionView: View {
                 if season.playing {
                     HStack {
                         ProgressView()
-                        Text("The ghost is at the door…")
+                        Text(L("The ghost is at the door…"))
                             .font(.callout)
                     }
                 }
                 if !state.closed {
-                    Button("Call off the season",
+                    Button(L("Call off the season"),
                            role: .destructive) {
                         season.abandon()
                     }
                 }
             } else {
-                Text("For seven days, a ghost of your own "
-                     + "raising comes at this phone — loud, "
-                     + "quiet, and once or twice with the vault "
-                     + "combination printed in the manual. Your "
-                     + "defenses answer as they truly are, and "
-                     + "the night log keeps the score.")
+                Text(L("For seven days, a ghost of your own raising comes at this phone — loud, quiet, and once or twice with the vault combination printed in the manual. Your defenses answer as they truly are, and the night log keeps the score."))
                     .font(.callout).foregroundStyle(.secondary)
                 Button {
                     season.begin()
                     season.tick(emcon: emcon)
                 } label: {
-                    Label("Begin the season",
+                    Label(L("Begin the season"),
                           systemImage: "moon.stars")
                 }
             }

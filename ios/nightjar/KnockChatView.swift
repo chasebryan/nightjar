@@ -85,16 +85,11 @@ struct KnockChatView: View {
             List {
                 Section {
                     if emcon.tripwireOn {
-                        Label("Listening — the tripwire is up, so "
-                              + "this phone hears knocks, ACKs and "
-                              + "replies.",
+                        Label(L("Listening — the tripwire is up, so this phone hears knocks, ACKs and replies."),
                               systemImage: "ear")
                             .font(.callout)
                     } else {
-                        Label("Deaf right now — raise EMCON so the "
-                              + "tripwire listens. You can still "
-                              + "knock messages out, but nothing "
-                              + "can knock back.",
+                        Label(L("Deaf right now — raise EMCON so the tripwire listens. You can still knock messages out, but nothing can knock back."),
                               systemImage: "ear.trianglebadge.exclamationmark")
                             .font(.callout)
                     }
@@ -125,7 +120,7 @@ struct KnockChatView: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Knocktalk")
+            .navigationTitle(L("Knocktalk"))
             .onAppear {
                 if keyHex == nil { keyHex = KnockKeyStore.keyHex }
                 chat.purge()
@@ -160,7 +155,7 @@ struct KnockChatView: View {
                     .toolbar {
                         ToolbarItem(
                             placement: .confirmationAction) {
-                            Button("Done") {
+                            Button(L("Done")) {
                                 navActive = false
                             }
                         }
@@ -182,28 +177,23 @@ struct KnockChatView: View {
             "Clear every Knocktalk thread?",
             isPresented: $confirmClearThreads,
             titleVisibility: .visible) {
-            Button("Delete all threads", role: .destructive) {
+            Button(L("Delete all threads"), role: .destructive) {
                 chat.clearAllThreads()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("Every conversation and cadence note is "
-                 + "deleted. The pairing key stays — the "
-                 + "house forgets the conversations, not "
-                 + "how to have them.")
+            Text(L("Every conversation and cadence note is deleted. The pairing key stays — the house forgets the conversations, not how to have them."))
         }
         .confirmationDialog(
             "Forget every cadence profile?",
             isPresented: $confirmForgetCadence,
             titleVisibility: .visible) {
-            Button("Forget all profiles", role: .destructive) {
+            Button(L("Forget all profiles"), role: .destructive) {
                 CadenceSeal.resetAll()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("The timing fingerprints learned for "
-                 + "every peer are deleted. Cadence learns "
-                 + "each hand again from its next knocks.")
+            Text(L("The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks."))
         }
         .fileImporter(
             isPresented: $chirpImporting,
@@ -237,28 +227,23 @@ struct KnockChatView: View {
     }
 
     private var keySetupSection: some View {
-        Section(header: Text("Pairing key"),
-                footer: Text("One 256-bit key, both phones, kept "
-                             + "in the Keychain. Generate it on "
-                             + "one phone and carry it to the "
-                             + "other — or paste the one it made.")) {
-            Text("No key yet: Knocktalk seals with ChaCha20-"
-                 + "Poly1305, and without the shared key nothing "
-                 + "here can be sealed or opened.")
+        Section(header: Text(L("Pairing key")),
+                footer: Text(L("One 256-bit key, both phones, kept in the Keychain. Generate it on one phone and carry it to the other — or paste the one it made."))) {
+            Text(L("No key yet: Knocktalk seals with ChaCha20-Poly1305, and without the shared key nothing here can be sealed or opened."))
                 .font(.callout).foregroundStyle(.secondary)
             Button {
                 let hex = KnockKeyStore.generate()
                 KnockKeyStore.keyHex = hex
                 keyHex = hex
             } label: {
-                Label("Generate a pairing key", systemImage: "key")
+                Label(L("Generate a pairing key"), systemImage: "key")
             }
-            TextField("paste a pairing key (64 hex digits)",
+            TextField(L("paste a pairing key (64 hex digits)"),
                       text: $keyDraft)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .font(.caption.monospaced())
-            Button("Save the pasted key") {
+            Button(L("Save the pasted key")) {
                 Haptics.tap()
                 let hex = keyDraft
                     .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -276,9 +261,9 @@ struct KnockChatView: View {
     }
 
     private var keySection: some View {
-        Section(header: Text("Pairing key")) {
+        Section(header: Text(L("Pairing key"))) {
             HStack {
-                Text("Fingerprint")
+                Text(L("Fingerprint"))
                 Spacer()
                 Text(KnockKeyStore.fingerprint(ofHex: keyHex!))
                     .font(.callout.monospaced())
@@ -289,26 +274,21 @@ struct KnockChatView: View {
                 KnockKeyStore.keyHex = hex
                 keyHex = hex
             } label: {
-                Text("Replace the pairing key")
+                Text(L("Replace the pairing key"))
             }
             Button(role: .destructive) {
                 KnockKeyStore.keyHex = nil
                 keyHex = nil
             } label: {
-                Text("Forget the pairing key")
+                Text(L("Forget the pairing key"))
             }
         }
     }
 
     private var suiteSection: some View {
-        Section(header: Text("Sending encryption"),
-                footer: Text("Your choice rides inside every "
-                             + "fragment you knock. The other "
-                             + "phone opens your messages with the "
-                             + "suite you picked — its own setting "
-                             + "governs only what IT sends. Nothing "
-                             + "has to match.")) {
-            Picker("Suite for messages I send",
+        Section(header: Text(L("Sending encryption")),
+                footer: Text(L("Your choice rides inside every fragment you knock. The other phone opens your messages with the suite you picked — its own setting governs only what IT sends. Nothing has to match."))) {
+            Picker(L("Suite for messages I send"),
                    selection: Binding(
                     get: { chat.sendSuite },
                     set: { chat.setSendSuite($0) })) {
@@ -323,16 +303,9 @@ struct KnockChatView: View {
     @AppStorage("cadenceSealOn") private var cadenceSealOn = true
 
     private var cadenceSection: some View {
-        Section(header: Text("Cadence Seal — the second factor is rhythm"),
-                footer: Text("The pairing key decides what "
-                    + "opens. Cadence decides what is believed: "
-                    + "the seal learns a peer's knock timing "
-                    + "from its first messages, then flags any "
-                    + "later message that arrives in foreign "
-                    + "hands — right key, wrong rhythm. It never "
-                    + "blocks a message; it marks it, and the "
-                    + "night log remembers.")) {
-            Toggle("Cadence Seal", isOn: $cadenceSealOn)
+        Section(header: Text(L("Cadence Seal — the second factor is rhythm")),
+                footer: Text(L("The pairing key decides what opens. Cadence decides what is believed: the seal learns a peer's knock timing from its first messages, then flags any later message that arrives in foreign hands — right key, wrong rhythm. It never blocks a message; it marks it, and the night log remembers."))) {
+            Toggle(L("Cadence Seal"), isOn: $cadenceSealOn)
             ForEach(chat.peersByRecency, id: \.self) { peer in
                 HStack {
                     Text(peer).font(.callout)
@@ -340,7 +313,7 @@ struct KnockChatView: View {
                     Text(cadenceStatus(peer))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Reset") {
+                    Button(L("Reset")) {
                         CadenceSeal.reset(peer: peer)
                     }
                     .font(.caption)
@@ -401,31 +374,20 @@ struct KnockChatView: View {
     }
 
     private var relaySection: some View {
-        Section(header: Text("Relay server"),
-                footer: Text("Without a relay, Knocktalk is "
-                    + "perimeter-only: both phones must share a "
-                    + "network. Run your own relay (this repo, "
-                    + "tools/knocktalk-relay) on any host you "
-                    + "control, point both phones at it, and "
-                    + "address each other as relay:<mailbox>. The "
-                    + "relay forwards knock sequences between "
-                    + "mailboxes — it never holds the pairing key "
-                    + "and cannot read a word; it sees timing, "
-                    + "lengths, and mailbox names. The vault, "
-                    + "which is a perimeter ritual, never answers "
-                    + "a relay knock.")) {
-            Toggle("Use my relay server", isOn: $relayEnabled)
+        Section(header: Text(L("Relay server")),
+                footer: Text(L("Without a relay, Knocktalk is perimeter-only: both phones must share a network. Run your own relay (this repo, tools/knocktalk-relay) on any host you control, point both phones at it, and address each other as relay:<mailbox>. The relay forwards knock sequences between mailboxes — it never holds the pairing key and cannot read a word; it sees timing, lengths, and mailbox names. The vault, which is a perimeter ritual, never answers a relay knock."))) {
+            Toggle(L("Use my relay server"), isOn: $relayEnabled)
             if relayEnabled {
-                TextField("server (host:8901 or https://…)",
+                TextField(L("server (host:8901 or https://…)"),
                           text: $relayURL)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .keyboardType(.URL)
-                TextField("this phone's mailbox name",
+                TextField(L("this phone's mailbox name"),
                           text: $relayBox)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
-                SecureField("relay token", text: $relayToken)
+                SecureField(L("relay token"), text: $relayToken)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                 if !chat.relayStatus.isEmpty {
@@ -433,7 +395,7 @@ struct KnockChatView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if KnockRelay.configured {
-                    Button("Check the board") { refreshBoard() }
+                    Button(L("Check the board")) { refreshBoard() }
                     ForEach(boardBoxes, id: \.self) { box in
                         LabeledContent(
                             box == KnockRelay.mailbox
@@ -462,21 +424,15 @@ struct KnockChatView: View {
     }
 
     private var chirpSection: some View {
-        Section(header: Text("Chirp — messages by sound"),
-                footer: Text("The same sealed box as a knock, "
-                    + "sung as tones: speaker to microphone, "
-                    + "no network, no radio — it works in "
-                    + "airplane mode. Short messages only "
-                    + "(sound is a narrow pipe), and keep this "
-                    + "tab open while listening. Heard chirps "
-                    + "land in a thread named chirp.")) {
+        Section(header: Text(L("Chirp — messages by sound")),
+                footer: Text(L("The same sealed box as a knock, sung as tones: speaker to microphone, no network, no radio — it works in airplane mode. Short messages only (sound is a narrow pipe), and keep this tab open while listening. Heard chirps land in a thread named chirp."))) {
             if let key = KnockKeyStore.key {
                 HStack {
-                    TextField("sing a short message",
+                    TextField(L("sing a short message"),
                               text: $chirpDraft)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Button("Sing") {
+                    Button(L("Sing")) {
                         Haptics.tap()
                         if let sealed = try? Knocktalk.seal(
                             chirpDraft, key: key,
@@ -489,13 +445,12 @@ struct KnockChatView: View {
                               || chirpSender.singing)
                 }
                 if chirpTooLong {
-                    Text("Too long for sound — chirps carry "
-                         + "about 90 characters.")
+                    Text(L("Too long for sound — chirps carry about 90 characters."))
                         .font(.caption).foregroundStyle(.orange)
                 }
                 if chirpSender.singing {
                     ProgressView(value: chirpSender.progress)
-                    Button("Stop singing") { chirpSender.stop() }
+                    Button(L("Stop singing")) { chirpSender.stop() }
                 }
                 Button(chirpListener.listening
                        ? "Stop listening" : "Listen for a chirp") {
@@ -510,7 +465,7 @@ struct KnockChatView: View {
                     Text(chirpListener.status)
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Button("Sing it to a file instead") {
+                Button(L("Sing it to a file instead")) {
                     if let sealed = try? Knocktalk.seal(
                         chirpDraft, key: key,
                         suite: chat.sendSuite) {
@@ -529,11 +484,11 @@ struct KnockChatView: View {
                     Button {
                         shareItem = ShareItem(items: [wav])
                     } label: {
-                        Label("Share the chirp (.wav)",
+                        Label(L("Share the chirp (.wav)"),
                               systemImage: "waveform")
                     }
                 }
-                Button("Decode a chirp file…") {
+                Button(L("Decode a chirp file…")) {
                     chirpImporting = true
                 }
                 if let note = chirpFileNote {
@@ -541,8 +496,7 @@ struct KnockChatView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Set up a pairing key above — chirps are "
-                     + "sealed with it, exactly like knocks.")
+                Text(L("Set up a pairing key above — chirps are sealed with it, exactly like knocks."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -553,23 +507,15 @@ struct KnockChatView: View {
     }
 
     private var brushSection: some View {
-        Section(header: Text("Brush pass — the proximity drop"),
-                footer: Text("Leave a drop: seal a short "
-                    + "message and arm this phone's GATT host "
-                    + "with it. Anyone in Bluetooth range can "
-                    + "read the sealed bytes; only the pairing "
-                    + "key opens them. A paired phone that comes "
-                    + "hunting files it in a thread named brush "
-                    + "— and you never learn it was taken. "
-                    + "EMCON stands the GATT host down, so a "
-                    + "drop does not survive going dark.")) {
+        Section(header: Text(L("Brush pass — the proximity drop")),
+                footer: Text(L("Leave a drop: seal a short message and arm this phone's GATT host with it. Anyone in Bluetooth range can read the sealed bytes; only the pairing key opens them. A paired phone that comes hunting files it in a thread named brush — and you never learn it was taken. EMCON stands the GATT host down, so a drop does not survive going dark."))) {
             if let key = KnockKeyStore.key {
                 HStack {
-                    TextField("leave a short drop",
+                    TextField(L("leave a short drop"),
                               text: $brushDraft)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Button("Arm drop") {
+                    Button(L("Arm drop")) {
                         Haptics.tap()
                         if let sealed = try? Knocktalk.seal(
                             brushDraft, key: key,
@@ -583,14 +529,11 @@ struct KnockChatView: View {
                     .disabled(brushDraft.isEmpty || brushTooLong)
                 }
                 if brushTooLong {
-                    Text("Too long for a drop — about 160 "
-                         + "characters.")
+                    Text(L("Too long for a drop — about 160 characters."))
                         .font(.caption).foregroundStyle(.orange)
                 }
                 if mouth.gattHostOn {
-                    Text("GATT host is up — a paired phone in "
-                         + "range can take the drop. Stop "
-                         + "hosting (Send tab) to disarm it.")
+                    Text(L("GATT host is up — a paired phone in range can take the drop. Stop hosting (Send tab) to disarm it."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button(brushVisitor.hunting
@@ -607,9 +550,7 @@ struct KnockChatView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Set up a pairing key above — drops are "
-                     + "sealed with it, like everything else "
-                     + "here.")
+                Text(L("Set up a pairing key above — drops are sealed with it, like everything else here."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -620,21 +561,15 @@ struct KnockChatView: View {
     }
 
     private var blinkSection: some View {
-        Section(header: Text("Blink — messages by light"),
-                footer: Text("The sealed box as a looping "
-                    + "sequence of QR frames — for the room "
-                    + "where even a chirp is too loud. The "
-                    + "camera gathers frames until the set is "
-                    + "whole; the loop forgives every miss. "
-                    + "One-way, like sound: no acknowledgement "
-                    + "rides the light back.")) {
+        Section(header: Text(L("Blink — messages by light")),
+                footer: Text(L("The sealed box as a looping sequence of QR frames — for the room where even a chirp is too loud. The camera gathers frames until the set is whole; the loop forgives every miss. One-way, like sound: no acknowledgement rides the light back."))) {
             if KnockKeyStore.key != nil {
                 HStack {
-                    TextField("blink a short message",
+                    TextField(L("blink a short message"),
                               text: $blinkDraft)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
-                    Button("Show") {
+                    Button(L("Show")) {
                         if let key = KnockKeyStore.key,
                            let sealed = try? Knocktalk.seal(
                             blinkDraft, key: key,
@@ -649,49 +584,35 @@ struct KnockChatView: View {
                     .disabled(blinkDraft.isEmpty || blinkTooLong)
                 }
                 if blinkTooLong {
-                    Text("Too long for light — about 160 "
-                         + "characters.")
+                    Text(L("Too long for light — about 160 characters."))
                         .font(.caption).foregroundStyle(.orange)
                 }
-                Button("Receive a blink") {
+                Button(L("Receive a blink")) {
                     blinkReceiving = true
                 }
             } else {
-                Text("Set up a pairing key above — blinks are "
-                     + "sealed with it, like everything else "
-                     + "here.")
+                Text(L("Set up a pairing key above — blinks are sealed with it, like everything else here."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
     }
 
     private var flareSection: some View {
-        Section(header: Text("Flare — be recognized, by key-holders only"),
-                footer: Text("With the flare up, this phone's "
-                    + "beacon slot carries a token only the "
-                    + "pairing key can compute — it turns over "
-                    + "every five minutes and names nobody. A "
-                    + "paired phone listening sees a flame "
-                    + "beside the row in Listen and knows one "
-                    + "of ours is near. It outranks a plain "
-                    + "payload beacon for the slot while it's "
-                    + "up, and EMCON takes it down like any "
-                    + "other emission.")) {
+        Section(header: Text(L("Flare — be recognized, by key-holders only")),
+                footer: Text(L("With the flare up, this phone's beacon slot carries a token only the pairing key can compute — it turns over every five minutes and names nobody. A paired phone listening sees a flame beside the row in Listen and knows one of ours is near. It outranks a plain payload beacon for the slot while it's up, and EMCON takes it down like any other emission."))) {
             if KnockKeyStore.key != nil {
-                Toggle("Raise my flare", isOn: Binding(
+                Toggle(L("Raise my flare"), isOn: Binding(
                     get: { mouth.flareOn },
                     set: { on in
                         if on { mouth.startFlare() }
                         else { mouth.stopFlare() }
                     }))
                 if mouth.flareOn {
-                    Text("On the air. Holders of this key, "
-                         + "listening now, can see it.")
+                    Text(L("On the air. Holders of this key, listening now, can see it."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Set up a pairing key above — a flare is "
-                     + "computed from it.")
+                Text(L("Set up a pairing key above — a flare is computed from it."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -759,30 +680,19 @@ struct KnockChatView: View {
     }
 
     private var capsuleSection: some View {
-        Section(header: Text("Time capsule — sealed until the grinding is done"),
-                footer: Text("A message locked by repeated "
-                    + "squaring, in the Magic Box manner: the "
-                    + "sealer forges two primes, slips through "
-                    + "the φ shortcut, and throws the factors "
-                    + "away. After that, the only road in is "
-                    + "the grind — sequential, unparallelizable, "
-                    + "calibrated to this phone's pace. A lock "
-                    + "delays; it does not schedule: anyone "
-                    + "holding the capsule can start grinding "
-                    + "now, and faster hardware finishes "
-                    + "sooner. Carry the capsule by any means — "
-                    + "the lock travels with it.")) {
+        Section(header: Text(L("Time capsule — sealed until the grinding is done")),
+                footer: Text(L("A message locked by repeated squaring, in the Magic Box manner: the sealer forges two primes, slips through the φ shortcut, and throws the factors away. After that, the only road in is the grind — sequential, unparallelizable, calibrated to this phone's pace. A lock delays; it does not schedule: anyone holding the capsule can start grinding now, and faster hardware finishes sooner. Carry the capsule by any means — the lock travels with it."))) {
             if KnockKeyStore.key != nil {
-                TextField("seal a message into the future",
+                TextField(L("seal a message into the future"),
                           text: $capsuleDraft)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
-                Picker("Hold for", selection: $capsuleDelay) {
-                    Text("a breath — 30 seconds (test it)")
+                Picker(L("Hold for"), selection: $capsuleDelay) {
+                    Text(L("a breath — 30 seconds (test it)"))
                         .tag(30.0)
-                    Text("10 minutes").tag(600.0)
-                    Text("an hour").tag(3600.0)
-                    Text("6 hours").tag(21600.0)
+                    Text(L("10 minutes")).tag(600.0)
+                    Text(L("an hour")).tag(3600.0)
+                    Text(L("6 hours")).tag(21600.0)
                 }
                 Button {
                     Haptics.tap()
@@ -795,8 +705,7 @@ struct KnockChatView: View {
                 .disabled(capsuleDraft.isEmpty || capsuleBusy
                           || capsuleTooLong)
                 if capsuleTooLong {
-                    Text("Too long — capsules carry what a "
-                         + "Knocktalk message carries.")
+                    Text(L("Too long — capsules carry what a Knocktalk message carries."))
                         .font(.caption).foregroundStyle(.orange)
                 }
                 if !capsuleStatus.isEmpty {
@@ -812,31 +721,31 @@ struct KnockChatView: View {
                         Button {
                             shareItem = ShareItem(items: [blob])
                         } label: {
-                            Label("Share capsule",
+                            Label(L("Share capsule"),
                                   systemImage: "square.and.arrow.up")
                         }
                         Spacer()
-                        Button("Copy") {
+                        Button(L("Copy")) {
                             UIPasteboard.general.string = blob
                         }
                     }
                 }
                 Divider()
-                TextField("paste a capsule to open",
+                TextField(L("paste a capsule to open"),
                           text: $capsulePaste)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .font(.caption.monospaced())
                 if let progress = capsuleProgress {
                     ProgressView(value: progress)
-                    Button("Stop grinding") {
+                    Button(L("Stop grinding")) {
                         grindControl.cancelled = true
                     }
                 } else {
                     Button {
                         grindCapsule()
                     } label: {
-                        Label("Grind it open",
+                        Label(L("Grind it open"),
                               systemImage: "hammer")
                     }
                     .disabled(capsulePaste.isEmpty)
@@ -846,18 +755,15 @@ struct KnockChatView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
-                Text("Set up a pairing key above — capsules "
-                     + "seal with the same suites as everything "
-                     + "here.")
+                Text(L("Set up a pairing key above — capsules seal with the same suites as everything here."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
     }
 
     private var coinLockSection: some View {
-        Section(header: Text("Knocktalk is locked")) {
-            Label("The coin stands guard over these "
-                  + "conversations.", systemImage: "lock.fill")
+        Section(header: Text(L("Knocktalk is locked"))) {
+            Label(L("The coin stands guard over these conversations."), systemImage: "lock.fill")
                 .font(.callout)
             Button {
                 CoinCenter.shared.tap(.unlock, emcon: nil) {
@@ -866,7 +772,7 @@ struct KnockChatView: View {
                     if ok { coinUnlocked = true }
                 }
             } label: {
-                Label("Tap the coin to unlock",
+                Label(L("Tap the coin to unlock"),
                       systemImage: "wave.3.right")
             }
             if !coinNote.isEmpty {
@@ -877,13 +783,13 @@ struct KnockChatView: View {
     }
 
     private var threadsSection: some View {
-        Section(header: Text("Conversations")) {
+        Section(header: Text(L("Conversations"))) {
             HStack {
-                TextField("peer address — IP, or relay:name",
+                TextField(L("peer address — IP, or relay:name"),
                           text: $newPeer)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
-                Button("Open") {
+                Button(L("Open")) {
                     openedPeer = KnockChat.peerKey(newPeer)
                     newPeer = ""
                     navActive = true
@@ -892,9 +798,7 @@ struct KnockChatView: View {
                     .trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if chat.peersByRecency.isEmpty {
-                Text("No conversations yet. Open one by address — "
-                     + "the other phone needs the app, the same "
-                     + "pairing key, and EMCON up.")
+                Text(L("No conversations yet. Open one by address — the other phone needs the app, the same pairing key, and EMCON up."))
                     .font(.callout).foregroundStyle(.secondary)
             }
             ForEach(chat.peersByRecency, id: \.self) { peer in
@@ -927,54 +831,49 @@ struct KnockChatView: View {
         let messages = chat.threads[peer] ?? []
         if messages.contains(where: {
             $0.outgoing && $0.state == "failed" }) {
-            Text("failed")
+            Text(L("failed"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.red)
         } else if messages.contains(where: {
             $0.outgoing
                 && ($0.state == "sending" || $0.state == "awaiting")
         }) {
-            Text("awaiting")
+            Text(L("awaiting"))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private var housekeepingSection: some View {
-        Section(header: Text("Housekeeping"),
-                footer: Text("What this tab has collected, "
-                    + "and the doors to empty it.")) {
+        Section(header: Text(L("Housekeeping")),
+                footer: Text(L("What this tab has collected, and the doors to empty it."))) {
             Button(role: .destructive) {
                 confirmClearThreads = true
             } label: {
-                Label("Clear all threads",
+                Label(L("Clear all threads"),
                       systemImage: "trash")
             }
             .disabled(chat.threads.isEmpty)
             Button(role: .destructive) {
                 confirmForgetCadence = true
             } label: {
-                Label("Forget cadence profiles",
+                Label(L("Forget cadence profiles"),
                       systemImage: "hand.raised.slash")
             }
         }
     }
 
     private var retentionSection: some View {
-        Section(header: Text("Burn timer"),
-                footer: Text("Checked at launch, when this tab "
-                             + "opens, and when a message lands — "
-                             + "a closed app cannot burn on "
-                             + "schedule. The journal never held "
-                             + "contents; this is the only copy.")) {
-            Picker("Auto-delete messages",
+        Section(header: Text(L("Burn timer")),
+                footer: Text(L("Checked at launch, when this tab opens, and when a message lands — a closed app cannot burn on schedule. The journal never held contents; this is the only copy."))) {
+            Picker(L("Auto-delete messages"),
                    selection: Binding(
                     get: { chat.retentionHours },
                     set: { chat.setRetention(hours: $0) })) {
-                Text("after 1 hour").tag(1.0)
-                Text("after 6 hours").tag(6.0)
-                Text("after 24 hours").tag(24.0)
-                Text("after 7 days").tag(168.0)
-                Text("never").tag(0.0)
+                Text(L("after 1 hour")).tag(1.0)
+                Text(L("after 6 hours")).tag(6.0)
+                Text(L("after 24 hours")).tag(24.0)
+                Text(L("after 7 days")).tag(168.0)
+                Text(L("never")).tag(0.0)
             }
         }
     }
@@ -1008,10 +907,7 @@ struct ConversationView: View {
                     .listRowSeparator(.hidden)
             }
             if messages.isEmpty {
-                Text("Nothing yet. The first message knocks the "
-                     + "whole conversation open — fragments, "
-                     + "about twelve seconds each, and the other "
-                     + "phone knocks its ACK back the same way.")
+                Text(L("Nothing yet. The first message knocks the whole conversation open — fragments, about twelve seconds each, and the other phone knocks its ACK back the same way."))
                     .font(.callout).foregroundStyle(.secondary)
             }
             ForEach(messages) { message in
@@ -1027,7 +923,7 @@ struct ConversationView: View {
                             .foregroundStyle(.secondary)
                         if message.outgoing,
                            message.state == "failed" {
-                            Button("Resend") {
+                            Button(L("Resend")) {
                                 if let key = KnockKeyStore.key {
                                     chat.resend(messageID: message.id,
                                                 key: key)
@@ -1050,14 +946,14 @@ struct ConversationView: View {
                     chat.clearThread(peer)
                     dismiss()
                 } label: {
-                    Text("Clear thread")
+                    Text(L("Clear thread"))
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 4) {
                 HStack(alignment: .bottom, spacing: 8) {
-                    TextField("knock a message", text: $draft,
+                    TextField(L("knock a message"), text: $draft,
                               axis: .vertical)
                         .lineLimit(1...4)
                         .disableAutocorrection(true)
@@ -1088,8 +984,7 @@ struct ConversationView: View {
                         .foregroundStyle(tooLong ? .red : .secondary)
                     Spacer()
                     if chat.sender.sending {
-                        Text("knocking \(chat.sender.sent)/"
-                             + "\(chat.sender.total)…")
+                        Text(String(format: L("knocking %lld/%lld…"), chat.sender.sent, chat.sender.total))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

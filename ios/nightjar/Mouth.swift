@@ -929,7 +929,7 @@ final class Mouth: NSObject, ObservableObject {
                         line("  text: \(text)")
                     }
                     DispatchQueue.main.async { [weak self] in
-                        self?.toasts?.show("Reply received — \(replied.count) bytes")
+                        self?.toasts?.show(String(format: L("Reply received — %lld bytes"), replied.count))
                     }
                 }
             }
@@ -1319,7 +1319,7 @@ final class Mouth: NSObject, ObservableObject {
             snatch(target: .tcp(host: host, port: port, tls: https),
                    probe: probe, framing: framing)
         default:
-            toasts?.show("SnatchSteal needs a network target",
+            toasts?.show(L("SnatchSteal needs a network target"),
                          error: true)
         }
     }

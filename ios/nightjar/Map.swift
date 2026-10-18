@@ -197,15 +197,12 @@ struct MapSectionView: View {
     @Binding var shown: Bool
 
     var body: some View {
-        Section(header: Text("The Map — the house, on one canvas"),
-                footer: Text("Which device is what, and where "
-                    + "in the real world it sits — placed by "
-                    + "your hand, kept by the app. Walk the "
-                    + "house with it.")) {
+        Section(header: Text(L("The Map — the house, on one canvas")),
+                footer: Text(L("Which device is what, and where in the real world it sits — placed by your hand, kept by the app. Walk the house with it."))) {
             Button {
                 shown = true
             } label: {
-                Label("Open the map", systemImage: "map")
+                Label(L("Open the map"), systemImage: "map")
             }
             Text(summary)
                 .font(.callout).foregroundStyle(.secondary)
@@ -278,31 +275,31 @@ struct MapView: View {
                 tray
                 airStrip
             }
-            .navigationTitle("The Map")
+            .navigationTitle(L("The Map"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button(L("Close")) { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
                             model.sweep(port: 80)
                         } label: {
-                            Label("Sweep the wire",
+                            Label(L("Sweep the wire"),
                                   systemImage: "scope")
                         }
                         Button {
                             addingRoom = true
                         } label: {
-                            Label("Add a room",
+                            Label(L("Add a room"),
                                   systemImage: "square.dashed")
                         }
                         if station.currentWatch == nil {
                             Button {
                                 startingWatch = true
                             } label: {
-                                Label("Start a SIGINT watch",
+                                Label(L("Start a SIGINT watch"),
                                       systemImage: "eye")
                             }
                         }
@@ -313,7 +310,7 @@ struct MapView: View {
                                   systemImage: "trash")
                         }
                     } label: {
-                        Label("More", systemImage: "ellipsis.circle")
+                        Label(L("More"), systemImage: "ellipsis.circle")
                     }
                 }
             }
@@ -321,28 +318,27 @@ struct MapView: View {
                 "Reset the map?",
                 isPresented: $confirmReset,
                 titleVisibility: .visible) {
-                Button("Remove every room and placement",
+                Button(L("Remove every room and placement"),
                        role: .destructive) {
                     store.reset()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             } message: {
-                Text("The devices stay in the Neighborhood — "
-                     + "only where they sat is forgotten.")
+                Text(L("The devices stay in the Neighborhood — only where they sat is forgotten."))
             }
-            .alert("Name the room", isPresented: $addingRoom) {
-                TextField("Living room", text: $newRoomName)
-                Button("Add") {
+            .alert(L("Name the room"), isPresented: $addingRoom) {
+                TextField(L("Living room"), text: $newRoomName)
+                Button(L("Add")) {
                     store.addRoom(name: newRoomName)
                     newRoomName = ""
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L("Cancel"), role: .cancel) {}
             }
-            .alert("Name the watch",
+            .alert(L("Name the watch"),
                    isPresented: $startingWatch) {
-                TextField("Evening watch",
+                TextField(L("Evening watch"),
                           text: $watchNameDraft)
-                Button("Begin") {
+                Button(L("Begin")) {
                     station.startWatch(
                         name: watchNameDraft
                             .trimmingCharacters(
@@ -352,7 +348,7 @@ struct MapView: View {
                         scope: "map", post: post)
                     watchNameDraft = ""
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L("Cancel"), role: .cancel) {}
             }
             .sheet(item: $editingNeighbor) { neighbor in
                 NeighborNameEditor(
@@ -398,7 +394,7 @@ struct MapView: View {
                     .toolbar {
                         ToolbarItem(
                             placement: .confirmationAction) {
-                            Button("Done") {
+                            Button(L("Done")) {
                                 dossierNeighbor = nil
                             }
                         }
@@ -415,17 +411,16 @@ struct MapView: View {
             Image(systemName: "eye.fill")
                 .foregroundStyle(.red)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Watching — \(name)")
+                Text(String(format: L("Watching — %@"), name))
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
-                Text("\(station.newSinceWatchStart()) new "
-                     + "since it began · this epoch only")
+                Text(String(format: L("%lld new since it began · this epoch only"), station.newSinceWatchStart()))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
-            Button("Stop & file") {
+            Button(L("Stop & file")) {
                 station.stopWatch(post: post)
             }
             .font(.caption.weight(.semibold))
@@ -460,7 +455,7 @@ struct MapView: View {
                 Image(systemName: "magnifyingglass")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                TextField("Find", text: $search)
+                TextField(L("Find"), text: $search)
                     .font(.caption)
                     .frame(maxWidth: 110)
             }
@@ -492,11 +487,7 @@ struct MapView: View {
                 }
                 if store.rooms.isEmpty
                     && placedLAN.isEmpty && placedBLE.isEmpty {
-                    Text("Add a room, then tap a device below "
-                         + "and tap where it sits. Drag placed "
-                         + "devices to their exact spot, drag "
-                         + "a room to move it, and long-press "
-                         + "anything for its record.")
+                    Text(L("Add a room, then tap a device below and tap where it sits. Drag placed devices to their exact spot, drag a room to move it, and long-press anything for its record."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -599,7 +590,7 @@ struct MapView: View {
             Button("Edit room\u{2026}") {
                 editingRoom = room
             }
-            Button("Remove room", role: .destructive) {
+            Button(L("Remove room"), role: .destructive) {
                 store.removeRoom(room)
             }
         }
@@ -722,7 +713,7 @@ struct MapView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if let key = selectedKey {
-                    Button("Cancel") { selectedKey = nil }
+                    Button(L("Cancel")) { selectedKey = nil }
                         .font(.caption.weight(.semibold))
                 }
             }
@@ -767,11 +758,7 @@ struct MapView: View {
                     .padding(.vertical, 2)
                 }
             }
-            Text("Tap a placed device for its inspector — "
-                 + "drift is acknowledged there, by eye, "
-                 + "never silently. Placement is your "
-                 + "testimony — the app keeps it, and "
-                 + "never invents a location of its own.")
+            Text(L("Tap a placed device for its inspector — drift is acknowledged there, by eye, never silently. Placement is your testimony — the app keeps it, and never invents a location of its own."))
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(12)
@@ -783,11 +770,8 @@ struct MapView: View {
     /// What the ear is hearing right now, autonomously —
     /// and the door to walking to it.
     private var airStrip: some View {
-        Section(header: Text("In the air — heard now"),
-                footer: Text("The ear hears these on its "
-                    + "own, no asking. Pick one and walk: "
-                    + "the compass ring closes as you near "
-                    + "it, and your steps teach it the way.")) {
+        Section(header: Text(L("In the air — heard now")),
+                footer: Text(L("The ear hears these on its own, no asking. Pick one and walk: the compass ring closes as you near it, and your steps teach it the way."))) {
             let heard = post.rows.filter {
                 Date().timeIntervalSince1970 - $0.lastSeen < 90
                     && $0.rssiSmooth != nil
@@ -796,8 +780,7 @@ struct MapView: View {
                     > ($1.rssiSmooth ?? -120)
             }
             if heard.isEmpty {
-                Text("Nothing fresh in the air. The ear "
-                     + "wakes in Listen.")
+                Text(L("Nothing fresh in the air. The ear wakes in Listen."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -931,34 +914,32 @@ private struct RoomEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
-                    TextField("Room name", text: $draft.name)
+                Section(L("Name")) {
+                    TextField(L("Room name"), text: $draft.name)
                 }
-                Section("Shape") {
+                Section(L("Shape")) {
                     slider("Left", $draft.x, 0...0.85)
                     slider("Top", $draft.y, 0...0.85)
                     slider("Width", $draft.w, 0.14...0.96)
                     slider("Height", $draft.h, 0.10...0.96)
                 }
                 Section {
-                    Button("Remove room",
+                    Button(L("Remove room"),
                            role: .destructive) {
                         confirmRemove = true
                     }
                 } footer: {
-                    Text("Devices placed in it keep their "
-                         + "spots — only the room is "
-                         + "forgotten.")
+                    Text(L("Devices placed in it keep their spots — only the room is forgotten."))
                 }
             }
-            .navigationTitle("Room")
+            .navigationTitle(L("Room"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(L("Save")) {
                         store.updateRoom(draft)
                         dismiss()
                     }
@@ -968,11 +949,11 @@ private struct RoomEditor: View {
                 "Remove this room?",
                 isPresented: $confirmRemove,
                 titleVisibility: .visible) {
-                Button("Remove room", role: .destructive) {
+                Button(L("Remove room"), role: .destructive) {
                     store.removeRoom(draft)
                     dismiss()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             }
         }
     }
@@ -1021,8 +1002,7 @@ private struct MapNodeInspector: View {
                         .first(where: { $0.ip == ip }) {
                         lanBody(neighbor)
                     } else {
-                        Text("This device has left the "
-                             + "Neighborhood's keeping.")
+                        Text(L("This device has left the Neighborhood's keeping."))
                             .foregroundStyle(.secondary)
                     }
                 case .ble(let id):
@@ -1030,18 +1010,16 @@ private struct MapNodeInspector: View {
                         where: { $0.id == id }) {
                         bleBody(row)
                     } else {
-                        Text("Not in earshot this session — "
-                             + "the placement is kept for "
-                             + "its return.")
+                        Text(L("Not in earshot this session — the placement is kept for its return."))
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-            .navigationTitle("Inspector")
+            .navigationTitle(L("Inspector"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }
@@ -1053,24 +1031,24 @@ private struct MapNodeInspector: View {
         let unacked = neighbor.drift.count
             - (store.ackedDrift[key] ?? 0)
         Section {
-            LabeledContent("Device",
+            LabeledContent(L("Device"),
                            value: neighbor.displayName)
-            LabeledContent("Address", value: neighbor.ip)
-            LabeledContent("Room",
+            LabeledContent(L("Address"), value: neighbor.ip)
+            LabeledContent(L("Room"),
                            value: store.room(ofKey: key)?.name
                                ?? "In the open")
-            LabeledContent("Last seen",
+            LabeledContent(L("Last seen"),
                            value: neighbor.lastSeen
                                .formatted(date: .omitted,
                                           time: .shortened))
-            LabeledContent("Ports",
+            LabeledContent(L("Ports"),
                            value: neighbor.ports.isEmpty
                                ? "none open"
                                : neighbor.ports.sorted()
                                    .map(String.init)
                                    .joined(separator: ", "))
             if neighbor.arrivals > 0 {
-                LabeledContent("Knocks heard",
+                LabeledContent(L("Knocks heard"),
                                value: "\(neighbor.arrivals)")
             }
         }
@@ -1080,29 +1058,28 @@ private struct MapNodeInspector: View {
                     .enumerated()), id: \.offset) { _, line in
                     Text(line).font(.callout)
                 }
-                Button("Acknowledge drift") {
+                Button(L("Acknowledge drift")) {
                     store.ackDrift(key: key,
                                    count: neighbor.drift.count)
                 }
             } header: {
-                Text("Drift — \(unacked) unseen")
+                Text(String(format: L("Drift — %lld unseen"), unacked))
             } footer: {
-                Text("What changed about this device, "
-                     + "in the house's own words.")
+                Text(L("What changed about this device, in the house's own words."))
             }
         }
         claimsSection(key: key)
         Section {
-            Button("Open the dossier") {
+            Button(L("Open the dossier")) {
                 onDossier(neighbor)
             }
             Button("Rename\u{2026}") {
                 onRename(neighbor)
             }
-            Button("Move — tap its new spot") {
+            Button(L("Move — tap its new spot")) {
                 onMove(key)
             }
-            Button("Unplace", role: .destructive) {
+            Button(L("Unplace"), role: .destructive) {
                 store.unplace(key: key)
                 dismiss()
             }
@@ -1113,23 +1090,23 @@ private struct MapNodeInspector: View {
     private func bleBody(_ row: DeviceRow) -> some View {
         let key = "ble:" + row.id
         Section {
-            LabeledContent("Device",
+            LabeledContent(L("Device"),
                            value: row.name
                                ?? row.preferredLabel
                                ?? row.kind)
-            LabeledContent("Kind", value: row.kind)
-            LabeledContent("Room",
+            LabeledContent(L("Kind"), value: row.kind)
+            LabeledContent(L("Room"),
                            value: store.room(ofKey: key)?.name
                                ?? "In the open")
             if let battery = row.batterySummary {
-                LabeledContent("Battery", value: battery)
+                LabeledContent(L("Battery"), value: battery)
             }
             if let forecast = row.batteryForecastText {
-                LabeledContent("Battery trend",
+                LabeledContent(L("Battery trend"),
                                value: forecast)
             }
             if let cadence = row.cadenceText {
-                LabeledContent("Cadence", value: cadence)
+                LabeledContent(L("Cadence"), value: cadence)
             }
             ForEach(row.details.prefix(6), id: \.self) { line in
                 Text(line).font(.callout)
@@ -1137,17 +1114,17 @@ private struct MapNodeInspector: View {
         }
         claimsSection(key: key)
         Section {
-            Button("Walk to it") {
+            Button(L("Walk to it")) {
                 onHunt(AirTarget(
                     id: row.id,
                     label: row.name ?? row.preferredLabel
                         ?? row.kind,
                     kind: row.kind))
             }
-            Button("Move — tap its new spot") {
+            Button(L("Move — tap its new spot")) {
                 onMove(key)
             }
-            Button("Unplace", role: .destructive) {
+            Button(L("Unplace"), role: .destructive) {
                 store.unplace(key: key)
                 dismiss()
             }
@@ -1164,15 +1141,13 @@ private struct MapNodeInspector: View {
                     Text(claim).font(.callout)
                 }
                 if let percent = emitter.batteryPercent {
-                    LabeledContent("Battery (registry)",
+                    LabeledContent(L("Battery (registry)"),
                                    value: "\(percent)%")
                 }
             } header: {
-                Text("The registry's word")
+                Text(L("The registry's word"))
             } footer: {
-                Text("SIGINT, this epoch. Claims carry "
-                     + "their channel — a name match is "
-                     + "a claim, never a fusion.")
+                Text(L("SIGINT, this epoch. Claims carry their channel — a name match is a claim, never a fusion."))
             }
         }
     }

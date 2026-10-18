@@ -196,36 +196,29 @@ struct VoiceThrowSection: View {
     @State private var note = ""
 
     var body: some View {
-        Section(header: Text("Throw Your Voice — the ventriloquist"),
-                footer: Text("Your phone stays silent; a paired "
-                    + "phone speaks. Lend this phone's mouth and "
-                    + "any paired hand can throw small payloads "
-                    + "through it — the bytes leave THIS device. "
-                    + "Or throw through theirs: the instruction "
-                    + "rides Knocktalk, sealed, and the receipt "
-                    + "comes back the same road. Payloads are "
-                    + "signals — a word, a command, a wake-up.")) {
-            Toggle("Lend this phone's mouth",
+        Section(header: Text(L("Throw Your Voice — the ventriloquist")),
+                footer: Text(L("Your phone stays silent; a paired phone speaks. Lend this phone's mouth and any paired hand can throw small payloads through it — the bytes leave THIS device. Or throw through theirs: the instruction rides Knocktalk, sealed, and the receipt comes back the same road. Payloads are signals — a word, a command, a wake-up."))) {
+            Toggle(L("Lend this phone's mouth"),
                    isOn: Binding(
                        get: { center.armed },
                        set: { center.armed = $0 }))
-            TextField("throw via peer — IP, or relay:name",
+            TextField(L("throw via peer — IP, or relay:name"),
                       text: $peer)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .font(.callout.monospaced())
-            TextField("target — tcp://host:port, udp://…, http://…",
+            TextField(L("target — tcp://host:port, udp://…, http://…"),
                       text: $target)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .font(.callout.monospaced())
-            TextField("payload — a word, a command, a wake-up",
+            TextField(L("payload — a word, a command, a wake-up"),
                       text: $payload)
                 .disableAutocorrection(true)
             Button {
                 throwIt()
             } label: {
-                Label("Throw it", systemImage: "waveform.path")
+                Label(L("Throw it"), systemImage: "waveform.path")
             }
             .disabled(KnockKeyStore.key == nil
                       || peer.trimmingCharacters(

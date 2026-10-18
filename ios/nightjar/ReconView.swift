@@ -1347,23 +1347,23 @@ struct ScanView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("This network")) {
+                Section(header: Text(L("This network"))) {
                     if let ip = Mouth.localIPAddress(),
                        let prefix = lanPrefix {
                         if let ssid = ssid {
                             HStack {
-                                Text("Wi-Fi").foregroundStyle(.secondary)
+                                Text(L("Wi-Fi")).foregroundStyle(.secondary)
                                 Spacer()
                                 Text(ssid)
                             }
                         }
                         HStack {
-                            Text("Your IP").foregroundStyle(.secondary)
+                            Text(L("Your IP")).foregroundStyle(.secondary)
                             Spacer()
                             Text(ip).font(.body.monospaced())
                         }
                         HStack {
-                            Text("Subnet").foregroundStyle(.secondary)
+                            Text(L("Subnet")).foregroundStyle(.secondary)
                             Spacer()
                             Text("\(prefix).0/24")
                                 .font(.body.monospaced())
@@ -1371,11 +1371,10 @@ struct ScanView: View {
                         Button {
                             Haptics.tap()
                             host = "\(prefix).1"
-                            toasts.show("Scan target set to the "
-                                        + "likely gateway")
+                            toasts.show(L("Scan target set to the likely gateway"))
                         } label: {
                             HStack {
-                                Text("Likely gateway")
+                                Text(L("Likely gateway"))
                                     .foregroundStyle(.secondary)
                                 Spacer()
                                 Text("\(prefix).1")
@@ -1386,26 +1385,23 @@ struct ScanView: View {
                         }
                         .buttonStyle(.plain)
                     } else {
-                        Text("Not on Wi-Fi — join a network and the "
-                             + "recon tools wake up.")
+                        Text(L("Not on Wi-Fi — join a network and the recon tools wake up."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section(header: Text("Target")) {
-                    TextField("hostname or IP", text: $host)
+                Section(header: Text(L("Target"))) {
+                    TextField(L("hostname or IP"), text: $host)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .font(.body.monospaced())
-                    Text("Your own gear, or a network you're engaged "
-                         + "to test — the scanner asks politely and "
-                         + "reports what answers.")
+                    Text(L("Your own gear, or a network you're engaged to test — the scanner asks politely and reports what answers."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
 
-                Section(header: Text("Port scan · TCP connect")) {
-                    TextField("ports or range (blank = the usual 28)",
+                Section(header: Text(L("Port scan · TCP connect"))) {
+                    TextField(L("ports or range (blank = the usual 28)"),
                               text: $customPorts)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
@@ -1430,7 +1426,7 @@ struct ScanView: View {
                                 Text(result.service)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text("open")
+                                Text(L("open"))
                                     .font(.caption.weight(.medium))
                                     .foregroundStyle(.green)
                             }
@@ -1445,23 +1441,21 @@ struct ScanView: View {
                       .buttonStyle(.plain)
                     }
                     if !model.results.isEmpty {
-                        Text("Tap an open port to load it — and the "
-                             + "library probe that speaks its language — "
-                             + "into the Send tab.")
+                        Text(L("Tap an open port to load it — and the library probe that speaks its language — into the Send tab."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     if !model.scanning, model.totalCount > 0,
                        model.results.isEmpty {
-                        Text("Nothing answered on those ports.")
+                        Text(L("Nothing answered on those ports."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
 
-                Section(header: Text("Subnet sweep")) {
+                Section(header: Text(L("Subnet sweep"))) {
                     HStack {
-                        Text("Port")
+                        Text(L("Port"))
                             .foregroundStyle(.secondary)
-                        TextField("80", text: $sweepPort)
+                        TextField(L("80"), text: $sweepPort)
                             .keyboardType(.numberPad)
                             .font(.body.monospaced())
                         Button {
@@ -1481,7 +1475,7 @@ struct ScanView: View {
                                 Text(found.ip)
                                     .font(.body.monospaced())
                                 Spacer()
-                                Text("\(found.port) open")
+                                Text(String(format: L("%lld open"), found.port))
                                     .font(.caption.weight(.medium))
                                     .foregroundStyle(.green)
                             }
@@ -1489,23 +1483,18 @@ struct ScanView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    Text("Knocks on one port across your Wi-Fi's whole "
-                         + "/24 (254 addresses, under a minute) and "
-                         + "lists who answers. Tap a host to load it "
-                         + "into Send; the list also feeds the Send "
-                         + "tab's fan-out. Hosts that drop the knock "
-                         + "stay invisible — that's connect scanning.")
+                    Text(L("Knocks on one port across your Wi-Fi's whole /24 (254 addresses, under a minute) and lists who answers. Tap a host to load it into Send; the list also feeds the Send tab's fan-out. Hosts that drop the knock stay invisible — that's connect scanning."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 if !model.sweepHosts.isEmpty || !model.discovered.isEmpty {
-                    Section(header: Text("Dossiers")) {
+                    Section(header: Text(L("Dossiers"))) {
                         Button {
                             withAnimation { dossiersOpen.toggle() }
                         } label: {
                             HStack {
-                                Label("Devices", systemImage: "folder")
+                                Label(L("Devices"), systemImage: "folder")
                                 Spacer()
                                 Text("\(sweptIPs.count + model.discovered.count)")
                                     .foregroundStyle(.secondary)
@@ -1545,11 +1534,7 @@ struct ScanView: View {
                             }
                         }
                         }
-                        Text("One page per device, every organ's "
-                             + "testimony: what Scan heard, whether "
-                             + "Listen has heard the name over "
-                             + "Bluetooth, and a Recon knock on "
-                             + "demand.")
+                        Text(L("One page per device, every organ's testimony: what Scan heard, whether Listen has heard the name over Bluetooth, and a Recon knock on demand."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -1561,7 +1546,7 @@ struct ScanView: View {
                     dossier: $dossierSheet,
                     clearRequest: $clearNeighborhood)
 
-                Section(header: Text("Observation feed")) {
+                Section(header: Text(L("Observation feed"))) {
                     if model.watching {
                         Button(role: .destructive) {
                             Haptics.tap()
@@ -1571,7 +1556,7 @@ struct ScanView: View {
                                 lines: model.feed.reversed()
                                     .map { $0.text })
                         } label: {
-                            Label("Stop watching",
+                            Label(L("Stop watching"),
                                   systemImage: "eye.slash")
                         }
                     } else {
@@ -1586,7 +1571,7 @@ struct ScanView: View {
                         .disabled(model.sweeping || model.scanning)
                     }
                     if !model.feed.isEmpty {
-                        Button("Clear feed", role: .destructive) {
+                        Button(L("Clear feed"), role: .destructive) {
                             Haptics.tap()
                             model.clearFeed()
                         }
@@ -1601,21 +1586,17 @@ struct ScanView: View {
                                 .font(.caption)
                         }
                     }
-                    Text("While watching, the /24 is re-swept on "
-                         + "the sweep port and Bonjour is diffed — "
-                         + "joinings, leavings, openings stream in "
-                         + "here. Only what this phone can observe "
-                         + "itself; nothing is intercepted.")
+                    Text(L("While watching, the /24 is re-swept on the sweep port and Bonjour is diffed — joinings, leavings, openings stream in here. Only what this phone can observe itself; nothing is intercepted."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section(header: Text("TLS certificate")) {
+                Section(header: Text(L("TLS certificate"))) {
                     HStack {
-                        TextField("port", text: $tlsPort)
+                        TextField(L("port"), text: $tlsPort)
                             .keyboardType(.numberPad)
                             .font(.body.monospaced())
-                        Button("Inspect") {
+                        Button(L("Inspect")) {
                             Haptics.tap()
                             tls.inspect(host: host,
                                         port: Int(tlsPort) ?? 443)
@@ -1627,13 +1608,13 @@ struct ScanView: View {
                     }
                 }
 
-                Section(header: Text("DNS lookup")) {
+                Section(header: Text(L("DNS lookup"))) {
                     HStack {
-                        TextField("domain", text: $dnsName)
+                        TextField(L("domain"), text: $dnsName)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .onSubmit { lookupTapped() }
-                        Picker("Record", selection: $dnsType) {
+                        Picker(L("Record"), selection: $dnsType) {
                             ForEach(["A", "AAAA", "MX", "NS", "CNAME",
                                      "TXT"], id: \.self) { type in
                                 Text(type).tag(type)
@@ -1654,17 +1635,14 @@ struct ScanView: View {
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
                     }
-                    Text("A real query over UDP, answers parsed "
-                         + "locally — the grown-up version of the "
-                         + "library's DNS seed.")
+                    Text(L("A real query over UDP, answers parsed locally — the grown-up version of the library's DNS seed."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                Section(header: Text("On this Wi-Fi · Bonjour")) {
+                Section(header: Text(L("On this Wi-Fi · Bonjour"))) {
                     if model.discovered.isEmpty {
-                        Text("Listening — services appear here as "
-                             + "they announce themselves.")
+                        Text(L("Listening — services appear here as they announce themselves."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     ForEach(model.discovered) { service in
@@ -1684,24 +1662,20 @@ struct ScanView: View {
                         .buttonStyle(.plain)
                     }
                     if !model.discovered.isEmpty {
-                        Text("Tap a service to resolve it to an "
-                             + "address and load it into Send.")
+                        Text(L("Tap a service to resolve it to an address and load it into Send."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section(header: Text("Capture dissector")) {
-                    Text("Capture on your own gear — tcpdump -w — "
-                         + "then dissect the file here, in plain "
-                         + "text, with the app's own decoder. "
-                         + "Classic .pcap only, not pcapng.")
+                Section(header: Text(L("Capture dissector"))) {
+                    Text(L("Capture on your own gear — tcpdump -w — then dissect the file here, in plain text, with the app's own decoder. Classic .pcap only, not pcapng."))
                         .font(.caption).foregroundStyle(.secondary)
                     Button {
                         Haptics.tap()
                         showPcapImporter = true
                     } label: {
-                        Label("Import a .pcap file",
+                        Label(L("Import a .pcap file"),
                               systemImage: "square.and.arrow.down")
                     }
                     ForEach(pcapSummary, id: \.self) { line in
@@ -1717,16 +1691,13 @@ struct ScanView: View {
                 }
 
                 Section {
-                    Text("Connect scans only — iOS gives apps no raw "
-                         + "sockets, so no SYN scans and no UDP scans. "
-                         + "The Send tab is the UDP tool; this tab "
-                         + "maps what TCP answers.")
+                    Text(L("Connect scans only — iOS gives apps no raw sockets, so no SYN scans and no UDP scans. The Send tab is the UDP tool; this tab maps what TCP answers."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Scan")
+            .navigationTitle(L("Scan"))
             .onAppear {
                 model.startDiscovery()
                 NEHotspotNetwork.fetchCurrent { network in
@@ -1736,8 +1707,7 @@ struct ScanView: View {
             .onDisappear { model.stopDiscovery() }
             .onChange(of: model.scanning) { scanning in
                 if !scanning, model.totalCount > 0 {
-                    toasts.show("Scan finished — \(model.results.count) "
-                                + "open of \(model.totalCount)")
+                    toasts.show(String(format: L("Scan finished — %lld open of %lld"), model.results.count, model.totalCount))
                     // The host the scan actually ran against,
                     // captured at start — not whatever the field
                     // says now.
@@ -1761,9 +1731,7 @@ struct ScanView: View {
                 model.onSweepCompleted = { wasWatch in
                     guard !wasWatch, !model.sweepHosts.isEmpty
                     else { return }
-                    toasts.show("Sweep finished — "
-                                + "\(model.sweepHosts.count) host(s) "
-                                + "answer on \(sweepPort)")
+                    toasts.show(String(format: L("Sweep finished — %lld host(s) answer on %lld"), model.sweepHosts.count, sweepPort))
                     mouth.lastScanTargets = model.sweepHosts.map {
                         "tcp://\($0.ip):\($0.port)"
                     }
@@ -1795,17 +1763,13 @@ struct ScanView: View {
             "Clear the Neighborhood?",
             isPresented: $clearNeighborhood,
             titleVisibility: .visible) {
-            Button("Forget every neighbor",
+            Button(L("Forget every neighbor"),
                    role: .destructive) {
                 NeighborhoodStore.shared.clear()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("Every device the house has learned — "
-                 + "names, marks, drift and all — is "
-                 + "forgotten, and their Map placements "
-                 + "with them. The wire will populate its "
-                 + "own cast again.")
+            Text(L("Every device the house has learned — names, marks, drift and all — is forgotten, and their Map placements with them. The wire will populate its own cast again."))
         }
         .fileImporter(isPresented: $showPcapImporter,
                       allowedContentTypes: [.data]) { result in
@@ -1816,7 +1780,7 @@ struct ScanView: View {
             guard let data = try? Data(contentsOf: url),
                   let decoded = PcapKit.dissect(
                     data, name: url.lastPathComponent) else {
-                toasts.show("That file is not a libpcap capture",
+                toasts.show(L("That file is not a libpcap capture"),
                             error: true)
                 return
             }
@@ -1825,7 +1789,7 @@ struct ScanView: View {
             mouth.logRecon("pcap", url.lastPathComponent,
                            lines: decoded.summary
                                   + Array(decoded.lines.prefix(100)))
-            toasts.show("Dissected \(url.lastPathComponent)")
+            toasts.show(String(format: L("Dissected %@"), url.lastPathComponent))
         }
     }
 
@@ -1844,7 +1808,7 @@ struct ScanView: View {
         model.resolve(service) { resolved in
             DispatchQueue.main.async {
                 guard let resolved = resolved else {
-                    toasts.show("Could not resolve \(service.name)",
+                    toasts.show(String(format: L("Could not resolve %@"), service.name),
                                 error: true)
                     return
                 }

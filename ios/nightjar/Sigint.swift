@@ -752,26 +752,20 @@ struct SigintStationView: View {
         List {
             Section {
                 HStack {
-                    Label("SIGINT Station",
+                    Label(L("SIGINT Station"),
                           systemImage: "antenna.radiowaves.left.and.right")
                         .font(.headline)
                     Spacer()
                     if let epoch = station.epochStart {
-                        Text("epoch \(sigintAgo(epoch))")
+                        Text(String(format: L("epoch %@"), sigintAgo(epoch)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
-                Text("\(station.emitters.filter { $0.kind == "ble" }.count) "
-                    + "in the air · "
-                    + "\(station.emitters.filter { $0.kind == "lan" }.count) "
-                    + "on the wire · one registry, merged only "
-                    + "within this epoch.")
+                Text(String(format: L("%lld in the air · %lld on the wire · one registry, merged only within this epoch."), station.emitters.filter { $0.kind == "ble" }.count, station.emitters.filter { $0.kind == "lan" }.count))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Everything here is fused from organs the "
-                    + "app already has — Listen's hearing, the "
-                    + "LAN census, the Night log. No new ears.")
+                Text(L("Everything here is fused from organs the app already has — Listen's hearing, the LAN census, the Night log. No new ears."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -780,32 +774,29 @@ struct SigintStationView: View {
 
             if let watch = station.lastWatch,
                station.currentWatch == nil {
-                Section("Last watch — \(watch.name)") {
+                Section(String(format: L("Last watch — %@"), watch.name)) {
                     Text(watch.summaryText).font(.callout)
                     if let url = station.exportURL(for: watch) {
                         Button {
                             Haptics.select()
                             shareItem = ShareItem(items: [url])
                         } label: {
-                            Label("Share the watch export",
+                            Label(L("Share the watch export"),
                                   systemImage: "square.and.arrow.up")
                         }
                     }
                 }
             }
 
-            Section("Registry — \(station.emitters.count)") {
-                Picker("Order", selection: $sortMode) {
-                    Text("Priority").tag("priority")
-                    Text("Last heard").tag("recent")
-                    Text("Signal").tag("signal")
+            Section(String(format: L("Registry — %lld"), station.emitters.count)) {
+                Picker(L("Order"), selection: $sortMode) {
+                    Text(L("Priority")).tag("priority")
+                    Text(L("Last heard")).tag("recent")
+                    Text(L("Signal")).tag("signal")
                 }
                 .pickerStyle(.segmented)
                 if station.emitters.isEmpty {
-                    Text("Nothing heard yet in this epoch. "
-                        + "Start Listen, run a trace or a War "
-                        + "Room operation — the registry fills "
-                        + "from what the organs hear.")
+                    Text(L("Nothing heard yet in this epoch. Start Listen, run a trace or a War Room operation — the registry fills from what the organs hear."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -857,7 +848,7 @@ struct SigintStationView: View {
             }
 
             if !station.timeline.isEmpty {
-                Section("Timeline — \(station.timeline.count)") {
+                Section(String(format: L("Timeline — %lld"), station.timeline.count)) {
                     ForEach(visibleTimeline) { event in
                         HStack(alignment: .firstTextBaseline,
                                spacing: 8) {
@@ -893,7 +884,7 @@ struct SigintStationView: View {
             if station.watches.count > 1
                 || (station.watches.count == 1
                     && station.lastWatch == nil) {
-                Section("Filed watches") {
+                Section(L("Filed watches")) {
                     ForEach(station.watches) { watch in
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
@@ -922,53 +913,41 @@ struct SigintStationView: View {
             }
 
             Section {
-                Button("Begin a new epoch", role: .destructive) {
+                Button(L("Begin a new epoch"), role: .destructive) {
                     confirmEpoch = true
                 }
                 .disabled(station.currentWatch != nil)
-                Text("A new epoch empties the registry and the "
-                    + "timeline. Nothing is stitched across the "
-                    + "line — an emitter heard again is a new "
-                    + "record, by design.")
+                Text(L("A new epoch empties the registry and the timeline. Nothing is stitched across the line — an emitter heard again is a new record, by design."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } footer: {
-                Text("The station's limits, in its own words: "
-                    + "no spectrum beyond Bluetooth is available "
-                    + "to any iOS app; Wi-Fi is visible only as "
-                    + "the joined network plus what the census "
-                    + "builds by knocking; identities are as "
-                    + "emitters claim them, per channel, per "
-                    + "epoch. Receive and observe — the station "
-                    + "never interferes with the spectrum it "
-                    + "watches.")
+                Text(L("The station's limits, in its own words: no spectrum beyond Bluetooth is available to any iOS app; Wi-Fi is visible only as the joined network plus what the census builds by knocking; identities are as emitters claim them, per channel, per epoch. Receive and observe — the station never interferes with the spectrum it watches."))
                     .font(.caption)
             }
         }
-        .navigationTitle("SIGINT Station")
+        .navigationTitle(L("SIGINT Station"))
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)
         }
-        .confirmationDialog("Begin a new epoch?",
+        .confirmationDialog(L("Begin a new epoch?"),
                             isPresented: $confirmEpoch) {
-            Button("Empty the registry", role: .destructive) {
+            Button(L("Empty the registry"), role: .destructive) {
                 station.beginEpoch()
                 showAllTimeline = false
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("Cancel"), role: .cancel) {}
         } message: {
-            Text("The registry and timeline clear. Filed "
-                + "watches are kept.")
+            Text(L("The registry and timeline clear. Filed watches are kept."))
         }
         .onAppear { station.attach(post: post) }
         .onDisappear { station.detach() }
     }
 
     @ViewBuilder private var watchSection: some View {
-        Section("Watch") {
+        Section(L("Watch")) {
             if let watch = station.currentWatch {
                 HStack {
-                    Label("Recording — \(watch.name)",
+                    Label(String(format: L("Recording — %@"), watch.name),
                           systemImage: "record.circle")
                         .foregroundStyle(.red)
                     Spacer()
@@ -976,25 +955,24 @@ struct SigintStationView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Text("\(station.newSinceWatchStart()) new "
-                    + "emitter(s) since this watch began.")
+                Text(String(format: L("%lld new emitter(s) since this watch began."), station.newSinceWatchStart()))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button(role: .destructive) {
                     Haptics.tap()
                     station.stopWatch(post: post)
                 } label: {
-                    Label("Stop and file the watch",
+                    Label(L("Stop and file the watch"),
                           systemImage: "stop.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
             } else {
-                TextField("Watch name", text: $watchName)
-                Picker("Scope", selection: $watchScope) {
-                    Text("Air + wire").tag("mixed")
-                    Text("Air only").tag("air")
-                    Text("Wire only").tag("wire")
+                TextField(L("Watch name"), text: $watchName)
+                Picker(L("Scope"), selection: $watchScope) {
+                    Text(L("Air + wire")).tag("mixed")
+                    Text(L("Air only")).tag("air")
+                    Text(L("Wire only")).tag("wire")
                 }
                 .pickerStyle(.segmented)
                 Button {
@@ -1005,15 +983,12 @@ struct SigintStationView: View {
                         scope: watchScope, post: post)
                     watchName = ""
                 } label: {
-                    Label("Start the watch",
+                    Label(L("Start the watch"),
                           systemImage: "record.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                Text("A watch records the registry and the "
-                    + "timeline under a name, then files itself "
-                    + "with its delta: what arrived, what went "
-                    + "silent, what changed.")
+                Text(L("A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1072,58 +1047,56 @@ struct SigintEmitterView: View {
                 }
             }
 
-            Section("The record") {
-                LabeledContent("Kind",
+            Section(L("The record")) {
+                LabeledContent(L("Kind"),
                                value: emitter.kind == "ble"
                                 ? "BLE advertiser" : "LAN host")
-                LabeledContent("Key", value: emitter.key)
-                LabeledContent("First heard",
+                LabeledContent(L("Key"), value: emitter.key)
+                LabeledContent(L("First heard"),
                                value: emitter.firstHeard.formatted(
                                 date: .abbreviated, time: .standard))
-                LabeledContent("Last heard",
+                LabeledContent(L("Last heard"),
                                value: sigintAgo(emitter.lastHeard))
-                LabeledContent("Hearings",
+                LabeledContent(L("Hearings"),
                                value: "\(emitter.hearings)")
                 if let rssi = emitter.rssiLast {
-                    LabeledContent("Last RSSI", value: "\(rssi) dBm")
+                    LabeledContent(L("Last RSSI"), value: "\(rssi) dBm")
                 }
                 if let percent = emitter.batteryPercent {
-                    LabeledContent("Battery",
+                    LabeledContent(L("Battery"),
                                    value: "\(percent)%")
                 }
                 if let millivolts = emitter.batteryMillivolts {
-                    LabeledContent("Battery voltage",
+                    LabeledContent(L("Battery voltage"),
                                    value: "\(millivolts) mV")
                 }
                 if let note = emitter.batteryNote {
-                    LabeledContent("Battery trend",
+                    LabeledContent(L("Battery trend"),
                                    value: note)
                 }
-                LabeledContent("Heard by",
+                LabeledContent(L("Heard by"),
                                value: emitter.sources
                                 .joined(separator: ", "))
                 if emitter.trackerShaped {
-                    Label("Tracker-shaped advertiser",
+                    Label(L("Tracker-shaped advertiser"),
                           systemImage: "location.fill")
                         .foregroundStyle(.orange)
                 }
             }
 
             if !emitter.claims.isEmpty {
-                Section("Identity — as claimed") {
+                Section(L("Identity — as claimed")) {
                     ForEach(emitter.claims, id: \.self) { claim in
                         Text(claim).font(.callout)
                     }
-                    Text("Claims are what the emitter said, on "
-                        + "the channel noted — repeated here, "
-                        + "not crowned.")
+                    Text(L("Claims are what the emitter said, on the channel noted — repeated here, not crowned."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
             if !emitter.doors.isEmpty {
-                Section("Doors — \(emitter.doors.count)") {
+                Section(String(format: L("Doors — %lld"), emitter.doors.count)) {
                     ForEach(emitter.doors, id: \.self) { door in
                         Text(door).font(.callout.monospaced())
                     }
@@ -1136,16 +1109,15 @@ struct SigintEmitterView: View {
                     NavigationLink {
                         HuntView(targetID: address)
                     } label: {
-                        Label("Hunt this emitter",
+                        Label(L("Hunt this emitter"),
                               systemImage: "location.magnifyingglass")
                     }
-                    Text("The Hunt walks you onto the signal "
-                        + "with Listen's own ears.")
+                    Text(L("The Hunt walks you onto the signal with Listen's own ears."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .navigationTitle("Emitter")
+        .navigationTitle(L("Emitter"))
     }
 }

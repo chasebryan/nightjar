@@ -213,41 +213,36 @@ struct DossierView: View {
 
     var body: some View {
         List {
-            Section(header: Text("Wi-Fi — Scan testifies")) {
+            Section(header: Text(L("Wi-Fi — Scan testifies"))) {
                 ForEach(wifiLines, id: \.self) { line in
                     Text(line).font(.callout)
                 }
             }
-            Section(header: Text("Bluetooth — Listen testifies")) {
+            Section(header: Text(L("Bluetooth — Listen testifies"))) {
                 if bleMatches.isEmpty {
-                    Text("Not heard advertising under this name. "
-                         + "(Listen matches by name only — a name "
-                         + "is a claim, not an identity.)")
+                    Text(L("Not heard advertising under this name. (Listen matches by name only — a name is a claim, not an identity.)"))
                         .font(.callout).foregroundStyle(.secondary)
                 } else {
                     ForEach(bleMatches) { row in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Possible match by name")
+                            Text(L("Possible match by name"))
                                 .font(.callout.weight(.semibold))
-                            Text("\(row.kind) · \(row.sightings) "
-                                 + "sightings · last RSSI "
-                                 + "\(row.rssiLast.map(String.init) ?? "—")")
+                            Text(String(format: L("%@ · %lld sightings · last RSSI %@"), row.kind, row.sightings, row.rssiLast.map(String.init) ?? "—"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
             }
-            Section(header: Text("Knock — Recon testifies")) {
+            Section(header: Text(L("Knock — Recon testifies"))) {
                 if let ip = ip {
                     if recon.knocking {
                         HStack {
                             ProgressView()
-                            Text("Knocking \(ip) — "
-                                 + "\(recon.probed)/\(recon.total)")
+                            Text(String(format: L("Knocking %@ — %lld/%lld"), ip, recon.probed, recon.total))
                                 .font(.callout)
                         }
-                        Button("Cancel") { recon.cancelKnock() }
+                        Button(L("Cancel")) { recon.cancelKnock() }
                     } else {
                         Button {
                             recon.knock(
@@ -255,13 +250,13 @@ struct DossierView: View {
                                 ports: ReconPayloads.defaultPorts,
                                 udp: false)
                         } label: {
-                            Label("Knock \(ip) — full registry",
+                            Label(String(format: L("Knock %@ — full registry"), ip),
                                   systemImage: "hammer")
                         }
                     }
                     if !recon.hits.isEmpty {
                         if openHits.isEmpty {
-                            Text("Nothing open.")
+                            Text(L("Nothing open."))
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
@@ -290,44 +285,40 @@ struct DossierView: View {
                             if hasDrift {
                                 ForEach(driftOpened, id: \.self) {
                                     line in
-                                    Label("Opened since: \(line)",
+                                    Label(String(format: L("Opened since: %@"), line),
                                           systemImage: "plus.circle")
                                         .font(.callout)
                                         .foregroundStyle(.green)
                                 }
                                 ForEach(driftClosed, id: \.self) {
                                     line in
-                                    Label("Closed since: \(line)",
+                                    Label(String(format: L("Closed since: %@"), line),
                                           systemImage: "minus.circle")
                                         .font(.callout)
                                         .foregroundStyle(.red)
                                 }
                             } else if !recon.hits.isEmpty {
-                                Text("No drift — it answers exactly "
-                                     + "as baselined.")
+                                Text(L("No drift — it answers exactly as baselined."))
                                     .font(.callout)
                                     .foregroundStyle(.secondary)
                             }
                             Button {
                                 takeBaseline()
                             } label: {
-                                Label("Update the baseline to now",
+                                Label(L("Update the baseline to now"),
                                       systemImage: "arrow.clockwise")
                             }
                         } else {
                             Button {
                                 takeBaseline()
                             } label: {
-                                Label("Keep this knock as the "
-                                      + "baseline",
+                                Label(L("Keep this knock as the baseline"),
                                       systemImage: "bookmark")
                             }
                         }
                     }
                 } else {
-                    Text("No address swept for this device yet — "
-                         + "run a sweep on the Scan tab and its "
-                         + "dossier gains a knock.")
+                    Text(L("No address swept for this device yet — run a sweep on the Scan tab and its dossier gains a knock."))
                         .font(.callout).foregroundStyle(.secondary)
                 }
             }
@@ -336,7 +327,7 @@ struct DossierView: View {
                     Haptics.tap()
                     shareItem = ShareItem(items: [dossierText])
                 } label: {
-                    Label("Share the dossier",
+                    Label(L("Share the dossier"),
                           systemImage: "square.and.arrow.up")
                 }
             }
@@ -385,7 +376,7 @@ struct DossierSheetView: View {
                         wireName: presentation.wireName)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
+                        Button(L("Done")) { dismiss() }
                     }
                 }
         }

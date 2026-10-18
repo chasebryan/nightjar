@@ -537,28 +537,19 @@ struct CanarySectionView: View {
 
     var body: some View {
         Group {
-        Section(header: Text("Canary"),
-                footer: Text("A persona answers whoever knocks, "
-                    + "in character, and files everything they "
-                    + "say into the inbox as one transcript. "
-                    + "One canary at a time, and it cannot share "
-                    + "a port with the tripwire or Serve. "
-                    + "Honeydrop is the activate phase beyond "
-                    + "answering: the persona carries a prize — "
-                    + "a bait file, a published message, a "
-                    + "receipt, a key exchange — and a prober "
-                    + "who takes it is journaled on the spot.")) {
-            Picker("Persona", selection: $persona) {
+        Section(header: Text(L("Canary")),
+                footer: Text(L("A persona answers whoever knocks, in character, and files everything they say into the inbox as one transcript. One canary at a time, and it cannot share a port with the tripwire or Serve. Honeydrop is the activate phase beyond answering: the persona carries a prize — a bait file, a published message, a receipt, a key exchange — and a prober who takes it is journaled on the spot."))) {
+            Picker(L("Persona"), selection: $persona) {
                 ForEach(CanaryHost.personas, id: \.self) { p in
                     Text(CanaryHost.label(p)).tag(p)
                 }
             }
-            TextField("Port", text: $port)
+            TextField(L("Port"), text: $port)
                 .keyboardType(.numberPad)
                 .font(.body.monospaced())
-            Toggle("Honeydrop phase", isOn: $honeydrop)
+            Toggle(L("Honeydrop phase"), isOn: $honeydrop)
             if honeydrop {
-                TextField("Drop text (blank = stock lure)",
+                TextField(L("Drop text (blank = stock lure)"),
                           text: $drop)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
@@ -569,8 +560,7 @@ struct CanarySectionView: View {
             }
             if let running = host.runningPersona {
                 if host.dropArmed {
-                    Text("Honeydrop armed — the \(CanaryHost.label(running).lowercased()) "
-                         + "is carrying its drop.")
+                    Text(String(format: L("Honeydrop armed — the %@ is carrying its drop."), CanaryHost.label(running).lowercased()))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button(role: .destructive) {
@@ -589,7 +579,7 @@ struct CanarySectionView: View {
                             ?? CanaryHost.defaultPort(persona),
                         honeydrop: honeydrop, drop: drop)
                 } label: {
-                    Label("Raise the canary",
+                    Label(L("Raise the canary"),
                           systemImage: "play.circle.fill")
                 }
             }
@@ -612,16 +602,10 @@ struct CanarySectionView: View {
     /// the stock paths — the persona grows the lures its own
     /// probers reach for, but only where the operator points.
     private var lessonsSection: some View {
-        Section(header: Text("Lessons from the catch"),
-                footer: Text("Counted from the canary's own "
-                    + "sessions: the paths, topics, subjects, "
-                    + "and client banners probers brought with "
-                    + "them. Arming a path makes it bait — with "
-                    + "the honeydrop on, asking for it is "
-                    + "taking the drop.")) {
+        Section(header: Text(L("Lessons from the catch")),
+                footer: Text(L("Counted from the canary's own sessions: the paths, topics, subjects, and client banners probers brought with them. Arming a path makes it bait — with the honeydrop on, asking for it is taking the drop."))) {
             if lessons.isEmpty {
-                Text("No lessons yet — the canary learns from "
-                     + "whoever talks to it.")
+                Text(L("No lessons yet — the canary learns from whoever talks to it."))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 ForEach(showAllLessons
@@ -631,15 +615,14 @@ struct CanarySectionView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(lesson.value).font(.callout)
                                 .lineLimit(1)
-                            Text("\(lesson.kind) · asked "
-                                 + "\(lesson.count)×")
+                            Text(String(format: L("%@ · asked %lld×"), lesson.kind, lesson.count))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
                         if lesson.kind == "http path" {
                             if armedPaths.contains(lesson.value) {
-                                Button("Disarm") {
+                                Button(L("Disarm")) {
                                     armedPaths.removeAll {
                                         $0 == lesson.value }
                                     UserDefaults.standard.set(
@@ -649,11 +632,11 @@ struct CanarySectionView: View {
                                 .font(.callout)
                             } else if CanaryHost.baitPaths
                                 .contains(lesson.value) {
-                                Text("BAIT")
+                                Text(L("BAIT"))
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(.green)
                             } else {
-                                Button("Arm as bait") {
+                                Button(L("Arm as bait")) {
                                     armedPaths.append(lesson.value)
                                     UserDefaults.standard.set(
                                         armedPaths,
@@ -673,7 +656,7 @@ struct CanarySectionView: View {
                     }
                     .font(.caption)
                 }
-                Button("Forget the lessons", role: .destructive) {
+                Button(L("Forget the lessons"), role: .destructive) {
                     CanaryLessons.clear()
                     lessons = []
                 }

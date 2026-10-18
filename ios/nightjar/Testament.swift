@@ -150,42 +150,33 @@ struct TestamentSectionView: View {
     @State private var controls: [String: GrindControl] = [:]
 
     var body: some View {
-        Section(header: Text("Last Testament — two locks, one silence"),
-                footer: Text("Seal a message under a time "
-                    + "capsule, then lay the second lock over "
-                    + "it: this phone will not grind until the "
-                    + "dead hand has fallen and stayed down for "
-                    + "your chosen span. Write for whoever holds "
-                    + "this phone when you have stopped "
-                    + "checking in. Not a legal will — a "
-                    + "message with conditions.")) {
+        Section(header: Text(L("Last Testament — two locks, one silence")),
+                footer: Text(L("Seal a message under a time capsule, then lay the second lock over it: this phone will not grind until the dead hand has fallen and stayed down for your chosen span. Write for whoever holds this phone when you have stopped checking in. Not a legal will — a message with conditions."))) {
             if !TestamentLocks.handArmed {
-                Label("Arm the dead hand in EMCON — without it, "
-                      + "the absence lock can never fall.",
+                Label(L("Arm the dead hand in EMCON — without it, the absence lock can never fall."),
                       systemImage: "exclamationmark.triangle")
                     .font(.callout).foregroundStyle(.orange)
             }
-            TextField("the testament — for whoever holds this "
-                      + "phone", text: $draft, axis: .vertical)
+            TextField(L("the testament — for whoever holds this phone"), text: $draft, axis: .vertical)
                 .lineLimit(2...5)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
-            TextField("a label for the list (plaintext)",
+            TextField(L("a label for the list (plaintext)"),
                       text: $hint)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
-            Picker("The grind", selection: $grind) {
-                Text("a breath — 30 seconds (test it)")
+            Picker(L("The grind"), selection: $grind) {
+                Text(L("a breath — 30 seconds (test it)"))
                     .tag(30.0)
-                Text("10 minutes of grinding").tag(600.0)
-                Text("an hour of grinding").tag(3600.0)
-                Text("6 hours of grinding").tag(21600.0)
+                Text(L("10 minutes of grinding")).tag(600.0)
+                Text(L("an hour of grinding")).tag(3600.0)
+                Text(L("6 hours of grinding")).tag(21600.0)
             }
-            Picker("After the hand falls", selection: $afterFall) {
-                Text("immediately").tag(0)
-                Text("7 days").tag(7)
-                Text("30 days").tag(30)
-                Text("90 days").tag(90)
+            Picker(L("After the hand falls"), selection: $afterFall) {
+                Text(L("immediately")).tag(0)
+                Text(L("7 days")).tag(7)
+                Text(L("30 days")).tag(30)
+                Text(L("90 days")).tag(90)
             }
             Button {
                 seal()
@@ -213,7 +204,7 @@ struct TestamentSectionView: View {
                     }
                     if let text = testament.openedText {
                         Text(text).font(.callout)
-                        Text("opened — both locks agreed")
+                        Text(L("opened — both locks agreed"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -223,19 +214,19 @@ struct TestamentSectionView: View {
                             .foregroundStyle(.secondary)
                         if let value = progress[testament.id] {
                             ProgressView(value: value)
-                            Button("Stop grinding") {
+                            Button(L("Stop grinding")) {
                                 controls[testament.id]?.cancelled
                                     = true
                             }
                             .font(.caption)
                         } else {
                             HStack {
-                                Button("Attempt to open") {
+                                Button(L("Attempt to open")) {
                                     attempt(testament)
                                 }
                                 .font(.callout)
                                 Spacer()
-                                Button("Burn", role: .destructive) {
+                                Button(L("Burn"), role: .destructive) {
                                     store.delete(testament)
                                 }
                                 .font(.callout)

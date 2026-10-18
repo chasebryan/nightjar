@@ -205,7 +205,7 @@ struct HomingCompassView: View {
                         }
                     }
                     Spacer()
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                         .foregroundStyle(theme.accent)
                 }
                 Spacer()
@@ -302,10 +302,7 @@ struct HomingCompassView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             if !compass.authorized {
-                Text("Compass is off — this is signal only. "
-                     + "Allow location while in use and the "
-                     + "rose and the bearing wake up; the "
-                     + "signal never needed them.")
+                Text(L("Compass is off — this is signal only. Allow location while in use and the rose and the bearing wake up; the signal never needed them."))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)

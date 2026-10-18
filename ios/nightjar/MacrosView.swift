@@ -29,7 +29,7 @@ struct MacrosView: View {
         NavigationStack {
             List {
                 if runner.running {
-                    Section("Now running") {
+                    Section(L("Now running")) {
                         HStack {
                             ProgressView()
                             VStack(alignment: .leading,
@@ -41,7 +41,7 @@ struct MacrosView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Stop", role: .destructive) {
+                            Button(L("Stop"), role: .destructive) {
                                 Haptics.tap()
                                 runner.stop()
                             }
@@ -54,12 +54,9 @@ struct MacrosView: View {
                         }
                     }
                 }
-                Section("Library") {
+                Section(L("Library")) {
                     if macros.isEmpty {
-                        Text("No macros yet. Build one block "
-                            + "by block below, start from a "
-                            + "template, or tell Skelli the "
-                            + "steps — she builds them too.")
+                        Text(L("No macros yet. Build one block by block below, start from a template, or tell Skelli the steps — she builds them too."))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -82,11 +79,11 @@ struct MacrosView: View {
                         }
                         .buttonStyle(.plain)
                         .swipeActions {
-                            Button("Delete",
+                            Button(L("Delete"),
                                    role: .destructive) {
                                 macroToDelete = macro
                             }
-                            Button("Duplicate") {
+                            Button(L("Duplicate")) {
                                 Haptics.tap()
                                 var copy = macro
                                 copy.id = UUID()
@@ -103,7 +100,7 @@ struct MacrosView: View {
                         }
                     }
                 }
-                Section("Start from a template") {
+                Section(L("Start from a template")) {
                     ForEach(MacroTemplates.all,
                             id: \.title) { template in
                         Button {
@@ -113,20 +110,20 @@ struct MacrosView: View {
                             persist()
                             editingMacro = macro
                         } label: {
-                            Label("New — \(template.title)",
+                            Label(String(format: L("New — %@"), template.title),
                                   systemImage: "square.stack.3d.up")
                         }
                         .foregroundStyle(.primary)
                     }
                 }
-                Section("The library file") {
+                Section(L("The library file")) {
                     Button {
                         Haptics.tap()
                         if let url = MacroStore.exportURL(macros) {
                             shareItem = ShareItem(items: [url])
                         }
                     } label: {
-                        Label("Export the library (.json)",
+                        Label(L("Export the library (.json)"),
                               systemImage: "square.and.arrow.up")
                     }
                     .foregroundStyle(.primary)
@@ -134,13 +131,11 @@ struct MacrosView: View {
                         Haptics.tap()
                         showImporter = true
                     } label: {
-                        Label("Import macros (.json)",
+                        Label(L("Import macros (.json)"),
                               systemImage: "square.and.arrow.down")
                     }
                     .foregroundStyle(.primary)
-                    Text("Imports arrive as copies — an "
-                        + "import never overwrites a macro "
-                        + "already here.")
+                    Text(L("Imports arrive as copies — an import never overwrites a macro already here."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -153,7 +148,7 @@ struct MacrosView: View {
             // backdrop played). Same recipe as Knocktalk.
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Macros")
+            .navigationTitle(L("Macros"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -170,7 +165,7 @@ struct MacrosView: View {
                         persist()
                         editingMacro = macro
                     } label: {
-                        Label("New macro", systemImage: "plus")
+                        Label(L("New macro"), systemImage: "plus")
                     }
                 }
             }
@@ -211,12 +206,11 @@ struct MacrosView: View {
                     macroToDelete = nil
                     Haptics.success()
                 }
-                Button("Cancel", role: .cancel) {
+                Button(L("Cancel"), role: .cancel) {
                     macroToDelete = nil
                 }
             } message: {
-                Text("The playlist goes. Its blocks were "
-                    + "never the engines — those stay.")
+                Text(L("The playlist goes. Its blocks were never the engines — those stay."))
             }
             .onAppear {
                 macros = MacroStore.load()
@@ -253,14 +247,14 @@ struct MacrosView: View {
         guard case .success(let url) = result else { return }
         guard url.startAccessingSecurityScopedResource()
         else {
-            toasts.show("That file would not open.")
+            toasts.show(L("That file would not open."))
             return
         }
         defer { url.stopAccessingSecurityScopedResource() }
         guard let data = try? Data(contentsOf: url),
               let imported = MacroStore.decodeImport(data)
         else {
-            toasts.show("That is not a nightjar macro file.")
+            toasts.show(L("That is not a nightjar macro file."))
             return
         }
         macros.append(contentsOf: imported)
@@ -287,8 +281,7 @@ private struct MacroRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(macro.name)
                     .font(.callout.weight(.semibold))
-                Text("\(macro.blocks.count) block"
-                    + (macro.blocks.count == 1 ? "" : "s")
+                Text(String(format: L("%lld block(s)"), macro.blocks.count)
                     + (macro.note.isEmpty
                        ? "" : " — \(macro.note)"))
                     .font(.caption)
@@ -347,7 +340,7 @@ struct MacroEditorView: View {
 
     var body: some View {
         List {
-            Section("Dress it") {
+            Section(L("Dress it")) {
                 HStack(spacing: 12) {
                     Image(systemName: draft.icon)
                         .font(.title)
@@ -356,19 +349,19 @@ struct MacroEditorView: View {
                         .background(Color(hex: draft.colorHex),
                                     in: RoundedRectangle(
                                         cornerRadius: 12))
-                    TextField("Name — Night Watch, …",
+                    TextField(L("Name — Night Watch, …"),
                               text: $draft.name)
                         .font(.headline)
                         .onChange(of: draft.name) {
                             _ in commit()
                         }
                 }
-                TextField("Note — what this playlist is for",
+                TextField(L("Note — what this playlist is for"),
                           text: $draft.note)
                     .font(.callout)
                     .onChange(of: draft.note) { _ in commit() }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Icon")
+                    Text(L("Icon"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     LazyVGrid(columns: Array(
@@ -405,7 +398,7 @@ struct MacroEditorView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Colour")
+                    Text(L("Colour"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     LazyVGrid(columns: Array(
@@ -433,8 +426,7 @@ struct MacroEditorView: View {
             }
             Section {
                 if draft.blocks.isEmpty {
-                    Text("Empty. Add a block — the whole "
-                        + "instrument is in the palette.")
+                    Text(L("Empty. Add a block — the whole instrument is in the palette."))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -467,19 +459,17 @@ struct MacroEditorView: View {
                     Haptics.tap()
                     showPalette = true
                 } label: {
-                    Label("Add a block",
+                    Label(L("Add a block"),
                           systemImage: "plus.circle.fill")
                 }
                 .foregroundStyle(.primary)
             } header: {
-                Text("The playlist — \(draft.blocks.count) block"
-                    + (draft.blocks.count == 1 ? "" : "s"))
+                Text(String(format: L("The playlist — %lld block(s)"), draft.blocks.count))
             } footer: {
-                Text("Drag to reorder. Tap a block to fold "
-                    + "its settings open.")
+                Text(L("Drag to reorder. Tap a block to fold its settings open."))
                     .font(.caption)
             }
-            Section("Run") {
+            Section(L("Run")) {
                 if runner.running
                     && runner.currentMacroName == draft.name {
                     HStack {
@@ -492,7 +482,7 @@ struct MacroEditorView: View {
                             .font(.caption.monospaced())
                             .foregroundStyle(.secondary)
                     }
-                    Button("Stop the run",
+                    Button(L("Stop the run"),
                            role: .destructive) {
                         Haptics.tap()
                         runner.stop()
@@ -509,28 +499,27 @@ struct MacroEditorView: View {
                         Haptics.tap()
                         showRunCard = true
                     } label: {
-                        Label("Run it",
+                        Label(L("Run it"),
                               systemImage: "play.fill")
                     }
                     .disabled(!problems.isEmpty
                         || runner.running)
                     .foregroundStyle(.primary)
                     if runner.running {
-                        Text("Another macro is running — "
-                            + "stop it first.")
+                        Text(L("Another macro is running — stop it first."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     if !runner.running
                         && !runner.lastSummary.isEmpty {
-                        Text("Last run: \(runner.lastSummary)")
+                        Text(String(format: L("Last run: %@"), runner.lastSummary))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
             }
             Section {
-                Button("Delete this macro",
+                Button(L("Delete this macro"),
                        role: .destructive) {
                     confirmDelete = true
                 }
@@ -550,7 +539,7 @@ struct MacroEditorView: View {
                 EditButton()
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") {
+                Button(L("Done")) {
                     Haptics.tap()
                     dismiss()
                 }
@@ -580,16 +569,15 @@ struct MacroEditorView: View {
             isPresented: $confirmDelete,
             titleVisibility: .visible
         ) {
-            Button("Delete “\(draft.name)”",
+            Button(String(format: L("Delete “%@”"), draft.name),
                    role: .destructive) {
                 Haptics.success()
                 onDelete()
                 dismiss()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("The playlist goes. Its blocks were "
-                + "never the engines — those stay.")
+            Text(L("The playlist goes. Its blocks were never the engines — those stay."))
         }
     }
 
@@ -678,16 +666,16 @@ struct MacroBlockCard: View {
                     fieldRow(field)
                 }
                 Stepper(value: repeatBinding, in: 1...10) {
-                    Text("Repeat ×\(block.repeatCount)")
+                    Text(String(format: L("Repeat ×%lld"), block.repeatCount))
                         .font(.callout)
                 }
                 HStack {
-                    Button("Duplicate block") {
+                    Button(L("Duplicate block")) {
                         onDuplicate()
                     }
                     .font(.caption)
                     Spacer()
-                    Button("Remove block",
+                    Button(L("Remove block"),
                            role: .destructive) {
                         onRemove()
                     }
@@ -804,7 +792,7 @@ struct MacroBlockCard: View {
         case .payloadPicker:
             Picker(field.label,
                    selection: textBinding(field.key)) {
-                Text("None").tag("")
+                Text(L("None")).tag("")
                 ForEach(book.items, id: \.name) { payload in
                     Text(payload.name).tag(payload.name)
                 }
@@ -814,7 +802,7 @@ struct MacroBlockCard: View {
         case .chestPicker:
             Picker(field.label,
                    selection: textBinding(field.key)) {
-                Text("None").tag("")
+                Text(L("None")).tag("")
                 ForEach(MacroNames.chestNames(),
                         id: \.self) { name in
                     Text(name).tag(name)
@@ -825,7 +813,7 @@ struct MacroBlockCard: View {
         case .personaPicker:
             Picker(field.label,
                    selection: textBinding(field.key)) {
-                Text("None").tag("")
+                Text(L("None")).tag("")
                 ForEach(MacroNames.personaNames(),
                         id: \.self) { name in
                     Text(name).tag(name)
@@ -836,7 +824,7 @@ struct MacroBlockCard: View {
         case .remotePicker:
             Picker(field.label,
                    selection: textBinding(field.key)) {
-                Text("None").tag("")
+                Text(L("None")).tag("")
                 ForEach(MacroNames.remoteNames(),
                         id: \.self) { name in
                     Text(name).tag(name)
@@ -847,7 +835,7 @@ struct MacroBlockCard: View {
         case .helmButtonPicker:
             Picker(field.label,
                    selection: textBinding(field.key)) {
-                Text("None").tag("")
+                Text(L("None")).tag("")
                 ForEach(MacroNames.helmButtons(
                     remote: block.value("remote")),
                         id: \.self) { name in
@@ -900,10 +888,10 @@ struct MacroPaletteSheet: View {
                     }
                 }
             }
-            .navigationTitle("Add a block")
+            .navigationTitle(L("Add a block"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }
@@ -933,7 +921,7 @@ struct MacroRunCardSheet: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Section("The playlist") {
+                Section(L("The playlist")) {
                     ForEach(Array(macro.blocks.enumerated()),
                             id: \.element.id) { index, block in
                         HStack(spacing: 10) {
@@ -965,7 +953,7 @@ struct MacroRunCardSheet: View {
                     }
                 }
                 if !problems.isEmpty {
-                    Section("Not ready") {
+                    Section(L("Not ready")) {
                         ForEach(problems, id: \.self) { p in
                             Text("⚠ \(p)")
                                 .font(.caption)
@@ -974,22 +962,18 @@ struct MacroRunCardSheet: View {
                     }
                 }
                 Section {
-                    Text("A run does exactly what these "
-                        + "blocks say, in order. Waits hold "
-                        + "the list; a block that cannot run "
-                        + "stops the run and says why — in "
-                        + "the run log and the night log.")
+                    Text(L("A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Run this macro?")
+            .navigationTitle(L("Run this macro?"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Not yet") { dismiss() }
+                    Button(L("Not yet")) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Run it") {
+                    Button(L("Run it")) {
                         Haptics.tap()
                         onRun()
                         dismiss()

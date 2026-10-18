@@ -156,13 +156,7 @@ struct HelmView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Remotes for your own gear. A button "
-                        + "is a payload from the book, aimed "
-                        + "where you wrote — Wake-on-LAN, an "
-                        + "HTTP command, an MQTT word, any "
-                        + "send the mouth knows. Nothing here "
-                        + "reaches for a device you did not "
-                        + "name yourself.")
+                    Text(L("Remotes for your own gear. A button is a payload from the book, aimed where you wrote — Wake-on-LAN, an HTTP command, an MQTT word, any send the mouth knows. Nothing here reaches for a device you did not name yourself."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -186,7 +180,7 @@ struct HelmView: View {
                             }
                             .foregroundStyle(.primary)
                             .swipeActions {
-                                Button("Delete",
+                                Button(L("Delete"),
                                        role: .destructive) {
                                     deleteButton(button,
                                                  in: remote)
@@ -200,10 +194,10 @@ struct HelmView: View {
                                 payloadName:
                                     book.items.first?.name ?? "")
                         } label: {
-                            Label("Add a button",
+                            Label(L("Add a button"),
                                   systemImage: "plus.circle")
                         }
-                        Button("Delete remote",
+                        Button(L("Delete remote"),
                                role: .destructive) {
                             remoteToDelete = remote
                         }
@@ -211,13 +205,8 @@ struct HelmView: View {
                     }
                 }
                 if !mouth.inbox.isEmpty {
-                    Section("Learn from the inbox") {
-                        Text("A payload your own gear sent you, "
-                            + "kept as a button: the bytes join "
-                            + "the book, and the button aims "
-                            + "back at the house they came from. "
-                            + "Set the port in the editor "
-                            + "before you fire it.")
+                    Section(L("Learn from the inbox")) {
+                        Text(L("A payload your own gear sent you, kept as a button: the bytes join the book, and the button aims back at the house they came from. Set the port in the editor before you fire it."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         ForEach(mouth.inbox.suffix(8)) { item in
@@ -243,22 +232,22 @@ struct HelmView: View {
                     }
                 }
             }
-            .navigationTitle("The Helm")
+            .navigationTitle(L("The Helm"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("New remote") {
+                        Button(L("New remote")) {
                             Haptics.tap()
                             showNewRemote = true
                         }
-                        Button("Share remotes") {
+                        Button(L("Share remotes")) {
                             Haptics.tap()
                             if let url = HelmStore
                                 .exportURL(remotes) {
                                 shareItem = ShareItem(items: [url])
                             }
                         }
-                        Button("Import remotes") {
+                        Button(L("Import remotes")) {
                             Haptics.tap()
                             showImporter = true
                         }
@@ -267,10 +256,10 @@ struct HelmView: View {
                     }
                 }
             }
-            .alert("New remote", isPresented: $showNewRemote) {
-                TextField("Name — Projector, Lab Pi…",
+            .alert(L("New remote"), isPresented: $showNewRemote) {
+                TextField(L("Name — Projector, Lab Pi…"),
                           text: $newRemoteName)
-                Button("Create") {
+                Button(L("Create")) {
                     Haptics.tap()
                     let name = newRemoteName
                         .trimmingCharacters(in: .whitespaces)
@@ -280,7 +269,7 @@ struct HelmView: View {
                     HelmStore.save(remotes)
                     newRemoteName = ""
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             }
             .confirmationDialog(
                 "Delete this remote?",
@@ -301,12 +290,11 @@ struct HelmView: View {
                     remoteToDelete = nil
                     Haptics.success()
                 }
-                Button("Cancel", role: .cancel) {
+                Button(L("Cancel"), role: .cancel) {
                     remoteToDelete = nil
                 }
             } message: {
-                Text("The remote and its buttons go — "
-                    + "the payloads stay in the book.")
+                Text(L("The remote and its buttons go — the payloads stay in the book."))
             }
             .sheet(item: $editingButton) { draft in
                 HelmButtonEditor(draft: draft, book: book) {
@@ -338,7 +326,7 @@ struct HelmView: View {
             method: draft.method))
         HelmStore.save(remotes)
         editingButton = nil
-        toasts.show("Button kept — \(draft.label)")
+        toasts.show(String(format: L("Button kept — %@"), draft.label))
     }
 
     private func deleteButton(_ button: HelmButton,
@@ -390,7 +378,7 @@ struct HelmView: View {
         guard let data = try? Data(contentsOf: url),
               let incoming = HelmStore.decode(data)
         else {
-            toasts.show("That file is not a helm file",
+            toasts.show(L("That file is not a helm file"),
                         error: true)
             return
         }
@@ -404,7 +392,7 @@ struct HelmView: View {
             }
         }
         HelmStore.save(remotes)
-        toasts.show("Imported \(incoming.count) remote(s)")
+        toasts.show(String(format: L("Imported %lld remote(s)"), incoming.count))
     }
 }
 
@@ -434,26 +422,25 @@ struct HelmButtonEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Label — Power on, Reboot…",
+                TextField(L("Label — Power on, Reboot…"),
                           text: $label)
-                TextField("Target — tcp://…, udp://…, "
-                            + "https://…, phone:Name",
+                TextField(L("Target — tcp://…, udp://…, https://…, phone:Name"),
                           text: $target)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
                     .font(.body.monospaced())
-                Picker("Payload", selection: $payloadName) {
+                Picker(L("Payload"), selection: $payloadName) {
                     ForEach(book.items) { item in
                         Text(item.name).tag(item.name)
                     }
                 }
-                Picker("Method (HTTP targets)",
+                Picker(L("Method (HTTP targets)"),
                        selection: $method) {
                     ForEach(["GET", "POST", "PUT", "DELETE"],
                             id: \.self) { Text($0).tag($0) }
                 }
                 Section {
-                    Button("Keep this button") {
+                    Button(L("Keep this button")) {
                         onKeep(HelmButtonDraft(
                             remoteID: remoteID, label: label,
                             target: target,
@@ -468,7 +455,7 @@ struct HelmButtonEditor: View {
                         || payloadName.isEmpty)
                 }
             }
-            .navigationTitle("Button")
+            .navigationTitle(L("Button"))
         }
     }
 }

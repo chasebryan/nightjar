@@ -270,61 +270,49 @@ struct CoinSectionView: View {
     @AppStorage("coin.lockKnocktalk") private var lockKnocktalk = false
 
     var body: some View {
-        Section(header: Text("The coin — a key you can hold"),
-                footer: Text("Any NDEF tag can be the coin: a "
-                    + "transit card, a hotel key, a blank. The "
-                    + "app keeps a hash of the tag, never its "
-                    + "contents. A copied tag is the same coin "
-                    + "— the factor is possession, like every "
-                    + "physical key ever cut. One honesty: NFC "
-                    + "reading needs the NFC Tag Reading "
-                    + "capability, which only a paid developer "
-                    + "team's profile grants — under free "
-                    + "Personal Team signing the taps will "
-                    + "fail, and that is the team talking, not "
-                    + "the tag.")) {
+        Section(header: Text(L("The coin — a key you can hold")),
+                footer: Text(L("Any NDEF tag can be the coin: a transit card, a hotel key, a blank. The app keeps a hash of the tag, never its contents. A copied tag is the same coin — the factor is possession, like every physical key ever cut. One honesty: NFC reading needs the NFC Tag Reading capability, which only a paid developer team's profile grants — under free Personal Team signing the taps will fail, and that is the team talking, not the tag."))) {
             if center.claimed {
-                Label("A coin is claimed",
+                Label(L("A coin is claimed"),
                       systemImage: "circle.circle.fill")
                     .font(.callout)
                 Button {
                     center.tap(.checkin, emcon: emcon)
                 } label: {
-                    Label("Tap the coin — check in the dead hand",
+                    Label(L("Tap the coin — check in the dead hand"),
                           systemImage: "hand.raised")
                 }
                 Button {
                     center.tap(.vault, emcon: emcon)
                 } label: {
-                    Label("Tap the coin — raise the vault",
+                    Label(L("Tap the coin — raise the vault"),
                           systemImage: "lock.open")
                 }
                 Button {
                     center.tap(.claim, emcon: emcon)
                 } label: {
-                    Label("Present the coin", systemImage: "wave.3.right")
+                    Label(L("Present the coin"), systemImage: "wave.3.right")
                 }
-                Toggle("Knocktalk requires the coin",
+                Toggle(L("Knocktalk requires the coin"),
                        isOn: $lockKnocktalk)
                 Button(role: .destructive) {
                     center.forget()
                 } label: {
-                    Text("Forget the coin")
+                    Text(L("Forget the coin"))
                 }
             } else {
-                Text("No coin yet. Claim any NFC tag, or mint a "
-                     + "blank one with the mark of the house.")
+                Text(L("No coin yet. Claim any NFC tag, or mint a blank one with the mark of the house."))
                     .font(.callout).foregroundStyle(.secondary)
                 Button {
                     center.tap(.claim, emcon: emcon)
                 } label: {
-                    Label("Claim a tag as the coin",
+                    Label(L("Claim a tag as the coin"),
                           systemImage: "circle.circle")
                 }
                 Button {
                     center.tap(.mint, emcon: emcon)
                 } label: {
-                    Label("Mint a blank tag",
+                    Label(L("Mint a blank tag"),
                           systemImage: "seal")
                 }
             }

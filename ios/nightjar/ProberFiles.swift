@@ -193,9 +193,9 @@ struct ProberFileView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("The record")) {
-                    LabeledContent("Address", value: file.host)
-                    LabeledContent("Knocks",
+                Section(header: Text(L("The record"))) {
+                    LabeledContent(L("Address"), value: file.host)
+                    LabeledContent(L("Knocks"),
                                      value: "\(file.knocks)")
                     LabeledContent(
                         "First seen",
@@ -211,27 +211,22 @@ struct ProberFileView: View {
                             value: "\(file.drops)")
                     }
                 }
-                Section(header: Text("Doors tried")) {
+                Section(header: Text(L("Doors tried"))) {
                     ForEach(file.portsByTraffic, id: \.port) { row in
-                        LabeledContent("Port \(row.port)",
+                        LabeledContent(String(format: L("Port %lld"), row.port),
                                        value: "×\(row.count)")
                     }
                 }
                 if !file.verdicts.isEmpty {
-                    Section(header: Text("First words heard")) {
+                    Section(header: Text(L("First words heard"))) {
                         ForEach(file.verdicts, id: \.self) { v in
                             Text(v).font(.callout)
                         }
                     }
                 }
                 if !file.links.isEmpty {
-                    Section(header: Text("Same hands?"),
-                            footer: Text("Correlation over this "
-                                + "phone's own tripwire log: "
-                                + "shared habits suggest, they "
-                                + "never prove. Two tenants of one "
-                                + "NAT can share every trait here "
-                                + "and still be strangers.")) {
+                    Section(header: Text(L("Same hands?")),
+                            footer: Text(L("Correlation over this phone's own tripwire log: shared habits suggest, they never prove. Two tenants of one NAT can share every trait here and still be strangers."))) {
                         ForEach(file.links, id: \.host) { link in
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(link.host)
@@ -246,11 +241,7 @@ struct ProberFileView: View {
                         }
                     }
                 }
-                Section(footer: Text("An address is a claim "
-                    + "about a network, not an identity — "
-                    + "addresses are borrowed, shared, and "
-                    + "spoofed. The file records what knocked, "
-                    + "never who.")) {
+                Section(footer: Text(L("An address is a claim about a network, not an identity — addresses are borrowed, shared, and spoofed. The file records what knocked, never who."))) {
                     if let port = file.favoritePort,
                        !file.host.hasPrefix("127.") {
                         Button {
@@ -259,23 +250,23 @@ struct ProberFileView: View {
                                 nonce: UUID())
                             dismiss()
                         } label: {
-                            Label("Knock back at port \(port)",
+                            Label(String(format: L("Knock back at port %lld"), port),
                                   systemImage: "scope")
                         }
                     }
                     Button {
                         shareItem = ShareItem(items: [file.text])
                     } label: {
-                        Label("Share this file",
+                        Label(L("Share this file"),
                               systemImage: "square.and.arrow.up")
                     }
                 }
             }
-            .navigationTitle("Prober file")
+            .navigationTitle(L("Prober file"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
             .onAppear { ProberFiles.markSeen(file) }

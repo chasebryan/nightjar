@@ -201,10 +201,7 @@ struct BansheeView: View {
                             .font(.title3.weight(.bold))
                             .foregroundStyle(banshee.screaming
                                              ? .red : .primary)
-                        Text("Every measure this app owns, "
-                            + "announcing this one device at "
-                            + "once. Nothing here touches "
-                            + "anyone else's traffic.")
+                        Text(L("Every measure this app owns, announcing this one device at once. Nothing here touches anyone else's traffic."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -213,7 +210,7 @@ struct BansheeView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                Section("The measures") {
+                Section(L("The measures")) {
                     measure("Serve, listed by name",
                             on: mouth.serveRunning
                                 && !mouth.stealth,
@@ -248,13 +245,7 @@ struct BansheeView: View {
                 }
 
                 Section {
-                    Text("This is meant to be noticed — by "
-                        + "every admin measure on the network: "
-                        + "the DHCP and flow logs, the "
-                        + "controller's client list, anything "
-                        + "watching broadcasts. On a network "
-                        + "you do not own, expect exactly the "
-                        + "attention it asks for.")
+                    Text(L("This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for."))
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
@@ -266,7 +257,7 @@ struct BansheeView: View {
                             banshee.cease(mouth: mouth,
                                            assault: assault)
                         } label: {
-                            Label("Cease — restore what was",
+                            Label(L("Cease — restore what was"),
                                   systemImage: "speaker.slash")
                                 .frame(maxWidth: .infinity)
                         }
@@ -277,23 +268,19 @@ struct BansheeView: View {
                             banshee.scream(mouth: mouth,
                                             assault: assault)
                         } label: {
-                            Label("SCREAM",
+                            Label(L("SCREAM"),
                                   systemImage: "speaker.wave.3.fill")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
                     }
-                    Text("Ceasing restores the posture the "
-                        + "scream found: Serve as it was, "
-                        + "stealth as it was, the beacon and "
-                        + "Net-Assault stood down unless they "
-                        + "were already up on their own.")
+                    Text(L("Ceasing restores the posture the scream found: Serve as it was, stealth as it was, the beacon and Net-Assault stood down unless they were already up on their own."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("The Banshee")
+            .navigationTitle(L("The Banshee"))
             .onReceive(clock) { now = $0 }
         }
     }

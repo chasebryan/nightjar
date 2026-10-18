@@ -322,14 +322,10 @@ struct NightLogView: View {
         List {
             if !events.isEmpty {
                 let brief = MorningBrief.lines(events: events)
-                Section(header: Text("The morning brief"),
-                        footer: Text("The last twelve hours, "
-                            + "distilled from the sealed log "
-                            + "below — counts and headlines; the "
-                            + "proof stays in the ledger.")) {
+                Section(header: Text(L("The morning brief")),
+                        footer: Text(L("The last twelve hours, distilled from the sealed log below — counts and headlines; the proof stays in the ledger."))) {
                     if brief.isEmpty {
-                        Text("A quiet twelve hours. Nothing "
-                             + "knocked that mattered.")
+                        Text(L("A quiet twelve hours. Nothing knocked that mattered."))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     } else {
@@ -340,22 +336,17 @@ struct NightLogView: View {
                             shareItem = ShareItem(items: [
                                 MorningBrief.text(events: events)])
                         } label: {
-                            Label("Share the brief",
+                            Label(L("Share the brief"),
                                   systemImage: "square.and.arrow.up")
                         }
                     }
                 }
-                Section(header: Text("Seal chain"),
-                        footer: Text("Each new line names the "
-                            + "hash of the sealed line before "
-                            + "it. Verification proves no sealed "
-                            + "line was altered, reordered, or "
-                            + "removed from the middle of the "
-                            + "log.")) {
+                Section(header: Text(L("Seal chain")),
+                        footer: Text(L("Each new line names the hash of the sealed line before it. Verification proves no sealed line was altered, reordered, or removed from the middle of the log."))) {
                     Button {
                         report = Journal.verifyChain()
                     } label: {
-                        Label("Verify the chain",
+                        Label(L("Verify the chain"),
                               systemImage: "checkmark.seal")
                     }
                     if let reportText = reportText {
@@ -366,11 +357,7 @@ struct NightLogView: View {
                 }
             }
             if events.isEmpty {
-                Text("Nothing journaled yet. Serve arrivals, tripwire "
-                     + "knocks, EMCON posture changes, sparring runs "
-                     + "and listening-session bounds land here as one "
-                     + "timeline — the whole instrument, one night at "
-                     + "a time.")
+                Text(L("Nothing journaled yet. Serve arrivals, tripwire knocks, EMCON posture changes, sparring runs and listening-session bounds land here as one timeline — the whole instrument, one night at a time."))
                     .font(.callout).foregroundStyle(.secondary)
             }
             if !events.isEmpty {
@@ -379,7 +366,7 @@ struct NightLogView: View {
                         withAnimation { entriesOpen.toggle() }
                     } label: {
                         HStack {
-                            Label("Entries",
+                            Label(L("Entries"),
                                   systemImage: "list.bullet")
                             Spacer()
                             Text("\(events.count)")
@@ -425,7 +412,7 @@ struct NightLogView: View {
                     Button(role: .destructive) {
                         confirmClear = true
                     } label: {
-                        Label("Clear the log",
+                        Label(L("Clear the log"),
                               systemImage: "trash")
                     }
                 }
@@ -435,14 +422,14 @@ struct NightLogView: View {
                     Haptics.tap()
                     shareItem = ShareItem(items: [Journal.fileURL])
                 } label: {
-                    Label("Share the night log (JSONL)",
+                    Label(L("Share the night log (JSONL)"),
                           systemImage: "square.and.arrow.up")
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background { AppBackdrop() }
-        .navigationTitle("Night log")
+        .navigationTitle(L("Night log"))
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)
         }
@@ -450,18 +437,16 @@ struct NightLogView: View {
             "Clear the night log?",
             isPresented: $confirmClear,
             titleVisibility: .visible) {
-            Button("Clear \(events.count) entries",
+            Button(String(format: L("Clear %lld entries"), events.count),
                    role: .destructive) {
                 Journal.clear()
                 events = []
                 report = nil
                 entriesOpen = false
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("The sealed log file is deleted and the "
-                 + "seal chain starts fresh. This cannot be "
-                 + "undone.")
+            Text(L("The sealed log file is deleted and the seal chain starts fresh. This cannot be undone."))
         }
         .onAppear { events = Journal.events() }
     }

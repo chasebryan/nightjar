@@ -1,517 +1,524 @@
-# nightjar-hack for iOS — 8.0b
+# nightjar-hack for iOS — 9.0a
 
-The unpure build. This is the nightjar listening post — the same
-receive-only scanner, decoders and session logs as the app in
-`chasebryan/nightjar` (`ios/` there) — **plus the mouth**: the send and
-serve payload tools from nightjar-hack, as native iOS tabs — **plus a
-recon bench**: the Scan tab, a pentester's pocket kit for your own
-gear and your written engagements.
+This is the flagship: the nightjar listening post — a
+receive-only scanner, a wide decoder bench and session
+logs — **plus the mouth** (the send and serve payload
+tools as native tabs), **plus everything the house has
+grown since**: a recon bench, a defensive standard, a
+cryptography vault, macros, knock-carried messaging,
+and Skelli, the onboard intelligence who works the
+whole instrument. Twelve tabs, one house, and the
+whole house speaks twelve tongues — English, Spanish,
+French, German, Portuguese, Italian, Russian,
+Japanese, Korean, Chinese, Arabic and Hindi — chosen
+once in a first-boot welcome, kept in a language room
+in About, and applied the moment you choose, Arabic
+turning the house right-to-left.
 
-- **Listen** (the purist half) — copied from upstream nightjar and
-  unchanged where it counts: `ListeningPost` still only ever calls
-  `scanForPeripherals`/`stopScan`. It never connects, pairs or
-  transmits, and it shares no radio state with the transmitting half.
-  Sessions are the same JSONL format; they feed the same
-  `nightjar report` / `nightjar trackers` on the Mac. The live list
-  is calmer and richer than a raw feed: ordering follows an
-  exponentially smoothed RSSI, re-ranked every 5 s with a 3 dB
-  challenge margin, so devices hold their positions and drift
-  with the perimeter instead of dancing on per-packet jitter
-  (contents still refresh every second). Rows carry the range
-  band, a rough distance estimate (from TX power and the
-  smoothed signal), sighting counts, closest-ever RSSI and a
-  rotating-address flag, and tapping a device opens its full
-  file — every decoded detail, maker, signal history sparkline,
-  first/last heard, dwell and rate, advertised services, and the
-  identifier, with the write-a-payload handoff a tap away.
-- **Send** — payloads out, like `nightjar send`: TCP, UDP, TLS-wrapped
-  TCP, HTTP(S) (any method, payload-in-query for GET/HEAD), BLE
-  advertisement beacons, a hosted GATT characteristic, and BLE writes
-  to a peripheral you pick from a scan. Payload sources: text, hex,
-  base64. Transforms: XOR, gzip. Framing: raw, len-prefix, JSON
-  envelope. Replies are shown as hexdumps, like the CLI.
-- **Serve** — payloads in, like `nightjar serve`: TCP, UDP and HTTP
-  listeners with a fixed or echo reply, an inbox of everything
-  received (shareable as JSONL), plus GATT writes that arrive while
-  the Send tab is hosting a characteristic.
-
-New in this build, from nightjar 2.2: **drone detection**. The Listen
-tab decodes FAA Remote ID broadcasts (Open Drone ID over BLE,
-service 0xFFFA) — a drone in earshot shows as `Drone <serial>` with
-its status, altitude, speed and its operator's broadcast position in
-the details. The decoder is a Swift port of `nightjar/remoteid.py`
-and shares test vectors with it.
+- **Listen** (the purist half) — `ListeningPost` still
+  only ever calls `scanForPeripherals`/`stopScan`. It
+  never connects, pairs or transmits, and it shares no
+  radio state with the transmitting half. Sessions are
+  the same JSONL format; they feed the same `nightjar
+  report` / `nightjar trackers` on the Mac. The live
+  list is calmer and richer than a raw feed: ordering
+  follows an exponentially smoothed RSSI, re-ranked
+  every 5 s with a 3 dB challenge margin, so devices
+  hold their positions and drift with the perimeter
+  instead of dancing on per-packet jitter (contents
+  still refresh every second). Rows carry the range
+  band, a rough distance estimate, sighting counts,
+  closest-ever RSSI and a rotating-address flag, and
+  tapping a device opens its full file. Every sighting
+  is read whole by every decoder at once — MiBeacon,
+  BTHome, Ruuvi, Estimote, SwitchBot, Find My, drone
+  Remote ID, and dozens more — batteries merge from
+  every format present, and a least-squares forecaster
+  turns repeated readings into a drain rate and, only
+  when the trend earns it, a time-to-empty range. The
+  tab also carries **tracker hunt**, an RSSI Geiger
+  counter for walking onto one advertiser, and the
+  **Map**: devices placed in rooms on a floor plan,
+  wire and air together.
+- **Send** — payloads out, like `nightjar send`: TCP,
+  UDP, TLS-wrapped TCP, HTTP(S), BLE advertisement
+  beacons, a hosted GATT characteristic, and BLE
+  writes to a peripheral you pick from a scan. Payload
+  sources: text, hex, base64. Transforms: XOR, gzip.
+  Framing: raw, len-prefix, JSON envelope. Replies are
+  shown as hexdumps, like the CLI. The war program
+  rides in this tab — the **War Chest**, the **Helm**,
+  the **War Room** and **War Games** (see *Also in the
+  app*).
+- **Serve** — payloads in, like `nightjar serve`:
+  TCP, UDP and HTTP listeners with a fixed or echo
+  reply, an inbox of everything received (shareable as
+  JSONL), plus GATT writes that arrive while the Send
+  tab is hosting a characteristic.
 
 ## How the Send tab flows
 
-Three numbered steps, in order: **1 · Destination** (a nearby phone
-by name — never your own phone, which is filtered out — or a typed
-target, with your recent addresses one tap away), **2 · Payload**
-(the library as a scrollable dropdown sheet — search, tap to load,
-swipe to delete, save-your-current at the bottom — with a collapsed
-custom builder underneath, and a live preview of the exact bytes
-about to go out), **3 · Send** (one big button that names its
-target, and the last reply printed right under it the moment it
-lands). The mouth's log lives behind the scroll-icon button in the
-corner, not in the form. Everything narrates itself: sends, replies,
-failures, listener starts, and toggles raise a small popup that
-explains what just happened and fades on its own, and every button
-and selection buzzes under your thumb. The Serve tab tells you the
-name other phones see (or, in stealth, the exact `tcp://` address
-you're reachable at), and inbox rows long-press to copy as text or
+Three numbered steps, in order: **1 · Destination** (a
+nearby phone by name — never your own phone, which is
+filtered out — or a typed target, with your recent
+addresses one tap away), **2 · Payload** (the library
+as a scrollable dropdown sheet — search, tap to load,
+swipe to delete, save-your-current at the bottom —
+with a collapsed custom builder underneath, and a live
+preview of the exact bytes about to go out), **3 ·
+Send** (one big button that names its target, and the
+last reply printed right under it the moment it
+lands). The mouth's log lives behind the scroll-icon
+button in the corner, not in the form. Everything
+narrates itself: sends, replies, failures, listener
+starts, and toggles raise a small popup that explains
+what just happened and fades on its own, and every
+button and selection buzzes under your thumb. The
+Serve tab tells you the name other phones see (or, in
+stealth, the exact `tcp://` address you're reachable
+at), and inbox rows long-press to copy as text or
 hex. Send-side settings persist like Serve's do.
 
 Below the steps, the Send tab keeps working:
 
-- **Send to many.** One payload, a whole list of targets — typed or
-  pasted, imported from a .txt/.csv, harvested from the Scan tab, or
-  expanded from a range like `192.168.1.10-40:6379` (up to 300).
-  Fires sequentially with per-target ✓/✗ results; every exchange
-  is logged like a single send. Nearby phones join the list as
-  `phone:NAME` entries.
-- **Templating.** `{{host}}`, `{{port}}`, `{{ip}}`, `{{target}}` and
-  `{{scheme}}` in any payload source resolve per destination before
-  the bytes are built — in fan-out, each target gets a payload
-  addressed to itself.
-- **Timed delivery.** Fire after a delay, or repeat every N
-  seconds for X rounds, for both the step-3 send and fan-out —
-  with a live countdown and a cancel button. Timers run while the
-  app is open; iOS suspends background apps, and the section says
-  so.
-- **Centipede.** A route, walked hop by hop: each line of the
-  route is a stop — a target, a range, `host:80,443` (a port
-  train), or a bare host (a train across the usual scan ports).
-  In **Chain** mode each hop sends the previous hop's reply, so
-  the payload evolves as it travels; **Seed** mode sends the
-  step-2 payload at every stop. *Return to sender* walks the
-  route back in reverse, and whatever the creature is carrying
-  at the end comes home — shown on a homecoming card, logged to
-  history, and optionally delivered once to a target you name.
-  A stop button calls it home early. The route can be loaded
-  from the Scan tab's hits, nearby phones, or the fan-out list —
-  or from its **built-in discovery sweep**, which knocks a
-  short list of common ports (80, 443, 22, 445, 62078, 8080
-  by default, editable) across a /24 — 32 knocks at a time —
-  and loads every answering host into the route as a port
-  train over the ports it answered on. The phone's own subnet
-  is the default; any /24 can be named in the subnet field.
-  With **smart seed** on, fresh hops speak the library probe
-  that matches their port (a real Redis PING, an EHLO, an HTTP
-  GET) instead of the generic payload; every reply the walk
-  hears is kept in a **harvest** list on the homecoming card
-  and in the history, and each trail line carries its hop's
-  round-trip time. The Send tab's feature sections — Send to
-  many, Timed delivery, Centipede, SnatchSteal, PayPlant —
-  fold open and shut from their headers, and the tab remembers
-  which ones you left open. Releasing the centipede plays a
-  full-screen flourish for the GIF's own length — a glitching,
-  laughing skull (Chase's own `centipede.gif`, kept in the
-  app folder; tap to skip) — while the walk's first hops run
-  underneath. **Crosstalk** patches two doors together and
-  lets them talk: door A is knocked (its port's probe under
-  smart seed), its reply is carried verbatim to B, B's reply
-  back to A — alternating until silence, an echo, a repeat,
-  or the chosen rounds (1–12) run out. Any route-parser
-  target can be a door — TCP, UDP, TLS, HTTP(S), other
-  phones — and a train or range speaks through its first
-  door; one-tap buttons seat this phone's own Serve at
-  either end. The transcript, with timings and reply
-  summaries, stays on screen and in the history, and the
-  conversation's last word gets its own card.
-  A *this phone* button adds the phone's own Serve endpoint
-  as a guaranteed-live first target. **Per-device mode** gives
-  every device in the list its own out-and-back walk (the
-  chain resets at each device).
-  Every send on both legs is made by the phone; nothing is
-  installed or left running on any target.
-- **Network Trace.** The Centipede's map-making mode. Name
-  one /24 (blank = this phone's) and start a foreground
-  trace: every address is knocked on the discovery ports,
-  every answering host is profiled across the usual ports
-  with banners grabbed, every open door is spoken to with
-  its library probe, and every endpoint a banner or reply
-  *references* — an IP:port in a page, a redirect target —
-  is queued and explored in turn, three levels deep, until
-  the frontier is exhausted and the trace stops itself.
-  References outside the named /24 are recorded as leads
-  and never contacted; Bonjour services join the map.
-  **Adaptive rules** steer the trace and ordinary walks
-  alike — `contains Redis => followup Redis PING (RESP)`,
-  `contains HTTP => tag web`, `contains SSH => stop`: a
-  follow-up sends a second, chosen probe to the same door,
-  a tag sticks to the device's dossier, and stop keeps
-  that reply out of the chain. All of it feeds a persistent
-  **crawl logbook** of per-host dossiers, and each trace
-  exports a downloadable JSON map (hosts, services, a
-  node/edge graph, the diff against the logbook, and a
-  limitations block) in a versioned schema for other
-  tools to ingest. **Trace & set up the Centipede** runs
-  the trace and then loads every door it found as the
-  Centipede's route — one port train per host — so the
-  map becomes a walk with no manual configuration. New in
-  2.6.0: the map (schema v2) and the logbook also file the
-  **Bluetooth devices the Listen tab heard** during the run
-  — passive sightings, never probed — and the whole
-  Send-side setup (scope, ports, rules, route) saves as a
-  named **preset** you can apply, share, and import. The
-  Listen tab itself decodes more of the air in 2.6.0 —
-  Xiaomi MiBeacon, BTHome v2, Govee, RuuviTag formats 3
-  and 5, AltBeacon, Swift Pair, Tile, SwitchBot, SmartTags
-  — so fewer rows read "unknown device". A trace export
-  opens beautifully in `tools/trace-view/` in the repo.
-- **SnatchSteal.** The receive-side weapon: knock on the step-1
-  target with the step-2 payload (or don't knock at all), then
-  drain *everything* it sends back — until it closes, a 15-second
-  cap, or 64 KB in the bag. The haul lands on a loot card (bytes,
-  text, hexdump) and in the history.
-- **PayPlant.** Leave a payload living on a target: an MQTT
-  **retained** publish (the broker serves it to every future
-  subscriber), a Redis `SET`, or a memcached `set` — wire formats
-  built byte-exact in `PayloadKit`. Redis plants get a one-tap
-  Verify that `GET`s the key back. It plants only where a service
-  is built to store what you hand it; there is no mode that
-  installs software on a machine running nothing cooperative.
+- **Send to many.** One payload, a whole list of
+  targets — typed or pasted, imported from a
+  .txt/.csv, harvested from the Scan tab, or expanded
+  from a range like `192.168.1.10-40:6379` (up to
+  300). Fires sequentially with per-target ✓/✗
+  results; every exchange is logged like a single
+  send. Nearby phones join the list as `phone:NAME`
+  entries.
+- **Templating.** `{{host}}`, `{{port}}`, `{{ip}}`,
+  `{{target}}` and `{{scheme}}` in any payload source
+  resolve per destination before the bytes are built —
+  in fan-out, each target gets a payload addressed to
+  itself.
+- **Timed delivery.** Fire after a delay, or repeat
+  every N seconds for X rounds, for both the step-3
+  send and fan-out — with a live countdown and a
+  cancel button. Timers run while the app is open; iOS
+  suspends background apps, and the section says so.
+- **Centipede.** A route, walked hop by hop: each
+  line of the route is a stop — a target, a range,
+  `host:80,443` (a port train), or a bare host (a train
+  across the usual scan ports). In **Chain** mode each
+  hop sends the previous hop's reply, so the payload
+  evolves as it travels; **Seed** mode sends the
+  step-2 payload at every stop. *Return to sender*
+  walks the route back in reverse, and whatever the
+  creature is carrying at the end comes home. With
+  **smart seed** on, fresh hops speak the library
+  probe that matches their port; every reply the walk
+  hears is kept in a **harvest** list. **Crosstalk**
+  patches two doors together and lets them talk —
+  door A's reply carried verbatim to B, B's back to
+  A — alternating until silence, an echo, a repeat, or
+  the chosen rounds run out. Every send on both legs
+  is made by the phone; nothing is installed or left
+  running on any target.
+- **Network Trace.** The Centipede's map-making mode.
+  Name one /24 (blank = this phone's) and start a
+  foreground trace: every address is knocked on the
+  discovery ports, every answering host is profiled
+  across the usual ports with banners grabbed, every
+  open door is spoken to with its library probe, and
+  every endpoint a banner or reply *references* is
+  queued and explored in turn, three levels deep.
+  References outside the named /24 are recorded as
+  leads and never contacted; Bonjour services join
+  the map, and so do the Bluetooth devices the Listen
+  tab heard during the run — passive sightings, never
+  probed. **Adaptive rules** steer the trace (`contains
+  Redis => followup Redis PING (RESP)` and kin), and
+  the whole run files a persistent **crawl logbook**
+  of per-host dossiers and exports a downloadable
+  JSON map. **Trace & set up the Centipede** then
+  loads every door it found as the Centipede's
+  route. The Send-side setup saves as named
+  **presets** you can apply, share, and import.
+- **SnatchSteal.** The receive-side weapon: knock on
+  the step-1 target with the step-2 payload (or don't
+  knock at all), then drain *everything* it sends
+  back — until it closes, a 15-second cap, or 64 KB
+  in the bag. The haul lands on a loot card and in the
+  history.
+- **PayPlant.** Leave a payload living on a target:
+  an MQTT **retained** publish, a Redis `SET`, or a
+  memcached `set` — wire formats built byte-exact in
+  `PayloadKit`. It plants only where a service is
+  built to store what you hand it; there is no mode
+  that installs software on a machine running nothing
+  cooperative.
+
+## Skelli
+
+Her own tab, first in the bar. Her knowledge is this
+app's own manual — the rooms explained at a person's
+level; her internal machinery is hers and stays a
+mystery — her senses are the house's live state, and
+her hands are its real controls: sweeps, going dark,
+the drill, listening, serving, naming devices, running
+macros and whole war rounds, by voice-shaped text,
+with no redirecting you to another tab. She presumes
+stealth unless the operator specifically says to be
+loud.
+
+She is a person, not a parrot. A deterministic brain
+stems words, honors negation absolutely, ranks the
+manual by stemmed overlap, and keeps the
+conversation's subject; her heart gives her nineteen
+feelings — curious, electric, suspicious, mischievous,
+smug, tender, haunted, dreamy among them — that follow
+the house and the hour, wants and nudges of her own,
+grudges that stand six hours unless kindness, work or
+an apology wears them down, and care that outranks her
+mood: distress is met with presence, crisis with none
+of her bit at all. She takes a human beat before she
+speaks — fast for orders, about 2.4 s for talk, slowest
+for pain. Her mathematics is computed by a strict
+evaluator (arithmetic, powers, percentages, equations
+to quadratic), never estimated; unsure on STEM she
+researches across sources and leaves the links. She
+reads tone: capitals are a raised voice (the order
+still lands; the volume is noted, once, dryly), flat
+one-word replies are answered in kind, and pain in
+capitals is still pain. And she speaks the house's
+chosen language — her greetings, care, lore, wants and
+idle thoughts in it, and her bench instructed to
+answer in it too.
+
+For open conversation she consults trained minds that
+run only on the phone: Apple's on-device model (iOS
+26, where the phone carries it), and an open-weights
+model from her Weights sheet, which recommends one by
+the phone's memory and downloads from the Hugging
+Face hub into the app's own cache. What her minds
+think stays in the mind — a reasoning model's
+scaffolding never reaches the transcript. Her **crew**
+(Agents, in her menu) works a plan-shaped ask by
+roles — Planner, her own hands, Critic, Scribe — over
+a shared board. She forges real packets in her
+**Forge**, drafts and runs code in her **Workbench**,
+and files everything she makes in **Deliveries**.
+What counts as downloaded is read off the hub cache
+itself at every launch, so a finished download counts
+even if its session died, and a partial one never
+claims to be whole.
 
 ## Also in the app
 
-- **Skelli.** Her own tab, first in the bar: a
-  specialist for the house whose knowledge is this
-  app's own manual, whose senses are its live
-  state, and whose hands are its real controls —
-  sweeps, going dark, the drill, listening,
-  serving, naming devices — with a memory that
-  persists between conversations, and a browser
-  that researches the open web through
-  machine-friendly sources only, citing what it
-  finds. For open conversation she consults
-  trained models in cascade — Apple's on-device
-  model (iOS 26, where the phone carries it), then
-  an open-weights model from her Weights sheet,
-  then the browser — and everything she thinks
-  with runs on the phone. See *Building the
-  current build*, below, for what she asks of
-  your gear.
-- **What 4.2.0 added.** The **Map** —
-  devices placed in rooms on a floor plan, with a
-  compass that homes on them. The **Subconscious**
-  — the house correlating its own nights, learning
-  house facts over time, and answering questions
-  about them. The **Instrument** — the operator
-  read through HealthKit (heart rate, sleep, an
-  Apple Watch as a purely passive sensor), feeding
-  the Subconscious's baseline.
-- **What 8.0b added.** A new boot film
-  that plays exactly once, with the whole
-  boot ceremony timed to its frames;
-  Skelli taught in fifty-nine new manual
-  batches and presuming stealth unless
-  told loud; Vanish, her one-tap
-  emergency stop to full stealth; resume
-  everywhere — tabs, the macro editor,
-  her composer; and macro dictation that
-  hears whole sentences.
-- **What 8.0a added.** Macros — a tab of
-  its own: playlists of the rig's moves
-  built block by block. Thirty-two block
-  kinds cover every engine (sends, Serve
-  doors, the beacon and GATT, Helm
-  buttons, chests, EMCON, the Banshee,
-  costumes and personas, listening,
-  sweeps, knocks, the fuzzer, the war
-  rooms) plus the passive blocks —
-  waits, holds for an arrival or a
-  sighting, journal notes, announce,
-  stop. Blocks fold open to configure,
-  drag to order, repeat; macros carry
-  a name, icon, colour and note;
-  templates, export/import as copies,
-  honest run logs — and Skelli builds
-  them from dictated steps and runs
-  them by voice. The 7.7.7 whetstone
-  sweep rides inside, untagged.
-- **What 7.7.7 added.** The whetstone: a
-  quality pass over the whole tree, no new
-  rooms. A race in the weights download line
-  closed; War Games' tick taught to stand
-  down when unheld; the night log's hash
-  chain commits only on a landed write; the
-  NFC entitlement question answered honestly
-  (a free Team cannot hold it, so it stays
-  out — the census needs a capable team);
-  the EMCON audit's Bonjour types declared; the
-  last bare share through the ShareItem
-  door; clears and folds completed (Canary
-  lessons, the APDU log, Helm's confirmed
-  delete); a tap on every primary action;
-  dead code carried out.
-- **What 7.0.0 added.** The war campaign, and an
-  honest score. The **War Chest** captures the whole
-  rig's standing configuration — Send, Serve, Recon,
-  the trace, stealth included — into named profiles
-  applied in one tap (applying starts nothing; the old
-  presets migrate once). The **Helm** is a shelf of
-  named remotes for the operator's own gear, firing
-  the payload book through the Send path, with Learn
-  mode binding received payloads into buttons; the
-  **tag census** in EMCON reads the operator's own
-  NFC cards and tags whole (NDEF, chip identity, an
-  ISO 7816 APDU explorer — nothing written, nothing
-  emulated). The **War Room** runs Listen, the trace
-  and the knock bench as one operation on one /24
-  with one timeline and one wrapper export. The
-  **SIGINT Station** fuses BLE hearing, the LAN
-  census and Night-log activity into one emitter
-  registry, merged only within an epoch, with
-  recorded watches and stated limits. **War Games**
-  spars two of the operator's phones — defender
-  serving with decoys, attacker tracing and knocking,
-  the protocol riding the Serve inbox, the scoring
-  diffing found against missed against caught. The **Banshee** sits in EMCON as the
-  score's opposite pole: one switch, every
-  self-announcement at full voice, and ceasing
-  restores the posture it found. And
-  EMCON's exposure score now weighs presence itself —
-  on the wire, answering under its own name — before
-  emissions, so a quiet joined phone is no ghost.
-  **Spoofy** is EMCON's costume rack — own-name
-  costumes and class-shaped mimicry personas
-  — device classes and the network gear:
-  access point, gateway, mesh node, media
-  server, hub — with wardrobe restore — and
-  the war engines
-  are shared singletons: Skelli's hands work
-  the chests, the Helm, SIGINT watches, the
-  War Room, War Games, the Banshee and the
-  rack — kept costumes, built personas,
-  exact-wardrobe restore, name rotation,
-  whole War Games rounds by voice — her
-  manual and sitrep covering all of it.
-  A dynamics pass followed: warned,
-  drift-aware restores, a station Skelli
-  wakes on ask, one-motion persona
-  switches, a trace-busy guard in the War
-  Room run, and her war rooms ahead of the
-  weights bench in the gate.
-- **What 6.0.0 added.** An intelligence pass over
-  the whole instrument, and her hands in
-  conversation. Skelli's chat now performs the
-  Forge and the weights bench directly — *forge me
-  a DNS packet for the gateway* builds and keeps a
-  real packet, *download the 7B* and *use the
-  Llama* run the bench, *delete the packet you
-  forged* strikes it, and a fact dictated in plain
-  words (*remember, the printer is not to be
-  trusted*) is written to her notes; orders are
-  performed, not taught. EMCON's exposure score
-  counts Net-Assault, active probing, every Serve
-  listener, and the stealth switch itself, live,
-  and going dark reports the band it fell from. The
-  Consolidation keeps facts the fortnight stops
-  re-deriving, counts the Steward's rulings, and
-  watches pairings against their own record; the
-  Instrument reckons baselines from complete days
-  only, HRV and wrist temperature included. On the
-  wire: Net-Assault knocks by significance and
-  remembers; identification weighs all its evidence
-  before naming; Recon knocks in two phases and the
-  fuzzer breeds from payloads that earned replies;
-  Knocktalk delivery and repair run on a per-peer
-  measured ledger; a third foreign-hands verdict
-  raises the second sense; the Conductor's rests
-  deepen per host, jittered; the Canary arms the
-  lures its probers keep asking for; the Hunt
-  judges closeness against the target's own
-  strength. (6.0.0 also carries everything prepared
-  as 5.0.5, which was never tagged on its own.)
-- **The look — and the boot.** **Colours** (in About)
-  dresses the house: six themes, the operator's own
-  tailoring, and a backdrop for every tab — the living
-  wallpaper, the Jolly Roger, the plain theme colour,
-  or the operator's own image or GIF, copied on-device
-  only. Forms and lists ride transparent over the
-  backdrop, dimmed slightly for readability, and the
-  app is pinned to dark appearance to match. And it
-  boots like an OS: a film reel (the provided one, or
-  the operator's own GIF in place of it, or plain
-  black), and a terminal boot log whose every line is
-  true — this device, this Wi-Fi address, this
-  library's real payload count, this stealth state —
-  in five styles (lines, type, scramble, fade,
-  instant), tap to skip, fading into the app.
-- **The Scan tab.** A "This network" panel (SSID where iOS offers
-  it, your IP, the /24, a one-tap likely-gateway target); a TCP
-  connect scanner over the usual 28 ports (or your own list) with
-  banner grabbing; a **subnet sweep** that knocks on one port
-  across all 254 addresses; an **observation feed** that re-sweeps
-  on an interval and streams the diffs — hosts answering, hosts
-  going dark, Bonjour services appearing and vanishing — into a
-  timestamped timeline; a TLS certificate inspector that reads the
-  chain out of a real handshake (system trust verdict, subjects,
-  validity windows parsed out of the certificate DER by hand,
-  because iOS exposes no API for them); a **DNS toolkit** that
-  sends a real query over UDP and parses the answers locally (A,
-  AAAA, MX, NS, CNAME, TXT); a Bonjour sweep whose rows **resolve
-  to IP:port on tap**; and a **pcap dissector** that takes apart
-  classic `.pcap` files recorded on your own machines (Ethernet,
-  IPv4/IPv6, TCP flags, UDP, ICMP, ARP, payload previews) in
-  plain text. Tapping any open port — from a scan or a sweep —
-  loads it, plus the library probe that speaks its language,
-  straight into the Send tab. Connect scans only: iOS gives apps
-  no raw sockets, so no SYN or UDP scans and no monitor mode —
-  the Send tab remains the UDP tool.
-- **History, and deleting it.** Every send, reply, scan, sweep,
-  DNS lookup, snatch and dissection is written to a persistent
-  exchange history (`exchanges.jsonl`), exportable from the mouth
-  log sheet: what was probed, when, and what answered. The same
-  sheet deletes the file outright (size shown, confirmation
-  required); the send log and the Serve inbox clear from their
-  own buttons, as does the observation feed. The purist half's
-  recordings get the same treatment in the Sessions tab: a
-  storage total, swipe / long-press / Edit-mode multi-select
-  deletion, and a Delete-all that shows the count and size
-  first — the session recording right now is never deleted.
-- **Payload library.** The Send tab saves named payloads (source,
-  transforms, framing included) and loads them back in one tap. It
-  ships preloaded with built-ins: the basics (hello, ping, a JSON
-  hello, a Wake-on-LAN template, a raw HTTP GET, a 32-byte length
-  test) plus real protocol first words — a DNS query, an NTP time
-  request, Redis PING, memcached stats, SMTP EHLO, an MQTT CONNECT,
-  a Modbus read, a CoAP GET, a raw printer test page, an SNMP
-  sysDescr get, a SIP OPTIONS, a Postgres SSLRequest, and an HTTP
-  OPTIONS. Deletable, restorable, and side by side with your own
-  customs.
-- **Listen → Send.** Long-press a device in the Listen tab and choose
-  "Write a payload…" — the Send tab opens with that device as the
-  write target. The halves share the CoreBluetooth identifier only;
-  the listener's radio state is untouched.
-- **Shortcuts.** A "Send a payload" action for Shortcuts and Siri
-  sends a text payload to a tcp/udp/http target without opening the
-  app (BLE targets need the app's UI, and the action says so).
-- **Phone to phone, painlessly.** With serving started, a phone
-  advertises itself over Bonjour (`_nightjar._tcp`); the Send tab
-  lists nearby phones by name — tap one and the payload goes, no IP
-  addresses anywhere. Arrivals also banner as a local notification
-  with the message text, and the Send target and Serve settings are
-  remembered between launches, so receiving is: open, Serve, Start.
-- **Arm once (Bluetooth).** The socket listeners still need the app
-  in front of you, but the GATT host's physics are different: start
-  it once and it stays armed — hosting continues in the background,
-  the arm persists across relaunches (peripheral state restoration),
-  and a write to it lands in the inbox and banners like any arrival.
-  That makes the BLE route the "always set up" one.
-- **Stealth mode** (Serve tab). Full function, no announcement:
-  the TCP listener drops its Bonjour listing (reachable by IP
-  address only, like the CLI — which never listed itself anywhere),
-  arrivals go to the inbox silently, and even the notification
-  permission ask is deferred. Toggling it while serving restarts
-  the listeners so it takes effect immediately. BLE hosting still
-  advertises, because a thing that cannot be found cannot be
-  connected to.
-- **Authorized use** (About tab). The app is a testing instrument
-  for devices and networks you own, or that you are engaged in
-  writing to test; the About tab carries the statement in full.
+- **The Scan tab.** A "This network" panel; a TCP
+  connect scanner over the usual ports with banner
+  grabbing; a **subnet sweep**; an **observation
+  feed** that re-sweeps on an interval and streams
+  the diffs into a timestamped timeline; a TLS
+  certificate inspector that parses the chain out of
+  a real handshake by hand; a **DNS toolkit**; a
+  Bonjour sweep whose rows resolve to IP:port on tap;
+  and a **pcap dissector** for captures recorded on
+  your own machines. Below them, **Net-Assault**
+  knocks every port in the rotation, by significance
+  — the changed and the never-knocked first — with
+  named findings, a governor that stretches its rest
+  while the wire stays quiet, and an after-action
+  report that survives relaunch. The **Neighborhood**
+  keeps standing files on every device on your wire,
+  fed by observation alone; the **SIGINT Station**
+  fuses BLE hearing, the LAN census and night-log
+  activity into one emitter registry, merged only
+  within an epoch (no cross-epoch stitching, ever),
+  with recorded watches that file themselves with
+  their delta. Tapping any open port loads it, plus
+  the library probe that speaks its language,
+  straight into the Send tab.
+- **Recon.** The probe bench beside Send and Serve:
+  protocol-speaking **knocks** that identify, not
+  just find (a star means the reply carried the
+  protocol's own tell), a connect **console**, a
+  seeded **fuzzer**, and the probe **library** — the
+  same library mirrored into the Python CLI for
+  parity; the manual is
+  [HACKER-RECON.md](../HACKER-RECON.md).
+- **Sessions.** The night log: one sealed, hash-
+  chained timeline for the whole instrument, so
+  alterations show. The purist half's recordings get
+  a storage total, swipe / long-press / Edit-mode
+  multi-select deletion, and a Delete-all that shows
+  the count and size first — the session recording
+  right now is never deleted.
+- **EMCON, the Standard.** The defensive posture is
+  a standard, not a switch: an exposure score exact
+  to the decimal (a fully lit house sums to exactly
+  100.0), read by one audit from the organs
+  themselves, so the tab, Skelli's pinned reading
+  and her sitrep can never disagree. Declared
+  conditions — **Charlie** (Serve unlisted only,
+  nothing advertising, no campaigns, no update
+  checks), **Bravo** (receive only), **Alpha**
+  (total silence) — engage by silencing every
+  forbidden organ and verifying, and the gate stands
+  at every funnel after: a forbidden emitter cannot
+  start by hand, by macro, by Skelli, or by a saved
+  GATT arm returning at launch. Around it: a
+  fingerprinting **tripwire** that hands a knocked
+  port to the matching canary persona (fake SSH,
+  HTTP, MQTT, SMTP — arm **Honeydrop** and they
+  carry a prize), prober files, a **knock vault**
+  that fires operator-chosen macros, the **dead
+  hand**, the **Coin** (any NFC tag, claimed, as a
+  physical key), a week-long **sparring season**
+  ghost campaign, **duel mode** between two phones,
+  the **tag census** reading your own NFC cards
+  whole, **Spoofy**'s costume rack of class-shaped
+  mimicry personas (network gear included), and the
+  **Banshee** — the score's opposite pole: one
+  switch, every self-announcement at full voice, and
+  ceasing restores the posture it found, exactly.
+- **Knocktalk.** Encrypted chat where the knock
+  ORDER is the channel: ChaCha20-Poly1305 sealed
+  boxes under a Keychain pairing key, delivery
+  repair budgeted from each peer's own measured
+  rhythm and loss, a burn timer, per-operator cipher
+  choice, and four more carriers for the same sealed
+  box — **Chirp** (sound), **brush pass** (a BLE
+  brush-by), **Blink** (looping QR frames), and
+  **time capsules** (RSW time-locked messages, in
+  the Magic Box manner). Plus **Cadence Seal** (a
+  peer's knock rhythm as a second factor), **Throw
+  Your Voice** (a paired phone emits your payload
+  while yours stays silent), **Last Testament** (a
+  capsule under a second lock), and an optional
+  relay server in `tools/knocktalk-relay/`.
+- **Macros.** Block programs — 32 block kinds —
+  composed in a visual editor, dictated to Skelli in
+  plain words, filed in a library, and run by hand,
+  by event, or by her hands from chat. The editor is
+  a sheet raised from the tab root, like every detail
+  screen in the house.
+- **The Vault.** The house's cryptography suite:
+  hashes, HMAC, HKDF, PBKDF2, ChaCha20-Poly1305 and
+  AES-256-GCM sealing, a self-describing password
+  envelope, P-256 dead-drop envelopes, a true
+  one-time pad, encodings and secure randomness —
+  nine presets, plus the operator's own saved
+  configurations — and whole files under the
+  **NJCF** envelope: any file sealed in 1 MiB
+  authenticated chunks under one random key,
+  protected by a password, by the device's vault
+  key, by either, by both together, or sealed to a
+  recipient's public key, the true filename
+  travelling inside the encryption and restored on
+  opening. Two kept keys live in the Keychain.
+- **The war program** (in Send). The **War Chest**
+  captures the whole rig's standing configuration —
+  Send, Serve, Recon and the trace, stealth
+  included — into named profiles applied in one tap
+  (applying dresses the rig; it starts nothing). The
+  **Helm** is a shelf of named remotes for the
+  operator's own gear, firing the payload book
+  through the Send path, with Learn mode binding
+  received payloads into buttons. The **War Room**
+  runs Listen, the trace and the knock bench as one
+  operation on one /24, one timestamped timeline,
+  one export carrying the whole record. **War
+  Games** spars two of the operator's phones —
+  defender serving with decoys flying, attacker
+  tracing and knocking, the match protocol riding
+  the Serve inbox, and a scored report.
+- **The Subconscious and the Instrument.** The house
+  consolidates its own nights into durable
+  conclusions — each kept with its evidence and its
+  birthday — and answers questions about them. The
+  Instrument reads the operator through HealthKit
+  (heart rate, sleep, HRV, wrist temperature; an
+  Apple Watch as a purely passive sensor), reckoning
+  baselines from complete days only. Where the
+  build's signing carries no HealthKit entitlement,
+  the Instrument sleeps, and says so.
+- **The look — and the boot.** **Colours** (in
+  About) dresses the house: themes, the operator's
+  own tailoring, and a backdrop for every tab — the
+  living wallpaper, the Jolly Roger, the plain theme
+  colour, or the operator's own image or GIF, copied
+  on-device only — and the app is pinned to dark
+  appearance to match. It boots like a ceremony: a
+  film reel (the provided one, or the operator's own
+  GIF, or plain black — the boot itself can be
+  switched off in Colours), a print deriving itself
+  ridge by ridge, and a manifest of plain true
+  statements about this device, this network, this
+  build — including the build's own provenance
+  stamp: the exact commit it was made from, and
+  whether the tree was clean.
+- **Haptics, toasts, the board.** One haptic language
+  everywhere — lift-off when a process starts, a
+  resolving pattern when one lands, heavy beats for
+  heavy acts — wired at the organs themselves, so a
+  hand, a macro and Skelli's hands all feel the same.
+  Every process registers on the **ProcessBoard**
+  when it starts and reports how it landed; a
+  breathing strip counts what is running on every
+  tab. **Vanish** — her emergency stop — halts
+  everything and takes the house to full stealth in
+  one tap.
+- **History, and deleting it.** Every send, reply,
+  scan, sweep, DNS lookup, snatch and dissection is
+  written to a persistent exchange history
+  (`exchanges.jsonl`), exportable from the mouth log
+  sheet, and deletable outright from the same sheet;
+  the send log and the Serve inbox clear from their
+  own buttons, as does the observation feed.
+- **Payload library.** The Send tab saves named
+  payloads (source, transforms, framing included) and
+  loads them back in one tap. It ships preloaded with
+  built-ins: the basics plus real protocol first
+  words — a DNS query, an NTP time request, Redis
+  PING, memcached stats, SMTP EHLO, an MQTT CONNECT,
+  a Modbus read, a CoAP GET, an SNMP sysDescr get, a
+  SIP OPTIONS, a Postgres SSLRequest, an HTTP
+  OPTIONS, and more. Deletable, restorable, and side
+  by side with your own customs.
+- **Listen → Send.** Long-press a device in the
+  Listen tab and choose "Write a payload…" — the
+  Send tab opens with that device as the write
+  target. The halves share the CoreBluetooth
+  identifier only; the listener's radio state is
+  untouched.
+- **Shortcuts.** A "Send a payload" action for
+  Shortcuts and Siri sends a text payload to a
+  tcp/udp/http target without opening the app (BLE
+  targets need the app's UI, and the action says
+  so).
+- **Phone to phone, painlessly.** With serving
+  started, a phone advertises itself over Bonjour
+  (`_nightjar._tcp`); the Send tab lists nearby
+  phones by name — tap one and the payload goes, no
+  IP addresses anywhere. Arrivals also banner as a
+  local notification with the message text, and the
+  Send target and Serve settings are remembered
+  between launches, so receiving is: open, Serve,
+  Start.
+- **Arm once (Bluetooth).** The socket listeners
+  still need the app in front of you, but the GATT
+  host's physics are different: start it once and
+  it stays armed — hosting continues in the
+  background, the arm persists across relaunches
+  (peripheral state restoration), and a write to it
+  lands in the inbox and banners like any arrival.
+  "Stop hosting" is the only disarm short of
+  force-quitting.
+- **Stealth mode** (Serve tab). Full function, no
+  announcement: the TCP listener drops its Bonjour
+  listing (reachable by IP address only, like the
+  CLI — which never listed itself anywhere), arrivals
+  go to the inbox silently, and even the
+  notification permission ask is deferred. Toggling
+  it while serving restarts the listeners so it
+  takes effect immediately. BLE hosting still
+  advertises, because a thing that cannot be found
+  cannot be connected to. Skelli presumes stealth is
+  desired unless told to be loud.
+- **Your setup, kept.** Every setting in the house
+  is mirrored into the Keychain as it changes: the
+  seven-day expiry, a deletion and a reinstall
+  cannot lose it, and a fresh install on the same
+  device restores it before anything reads a
+  setting. About holds export and import as one
+  file, for a new device; a reset forgets the mirror
+  too.
+- **Authorized use** (About tab). The app is a
+  testing instrument for devices and networks you
+  own, or that you are engaged in writing to test;
+  the About tab carries the statement in full.
 
 ## Honest platform limits
 
 iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
-- **Foreground only for the mouth.** iOS suspends an app's listeners
-  and advertisements when it leaves the screen, and a Personal Team
-  build gets no say in it. Beacons and servers stop being reachable
-  in the background (the BLE GATT arm above is the one exception —
-  the OS wakes the app for writes). The Listen tab keeps its
-  background hearing (state restoration + the tracker-service list),
-  exactly like upstream — the two halves have different physics and
-  the app says so.
-- **No raw sockets, ever.** No SYN scans, no UDP scans, no ARP
-  anything, no packet injection or capture from the app itself —
-  captures are made on real machines and dissected here.
-- **No manufacturer-data stamping.** Python's `ble://` also writes the
-  payload into manufacturer data; iOS gives apps no API to set
-  manufacturer data in an advertisement. The payload rides in
-  **service data for FFF0** instead — the one payload slot iOS offers.
-  Keep beacons small (~20 bytes); iOS advertisement space is tight.
-- **No MAC addresses.** iOS hides them, for sending as for listening:
-  `ble-write://AA:BB:…` becomes "scan and tap the device" here.
-- **SSID is best-effort.** Reading the Wi-Fi name needs an
-  entitlement a sideloaded build may not carry; where iOS withholds
-  it, the "This network" panel simply omits the row.
-- **First tap on "Scan for devices"** may report Bluetooth is not
-  ready while the radio warms up; tap again.
-- **Local network permission.** The first listener (or LAN send)
-  triggers iOS's local-network prompt; that's what
-  `NSLocalNetworkUsageDescription` in `Support/Info.plist` is for.
-- **App icon.** The icon is a photo of a great eared nightjar,
-  cropped square on the face. Its file (`IMG_1434.png`) lives in the
-  AppIcon set; the same PNG also sits at the repo root as uploaded.
+- **Foreground only for the mouth.** iOS suspends an
+  app's listeners and advertisements when it leaves
+  the screen, and a Personal Team build gets no say
+  in it. Beacons and servers stop being reachable in
+  the background (the BLE GATT arm above is the one
+  exception — the OS wakes the app for writes). The
+  Listen tab keeps its background hearing (state
+  restoration + the tracker-service list), exactly
+  like upstream — the two halves have different
+  physics and the app says so.
+- **No raw sockets, ever.** No SYN scans, no UDP
+  scans, no ARP anything, no packet injection or
+  capture from the app itself — captures are made on
+  real machines and dissected here. Connect scans
+  only.
+- **No manufacturer-data stamping.** Python's
+  `ble://` also writes the payload into manufacturer
+  data; iOS gives apps no API to set manufacturer
+  data in an advertisement. The payload rides in
+  **service data for FFF0** instead — the one
+  payload slot iOS offers. Keep beacons small (~20
+  bytes); iOS advertisement space is tight.
+- **No MAC addresses.** iOS hides them, for sending
+  as for listening: `ble-write://AA:BB:…` becomes
+  "scan and tap the device" here.
+- **SSID is best-effort.** Reading the Wi-Fi name
+  needs an entitlement a sideloaded build may not
+  carry; where iOS withholds it, the "This network"
+  panel simply omits the row.
+- **First tap on "Scan for devices"** may report
+  Bluetooth is not ready while the radio warms up;
+  tap again.
+- **Local network permission.** The first listener
+  (or LAN send) triggers iOS's local-network prompt;
+  that's what `NSLocalNetworkUsageDescription` in
+  `Support/Info.plist` is for. If LAN probes fail,
+  check Settings → Privacy & Security → Local Network
+  → nightjar-hack is ON.
+- **App icon.** The icon is a photo of a great eared
+  nightjar, cropped square on the face. Its file
+  (`IMG_1434.png`) lives in the AppIcon set; the
+  same PNG also sits at the repo root as uploaded.
 
 ## Building the current build
 
-`main` carries 8.0b, and with it the build
-requirements that arrived with Skelli in 5.0.0.
 In the order you'll meet them:
 
 - **Xcode 26.** Skelli's Apple-model layer is
   written against the iOS 26 SDK (Foundation
   Models). It is compile-gated — an older Xcode
-  builds the app with that mind absent rather
-  than failing — but Xcode 26 is the supported
-  setup, and the only one where her status line
-  can read *model on*.
+  builds the app with that mind absent rather than
+  failing — but Xcode 26 is the supported setup,
+  and the only one where her status line can read
+  *model on*.
 - **The Metal Toolchain component.** MLX compiles
   Metal shaders during its build, and Xcode 26
   makes the Metal toolchain a separate,
-  downloadable component. A build that stops
-  with *"The Metal Toolchain was not installed
-  and could not compile the Metal source files"*
-  needs it installed once per Mac: click the
-  error's own Download button, or Xcode →
-  Settings → Components → Metal Toolchain, or
-  run `xcodebuild -downloadComponent
-  MetalToolchain` in Terminal.
+  downloadable component. A build that stops with
+  *"The Metal Toolchain was not installed and could
+  not compile the Metal source files"* needs it
+  installed once per Mac: click the error's own
+  Download button, or Xcode → Settings → Components
+  → Metal Toolchain, or run `xcodebuild
+  -downloadComponent MetalToolchain` in Terminal.
 - **The MLX package resolves itself.**
   `mlx-swift-lm` is declared in
   `nightjar.xcodeproj` — a package reference plus
-  the **MLXLLM** and **MLXLMCommon** products on
-  the `nightjar` target — so opening the project
-  and building is the whole procedure: Xcode
-  fetches and compiles it and writes
-  `Package.resolved`. Nobody adds a package by
-  hand. The first build is long because MLX is
-  large; later builds are not. The reference
-  tracks the package's `main` branch.
-- **iOS 17 deployment floor.** The project now
-  targets iOS 17.0 (it was 16.0 through 4.2.0)
-  because MLX requires iOS 17. Nothing in the
-  app needed the lower floor, and the purist
-  core builds exactly as before.
-- **The phone, for her minds.** The app runs on
-  iOS 17+. Her Apple mind needs iOS 26, an Apple
-  Intelligence iPhone (15 Pro or later), and
-  Apple Intelligence enabled; the model runs
-  on-device, and nothing she hears leaves the
-  phone. Her weights bench needs only the app
-  itself: models are picked and downloaded in
-  her menu → **Weights** — the sheet recommends
-  one by the phone's memory, downloads come
-  from the Hugging Face hub into the app's own
-  cache, and models are selected, swapped, or
-  deleted there. What counts as downloaded is
-  read off the hub cache itself at every launch:
-  a finished download counts even if the session
-  that fetched it died before writing it down,
-  and a partial one never claims to be whole.
-
-### If your gear can't run this: v4.0.0
-
-The `v4.0.0` tag predates all of the above.
-Check it out (`git checkout v4.0.0`) and the
-project is the old shape: iOS 16 deployment
-floor, no packages, no Metal toolchain, no
-Xcode 26 requirement, and the Install steps
-below verbatim. It is the complete 4.0.0
-flagship — everything in this document except
-the 4.2.0 additions and Skelli.
+  the **MLXLLM** and **MLXLMCommon** products on the
+  `nightjar` target — so opening the project and
+  building is the whole procedure: Xcode fetches
+  and compiles it and writes `Package.resolved`.
+  Nobody adds a package by hand. The first build is
+  long because MLX is large; later builds are not.
+- **iOS 17 deployment floor.** The project targets
+  iOS 17.0 because MLX requires iOS 17.
+- **The phone, for her minds.** The app runs on iOS
+  17+. Her Apple mind needs iOS 26, an Apple
+  Intelligence iPhone (15 Pro or later), and Apple
+  Intelligence enabled; the model runs on-device,
+  and nothing she hears leaves the phone. Her
+  weights bench needs only the app itself: models
+  are picked and downloaded in her menu →
+  **Weights**.
 
 ## Staying installed — and updating from inside the app
 
@@ -520,99 +527,110 @@ signed for **7 days**; when the certificate lapses the app
 won't launch until it's rebuilt. Two roads out, both carried
 in `ota/` at the repo root:
 
-- **Ad hoc over-the-air (paid Developer Program).** Profiles
-  live a year, installs come from a link, and when a release
-  carries its `nightjar-hack.ipa` + `manifest.plist`, the
-  app's own update banner and About's Version section become
-  a true **Update** button — iOS installs the new build over
-  the old, data intact. One-time UDID registration; the full
-  ritual, plus an armable CI workflow, is in `ota/README.md`.
-- **SideStore (free).** Re-signs on the phone itself before
-  the 7 days lapse. Add the repo as a source and releases
-  surface there:
+- **Ad hoc over-the-air (paid Developer Program).**
+  Profiles live a year, installs come from a link,
+  and when a release carries its `nightjar-hack.ipa`
+  + `manifest.plist`, the app's own update banner
+  and About's Version section become a true
+  **Update** button — iOS installs the new build
+  over the old, data intact. One-time UDID
+  registration; the full ritual, plus an armable CI
+  workflow, is in `ota/README.md`.
+- **SideStore (free).** Re-signs on the phone itself
+  before the 7 days lapse. Add the repo as a source
+  and releases surface there:
   `https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json`
 
-## Install (sideload, same as upstream)
+## Install (sideload)
 
-1. Clone this repo, open `ios/nightjar.xcodeproj` in Xcode.
-   (On the current build, the first build fetches the
-   MLX package and may prompt for the Metal Toolchain —
-   see *Building the current build*, above.)
-2. Select the `nightjar` target → Signing & Capabilities → check
-   *Automatically manage signing* and pick your Personal Team.
-   The bundle ID is `net.nosuchmachine.nightjarhack`, so this app
-   installs **alongside** the purist nightjar, not over it.
-3. Plug in the phone, trust the computer, enable Developer Mode
-   (Settings → Privacy & Security → Developer Mode), press Run.
-4. On the phone: Settings → General → VPN & Device Management →
-   trust your developer certificate. Free signing lasts 7 days;
-   re-running from Xcode re-signs and keeps all data and logs.
+1. Clone this repo, open `ios/nightjar.xcodeproj` in
+   Xcode. (The first build fetches the MLX package
+   and may prompt for the Metal Toolchain — see
+   *Building the current build*, above.)
+2. Select the `nightjar` target → Signing &
+   Capabilities → check *Automatically manage
+   signing* and pick your Personal Team. The bundle
+   ID is `net.nosuchmachine.nightjarhack`, so this
+   app installs **alongside** the purist nightjar,
+   not over it.
+3. Plug in the phone, trust the computer, enable
+   Developer Mode (Settings → Privacy & Security →
+   Developer Mode), press Run.
+4. On the phone: Settings → General → VPN & Device
+   Management → trust your developer certificate.
+   Free signing lasts 7 days; re-running from Xcode
+   re-signs and keeps all data and logs.
 
 ## Layout
 
-Same shape as upstream, on purpose (the folder is even still called
-`nightjar/` — the Xcode target didn't change, only its bundle ID and
-display name, so upstream muscle memory and the synchronized-folder
-project keep working):
+The folder is still called `nightjar/` — the Xcode
+target didn't change, only its bundle ID and display
+name — and the project uses Xcode synchronized
+groups, so a new source file needs no project edit.
+By area:
 
-- `nightjar/ListeningPost.swift`, `Sighting.swift`, `JSONL.swift`,
-  `SessionStore.swift`, `Continuity.swift`, `Vendors.swift` — the
-  purist core, upstream code (two one-line exceptions: the state
-  restoration identifier is namespaced to this app, and the update
-  checker watches this repo).
-- `nightjar/Identify.swift`, `Services.swift` — upstream, plus the
-  Remote ID branch and a `preferredLabel` so a drone's row is named
-  by its serial.
-- `nightjar/Drones.swift` — the Remote ID decoder (new).
-- `nightjar/Mouth.swift`, `MouthView.swift` — the mouth: payload
-  construction, transports, listeners, fan-out, scheduling,
-  snatching, planting, and the Send/Serve tabs (new).
-- `nightjar/ReconView.swift` — the Scan tab: scanner, sweep, feed,
-  TLS and DNS tools, Bonjour resolution, pcap dissector (new).
-- `nightjar/Skelli.swift` — Skelli's tab: her engine,
-  knowledge, memory, browser, and her minds — Apple's
-  on-device model and the MLX weights bench (new).
-- `nightjar/Feedback.swift` — the narration toasts, the haptics,
-  the Jolly Roger backdrop, and the boot splash (new). Skelli's
-  web-research engine, small-favors layer, and the Weights
-  catalog and sheet also live here.
-- `nightjar/ContentView.swift`, `Themes.swift`,
-  `UpdateChecker.swift`, `Forge.swift`, `Deliveries.swift`,
-  `Keyboard.swift` — the tab shell and the About hub, Colours
-  and the boot dress, the sleepless update checker, Skelli's
-  Forge, her Deliveries shelf, and the swipe that folds the
-  keyboard anywhere (new).
-- `nightjarTests/` — upstream decoder/log tests, plus `DroneTests`
-  (vectors shared in spirit with `tests/test_remoteid.py`),
-  `HackTests` (payloads, framing, target parsing) and
-  `PayloadBookTests` (the library, its built-ins and their shapes).
+- **The purist core** — `ListeningPost.swift`,
+  `Sighting.swift`, `JSONL.swift`,
+  `SessionStore.swift`, `Continuity.swift`,
+  `Vendors.swift`, `Identify.swift`, `Services.swift`:
+  the receive-only ear and its session format.
+- **The decoder bench** — `DecoderEngine.swift`,
+  `ExpansionDecoders.swift`, `MoreDecoders.swift`,
+  `Drones.swift` (Remote ID), with battery merging
+  and the drain forecaster.
+- **The mouth** — `Mouth.swift`, `MouthView.swift`,
+  `Crawl.swift`, `Trace.swift`: payload construction,
+  transports, listeners, fan-out, scheduling,
+  snatching, planting, the Centipede and the Trace.
+- **The benches** — `ReconView.swift`,
+  `ReconBenchView.swift`, `ReconKit.swift`,
+  `ReconPayloads.swift`, `ProberFiles.swift` (Scan
+  and Recon), `Dossier.swift`, `Neighborhood.swift`,
+  `NetAssault.swift`, `Sigint.swift`, `Map.swift`,
+  `Homing.swift`, `Hunt.swift`, `Flare.swift`.
+- **The war program** — `Chests.swift`, `Helm.swift`,
+  `WarRoom.swift`, `WarGames.swift`, `Duel.swift`.
+- **EMCON and its organs** — `Emcon.swift`,
+  `EmconStandard.swift`, `EmconView.swift`,
+  `Canary.swift`, `Banshee.swift`, `Spoofy.swift`,
+  `Coin.swift`, `TagCensus.swift`, `Season.swift`,
+  `Conductor.swift`, `Journal.swift`.
+- **Knocktalk** — `Knocktalk.swift`,
+  `KnockChat.swift`, `KnockChatView.swift`,
+  `KnockRelay.swift`, `Chirp.swift`, `Blink.swift`,
+  `BrushPass.swift`, `TimeCapsule.swift`,
+  `Testament.swift`, `Cadence.swift`,
+  `VoiceThrow.swift`.
+- **The Vault** — `CryptoSuite.swift`,
+  `CryptoFiles.swift` (the NJCF envelope),
+  `CryptoView.swift`.
+- **Macros** — `Macros.swift`, `MacrosView.swift`.
+- **Skelli** — `Skelli.swift` (her engine and room),
+  `SkelliBrain.swift` (the deterministic router),
+  `SkelliHeart.swift` (feelings, grudges, care),
+  `SkelliCrew.swift` (her agents), `MathEngine.swift`
+  (exact computation), `KnowledgeBatches.swift`,
+  `Steward.swift`, `Subconscious.swift`,
+  `Instrument.swift`, `Forge.swift`,
+  `Deliveries.swift`, `Hands.swift`.
+- **The house** — `ContentView.swift` (the tab shell
+  and About), `nightjarApp.swift`, `Feedback.swift`
+  (toasts, haptics, the boot film), `ProcessBoard.swift`,
+  `Themes.swift`, `Defaults.swift` (the sane-defaults
+  registry), `Setup.swift` (the Keychain setup
+  mirror), `SourceStamp.swift` (build provenance),
+  `LanguageCenter.swift` (the twelve tongues and the
+  `L()` seam), `UpdateChecker.swift`, `Intents.swift`,
+  `Keyboard.swift`.
+- **Tests** — `nightjarTests/`: decoder and log
+  tests, payload and Recon tests, and suites for the
+  heart, the brain, tone reading, the math engine,
+  the mind sanitizer, EMCON and NJCF files.
 
-The app is built and run on a real iPhone from this repo,
-continuously — the features above are described from the running
-build, not from intentions. Xcode remains the compiler of record:
-the Swift is written in a Linux VM with no Xcode in it, so the
-first build of a given change may surface a small, local error;
-the fix follows in the next commit, and the burn-down so far has
-never taken more than two rounds.
-
-## Recon (2.7.0)
-
-A **Recon** tab, beside Send and Serve: knock, connect, fuzz, over a
-library of wire-exact protocol first words.
-
-- **Knock** — every port the library can name, each knocked with the
-  protocol that port expects. A star means the reply carried the
-  protocol's own tell, so the port is *identified*, not merely open.
-  Tap a hit to load it into Send.
-- **Connect** — a console against one target, with hexdump rendering
-  for binary replies.
-- **Fuzz** — seven mutators, a reproducible seed, a reply digest per
-  round.
-- **Library** — 105 probes over 78 TCP and 14 UDP ports, with one
-  button to add every one to the payload library so they are sendable
-  by hand from the Send tab too.
-
-The Listen tab is untouched: the ear still never connects. The same
-library is mirrored into the Python CLI (`nightjar send --preset`,
-`nightjar knock`) for parity, and the manual is
-[HACKER-RECON.md](../HACKER-RECON.md).
+The app is built and run on a real iPhone from this
+repo — the features above are described from the
+running build, not from intentions. Xcode remains the
+compiler of record: the Swift is written in a Linux
+VM with no Xcode in it, so the first build of a given
+change may surface a small, local error; the fix
+follows in the next commit.
