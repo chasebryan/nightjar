@@ -583,6 +583,8 @@ final class SkelliCenter: ObservableObject {
         let text = raw.trimmingCharacters(
             in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
+        DevLog.event("skelli",
+                     "ask: \(String(text.prefix(90)))")
         lines.append(SkelliLine(fromOperator: true,
                                  text: text))
         persist()
@@ -3371,6 +3373,10 @@ enum SkelliWeights {
                 SkelliMindSanitizer.clean($0)
             }
         } catch {
+            DevLog.event(
+                "weights",
+                "ask failed: "
+                    + error.localizedDescription)
             return nil
         }
     }
@@ -3435,6 +3441,8 @@ enum SkelliWeights {
             let box = try await task.value
             container = box
             containerKey = key
+            DevLog.event("weights",
+                         "bench loaded (\(key))")
             return box
         } catch {
             await loadGate.clear(ifKey: key)

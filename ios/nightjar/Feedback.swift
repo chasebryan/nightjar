@@ -4100,6 +4100,10 @@ extension SkelliCenter {
             await MainActor.run {
                 if let hit,
                    secondReadingGrounded(hit, in: q) {
+                    DevLog.event(
+                        "skelli",
+                        "second reading dispatched: "
+                            + hit)
                     if hit.hasPrefix("REMEMBER:") {
                         let fact = String(hit.dropFirst(9))
                         remember(fact)
@@ -4133,6 +4137,12 @@ extension SkelliCenter {
                                 again: false)
                         return
                     }
+                }
+                if let hit {
+                    DevLog.event(
+                        "skelli",
+                        "second reading floored: "
+                            + hit)
                 }
                 consultMindOrResearch(q)
             }

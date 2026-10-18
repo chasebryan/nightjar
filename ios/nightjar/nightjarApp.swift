@@ -19,6 +19,13 @@ struct NightjarApp: App {
         // Keychain mirror before anything reads a
         // setting, and the mirror starts watching.
         HouseSetup.prepare()
+        // The developer kit, when armed, stands
+        // up before anything else can fall: the
+        // crash traps are registered first, then
+        // the launch itself joins the flight
+        // recorder.
+        CrashRecorder.installIfEnabled()
+        DevLog.event("app", "launched")
 #if !STORE_BUILD
         // Before launch finishes, on every launch — the
         // background update checker's handler must be on
@@ -83,6 +90,13 @@ struct NightjarApp: App {
                     emcon.steward.shiftChange(emcon: emcon)
                 }
                 .onChange(of: scenePhase) { phase in
+                    DevLog.event(
+                        "app",
+                        phase == .active
+                            ? "became active"
+                            : (phase == .background
+                               ? "went to background"
+                               : "inactive"))
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
                         emcon.deadHandEvaluate(mouth: mouth)

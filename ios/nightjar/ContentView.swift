@@ -946,6 +946,14 @@ struct AboutView: View {
     @ObservedObject private var languageCenter =
         LanguageCenter.shared
     @State private var showLanguageSheet = false
+    // The developer switch deliberately lives
+    // outside the settings registry, like the
+    // language-welcome marker: wiping preferences
+    // must not disarm the crash recorder.
+    @State private var developerOn =
+        UserDefaults.standard.bool(
+            forKey: DevKit.enabledKey)
+    @State private var showDeveloperSheet = false
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
     @AppStorage("listen.bthomeV1") private var bthomeV1 = false
     @AppStorage("postName") private var postName = "phone"
@@ -1061,6 +1069,42 @@ struct AboutView: View {
                     }
                     ExplainToggle(
                         text: L("The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left."))
+                }
+                Section(header: Text("Developer")) {
+                    Toggle("Developer options",
+                           isOn: $developerOn)
+                        .onChange(of: developerOn) { on in
+                            UserDefaults.standard.set(
+                                on,
+                                forKey: DevKit.enabledKey)
+                            if on {
+                                CrashRecorder.install()
+                                DevLog.event(
+                                    "developer",
+                                    "developer options "
+                                        + "turned on")
+                            } else {
+                                CrashRecorder
+                                    .setArmed(false)
+                            }
+                        }
+                    if developerOn {
+                        Button {
+                            showDeveloperSheet = true
+                        } label: {
+                            HStack {
+                                Label("Developer console",
+                                      systemImage: "wrench.and.screwdriver")
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    ExplainToggle(
+                        text: "For building and improving the house. While this is on, the app keeps a flight recorder of what Skelli and the system were just doing, and if the app ever crashes it writes down why — the signal or exception and the backtrace — before it dies. The console reads it all back and hands it over as one log file, ready to copy or share. Off, nothing is recorded.")
                 }
                 Section(header: Text(L("Your setup"))) {
                     ExplainToggle(
@@ -1208,6 +1252,9 @@ struct AboutView: View {
             }
             .sheet(isPresented: $showLanguageSheet) {
                 LanguageSheet()
+            }
+            .sheet(isPresented: $showDeveloperSheet) {
+                DeveloperSheet()
             }
             .fileImporter(isPresented: $importingSetup,
                           allowedContentTypes: [.json]) { result in

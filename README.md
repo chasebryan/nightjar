@@ -169,7 +169,11 @@ it closed. Build and install notes live in
   house's tongue once, in a welcome shown on the first
   boot and never again; after that it lives behind its
   own door here, every tongue by its native name.
-  About also keeps the version watch (see *Staying
+  About also holds a **Developer** section of its
+  own: an opt-in flight recorder and crash log —
+  if the app ever falls, the log says why — kept
+  in a console that hands it over as one shareable
+  file. About also keeps the version watch (see *Staying
   current*) and carries a quiet support door for
   anyone who wants to chip in toward the costs.
 

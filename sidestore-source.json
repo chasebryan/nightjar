@@ -9,7 +9,7 @@
             "tintColor": "148040",
             "version": "9.0a",
             "versionDate": "2026-10-20",
-            "versionDescription": "9.0a. The whole house in twelve tongues — every room, every view, and Skelli's own voice, chosen once in a first-boot welcome and kept in a language room of its own in About; her minds' thinking never reaches the transcript again. Carries the persona stack: nineteen feelings, grudges and care, exact minds, tone reading, and the end-to-end sweep."
+            "versionDescription": "9.0a. The whole house in twelve tongues — every room, every view, and Skelli's own voice, chosen once in a first-boot welcome and kept in a language room of its own in About; her minds' thinking never reaches the transcript again. Carries the persona stack: nineteen feelings, grudges and care, exact minds, tone reading, and the end-to-end sweep. Adds a developer section of its own: a flight recorder and a crash log that explains itself, exportable as one file."
         }
     ],
     "identifier": "net.nosuchmachine.nightjarhack.source",

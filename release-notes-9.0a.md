@@ -57,6 +57,17 @@
   answered as a greeting, in her
   own voice, without waking the
   bench at all.
+- **Developer options.** A section of
+  its own in About, for building and
+  improving the house: while it is
+  armed, a flight recorder keeps
+  Skelli's and the system's recent
+  steps, and if the app ever crashes
+  it writes down why — the signal or
+  the exception and the backtrace —
+  before it dies. The console reads
+  it all back and hands it over as
+  one shareable log.
 * The sweep. Before this
   build settled, the whole
   tree was hunted end to
