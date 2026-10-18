@@ -959,7 +959,7 @@ final class SkelliCenter: ObservableObject {
                     emcon.announcers.count,
                 assaultOn: AssaultCenter.shared.running,
                 serveListeners: mouth.serveListenerCount,
-                probingOn: false,
+                probingOn: ProbingBeacon.shared.active,
                 onLan: Mouth.localIPAddress() != nil,
                 hostName: emcon.hostName)
             var line = "exposure \(score.value) "
@@ -2621,6 +2621,7 @@ final class SkelliFilmView: UIView {
 
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
+    @ObservedObject private var probing = ProbingBeacon.shared
     @ObservedObject private var themes = ThemeCenter.shared
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var mouth: Mouth
@@ -3001,7 +3002,7 @@ struct SkelliView: View {
             announcerCount: emcon.announcers.count,
             assaultOn: AssaultCenter.shared.running,
             serveListeners: mouth.serveListenerCount,
-            probingOn: false,
+            probingOn: ProbingBeacon.shared.active,
             onLan: Mouth.localIPAddress() != nil,
             hostName: emcon.hostName)
     }

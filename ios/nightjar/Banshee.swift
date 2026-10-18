@@ -45,12 +45,8 @@ final class BansheeCenter: ObservableObject {
     /// The name this device answers to — the name the
     /// shout carries.
     private var hostName: String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0
-        else { return "this phone" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init)
-            ?? "this phone"
+        let name = Mouth.wireHostName()
+        return name.isEmpty ? "this phone" : name
     }
 
     // MARK: scream / cease

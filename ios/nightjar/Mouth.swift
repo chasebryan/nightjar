@@ -544,6 +544,20 @@ final class Mouth: NSObject, ObservableObject {
         return noted.data
     }
 
+    /// This phone's wire hostname, first label — the
+    /// one implementation of the fact every room
+    /// means by "the name it answers to". Empty when
+    /// the system reports none; callers dress the
+    /// empty case in their own words.
+    static func wireHostName() -> String {
+        var buffer = [CChar](repeating: 0, count: 256)
+        guard gethostname(&buffer, buffer.count) == 0
+        else { return "" }
+        let raw = String(cString: buffer)
+        return raw.split(separator: ".").first
+            .map(String.init) ?? raw
+    }
+
     /// This phone's LAN IPv4 (en0), for "reachable at tcp://…" lines.
     static func localIPAddress() -> String? {
         var result: String?

@@ -494,7 +494,7 @@ struct SendView: View {
                             Haptics.tap()
                             showImporter = true
                         } label: {
-                            Label("Import", systemImage: "doc.badge.plus")
+                            Label("Import", systemImage: "square.and.arrow.down")
                         }
                     }
                     .font(.caption)

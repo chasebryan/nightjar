@@ -579,7 +579,11 @@ struct WarRoomView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var post: ListeningPost
-    @StateObject private var run = WarRun()
+    // The one run — the same instance Skelli works.
+    // This room is a window on it, never a second
+    // run of its own: what she starts is what shows
+    // here, and what starts here is what she sees.
+    @ObservedObject private var run = WarRun.shared
     @StateObject private var recon = Recon()
     @StateObject private var book = PayloadBook()
     @State private var shareItem: ShareItem?
@@ -738,9 +742,9 @@ struct WarRoomView: View {
                 ShareSheet(items: item.items)
             }
             .onAppear { recon.mouth = mouth }
-            .onDisappear {
-                if run.running { run.detach() }
-            }
+            // No detach on disappear: the run is shared,
+            // so leaving the room leaves it running —
+            // the room's Stop button is the way down.
         }
     }
 

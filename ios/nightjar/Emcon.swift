@@ -255,12 +255,7 @@ final class Emcon: ObservableObject {
     /// UIDevice.current.name has returned the generic "iPhone"
     /// to ordinary apps since iOS 16, so the score reads the
     /// hostname the wire itself sees instead.
-    var hostName: String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0 else { return "" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init) ?? raw
-    }
+    var hostName: String { Mouth.wireHostName() }
 
     // MARK: - exposure score
 
@@ -387,7 +382,9 @@ final class Emcon: ObservableObject {
             deviceName: deviceName,
             exposureCount: exposures.count,
             announcerCount: announcers.count,
+            assaultOn: AssaultCenter.shared.running,
             serveListeners: mouth.serveListenerCount,
+            probingOn: ProbingBeacon.shared.active,
             onLan: ownIP != nil,
             hostName: hostName)
         active = true

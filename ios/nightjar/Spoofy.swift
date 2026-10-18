@@ -571,12 +571,8 @@ struct SpoofyView: View {
     @State private var showEditor = false
 
     private var hostName: String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0
-        else { return "—" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init)
-            ?? raw
+        let name = Mouth.wireHostName()
+        return name.isEmpty ? "—" : name
     }
 
     var body: some View {

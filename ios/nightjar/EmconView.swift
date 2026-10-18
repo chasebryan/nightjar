@@ -9,6 +9,7 @@ struct EmconView: View {
     @StateObject private var spar = Recon()
     @ObservedObject private var assault = AssaultCenter.shared
     @ObservedObject private var banshee = BansheeCenter.shared
+    @ObservedObject private var probing = ProbingBeacon.shared
     @State private var armAssault = false
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
@@ -32,7 +33,7 @@ struct EmconView: View {
                     announcerCount: emcon.announcers.count,
                     assaultOn: assault.running,
                     serveListeners: mouth.serveListenerCount,
-                    probingOn: spar.fuzzing,
+                    probingOn: probing.active,
                     onLan: emcon.ownIP != nil,
                     hostName: emcon.hostName)
     }

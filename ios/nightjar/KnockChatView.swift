@@ -786,7 +786,7 @@ struct KnockChatView: View {
                 } label: {
                     Label(capsuleBusy ? "Sealing…"
                                       : "Seal the capsule",
-                          systemImage: "lock.clock")
+                          systemImage: "lock.badge.clock")
                 }
                 .disabled(capsuleDraft.isEmpty || capsuleBusy
                           || capsuleTooLong)

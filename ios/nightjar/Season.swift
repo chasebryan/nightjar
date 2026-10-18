@@ -316,7 +316,7 @@ struct SeasonSectionView: View {
                     HStack(spacing: 6) {
                         Image(systemName: visit.caught == true
                               ? "shield.fill"
-                              : "shield.slash")
+                              : "shield")
                             .foregroundStyle(visit.caught == true
                                               ? Color.green
                                               : Color.orange)

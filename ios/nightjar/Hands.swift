@@ -41,12 +41,8 @@ extension SkelliCenter {
 
     /// This phone's wire name, first label.
     func warHostName() -> String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0
-        else { return "this phone" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init)
-            ?? raw
+        let name = Mouth.wireHostName()
+        return name.isEmpty ? "this phone" : name
     }
 
     /// The War Room's configuration, from the same stored
@@ -352,10 +348,10 @@ extension SkelliCenter {
                 return true
             }
             if run.running {
-                say("A Skelli-started run is already working "
+                say("The War Room run is already working "
                     + "— \(run.phase.rawValue.lowercased()). "
-                    + "The room's own console keeps its own "
-                    + "run; the two never share a trace.")
+                    + "There is only the one run; the room's "
+                    + "console shows this same one.")
                 return true
             }
             run.start(mouth: mouth, post: post,

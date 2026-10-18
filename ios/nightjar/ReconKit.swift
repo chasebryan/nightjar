@@ -7,6 +7,27 @@ import Network
 /// Same shape as `ScanModel`: a concurrent worker queue gated by a
 /// semaphore, and a separate serial queue for NWConnection starts and
 /// deadlines so a connection is never starved behind its own gating.
+/// One fact, kept once: is any bench in the app
+/// probing the wire right now? Every Recon bench
+/// reports its fuzz lifecycle here, so the exposure
+/// score — on every surface that shows it — weighs
+/// the same probing state.
+final class ProbingBeacon: ObservableObject {
+    static let shared = ProbingBeacon()
+    @Published private(set) var active = false
+    private var running = 0
+
+    func begin() {
+        running += 1
+        active = true
+    }
+
+    func end() {
+        running = max(0, running - 1)
+        active = running > 0
+    }
+}
+
 final class Recon: NSObject, ObservableObject {
 
     struct Hit: Identifiable {
@@ -32,7 +53,13 @@ final class Recon: NSObject, ObservableObject {
     @Published private(set) var connected = false
     @Published var connectTarget = ""
 
-    @Published private(set) var fuzzing = false
+    @Published private(set) var fuzzing = false {
+        didSet {
+            guard fuzzing != oldValue else { return }
+            if fuzzing { ProbingBeacon.shared.begin() }
+            else { ProbingBeacon.shared.end() }
+        }
+    }
     @Published private(set) var fuzzLines: [String] = []
     @Published private(set) var fuzzDead = 0
 

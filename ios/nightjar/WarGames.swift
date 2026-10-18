@@ -632,12 +632,8 @@ final class WarGamesCenter: ObservableObject {
     }
 
     private func deviceLabel() -> String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0
-        else { return "this phone" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init)
-            ?? "this phone"
+        let name = Mouth.wireHostName()
+        return name.isEmpty ? "this phone" : name
     }
 
     // MARK: the tick
@@ -770,12 +766,8 @@ struct WarGamesView: View {
     @AppStorage("warGamesDecoys") private var decoysText = ""
 
     private var myLabel: String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        guard gethostname(&buffer, buffer.count) == 0
-        else { return "this phone" }
-        let raw = String(cString: buffer)
-        return raw.split(separator: ".").first.map(String.init)
-            ?? "this phone"
+        let name = Mouth.wireHostName()
+        return name.isEmpty ? "this phone" : name
     }
 
     var body: some View {

@@ -1424,7 +1424,7 @@ struct ScanView: View {
                             Label(model.sweeping
                                     ? "Sweeping \(model.sweptCount)/254…"
                                     : "Sweep this /24",
-                                  systemImage: "radar")
+                                  systemImage: "scope")
                         }
                         .disabled(model.sweeping || model.scanning)
                     }
@@ -1480,7 +1480,7 @@ struct ScanView: View {
                                         "Census: Scan tab subnet sweep",
                                     ])
                             } label: {
-                                Label(knownName(for: ip), systemImage: "folder.badge.gear")
+                                Label(knownName(for: ip), systemImage: "folder.badge.gearshape")
                             }
                         }
                         ForEach(model.discovered) { service in
@@ -1494,7 +1494,7 @@ struct ScanView: View {
                                     ])
                             } label: {
                                 Label(service.name,
-                                      systemImage: "folder.badge.gear")
+                                      systemImage: "folder.badge.gearshape")
                             }
                         }
                         }
@@ -1655,7 +1655,7 @@ struct ScanView: View {
                         showPcapImporter = true
                     } label: {
                         Label("Import a .pcap file",
-                              systemImage: "doc.badge.magnifyingglass")
+                              systemImage: "square.and.arrow.down")
                     }
                     ForEach(pcapSummary, id: \.self) { line in
                         Text(line)
