@@ -185,15 +185,9 @@ final class TagCensus: NSObject, ObservableObject,
                 + "CLA INS P1 P2")
             return
         }
-        let apdu = NFCAPDU(instructionClass: bytes[0],
-                           instruction: bytes[1],
-                           instruction1: bytes[2],
-                           instruction2: bytes[3],
-                           data: Data(bytes.dropFirst(4)),
-                           expectedResponseLength: -1)
         apduLog.append("→ " + bytes.censusHexString)
-        isoTag.sendAPDU(apdu) { [weak self] response,
-                                  sw1, sw2, error in
+        isoTag.sendCommand(commandPacket: bytes) {
+            [weak self] response, sw1, sw2, error in
             DispatchQueue.main.async {
                 if let error {
                     self?.apduLog.append(
