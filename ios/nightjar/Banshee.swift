@@ -53,6 +53,7 @@ final class BansheeCenter: ObservableObject {
 
     func scream(mouth: Mouth, assault: AssaultCenter) {
         guard !screaming else { return }
+        Haptics.heavy()
         mouthRef = mouth
         snapshot = Snapshot(serve: mouth.serveRunning,
                             stealth: mouth.stealth,
@@ -99,6 +100,7 @@ final class BansheeCenter: ObservableObject {
 
     func cease(mouth: Mouth, assault: AssaultCenter) {
         guard screaming else { return }
+        Haptics.finish()
         timer?.invalidate()
         timer = nil
         mouthRef = nil

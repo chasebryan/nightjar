@@ -312,6 +312,7 @@ final class MimicCenter: ObservableObject {
                 + "own snapshot owns the posture. Cease it "
                 + "first."
         }
+        Haptics.press()
         let prior = wardrobe
         if activePersona != nil {
             // Switching shapes: restore the settings
@@ -398,6 +399,7 @@ final class MimicCenter: ObservableObject {
             return "No shape is being worn."
         }
         let drifted = dressDrifted(from: persona)
+        Haptics.pulse()
         restoreWardrobe(mouth: mouth, restartOrgans: true)
         wardrobe = nil
         activePersona = nil

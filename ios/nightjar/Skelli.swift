@@ -478,6 +478,7 @@ final class SkelliCenter: ObservableObject {
                                  text: text))
         persist()
         hushed = false
+        ProcessBoard.shared.muted = false
         // Thinking is always on — a short, real beat
         mood = .thinking
         let q = text.lowercased()
@@ -1552,6 +1553,7 @@ final class SkelliCenter: ObservableObject {
     /// stays quiet until the operator speaks.
     func haltAndVanish() {
         hushed = true
+        ProcessBoard.shared.muted = true
         scanner.stopSweep()
         scanner.stopWatch()
         MacroRunner.shared.stop()
@@ -1572,6 +1574,7 @@ final class SkelliCenter: ObservableObject {
         }
         mood = .idle
         activity = "Vanished — full stealth."
+        ProcessBoard.shared.endAllQuietly()
         Journal.log("skelli", "vanish",
                     "everything halted by the operator; "
                     + "full stealth taken")
@@ -2984,7 +2987,7 @@ struct SkelliView: View {
         let busy = skelli.anythingRunning
         return HStack(spacing: 10) {
             Button {
-                Haptics.error()
+                Haptics.vanish()
                 skelli.haltAndVanish()
             } label: {
                 HStack(spacing: 8) {

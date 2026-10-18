@@ -154,6 +154,7 @@ extension NJChest {
     /// through the mouth's gate so its live state and the
     /// persisted setting never disagree.
     func apply(mouth: Mouth) {
+        Haptics.press()
         let d = UserDefaults.standard
         d.set(traceScope, forKey: "traceScope")
         d.set(traceDiscoveryPorts, forKey: "traceDiscoveryPorts")

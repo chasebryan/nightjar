@@ -1122,6 +1122,11 @@ extension Mouth {
         let before = TraceBookStore.shared.scopeDossiers(base: base)
 
         traceBusy = true
+        ProcessBoard.shared.beginKeyed(
+            "mouth.trace", label: "Network trace",
+            organ: "Trace", detail: "on \(base).0/24",
+            stop: { [weak self] in
+                self?.stopNetworkTrace() })
         traceLatestExport = nil
         traceLines = [
             "Network trace — \(base).0/24",
@@ -1804,6 +1809,8 @@ extension Mouth {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.traceBusy = false
+                ProcessBoard.shared.endKeyed(
+                    "mouth.trace", .done(statusText))
                 self.traceLatestExport = url
                 self.traceStatus = statusText
                 self.traceLines.append(statusText)
@@ -1849,6 +1856,8 @@ extension Mouth {
         traceGeneration += 1
         if traceBusy {
             traceBusy = false
+            ProcessBoard.shared.endKeyed(
+                "mouth.trace", .stopped)
             traceStatus = "Stopped — trace halted by hand"
             traceLines.append("Stopped — trace halted by hand")
             line("network-trace: stopped by hand")

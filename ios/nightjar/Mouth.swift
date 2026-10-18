@@ -1623,6 +1623,7 @@ final class Mouth: NSObject, ObservableObject {
             line("nightjar: stop the GATT host before starting a beacon")
             return
         }
+        Haptics.start()
         beaconPayload = payload
         beaconName = name
         wantBeacon = true
@@ -1672,6 +1673,7 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func stopBeacon() {
+        Haptics.pulse()
         if wantFlare {
             // Posture semantics: standing the beacon down takes
             // the flare with it — a flare IS an emission.
@@ -1692,6 +1694,7 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func startGattHost(payload: Data, name: String) {
+        Haptics.start()
         gattPayload = payload
         beaconName = name
         gattHostOn = true
@@ -1714,6 +1717,7 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func stopGattHost() {
+        Haptics.pulse()
         gattArmOn = false
         // The armed payload goes too: a stopped host must not leave a
         // payload behind in UserDefaults for a later relaunch to serve.
@@ -2094,6 +2098,7 @@ extension Mouth {
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
                     reply: String, framing: String, echo: Bool = false) {
         stopServe()
+        Haptics.start()
         // Port hygiene: parse + clamp each enabled port ONCE, here;
         // the bind, the announce text and lastServeParams all use
         // these sanitized values and nothing else.
@@ -2170,6 +2175,7 @@ extension Mouth {
 
     func stopServe() {
         let wasRunning = serveRunning
+        if wasRunning { Haptics.pulse() }
         serveGeneration += 1
         for listener in listeners { listener.cancel() }
         listeners = []

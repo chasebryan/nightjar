@@ -137,6 +137,7 @@ final class WarRun: ObservableObject {
     var running: Bool { phase == .tracing || phase == .knocking }
 
     private var timer: Timer?
+    private var boardID: UUID?
     private weak var mouth: Mouth?
     private weak var post: ListeningPost?
     /// Held, not weak: a run Skelli starts hands over a
@@ -242,6 +243,10 @@ final class WarRun: ObservableObject {
         Journal.log("war-room", "run",
                     "run \(runID) started on \(base).0/24")
 
+        boardID = ProcessBoard.shared.begin(
+            label: "War Room run", organ: "War Room",
+            detail: "on \(base).0/24",
+            stop: { WarRun.shared.stop() })
         phase = .tracing
         mouth.startNetworkTrace(
             scopeText: config.scopeText,
@@ -471,6 +476,20 @@ final class WarRun: ObservableObject {
                     "run \(runID) \(failed ? "failed" : (stopped ? "stopped" : "complete")) — "
                     + "\(events.count) events, "
                     + "\(reconHits.filter { $0.isOpen }.count) open")
+        if let id = boardID {
+            boardID = nil
+            if failed {
+                ProcessBoard.shared.end(id, .failed(
+                    "the run failed — see the War Room"))
+            } else if stopped {
+                ProcessBoard.shared.end(id, .stopped)
+            } else {
+                ProcessBoard.shared.end(id, .done(
+                    "\(events.count) events · "
+                    + "\(reconHits.filter { $0.isOpen }.count)"
+                    + " open doors"))
+            }
+        }
     }
 
     private func writeExport(stopped: Bool,

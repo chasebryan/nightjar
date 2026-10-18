@@ -22,6 +22,43 @@
   finale: "> the world is
   yours", one held beat,
   then the fade into the app.
+- **The nervous system.**
+  The house can be FELT now,
+  from any screen. One haptic
+  language everywhere: a
+  lift-off pattern when a
+  process starts, a resolving
+  pattern when one lands,
+  heavy beats for heavy acts
+  (the Banshee, and the
+  emergency stop's double
+  thud), a soft settle when
+  things stand down — wired
+  at the organs themselves,
+  so a hand, a macro and
+  Skelli's own hands all feel
+  the same. And the board:
+  every process — macros, War
+  Room runs, sweeps, port
+  scans, the trace, knocks,
+  fuzz, watches — registers
+  when it starts and reports
+  how it landed. A breathing
+  strip under the toasts
+  counts what is running on
+  every tab; one tap opens
+  the board itself, with
+  elapsed times, a stop for
+  anything stoppable, and the
+  last dozen endings. Toasts
+  grew kinds — news, success,
+  warning, error, a process
+  reporting in — and repeats
+  fold into a count instead
+  of stacking. Vanish mutes
+  the board too: it files
+  everything, and says
+  nothing.
 - **Vanish — the emergency
   stop.** A mutable button in
   her pinned header: STOP

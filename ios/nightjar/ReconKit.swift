@@ -56,8 +56,18 @@ final class Recon: NSObject, ObservableObject {
     @Published private(set) var fuzzing = false {
         didSet {
             guard fuzzing != oldValue else { return }
-            if fuzzing { ProbingBeacon.shared.begin() }
-            else { ProbingBeacon.shared.end() }
+            if fuzzing {
+                ProbingBeacon.shared.begin()
+                ProcessBoard.shared.beginKeyed(
+                    "recon.fuzz.\(ObjectIdentifier(self))",
+                    label: "Fuzz", organ: "Recon",
+                    announce: false)
+            } else {
+                ProbingBeacon.shared.end()
+                ProcessBoard.shared.endKeyed(
+                    "recon.fuzz.\(ObjectIdentifier(self))",
+                    .done("Fuzz ended"))
+            }
         }
     }
     @Published private(set) var fuzzLines: [String] = []
@@ -87,6 +97,10 @@ final class Recon: NSObject, ObservableObject {
         let host = rawHost.trimmingCharacters(in: .whitespaces)
         guard !host.isEmpty, !ports.isEmpty, !knocking else { return }
         knocking = true
+        ProcessBoard.shared.beginKeyed(
+            "recon.knock.\(ObjectIdentifier(self))",
+            label: "Knock — \(host)", organ: "Recon",
+            detail: "\(ports.count) ports", announce: false)
         hits = []
         probed = 0
         total = ports.count
@@ -195,6 +209,9 @@ final class Recon: NSObject, ObservableObject {
         hits = sorted
         knocking = false
         let open = sorted.filter { $0.isOpen }
+        ProcessBoard.shared.endKeyed(
+            "recon.knock.\(ObjectIdentifier(self))",
+            .done("\(open.count) open of \(ports.count)"))
         console.append("knock \(host): \(open.count) open of \(ports.count)")
         if let mouth = mouth {
             mouth.logRecon("knock", host, lines: open.map {
@@ -248,6 +265,9 @@ final class Recon: NSObject, ObservableObject {
     func cancelKnock() {
         generation += 1
         knocking = false
+        ProcessBoard.shared.endKeyed(
+            "recon.knock.\(ObjectIdentifier(self))",
+            .stopped)
     }
 
     private func probe(host: String, port: Int, udp: Bool, timeout: TimeInterval,

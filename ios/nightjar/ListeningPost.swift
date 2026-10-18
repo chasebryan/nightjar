@@ -84,6 +84,7 @@ final class ListeningPost: NSObject, ObservableObject {
 
     func start(label rawLabel: String) {
         guard session == nil else { return }
+        Haptics.start()
         let trimmed = rawLabel.trimmingCharacters(in: .whitespacesAndNewlines)
         let label: String? = trimmed.isEmpty ? nil : trimmed
         let startedAt = Date().timeIntervalSince1970
@@ -133,6 +134,7 @@ final class ListeningPost: NSObject, ObservableObject {
 
     func stop() {
         guard let active = session else { return }
+        Haptics.finish()
         central.stopScan()
         if let writer = writer {
             writer.append(JSONL.object([

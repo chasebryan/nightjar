@@ -17,25 +17,62 @@ import WebKit
 
 /// Little in-app banners that say what just happened, then fade —
 /// so the app narrates itself instead of silently changing state.
+/// Toasts carry a KIND now — plain news, a success, a warning, an
+/// error, or a process reporting in — and the kind drives the
+/// icon, the tint and how long the banner stays. The same news
+/// arriving twice in a breath is counted, not stacked.
 final class ToastCenter: ObservableObject {
+    enum Kind {
+        case info, success, warn, error, process
+    }
+
     struct Toast: Identifiable {
         let id = UUID()
         let message: String
-        let isError: Bool
+        let kind: Kind
+        var count = 1
+        var isError: Bool { kind == .error }
     }
 
     @Published var current: Toast?
     private var queue: [Toast] = []
     private var draining = false
 
-    /// Enqueue, never overwrite: messages drain FIFO, each on
-    /// screen for ~2.2 s (errors ~4.5 s), carrying its own error
-    /// flag with it.
+    /// The house's long-standing door: a plain message is
+    /// good news unless it is flagged an error.
     func show(_ message: String, error: Bool = false) {
-        queue.append(Toast(message: message, isError: error))
+        show(message, kind: error ? .error : .success)
+    }
+
+    /// Enqueue, never overwrite: messages drain FIFO, each
+    /// dwelling by its kind. A repeat of the toast on screen
+    /// or last in line folds into it with a count.
+    func show(_ message: String, kind: Kind) {
+        if var showing = current,
+           showing.message == message, showing.kind == kind {
+            showing.count += 1
+            current = showing
+            return
+        }
+        if let index = queue.indices.last,
+           queue[index].message == message,
+           queue[index].kind == kind {
+            queue[index].count += 1
+            return
+        }
+        queue.append(Toast(message: message, kind: kind))
         guard !draining else { return }
         draining = true
         displayNext()
+    }
+
+    private func dwell(_ kind: Kind) -> Double {
+        switch kind {
+        case .error: return 4.5
+        case .warn: return 3.6
+        case .process: return 3.4
+        case .info, .success: return 2.2
+        }
     }
 
     private func displayNext() {
@@ -47,11 +84,13 @@ final class ToastCenter: ObservableObject {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
             current = toast
         }
-        let dwell = toast.isError ? 4.5 : 2.2
-        DispatchQueue.main.asyncAfter(deadline: .now() + dwell) { [weak self] in
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + dwell(toast.kind)) { [weak self] in
             guard let self = self else { return }
             if self.queue.isEmpty {
-                withAnimation(.easeOut(duration: 0.3)) { self.current = nil }
+                withAnimation(.easeOut(duration: 0.3)) {
+                    self.current = nil
+                }
                 self.draining = false
             } else {
                 self.displayNext()
@@ -63,21 +102,53 @@ final class ToastCenter: ObservableObject {
 struct ToastView: View {
     let toast: ToastCenter.Toast
 
+    private var icon: String {
+        switch toast.kind {
+        case .info: return "info.circle.fill"
+        case .success: return "checkmark.circle.fill"
+        case .warn: return "exclamationmark.triangle.fill"
+        case .error: return "xmark.octagon.fill"
+        case .process: return "checkmark.seal.fill"
+        }
+    }
+
+    private var fill: Color {
+        switch toast.kind {
+        case .error: return Color.red.opacity(0.92)
+        case .warn: return Color(red: 0.72, green: 0.45,
+                                 blue: 0.05).opacity(0.95)
+        case .info, .success, .process:
+            return Color(white: 0.16).opacity(0.95)
+        }
+    }
+
+    private var iconTint: Color {
+        switch toast.kind {
+        case .info: return Color(white: 0.85)
+        case .success, .process:
+            return Color(red: 0.35, green: 1.0, blue: 0.45)
+        case .warn: return Color(red: 1.0, green: 0.8, blue: 0.3)
+        case .error: return .white
+        }
+    }
+
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: toast.isError
-                  ? "exclamationmark.triangle.fill"
-                  : "checkmark.circle.fill")
+            Image(systemName: icon)
+                .foregroundStyle(iconTint)
             Text(toast.message)
                 .font(.callout.weight(.medium))
                 .multilineTextAlignment(.leading)
+            if toast.count > 1 {
+                Text("×\(toast.count)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.75))
+            }
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Capsule().fill(
-            toast.isError ? Color.red.opacity(0.92)
-                          : Color(white: 0.16).opacity(0.95)))
+        .background(Capsule().fill(fill))
         .shadow(radius: 8, y: 3)
         .padding(.horizontal, 16)
     }
@@ -793,7 +864,13 @@ struct BootView: View {
     }
 }
 
-/// One place for every buzz, so buttons *feel* like they did something.
+/// One place for every buzz, so the house speaks one
+/// haptic language, felt from any screen: a light touch
+/// for a tap, a lift-off pattern when a process starts,
+/// a resolving pattern when one lands, a warning's
+/// double-tap, and two heavy thuds for the emergency
+/// stop — unmistakable through a pocket. Patterns are
+/// generator sequences; every call is fire-and-forget.
 enum Haptics {
     static func tap() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -809,12 +886,66 @@ enum Haptics {
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
+    /// A deliberate press — a primary action taken.
+    static func press() {
+        UIImpactFeedbackGenerator(style: .medium)
+            .impactOccurred()
+    }
+
+    /// The heaviest single beat the house owns.
+    static func heavy() {
+        UIImpactFeedbackGenerator(style: .heavy)
+            .impactOccurred()
+    }
+
+    /// A soft settle — things standing down, closing,
+    /// being put away.
+    static func pulse() {
+        UIImpactFeedbackGenerator(style: .soft)
+            .impactOccurred(intensity: 0.45)
+    }
+
     static func success() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        UINotificationFeedbackGenerator()
+            .notificationOccurred(.success)
+    }
+
+    static func warn() {
+        UINotificationFeedbackGenerator()
+            .notificationOccurred(.warning)
     }
 
     static func error() {
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        UINotificationFeedbackGenerator()
+            .notificationOccurred(.error)
+    }
+
+    /// A process begins: a medium beat with a light
+    /// confirming beat on its heels — lift-off.
+    static func start() {
+        press()
+        after(0.09) { tap() }
+    }
+
+    /// A process lands well: the success chord with a
+    /// soft settle after it — distinct from a plain
+    /// success, which belongs to single acts.
+    static func finish() {
+        success()
+        after(0.14) { pulse() }
+    }
+
+    /// The emergency stop: two heavy thuds.
+    static func vanish() {
+        heavy()
+        after(0.13) { heavy() }
+    }
+
+    private static func after(
+        _ seconds: Double, _ body: @escaping () -> Void
+    ) {
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + seconds, execute: body)
     }
 }
 

@@ -95,6 +95,9 @@ final class ScanModel: ObservableObject {
         else { return }
         lastScannedHost = host
         scanning = true
+        scanBoardID = ProcessBoard.shared.begin(
+            label: "Port scan — \(host)", organ: "Scan",
+            detail: "\(ports.count) ports")
         results = []
         probedCount = 0
         totalCount = ports.count
@@ -121,6 +124,11 @@ final class ScanModel: ObservableObject {
         group.notify(queue: .main) { [weak self] in
             self?.results = found.sorted { $0.port < $1.port }
             self?.scanning = false
+            if let id = self?.scanBoardID {
+                self?.scanBoardID = nil
+                ProcessBoard.shared.end(id, .done(
+                    "\(found.count) open port(s)"))
+            }
         }
     }
 
@@ -220,6 +228,12 @@ final class ScanModel: ObservableObject {
         guard parts.count == 4 else { return }
         let prefix = parts.dropLast().joined(separator: ".") + "."
         sweeping = true
+        if !sweepIsWatch {
+            sweepBoardID = ProcessBoard.shared.begin(
+                label: "Sweep — port \(port)", organ: "Scan",
+                detail: "across the /24",
+                stop: { [weak self] in self?.stopSweep() })
+        }
         sweepHosts = []
         sweptCount = 0
         var found: [SweepHost] = []
@@ -258,6 +272,11 @@ final class ScanModel: ObservableObject {
             NeighborhoodStore.shared.recordSweep(self.sweepHosts)
             let wasWatch = self.sweepIsWatch
             self.sweepIsWatch = false
+            if !wasWatch, let id = self.sweepBoardID {
+                self.sweepBoardID = nil
+                ProcessBoard.shared.end(id, .done(
+                    "\(found.count) host(s) answering"))
+            }
             // Only a watch-cycle sweep feeds the observation
             // chain; a manual sweep pressed mid-watch must not
             // diff against the feed baseline or hijack its timer.
@@ -281,6 +300,9 @@ final class ScanModel: ObservableObject {
     /// Bumped by stopWatch(); a sweep that started under an older
     /// generation is stale by the time it finishes.
     private var sweepGeneration = 0
+    private var sweepBoardID: UUID?
+    private var scanBoardID: UUID?
+    private var watchBoardID: UUID?
     /// Set by ScanView: called on the main queue after every
     /// sweep, with whether that sweep was a watch cycle (manual
     /// completions toast, feed targets, and log; watch ones don't).
@@ -299,6 +321,10 @@ final class ScanModel: ObservableObject {
     func startWatch(port: Int) {
         guard !watching else { return }
         watching = true
+        watchBoardID = ProcessBoard.shared.begin(
+            label: "Watch — port \(port)", organ: "Scan",
+            detail: "narrating the /24", announce: false,
+            stop: { [weak self] in self?.stopWatch() })
         feedPort = port
         baselineTaken = false
         knownServices = Set(discovered.map { "\($0.name)|\($0.type)" })
@@ -315,12 +341,20 @@ final class ScanModel: ObservableObject {
     func stopSweep() {
         sweepGeneration += 1
         sweeping = false
+        if let id = sweepBoardID {
+            sweepBoardID = nil
+            ProcessBoard.shared.end(id, .stopped)
+        }
     }
 
     func stopWatch() {
         sweepGeneration += 1
         guard watching else { return }
         watching = false
+        if let id = watchBoardID {
+            watchBoardID = nil
+            ProcessBoard.shared.end(id, .stopped)
+        }
         watchWork?.cancel()
         appendFeed("watch stopped")
     }

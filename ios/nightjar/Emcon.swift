@@ -371,6 +371,7 @@ final class Emcon: ObservableObject {
     /// tripwire. Serve listeners keep running if they were running,
     /// but under stealth — unlisted, silent arrivals.
     func activate(mouth: Mouth) {
+        Haptics.press()
         // The reading before the fall, taken from the
         // figures as they stand — engaging EMCON
         // must be able to show what it bought.
@@ -401,6 +402,7 @@ final class Emcon: ObservableObject {
     /// beacon are left exactly as they are — re-arming an emission
     /// is always a deliberate act in its own tab.
     func deactivate() {
+        Haptics.pulse()
         scoreBeforeDark = nil
         active = false
         UserDefaults.standard.set(false, forKey: Self.activeKey)

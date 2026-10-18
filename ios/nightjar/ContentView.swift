@@ -4,6 +4,8 @@ import UIKit
 
 struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
+    @ObservedObject private var board = ProcessBoard.shared
+    @State private var showBoard = false
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var post: ListeningPost
@@ -105,6 +107,7 @@ struct ContentView: View {
             SkelliCenter.shared.wire(mouth: mouth,
                                      emcon: emcon,
                                      post: post)
+            ProcessBoard.shared.toasts = toasts
         }
         .onReceive(NotificationCenter.default.publisher(
             for: .houseNavigate)) { note in
@@ -123,11 +126,27 @@ struct ContentView: View {
             if handoff != nil { tab = 6 }
         }
         .overlay(alignment: .top) {
-            if let toast = toasts.current {
-                ToastView(toast: toast)
-                    .padding(.top, 6)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+            VStack(spacing: 8) {
+                if let toast = toasts.current {
+                    ToastView(toast: toast)
+                        .transition(.move(edge: .top)
+                            .combined(with: .opacity))
+                }
+                if !board.active.isEmpty {
+                    ProcessStripView(board: board) {
+                        showBoard = true
+                    }
+                    .transition(.move(edge: .top)
+                        .combined(with: .opacity))
+                }
             }
+            .padding(.top, 6)
+            .animation(.spring(response: 0.35,
+                               dampingFraction: 0.85),
+                       value: board.active.count)
+        }
+        .sheet(isPresented: $showBoard) {
+            ProcessBoardView()
         }
             if showBoot {
                 BootView {

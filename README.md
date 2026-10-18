@@ -134,7 +134,11 @@ one tap halts everything she is doing and
 takes the house to full stealth. The house
 reopens exactly where it closed, down to the
 macro editor's folded blocks, and her macro
-dictation hears whole sentences now.
+dictation hears whole sentences now. And the house can be
+felt from any screen now — one haptic
+language for every act, and a board that
+tracks every running process and reports
+how each one lands.
 
 ## What's new in 8.0a — "the conductor"
 

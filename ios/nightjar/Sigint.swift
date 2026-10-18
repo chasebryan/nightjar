@@ -168,6 +168,7 @@ final class SigintStation: ObservableObject {
 
     private var timer: Timer?
     private weak var postRef: ListeningPost?
+    private var boardID: UUID?
     private var attachCount = 0
     private var emitterIndex: [String: Int] = [:]
     private var doorSignatures: [String: [String: String]] = [:]
@@ -260,6 +261,13 @@ final class SigintStation: ObservableObject {
                  detail: "Scope: \(scope)", source: "sigint")
         Journal.log("sigint", "watch",
                     "watch \(watch.id) started (\(scope))")
+        boardID = ProcessBoard.shared.begin(
+            label: "Watch — \(watch.name)", organ: "SIGINT",
+            detail: "scope: \(scope)",
+            stop: { [weak self] in
+                guard let self = self,
+                      let post = self.postRef else { return }
+                self.stopWatch(post: post) })
         ensureTimer()
     }
 
@@ -310,6 +318,11 @@ final class SigintStation: ObservableObject {
         if startedListenForWatch {
             post.stop()
             startedListenForWatch = false
+        }
+        if let id = boardID {
+            boardID = nil
+            ProcessBoard.shared.end(
+                id, .done(watch.summaryText))
         }
         addEvent(.run, "Watch filed — \(watch.name)",
                  detail: watch.summaryText, source: "sigint")

@@ -852,6 +852,7 @@ final class MacroRunner: ObservableObject {
     @Published private(set) var lastSummary = ""
 
     private var task: Task<Void, Never>?
+    private var boardID: UUID?
     private let bench = Recon()
     private let warBench = Recon()
 
@@ -870,6 +871,10 @@ final class MacroRunner: ObservableObject {
         lastSummary = ""
         bench.mouth = mouth
         warBench.mouth = mouth
+        boardID = ProcessBoard.shared.begin(
+            label: "Macro — \(macro.name)", organ: "Macros",
+            detail: "\(macro.blocks.count) blocks",
+            stop: { MacroRunner.shared.stop() })
         note("▶ \(macro.name) — \(macro.blocks.count) block"
             + (macro.blocks.count == 1 ? "" : "s"), mark: "▶")
         Journal.log("macro", "run",
@@ -904,6 +909,12 @@ final class MacroRunner: ObservableObject {
         running = false
         currentStep = ""
         lastSummary = summary
+        if let id = boardID {
+            boardID = nil
+            ProcessBoard.shared.end(
+                id, summary.hasSuffix("stopped.")
+                    ? .stopped : .done(summary))
+        }
     }
 
     private func note(_ text: String, mark: String) {
