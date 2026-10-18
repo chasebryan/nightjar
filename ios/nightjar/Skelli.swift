@@ -1300,6 +1300,31 @@ final class SkelliCenter: ObservableObject {
         // done, before the machinery wakes.
         if smallFavor(q, raw: raw) { return }
 
+        // "Don't forget X" is a remembering said
+        // the way people actually say it — the
+        // negation IS the directive. Without this
+        // lane the sentence fell through to the
+        // clear gate's bare "forget" and was
+        // answered with store-clearing guidance.
+        if let stem = ["don't forget ",
+                       "don’t forget ",
+                       "dont forget ",
+                       "do not forget "]
+            .first(where: { q.hasPrefix($0) }) {
+            var note = String(q.dropFirst(stem.count))
+            if note.hasPrefix("that ") {
+                note = String(note.dropFirst(5))
+            }
+            if !note.isEmpty {
+                remember(note)
+                say("Kept: " + note + ". It stays with "
+                    + "me across conversations — ask "
+                    + "'what do you remember', or tell "
+                    + "me to forget it.")
+                return
+            }
+        }
+
         // Being told things: her long memory.
         if q.hasPrefix("remember ") || q.hasPrefix("remember,") || q.hasPrefix("remember:") || q == "remember" {
             var note = String(q.dropFirst(9))

@@ -123,6 +123,29 @@ enum SkelliBrain {
 
     // MARK: - Ranked knowledge
 
+    /// Words too common to carry a page: they
+    /// live in every body ever written, so an
+    /// overlap made only of them is no evidence
+    /// at all — "what is the capital of france"
+    /// once scored a protocols page on what, of,
+    /// the and is alone, between a title "what"
+    /// and body stopwords. Curated keywords
+    /// still match in full; only the title and
+    /// body overlap counts are filtered.
+    private static let rankStopwords: [String] = [
+        "the", "of", "is", "are", "was", "were",
+        "a", "an", "and", "or", "to", "in", "on",
+        "for", "with", "as", "at", "by", "from",
+        "what", "how", "do", "does", "did",
+        "i", "you", "it", "this", "that",
+        "my", "me", "we", "he", "she", "they",
+        "them", "his", "her", "their", "our",
+        "your", "can", "could", "would", "should",
+        "if", "when", "where", "who", "why",
+    ]
+    private static let stopStems: Set<String> =
+        Set(rankStopwords.map(stem))
+
     /// Every entry scored against the ask:
     /// a keyword whose stems all appear earns 3,
     /// a title word 2, a body word 1 (at most 4
@@ -146,13 +169,16 @@ enum SkelliBrain {
             }
             for word in tokens(entry.title)
             where word.count > 3 {
-                if queryStems.contains(stem(word)) {
+                let wordStem = stem(word)
+                if !stopStems.contains(wordStem),
+                   queryStems.contains(wordStem) {
                     score += 2
                 }
             }
             let bodyStems = stemSet(entry.body)
             score += min(4, bodyStems
-                .intersection(queryStems).count)
+                .intersection(queryStems)
+                .subtracting(stopStems).count)
             if score > 0 {
                 scored.append((score, order, entry))
             }

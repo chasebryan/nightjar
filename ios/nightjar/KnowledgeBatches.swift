@@ -502,9 +502,10 @@ extension SkelliKnowledge {
             home: "the Vault tab",
             keywords: ["vault", "crypto", "cryptography",
                        "encrypt", "decrypt", "seal",
-                       "cipher", "aes", "chacha", "pbkdf2",
-                       "hkdf", "hash", "sha", "fingerprint",
-                       "one-time pad", "dead-drop", "p-256"],
+                       "secret", "cipher", "aes", "chacha",
+                       "pbkdf2", "hkdf", "hash", "sha",
+                       "fingerprint", "one-time pad",
+                       "dead-drop", "p-256"],
             body: "The house's cryptography and cryptology suite, a complete system in its own right. Hashes (SHA-256/384/512, legacy SHA-1/MD5 labeled as such), HMAC, HKDF and a hand-rolled PBKDF2-HMAC-SHA256; authenticated sealing by ChaCha20-Poly1305 and AES-256-GCM; a self-describing password envelope (NJCS) any copy of the suite can open; P-256 dead-drop envelopes by ephemeral ECDH; a true one-time pad; hex and base32/base64 encodings; secure randomness. Nine presets ship — Sealed note, Vault seal, Dead-drop, Hash card, Fingerprint, One-time pad and their openers — and the operator saves their own configurations (cipher, rounds, dress), which ride the setup mirror. Two kept keys live in the Keychain: the Vault's AES-256 key and the house P-256 identity. I work its instant side myself — hash, fingerprint, encodings, fresh keys and passwords; sealing under a password belongs to the Vault room, where passwords get proper fields."),
         SkelliEntry(
             id: "crew", title: "Her crew — agents",
