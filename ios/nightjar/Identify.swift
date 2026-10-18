@@ -407,6 +407,19 @@ struct DeviceRow: Identifiable {
         batteries.first?.summary
     }
 
+    /// The one-line story for lists: the kind,
+    /// then the most telling fact — a battery
+    /// first, then the strongest detail.
+    var subtitleLine: String {
+        if let battery = batterySummary {
+            return "\(kind) · \(battery)"
+        }
+        if let first = details.first {
+            return "\(kind) · \(first)"
+        }
+        return kind
+    }
+
     /// The forecaster's word on the device
     /// battery: a drain rate and, when the trend
     /// earns it, a time-to-empty range.
