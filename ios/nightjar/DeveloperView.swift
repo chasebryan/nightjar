@@ -123,33 +123,39 @@ enum DevKit {
         let weightsModel = defaults.string(
             forKey: "skelli.weightsModel") ?? "none"
         let language = LanguageCenter.shared
-        let lines = [
-            "App: nightjar-hack \(AppInfo.version) "
-                + "(\(build))",
-            "Source: \(commit)"
-                + (changes > 0
-                   ? " + \(changes) uncommitted" : ""),
-            "iOS: \(ProcessInfo.processInfo.operatingSystemVersionString)",
-            "Device: \(deviceModel)",
-            "Memory footprint: \(footprintMB()) MB",
-            "Disk: \(diskMB)",
-            "Language: \(language.effective) "
-                + "(welcomed: \(language.welcomed))",
-            "EMCON condition: "
-                + "\(EmconStandard.current)",
-            "Mind mode: \(mindMode)",
-            "Weights model: \(weightsModel) "
-                + "(\(downloaded.count) downloaded)",
-            "Skelli is feeling: "
-                + "\(SkelliHeart.shared.feeling.word)",
-            "Developer options: "
-                + "\(enabled ? "on" : "off")",
-            "Crash records: "
-                + "\(CrashRecorder.records().count)",
-            "Flight recorder: "
-                + "\(DevLog.recent(10_000).count) "
-                + "event(s) kept",
-        ]
+        // Built line by line, on purpose: one
+        // sixteen-element literal of joined and
+        // interpolated strings is more expression
+        // than the type-checker will chew.
+        var lines: [String] = []
+        lines.append("App: nightjar-hack "
+            + "\(AppInfo.version) (\(build))")
+        lines.append("Source: \(commit)"
+            + (changes > 0
+               ? " + \(changes) uncommitted" : ""))
+        lines.append("iOS: \(ProcessInfo.processInfo.operatingSystemVersionString)")
+        lines.append("Device: \(deviceModel)")
+        lines.append("Memory footprint: "
+            + "\(footprintMB()) MB")
+        lines.append("Disk: \(diskMB)")
+        lines.append("Language: "
+            + "\(language.effective) "
+            + "(welcomed: \(language.welcomed))")
+        lines.append("EMCON condition: "
+            + "\(EmconStandard.current)")
+        lines.append("Mind mode: \(mindMode)")
+        lines.append("Weights model: "
+            + "\(weightsModel) "
+            + "(\(downloaded.count) downloaded)")
+        lines.append("Skelli is feeling: "
+            + "\(SkelliHeart.shared.feeling.word)")
+        lines.append("Developer options: "
+            + "\(enabled ? "on" : "off")")
+        lines.append("Crash records: "
+            + "\(CrashRecorder.records().count)")
+        lines.append("Flight recorder: "
+            + "\(DevLog.recent(10_000).count) "
+            + "event(s) kept")
         return lines.joined(separator: "\n")
     }
 
@@ -287,17 +293,19 @@ enum DevLog {
 private var devSignalPath: ContiguousArray<CChar> = []
 private var devSignalArmed = false
 
-private func devTrapWrite(_ fd: Int32,
-                          _ text: String) {
+private func devTrapWrite(
+    _ file: UnsafeMutablePointer<FILE>,
+    _ text: String) {
     text.withCString { pointer in
-        _ = write(fd, pointer, strlen(pointer))
+        _ = fputs(pointer, file)
     }
 }
 
 /// A small number, written digit by digit —
 /// the handler formats nothing any other way.
-private func devTrapNumber(_ fd: Int32,
-                           _ value: Int) {
+private func devTrapNumber(
+    _ file: UnsafeMutablePointer<FILE>,
+    _ value: Int) {
     var remaining = value
     var reversed: [CChar] = []
     if remaining == 0 { reversed = [48] }
@@ -307,25 +315,31 @@ private func devTrapNumber(_ fd: Int32,
         remaining /= 10
     }
     for digit in reversed.reversed() {
-        var digit = digit
-        _ = write(fd, &digit, 1)
+        _ = fputc(Int32(digit), file)
     }
 }
 
 private func devSignalTrap(_ sig: Int32) {
     if devSignalArmed, !devSignalPath.isEmpty {
-        let fd = devSignalPath.withUnsafeBufferPointer {
-            open($0.baseAddress,
-                 O_WRONLY | O_CREAT | O_APPEND, 0o644)
-        }
-        if fd >= 0 {
-            devTrapWrite(fd, "\n=== NIGHTJAR "
+        // stdio, not open(): the POSIX open is
+        // variadic in C (its mode argument), and
+        // Swift will not call variadic C
+        // functions at all. fopen/fputs/fclose
+        // are fixed-arity — and the same
+        // pragmatic family every crash reporter
+        // leans on inside a trap.
+        let file = devSignalPath
+            .withUnsafeBufferPointer {
+                fopen($0.baseAddress, "a")
+            }
+        if let file {
+            devTrapWrite(file, "\n=== NIGHTJAR "
                          + "SIGNAL CRASH ===\n")
-            devTrapWrite(fd, "epoch: ")
-            devTrapNumber(fd, Int(time(nil)))
-            devTrapWrite(fd, "\nsignal: ")
-            devTrapNumber(fd, Int(sig))
-            devTrapWrite(fd, "\nstack:\n")
+            devTrapWrite(file, "epoch: ")
+            devTrapNumber(file, Int(time(nil)))
+            devTrapWrite(file, "\nsignal: ")
+            devTrapNumber(file, Int(sig))
+            devTrapWrite(file, "\nstack:\n")
             var frames: [UnsafeMutableRawPointer?] =
                 Array(repeating: nil, count: 64)
             let count = backtrace(
@@ -334,14 +348,13 @@ private func devSignalTrap(_ sig: Int32) {
                 backtrace_symbols(&frames, count) {
                 for index in 0..<Int(count) {
                     if let line = symbols[index] {
-                        _ = write(fd, line,
-                                  strlen(line))
-                        _ = write(fd, "\n", 1)
+                        _ = fputs(line, file)
+                        _ = fputs("\n", file)
                     }
                 }
                 free(symbols)
             }
-            close(fd)
+            fclose(file)
         }
     }
     // The system still gets its own record: the
