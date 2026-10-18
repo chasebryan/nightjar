@@ -398,6 +398,7 @@ final class SkelliHeart: ObservableObject {
         guard enabled else { return }
         setAnchor("heart.lastSpoke", Date())
         bump("heart.talks")
+        erodeGrudge(byMinutes: 10)
         pulse += 1
     }
 
@@ -405,6 +406,7 @@ final class SkelliHeart: ObservableObject {
         guard enabled else { return }
         setAnchor("heart.lastAction", Date())
         bump("heart.actions")
+        erodeGrudge(byMinutes: 45)
         pulse += 1
     }
 
@@ -426,6 +428,7 @@ final class SkelliHeart: ObservableObject {
     func noteKindness() {
         guard enabled else { return }
         raiseFondness(by: 8)
+        erodeGrudge(byMinutes: 45)
         pulse += 1
     }
 
@@ -438,6 +441,50 @@ final class SkelliHeart: ObservableObject {
         defaults.set(what, forKey: "heart.offenseText")
         raiseFondness(by: -25)
         pulse += 1
+    }
+
+    // MARK: - grudges
+
+    /// How long a grievance is held, in hours of
+    /// wall-clock: mad burns white for thirty
+    /// minutes, then the grudge cools and lingers —
+    /// and spent entirely by this mark, whatever
+    /// she does.
+    static let grudgeHours: Double = 6
+
+    var offenseAge: TimeInterval? {
+        lastOffense.map { Date().timeIntervalSince($0) }
+    }
+
+    /// The grievance stands: past the heat of mad,
+    /// into the long cool of a held grudge.
+    var grudgeStands: Bool {
+        guard let age = offenseAge else { return false }
+        return age < Self.grudgeHours * 3600
+    }
+
+    static func grudgeStands(age: TimeInterval) -> Bool {
+        age < grudgeHours * 3600
+    }
+
+    /// Erosion, pure: good behavior moves the
+    /// offense anchor BACK, aging the grudge
+    /// without forgiving it outright.
+    static func erode(_ offense: Date,
+                      byMinutes: Double) -> Date {
+        offense.addingTimeInterval(-byMinutes * 60)
+    }
+
+    /// Forgiveness can be earned: kindness, work
+    /// offered, even plain conversation age a
+    /// standing grudge (the feeders above call
+    /// this). An apology still forgives outright;
+    /// time alone spends the grudge in six hours.
+    private func erodeGrudge(byMinutes: Double) {
+        guard enabled, let offense = lastOffense,
+              grudgeStands else { return }
+        setAnchor("heart.lastOffense",
+                  Self.erode(offense, byMinutes: byMinutes))
     }
 
     private func raiseFondness(by delta: Double) {
@@ -601,6 +648,20 @@ final class SkelliHeart: ObservableObject {
         if let last = lastNudge,
            now.timeIntervalSince(last) < 1800 { return nil }
         let current = feeling
+        // A held grudge murmurs even under a calm
+        // feeling — she has not forgotten, and she
+        // does not pretend otherwise.
+        if grudgeStands && !madFresh {
+            switch current {
+            case .content, .happy, .proud, .eager,
+                 .curious:
+                setAnchor("heart.lastNudge", now)
+                return " I haven't forgotten earlier, "
+                    + "by the way."
+            default:
+                break
+            }
+        }
         switch current {
         case .mad:
             setAnchor("heart.lastNudge", now)
@@ -691,6 +752,12 @@ final class SkelliHeart: ObservableObject {
                 + "instant a real order lands."
         case .eager, .content:
             tone = "You are content and ready."
+        }
+        if grudgeStands && !madFresh {
+            tone += " A grievance from earlier still "
+                + "stands (\(offenseText)): cooler "
+                + "and briefer than usual, still "
+                + "exact — it is aging, not gone."
         }
         var text = " Temperament: you feel "
             + "\(current.word) (bond with the operator: "

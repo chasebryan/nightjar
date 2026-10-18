@@ -101,6 +101,26 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(feeling(itch: 40), .eager)
     }
 
+    func testGrudgesAgeAndErode() {
+        // A grudge stands for six hours of wall
+        // clock, then it is spent whatever she does.
+        XCTAssertTrue(SkelliHeart.grudgeStands(age: 1800))
+        XCTAssertTrue(SkelliHeart.grudgeStands(
+            age: 5 * 3600))
+        XCTAssertFalse(SkelliHeart.grudgeStands(
+            age: 6 * 3600))
+        XCTAssertFalse(SkelliHeart.grudgeStands(
+            age: 24 * 3600))
+        // Erosion moves the anchor back: forty-five
+        // minutes of earned forgiveness, exactly.
+        let offense = Date(timeIntervalSince1970:
+            1_000_000)
+        XCTAssertEqual(
+            SkelliHeart.erode(offense, byMinutes: 45)
+                .timeIntervalSince1970,
+            1_000_000 - 2700, accuracy: 0.001)
+    }
+
     func testFeelingRulesTheNewFlux() {
         // Pride at its peak curdles into smug.
         XCTAssertEqual(feeling(pride: 90, fondness: 40),

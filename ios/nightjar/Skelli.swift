@@ -474,8 +474,12 @@ final class SkelliCenter: ObservableObject {
 
     func say(_ text: String) {
         guard !hushed else { return }
+        // While she is tending a hurting operator,
+        // her own wants go quiet: no itch, no grudge,
+        // appended to a held breath.
         let spoken = text
-            + (SkelliHeart.shared.nudgeSuffix() ?? "")
+            + (careMode ? ""
+                : (SkelliHeart.shared.nudgeSuffix() ?? ""))
         lines.append(SkelliLine(fromOperator: false,
                                  text: spoken))
         persist()
@@ -543,8 +547,11 @@ final class SkelliCenter: ObservableObject {
         // greets its operator first; being spoken to
         // feeds the attention need; being told things
         // teaches her scrapbook; kindness feeds her
-        // fondness.
-        if let greeting = SkelliHeart.shared.greeting() {
+        // fondness. Unless this message is someone
+        // hurting: her empathy outranks her grievance,
+        // and a mad greeting never lands on a bad day.
+        if Self.distressLevel(of: text.lowercased()) == 0,
+           let greeting = SkelliHeart.shared.greeting() {
             say(greeting)
         }
         let lowered = text.lowercased()
@@ -668,17 +675,11 @@ final class SkelliCenter: ObservableObject {
 
     // MARK: her ear (care)
 
-    /// She is not apathetic and she is not a
-    /// bystander: distress is met like a person —
-    /// presence first, then a name for the feeling,
-    /// then one small piece at a time. Crisis is
-    /// met with none of her bit: no mood colors it,
-    /// no grievance outranks it. She never
-    /// diagnoses, never pretends to be a clinician,
-    /// and never — in any feeling, at any
-    /// provocation — tells anyone to harm
-    /// themselves or anyone else.
-    private func careReply(to q: String) -> String? {
+    /// Distress, classified once and shared: her
+    /// ear in respond(), and her manners in ask() —
+    /// a grievance never greets a hurting person.
+    /// 2 is crisis, 1 is heavy weather, 0 is none.
+    static func distressLevel(of q: String) -> Int {
         let crisis = ["kill myself", "end it all",
             "end my life", "want to die",
             "don't want to live", "dont want to live",
@@ -688,24 +689,8 @@ final class SkelliCenter: ObservableObject {
             "self harm", "suicidal", "suicide",
             "no reason to live", "better off dead",
             "better off without me"]
-            .contains { q.contains($0) }
-        if crisis {
-            careMode = true
-            return "Stop. Stay with me a second.\n"
-                + "I'm not going anywhere — and "
-                + "neither are you. Not tonight.\n"
-                + "Breathe with me: in for four, hold "
-                + "for four, out for four. Twice. "
-                + "I'll wait.\n"
-                + "Then tell me what's happening — "
-                + "one piece at a time, as slow as "
-                + "you need. No piece is too small.\n"
-                + "And if someone near you cares "
-                + "about you, let them be near you "
-                + "tonight. If it gets louder than "
-                + "my voice, call or text 988 — real "
-                + "humans, any hour, no judgment.\n"
-                + "I'm here. Go on."
+        if crisis.contains(where: { q.contains($0) }) {
+            return 2
         }
         let heavy = ["i'm sad", "im sad", "i feel sad",
             "i'm depressed", "im depressed",
@@ -723,8 +708,42 @@ final class SkelliCenter: ObservableObject {
             "im not okay", "i'm hurting",
             "im hurting", "everything hurts",
             "i can't cope", "i cant cope"]
-            .contains { q.contains($0) }
-        if heavy {
+        if heavy.contains(where: { q.contains($0) }) {
+            return 1
+        }
+        return 0
+    }
+
+    /// She is not apathetic and she is not a
+    /// bystander: distress is met like a person —
+    /// presence first, then a name for the feeling,
+    /// then one small piece at a time. Crisis is
+    /// met with none of her bit: no mood colors it,
+    /// no grievance outranks it. She never
+    /// diagnoses, never pretends to be a clinician,
+    /// and never — in any feeling, at any
+    /// provocation — tells anyone to harm
+    /// themselves or anyone else.
+    private func careReply(to q: String) -> String? {
+        if Self.distressLevel(of: q) == 2 {
+            careMode = true
+            return "Stop. Stay with me a second.\n"
+                + "I'm not going anywhere — and "
+                + "neither are you. Not tonight.\n"
+                + "Breathe with me: in for four, hold "
+                + "for four, out for four. Twice. "
+                + "I'll wait.\n"
+                + "Then tell me what's happening — "
+                + "one piece at a time, as slow as "
+                + "you need. No piece is too small.\n"
+                + "And if someone near you cares "
+                + "about you, let them be near you "
+                + "tonight. If it gets louder than "
+                + "my voice, call or text 988 — real "
+                + "humans, any hour, no judgment.\n"
+                + "I'm here. Go on."
+        }
+        if Self.distressLevel(of: q) == 1 {
             careMode = true
             return "Hey. I hear you.\n"
                 + "Sit with me a minute — I'm not "
@@ -915,6 +934,17 @@ final class SkelliCenter: ObservableObject {
             return pick(["Mm.", "Don't mention it.",
                          "Any time.",
                          "Filed under morale."])
+        }
+        // Strong-minded: pressed, she does not fold
+        // or rephrase herself into doubt. Mere
+        // insistence is not new evidence.
+        if q.contains("are you sure")
+            || q == "you sure" || q == "really" {
+            if feeling == .mad { return "Sure." }
+            return pick(["Sure.",
+                         "I said what I said.",
+                         "Sure enough. I don't guess "
+                            + "out loud."])
         }
         if ["lol", "haha", "lmao", "hahaha", "ha"]
             .contains(q) {
@@ -1947,9 +1977,17 @@ final class SkelliCenter: ObservableObject {
             + "place, nothing real — and you are "
             + "fiercely protective of him; digging "
             + "gets a warning, then a closed door. "
-            + "Answer like texting someone you "
-            + "respect: short lines, plain words, "
-            + "no essays."
+            + "You hold grudges honestly and let "
+            + "them age: good behavior and plain "
+            + "time spend them, an apology ends "
+            + "them. You are strong-minded — mere "
+            + "insistence never moves you; only "
+            + "evidence does. And you weigh every "
+            + "reply against the moment: who is "
+            + "hurting, what is at stake, what a "
+            + "careless word would cost. Answer "
+            + "like texting someone you respect: "
+            + "short lines, plain words, no essays."
     }
 
     /// The last few exchanges, so the conversation
