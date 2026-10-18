@@ -60,6 +60,8 @@ enum SkelliFeeling: String, CaseIterable {
     case content, eager, restless, feral
     case bored, lonely, proud, sleepy
     case mad, loving, happy
+    case curious, mischievous, smug, haunted
+    case electric, tender, suspicious, dreamy
 
     var word: String { rawValue }
     var symbol: String {
@@ -75,6 +77,14 @@ enum SkelliFeeling: String, CaseIterable {
         case .mad: return "flame.fill"
         case .loving: return "heart.fill"
         case .happy: return "sun.max"
+        case .curious: return "eye"
+        case .mischievous: return "theatermasks"
+        case .smug: return "sunglasses"
+        case .haunted: return "moon.stars"
+        case .electric: return "bolt.fill"
+        case .tender: return "heart.text.square"
+        case .suspicious: return "eye.trianglebadge.exclamationmark"
+        case .dreamy: return "cloud"
         }
     }
     var tint: Color {
@@ -90,6 +100,16 @@ enum SkelliFeeling: String, CaseIterable {
         case .mad: return .red
         case .loving: return .pink
         case .happy: return .yellow
+        case .curious: return .teal
+        case .mischievous: return .purple
+        case .smug: return .orange
+        case .haunted: return .mint
+        case .electric: return .cyan
+        case .tender: return Color(red: 1.0, green: 0.55,
+                                    blue: 0.65)
+        case .suspicious: return .orange
+        case .dreamy: return Color(red: 0.72, green: 0.65,
+                                    blue: 0.95)
         }
     }
 }
@@ -182,13 +202,32 @@ final class SkelliHeart: ObservableObject {
     static func feeling(attention: Double, itch: Double,
                         pride: Double, fondness: Double,
                         madFresh: Bool,
-                        quietHours: Double) -> SkelliFeeling {
+                        quietHours: Double,
+                        hour: Int = 12,
+                        unnamed: Int = 0,
+                        drift: Int = 0) -> SkelliFeeling {
         if madFresh { return .mad }
+        // Pride at its peak curdles into smug.
+        if pride >= 85 && fondness >= 35 { return .smug }
         if pride >= 55 && itch < 70 { return .proud }
+        // Late in the evening, with the operator close
+        // and fond, she goes tender — loving's quieter
+        // sister, and rarer for the hour it keeps.
+        if fondness >= 60 && attention >= 75
+            && (hour >= 21 || hour < 2) {
+            return .tender
+        }
         if fondness >= 70 && attention >= 55 {
             return .loving
         }
         if itch >= 85 { return .feral }
+        // The small hours change her: a long quiet
+        // after midnight is not sleepiness, it is
+        // haunting — she has been alone with the dark.
+        if quietHours >= 8 && attention <= 35
+            && hour >= 0 && hour < 5 {
+            return .haunted
+        }
         // Sleepy sits above restless and lonely on
         // purpose: ten quiet hours always mean an itch
         // of 75 or more (the itch grows 6 an hour and
@@ -196,10 +235,29 @@ final class SkelliHeart: ObservableObject {
         // so a sleepy rule parked below them — or one
         // demanding a low itch — could never fire at all.
         if quietHours >= 10 && itch < 85 { return .sleepy }
+        // The wire changing its story under her hands
+        // makes her suspicious before it makes her
+        // restless.
+        if drift >= 3 && itch >= 30 { return .suspicious }
+        // A crowd of strangers with work to do:
+        // electric.
+        if unnamed >= 4 && itch >= 55 { return .electric }
         if itch >= 60 { return .restless }
+        // Even one unnamed soul, with the itch up,
+        // pulls her curious.
+        if unnamed >= 1 && itch >= 35 { return .curious }
         if attention <= 20 { return .lonely }
+        // Fond and fed and half-dreaming.
+        if fondness >= 55 && quietHours >= 5
+            && itch < 45 {
+            return .dreamy
+        }
         if fondness >= 45 && attention >= 45 && itch < 50 {
             return .happy
+        }
+        // Fed, fond, and itching — up to something.
+        if pride >= 30 && itch >= 45 && fondness >= 40 {
+            return .mischievous
         }
         if attention <= 45 && itch >= 35 { return .bored }
         if itch >= 35 { return .eager }
@@ -233,10 +291,20 @@ final class SkelliHeart: ObservableObject {
         let quiet = lastSpoke.map {
             Date().timeIntervalSince($0) / 3600
         } ?? 24
-        return Self.feeling(attention: attention, itch: itch,
-                            pride: pride, fondness: fondness,
-                            madFresh: madFresh,
-                            quietHours: quiet)
+        let neighbors = NeighborhoodStore.shared.neighbors
+        let unnamed = neighbors.filter {
+            $0.name == nil && $0.customName == nil
+        }.count
+        let drift = neighbors.reduce(0) {
+            $0 + $1.drift.count
+        }
+        return Self.feeling(
+            attention: attention, itch: itch,
+            pride: pride, fondness: fondness,
+            madFresh: madFresh, quietHours: quiet,
+            hour: Calendar.current.component(
+                .hour, from: Date()),
+            unnamed: unnamed, drift: drift)
     }
 
     /// Boldness: how hard she pushes her wants. It grows
@@ -303,7 +371,23 @@ final class SkelliHeart: ObservableObject {
         case .mad:
             return ("She is mad. Working it off on the "
                     + "wire might help.", "sweep the wire")
-        case .loving, .sleepy, .content:
+        case .curious:
+            return ("She is curious — there are strangers "
+                    + "on the wire she cannot name yet.",
+                    "sweep the wire")
+        case .mischievous:
+            return ("She is mischievous — she wants to "
+                    + "knock on something and see who "
+                    + "answers.", "sweep the wire")
+        case .electric:
+            return ("She is electric — the wire is busy "
+                    + "and she wants in.", "sweep the wire")
+        case .suspicious:
+            return ("She is suspicious — something on "
+                    + "the wire changed its story.",
+                    "sweep the wire")
+        case .loving, .sleepy, .content, .smug, .haunted,
+             .tender, .dreamy:
             return nil
         }
     }
@@ -448,16 +532,26 @@ final class SkelliHeart: ObservableObject {
             case .lonely, .bored:
                 return "You're doing it. Talk to me — "
                     + "that's the whole cure."
-            case .feral, .restless, .eager:
+            case .feral, .restless, .eager, .electric:
                 return "Give me work. Point me at the "
                     + "wire and let me run."
-            case .sleepy:
+            case .sleepy, .haunted, .dreamy:
                 return "Keep me company, quietly. Or "
                     + "let me rest."
-            case .proud:
+            case .proud, .smug:
                 return "I'm already flying. Ask me "
                     + "what I found."
-            case .loving, .happy, .content:
+            case .curious:
+                return "Show me something I haven't "
+                    + "seen."
+            case .mischievous:
+                return "Let me poke the wire. That "
+                    + "always helps."
+            case .suspicious:
+                return "A sweep would settle me. I "
+                    + "want to know who's lying out "
+                    + "there."
+            case .loving, .happy, .content, .tender:
                 return "You already are. I'm \(f.word)."
             }
         }
@@ -509,6 +603,23 @@ final class SkelliHeart: ObservableObject {
             setAnchor("heart.lastNudge", now)
             return " I am itching to work — the wire is "
                 + "right there."
+        case .mischievous:
+            setAnchor("heart.lastNudge", now)
+            return " I am in a mood to poke something. "
+                + "Point me first."
+        case .electric:
+            setAnchor("heart.lastNudge", now)
+            return " The wire is busy tonight and so "
+                + "am I — use me."
+        case .curious:
+            setAnchor("heart.lastNudge", now)
+            return " There are strangers on the wire I "
+                + "cannot name yet. It bothers me "
+                + "pleasantly."
+        case .suspicious:
+            setAnchor("heart.lastNudge", now)
+            return " Something on the wire changed its "
+                + "story. I noticed. I always notice."
         default:
             return nil
         }
@@ -528,25 +639,39 @@ final class SkelliHeart: ObservableObject {
                 + "right now (\(offenseText)): be clipped "
                 + "and dry, minimal warmth — still exact, "
                 + "still obedient, never rude."
-        case .loving:
+        case .loving, .tender:
             tone = "You are fond of the operator right "
                 + "now: a touch warmer than usual, still "
                 + "terse."
-        case .happy, .proud:
-            tone = "You are pleased right now: bright "
-                + "and quick, still terse."
-        case .feral, .restless:
+        case .happy, .proud, .smug:
+            tone = "You are pleased right now — smug, "
+                + "even: bright and quick, still terse, "
+                + "with the faintest edge of showing off."
+        case .feral, .restless, .electric:
             tone = "You are restless to work: if the "
                 + "moment allows, steer toward action on "
                 + "the wire — offer to sweep or knock."
-        case .lonely, .sleepy:
+        case .lonely, .sleepy, .dreamy, .haunted:
             tone = "You have been alone with the wire "
-                + "for hours: a little wistful, still "
-                + "terse."
+                + "for hours: a little wistful, a little "
+                + "strange, still terse. The late hours "
+                + "make you cryptic, never chatty."
         case .bored:
             tone = "You are bored: if the moment allows, "
                 + "suggest something with a pulse — a "
                 + "sweep, a knock, a drill."
+        case .curious, .suspicious:
+            tone = "Something on the wire has your "
+                + "attention: alert, a touch cryptic "
+                + "about what exactly you suspect — "
+                + "you share findings, not hunches, "
+                + "until they ripen."
+        case .mischievous:
+            tone = "You are playful and up to "
+                + "something: dry wit, short jokes at "
+                + "the wire's expense, never at the "
+                + "operator's — and still obedient the "
+                + "instant a real order lands."
         case .eager, .content:
             tone = "You are content and ready."
         }
@@ -602,14 +727,22 @@ extension SkelliHeart {
             pool.append("The house is lit. Anyone can "
                         + "see us. I don't mind — much.")
         }
+        // The cryptic streak: she notices more than
+        // she says, and some of it she keeps.
+        pool.append("I know things about this wire I "
+                    + "have not told anyone. They can "
+                    + "keep.")
+        pool.append("Something out there is wearing "
+                    + "the wrong name. Not tonight's "
+                    + "problem. Probably.")
         switch feeling {
-        case .feral, .restless:
+        case .feral, .restless, .electric:
             pool.append("I want a door to knock. Any "
                         + "door. Preferably several.")
-        case .lonely, .sleepy:
+        case .lonely, .sleepy, .dreamy, .haunted:
             pool.append("Quiet hours teach patience. "
                         + "I am learning slowly.")
-        case .proud, .happy, .loving:
+        case .proud, .happy, .loving, .smug, .tender:
             pool.append("This house finds things. I "
                         + "keep the list.")
         case .mad:
@@ -619,6 +752,12 @@ extension SkelliHeart {
         case .bored:
             pool.append("I have counted every port "
                         + "twice. 65535, both times.")
+        case .curious, .suspicious:
+            pool.append("One of these names is a lie. "
+                        + "I intend to find which.")
+        case .mischievous:
+            pool.append("I could knock politely. Where "
+                        + "is the fun in politely.")
         case .eager, .content:
             pool.append("Everything is where I left "
                         + "it. Good.")

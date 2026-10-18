@@ -61,12 +61,17 @@ final class SkelliHeartTests: XCTestCase {
                          pride: Double = 0,
                          fondness: Double = 30,
                          madFresh: Bool = false,
-                         quiet: Double = 1) -> SkelliFeeling {
+                         quiet: Double = 1,
+                         hour: Int = 12,
+                         unnamed: Int = 0,
+                         drift: Int = 0) -> SkelliFeeling {
         SkelliHeart.feeling(attention: attention,
                             itch: itch, pride: pride,
                             fondness: fondness,
                             madFresh: madFresh,
-                            quietHours: quiet)
+                            quietHours: quiet,
+                            hour: hour, unnamed: unnamed,
+                            drift: drift)
     }
 
     func testFeelingRules() {
@@ -94,6 +99,43 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(feeling(attention: 60, itch: 40,
                                fondness: 50), .happy)
         XCTAssertEqual(feeling(itch: 40), .eager)
+    }
+
+    func testFeelingRulesTheNewFlux() {
+        // Pride at its peak curdles into smug.
+        XCTAssertEqual(feeling(pride: 90, fondness: 40),
+                       .smug)
+        XCTAssertEqual(feeling(pride: 84, fondness: 40),
+                       .proud)
+        // Tender keeps late hours and needs closeness.
+        XCTAssertEqual(feeling(fondness: 65,
+                               attention: 80, hour: 22),
+                       .tender)
+        XCTAssertEqual(feeling(fondness: 65,
+                               attention: 80, hour: 12),
+                       .happy)
+        // After midnight, a long quiet is haunting,
+        // not sleepiness.
+        XCTAssertEqual(feeling(attention: 30, quiet: 9,
+                               hour: 2), .haunted)
+        XCTAssertEqual(feeling(attention: 30, quiet: 9,
+                               hour: 12), .content)
+        // Drift makes her suspicious before restless.
+        XCTAssertEqual(feeling(itch: 40, drift: 3),
+                       .suspicious)
+        // A crowd of strangers, with the itch up:
+        // electric — outranking plain restless.
+        XCTAssertEqual(feeling(itch: 65, unnamed: 5),
+                       .electric)
+        // Even one stranger pulls her curious.
+        XCTAssertEqual(feeling(itch: 40, unnamed: 2),
+                       .curious)
+        // Fed, fond and itching: up to something.
+        XCTAssertEqual(feeling(pride: 40, itch: 50,
+                               fondness: 50), .mischievous)
+        // Fond and fed and half-dreaming.
+        XCTAssertEqual(feeling(fondness: 60, quiet: 6,
+                               itch: 30), .dreamy)
     }
 
     // MARK: - the bond
