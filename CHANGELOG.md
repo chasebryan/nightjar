@@ -528,10 +528,15 @@
   found is fixed: the
   living wallpaper plays
   on every screen again
-  (a shared animated image
-  could stall in some
-  screens and never
-  restart); the network
+  (three screens — Macros,
+  the Vault, EMCON — had
+  never painted it behind
+  their own lists at all:
+  a backdrop hung behind a
+  navigation stack is a
+  backdrop covered, and
+  every tab now paints its
+  own); the network
   trace now answers to the
   EMCON Standard like
   everything else — gated

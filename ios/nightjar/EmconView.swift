@@ -143,6 +143,13 @@ struct EmconView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+        // The backdrop is painted HERE, behind the list
+        // itself — the tab-level modifier alone never
+        // reached through on device (Macros and the
+        // Vault sat black for trusting it). Same recipe
+        // as the tabs that play.
+        .scrollContentBackground(.hidden)
+        .background { AppBackdrop() }
         .sheet(isPresented: $showMind) {
             SubconsciousView()
         }

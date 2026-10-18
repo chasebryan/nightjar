@@ -73,6 +73,14 @@ struct CryptoView: View {
                 customSection
                 keysSection
             }
+            // The backdrop is painted HERE, behind the
+            // list itself — the tab-level modifier alone
+            // never reached through the navigation stack
+            // on device (this screen and Macros sat
+            // black while tabs that paint their own
+            // backdrop played). Same recipe as Knocktalk.
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Vault")
             .onAppear {
                 if identityPublic.isEmpty {

@@ -145,6 +145,14 @@ struct MacrosView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            // The backdrop is painted HERE, behind the
+            // list itself — the tab-level modifier alone
+            // never reached through the navigation stack
+            // on device (this screen and the Vault sat
+            // black while tabs that paint their own
+            // backdrop played). Same recipe as Knocktalk.
+            .scrollContentBackground(.hidden)
+            .background { AppBackdrop() }
             .navigationTitle("Macros")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

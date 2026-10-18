@@ -317,13 +317,20 @@ struct AppBackdrop: View {
     }
 }
 
-/// The themed-screen recipe, applied per tab: transparent
-/// scroll backgrounds AND the backdrop painted behind that
-/// very screen, in that tab's own slot. (Painting it only
-/// behind the TabView is not enough — on current iOS the tab
-/// container fills its own frame opaquely, so an ancestor's
-/// backdrop never shows through. Behind each tab's own root,
-/// with its list transparent, it does.)
+/// The themed-screen recipe, applied per tab: the slot
+/// environment and a backdrop behind the tab's root.
+/// (Painting it only behind the TabView is not enough —
+/// on current iOS the tab container fills its own frame
+/// opaquely, so an ancestor's backdrop never shows
+/// through.) One hard-learned limit, proven on device
+/// (2026-10-18): for a tab whose root is a List inside a
+/// navigation stack, THIS modifier's background paints
+/// behind the stack and the stack's hosting covers it —
+/// the screen sits black. Those tabs must ALSO paint
+/// AppBackdrop directly behind their own list, with
+/// scrollContentBackground(.hidden) on the list itself,
+/// as Knocktalk, Listen and the rest do. The harness
+/// checks every tab for exactly that.
 struct AppThemed: ViewModifier {
     var slot: BackdropSlot = .everywhere
 
