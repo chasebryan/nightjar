@@ -120,7 +120,21 @@
   never a fake radio.
   Dropping a shape
   restores the wardrobe it
-  found, whole. Generic shapes
+  found, whole. The rack is
+  the operator's own, too:
+  costumes he types are kept,
+  a workshop builds whole
+  personas from the same
+  cloth, dropping a shape
+  restores the exact payloads
+  the air was carrying, and
+  the revolving rack rotates
+  the air name through every
+  costume on an interval.
+  Donning refuses while the
+  Banshee screams — its
+  snapshot owns the posture.
+  Generic shapes
   only: the device's own
   addresses stay its own,
   nothing copies a real
@@ -147,4 +161,13 @@
   sitrep reads the whole house
   — the registry, the watches,
   the worn shape, the match.
+  A War Games round now runs
+  by voice whole — challenge,
+  begin the attack, set the
+  defense, score — and she
+  packs chests, turns the
+  revolving rack, and works
+  the operator's own costumes
+  and shapes beside the
+  built-ins.
 

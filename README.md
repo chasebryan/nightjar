@@ -165,9 +165,13 @@ score put on an honest footing.
   rack dresses this device in its own names and
   class-shaped mimicry personas — network gear
   included: access point, gateway, mesh node,
-  media server, hub — and Skelli works every
-  war room herself: chests, the Helm, watches,
-  War Room runs, War Games, the Banshee, the
+  media server, hub — the rack keeps the
+  operator's own costumes and built personas,
+  restores the exact air wardrobe on a drop,
+  and revolves names on an interval — and
+  Skelli works every war room herself: chests,
+  the Helm, watches, War Room runs, whole War
+  Games rounds by voice, the Banshee, the
   rack.
 
 ## What's new in 6.0.0 — "the open mind"

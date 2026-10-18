@@ -238,8 +238,10 @@ Below the steps, the Send tab keeps working:
   are shared singletons: Skelli's hands work
   the chests, the Helm, SIGINT watches, the
   War Room, War Games, the Banshee and the
-  rack, her manual and sitrep covering all
-  of it.
+  rack — kept costumes, built personas,
+  exact-wardrobe restore, name rotation,
+  whole War Games rounds by voice — her
+  manual and sitrep covering all of it.
 - **What 6.0.0 added.** An intelligence pass over
   the whole instrument, and her hands in
   conversation. Skelli's chat now performs the
