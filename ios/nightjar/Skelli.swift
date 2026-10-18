@@ -1482,13 +1482,15 @@ final class SkelliCenter: ObservableObject {
     }
 
     private func roomLine(_ neighbor: Neighbor) -> String {
-        // A placement is a position; the room is
-        if let room = MapStore.shared.room(of: neighbor.ip) {
+        // Placements are keyed by emitter — "lan:" and
+        // the address, as the Map itself keys them.
+        let key = "lan:" + neighbor.ip
+        if let room = MapStore.shared.room(ofKey: key) {
             return "\(neighbor.displayName) sits in "
                 + room.name + " — your placement, kept "
                 + "by the Map."
         }
-        if MapStore.shared.placements[neighbor.ip] != nil {
+        if MapStore.shared.placements[key] != nil {
             return "\(neighbor.displayName) is placed "
                 + "on the Map, on open floor outside "
                 + "any named room."
@@ -1705,7 +1707,9 @@ final class SkelliCenter: ObservableObject {
         }
         if s.contains("go dark")
             || s.contains("emcon on") {
-            emcon?.activate(mouth: mouth)
+            if let emcon = emcon, let mouth = mouth {
+                emcon.activate(mouth: mouth)
+            }
             return "EMCON is on — the house is dark."
         }
         if s.contains("look up")
@@ -3707,9 +3711,10 @@ struct SkelliView: View {
         if let low = post.rows
             .filter({ now - $0.lastSeen < 900 })
             .compactMap({ row -> (DeviceRow, Int)? in
-                guard let percent = row.batteries.first(
-                    where: { $0.component == "device" })
-                    ?.percent, percent <= 20
+                guard let battery = row.batteries.first(
+                    where: { $0.component == "device" }),
+                    let percent = battery.percent,
+                    percent <= 20
                 else { return nil }
                 return (row, percent)
             })
