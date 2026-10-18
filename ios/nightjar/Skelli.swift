@@ -442,6 +442,14 @@ final class SkelliCenter: ObservableObject {
                               title: String,
                               body: String,
                               home: String)?
+    /// The standing place subject: the kind of
+    /// the last place question she answered
+    /// (weather, time, a named day), kept so a
+    /// bare fragment — "and in dallas?" — can
+    /// be completed into the same question
+    /// instead of starting cold.
+    private var lastPlaceSubject: String?
+    private var ellipsisSpent = false
     /// The feeling she most recently spoke from
     /// in a nudge, and when — kept so a bare
     /// "tell me about it" can be answered with
@@ -658,6 +666,7 @@ final class SkelliCenter: ObservableObject {
         persist()
         hushed = false
         ProcessBoard.shared.muted = false
+        ellipsisSpent = false
         checkSchedule()
         // Her heart: a greeting may precede the
         // answer; being spoken to feeds the
@@ -2182,6 +2191,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if q.contains("weather") {
+            lastPlaceSubject = "weather"
             let weatherFrames = ["you think",
                                  "your opinion",
                                  "do you like"]
@@ -2201,6 +2211,7 @@ final class SkelliCenter: ObservableObject {
         if q.hasPrefix("time in ")
             || (q.contains("what time")
                 && q.contains(" in ")) {
+            lastPlaceSubject = "time"
             Task { [weak self] in
                 let line = await self?.almanacTime(q)
                     ?? ""
@@ -2211,6 +2222,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if let line = almanacDate(q) {
+            if Almanac.matchNamedDay(in: q) != nil {
+                lastPlaceSubject = "date"
+            }
             say(line)
             return
         }
@@ -2463,7 +2477,68 @@ final class SkelliCenter: ObservableObject {
         if again, lateGate(q, raw: raw) {
             return
         }
+        // Ellipsis, last before the bench: a
+        // bare place after a place question is
+        // that question again with the new
+        // place. She completes it from the
+        // standing subject rather than starting
+        // cold — the way a person would.
+        if !ellipsisSpent,
+           let kind = lastPlaceSubject,
+           let place = ellipsisPlace(q) {
+            let synth: String?
+            switch kind {
+            case "weather":
+                synth = "what's the weather in "
+                    + place
+            case "time":
+                synth = "what time is it in "
+                    + place
+            case "date":
+                synth = "when is " + place
+            default:
+                synth = nil
+            }
+            if let synth {
+                ellipsisSpent = true
+                respond(to: synth, raw: raw,
+                        again: false)
+                return
+            }
+        }
         consultMindOrResearch(q)
+    }
+
+    /// A fragment that is only a place: one to
+    /// three words, optionally led by "and",
+    /// "in" or "what about", carrying no talk
+    /// and no topic of its own.
+    private func ellipsisPlace(_ q: String)
+        -> String? {
+        var s = q
+        for prefix in ["what about in ",
+                       "what about ", "and in ",
+                       "and ", "in "] {
+            if s.hasPrefix(prefix) {
+                s = String(s.dropFirst(prefix.count))
+                break
+            }
+        }
+        s = s.trimmingCharacters(
+            in: CharacterSet(charactersIn: "?. "))
+        let words = s.split(separator: " ")
+        guard (1...3).contains(words.count),
+              s.count <= 26 else { return nil }
+        let screen = ["the", "wire", "weather",
+                      "it", "that", "this", "you",
+                      "me", "now", "schedule",
+                      "book", "morning", "mood"]
+        if words.contains(where: {
+            screen.contains(String($0))
+        }) {
+            return nil
+        }
+        return s
     }
 
     /// The open question goes to her minds: they
