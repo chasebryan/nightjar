@@ -773,24 +773,22 @@ struct BootView: View {
                     if BootMedia.isGIF(data) {
                         if bootMedia == "provided" {
                             // This film's bird stands
-                            // left of centre in its
-                            // frame: the backdrop is
-                            // zoomed a touch and set so
-                            // the bird holds the centre
-                            // of the screen, the frame
-                            // still covering every edge.
-                            let zoom: CGFloat = 1.15
-                            let w = geo.size.height
-                                * (721.0 / 1280.0) * zoom
-                            let h = geo.size.height * zoom
-                            AnyView(filmPlayer(data: data)
-                                .frame(width: w, height: h)
-                                .offset(x: w * 0.12,
-                                        y: h * 0.05))
-                        } else {
-                            AnyView(filmPlayer(data: data)
+                            // left of centre in its own
+                            // frame (about 38% across,
+                            // 45% down): the player is
+                            // told so, and holds the bird
+                            // at the centre of the screen
+                            // under a slight zoom.
+                            filmPlayer(data: data,
+                                       focusX: 0.38,
+                                       focusY: 0.45,
+                                       zoom: 1.15)
                                 .frame(width: geo.size.width,
-                                       height: geo.size.height))
+                                       height: geo.size.height)
+                        } else {
+                            filmPlayer(data: data)
+                                .frame(width: geo.size.width,
+                                       height: geo.size.height)
                         }
                 } else if let image = UIImage(
                     data: data) {
@@ -1269,6 +1267,54 @@ struct GIFPlayerView: UIViewRepresentable {
     func updateUIView(_ view: UIImageView, context: Context) {}
 }
 
+/// The boot film's stage: a screen-sized container
+/// that lays the film out INSIDE itself — filled,
+/// zoomed, and set on the film's subject — so the
+/// SwiftUI layout around it never feels the film's
+/// size. The image view is sized to the film's exact
+/// displayed size and placed so the focus point
+/// (the subject's place in the frame) lands at the
+/// container's centre.
+final class BootFilmContainer: UIView {
+    let imageView = UIImageView()
+    var focus = CGPoint(x: 0.5, y: 0.5)
+    var zoom: CGFloat = 1
+    var imageAspect: CGFloat = 0
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        clipsToBounds = true
+        backgroundColor = .black
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        addSubview(imageView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard imageAspect > 0, bounds.width > 0,
+              bounds.height > 0 else {
+            imageView.frame = bounds
+            return
+        }
+        var w = bounds.height * imageAspect
+        var h = bounds.height
+        if w < bounds.width {
+            w = bounds.width
+            h = bounds.width / imageAspect
+        }
+        w *= zoom
+        h *= zoom
+        imageView.frame = CGRect(
+            x: bounds.width / 2 - focus.x * w,
+            y: bounds.height / 2 - focus.y * h,
+            width: w, height: h)
+    }
+}
+
 /// The boot film: a GIF played exactly once, the
 /// platform's own way — the frames decoded once, up
 /// front, into an animated image, and UIKit's player
@@ -1282,34 +1328,37 @@ struct GIFPlayerView: UIViewRepresentable {
 /// progress; it does no image work at all.
 struct BootFilmPlayer: UIViewRepresentable {
     let data: Data
+    var focusX: CGFloat = 0.5
+    var focusY: CGFloat = 0.5
+    var zoom: CGFloat = 1
     var onProgress: (Double) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    func makeUIView(context: Context) -> UIImageView {
-        let view = UIImageView()
-        view.contentMode = .scaleAspectFill
-        view.clipsToBounds = true
-        view.backgroundColor = .black
+    func makeUIView(context: Context) -> BootFilmContainer {
+        let view = BootFilmContainer()
+        view.focus = CGPoint(x: focusX, y: focusY)
+        view.zoom = zoom
         view.alpha = 0
         context.coordinator.begin(in: view, data: data,
                                   onProgress: onProgress)
         return view
     }
 
-    func updateUIView(_ view: UIImageView,
+    func updateUIView(_ view: BootFilmContainer,
                       context: Context) {}
 
     static func dismantleUIView(
-        _ view: UIImageView, coordinator: Coordinator
+        _ view: BootFilmContainer,
+        coordinator: Coordinator
     ) {
         coordinator.stop()
     }
 
     final class Coordinator: NSObject {
-        private weak var view: UIImageView?
+        private weak var view: BootFilmContainer?
         private var onProgress: ((Double) -> Void)?
         private var link: CADisplayLink?
         private var started: CFTimeInterval = 0
@@ -1317,7 +1366,7 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var lastReported = -1.0
         private var cancelled = false
 
-        func begin(in view: UIImageView, data: Data,
+        func begin(in view: BootFilmContainer, data: Data,
                    onProgress: @escaping (Double) -> Void) {
             self.view = view
             self.onProgress = onProgress
@@ -1329,13 +1378,19 @@ struct BootFilmPlayer: UIViewRepresentable {
                     guard let self = self,
                           !self.cancelled,
                           let view = self.view,
-                          !film.frames.isEmpty
+                          let first = film.frames.first,
+                          let last = film.frames.last
                     else { return }
-                    view.image = film.frames.last
-                    view.animationImages = film.frames
-                    view.animationDuration = film.duration
-                    view.animationRepeatCount = 1
-                    view.startAnimating()
+                    view.imageAspect = first.size.width
+                        / max(first.size.height, 1)
+                    view.setNeedsLayout()
+                    view.layoutIfNeeded()
+                    let image = view.imageView
+                    image.image = last
+                    image.animationImages = film.frames
+                    image.animationDuration = film.duration
+                    image.animationRepeatCount = 1
+                    image.startAnimating()
                     UIView.animate(withDuration: 0.35) {
                         view.alpha = 1
                     }
@@ -1375,7 +1430,7 @@ struct BootFilmPlayer: UIViewRepresentable {
             cancelled = true
             link?.invalidate()
             link = nil
-            view?.stopAnimating()
+            view?.imageView.stopAnimating()
         }
     }
 }
