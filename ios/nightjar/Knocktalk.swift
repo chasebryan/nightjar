@@ -230,7 +230,21 @@ enum KnockKeyStore {
                     query[kSecValueData as String] = data
                     query[kSecAttrAccessible as String] =
                         kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-                    SecItemAdd(query as CFDictionary, nil)
+                    let addStatus = SecItemAdd(
+                        query as CFDictionary, nil)
+                    if addStatus != errSecSuccess {
+                        Journal.log("knocktalk", "keychain",
+                            "The pairing key could not be "
+                            + "saved (OSStatus "
+                            + "\(addStatus)) — it will not "
+                            + "survive a relaunch.")
+                    }
+                } else if status != errSecSuccess {
+                    Journal.log("knocktalk", "keychain",
+                        "The pairing key could not be "
+                        + "updated (OSStatus \(status)) — "
+                        + "the change may not survive a "
+                        + "relaunch.")
                 }
             } else {
                 SecItemDelete(baseQuery as CFDictionary)

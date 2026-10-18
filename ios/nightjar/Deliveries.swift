@@ -68,7 +68,18 @@ final class DeliveriesCenter: ObservableObject {
         let file = base + "." + ext
         let url = directory.appendingPathComponent(
             file)
-        try? data.write(to: url, options: .atomic)
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            // No phantom deliveries: the shelf lists
+            // only what actually reached the disk, and
+            // the failure gets a line in the log
+            // instead of silence.
+            Journal.log("deliveries", "save",
+                "A delivery could not be written: "
+                + file)
+            return
+        }
         items.removeAll { $0.file == file }
         items.insert(
             Item(name: base, file: file,
@@ -131,8 +142,12 @@ final class DeliveriesCenter: ObservableObject {
                 "nightjar-delivery-"
                 + stamp.string(from: Date())
                 + ".zip")
-        try? ZipWriter.archive(files).write(
-            to: url, options: .atomic)
+        do {
+            try ZipWriter.archive(files).write(
+                to: url, options: .atomic)
+        } catch {
+            return nil
+        }
         return url
     }
 
@@ -333,6 +348,7 @@ struct DeliveriesView: View {
                         .disabled(selected.isEmpty)
                         Button("Zip everything "
                             + "(\(center.items.count))") {
+                            Haptics.tap()
                             zipItems(center.items)
                         }
                         Button("Clear the shelf",
@@ -372,6 +388,8 @@ struct DeliveriesView: View {
         _ chosen: [DeliveriesCenter.Item]) {
         if let url = center.zip(chosen) {
             shareItem = ShareItem(items: [url])
+        } else {
+            Haptics.error()
         }
     }
 }

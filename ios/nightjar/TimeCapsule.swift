@@ -85,10 +85,6 @@ enum Limbs {
         return out
     }
 
-    static func isZero(_ a: [UInt64]) -> Bool {
-        a.allSatisfy { $0 == 0 }
-    }
-
     static func modSmall(_ a: [UInt64], _ p: UInt64) -> UInt64 {
         var rem: UInt64 = 0
         var i = a.count - 1

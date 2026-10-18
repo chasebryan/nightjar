@@ -260,7 +260,7 @@ struct ListenView: View {
 
     @ViewBuilder private func runningRows(_ session: ListeningPost.ActiveSession) -> some View {
         HStack {
-            Text(session.label.map { "@ \($0)" } ?? "unlabelled session")
+            Text(session.label.map { "@ \($0)" } ?? "unlabeled session")
             Spacer()
             Text(elapsed(since: session.startedAt))
                 .monospacedDigit()
@@ -828,7 +828,7 @@ struct SessionRowView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text(session.label ?? "unlabelled")
+                    Text(session.label ?? "unlabeled")
                         .font(.body.weight(.medium))
                     if isLive {
                         Text("recording").font(.caption).foregroundStyle(.red)

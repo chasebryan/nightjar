@@ -150,6 +150,7 @@ struct HelmView: View {
     @State private var showNewRemote = false
     @State private var newRemoteName = ""
     @State private var editingButton: HelmButtonDraft?
+    @State private var remoteToDelete: HelmRemote?
 
     var body: some View {
         NavigationStack {
@@ -193,6 +194,7 @@ struct HelmView: View {
                             }
                         }
                         Button {
+                            Haptics.tap()
                             editingButton = HelmButtonDraft(
                                 remoteID: remote.id,
                                 payloadName:
@@ -203,10 +205,7 @@ struct HelmView: View {
                         }
                         Button("Delete remote",
                                role: .destructive) {
-                            remotes.removeAll {
-                                $0.id == remote.id
-                            }
-                            HelmStore.save(remotes)
+                            remoteToDelete = remote
                         }
                         .font(.caption)
                     }
@@ -223,6 +222,7 @@ struct HelmView: View {
                             .foregroundStyle(.secondary)
                         ForEach(mouth.inbox.suffix(8)) { item in
                             Button {
+                                Haptics.tap()
                                 learn(from: item)
                             } label: {
                                 VStack(alignment: .leading,
@@ -248,15 +248,18 @@ struct HelmView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("New remote") {
+                            Haptics.tap()
                             showNewRemote = true
                         }
                         Button("Share remotes") {
+                            Haptics.tap()
                             if let url = HelmStore
                                 .exportURL(remotes) {
                                 shareItem = ShareItem(items: [url])
                             }
                         }
                         Button("Import remotes") {
+                            Haptics.tap()
                             showImporter = true
                         }
                     } label: {
@@ -268,6 +271,7 @@ struct HelmView: View {
                 TextField("Name — Projector, Lab Pi…",
                           text: $newRemoteName)
                 Button("Create") {
+                    Haptics.tap()
                     let name = newRemoteName
                         .trimmingCharacters(in: .whitespaces)
                     guard !name.isEmpty else { return }
@@ -277,6 +281,32 @@ struct HelmView: View {
                     newRemoteName = ""
                 }
                 Button("Cancel", role: .cancel) { }
+            }
+            .confirmationDialog(
+                "Delete this remote?",
+                isPresented: Binding(
+                    get: { remoteToDelete != nil },
+                    set: { if !$0 { remoteToDelete = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Delete "
+                       + (remoteToDelete?.name ?? "remote"),
+                       role: .destructive) {
+                    if let remote = remoteToDelete {
+                        remotes.removeAll {
+                            $0.id == remote.id
+                        }
+                        HelmStore.save(remotes)
+                    }
+                    remoteToDelete = nil
+                    Haptics.success()
+                }
+                Button("Cancel", role: .cancel) {
+                    remoteToDelete = nil
+                }
+            } message: {
+                Text("The remote and its buttons go — "
+                    + "the payloads stay in the book.")
             }
             .sheet(item: $editingButton) { draft in
                 HelmButtonEditor(draft: draft, book: book) {

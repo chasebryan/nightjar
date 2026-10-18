@@ -676,16 +676,6 @@ final class TraceBookStore {
         }
     }
 
-    /// Every BLE device the book knows, first-heard first.
-    func allBLEDevices() -> [TraceBLEDevice] {
-        queue.sync {
-            loadIfNeeded()
-            return bleDevices.values.sorted {
-                $0.firstHeard < $1.firstHeard
-            }
-        }
-    }
-
     /// Forget everything: the in-memory book and the file.
     func clear() {
         queue.sync {

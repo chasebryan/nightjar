@@ -61,17 +61,26 @@ enum Journal {
             guard let body = try? encoder.encode(event) else { return }
             event.h = sha256Hex(body)
             guard let data = try? encoder.encode(event) else { return }
-            lastHash = event.h
             var line = data
             line.append(contentsOf: [0x0A])
             let url = fileURL
+            // The chain commits only once the event is
+            // actually on disk — committing first left a
+            // permanent missing link after any failed
+            // write, and every later event chained onto
+            // a hash that was never in the file.
+            var written = false
             if let handle = try? FileHandle(forWritingTo: url) {
                 defer { try? handle.close() }
                 _ = try? handle.seekToEnd()
-                try? handle.write(contentsOf: line)
+                written = (try? handle.write(
+                    contentsOf: line)) != nil
             } else {
-                try? line.write(to: url, options: .atomic)
+                written = (try? line.write(
+                    to: url, options: .atomic)) != nil
             }
+            guard written else { return }
+            lastHash = event.h
             onEvent?(event)
         }
     }
@@ -423,6 +432,7 @@ struct NightLogView: View {
             }
             if !events.isEmpty {
                 Button {
+                    Haptics.tap()
                     shareItem = ShareItem(items: [Journal.fileURL])
                 } label: {
                     Label("Share the night log (JSONL)",

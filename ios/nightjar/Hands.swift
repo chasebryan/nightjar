@@ -374,7 +374,7 @@ extension SkelliCenter {
             guard let mouth = mouth, let post = post
             else { return false }
             let games = WarGamesCenter.shared
-            games.attach(mouth: mouth, post: post)
+            games.attachForHands(mouth: mouth, post: post)
             if q.contains("score") || q.contains("verdict")
                 || q.contains("who won") {
                 games.tryScore()
@@ -388,6 +388,13 @@ extension SkelliCenter {
                         + ", theirs: "
                         + (games.theirCard == nil
                            ? "not received" : "in") + ").")
+                }
+                // A scoring ask with no challenge out
+                // is an errand, not a hold — her tick
+                // stands down. (A round that just scored
+                // dropped the hold inside tryScore.)
+                if games.challengedPeer.isEmpty {
+                    games.detachHands()
                 }
                 return true
             }

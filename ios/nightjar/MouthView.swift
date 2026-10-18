@@ -2074,6 +2074,7 @@ struct MouthLogSheet: View {
     @EnvironmentObject private var mouth: Mouth
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
+    @State private var shareItem: ShareItem?
 
     var body: some View {
         NavigationStack {
@@ -2103,7 +2104,11 @@ struct MouthLogSheet: View {
                 if FileManager.default.fileExists(
                     atPath: Mouth.exchangesURL.path) {
                     ToolbarItem(placement: .bottomBar) {
-                        ShareLink(item: Mouth.exchangesURL) {
+                        Button {
+                            Haptics.tap()
+                            shareItem = ShareItem(
+                                items: [Mouth.exchangesURL])
+                        } label: {
                             Label("Export exchange history (.jsonl)",
                                   systemImage: "square.and.arrow.up")
                         }
@@ -2118,6 +2123,9 @@ struct MouthLogSheet: View {
                         }
                     }
                 }
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
             }
             .confirmationDialog(
                 "Delete the exchange history?",

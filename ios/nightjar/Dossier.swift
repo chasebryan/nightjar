@@ -333,6 +333,7 @@ struct DossierView: View {
             }
             Section {
                 Button {
+                    Haptics.tap()
                     shareItem = ShareItem(items: [dossierText])
                 } label: {
                     Label("Share the dossier",

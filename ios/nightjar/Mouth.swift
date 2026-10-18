@@ -139,35 +139,9 @@ enum PayloadKit {
         return out
     }
 
-    static func gzipDecompress(_ data: Data) -> Data? {
-        guard data.count >= 18, data[0] == 0x1f, data[1] == 0x8b, data[2] == 0x08 else {
-            return nil
-        }
-        let size = Int(le32Value(data.suffix(4)))
-        let body = data.dropFirst(10).dropLast(8)
-        guard !body.isEmpty else { return nil }
-        var dst = Data(count: max(size, 1))
-        let written = dst.withUnsafeMutableBytes { dstPtr -> Int in
-            body.withUnsafeBytes { srcPtr -> Int in
-                compression_decode_buffer(
-                    dstPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), max(size, 1),
-                    srcPtr.baseAddress!.assumingMemoryBound(to: UInt8.self), body.count,
-                    nil, COMPRESSION_ZLIB)
-            }
-        }
-        guard written == size else { return nil }
-        return dst.prefix(written)
-    }
-
     private static func le32(_ value: UInt32) -> Data {
         Data([UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF),
               UInt8((value >> 16) & 0xFF), UInt8((value >> 24) & 0xFF)])
-    }
-
-    private static func le32Value(_ data: Data) -> UInt32 {
-        let b = [UInt8](data)
-        guard b.count == 4 else { return 0 }
-        return UInt32(b[0]) | UInt32(b[1]) << 8 | UInt32(b[2]) << 16 | UInt32(b[3]) << 24
     }
 
     // MARK: Framing (mirrors frame/unframe in send.py)

@@ -54,7 +54,6 @@ final class UpdateChecker: ObservableObject {
     private static let lastCheckKey = "nightjar.update.lastCheck"
     private static let dismissedKey = "nightjar.update.dismissedTag"
     private static let notifiedKey = "nightjar.update.notifiedTag"
-    private static let minInterval: TimeInterval = 90
     /// How often the live watch re-checks while the app is open.
     private static let watchInterval: TimeInterval = 5 * 60
     /// The ETag of the last releases answer this instance
@@ -118,15 +117,6 @@ final class UpdateChecker: ObservableObject {
     func unwatch() {
         watchTask?.cancel()
         watchTask = nil
-    }
-
-    /// Check at most every few hours unless forced.
-    func checkIfDue(force: Bool = false) async {
-        if !force, let last = lastChecked,
-           Date().timeIntervalSince(last) < Self.minInterval {
-            return
-        }
-        await check()
     }
 
     func check() async {

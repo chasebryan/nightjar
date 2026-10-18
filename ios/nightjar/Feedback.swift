@@ -2476,7 +2476,11 @@ final class WeightsCenter: ObservableObject {
     private func drainQueue() {
         guard !draining else { return }
         draining = true
-        Task {
+        // The line is main-actor property: download(_:)
+        // appends to it from the main thread, so the
+        // drain works there too — an unstructured task
+        // on the global executor raced those appends.
+        Task { @MainActor in
             while !queue.isEmpty {
                 let next = queue.removeFirst()
                 await fetch(next)

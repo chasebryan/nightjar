@@ -4,9 +4,7 @@ import Combine
 import FoundationModels
 #endif
 import Foundation
-import PDFKit
 import SwiftUI
-import WebKit
 
 /// Skelli — the house's specialist.
 
@@ -3256,6 +3254,7 @@ struct SkelliView: View {
                 .focused($inputFocused)
                 .onSubmit(send)
             Button {
+                Haptics.tap()
                 send()
             } label: {
                 Image(systemName: "arrow.up")

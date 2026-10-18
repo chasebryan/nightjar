@@ -135,7 +135,7 @@ struct SigintExport: Codable {
         "Wi-Fi is visible only as the network this phone is "
             + "joined to, plus what the LAN census builds by "
             + "knocking — there is no monitor mode and no "
-            + "neighbour-network visibility.",
+            + "neighbor-network visibility.",
         "Identities are as emitters claim them, per channel, "
             + "per epoch. Records merge only within one epoch "
             + "of continuous observation; nothing here stitches "

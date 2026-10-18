@@ -327,6 +327,7 @@ struct ForgeView: View {
                     Button(keptPattern
                            ? "Kept in the armory"
                            : "Keep in the armory") {
+                        Haptics.tap()
                         keep(built,
                              name: keepName)
                         keptPattern = true
@@ -778,7 +779,9 @@ enum JSRunner {
     private static func evaluate(
         _ code: String,
         input: String = "") -> String {
-        let context = JSContext()!
+        guard let context = JSContext() else {
+            return "The JavaScript engine would not start."
+        }
         var logs: [String] = []
         var failure: String?
         context.exceptionHandler = { _, exc in

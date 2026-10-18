@@ -110,9 +110,15 @@ final class JSONLWriter {
     private func flushLocked() {
         guard let handle = handle, !buffer.isEmpty else { return }
         if let data = buffer.data(using: .utf8) {
-            try? handle.write(contentsOf: data)
+            do {
+                try handle.write(contentsOf: data)
+                buffer = ""
+            } catch {
+                // The buffer keeps its lines: the next
+                // flush retries instead of the session
+                // log silently losing them.
+            }
         }
-        buffer = ""
     }
 
     func flush() {

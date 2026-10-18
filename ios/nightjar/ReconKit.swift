@@ -415,12 +415,6 @@ final class Recon: NSObject, ObservableObject {
         connection.send(content: payload, completion: .contentProcessed { _ in })
     }
 
-    func sendBytes(_ data: Data, label: String) {
-        guard let connection = consoleConnection else { return }
-        console.append("» \(label) (\(data.count) bytes)")
-        connection.send(content: data, completion: .contentProcessed { _ in })
-    }
-
     func close() {
         consoleConnection?.cancel()
         consoleConnection = nil

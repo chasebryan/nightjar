@@ -18,6 +18,11 @@
 		<string>_googlecast._tcp</string>
 		<string>_mqtt._tcp</string>
 		<string>_nightjar._tcp</string>
+		<string>_rair._tcp</string>
+		<string>_companion-link._tcp</string>
+		<string>_rdlink._tcp</string>
+		<string>_sleep-proxy._udp</string>
+		<string>_airdrop._tcp</string>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

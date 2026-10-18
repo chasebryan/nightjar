@@ -533,6 +533,7 @@ struct CanarySectionView: View {
 
     @State private var lessons: [CanaryLesson] = []
     @State private var armedPaths: [String] = []
+    @State private var showAllLessons = false
 
     var body: some View {
         Group {
@@ -623,7 +624,9 @@ struct CanarySectionView: View {
                      + "whoever talks to it.")
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                ForEach(Array(lessons.prefix(8))) { lesson in
+                ForEach(showAllLessons
+                            ? lessons
+                            : Array(lessons.prefix(8))) { lesson in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(lesson.value).font(.callout)
@@ -660,6 +663,15 @@ struct CanarySectionView: View {
                             }
                         }
                     }
+                }
+                if lessons.count > 8 {
+                    Button(showAllLessons
+                           ? "Show fewer lessons"
+                           : "Show all \(lessons.count) lessons") {
+                        Haptics.tap()
+                        showAllLessons.toggle()
+                    }
+                    .font(.caption)
                 }
                 Button("Forget the lessons", role: .destructive) {
                     CanaryLessons.clear()

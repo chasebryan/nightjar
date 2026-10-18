@@ -405,6 +405,7 @@ struct DuelView: View {
                             .disableAutocorrection(true)
                             .font(.callout.monospaced())
                         Button("Offer the duel") {
+                            Haptics.tap()
                             center.hostDuel(peer: peerDraft,
                                             chat: chat)
                         }
@@ -422,6 +423,7 @@ struct DuelView: View {
                 if center.phase == "invited" {
                     Section(header: Text("A duel is offered")) {
                         Button("Accept — take up the blade") {
+                            Haptics.tap()
                             center.accept(chat: chat)
                         }
                         Button("Refuse", role: .destructive) {
@@ -432,6 +434,7 @@ struct DuelView: View {
                 if center.isHost, center.phase == "between" {
                     Section {
                         Button("Deal the next round") {
+                            Haptics.tap()
                             center.startRound(chat: chat,
                                               emcon: emcon)
                         }
@@ -462,6 +465,7 @@ struct DuelView: View {
                             }
                         } else {
                             Button("Strike") {
+                                Haptics.tap()
                                 center.strike(chat: chat)
                             }
                             .disabled(center.picked.count

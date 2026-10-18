@@ -52,10 +52,6 @@ enum ReconPayloads {
               UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF)])
     }
 
-    static func u64be(_ value: Int) -> Data {
-        u32be(value >> 32) + u32be(value & 0xFFFF_FFFF)
-    }
-
     static func le32(_ value: Int) -> Data {
         Data([UInt8(value & 0xFF), UInt8((value >> 8) & 0xFF),
               UInt8((value >> 16) & 0xFF), UInt8((value >> 24) & 0xFF)])
@@ -738,14 +734,4 @@ enum ReconPayloads {
         return data.prefix(16).map { String(format: "%02x", $0) }.joined()
     }
 
-    static func libraryText() -> String {
-        let header = "\(all.count) protocol first words "
-            + "(\(portMap.count) tcp ports, \(udpPortMap.count) udp)"
-        let rows = names.map { name -> String in
-            let probe = all[name]!
-            return "  \(name.padding(toLength: 24, withPad: " ", startingAt: 0)) "
-                + "\(probe.udp ? "udp" : "tcp")/\(probe.port)  \(probe.summary)"
-        }
-        return ([header, ""] + rows).joined(separator: "\n")
-    }
 }

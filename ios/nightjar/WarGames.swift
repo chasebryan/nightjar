@@ -238,16 +238,54 @@ final class WarGamesCenter: ObservableObject {
 
     // MARK: lifecycle
 
+    // The 1-second tick runs only while someone holds
+    // the center: the room while it is on screen, or
+    // Skelli's hands while a voice-run match is live.
+    // It used to start on the first attach and run for
+    // the rest of the process, match or no match.
+    private var viewHeld = false
+    private var handsHeld = false
+
     func attach(mouth: Mouth, post: ListeningPost) {
         self.mouth = mouth
         self.post = post
         recon.mouth = mouth
-        if timer == nil {
-            timer = Timer.scheduledTimer(withTimeInterval: 1,
-                                         repeats: true) {
-                [weak self] _ in self?.tick()
-            }
+        viewHeld = true
+        startTimerIfNeeded()
+    }
+
+    func attachForHands(mouth: Mouth, post: ListeningPost) {
+        self.mouth = mouth
+        self.post = post
+        recon.mouth = mouth
+        handsHeld = true
+        startTimerIfNeeded()
+    }
+
+    /// The room is off screen: drop its hold.
+    func detach() {
+        viewHeld = false
+        stopTimerIfUnheld()
+    }
+
+    /// Skelli's errand is done: drop her hold.
+    func detachHands() {
+        handsHeld = false
+        stopTimerIfUnheld()
+    }
+
+    private func startTimerIfNeeded() {
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 1,
+                                     repeats: true) {
+            [weak self] _ in self?.tick()
         }
+    }
+
+    private func stopTimerIfUnheld() {
+        guard !viewHeld, !handsHeld else { return }
+        timer?.invalidate()
+        timer = nil
     }
 
     func newMatch() {
@@ -585,6 +623,9 @@ final class WarGamesCenter: ObservableObject {
                     "match \(matchID) round \(round): "
                     + "attacker \(scored.attackerPoints), "
                     + "defender \(scored.defenderPoints)")
+        // A scored round is terminal for the voice
+        // hold — her tick can stand down.
+        detachHands()
     }
 
     private func writeReport(_ report: WarMatchReport) -> URL? {
@@ -881,6 +922,9 @@ struct WarGamesView: View {
             .onAppear {
                 center.attach(mouth: mouth, post: post)
                 pushDefense()
+            }
+            .onDisappear {
+                center.detach()
             }
             .onChange(of: decoysText) { _ in pushDefense() }
             .onChange(of: serveUseTCP) { _ in pushDefense() }

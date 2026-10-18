@@ -183,6 +183,12 @@ final class TagCensus: NSObject, ObservableObject,
 
     /// The APDU explorer: one command the operator typed,
     /// sent to the tag they are holding, the answer kept.
+    /// The explorer's log is the operator's to clear —
+    /// what the app collects, the operator can empty.
+    func clearAPDULog() {
+        apduLog = []
+    }
+
     func sendAPDU(hex: String) {
         guard let isoTag else {
             apduLog.append("— no ISO 7816 tag is connected")
@@ -310,6 +316,14 @@ struct TagCensusView: View {
                                 Text($0)
                                     .font(.caption2.monospaced())
                                     .foregroundStyle(.secondary)
+                            }
+                            if !census.apduLog.isEmpty {
+                                Button("Clear the log",
+                                       role: .destructive) {
+                                    Haptics.tap()
+                                    census.clearAPDULog()
+                                }
+                                .font(.caption)
                             }
                         }
                     }

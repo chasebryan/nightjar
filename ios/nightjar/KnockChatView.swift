@@ -259,6 +259,7 @@ struct KnockChatView: View {
                 .disableAutocorrection(true)
                 .font(.caption.monospaced())
             Button("Save the pasted key") {
+                Haptics.tap()
                 let hex = keyDraft
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .lowercased()
@@ -476,6 +477,7 @@ struct KnockChatView: View {
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                     Button("Sing") {
+                        Haptics.tap()
                         if let sealed = try? Knocktalk.seal(
                             chirpDraft, key: key,
                             suite: chat.sendSuite) {
@@ -568,6 +570,7 @@ struct KnockChatView: View {
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                     Button("Arm drop") {
+                        Haptics.tap()
                         if let sealed = try? Knocktalk.seal(
                             brushDraft, key: key,
                             suite: chat.sendSuite) {
@@ -782,6 +785,7 @@ struct KnockChatView: View {
                     Text("6 hours").tag(21600.0)
                 }
                 Button {
+                    Haptics.tap()
                     sealCapsule()
                 } label: {
                     Label(capsuleBusy ? "Sealing…"

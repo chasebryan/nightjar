@@ -169,8 +169,13 @@ struct EmconView: View {
         .fullScreenCover(isPresented: $assaultIgnition) {
             AssaultIgnitionView(isShown: $assaultIgnition)
         }
-        .sheet(isPresented: $shareAssaultReport) {
-            ShareSheet(items: [assault.report])
+        .onChange(of: shareAssaultReport) { wanted in
+            // The after-action report goes out the same
+            // door as every other share in the app.
+            if wanted {
+                shareItem = ShareItem(items: [assault.report])
+                shareAssaultReport = false
+            }
         }
         .sheet(item: $shareItem) { item in
             ShareSheet(items: item.items)

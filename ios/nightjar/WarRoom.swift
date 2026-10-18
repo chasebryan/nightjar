@@ -83,7 +83,7 @@ struct WarRoomExport: Codable {
             + "knocked ports is invisible to it (the trace "
             + "export lists its own limits in full).",
         "Knocks speak each port's own expected protocol "
-            + "(the Recon bench's behaviour) on the operator's "
+            + "(the Recon bench's behavior) on the operator's "
             + "own wire, against doors this run's trace found.",
     ]
 }
@@ -273,13 +273,6 @@ final class WarRun: ObservableObject {
         addEvent(.run, "Run stopped by the operator",
                  source: "war-room")
         finish(stopped: true)
-    }
-
-    /// The sheet went away mid-run: close out cleanly rather
-    /// than leave engines running under a dead coordinator.
-    func detach() {
-        guard running else { return }
-        stop()
     }
 
     func clearTimeline() {
@@ -742,9 +735,10 @@ struct WarRoomView: View {
                 ShareSheet(items: item.items)
             }
             .onAppear { recon.mouth = mouth }
-            // No detach on disappear: the run is shared,
-            // so leaving the room leaves it running —
-            // the room's Stop button is the way down.
+            // No teardown on disappear: the run is
+            // shared, so leaving the room leaves it
+            // running — the room's Stop button is the
+            // way down.
         }
     }
 
