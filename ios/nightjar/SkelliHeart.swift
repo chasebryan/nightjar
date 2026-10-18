@@ -71,7 +71,15 @@ enum SkelliFeeling: String, CaseIterable {
     /// not a label, and her voice translates whole
     /// or not at all.
     var localizedWord: String {
-        LanguageCenter.t("feeling." + rawValue)
+        let key = "feeling." + rawValue
+        let hit = LanguageCenter.t(key)
+        // A constructed key is not its own English
+        // fallback the way a literal key is: when
+        // the lookup returns the key itself (the
+        // house is in English, or a table lacks the
+        // row), speak the plain English word rather
+        // than leaking the key into her header.
+        return hit == key ? word : hit
     }
     var symbol: String {
         switch self {
