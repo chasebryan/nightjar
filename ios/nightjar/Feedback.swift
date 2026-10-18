@@ -245,9 +245,14 @@ extension View {
 /// itself over it, line by line, every line true: this
 /// device, this network, this library, this stealth state.
 /// The Jolly Roger stays inside the app; nothing of it is
-/// out here. Fades into the app after ~2 seconds; a tap
-/// skips it. Without the reel in the bundle, the same log
-/// plays over plain black — never a broken boot.
+/// out here. The reel plays exactly once and the
+/// whole ceremony is timed against it — the log, the
+/// loading bar, the assembling title — ending on the
+/// film's last frame with the closing line delivered
+/// as the finale, one held beat, then the fade into
+/// the app. A tap skips it all. Without the reel in
+/// the bundle, the same log plays over plain black
+/// on the old fixed timings — never a broken boot.
 /// The boot's wardrobe: the operator's own film
 /// or image for the boot backdrop, copied into
 /// Documents/boot-media and nowhere else, and
@@ -308,6 +313,8 @@ struct BootView: View {
     @State private var scrambleStep = 0
     @State private var fadeShown = false
     @State private var cursorOn = true
+    @State private var filmProgress: Double = 0
+    @State private var finale = false
 
     private struct BootLine {
         let text: String
@@ -340,6 +347,37 @@ struct BootView: View {
         default:
             return providedData
         }
+    }
+
+    /// The film's own length, when the backdrop is
+    /// a GIF: the whole boot is timed against it —
+    /// the text, the bar, and the farewell all land
+    /// on the film's last frame.
+    private var filmSeconds: Double? {
+        guard let data = backdropData,
+              BootMedia.isGIF(data) else { return nil }
+        let delays = UIImage.gifDelays(data)
+        guard delays.count > 1 else { return nil }
+        return delays.reduce(0, +)
+    }
+
+    /// One clock for the whole ceremony: the film's
+    /// true progress while a film plays, the log
+    /// style's own progress when none does.
+    private var bootProgress: CGFloat {
+        filmSeconds != nil
+            ? CGFloat(filmProgress)
+            : progress
+    }
+
+    /// The title assembling: the letters begin wide
+    /// apart and dim, and draw together, brightening,
+    /// as the boot completes — the name resolving as
+    /// the machine finishes waking.
+    private var titleTracking: CGFloat {
+        let t = max(0, min(1,
+            (Double(bootProgress) - 0.45) / 0.55))
+        return CGFloat(11 * (1 - t))
     }
 
     private var lines: [BootLine] {
@@ -381,8 +419,10 @@ struct BootView: View {
             out.append(BootLine(text: "[ -- ] backdrop image missing",
                                 tone: .off))
         }
-        out.append(BootLine(text: "> the world is yours",
-                            tone: .cmd))
+        // The old closing line — "> the world is
+        // yours" — is no longer a log line: it is
+        // the finale, delivered by the title block
+        // itself on the film's last frame.
         return out
     }
 
@@ -533,7 +573,8 @@ struct BootView: View {
                 HStack(spacing: gap) {
                     ForEach(0..<count, id: \.self) { i in
                         let lit = Double(i)
-                            < Double(count) * Double(progress)
+                            < Double(count)
+                                * Double(bootProgress)
                         RoundedRectangle(cornerRadius: 1.5)
                             .fill(lit ? color(.ok)
                                       : Color.white.opacity(0.10))
@@ -552,7 +593,7 @@ struct BootView: View {
                     .foregroundStyle(Color(white: 0.55))
                     .shadow(color: .black.opacity(0.9), radius: 3)
                 Spacer()
-                Text("\(Int(progress * 100))%")
+                Text("\(Int(bootProgress * 100))%")
                     .font(.system(.caption, design: .monospaced)
                           .weight(.bold))
                     .foregroundStyle(color(.ok))
@@ -567,8 +608,13 @@ struct BootView: View {
             Color.black.ignoresSafeArea()
             if let data = backdropData {
                 if BootMedia.isGIF(data) {
-                    GIFPlayerView(data: data)
-                        .ignoresSafeArea()
+                    BootFilmPlayer(data: data) { value in
+                        if abs(value - filmProgress) > 0.004
+                            || value == 1 {
+                            filmProgress = value
+                        }
+                    }
+                    .ignoresSafeArea()
                 } else if let image = UIImage(
                     data: data) {
                     Image(uiImage: image)
@@ -592,16 +638,25 @@ struct BootView: View {
                     Text("nightjar-hack")
                         .font(.system(.title3, design: .monospaced)
                               .weight(.bold))
-                        .foregroundStyle(.white)
+                        .tracking(titleTracking)
+                        .foregroundStyle(.white.opacity(
+                            0.62 + 0.38
+                                * Double(bootProgress)))
                         .shadow(color: .black.opacity(0.9),
                                 radius: 5, x: 0, y: 1)
-                    Text("IOS BUILD · FIELD UNIT")
+                    Text(finale
+                         ? "> the world is yours"
+                         : "IOS BUILD · FIELD UNIT")
                         .font(.system(.caption2,
                                       design: .monospaced))
                         .tracking(2)
-                        .foregroundStyle(Color(white: 0.62))
+                        .foregroundStyle(finale
+                            ? color(.ok)
+                            : Color(white: 0.62))
                         .shadow(color: .black.opacity(0.9),
                                 radius: 4, x: 0, y: 1)
+                        .animation(.easeInOut(duration: 0.45),
+                                   value: finale)
                 }
                 .padding(.top, 22)
                 Spacer()
@@ -637,21 +692,29 @@ struct BootView: View {
                     cursorOn.toggle()
                 }
             }
+            // The ceremony is timed against the
+            // film: while a film plays, every style
+            // is stretched across its one playthrough,
+            // so the last line, the full bar and the
+            // finale all land on its last frame.
+            // Without a film, the old timings stand.
+            let film = filmSeconds
             switch bootText {
             case "instant":
                 shown = lines.count
                 fadeShown = true
-                try? await Task.sleep(
-                    nanoseconds: 900_000_000)
+                try? await Task.sleep(nanoseconds:
+                    UInt64((film ?? 0.9) * 1_000_000_000))
             case "fade":
                 shown = lines.count
                 fadeShown = true
-                try? await Task.sleep(
-                    nanoseconds: 1_500_000_000)
+                try? await Task.sleep(nanoseconds:
+                    UInt64((film ?? 1.5) * 1_000_000_000))
             case "type":
                 let total = max(1, totalChars)
                 let perChar = UInt64(
-                    1_500_000_000 / total)
+                    (film ?? 1.5) * 1_000_000_000
+                        / Double(total))
                 for _ in 0..<total {
                     try? await Task.sleep(
                         nanoseconds: perChar)
@@ -663,37 +726,68 @@ struct BootView: View {
                         Haptics.tick()
                     }
                 }
-                try? await Task.sleep(
-                    nanoseconds: 400_000_000)
+                if film == nil {
+                    try? await Task.sleep(
+                        nanoseconds: 400_000_000)
+                }
             case "scramble":
                 let steps = 2 * lines.count + 8
+                let perStep = UInt64(
+                    (film ?? Double(steps) * 0.065)
+                        * 1_000_000_000 / Double(steps))
                 for step in 0...steps {
                     scrambleStep = step
                     try? await Task.sleep(
-                        nanoseconds: 65_000_000)
+                        nanoseconds: perStep)
                     if Task.isCancelled {
                         blink.cancel(); return
                     }
                 }
-                try? await Task.sleep(
-                    nanoseconds: 350_000_000)
-            default:
-                for _ in lines.indices {
+                if film == nil {
                     try? await Task.sleep(
-                        nanoseconds: UInt64.random(
-                            in: 110_000_000...210_000_000))
-                    if Task.isCancelled {
-                        blink.cancel(); return
-                    }
-                    shown += 1
-                    Haptics.tick()
+                        nanoseconds: 350_000_000)
                 }
-                try? await Task.sleep(
-                    nanoseconds: 550_000_000)
+            default:
+                if let film = film {
+                    let perLine = UInt64(
+                        film * 1_000_000_000
+                            / Double(max(1, lines.count)))
+                    for _ in lines.indices {
+                        try? await Task.sleep(
+                            nanoseconds: perLine)
+                        if Task.isCancelled {
+                            blink.cancel(); return
+                        }
+                        shown += 1
+                        Haptics.tick()
+                    }
+                } else {
+                    for _ in lines.indices {
+                        try? await Task.sleep(
+                            nanoseconds: UInt64.random(
+                                in: 110_000_000...210_000_000))
+                        if Task.isCancelled {
+                            blink.cancel(); return
+                        }
+                        shown += 1
+                        Haptics.tick()
+                    }
+                    try? await Task.sleep(
+                        nanoseconds: 550_000_000)
+                }
             }
+            if Task.isCancelled { return }
+            // The finale: the title stands assembled,
+            // the closing line takes the subtitle's
+            // place, and the house holds its breath
+            // on the film's last frame — one beat —
+            // before fading into the app.
+            finale = true
+            Haptics.success()
+            try? await Task.sleep(
+                nanoseconds: 450_000_000)
             blink.cancel()
             if Task.isCancelled { return }
-            Haptics.success()
             onDone()
         }
     }
@@ -757,6 +851,31 @@ extension UIImage {
         guard !frames.isEmpty else { return nil }
         return UIImage.animatedImage(with: frames, duration: total)
     }
+
+    /// The authored delay of every frame, read from
+    /// properties alone — no frame is decoded, so
+    /// asking costs nothing even for a long film.
+    static func gifDelays(_ data: Data) -> [Double] {
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData, nil) else { return [] }
+        let count = CGImageSourceGetCount(source)
+        var out: [Double] = []
+        for i in 0..<count {
+            var delay = 0.1
+            if let props = CGImageSourceCopyPropertiesAtIndex(
+                source, i, nil) as? [String: Any],
+               let gif = props[kCGImagePropertyGIFDictionary
+                               as String] as? [String: Any] {
+                delay = (gif[kCGImagePropertyGIFUnclampedDelayTime
+                             as String] as? Double)
+                    ?? (gif[kCGImagePropertyGIFDelayTime
+                            as String] as? Double)
+                    ?? 0.1
+            }
+            out.append(max(delay, 0.02))
+        }
+        return out
+    }
 }
 
 /// A full-bleed GIF player (UIImageView under the hood).
@@ -777,6 +896,101 @@ struct GIFPlayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ view: UIImageView, context: Context) {}
+}
+
+/// The boot film: a GIF played exactly once, frame
+/// by frame off the clock, decoding each frame as
+/// it is reached and holding only that one — a
+/// long film costs one frame of memory, not all of
+/// them. The last frame holds when the film ends,
+/// and progress reports the playhead's true place.
+struct BootFilmPlayer: UIViewRepresentable {
+    let data: Data
+    var onProgress: (Double) -> Void
+
+    func makeUIView(context: Context) -> UIImageView {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFill
+        view.clipsToBounds = true
+        view.backgroundColor = .black
+        context.coordinator.begin(in: view, data: data,
+                                  onProgress: onProgress)
+        return view
+    }
+
+    func updateUIView(_ view: UIImageView,
+                      context: Context) {}
+
+    static func dismantleUIView(
+        _ view: UIImageView, coordinator: Coordinator
+    ) {
+        coordinator.stop()
+    }
+
+    final class Coordinator: NSObject {
+        private var link: CADisplayLink?
+        private var source: CGImageSource?
+        private var starts: [Double] = []
+        private var total = 0.0
+        private var t0: CFTimeInterval = 0
+        private weak var view: UIImageView?
+        private var onProgress: ((Double) -> Void)?
+        private var shown = -1
+
+        func begin(in view: UIImageView, data: Data,
+                   onProgress: @escaping (Double) -> Void) {
+            self.view = view
+            self.onProgress = onProgress
+            source = CGImageSourceCreateWithData(
+                data as CFData, nil)
+            let delays = UIImage.gifDelays(data)
+            guard source != nil, !delays.isEmpty
+            else { return }
+            var acc = 0.0
+            for delay in delays {
+                starts.append(acc)
+                acc += delay
+            }
+            total = acc
+            setFrame(0)
+            t0 = CACurrentMediaTime()
+            let link = CADisplayLink(
+                target: self, selector: #selector(tick))
+            link.add(to: .main, forMode: .common)
+            self.link = link
+        }
+
+        @objc private func tick() {
+            let elapsed = CACurrentMediaTime() - t0
+            if elapsed >= total {
+                setFrame(starts.count - 1)
+                onProgress?(1)
+                stop()
+                return
+            }
+            var index = max(shown, 0)
+            while index + 1 < starts.count
+                    && starts[index + 1] <= elapsed {
+                index += 1
+            }
+            if index != shown { setFrame(index) }
+            onProgress?(min(1, elapsed / total))
+        }
+
+        private func setFrame(_ index: Int) {
+            guard let source = source,
+                  index >= 0, index < starts.count,
+                  let cg = CGImageSourceCreateImageAtIndex(
+                    source, index, nil) else { return }
+            shown = index
+            view?.image = UIImage(cgImage: cg)
+        }
+
+        func stop() {
+            link?.invalidate()
+            link = nil
+        }
+    }
 }
 
 /// The drumroll: a glitching, laughing skull over the whole
