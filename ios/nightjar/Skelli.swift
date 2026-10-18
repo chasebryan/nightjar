@@ -3168,17 +3168,27 @@ struct SkelliView: View {
                 Label("Deliveries",
                       systemImage: "shippingbox")
             }
-            Toggle(isOn: $skelli.webResearchEnabled) {
-                Label("Web research",
-                      systemImage: "globe")
-            }
-            Toggle(isOn: $agentsEnabled) {
-                Label("Agents — her crew",
-                      systemImage: "person.3")
-            }
-            Toggle(isOn: $moodsEnabled) {
-                Label("Moods — her heart",
-                      systemImage: "heart")
+            // The three switches live one door down:
+            // at twelve rows the menu outgrew its card
+            // and clipped its last row on device
+            // (2026-10-18) — doors stay one tap away,
+            // settings fold together.
+            Menu {
+                Toggle(isOn: $skelli.webResearchEnabled) {
+                    Label("Web research",
+                          systemImage: "globe")
+                }
+                Toggle(isOn: $agentsEnabled) {
+                    Label("Agents — her crew",
+                          systemImage: "person.3")
+                }
+                Toggle(isOn: $moodsEnabled) {
+                    Label("Moods — her heart",
+                          systemImage: "heart")
+                }
+            } label: {
+                Label("Switches",
+                      systemImage: "switch.2")
             }
             if SkelliMind.weightsReady {
                 Menu {
