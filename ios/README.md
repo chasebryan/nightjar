@@ -222,7 +222,10 @@ Below the steps, the Send tab keeps working:
   spars two of the operator's phones — defender
   serving with decoys, attacker tracing and knocking,
   the protocol riding the Serve inbox, the scoring
-  diffing found against missed against caught. And
+  diffing found against missed against caught. The **Banshee** sits in EMCON as the
+  score's opposite pole: one switch, every
+  self-announcement at full voice, and ceasing
+  restores the posture it found. And
   EMCON's exposure score now weighs presence itself —
   on the wire, answering under its own name — before
   emissions, so a quiet joined phone is no ghost.

@@ -150,6 +150,13 @@ score put on an honest footing.
   defender serving with decoys flying, attacker
   tracing and knocking, the match protocol
   riding the Serve inbox, and a scored report.
+- **The Banshee** — EMCON's opposite pole in
+  the same tab: one switch lists Serve with
+  stealth off, shouts the BLE beacon, arms
+  Net-Assault and beats a named broadcast
+  heartbeat across the subnet, until you cease
+  it — and ceasing restores the posture it
+  found, exactly.
 - **EMCON's score, honestly based** — presence
   itself is weighed now: on the wire, and
   answering under its own name, before a single

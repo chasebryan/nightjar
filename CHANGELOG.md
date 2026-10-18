@@ -66,6 +66,21 @@
   missed against caught against
   decoys, and writes the match
   report.
+- **The Banshee.** EMCON's
+  opposite pole, one switch in
+  the posture tab: Serve listed
+  with stealth off, the BLE
+  beacon shouting BANSHEE,
+  Net-Assault armed, and a
+  named broadcast heartbeat
+  across the subnet — this
+  device announcing itself at
+  full voice until you cease
+  it. Ceasing restores the
+  exact posture the scream
+  found. It announces only
+  itself; it touches no one
+  else's traffic.
 - **The exposure score,**
   **honestly based.** EMCON's
   number now starts from
