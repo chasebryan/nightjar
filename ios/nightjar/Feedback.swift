@@ -1590,9 +1590,13 @@ enum Haptics {
     }
 
     /// The boot sequence's per-line keystroke.
+    /// Raised from 0.3: the developer panel
+    /// proved 0.3 rigid sits under the
+    /// operator's threshold — every other beat
+    /// in the kit was felt, that one never.
     static func tick() {
         onMain {
-            rigidGen.impactOccurred(intensity: 0.3)
+            rigidGen.impactOccurred(intensity: 0.6)
             rigidGen.prepare()
         }
     }
