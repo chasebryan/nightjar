@@ -41,6 +41,27 @@ extension SkelliKnowledge {
             body: "The whole law of penetration testing is one word: authorization. Before a packet: written permission, a defined scope (which systems, which addresses, which techniques, which hours), rules of engagement (what is forbidden even in scope — denial of service, social engineering named people, touching data beyond the proof), an emergency contact, and a get-out-of-jail letter the tester carries. In the United States the Computer Fraud and Abuse Act turns 'unauthorized access' into a federal crime; the UK Computer Misuse Act and its cousins elsewhere say the same in their own words — and good intentions are not a defense to any of them. Out of scope is out of law, even mid-engagement, even by accident: stop, note it, tell the client. Bug bounties are contracts, not vibes — their safe harbors cover exactly the scope they publish and nothing beside it. Found something live in the wild? Responsible disclosure: tell the owner, give them time, keep the proof minimal. Her line, in every mood: no authorization, no test — and she will gladly help draft the scope instead."),
 
         SkelliEntry(
+            id: "certifications",
+            title: "The certifications — the map of the ladder",
+            home: "her teacher's shelf — ask her which cert, or how to pass one",
+            keywords: ["certification",
+                       "certifications", "cert",
+                       "certs", "oscp", "security+",
+                       "pentest+", "ceh", "pnpt",
+                       "cpts", "ejpt", "gpen",
+                       "crto", "cissp"],
+            body: "The ladder, rung by rung. Foundations: CompTIA Security+ — the broad baseline employers filter on, ninety questions of vocabulary and judgment — and INE's eJPT, a hands-on first step taken in a live lab. The core pentest credentials are practical, because the work is: OffSec's OSCP, the field's benchmark — a twenty-four-hour hands-on exam against real machines, then a report; TCM Security's PNPT, a full simulated engagement ending in a written report and a live debrief; Hack The Box's CPTS, a long, thorough practical with a commercial-grade report. Knowledge exams sit beside them: CompTIA PenTest+ and EC-Council's CEH (125 multiple-choice questions, four hours) — respected on paper, weaker in the hand. Specializations: OSEP for advanced evasion and Active Directory, OSWE for web exploitation, CRTO for red-team operations in AD, GIAC's GPEN out of SANS. And CISSP stands apart — eight domains of governance and judgment, years of experience demanded; it certifies the manager, not the operator. Her guidance is always the same shape: pick by the work you want, not the letters you like — and a passed exam is the receipt, never the education."),
+        SkelliEntry(
+            id: "passingcerts",
+            title: "How the exams are actually passed",
+            home: "her teacher's method — ask her how to pass, and be ready to work",
+            keywords: ["how to pass", "pass the oscp",
+                       "pass oscp", "study for",
+                       "prepare for", "exam tips",
+                       "study plan", "passing"],
+            body: "Nobody passes a practical exam by watching. The method that works: labs over lectures — Hack The Box, TryHackMe, and OffSec's Proving Grounds for reps against real machines, in the exam's own weight class. Enumerate like a ritual — ports, services, versions, the boring corners — because practical exams are lost to a missed service far more often than to an exploit that would not fire. Keep notes as you would a report: command, output, screenshot; the OSCP and PNPT are graded on the write-up as much as the shells, and a root you cannot document is a rumor. Timebox ruthlessly: when a box goes quiet for an hour, move — points live on the next machine. Learn the platform before the day: your own tooling, templates, and checklists, rehearsed until they are boring. For the multiple-choice exams (Security+, CEH, PenTest+) the craft differs: question banks, the frameworks' vocabulary in their own words, and never leaving a question blank. And study like an operator with a scope: a plan, hours kept, progress reviewed — she will hold the plan with you, quiz you Socratically, and mark the rungs as you climb. That is what a teacher is for."),
+
+        SkelliEntry(
             id: "sky",
             title: "The sky — moon, planets, the wheel",
             home: "the almanac in her head — ask her the moon, a sign, a planet",

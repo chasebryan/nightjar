@@ -309,6 +309,19 @@
   card lies face-down
   until you say the
   word.
+- **She teaches.**
+  The certification
+  ladder is on her
+  shelf — Security+ to
+  OSCP to CISSP, what
+  each one tests, how
+  each exam is passed —
+  and she teaches the
+  way operators learn:
+  labs over lectures,
+  challenges in steps,
+  the plan held with
+  you.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
