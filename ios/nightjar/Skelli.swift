@@ -1380,6 +1380,172 @@ final class SkelliCenter: ObservableObject {
         return nil
     }
 
+    /// Ordinary conversation: agreement,
+    /// reactions, continuations — the connective
+    /// tissue of talk, which is not small talk
+    /// and not a question. (Device, 2026-10-18:
+    /// "yeah, that would keep me awake as
+    /// well" — agreement with her why-answer —
+    /// fell through every lane to the bench,
+    /// and the bench handed her own line back
+    /// word for word.) These shapes are safe
+    /// here precisely because every hand and
+    /// every question lane has already had its
+    /// claim: what reaches this point carrying
+    /// "yeah" is conversation, not an order.
+    /// The answers acknowledge and stand beside
+    /// what was just said — they never recite
+    /// it back.
+    private func converseReply(to q: String)
+        -> String? {
+        let heart = SkelliHeart.shared
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        let words = Set(q.split(separator: " ")
+            .map { $0.trimmingCharacters(
+                in: CharacterSet(
+                    charactersIn: ".,!")) })
+        // Continuations first — "so?" is a
+        // continuation wearing a question
+        // mark, not a question. More of the
+        // moment, composed fresh from her real
+        // circumstances — never the sentence
+        // she just said, said again.
+        if ["go on", "and then", "then what",
+            "what else", "keep going", "and",
+            "and?", "so", "so?"].contains(q) {
+            var clause = SkelliVoice.clause(
+                seed: lines.count * 5 + 2,
+                heart: heart)
+            clause = clause.trimmingCharacters(
+                in: CharacterSet(
+                    charactersIn: " ,"))
+            if !clause.isEmpty {
+                let first = clause.prefix(1)
+                    .uppercased()
+                clause = first + clause.dropFirst()
+                if let last = clause.last,
+                   !".!?".contains(last) {
+                    clause += "."
+                }
+                return clause
+            }
+            return pick([
+                L("That's the whole of it, for now."),
+                L("Nothing further stands — yet.")])
+        }
+        // A question is not conversation for
+        // the rest of this lane: questions keep
+        // their road to the manual and the
+        // bench.
+        let questiony = q.contains("?")
+            || q.hasPrefix("what")
+            || q.hasPrefix("why")
+            || q.hasPrefix("how")
+            || q.hasPrefix("when")
+            || q.hasPrefix("where")
+            || q.hasPrefix("who")
+            || q.hasPrefix("is it")
+            || q.hasPrefix("can you")
+            || q.hasPrefix("do you")
+            || q.hasPrefix("does")
+            || q.hasPrefix("is there")
+        guard !questiony else { return nil }
+        // Agreement with content.
+        let agrees = words.contains("yeah")
+            || words.contains("yep")
+            || words.contains("yup")
+            || q.contains("me too")
+            || q.contains("same here")
+            || q.contains("i agree")
+            || q.contains("makes sense")
+            || q.contains("fair enough")
+            || q.contains("as well")
+            || q.contains("i would too")
+            || q.contains("no wonder")
+            || q.contains("understandable")
+            || q.contains("so true")
+            || q.contains("that's true")
+            || q.contains("that is true")
+        if agrees {
+            if heart.feeling == .mad {
+                return L("Mm.")
+            }
+            if heart.feeling != .content {
+                return pick([
+                    L("Then we're of one mind on it."),
+                    L("Shared watch, then."),
+                    L("Mm. It helps, hearing it.")])
+            }
+            return pick([
+                L("Of one mind, then."),
+                L("Filed under: agreed."),
+                L("Mm. Settled, then.")])
+        }
+        // Bare reactions: a sound, not a
+        // sentence — answered in kind, briefly.
+        if q == "ugh" || words.contains("hmm")
+            || q == "huh" || q == "hm" {
+            return pick([
+                L("Mm. Let it turn over."),
+                L("Thinking weather. I'll hold the wire."),
+                L("Mm. Felt from here.")])
+        }
+        if ["wow", "whoa", "yikes", "damn",
+            "sheesh", "interesting"].contains(q)
+            || q.contains("oh wow")
+            || q.contains("oh no") {
+            return pick([
+                L("Mm. Noted in the margin."),
+                L("It lands, doesn't it.")])
+        }
+        return nil
+    }
+
+    /// Parroting, detected: a text that is her
+    /// own last spoken line handed back to her
+    /// — exactly, or with only its edges
+    /// changed — is not an answer, from a bench
+    /// or from any lane.
+    private func isParrot(_ text: String) -> Bool {
+        func norm(_ s: String) -> String {
+            s.lowercased()
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                .trimmingCharacters(
+                    in: CharacterSet(
+                        charactersIn: ".!?…"))
+        }
+        guard let last = lines.last(where: {
+            !$0.fromOperator
+        })?.text else { return false }
+        let a = norm(text), b = norm(last)
+        guard !a.isEmpty, !b.isEmpty else {
+            return false
+        }
+        return a == b
+            || (a.count > 24 && b.hasPrefix(a))
+            || (b.count > 24 && a.hasPrefix(b))
+    }
+
+    /// The no-verbatim rule for her conversational
+    /// voice: a reply that repeats her last line
+    /// word for word is replaced by a brief
+    /// standing word. (Action confirmations are
+    /// exempt by design — they never pass
+    /// through here.)
+    private func unrepeated(_ text: String)
+        -> String {
+        guard isParrot(text) else { return text }
+        let pool = [
+            L("It stands as I said it."),
+            L("Nothing truer to add."),
+            L("Mm. The answer hasn't changed.")]
+        return pool[abs(lines.count) % pool.count]
+    }
+
     /// She does not understand everything, and she
     /// says so — in whatever feeling she is in,
     /// with one short door left open.
@@ -1759,7 +1925,7 @@ final class SkelliCenter: ObservableObject {
             || q.contains("am i forgiven"),
            let reply = SkelliHeart.shared
             .personalReply(to: q) {
-            say(reply)
+            say(unrepeated(reply))
             return
         }
 
@@ -2198,7 +2364,7 @@ final class SkelliCenter: ObservableObject {
         // about herself.
         if let reply = SkelliHeart.shared.personalReply(
             to: q) {
-            say(reply)
+            say(unrepeated(reply))
             return
         }
         // A forgiven grievance is acknowledged, not
@@ -2221,7 +2387,16 @@ final class SkelliCenter: ObservableObject {
         // Small talk, in her voice, before the
         // manual can be recited at a greeting.
         if let social = socialReply(to: q) {
-            say(social)
+            say(unrepeated(social))
+            return
+        }
+
+        // Ordinary conversation — agreement,
+        // a reaction, a continuation — answered
+        // in kind, never by recital and never
+        // by waking a bench to parrot her.
+        if let converse = converseReply(to: q) {
+            say(unrepeated(converse))
             return
         }
 
@@ -2315,7 +2490,16 @@ final class SkelliCenter: ObservableObject {
             guard let self = self else { return }
             switch verdict {
             case .answer(let text):
-                self.say(text)
+                // A bench that hands her back
+                // her own last line has not
+                // answered at all — the parrot
+                // is refused, and a brief true
+                // word stands in its place.
+                if self.isParrot(text) {
+                    self.say(self.unrepeated(text))
+                } else {
+                    self.say(text)
+                }
             case .research:
                 self.researchWeb(for: q)
             }
