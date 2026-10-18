@@ -36,6 +36,13 @@ struct SigintEmitter: Identifiable, Codable {
     var rssiHistory: [Int]     // BLE only, capped
     var doors: [String]        // LAN only: "443/tcp · https"
     var trackerShaped: Bool
+    /// Battery, when a broadcast format reported
+    /// it: the latest percentage and/or voltage,
+    /// and the forecaster's trend line. Optional
+    /// throughout — most emitters never say.
+    var batteryPercent: Int? = nil
+    var batteryMillivolts: Int? = nil
+    var batteryNote: String? = nil
     var samples: [Int]         // heard-this-tick flags, capped
 
     var id: String { key }
@@ -49,6 +56,10 @@ struct SigintEmitter: Identifiable, Codable {
         score += doors.count * 4
         score += max(0, sources.count - 1) * 8
         if trackerShaped { score += 20 }
+        if let percent = batteryPercent {
+            if percent <= 10 { score += 14 }
+            else if percent <= 20 { score += 8 }
+        }
         if Date().timeIntervalSince(lastHeard) < 300 { score += 12 }
         if let rssi = rssiLast, rssi >= -60 { score += 6 }
         return score
@@ -364,6 +375,37 @@ final class SigintStation: ObservableObject {
             }
             claims += row.details.prefix(3)
                 .map { "\($0) — via BLE decode" }
+            let deviceBattery = row.batteries.first {
+                $0.component == "device" }
+            if let forecast = row.batteryForecastText {
+                claims.append(forecast
+                    + " — via BLE observation")
+            }
+            if let cadence = row.cadenceText {
+                claims.append(cadence
+                    + " — via BLE observation")
+            }
+            // Battery events enter the timeline
+            // once per crossing: under a fifth, or
+            // a fall of a quarter in one epoch.
+            if let percent = deviceBattery?.percent {
+                let old: Int? = emitterIndex[key]
+                    .flatMap { emitters[$0].batteryPercent }
+                if percent <= 20, (old ?? 100) > 20 {
+                    addEvent(.note,
+                             "Low battery — \(label)",
+                             detail: "battery \(percent)% "
+                                + "— via BLE decode",
+                             source: "listen")
+                } else if let old = old,
+                          old - percent >= 25 {
+                    addEvent(.note,
+                             "Battery fell fast — \(label)",
+                             detail: "from \(old)% to "
+                                + "\(percent)% this epoch",
+                             source: "listen")
+                }
+            }
             upsert(key: key, kind: "ble", label: label,
                    claims: claims, source: "listen",
                    first: Date(timeIntervalSince1970: row.firstSeen),
@@ -372,7 +414,11 @@ final class SigintStation: ObservableObject {
                    rssi: row.rssiLast,
                    rssiHistory: row.rssiHistory,
                    doors: [],
-                   tracker: row.trackerShaped)
+                   tracker: row.trackerShaped,
+                   batteryPercent: deviceBattery?.percent,
+                   batteryMillivolts:
+                    deviceBattery?.millivolts,
+                   batteryNote: row.batteryForecastText)
         }
     }
 
@@ -464,7 +510,10 @@ final class SigintStation: ObservableObject {
                         claims: [String], source: String,
                         first: Date, last: Date, hearings: Int,
                         rssi: Int?, rssiHistory: [Int],
-                        doors: [String], tracker: Bool) {
+                        doors: [String], tracker: Bool,
+                        batteryPercent: Int? = nil,
+                        batteryMillivolts: Int? = nil,
+                        batteryNote: String? = nil) {
         if let index = emitterIndex[key] {
             var emitter = emitters[index]
             emitter.label = label
@@ -489,6 +538,15 @@ final class SigintStation: ObservableObject {
                 emitter.sources.append(source)
             }
             emitter.trackerShaped = emitter.trackerShaped || tracker
+            if let percent = batteryPercent {
+                emitter.batteryPercent = percent
+            }
+            if let millivolts = batteryMillivolts {
+                emitter.batteryMillivolts = millivolts
+            }
+            if let note = batteryNote {
+                emitter.batteryNote = note
+            }
             emitters[index] = emitter
         } else {
             let emitter = SigintEmitter(
@@ -498,6 +556,9 @@ final class SigintStation: ObservableObject {
                 hearings: hearings, rssiLast: rssi,
                 rssiHistory: Array(rssiHistory.suffix(24)),
                 doors: doors, trackerShaped: tracker,
+                batteryPercent: batteryPercent,
+                batteryMillivolts: batteryMillivolts,
+                batteryNote: batteryNote,
                 samples: [])
             emitterIndex[key] = emitters.count
             emitters.append(emitter)
@@ -1025,6 +1086,18 @@ struct SigintEmitterView: View {
                                value: "\(emitter.hearings)")
                 if let rssi = emitter.rssiLast {
                     LabeledContent("Last RSSI", value: "\(rssi) dBm")
+                }
+                if let percent = emitter.batteryPercent {
+                    LabeledContent("Battery",
+                                   value: "\(percent)%")
+                }
+                if let millivolts = emitter.batteryMillivolts {
+                    LabeledContent("Battery voltage",
+                                   value: "\(millivolts) mV")
+                }
+                if let note = emitter.batteryNote {
+                    LabeledContent("Battery trend",
+                                   value: note)
                 }
                 LabeledContent("Heard by",
                                value: emitter.sources

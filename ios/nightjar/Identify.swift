@@ -174,6 +174,20 @@ struct DeviceRow: Identifiable {
     /// identity: the address rotates and the token expires.
     var flare = false
     var flareLastSeen: TimeInterval?
+    /// The decoder engine's readings, merged from
+    /// every sighting: batteries by component,
+    /// capability and shape evidence, and the
+    /// samples the battery forecaster works from.
+    private(set) var batteries: [BatteryReading] = []
+    private(set) var analysisEvidence: [String] = []
+    private(set) var payloadChanges = 0
+    var batteryPercentSamples:
+        [(at: TimeInterval, percent: Int)] = []
+    var batteryVoltageSamples:
+        [(at: TimeInterval, millivolts: Int)] = []
+    private var lastPayloadSignature: UInt64 = 0
+    private var sightingIntervals: [TimeInterval] = []
+    private(set) var connectable: Bool?
 
     static let historyCap = 24
 
@@ -185,6 +199,19 @@ struct DeviceRow: Identifiable {
     }
 
     mutating func observe(_ sighting: Sighting) {
+        // Cadence and shape, measured before the
+        // bookkeeping below moves the landmarks.
+        if sightings > 0, sighting.seenAt > lastSeen {
+            sightingIntervals.append(
+                sighting.seenAt - lastSeen)
+            if sightingIntervals.count > 12 {
+                sightingIntervals.removeFirst(
+                    sightingIntervals.count - 12)
+            }
+        }
+        if let value = sighting.isConnectable {
+            connectable = value
+        }
         sightings += 1
         firstSeen = min(firstSeen, sighting.seenAt)
         lastSeen = max(lastSeen, sighting.seenAt)
@@ -210,6 +237,63 @@ struct DeviceRow: Identifiable {
         where !serviceUUIDs.contains(uuid) {
             if serviceUUIDs.count < 16 { serviceUUIDs.append(uuid) }
         }
+        // The engine reads the whole sighting —
+        // batteries and capabilities from every
+        // channel at once — before classification
+        // picks its one kind.
+        let analysis = DecoderEngine.analyze(sighting)
+        for reading in analysis.batteries {
+            batteries.removeAll {
+                $0.component == reading.component
+                    && $0.source == reading.source
+            }
+            batteries.append(reading)
+            if reading.component == "device" {
+                if let percent = reading.percent,
+                   batteryPercentSamples.last?.percent
+                       != percent
+                    || sighting.seenAt
+                        - (batteryPercentSamples.last?.at
+                           ?? 0) > 600 {
+                    batteryPercentSamples.append((
+                        at: sighting.seenAt,
+                        percent: percent))
+                    if batteryPercentSamples.count > 24 {
+                        batteryPercentSamples.removeFirst(
+                            batteryPercentSamples.count - 24)
+                    }
+                }
+                if let millivolts = reading.millivolts,
+                   batteryVoltageSamples.last?.millivolts
+                       != millivolts
+                    || sighting.seenAt
+                        - (batteryVoltageSamples.last?.at
+                           ?? 0) > 600 {
+                    batteryVoltageSamples.append((
+                        at: sighting.seenAt,
+                        millivolts: millivolts))
+                    if batteryVoltageSamples.count > 24 {
+                        batteryVoltageSamples.removeFirst(
+                            batteryVoltageSamples.count - 24)
+                    }
+                }
+            }
+        }
+        for line in analysis.evidence
+        where !analysisEvidence.contains(line) {
+            analysisEvidence.append(line)
+        }
+        if analysisEvidence.count > 8 {
+            analysisEvidence = Array(
+                analysisEvidence.suffix(8))
+        }
+        let signature = DecoderEngine
+            .payloadSignature(sighting)
+        if lastPayloadSignature != 0,
+           signature != lastPayloadSignature {
+            payloadChanges += 1
+        }
+        lastPayloadSignature = signature
         let classification = Classification.classify(sighting)
         // One guard for all three: a weaker sighting
         // may not overwrite a stronger reading's
@@ -232,6 +316,27 @@ struct DeviceRow: Identifiable {
         trackerShaped = trackerShaped || classification.trackerShaped
         rotatingAddress = rotatingAddress
             || classification.rotatingPhone
+        // The engine's evidence is additive truth:
+        // it merges whatever the kind contest
+        // decided, because a device is everything
+        // it said, not only its winning label.
+        var extras = analysisEvidence
+        extras += batteries.map { $0.summary }
+        if classification.rank
+            <= Classification.rankFamilyHint {
+            extras += analysis.shape
+        }
+        if payloadChanges > 0 {
+            extras.append("advertisement shape "
+                + "changed \(payloadChanges)× this "
+                + "session")
+        }
+        for line in extras where !details.contains(line) {
+            details.append(line)
+        }
+        if details.count > 14 {
+            details = Array(details.prefix(14))
+        }
         // Flare recognition: only checked when a pairing key
         // exists, and only against FFF0 service data — three
         // HMACs against the neighboring windows.
@@ -294,6 +399,46 @@ struct DeviceRow: Identifiable {
         guard let smooth = rssiSmooth else { return nil }
         let tx = Double(txPowerLast ?? -59)
         return pow(10, (tx - smooth) / 20)
+    }
+
+    /// The headline battery, when any format
+    /// reported one.
+    var batterySummary: String? {
+        batteries.first?.summary
+    }
+
+    /// The forecaster's word on the device
+    /// battery: a drain rate and, when the trend
+    /// earns it, a time-to-empty range.
+    var batteryForecastText: String? {
+        if let forecast = BatteryForecaster
+            .percentForecast(
+                samples: batteryPercentSamples) {
+            return forecast.text
+        }
+        return BatteryForecaster.voltageForecast(
+            samples: batteryVoltageSamples)?.text
+    }
+
+    /// The advertising cadence, once enough
+    /// intervals exist to read: a steady period,
+    /// or an irregular one honestly named.
+    var cadenceText: String? {
+        guard sightingIntervals.count >= 4 else {
+            return nil
+        }
+        let sorted = sightingIntervals.sorted()
+        let median = sorted[sorted.count / 2]
+        let low = sorted[sorted.count / 4]
+        let high = sorted[(3 * sorted.count) / 4]
+        let period = median < 10
+            ? String(format: "%.1f s", median)
+            : "\(Int(median.rounded())) s"
+        if high - low > median * 0.6 {
+            return "irregular cadence — about every "
+                + period + " between bursts"
+        }
+        return "advertises about every " + period
     }
 
     /// How long the device has been in earshot this session.

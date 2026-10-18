@@ -23,10 +23,16 @@ struct Sighting {
     let serviceUUIDs: [String]
     let txPower: Int?
     let serviceData: [String: [UInt8]]
+    /// Whether the advertiser accepts connections —
+    /// CoreBluetooth reports it with the advertisement,
+    /// and it separates beacons (listen-only by design)
+    /// from devices that could be spoken to.
+    let isConnectable: Bool?
 
     init(seenAt: TimeInterval, address: String, name: String?, rssi: Int?,
          manufacturerData: [UInt16: [UInt8]] = [:], serviceUUIDs: [String] = [],
-         txPower: Int? = nil, serviceData: [String: [UInt8]] = [:]) {
+         txPower: Int? = nil, serviceData: [String: [UInt8]] = [:],
+         isConnectable: Bool? = nil) {
         self.seenAt = seenAt
         self.address = address
         self.name = name
@@ -35,6 +41,7 @@ struct Sighting {
         self.serviceUUIDs = serviceUUIDs
         self.txPower = txPower
         self.serviceData = serviceData
+        self.isConnectable = isConnectable
     }
 
     /// Build a sighting from what CoreBluetooth hands the delegate.
@@ -80,6 +87,13 @@ struct Sighting {
             self.txPower = nil
         }
 
+        if let connectable = advertisementData[
+            CBAdvertisementDataIsConnectableKey] as? NSNumber {
+            self.isConnectable = connectable.boolValue
+        } else {
+            self.isConnectable = nil
+        }
+
         var serviceData: [String: [UInt8]] = [:]
         if let table = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data] {
             for (uuid, data) in table {
@@ -109,6 +123,10 @@ struct Sighting {
                 (key, JSONL.string(JSONL.hex(serviceData[key] ?? [])))
             }
             fields.append(("service_data", JSONL.object(entries)))
+        }
+        if let connectable = isConnectable {
+            fields.append(("connectable",
+                           connectable ? "true" : "false"))
         }
         return JSONL.object(fields)
     }
