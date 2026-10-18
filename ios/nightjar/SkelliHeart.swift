@@ -1035,7 +1035,7 @@ final class SkelliHeart: ObservableObject {
         switch age {
         case ..<300: return L("minutes ago")
         case ..<3600: return L("less than an hour ago")
-        case ..<3 * 3600.0: return L("a few hours ago")
+        case ..<10800: return L("a few hours ago")
         default: return L("hours ago")
         }
     }
