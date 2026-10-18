@@ -1472,8 +1472,9 @@ extension SkelliHeart {
         // a thought is a circumstance noticed.
         return pool[abs(seed) % pool.count]
             + SkelliVoice.clause(
-                seed: seed / 7 + count("heart.talks"),
-                heart: self)
+                seed: seed / 7 + UserDefaults.standard
+                    .integer(forKey: "heart.talks"),
+                heart: SkelliHeart.shared)
     }
 }
 
