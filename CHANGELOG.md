@@ -413,6 +413,23 @@
   reads you the
   conversation you
   just had.
+- **She does what she's
+  told.** A creation
+  order — "write a
+  poem…" — is composed
+  by her minds now,
+  never answered with
+  a manual page; the
+  manual serves bare
+  topics and "tell me
+  about" asks only,
+  so paraphrased
+  orders reach the
+  reading that exists
+  for them. Ask about
+  a thing, get the
+  page; order a thing,
+  get the thing.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

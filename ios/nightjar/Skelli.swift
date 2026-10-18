@@ -3276,8 +3276,38 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
-        // The manual.
-        if let entry = SkelliKnowledge.lookup(q) {
+        // A creation order is an ORDER, and it
+        // goes to her minds to be MADE — never
+        // to the manual to be recited. (On
+        // device 2026-10-18, "Write a poem
+        // about the 2026 NSA codebreakers
+        // challenge" was answered with the
+        // poetry page itself, word for word:
+        // the bare manual step below claimed
+        // it on the word "poem". She does what
+        // she is told; the manual is for
+        // questions and bare topics.)
+        if isCreationOrder(q) {
+            consultMindOrResearch(q)
+            return
+        }
+
+        // The manual — for bare topics and
+        // topic-seeking asks that survived
+        // everything else. It serves noun-
+        // phrase topics and "tell me about"
+        // frames, and nothing else: an order,
+        // a question, or a statement of need
+        // that survived this far belongs to
+        // the Second Reading or the bench,
+        // never to a recital. (The same
+        // incident class as the poem: "check
+        // if anyone is lurking nearby" and
+        // "am i loud on the network" are live
+        // paraphrases for the reading, and a
+        // honeymoon is not the moon.)
+        if manualStepServes(q),
+           let entry = SkelliKnowledge.lookup(q) {
             lastSubject = ("entry", entry.title,
                            entry.body, entry.home)
             say(entry.body + "\nFind it: \(entry.home).")
@@ -3439,6 +3469,73 @@ final class SkelliCenter: ObservableObject {
             + "and a source link where one would "
             + "help their own reading. Plain "
             + "statements, still no fluff."
+    }
+
+    /// An order to MAKE a piece of writing:
+    /// a creation verb (write / compose /
+    /// draft) carrying a literary form, or
+    /// any ask that opens as a writing order.
+    /// Internal, not private: the Second
+    /// Reading's grounding floor in
+    /// Feedback.swift consults the same test
+    /// (a poem is not a CODE order, and not
+    /// a FACTS ask), so the two can never
+    /// drift apart on what an order is.
+    func isCreationOrder(_ q: String) -> Bool {
+        let forms = ["poem", "poetry", "haiku",
+                     "sonnet", "limerick",
+                     "villanelle", "ballad", "ode",
+                     "ghazal", "song", "story",
+                     "essay", "letter", "verse",
+                     "rhyme"]
+        guard q.contains("write")
+                || q.contains("compose")
+                || q.contains("draft")
+        else { return false }
+        return q.hasPrefix("write")
+            || q.contains("write me")
+            || forms.contains { q.contains($0) }
+    }
+
+    /// Whether the bare manual step may serve
+    /// this ask a page. Its quarry is topics:
+    /// a noun phrase ("the vault", "poetry",
+    /// "knocktalk") or a "tell me about"
+    /// frame. Orders (imperative-led),
+    /// statements (pronoun-led), questions,
+    /// and anything long are not topics —
+    /// they pass on to the Second Reading
+    /// and the bench, which exist for them.
+    func manualStepServes(_ q: String) -> Bool {
+        if isCreationOrder(q) { return false }
+        if q.contains("tell me about") {
+            return true
+        }
+        let words = q.split(separator: " ")
+        guard words.count <= 5 else { return false }
+        guard let first = words.first else {
+            return false
+        }
+        let led = String(first)
+        let imperatives: Set<String> = [
+            "check", "sweep", "scan", "find",
+            "look", "see", "run", "start",
+            "stop", "listen", "serve", "write",
+            "make", "take", "show", "give",
+            "get", "put", "set", "turn", "open",
+            "close", "arm", "raise", "wake",
+            "send", "knock", "seal", "drop",
+            "strike", "tell"]
+        if imperatives.contains(led) {
+            return false
+        }
+        let statements: Set<String> = [
+            "i", "i'm", "im", "we're", "we",
+            "my", "he", "she", "they", "you"]
+        if statements.contains(led) {
+            return false
+        }
+        return true
     }
 
     func consultMindOrResearch(_ q: String) {

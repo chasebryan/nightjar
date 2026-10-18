@@ -4636,14 +4636,23 @@ extension SkelliCenter {
                 "visible", "loud", "score",
                 "how am i", "look", "stand"])
         case "facts":
-            return carries(["fact", "learned",
+            // A creation order ("write a poem
+            // about me") is not a facts ask,
+            // however it is dressed.
+            return !isCreationOrder(q)
+                && carries(["fact", "learned",
                 "learnt", "about me", "you know"])
         case "brief":
             return carries(["brief",
                 "subconscious", "mind", "dream",
                 "thinking", "report", "summary"])
         case "CODE":
-            return carries(["code", "script",
+            // "Write" grounds a code order only
+            // when the order is not a literary
+            // creation — a poem is composed by
+            // her minds, never routed to code.
+            return !isCreationOrder(q)
+                && carries(["code", "script",
                 "write", "program", "function",
                 "python", "swift", "shell",
                 "bash", "tool", "automate"])
