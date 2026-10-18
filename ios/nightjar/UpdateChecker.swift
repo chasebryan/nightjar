@@ -121,6 +121,10 @@ final class UpdateChecker: ObservableObject {
 
     func check() async {
         guard !checking else { return }
+        // The Standard: a check is an emission to the
+        // world; under any EMCON condition it waits.
+        guard EmconCondition.current.permits(.updateCheck)
+        else { return }
         checking = true
         defer { checking = false }
         let endpoint = URL(string: "https://api.github.com/repos/\(repo)/releases/latest")!

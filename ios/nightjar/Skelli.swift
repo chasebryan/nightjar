@@ -101,7 +101,7 @@ enum SkelliKnowledge {
             home: "the EMCON tab",
             keywords: ["emcon", "score", "posture", "ghost",
                        "exposure", "dark", "visible"],
-            body: "Emission control: one number for how visible this phone is — its own listeners, its announcements, its radios, and its mere presence: a joined phone is on the wire, and the hostname it answers to is spoken plainly — with the weights shown. Going dark silences what the house owns: stealth on, beacon and GATT host down, tripwire armed. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
+            body: "Emission control, kept to a Standard now: the exposure is decimal and exact — every standing emission carries a fixed weight in one inventory, a fully lit house sums to exactly 100.0, and the audit reads the organs themselves, so her number, the tab's number and the drill's number are one number. EMCON is a declared condition, not a switch: CHARLIE guards (Serve unlisted only, nothing advertising, no campaigns, no update checks), BRAVO receives only (Serve down, the relay poll stopped), ALPHA is total silence (even the sweeps stop). Engaging silences every forbidden organ — campaigns, personas, the air, Serve by the condition — and verifies, naming anything still lit. The gate stands at every funnel afterwards: a forbidden organ cannot start by hand, macro, crew or a saved GATT arm returning at launch, and refusals are journaled. One boundary: a single payload the operator fires by hand is the operator speaking; standing emissions are what is regulated. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
         SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
@@ -1075,22 +1075,8 @@ final class SkelliCenter: ObservableObject {
         facts.append("\(neighbors.count) devices "
             + "on the wire (\(unknown) unnamed)")
         if let emcon = emcon, let mouth = mouth {
-            let score = Emcon.score(
-                gattHostOn: mouth.gattHostOn,
-                beaconOn: mouth.beaconOn,
-                serveRunning: mouth.serveRunning,
-                stealth: mouth.stealth,
-                deviceName: emcon.deviceName,
-                exposureCount:
-                    emcon.exposures.count,
-                announcerCount:
-                    emcon.announcers.count,
-                assaultOn: AssaultCenter.shared.running,
-                serveListeners: mouth.serveListenerCount,
-                probingOn: ProbingBeacon.shared.active,
-                onLan: Mouth.localIPAddress() != nil,
-                hostName: emcon.hostName)
-            var line = "exposure \(score.value) "
+            let score = emcon.currentScore(mouth: mouth)
+            var line = "exposure \(Emcon.fmt(score.value)) "
                 + "(\(score.band))"
             if let loud = score.parts.max(by: {
                 $0.points < $1.points }) {
@@ -3381,22 +3367,10 @@ struct SkelliView: View {
     }
 
     private var liveScore: Emcon.Score {
-        // The same full v2 inputs the EMCON tab and her
-        // sitrep use — presence weighed first — so the
-        // pinned widget reads the same number they do.
-        Emcon.score(
-            gattHostOn: mouth.gattHostOn,
-            beaconOn: mouth.beaconOn,
-            serveRunning: mouth.serveRunning,
-            stealth: mouth.stealth,
-            deviceName: emcon.deviceName,
-            exposureCount: emcon.exposures.count,
-            announcerCount: emcon.announcers.count,
-            assaultOn: AssaultCenter.shared.running,
-            serveListeners: mouth.serveListenerCount,
-            probingOn: ProbingBeacon.shared.active,
-            onLan: Mouth.localIPAddress() != nil,
-            hostName: emcon.hostName)
+        // The audit — the same single reading the EMCON
+        // tab shows, so her pinned widget never disagrees
+        // with the room that governs it.
+        emcon.currentScore(mouth: mouth)
     }
 
     private var exposurePanel: some View {
@@ -3406,7 +3380,7 @@ struct SkelliView: View {
         return panel(label: "EXPOSURE") {
             HStack(alignment: .firstTextBaseline,
                    spacing: 4) {
-                panelValue("\(score.value)")
+                panelValue(Emcon.fmt(score.value))
                 Text(score.band.uppercased())
                     .font(.system(size: 8.5,
                                   weight: .semibold))

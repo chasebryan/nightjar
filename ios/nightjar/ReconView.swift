@@ -221,6 +221,9 @@ final class ScanModel: ObservableObject {
     /// port scan — a host with that port closed or firewalled to
     /// drops stays invisible, and the UI says so.
     func sweep(port: Int) {
+        // The Standard: under ALPHA even the hand-run
+        // sweeps stop — total silence means total.
+        guard !EmconStandard.refused(.sweep) else { return }
         guard !sweeping, !scanning, (1...65535).contains(port),
               let own = Mouth.localIPAddress() else { return }
         let generation = sweepGeneration

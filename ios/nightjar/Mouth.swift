@@ -1594,6 +1594,15 @@ final class Mouth: NSObject, ObservableObject {
 
     private func rearmGattHostIfNeeded() {
         guard !gattHostOn, gattArmOn else { return }
+        // The Standard holds from the first launch moment:
+        // under a standing EMCON condition the saved arm
+        // does NOT re-arm. The arm itself is left untouched
+        // — standing EMCON down lets it return.
+        guard EmconCondition.current.permits(.gattHost) else {
+            line("the GATT arm holds — "
+                 + EmconCondition.current.declared)
+            return
+        }
         let payload = UserDefaults.standard.data(forKey: "gattArm.payload")
             ?? Data()
         let name = UserDefaults.standard.string(forKey: "gattArm.name")
@@ -1619,6 +1628,11 @@ final class Mouth: NSObject, ObservableObject {
     // reports powered on.
 
     func startBeacon(payload: Data, name: String) {
+        if EmconStandard.refused(.beacon) {
+            line("the beacon stays dark — "
+                 + EmconCondition.current.declared)
+            return
+        }
         if gattHostOn {
             line("nightjar: stop the GATT host before starting a beacon")
             return
@@ -1634,6 +1648,11 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func startFlare() {
+        if EmconStandard.refused(.beacon) {
+            line("the flare stays dark — "
+                 + EmconCondition.current.declared)
+            return
+        }
         if gattHostOn {
             line("nightjar: stop the GATT host before raising a flare")
             return
@@ -1694,6 +1713,11 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     func startGattHost(payload: Data, name: String) {
+        if EmconStandard.refused(.gattHost) {
+            line("the GATT host stays dark — "
+                 + EmconCondition.current.declared)
+            return
+        }
         Haptics.start()
         gattPayload = payload
         beaconName = name
@@ -2097,6 +2121,27 @@ extension Mouth {
     /// the app leaves the screen.
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
                     reply: String, framing: String, echo: Bool = false) {
+        // The Standard at the Serve funnel: under BRAVO or
+        // ALPHA no Serve stands at all; under CHARLIE it
+        // stands unlisted — a listed start is regulated
+        // into stealth, never silently refused or silently
+        // allowed.
+        let condition = EmconCondition.current
+        if condition != .open {
+            if !condition.permits(.serveStealth) {
+                serveError = "\(condition.declared) forbids "
+                    + "Serve — stand EMCON down to serve"
+                Journal.log("emcon", "regulation",
+                            "\(condition.declared) refused "
+                            + "a Serve start")
+                return
+            }
+            if !stealth {
+                setStealth(true)
+                line("Serve stands unlisted — "
+                     + condition.declared)
+            }
+        }
         stopServe()
         Haptics.start()
         // Port hygiene: parse + clamp each enabled port ONCE, here;

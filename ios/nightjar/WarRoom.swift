@@ -171,6 +171,12 @@ final class WarRun: ObservableObject {
     func start(mouth: Mouth, post: ListeningPost, recon: Recon,
                book: PayloadBook, config: WarConfig) {
         guard !running else { return }
+        if EmconStandard.refused(.warRun) {
+            phase = .failed
+            statusLine = "The run stays dark — "
+                + EmconCondition.current.declared
+            return
+        }
         guard !mouth.traceBusy else {
             phase = .failed
             statusLine = "The trace is already working — "

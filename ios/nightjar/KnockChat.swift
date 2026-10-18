@@ -448,11 +448,23 @@ final class KnockChat: ObservableObject {
     /// only while a relay is fully configured; five seconds
     /// between checks is nothing on a channel whose unit of
     /// time is a five-second knock frame.
+    /// Whether the mailbox poll is actually running — the
+    /// EMCON audit reads this; a configured-but-held relay
+    /// is not an emission.
+    var relayPolling: Bool { relayTimer != nil }
+
     func refreshRelayPolling() {
         relayTimer?.invalidate()
         relayTimer = nil
         guard KnockRelay.configured else {
             relayStatus = ""
+            return
+        }
+        // The Standard: under BRAVO and ALPHA the poll is an
+        // emission and stands down until EMCON does.
+        if EmconStandard.refused(.relayPoll) {
+            relayStatus = "relay held — "
+                + EmconCondition.current.declared
             return
         }
         relayStatus = "relay: \(KnockRelay.host ?? "") · "
@@ -465,6 +477,10 @@ final class KnockChat: ObservableObject {
     }
 
     private func pollRelay() {
+        // Belt and braces with refreshRelayPolling's gate:
+        // a timer armed before EMCON engaged never speaks.
+        guard EmconCondition.current.permits(.relayPoll)
+        else { return }
         guard KnockRelay.configured else {
             // Settings were cleared under a running timer (a
             // defaults reset): stand down quietly.

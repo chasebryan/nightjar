@@ -307,6 +307,11 @@ final class MimicCenter: ObservableObject {
     @discardableResult
     func don(_ persona: SpoofyPersona,
              mouth: Mouth) -> String {
+        if EmconStandard.refused(.persona) {
+            return "No shape is worn while "
+                + EmconCondition.current.declared
+                + " stands."
+        }
         if BansheeCenter.shared.screaming {
             return "Not while the banshee screams — its "
                 + "own snapshot owns the posture. Cease it "

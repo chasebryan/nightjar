@@ -1,109 +1,165 @@
 import XCTest
 @testable import nightjar
 
-/// EMCON's pure half: score weights, probe fingerprints, home-subnet
-/// comparison, one-knock tripwire accounting, and the drill's names.
+/// EMCON's pure half: the Standard's decimal score and its
+/// regulations, probe fingerprints, home-subnet comparison,
+/// one-knock tripwire accounting, and the drill's names.
 /// Nothing here needs a radio or a socket.
 final class EmconTests: XCTestCase {
 
-    private func score(gattHostOn: Bool = false,
-                       beaconOn: Bool = false,
-                       serveRunning: Bool = false,
-                       stealth: Bool = false,
-                       deviceName: String = "iPhone",
-                       exposureCount: Int = 0,
-                       announcerCount: Int = 0) -> Emcon.Score {
-        Emcon.score(gattHostOn: gattHostOn, beaconOn: beaconOn,
-                    serveRunning: serveRunning, stealth: stealth,
-                    deviceName: deviceName,
-                    exposureCount: exposureCount,
-                    announcerCount: announcerCount)
+    private func score(
+        _ mutate: (inout EmconSnapshot) -> Void = { _ in }
+    ) -> Emcon.Score {
+        var snapshot = EmconSnapshot()
+        mutate(&snapshot)
+        return EmconStandard.score(snapshot)
     }
 
-    // MARK: - exposure score
+    // MARK: - the Standard's score
 
     func testGhostWhenNothingIsEmitting() {
         let ghost = score()
-        XCTAssertEqual(ghost.value, 0)
+        XCTAssertEqual(ghost.value, 0.0, accuracy: 0.001)
         XCTAssertEqual(ghost.band, "GHOST")
         XCTAssertTrue(ghost.parts.isEmpty)
         XCTAssertFalse(ghost.capped)
     }
 
-    func testScoreWeightsAndBands() {
-        let dark = score(serveRunning: true, stealth: true)
-        XCTAssertEqual(dark.value, 4)
-        XCTAssertEqual(dark.band, "DARK")
-        XCTAssertEqual(dark.parts.map(\.label), ["Serve, stealth"])
-        XCTAssertEqual(dark.parts.map(\.points), [4])
+    func testInventorySumsToExactlyOneHundred() {
+        // The scale's construction contract: a fully lit
+        // house is 100.0, not a cap's artifact.
+        XCTAssertEqual(EmconStandard.maximumTotal, 100.0,
+                       accuracy: 0.001)
+        let lit = score {
+            $0.onLan = true
+            $0.deviceName = "Chase's iPhone"
+            $0.serveRunning = true
+            $0.serveListeners = 4
+            $0.gattHostOn = true
+            $0.beaconOn = true
+            $0.personaOn = true
+            $0.assaultOn = true
+            $0.probingOn = true
+            $0.warKnocking = true
+            $0.bansheeOn = true
+            $0.relayPolling = true
+            $0.writeScanning = true
+            $0.exposureCount = 10000
+            $0.announcerCount = 10000
+        }
+        XCTAssertEqual(lit.value, 100.0, accuracy: 0.15)
+        XCTAssertEqual(lit.band, "BEACONING")
+        XCTAssertFalse(lit.capped)
+    }
 
-        let named = score(deviceName: "Nightjar")
-        XCTAssertEqual(named.value, 6)
-        XCTAssertEqual(named.band, "DARK")
-        XCTAssertEqual(named.parts.map(\.label), ["Broadcast name"])
+    func testDecimalWeights() {
+        let stealth = score {
+            $0.serveRunning = true
+            $0.stealth = true
+        }
+        XCTAssertEqual(stealth.value, 4.0, accuracy: 0.001)
+        XCTAssertEqual(stealth.band, "DARK")
+        XCTAssertEqual(stealth.parts.map(\.label),
+                       ["Serve, stealth"])
 
-        // "iPhone" is the generic zero. Anything else is a name.
-        XCTAssertEqual(score(deviceName: "iPhone 15").value, 6)
+        let stealthThree = score {
+            $0.serveRunning = true
+            $0.stealth = true
+            $0.serveListeners = 3
+        }
+        XCTAssertEqual(stealthThree.value, 5.0,
+                       accuracy: 0.001)
 
-        let personal = score(deviceName: "Chase's iPhone")
-        XCTAssertEqual(personal.parts.map(\.label), ["Personal name"])
-        XCTAssertEqual(personal.parts.map(\.points), [12])
+        let listed = score { $0.serveRunning = true }
+        XCTAssertEqual(listed.value, 12.0, accuracy: 0.001)
+        XCTAssertEqual(listed.band, "LIT")
+
+        let personal = score { $0.deviceName = "Chase's iPhone" }
+        XCTAssertEqual(personal.parts.map(\.points), [8.0])
         let curly = "Chase\u{2019}s iPhone"
-        XCTAssertEqual(score(deviceName: curly).value, 12)
+        XCTAssertEqual(score { $0.deviceName = curly }.value,
+                       8.0, accuracy: 0.001)
 
-        let lit = score(exposureCount: 4)
-        XCTAssertEqual(lit.value, 16)
-        XCTAssertEqual(lit.band, "LIT")
-        XCTAssertEqual(lit.parts.map(\.label), ["Recon hits ×4"])
-        XCTAssertEqual(lit.parts.map(\.points), [16])
-
-        let loud = score(gattHostOn: true, serveRunning: true, stealth: true,
-                         deviceName: "Chase's iPhone")
-        XCTAssertEqual(loud.value, 41)
-        XCTAssertEqual(loud.band, "LOUD")
-
-        let beaconing = score(gattHostOn: true, beaconOn: true,
-                              serveRunning: true, deviceName: "Nightjar")
-        XCTAssertEqual(beaconing.value, 71)
-        XCTAssertEqual(beaconing.band, "BEACONING")
+        let hosted = score { $0.hostName = "chasembp" }
+        XCTAssertEqual(hosted.value, 5.0, accuracy: 0.001)
+        let named = score { $0.deviceName = "Nightjar" }
+        XCTAssertEqual(named.value, 3.0, accuracy: 0.001)
+        // "iPhone" is the generic zero. Anything else is a name.
+        XCTAssertEqual(score { $0.deviceName = "iPhone 15" }
+                        .value, 3.0, accuracy: 0.001)
     }
 
-    func testScoreBreakdownMatchesTheWeights() {
-        let score = score(gattHostOn: true, beaconOn: true,
-                          serveRunning: true, stealth: false,
-                          deviceName: "Chase's iPhone",
-                          exposureCount: 2, announcerCount: 1)
-        XCTAssertEqual(score.parts.map(\.label), [
-            "GATT host", "BLE beacon", "Serve, listed", "Personal name",
-            "Recon hits ×2", "Bonjour ×1",
+    func testEvidenceSaturatesByItsFormula() {
+        let one = score { $0.exposureCount = 1 }
+        let six = score { $0.exposureCount = 6 }
+        let many = score { $0.exposureCount = 600 }
+        XCTAssertLessThan(one.value, six.value)
+        XCTAssertLessThan(six.value, many.value)
+        XCTAssertLessThanOrEqual(many.value,
+                                 EmconStandard.wReconMax)
+        // 9 x (1 - e^-1) = 5.69 -> 5.7 at the Standard's tenth.
+        XCTAssertEqual(six.value, 5.7, accuracy: 0.001)
+        let ads = score { $0.announcerCount = 4 }
+        // 6 x (1 - e^-1) = 3.79 -> 3.8.
+        XCTAssertEqual(ads.value, 3.8, accuracy: 0.001)
+    }
+
+    func testBreakdownMatchesTheInventory() {
+        let full = score {
+            $0.gattHostOn = true
+            $0.beaconOn = true
+            $0.serveRunning = true
+            $0.deviceName = "Chase's iPhone"
+            $0.exposureCount = 2
+            $0.announcerCount = 1
+        }
+        XCTAssertEqual(full.parts.map(\.label), [
+            "GATT host", "BLE beacon", "Serve, listed",
+            "Personal name", "Recon hits ×2", "Bonjour ×1",
         ])
-        XCTAssertEqual(score.parts.map(\.points), [25, 20, 20, 12, 8, 6])
-        XCTAssertEqual(score.raw, 91)
-        XCTAssertEqual(score.value, 91)
-        XCTAssertEqual(score.band, "BEACONING")
-        XCTAssertFalse(score.capped)
+        XCTAssertEqual(full.parts.map(\.points),
+                       [13.0, 9.0, 12.0, 8.0, 2.6, 1.3])
+        XCTAssertEqual(full.value, 45.9, accuracy: 0.001)
+        XCTAssertEqual(full.band, "LOUD")
     }
 
-    func testScoreCapsReconBonjourAndTheTotal() {
-        let hits = score(exposureCount: 6)
-        XCTAssertEqual(hits.parts.map(\.label), ["Recon hits ×6, capped"])
-        XCTAssertEqual(hits.parts.map(\.points), [20])
+    // MARK: - the regulations
 
-        let ads = score(announcerCount: 3)
-        XCTAssertEqual(ads.parts.map(\.label), ["Bonjour ×3"])
-        XCTAssertEqual(ads.value, 18)
-        let adsCapped = score(announcerCount: 4)
-        XCTAssertEqual(adsCapped.parts.map(\.label), ["Bonjour ×4, capped"])
-        XCTAssertEqual(adsCapped.parts.map(\.points), [18])
+    func testConditionPermits() {
+        XCTAssertTrue(EmconCondition.open.permits(.gattHost))
+        XCTAssertTrue(EmconCondition.charlie
+                        .permits(.serveStealth))
+        XCTAssertFalse(EmconCondition.charlie
+                        .permits(.serveListed))
+        XCTAssertFalse(EmconCondition.charlie
+                        .permits(.netAssault))
+        XCTAssertTrue(EmconCondition.charlie
+                        .permits(.relayPoll))
+        XCTAssertFalse(EmconCondition.bravo
+                        .permits(.serveStealth))
+        XCTAssertFalse(EmconCondition.bravo
+                        .permits(.relayPoll))
+        XCTAssertTrue(EmconCondition.bravo.permits(.sweep))
+        XCTAssertFalse(EmconCondition.alpha.permits(.sweep))
+        XCTAssertFalse(EmconCondition.alpha
+                        .permits(.updateCheck))
+    }
 
-        let lighthouse = score(gattHostOn: true, beaconOn: true,
-                               serveRunning: true,
-                               deviceName: "Chase's iPhone",
-                               exposureCount: 10, announcerCount: 10)
-        XCTAssertEqual(lighthouse.raw, 115)
-        XCTAssertEqual(lighthouse.value, 100)
-        XCTAssertTrue(lighthouse.capped)
-        XCTAssertEqual(lighthouse.band, "BEACONING")
+    func testConditionOrderingAndMigration() {
+        XCTAssertLessThan(EmconCondition.open,
+                          EmconCondition.charlie)
+        XCTAssertLessThan(EmconCondition.bravo,
+                          EmconCondition.alpha)
+        // The legacy binary flag migrates to CHARLIE.
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: "emcon.condition")
+        defaults.set(true, forKey: "emconActive")
+        XCTAssertEqual(EmconCondition.current, .charlie)
+        EmconCondition.store(.alpha)
+        XCTAssertEqual(EmconCondition.current, .alpha)
+        EmconCondition.store(.open)
+        XCTAssertEqual(EmconCondition.current, .open)
+        XCTAssertFalse(defaults.bool(forKey: "emconActive"))
     }
 
     // MARK: - fingerprints

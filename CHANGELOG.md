@@ -419,6 +419,44 @@
   makes is filed in
   Deliveries.
 
+- **EMCON, to the
+  decimal.** The posture
+  is a Standard now, not
+  a switch. The exposure
+  score is exact: every
+  standing emission
+  carries a fixed weight
+  in one inventory — a
+  fully lit house sums
+  to exactly 100.0,
+  nothing capped or
+  rounded away — and one
+  audit reads the organs
+  themselves, so the tab,
+  her pinned reading and
+  her sitrep can never
+  disagree. EMCON is a
+  declared condition:
+  Charlie (Serve unlisted
+  only, nothing
+  advertising, no
+  campaigns, no update
+  checks), Bravo (receive
+  only — Serve down, the
+  relay poll stopped),
+  Alpha (total silence).
+  Engaging silences every
+  forbidden organ and
+  verifies, naming
+  anything still lit —
+  and the gate stands at
+  every funnel after: a
+  forbidden emitter
+  cannot start by hand,
+  by macro, by Skelli, or
+  by a saved GATT arm
+  returning at launch.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:

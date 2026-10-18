@@ -53,6 +53,15 @@ final class BansheeCenter: ObservableObject {
 
     func scream(mouth: Mouth, assault: AssaultCenter) {
         guard !screaming else { return }
+        // The loudest organ answers first to the Standard:
+        // under any condition the Banshee does not scream.
+        guard EmconCondition.current == .open else {
+            Journal.log("emcon", "regulation",
+                        EmconCondition.current.declared
+                        + " forbids the Banshee — it stays "
+                        + "silent")
+            return
+        }
         Haptics.heavy()
         mouthRef = mouth
         snapshot = Snapshot(serve: mouth.serveRunning,

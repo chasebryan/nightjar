@@ -19,10 +19,15 @@ import UserNotifications
 ///    flag every announcement that is this device — mDNS is the
 ///    loudest identifier on the network and it speaks the device's
 ///    name.
-///  - Silence: one switch forces Serve stealth, disarms the BLE
-///    GATT host and stops the BLE beacon. EMCON never re-opens an
-///    emission on its own; turning EMCON off leaves stealth as it
-///    finds it.
+///  - Silence, by the Standard (EmconStandard.swift): EMCON is
+///    a graded condition — CHARLIE guarded, BRAVO receive-only,
+///    ALPHA total silence — engaged by silencing every organ
+///    the condition forbids (campaigns, personas, the air,
+///    Serve) and verifying the result by name. The gate then
+///    stands at every emission funnel, so a forbidden organ
+///    cannot restart by hand, macro, or saved arm. EMCON never
+///    re-opens an emission on its own; standing down leaves
+///    every organ exactly as it finds it.
 ///  - Tripwire: quiet listeners on the probe ports, TCP and UDP.
 ///    The probes are wire-exact, which makes them fingerprintable —
 ///    a knock with this app's own first words is recognized and
@@ -124,14 +129,22 @@ final class Emcon: ObservableObject {
     struct Score: Equatable {
         struct Part: Identifiable, Equatable {
             let label: String
-            let points: Int
+            let points: Double
             var id: String { label }
         }
-        let value: Int
+        let value: Double
         let band: String
         let parts: [Part]
-        var raw: Int { parts.reduce(0) { $0 + $1.points } }
-        var capped: Bool { raw > value }
+        var raw: Double { parts.reduce(0) { $0 + $1.points } }
+        /// By construction the inventory cannot exceed
+        /// 100.0; this survives only as a tripwire for a
+        /// future weight edited carelessly.
+        var capped: Bool { raw > 100.0 }
+    }
+
+    /// The one-decimal rendering every surface uses.
+    static func fmt(_ value: Double) -> String {
+        String(format: "%.1f", value)
     }
 
     struct Snapshot {
@@ -139,7 +152,17 @@ final class Emcon: ObservableObject {
         var announcers: [Announcer] = []
     }
 
-    @Published private(set) var active: Bool
+    /// The EMCON condition in force — the Standard's
+    /// declared state, persisted by EmconCondition itself.
+    /// `active` is its binary shadow for older readers.
+    @Published private(set) var condition: EmconCondition
+    var active: Bool { condition != .open }
+    /// What the last engage (or enforcement) silenced, and
+    /// what refused to go dark — the verification ledger.
+    /// An organ named in `lastUnsilenced` is a plot hole
+    /// with its name on it; the tab shows both lists.
+    @Published private(set) var lastSilenced: [String] = []
+    @Published private(set) var lastUnsilenced: [String] = []
     @Published private(set) var homeSubnet: String?
     @Published private(set) var scanning = false
     @Published private(set) var exposures: [Exposure] = []
@@ -210,7 +233,7 @@ final class Emcon: ObservableObject {
     private var vaultStartedCanary = false
 
     init() {
-        active = UserDefaults.standard.bool(forKey: Self.activeKey)
+        condition = EmconCondition.current
         homeSubnet = UserDefaults.standard.string(forKey: Self.homeKey)
         events = Self.loadEvents()
         hometurf = Self.loadHometurf()
@@ -259,74 +282,38 @@ final class Emcon: ObservableObject {
 
     // MARK: - exposure score
 
-    /// 0 = ghost, 100 = a lighthouse. Computed from what is true
-    /// right now, not from intentions: mere presence on the wire
-    /// weighs first (a joined device is addressable and answers
-    /// under a name, EMCON or not), then live emissions, then
-    /// what the last recon and audit actually found. The parts
-    /// are those same weights, so the band can be read back to
-    /// a cause.
-    static func score(gattHostOn: Bool, beaconOn: Bool,
-                      serveRunning: Bool, stealth: Bool,
-                      deviceName: String,
-                      exposureCount: Int,
-                      announcerCount: Int,
-                      assaultOn: Bool = false,
-                      serveListeners: Int = 1,
-                      probingOn: Bool = false,
-                      onLan: Bool = false,
-                      hostName: String = "") -> Score {
-        var parts: [Score.Part] = []
-        func weigh(_ label: String, _ points: Int) {
-            guard points > 0 else { return }
-            parts.append(Score.Part(label: label, points: points))
-        }
-        if onLan { weigh("On the wire", 10) }
-        if assaultOn { weigh("Net-Assault running", 30) }
-        if gattHostOn { weigh("GATT host", 25) }
-        if beaconOn { weigh("BLE beacon", 20) }
-        if probingOn { weigh("Active probing", 10) }
-        if serveRunning {
-            let extra = max(0, serveListeners - 1)
-            let counted = serveListeners > 1
-                ? " ×\(serveListeners)" : ""
-            if stealth {
-                weigh("Serve, stealth" + counted, 4 + extra)
-            } else {
-                weigh("Serve, listed" + counted, 20 + 3 * extra)
-            }
-        }
-        if deviceName.contains("\u{2019}s ") || deviceName.contains("'s ") {
-            weigh("Personal name", 12)
-        } else if !hostName.isEmpty
-                    && hostName.lowercased() != "iphone" {
-            // The wire-facing name: what every device on the LAN
-            // can read off this phone without asking it anything.
-            weigh("Answers as \(hostName)", 8)
-        } else if deviceName != "iPhone" {
-            weigh("Broadcast name", 6)
-        }
-        if exposureCount > 0 {
-            let raw = exposureCount * 4
-            weigh("Recon hits ×\(exposureCount)"
-                  + (raw > 20 ? ", capped" : ""), min(20, raw))
-        }
-        if announcerCount > 0 {
-            let raw = announcerCount * 6
-            weigh("Bonjour ×\(announcerCount)"
-                  + (raw > 18 ? ", capped" : ""), min(18, raw))
-        }
-        let raw = parts.reduce(0) { $0 + $1.points }
-        let value = min(100, raw)
-        let band: String
-        switch value {
-        case 0: band = "GHOST"
-        case 1...15: band = "DARK"
-        case 16...40: band = "LIT"
-        case 41...70: band = "LOUD"
-        default: band = "BEACONING"
-        }
-        return Score(value: value, band: band, parts: parts)
+    /// The audit: the ONLY way a score is made. It reads the
+    /// live organs themselves — never a caller's snapshot of
+    /// them — and hands the gathered truth to the Standard,
+    /// whose inventory turns it into the decimal. Every
+    /// surface (this tab, her pinned EXPOSURE, her sitrep)
+    /// reads this one function, so the house has exactly one
+    /// exposure, stated once.
+    func currentScore(mouth: Mouth) -> Score {
+        var snapshot = EmconSnapshot()
+        snapshot.onLan = ownIP != nil
+        snapshot.deviceName = deviceName
+        snapshot.hostName = hostName
+        snapshot.serveRunning = mouth.serveRunning
+        snapshot.stealth = mouth.stealth
+        snapshot.serveListeners = mouth.serveListenerCount
+        snapshot.gattHostOn = mouth.gattHostOn
+        snapshot.beaconOn = mouth.beaconOn
+        snapshot.flareOn = mouth.flareOn
+        snapshot.personaOn =
+            MimicCenter.shared.activePersona != nil
+        snapshot.assaultOn = AssaultCenter.shared.running
+        snapshot.probingOn = ProbingBeacon.shared.active
+        snapshot.warKnocking =
+            WarRun.shared.phase == .knocking
+        snapshot.warTracing =
+            WarRun.shared.phase == .tracing
+        snapshot.bansheeOn = BansheeCenter.shared.screaming
+        snapshot.relayPolling = chat.relayPolling
+        snapshot.writeScanning = mouth.writeScanning
+        snapshot.exposureCount = exposures.count
+        snapshot.announcerCount = announcers.count
+        return EmconStandard.score(snapshot)
     }
 
     // MARK: - home turf
@@ -367,67 +354,159 @@ final class Emcon: ObservableObject {
 
     // MARK: - posture
 
-    /// Go dark: silence every emission the app controls and arm the
-    /// tripwire. Serve listeners keep running if they were running,
-    /// but under stealth — unlisted, silent arrivals.
-    func activate(mouth: Mouth) {
+    /// Engage a condition: silence everything the condition
+    /// forbids, arm the tripwire, then VERIFY — the ledger
+    /// names what went dark and anything that did not. The
+    /// default condition is the one in force, or CHARLIE
+    /// when engaging from open (the old binary EMCON's
+    /// shape: dark air, unlisted serve).
+    func activate(mouth: Mouth,
+                  condition target: EmconCondition? = nil) {
         Haptics.press()
-        // The reading before the fall, taken from the
-        // figures as they stand — engaging EMCON
-        // must be able to show what it bought.
-        scoreBeforeDark = Self.score(
-            gattHostOn: mouth.gattHostOn,
-            beaconOn: mouth.beaconOn,
-            serveRunning: mouth.serveRunning,
-            stealth: mouth.stealth,
-            deviceName: deviceName,
-            exposureCount: exposures.count,
-            announcerCount: announcers.count,
-            assaultOn: AssaultCenter.shared.running,
-            serveListeners: mouth.serveListenerCount,
-            probingOn: ProbingBeacon.shared.active,
-            onLan: ownIP != nil,
-            hostName: hostName)
-        active = true
-        UserDefaults.standard.set(true, forKey: Self.activeKey)
-        mouth.setStealth(true)
-        if mouth.gattHostOn { mouth.stopGattHost() }
-        if mouth.beaconOn { mouth.stopBeacon() }
+        // The reading before the fall, from the audit —
+        // engaging must be able to show what it bought.
+        scoreBeforeDark = currentScore(mouth: mouth)
+        let goal = target
+            ?? (condition == .open ? .charlie : condition)
+        condition = goal
+        EmconCondition.store(goal)
+        enforce(mouth: mouth)
         startTripwire()
+        // The relay poll answers to the condition too.
+        chat.refreshRelayPolling()
         Journal.log("emcon", "posture",
-                    "EMCON active — emissions silenced, tripwire armed")
+                    "\(goal.declared) — silenced: "
+                    + (lastSilenced.isEmpty
+                        ? "nothing was standing"
+                        : lastSilenced.joined(separator: ", "))
+                    + (lastUnsilenced.isEmpty
+                        ? "" : "; STILL LIT: "
+                            + lastUnsilenced.joined(
+                                separator: ", ")))
     }
 
-    /// Stand down the tripwire. Stealth, the GATT host and the
-    /// beacon are left exactly as they are — re-arming an emission
-    /// is always a deliberate act in its own tab.
+    /// The enforcement pass: every standing organ the
+    /// condition forbids is stood down, in an order that
+    /// kills campaigns before the organs they drive. Then
+    /// the truth is re-read — an organ still standing after
+    /// its stop was called is named in `lastUnsilenced`,
+    /// never assumed away. Used at engage time and again
+    /// whenever the house reconciles after a relaunch, so
+    /// a posture cannot quietly rot.
+    func enforce(mouth: Mouth) {
+        let goal = condition
+        guard goal != .open else { return }
+        var silenced: [String] = []
+        if BansheeCenter.shared.screaming {
+            BansheeCenter.shared.cease(
+                mouth: mouth, assault: AssaultCenter.shared)
+            silenced.append("the Banshee")
+        }
+        if AssaultCenter.shared.running {
+            AssaultCenter.shared.disarm(
+                reason: "\(goal.declared) engaged")
+            silenced.append("Net-Assault")
+        }
+        if WarRun.shared.running {
+            WarRun.shared.stop()
+            silenced.append("the War Room run")
+        }
+        if ProbingBeacon.shared.active {
+            ProbingBeacon.shared.silence()
+            silenced.append("active probing")
+        }
+        if MimicCenter.shared.activePersona != nil {
+            _ = MimicCenter.shared.drop(mouth: mouth)
+            silenced.append("the worn persona")
+        }
+        if mouth.beaconOn || mouth.flareOn {
+            mouth.stopBeacon()
+            silenced.append("the BLE beacon")
+        }
+        if mouth.gattHostOn {
+            mouth.stopGattHost()
+            silenced.append("the GATT host")
+        }
+        if mouth.serveRunning {
+            if goal.permits(.serveStealth) {
+                if !mouth.stealth {
+                    mouth.setStealth(true)
+                    silenced.append("Serve's listing")
+                }
+            } else {
+                mouth.stopServe()
+                silenced.append("Serve")
+            }
+        }
+        // Verification: re-read every organ the condition
+        // governs and name whatever is still standing.
+        var lit: [String] = []
+        if !goal.permits(.netAssault),
+           AssaultCenter.shared.running {
+            lit.append("Net-Assault")
+        }
+        if !goal.permits(.warRun), WarRun.shared.running {
+            lit.append("the War Room run")
+        }
+        if !goal.permits(.probing),
+           ProbingBeacon.shared.active {
+            lit.append("active probing")
+        }
+        if !goal.permits(.persona),
+           MimicCenter.shared.activePersona != nil {
+            lit.append("a persona")
+        }
+        if !goal.permits(.beacon),
+           mouth.beaconOn || mouth.flareOn {
+            lit.append("the BLE beacon")
+        }
+        if !goal.permits(.gattHost), mouth.gattHostOn {
+            lit.append("the GATT host")
+        }
+        if mouth.serveRunning,
+           !goal.permits(mouth.stealth
+                            ? .serveStealth : .serveListed) {
+            lit.append("Serve")
+        }
+        lastSilenced = silenced
+        lastUnsilenced = lit
+        if !lit.isEmpty {
+            Journal.log("emcon", "regulation",
+                        "\(goal.declared) could not silence: "
+                        + lit.joined(separator: ", "))
+        }
+    }
+
+    /// Stand EMCON down to OPEN. Stealth, the GATT host and
+    /// the beacon are left exactly as they are — re-arming
+    /// an emission is always a deliberate act in its own tab.
     func deactivate() {
         Haptics.pulse()
         scoreBeforeDark = nil
-        active = false
-        UserDefaults.standard.set(false, forKey: Self.activeKey)
+        condition = .open
+        EmconCondition.store(.open)
         stopTripwire()
+        chat.refreshRelayPolling()
         Journal.log("emcon", "posture", "EMCON stood down")
     }
 
-    /// On tab appearance after a relaunch: if EMCON was left active,
-    /// re-arm the tripwire so the posture survives restarts the way
-    /// the GATT host arm does.
+    /// On tab appearance after a relaunch: reconcile the
+    /// live house with the persisted condition in BOTH
+    /// directions, re-arm the tripwire, and re-run the
+    /// enforcement pass — the GATT arm re-arms itself at
+    /// launch, and under a standing condition it must be
+    /// silenced again, by name, not by luck.
     func restoreIfNeeded() {
         reloadVaultCombination()
         chat.purge()
-        // Reconcile with the persisted flag in BOTH directions:
-        // a settings reset (About tab) clears the flag while this
-        // instance may still be running, and the live posture must
-        // follow the stored truth, not the stale in-memory one.
-        let persisted = UserDefaults.standard.bool(forKey: Self.activeKey)
-        if persisted, !active { active = true }
-        if !persisted, active {
-            active = false
-            stopTripwire()
+        let persisted = EmconCondition.current
+        if persisted != condition { condition = persisted }
+        if persisted == .open {
+            if tripwireOn { stopTripwire() }
             return
         }
-        if active, !tripwireOn { startTripwire() }
+        if !tripwireOn { startTripwire() }
+        if let mouth { enforce(mouth: mouth) }
     }
 
     // MARK: - self-recon

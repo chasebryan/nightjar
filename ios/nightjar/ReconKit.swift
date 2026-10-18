@@ -26,6 +26,15 @@ final class ProbingBeacon: ObservableObject {
         running = max(0, running - 1)
         active = running > 0
     }
+
+    /// EMCON's enforcement: every bench's claim released at
+    /// once. The benches' own loops are campaigns under the
+    /// Standard and are gated at their starts; this clears
+    /// the shared indicator they hold.
+    func silence() {
+        running = 0
+        active = false
+    }
 }
 
 final class Recon: NSObject, ObservableObject {
@@ -465,6 +474,11 @@ final class Recon: NSObject, ObservableObject {
                    length: Int, mutations: Int, seedValue: UInt64?,
                    read: Bool, timeout: TimeInterval) {
         guard !fuzzing, count > 0 else { return }
+        if EmconStandard.refused(.probing) {
+            fuzzLines = ["the fuzzer stays dark — "
+                         + EmconCondition.current.declared]
+            return
+        }
         guard let target = try? SendTarget.parse(
                 rawTarget.trimmingCharacters(in: .whitespaces)) else {
             fuzzLines = ["nightjar: cannot parse \(rawTarget)"]

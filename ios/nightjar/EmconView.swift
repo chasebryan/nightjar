@@ -10,6 +10,9 @@ struct EmconView: View {
     @ObservedObject private var assault = AssaultCenter.shared
     @ObservedObject private var banshee = BansheeCenter.shared
     @ObservedObject private var probing = ProbingBeacon.shared
+    @ObservedObject private var warRun = WarRun.shared
+    @ObservedObject private var mimic = MimicCenter.shared
+    @State private var chosenCondition: EmconCondition = .charlie
     @State private var armAssault = false
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
@@ -24,23 +27,16 @@ struct EmconView: View {
     @AppStorage("emconCheckBluetooth") private var checkBluetooth = false
 
     private var score: Emcon.Score {
-        Emcon.score(gattHostOn: mouth.gattHostOn,
-                    beaconOn: mouth.beaconOn,
-                    serveRunning: mouth.serveRunning,
-                    stealth: mouth.stealth,
-                    deviceName: emcon.deviceName,
-                    exposureCount: emcon.exposures.count,
-                    announcerCount: emcon.announcers.count,
-                    assaultOn: assault.running,
-                    serveListeners: mouth.serveListenerCount,
-                    probingOn: probing.active,
-                    onLan: emcon.ownIP != nil,
-                    hostName: emcon.hostName)
+        // The audit is the only way a score is made — it
+        // reads the organs themselves, never a snapshot a
+        // caller assembled.
+        emcon.currentScore(mouth: mouth)
     }
 
     var body: some View {
         List {
             statusSection
+            standardSection
             Section {
                 if banshee.screaming {
                     HStack {
@@ -238,18 +234,19 @@ struct EmconView: View {
                     .font(.title)
                     .foregroundStyle(emcon.active ? .green : .secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(emcon.active ? "EMCON ACTIVE" : "EMCON OFF")
+                    Text(emcon.active
+                         ? emcon.condition.declared
+                         : "EMCON OFF")
                         .font(.headline)
                     Text(emcon.active
-                         ? "Dark. Unlisted, silent, and listening "
-                           + "for probes."
+                         ? emcon.condition.summary
                          : "This device answers the network under "
                            + "its own name.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(spacing: 0) {
-                    Text("\(score.value)")
+                    Text(Emcon.fmt(score.value))
                         .font(.title.weight(.bold))
                         .foregroundStyle(scoreColor)
                     Text(score.band)
@@ -257,16 +254,20 @@ struct EmconView: View {
                         .foregroundStyle(scoreColor)
                 }
             }
-            Text("Exposure score — being on the wire weighs first, "
-                 + "then live emissions, then what the last knock "
-                 + "and audit actually found. Run the drill for "
-                 + "the full picture.")
+            Text("Exposure, to the decimal — the Standard's "
+                 + "inventory: presence first, then each standing "
+                 + "emission at its fixed weight, then the "
+                 + "evidence, folded by its formula. Nothing is "
+                 + "capped; a fully lit house sums to exactly "
+                 + "100.0.")
                 .font(.caption).foregroundStyle(.secondary)
             if emcon.active,
                let before = emcon.scoreBeforeDark,
                before.value > score.value {
-                Text("Going dark took you from \(before.value) "
-                     + "\(before.band) to \(score.value) "
+                Text("Going dark took you from "
+                     + "\(Emcon.fmt(before.value)) "
+                     + "\(before.band) to "
+                     + "\(Emcon.fmt(score.value)) "
                      + "\(score.band).")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
@@ -278,14 +279,27 @@ struct EmconView: View {
                     HStack {
                         Text(part.label).font(.caption)
                         Spacer()
-                        Text("+\(part.points)")
+                        Text("+" + Emcon.fmt(part.points))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(scoreColor)
                     }
                 }
-                if score.capped {
-                    Text("Parts sum past 100 — the score stops there.")
-                        .font(.caption2).foregroundStyle(.secondary)
+            }
+            if emcon.active {
+                if !emcon.lastSilenced.isEmpty {
+                    Text("Silenced on engage: "
+                         + emcon.lastSilenced.joined(
+                            separator: ", ") + ".")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                if !emcon.lastUnsilenced.isEmpty {
+                    Label("Still lit: "
+                          + emcon.lastUnsilenced.joined(
+                            separator: ", "),
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.red)
                 }
             }
             if emcon.isAway, !emcon.active {
@@ -305,6 +319,24 @@ struct EmconView: View {
                 .buttonStyle(.borderedProminent)
             }
             if emcon.active {
+                Menu {
+                    ForEach([EmconCondition.charlie,
+                             .bravo, .alpha], id: \.self) { goal in
+                        Button {
+                            Haptics.tap()
+                            emcon.activate(mouth: mouth,
+                                           condition: goal)
+                            toasts.show(goal.declared
+                                        + " — the house is "
+                                        + "re-regulated.")
+                        } label: {
+                            Text("Move to \(goal.name)")
+                        }
+                    }
+                } label: {
+                    Label("Change condition",
+                          systemImage: "arrow.left.arrow.right")
+                }
                 Button(role: .destructive) {
                     Haptics.tap()
                     emcon.deactivate()
@@ -314,13 +346,26 @@ struct EmconView: View {
                     Label("Stand down EMCON", systemImage: "shield")
                 }
             } else if !emcon.isAway {
+                Picker("Condition", selection: $chosenCondition) {
+                    Text("Charlie").tag(EmconCondition.charlie)
+                    Text("Bravo").tag(EmconCondition.bravo)
+                    Text("Alpha").tag(EmconCondition.alpha)
+                }
+                .pickerStyle(.segmented)
+                Text(chosenCondition.summary)
+                    .font(.caption2).foregroundStyle(.secondary)
                 Button {
                     Haptics.tap()
-                    goDark()
+                    emcon.activate(mouth: mouth,
+                                   condition: chosenCondition)
+                    toasts.show(chosenCondition.declared
+                                + " — emissions regulated, "
+                                + "tripwire armed.")
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "shield")
-                        Text("Go dark")
+                        Text("Engage "
+                             + chosenCondition.declared)
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -337,10 +382,40 @@ struct EmconView: View {
     private var scoreColor: Color {
         switch score.value {
         case 0: return .green
-        case 1...15: return .mint
-        case 16...40: return .yellow
-        case 41...70: return .orange
+        case ..<10: return .mint
+        case ..<30: return .yellow
+        case ..<60: return .orange
         default: return .red
+        }
+    }
+
+    /// The Standard, posted in the room it governs: the
+    /// conditions, what each permits, and the one boundary
+    /// (a deliberate transmission by hand is the operator
+    /// speaking; standing emissions are what is regulated).
+    private var standardSection: some View {
+        Section {
+            ForEach([EmconCondition.charlie, .bravo, .alpha],
+                    id: \.self) { condition in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(condition.declared)
+                        .font(.caption.weight(.semibold))
+                    Text(condition.summary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text("The gate stands at every funnel: under a "
+                 + "condition, a forbidden organ cannot start "
+                 + "— not by hand, not by macro, not by her, "
+                 + "not by a saved arm returning at launch. "
+                 + "Refusals are journaled. A single payload "
+                 + "you fire yourself is you speaking, and is "
+                 + "not regulated; everything that stands, "
+                 + "advertises, serves, probes or polls is.")
+                .font(.caption2).foregroundStyle(.secondary)
+        } header: {
+            Text("The Standard")
         }
     }
 
@@ -1229,7 +1304,8 @@ struct EmconView: View {
                 : "BROKEN at sealed line "
                     + "\(chain.brokenLine ?? 0)"))
 
-        let censusDetail = "exposure \(score.value) · tripwire "
+        let censusDetail = "exposure "
+            + "\(Emcon.fmt(score.value)) · tripwire "
             + (emcon.tripwireOn ? "up" : "DOWN")
             + (emcon.unwatched.isEmpty
                 ? " · every port watched"

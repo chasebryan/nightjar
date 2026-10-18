@@ -163,6 +163,11 @@ final class AssaultCenter: ObservableObject {
 
     func arm() {
         guard !running else { return }
+        if EmconStandard.refused(.netAssault) {
+            note("Net-Assault stays dark — "
+                 + EmconCondition.current.declared)
+            return
+        }
         running = true
         passes = 0
         newThisRun = 0
