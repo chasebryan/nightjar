@@ -37,8 +37,26 @@ enum TabBeat {
         }
         guard lastShown != tag else { return }
         lastShown = tag
-        Haptics.press()
         DevLog.event("tab", "\(tag) (appeared)")
+        // The beat is deferred a fraction past
+        // the appearance. Issued in the very
+        // instant of appearing, it lands inside
+        // the tab transition's opening frame,
+        // where the haptic engine drops requests
+        // made mid-transition — the developer
+        // panel proved the same press is the
+        // kind of beat felt from a settled
+        // screen. A short deferral puts it on
+        // the transition's far side, still in
+        // step with the tab landing; the guard
+        // keeps a fast hop onwards from beating
+        // for a tab already left.
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.15) {
+            if lastShown == tag {
+                Haptics.press()
+            }
+        }
     }
 }
 
