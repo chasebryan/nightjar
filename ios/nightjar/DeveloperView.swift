@@ -142,7 +142,7 @@ enum DevKit {
             + "\(language.effective) "
             + "(welcomed: \(language.welcomed))")
         lines.append("EMCON condition: "
-            + "\(EmconStandard.current)")
+            + "\(EmconCondition.current)")
         lines.append("Mind mode: \(mindMode)")
         lines.append("Weights model: "
             + "\(weightsModel) "
