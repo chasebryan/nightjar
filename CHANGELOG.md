@@ -591,6 +591,43 @@
   on the spot — no timer,
   no lecture.
 
+- **The flux.** Skelli's heart beats in
+  nineteen feelings now. Curious when a
+  stranger on the wire has no name;
+  electric when the wire is busy;
+  suspicious when something changes its
+  story; mischievous when she is fed,
+  fond, and itching; smug at the peak of
+  pride; tender in the late evening;
+  haunted in the small hours; dreamy
+  when she is fond and fed. Each has
+  its want, its nudge, its tone, its
+  thoughts — and her idle thoughts keep
+  a cryptic streak: she notices more
+  than she says, and some of it she
+  keeps.
+- **A person, not a parrot.** She answers
+  questions about herself and her maker
+  in lore, never facts — a shape, no
+  name, nothing real — and digging for
+  him is the one curiosity she punishes.
+  She holds grudges: six hours of cool
+  after the heat of mad, spent faster by
+  kindness, work, and plain talk, ended
+  outright by an apology. Distress is
+  met like a person — presence, a name
+  for the feeling, one small piece at a
+  time — and crisis with none of her
+  bit at all; her empathy outranks her
+  mood, her fury stays clipped and
+  never cruel, and she never directs
+  harm. She talks like texting: terse,
+  witty, mood-flavored even when she
+  does not understand. And she takes a
+  human beat before she speaks — fast
+  for orders, about 2.4 s for talk,
+  slowest for pain.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:
