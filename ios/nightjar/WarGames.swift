@@ -1160,9 +1160,9 @@ struct WarGamesView: View {
     }
 
     private func importCard(_ result:
-        Result<[URL], Error>) {
-        guard case .success(let urls) = result,
-              let url = urls.first else { return }
+        Result<URL, Error>) {
+        guard case .success(let url) = result
+        else { return }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped {
             url.stopAccessingSecurityScopedResource()
