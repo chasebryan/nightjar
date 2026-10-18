@@ -73,7 +73,7 @@ struct ContentView: View {
                     // The common payload was the
                     // failure, so the payload changed.
                     Haptics.tap()
-                    DevLog.note("tab → \(newValue)")
+                    DevLog.event("tab", "\(newValue)")
                 }
                 tab = newValue
             })
