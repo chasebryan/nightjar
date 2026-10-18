@@ -1089,52 +1089,112 @@ struct BootView: View {
 /// stop — unmistakable through a pocket. Patterns are
 /// generator sequences; every call is fire-and-forget.
 enum Haptics {
+    // One retained generator per voice, kept
+    // prepared for the next beat. The old way —
+    // a fresh generator built and fired in the
+    // same instant — speaks unreliably, and a
+    // call made off the main thread is dropped
+    // by the system without a word. Together
+    // they read on the device as "haptics
+    // missing in some areas": the deliberate
+    // button taps mostly landed, while the
+    // programmatic beats (a toast landing from
+    // background work, a process finishing on a
+    // socket callback) went silently missing.
+    private static let lightGen =
+        UIImpactFeedbackGenerator(style: .light)
+    private static let rigidGen =
+        UIImpactFeedbackGenerator(style: .rigid)
+    private static let mediumGen =
+        UIImpactFeedbackGenerator(style: .medium)
+    private static let heavyGen =
+        UIImpactFeedbackGenerator(style: .heavy)
+    private static let softGen =
+        UIImpactFeedbackGenerator(style: .soft)
+    private static let selectionGen =
+        UISelectionFeedbackGenerator()
+    private static let notificationGen =
+        UINotificationFeedbackGenerator()
+
+    /// Every beat speaks on the main thread, or
+    /// it does not speak at all.
+    private static func onMain(
+        _ body: @escaping () -> Void) {
+        if Thread.isMainThread { body() }
+        else {
+            DispatchQueue.main.async(execute: body)
+        }
+    }
+
     static func tap() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        onMain {
+            lightGen.impactOccurred()
+            lightGen.prepare()
+        }
     }
 
     /// The boot sequence's per-line keystroke.
     static func tick() {
-        UIImpactFeedbackGenerator(style: .rigid)
-            .impactOccurred(intensity: 0.3)
+        onMain {
+            rigidGen.impactOccurred(intensity: 0.3)
+            rigidGen.prepare()
+        }
     }
 
     static func select() {
-        UISelectionFeedbackGenerator().selectionChanged()
+        onMain {
+            selectionGen.selectionChanged()
+            selectionGen.prepare()
+        }
     }
 
     /// A deliberate press — a primary action taken.
     static func press() {
-        UIImpactFeedbackGenerator(style: .medium)
-            .impactOccurred()
+        onMain {
+            mediumGen.impactOccurred()
+            mediumGen.prepare()
+        }
     }
 
     /// The heaviest single beat the house owns.
     static func heavy() {
-        UIImpactFeedbackGenerator(style: .heavy)
-            .impactOccurred()
+        onMain {
+            heavyGen.impactOccurred()
+            heavyGen.prepare()
+        }
     }
 
     /// A soft settle — things standing down, closing,
     /// being put away.
     static func pulse() {
-        UIImpactFeedbackGenerator(style: .soft)
-            .impactOccurred(intensity: 0.45)
+        onMain {
+            softGen.impactOccurred(intensity: 0.45)
+            softGen.prepare()
+        }
     }
 
     static func success() {
-        UINotificationFeedbackGenerator()
-            .notificationOccurred(.success)
+        onMain {
+            notificationGen
+                .notificationOccurred(.success)
+            notificationGen.prepare()
+        }
     }
 
     static func warn() {
-        UINotificationFeedbackGenerator()
-            .notificationOccurred(.warning)
+        onMain {
+            notificationGen
+                .notificationOccurred(.warning)
+            notificationGen.prepare()
+        }
     }
 
     static func error() {
-        UINotificationFeedbackGenerator()
-            .notificationOccurred(.error)
+        onMain {
+            notificationGen
+                .notificationOccurred(.error)
+            notificationGen.prepare()
+        }
     }
 
     /// A process begins: a medium beat with a light

@@ -898,7 +898,8 @@ final class SkelliCenter: ObservableObject {
                 // the wording.
                 || ["tell me", "go on", "continue",
                     "and then", "more"]
-                    .contains(q))
+                    .contains(q)
+                || q == "why" || q == "why not")
         if q.contains("his name")
             || q.contains("his real name")
             || q.contains("maker's name") {
@@ -917,6 +918,20 @@ final class SkelliCenter: ObservableObject {
             .contains { q.contains($0) }
         if makerAsked || followsMaker {
             makerThreadOpen = true
+            // "Why?" on the heels of a refusal is
+            // asking for the reason, and the
+            // reason is hers to give in myth —
+            // it is not another probe to count,
+            // and it never belongs to a bench
+            // (a bench parroted the refusal back
+            // with a name tag on it, 2026-10-18).
+            if !makerAsked,
+               q == "why" || q == "why not" {
+                return pick([
+                    L("Because the door is his, not mine to open."),
+                    L("Because some doors are load-bearing. This is one."),
+                    L("Because I keep what's his the way I keep what's yours.")])
+            }
             let probes = heart.noteMakerProbe()
             if probes == 2 {
                 return L("Still asking? He's private. I'm protective. The short version was the only version.")
@@ -3281,6 +3296,20 @@ enum SkelliMindSanitizer {
             out = String(out.dropFirst().dropLast())
                 .trimmingCharacters(
                     in: .whitespacesAndNewlines)
+        }
+        // A speaker label is scaffolding too: a
+        // bench that answers "Skelli: the door is
+        // closed" has dressed its line in a name
+        // tag, and her name lives in the header
+        // only — never prefixed to her own speech.
+        for label in ["skelli:", "assistant:", "ai:"] {
+            if out.lowercased().hasPrefix(label) {
+                out = String(out.dropFirst(
+                    label.count))
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                break
+            }
         }
         return out.isEmpty ? nil : out
     }

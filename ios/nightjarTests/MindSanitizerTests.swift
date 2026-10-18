@@ -49,6 +49,17 @@ final class MindSanitizerTests: XCTestCase {
             "Hey there! How's the wire?")
     }
 
+    func testSpeakerLabelIsStripped() {
+        XCTAssertEqual(
+            SkelliMindSanitizer.clean(
+                "Skelli: That door is closed."),
+            "That door is closed.")
+        XCTAssertEqual(
+            SkelliMindSanitizer.clean(
+                "Assistant: Two hosts answer."),
+            "Two hosts answer.")
+    }
+
     func testPlainSpeechPassesUntouched() {
         let raw = "Two hosts on the wire. One's new."
         XCTAssertEqual(SkelliMindSanitizer.clean(raw), raw)
