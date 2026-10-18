@@ -375,12 +375,15 @@ struct MacroEditorView: View {
                     Text("Colour")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    HStack(spacing: 10) {
+                    LazyVGrid(columns: Array(
+                        repeating: GridItem(.flexible(),
+                                            spacing: 8),
+                        count: 5), spacing: 10) {
                         ForEach(MacroPalette.colors,
                                 id: \.hex) { color in
                             Circle()
                                 .fill(Color(hex: color.hex))
-                                .frame(width: 32, height: 32)
+                                .frame(width: 34, height: 34)
                                 .overlay(
                                     Circle().stroke(
                                         draft.colorHex == color.hex
