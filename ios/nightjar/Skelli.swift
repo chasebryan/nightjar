@@ -7199,6 +7199,15 @@ struct SkelliView: View {
     @State private var dotPulse = false
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
+    /// Her headline wire, observed for the
+    /// activity line's ticker — and the app's
+    /// comings and goings, so the wire can
+    /// fetch the latest whenever she returns
+    /// to the front.
+    @ObservedObject private var wire =
+        HeadlineWire.shared
+    @Environment(\.scenePhase)
+    private var scenePhase
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
@@ -7633,11 +7642,15 @@ struct SkelliView: View {
     /// quick, while she works; amber when the
     /// wire wants attention (an unnamed soul,
     /// a raised EMCON); a slow accent breathe
-    /// at a clear watch — and the text is her
-    /// composed readout of the watch whenever
-    /// no work is narrating itself. It was a
-    /// piece of text with a dot; now both the
-    /// dot and the text know things.
+    /// at a clear watch. The text: work
+    /// narrates itself first, always; at an
+    /// idle watch the headline wire scrolls
+    /// the world's latest past the line; and
+    /// when the wire is silent — or the reader
+    /// asks stillness of motion — her composed
+    /// readout of the watch speaks instead.
+    /// It was a piece of text with a dot; now
+    /// both the dot and the text know things.
     private var activityBar: some View {
         let busy = skelli.mood != .idle
         let attention = !busy
@@ -7649,44 +7662,66 @@ struct SkelliView: View {
                 ? Color.orange
                 : themes.current.accent
                     .opacity(0.75))
-        return TimelineView(
-            .periodic(from: .now, by: 20)) { context in
-            let display = skelli.activity == "Ready."
-                ? skelli.idleReadout(at: context.date)
-                : skelli.activity
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(dotColor)
-                    .frame(width: 7, height: 7)
-                    .scaleEffect(
-                        dotPulse && !reduceMotion
-                            ? (busy ? 1.35 : 1.18)
-                            : 1.0)
-                    .animation(
-                        reduceMotion ? nil
-                            : .easeInOut(
-                                duration: busy
-                                    ? 0.8 : 2.0)
-                                .repeatForever(
-                                    autoreverses: true),
-                        value: dotPulse)
-                Text(display)
+        return HStack(spacing: 6) {
+            Circle()
+                .fill(dotColor)
+                .frame(width: 7, height: 7)
+                .scaleEffect(
+                    dotPulse && !reduceMotion
+                        ? (busy ? 1.35 : 1.18)
+                        : 1.0)
+                .animation(
+                    reduceMotion ? nil
+                        : .easeInOut(
+                            duration: busy
+                                ? 0.8 : 2.0)
+                            .repeatForever(
+                                autoreverses: true),
+                    value: dotPulse)
+            if skelli.activity != "Ready." {
+                Text(skelli.activity)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .contentTransition(.opacity)
                     .animation(
                         .easeInOut(duration: 0.45),
-                        value: display)
+                        value: skelli.activity)
+                Spacer()
+            } else if let ribbon = wire.tickerText,
+                      !reduceMotion {
+                HeadlineTicker(text: ribbon)
+                    .frame(maxWidth: .infinity)
+            } else {
+                TimelineView(
+                    .periodic(from: .now, by: 20)) { context in
+                    let readout = skelli.idleReadout(
+                        at: context.date)
+                    Text(readout)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.opacity)
+                        .animation(
+                            .easeInOut(duration: 0.45),
+                            value: readout)
+                }
                 Spacer()
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 4)
-        .onAppear { dotPulse = true }
+        .onAppear {
+            dotPulse = true
+            wire.start()
+        }
         .onChange(of: skelli.mood) { _ in
             dotPulse = false
             DispatchQueue.main.async {
                 dotPulse = true
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                wire.refreshOnForeground()
             }
         }
     }

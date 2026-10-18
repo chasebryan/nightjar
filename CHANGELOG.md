@@ -481,6 +481,21 @@
   overhead, the quiet,
   the moon, the day of
   the house.
+- **Her headline wire.**
+  When she isn't
+  narrating work, the
+  activity line scrolls
+  the world's latest:
+  global desks, the
+  USA in full share,
+  and the cybersecurity
+  wires, braided in
+  turn. It fetches on
+  its own — on opening,
+  on every return, and
+  on a quiet timer —
+  and the dot keeps
+  its watch beside it.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
