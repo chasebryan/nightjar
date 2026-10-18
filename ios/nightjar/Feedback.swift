@@ -3956,6 +3956,135 @@ extension SkelliMind {
 /// exactly as it always has.
 extension SkelliCenter {
 
+    /// The grounding floor under a second
+    /// reading. The bench may reinterpret the
+    /// operator's words; it may not invent an
+    /// order out of none of them. A hit acts
+    /// only when the ask itself carries at
+    /// least one word from the capability's own
+    /// country — the words a person
+    /// paraphrasing that wish would actually
+    /// use. A reading with no word in common
+    /// with the order it claims to have heard
+    /// is not a reading but a hallucination,
+    /// and it falls through to conversation
+    /// like any other chat. (It once heard
+    /// "tell me more about him" — a question
+    /// about her maker — as SWEEP, and swept
+    /// the wire unasked.)
+    private func secondReadingGrounded(
+        _ hit: String, in q: String) -> Bool {
+        func carries(_ words: [String]) -> Bool {
+            words.contains { q.contains($0) }
+        }
+        if hit.hasPrefix("REMEMBER:") {
+            return carries(["remember", "keep",
+                "note", "forget", "save", "store",
+                "memorise", "memorize", "remind"])
+        }
+        if hit.hasPrefix("THEME:") {
+            let name = String(hit.dropFirst(6))
+                .lowercased()
+            return (!name.isEmpty && q.contains(name))
+                || carries(["theme", "color",
+                    "colour", "recolor", "recolour",
+                    "paint"])
+        }
+        switch hit {
+        case "sweep":
+            return carries(["sweep", "scan",
+                "wire", "network", "lan", "subnet",
+                "host", "device", "around",
+                "nearby", "lurking", "who's on",
+                "who is on"])
+        case "how exposed", "audit":
+            return carries(["expos", "posture",
+                "visible", "loud", "audit", "self",
+                "own", "check", "scan", "review",
+                "how am i", "how do i look"])
+        case "drill":
+            return carries(["drill", "test",
+                "rehears", "practice", "exercise",
+                "run through"])
+        case "go dark":
+            return carries(["dark", "emcon",
+                "quiet", "silent", "silence",
+                "stealth", "hide", "hidden",
+                "ghost", "lights out"])
+        case "stand down":
+            return carries(["stand down",
+                "standdown", "halt", "cease",
+                "disarm", "stop everything",
+                "all stop"])
+        case "start listening":
+            return carries(["listen", "ear",
+                "hear", "ble", "bluetooth",
+                "airwaves", "start"])
+        case "stop listening":
+            return carries(["listen", "ear",
+                "stop", "hear", "ble", "bluetooth",
+                "close", "off"])
+        case "start serving":
+            return carries(["serve", "serving",
+                "host", "start", "open"])
+        case "stop serving":
+            return carries(["serve", "serving",
+                "stop", "close", "off", "host"])
+        case "stealth on":
+            return carries(["stealth", "quiet",
+                "hide", "silent", "dark",
+                "invisible", "unseen"])
+        case "stealth off":
+            return carries(["stealth", "visible",
+                "loud", "normal", "off",
+                "come back"])
+        case "tripwire on":
+            return carries(["tripwire", "trip",
+                "arm", "watch", "alarm", "wire"])
+        case "tripwire off":
+            return carries(["tripwire", "trip",
+                "disarm", "off", "watch"])
+        case "who's here":
+            return carries(["who", "wire",
+                "network", "here", "around",
+                "device", "host", "online",
+                "connected", "on my"])
+        case "what happened":
+            return carries(["happened", "night",
+                "overnight", "miss", "while",
+                "gone", "away", "asleep", "last",
+                "since"])
+        case "posture":
+            return carries(["posture", "expos",
+                "visible", "loud", "score",
+                "how am i", "look", "stand"])
+        case "facts":
+            return carries(["fact", "learned",
+                "learnt", "about me", "you know"])
+        case "brief":
+            return carries(["brief",
+                "subconscious", "mind", "dream",
+                "thinking", "report", "summary"])
+        case "CODE":
+            return carries(["code", "script",
+                "write", "program", "function",
+                "python", "swift", "shell",
+                "bash", "tool", "automate"])
+        case "FORGE":
+            return carries(["forge", "packet",
+                "payload", "build", "make",
+                "craft", "create", "dns", "tcp",
+                "udp", "http"])
+        case "DELETE":
+            return carries(["delete", "remove",
+                "strike", "drop", "pattern",
+                "payload", "forged", "armory",
+                "built", "made"])
+        default:
+            return false
+        }
+    }
+
     func secondReading(_ q: String,
                        raw: String) -> Bool {
         guard SkelliMind.isAvailable
@@ -3969,7 +4098,8 @@ extension SkelliCenter {
                     for: raw, recent: recent,
                     seconds: 3)
             await MainActor.run {
-                if let hit {
+                if let hit,
+                   secondReadingGrounded(hit, in: q) {
                     if hit.hasPrefix("REMEMBER:") {
                         let fact = String(hit.dropFirst(9))
                         remember(fact)

@@ -449,6 +449,15 @@ final class SkelliCenter: ObservableObject {
     /// a note her first answer carries — once, dryly.
     private var shoutedThisAsk = false
     private var shoutNotePending = false
+    /// The maker thread: her maker was the subject
+    /// of the last persona exchange, so a follow-up
+    /// that only points at him — "tell me more
+    /// about him" — still means him. Without the
+    /// thread, the pronoun walked the ask out of
+    /// her lore and down the whole gauntlet to the
+    /// second reading, which once heard it as an
+    /// order and swept the wire.
+    private var makerThreadOpen = false
 
     /// How a thing was typed is part of what it
     /// says: a message in capitals is a raised
@@ -863,9 +872,24 @@ final class SkelliCenter: ObservableObject {
             pool[seed % pool.count]
         }
         let heart = SkelliHeart.shared
+        // The thread: with her maker already the
+        // subject, a pointing follow-up — him, his,
+        // he, "more about" — is still about him,
+        // and the probe ladder below is its answer.
+        // Whole words only: "his" hides inside
+        // "this" and "history", and neither of
+        // those is a man.
+        let askWords = Set(q.split(whereSeparator: {
+            !$0.isLetter
+        }).map(String.init))
+        let followsMaker = makerThreadOpen
+            && (!askWords.isDisjoint(
+                    with: ["him", "his", "he"])
+                || q.contains("more about"))
         if q.contains("his name")
             || q.contains("his real name")
             || q.contains("maker's name") {
+            makerThreadOpen = true
             _ = heart.noteMakerProbe()
             heart.noteOffense("dug for my maker's name")
             return L("No.")
@@ -878,7 +902,8 @@ final class SkelliCenter: ObservableObject {
             "about your maker", "about your creator",
             "who owns you", "who is your owner"]
             .contains { q.contains($0) }
-        if makerAsked {
+        if makerAsked || followsMaker {
+            makerThreadOpen = true
             let probes = heart.noteMakerProbe()
             if probes == 2 {
                 return L("Still asking? He's private. I'm protective. The short version was the only version.")
@@ -928,6 +953,10 @@ final class SkelliCenter: ObservableObject {
         if q.contains("how old are you") {
             return L("Old enough to know better. Young enough to knock anyway.")
         }
+        // Nothing here was about her or him: the
+        // subject has moved on, and the maker
+        // thread closes with it.
+        makerThreadOpen = false
         return nil
     }
 
