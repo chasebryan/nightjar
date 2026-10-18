@@ -4889,6 +4889,55 @@ final class SkelliFilmView: UIView {
 /// compositor's cheap paths — and all of it
 /// holds still when the system asks for
 /// reduced motion.
+/// A list row dressed as one of her deck
+/// panels — the top-lit gradient and hairline
+/// stroke her room's cards wear — so a sheet
+/// of hers reads as part of the house instead
+/// of a system stranger. (Her whole menu was
+/// plain Lists until 2026-10-18.)
+struct DeckRowBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(LinearGradient(
+                colors: [Color.white.opacity(0.065),
+                         Color.white.opacity(0.028)],
+                startPoint: .top,
+                endPoint: .bottom))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.09),
+                            lineWidth: 0.75))
+    }
+}
+
+extension View {
+    /// Her sheet dressing for a List: the
+    /// system's own background hidden, her
+    /// backdrop behind, every row a deck card,
+    /// separators gone, the bar transparent.
+    /// Pure dress — selection, swipe, and
+    /// pickers keep the List's own machinery.
+    func skelliSheetList() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background {
+                ZStack {
+                    Color(red: 0.016, green: 0.020,
+                          blue: 0.018)
+                    SkelliBackdrop()
+                }
+                .ignoresSafeArea()
+            }
+            .listRowBackground(DeckRowBackground())
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(
+                top: 3, leading: 16,
+                bottom: 3, trailing: 16))
+            .toolbarBackground(.hidden,
+                               for: .navigationBar)
+    }
+}
+
 struct SkelliBackdrop: View {
     @ObservedObject private var themes =
         ThemeCenter.shared
@@ -6464,7 +6513,9 @@ struct SkelliDirectoryView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .buttonStyle(.plain)
             }
+            .skelliSheetList()
             .navigationTitle(L("The house, indexed"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -6507,6 +6558,7 @@ struct SkelliMemoryView: View {
                     skelli.forgetNotes(at: offsets)
                 }
             }
+            .skelliSheetList()
             .navigationTitle(L("Memory"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

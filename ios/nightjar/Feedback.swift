@@ -4107,6 +4107,7 @@ struct WeightsView: View {
                     }
                 }
             }
+            .skelliSheetList()
             .navigationTitle("Weights")
             .toolbar {
                 ToolbarItem(

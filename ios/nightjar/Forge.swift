@@ -577,6 +577,7 @@ struct ForgeView: View {
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
+            .skelliSheetList()
             .navigationTitle(L("The Forge"))
             .toolbar {
                 ToolbarItem(
