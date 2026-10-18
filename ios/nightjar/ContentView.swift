@@ -58,6 +58,14 @@ enum TabBeat {
         }
     }
 
+    /// Another authority (the selection watch)
+    /// has answered for this navigation: bump
+    /// the sequence so a pending vanish timer
+    /// stands down instead of doubling the beat.
+    static func noteExternalBeat() {
+        sequence += 1
+    }
+
     static func vanished(_ tag: Int) {
         sequence += 1
         let mine = sequence
@@ -72,6 +80,133 @@ enum TabBeat {
             Haptics.press()
             DevLog.event(
                 "tab", "more list (vanish \(tag))")
+        }
+    }
+}
+
+/// The selection watch: a passive ear on the
+/// tab bar controller's selected controller —
+/// a stored property, observed reliably, where
+/// a navigation stack's contents were not.
+/// One transition matters: the selected
+/// controller BECOMING the More navigation
+/// controller, which is the More button's tap
+/// itself. It fires on every tap, first or
+/// fiftieth — unlike the appearance signals
+/// around the More stack, which arrive with
+/// extras and omissions once that stack
+/// exists (the first More tap beat, and later
+/// ones went silent, for exactly that reason).
+/// Row picks and back pops keep the More
+/// controller selected, so they never trip
+/// this watch; TabBeat's own paths own them.
+/// When this watch answers, it bumps TabBeat's
+/// sequence, standing the vanish timer down
+/// so the tap is never beaten twice.
+enum SelectionWatch {
+    private static var observation:
+        NSKeyValueObservation?
+    private static var installed = false
+    private static var attempts = 0
+
+    static func install(from view: UIView) {
+        guard !installed,
+              let window = view.window else {
+            retry(from: view)
+            return
+        }
+        guard let bar = findTabBar(in: window)
+        else {
+            retry(from: view)
+            return
+        }
+        installed = true
+        let more = bar.moreNavigationController
+        observation = bar.observe(
+            \.selectedViewController,
+            options: [.new, .old]
+        ) { controller, change in
+            let now = change.newValue ?? nil
+            let was = change.oldValue ?? nil
+            guard now === more, was !== more
+            else { return }
+            TabBeat.noteExternalBeat()
+            DevLog.event("tab",
+                         "more opened (watch)")
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.15) {
+                if controller.selectedViewController
+                    === more {
+                    Haptics.press()
+                }
+            }
+        }
+        DevLog.event("tab", "selection watch on")
+    }
+
+    /// The tab bar controller is not reachable
+    /// at the first attempt in every launch
+    /// order; a few patient retries land it.
+    private static func retry(from view: UIView) {
+        guard !installed, attempts < 10 else {
+            return
+        }
+        attempts += 1
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.4) {
+            install(from: view)
+        }
+    }
+
+    /// Find the tab bar in the window's view
+    /// tree, then climb its responder chain to
+    /// the controller that owns it.
+    private static func findTabBar(
+        in window: UIWindow) -> UITabBarController? {
+        guard let tabBar = firstTabBar(in: window)
+        else { return nil }
+        var responder: UIResponder? = tabBar
+        while let r = responder {
+            if let bar = r as? UITabBarController {
+                return bar
+            }
+            responder = r.next
+        }
+        return nil
+    }
+
+    private static func firstTabBar(
+        in view: UIView) -> UITabBar? {
+        if let bar = view as? UITabBar {
+            return bar
+        }
+        for sub in view.subviews {
+            if let bar = firstTabBar(in: sub) {
+                return bar
+            }
+        }
+        return nil
+    }
+}
+
+/// A zero-size representable whose only job is
+/// to be in the window, so the selection watch
+/// can install itself from real UIKit ground.
+struct TabProbe: UIViewRepresentable {
+    func makeUIView(
+        context: Context) -> ProbeView {
+        ProbeView()
+    }
+
+    func updateUIView(_ uiView: ProbeView,
+                      context: Context) {}
+
+    final class ProbeView: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil {
+                SelectionWatch.install(from: self)
+            }
         }
     }
 }
@@ -231,6 +366,14 @@ struct ContentView: View {
             // Counter-knock pivot: a tripwire row tapped in EMCON
             // lands the operator on the Recon bench, pre-aimed.
             if handoff != nil { tab = 6 }
+        }
+        .overlay {
+            // Zero-size and touch-transparent:
+            // the probe that installs the
+            // selection watch.
+            TabProbe()
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
