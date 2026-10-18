@@ -2931,6 +2931,10 @@ final class SkelliFilmView: UIView {
 
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
+    @ObservedObject private var stationLive =
+        SigintStation.shared
+    @ObservedObject private var boardLive =
+        ProcessBoard.shared
     @ObservedObject private var runner = MacroRunner.shared
     @ObservedObject private var probing = ProbingBeacon.shared
     @ObservedObject private var themes = ThemeCenter.shared
@@ -3272,13 +3276,23 @@ struct SkelliView: View {
 
     /// Continuous analysis: exposure scored
     /// live, wire and air watched as they move,
-    /// one triaged sentence for what matters.
+    /// the registry and every battery the air has
+    /// reported, the board of running work — and
+    /// one triaged sentence for what matters,
+    /// discoveries first. Everything is computed
+    /// from the organs' own publishers, so the
+    /// deck updates itself as the house learns.
     private var intelStrip: some View {
         VStack(spacing: 6) {
             HStack(spacing: 8) {
                 exposurePanel
                 wirePanel
                 airPanel
+            }
+            HStack(spacing: 8) {
+                signalsPanel
+                batteryPanel
+                processesPanel
             }
             verdictLine
         }
@@ -3438,14 +3452,135 @@ struct SkelliView: View {
         }
     }
 
+    private var signalsPanel: some View {
+        let station = SigintStation.shared
+        let trackers = station.emitters.filter {
+            $0.trackerShaped }.count
+        var sub = station.currentWatch != nil
+            ? "\(station.newSinceWatchStart()) new "
+                + "this watch"
+            : "epoch registry"
+        if trackers > 0 {
+            sub = "\(trackers) tracker-shaped · " + sub
+        }
+        return panel(label: "SIGNALS") {
+            panelValue("\(station.emitters.count)")
+            panelSub(sub)
+        }
+    }
+
+    private var batteryPanel: some View {
+        let reporting = post.rows.filter {
+            $0.batteries.contains {
+                $0.component == "device" } }
+        guard let weakest = reporting.min(by: {
+            ($0.batteries.first {
+                $0.component == "device" }?.percent ?? 10_000)
+                < ($1.batteries.first {
+                    $0.component == "device" }?.percent
+                   ?? 10_000) }),
+              let reading = weakest.batteries.first(
+                where: { $0.component == "device" })
+        else {
+            return panel(label: "BATTERY") {
+                panelValue("—")
+                panelSub("none reporting")
+            }
+        }
+        let name = weakest.name
+            ?? weakest.preferredLabel ?? weakest.kind
+        var sub = name
+        if let forecast = weakest.batteryForecastText {
+            sub += " · " + forecast
+        }
+        return panel(label: "BATTERY") {
+            if let percent = reading.percent {
+                panelValue("\(percent)%")
+                panelSub(sub)
+            } else if let millivolts = reading.millivolts {
+                panelValue("\(millivolts)")
+                panelSub("mV · " + sub)
+            } else {
+                panelValue(reading.state ?? "—")
+                panelSub(sub)
+            }
+        }
+    }
+
+    private var processesPanel: some View {
+        let board = ProcessBoard.shared
+        var sub = "board clear"
+        if let last = board.recent.first {
+            sub = "last: " + last.label
+        }
+        return panel(label: "PROCESSES") {
+            panelValue("\(board.active.count)")
+            panelSub(board.active.isEmpty
+                     ? sub
+                     : (board.active.first?.label ?? sub))
+        }
+    }
+
+    /// The discovery line: what the house has
+    /// passively learned that the operator has
+    /// not been told yet, triaged — a watch
+    /// finding first, then a dying battery, a
+    /// tracker shape, a changed advertisement —
+    /// and only then the standing verdict.
+    private var discovery: (icon: String, text: String)? {
+        let station = SigintStation.shared
+        if station.currentWatch != nil {
+            let fresh = station.newSinceWatchStart()
+            if fresh > 0 {
+                return ("eye.fill",
+                        "Watch: \(fresh) new emitter"
+                        + (fresh == 1 ? "" : "s")
+                        + " since it began")
+            }
+        }
+        let now = Date().timeIntervalSince1970
+        if let low = post.rows
+            .filter({ now - $0.lastSeen < 900 })
+            .compactMap({ row -> (DeviceRow, Int)? in
+                guard let percent = row.batteries.first(
+                    where: { $0.component == "device" })
+                    ?.percent, percent <= 20
+                else { return nil }
+                return (row, percent)
+            })
+            .min(by: { $0.1 < $1.1 }) {
+            let name = low.0.name ?? low.0.preferredLabel
+                ?? low.0.kind
+            return ("battery.25",
+                    "Low battery: \(name) at \(low.1)%")
+        }
+        if let tracker = post.rows.first(where: {
+            $0.trackerShaped && now - $0.lastSeen < 900 }) {
+            let name = tracker.name
+                ?? tracker.preferredLabel ?? tracker.kind
+            return ("magnifyingglass",
+                    "Tracker-shaped in the air: " + name)
+        }
+        if let changed = post.rows.first(where: {
+            $0.payloadChanges > 0
+                && now - $0.lastSeen < 900 }) {
+            let name = changed.name
+                ?? changed.preferredLabel ?? changed.kind
+            return ("arrow.triangle.swap",
+                    name + " changed its advertisement "
+                    + "shape")
+        }
+        return nil
+    }
+
     private var verdictLine: some View {
         HStack(spacing: 6) {
-            Image(systemName: verdictIcon)
+            Image(systemName: discovery?.icon ?? verdictIcon)
                 .font(.system(size: 10,
                               weight: .semibold))
                 .foregroundStyle(
                     themes.current.accent)
-            Text(verdict)
+            Text(discovery?.text ?? verdict)
                 .font(.system(size: 11.5))
                 .lineLimit(1)
                 .truncationMode(.tail)
