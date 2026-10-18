@@ -397,7 +397,7 @@ enum SkelliStore {
         // before the archive existed must load
         // whole — lines, notes, and all — with
         // the archive simply empty.
-        init(from decoder: Decoder) throws {
+        init(from decoder: Swift.Decoder) throws {
             let c = try decoder.container(
                 keyedBy: CodingKeys.self)
             lines = try c.decodeIfPresent(
