@@ -21,10 +21,13 @@ import UIKit
 /// looking at has appeared — so the beat rides
 /// it: the first appearance after launch only
 /// primes the register (no beat for the tab the
-/// house reopens on), a reappearance of the
-/// same tab (back from background) stays
-/// silent, and every genuine change of tab
-/// answers with a press-strength beat.
+/// house reopens on). Every later appearance
+/// beats — including a return to the tab the
+/// operator left via the More list, which an
+/// earlier same-tab guard mistook for a mere
+/// reappearance and swallowed (More, then
+/// straight back to Serve, was silent for
+/// exactly that reason).
 enum TabBeat {
     private static var primed = false
     private static var lastShown: Int?
@@ -35,7 +38,6 @@ enum TabBeat {
             lastShown = tag
             return
         }
-        guard lastShown != tag else { return }
         lastShown = tag
         DevLog.event("tab", "\(tag) (appeared)")
         // The beat is deferred a fraction past
@@ -55,6 +57,121 @@ enum TabBeat {
             deadline: .now() + 0.15) {
             if lastShown == tag {
                 Haptics.press()
+            }
+        }
+    }
+}
+
+/// The More stack's back chevron, answered.
+/// Entering a section through the system's
+/// More list pushes it onto UIKit's own
+/// navigation stack, with a back button no
+/// SwiftUI surface can see — and popping back
+/// to the list changes no tab, so TabBeat is
+/// blind to it by construction. This bridge
+/// watches that one stack, passively, by
+/// key-value observation: a pop that lands
+/// back on the list itself (two deep to one)
+/// is the operator pressing that chevron, and
+/// it earns the selection voice. Nothing is
+/// delegated, subclassed, or intercepted —
+/// the house only listens, and beats.
+enum MoreStackBeat {
+    private static var observation:
+        NSKeyValueObservation?
+    private static var installed = false
+    private static var attempts = 0
+
+    static func install(from view: UIView) {
+        guard !installed,
+              let window = view.window else {
+            retry(from: view)
+            return
+        }
+        guard let bar = findTabBar(in: window),
+              let more = bar.moreNavigationController
+        else {
+            retry(from: view)
+            return
+        }
+        installed = true
+        var lastCount = more.viewControllers.count
+        observation = more.observe(
+            \.viewControllers, options: [.new]
+        ) { nav, _ in
+            let count = nav.viewControllers.count
+            let was = lastCount
+            lastCount = count
+            if count == 1 && was == 2 {
+                DispatchQueue.main.async {
+                    Haptics.select()
+                    DevLog.event("tab",
+                                 "more list (back)")
+                }
+            }
+        }
+        DevLog.event("tab", "more-stack watch on")
+    }
+
+    /// The tab bar controller is not reachable
+    /// at the first attempt in every launch
+    /// order; a few patient retries land it.
+    private static func retry(from view: UIView) {
+        guard !installed, attempts < 10 else { return }
+        attempts += 1
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.4) {
+            install(from: view)
+        }
+    }
+
+    /// Find the tab bar in the window's view
+    /// tree, then climb its responder chain to
+    /// the controller that owns it.
+    private static func findTabBar(
+        in window: UIWindow) -> UITabBarController? {
+        guard let tabBar = firstTabBar(in: window)
+        else { return nil }
+        var responder: UIResponder? = tabBar
+        while let r = responder {
+            if let bar = r as? UITabBarController {
+                return bar
+            }
+            responder = r.next
+        }
+        return nil
+    }
+
+    private static func firstTabBar(
+        in view: UIView) -> UITabBar? {
+        if let bar = view as? UITabBar { return bar }
+        for sub in view.subviews {
+            if let bar = firstTabBar(in: sub) {
+                return bar
+            }
+        }
+        return nil
+    }
+}
+
+/// A zero-size representable whose only job is
+/// to be in the window, so the More-stack
+/// watch can install itself from real UIKit
+/// ground.
+struct MoreStackProbe: UIViewRepresentable {
+    func makeUIView(
+        context: Context) -> ProbeView {
+        ProbeView()
+    }
+
+    func updateUIView(_ uiView: ProbeView,
+                      context: Context) {}
+
+    final class ProbeView: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil {
+                MoreStackBeat.install(from: self)
             }
         }
     }
@@ -203,6 +320,14 @@ struct ContentView: View {
             // Counter-knock pivot: a tripwire row tapped in EMCON
             // lands the operator on the Recon bench, pre-aimed.
             if handoff != nil { tab = 6 }
+        }
+        .overlay {
+            // Zero-size and touch-transparent: the
+            // probe that watches the More stack
+            // for its back-chevron pops.
+            MoreStackProbe()
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
