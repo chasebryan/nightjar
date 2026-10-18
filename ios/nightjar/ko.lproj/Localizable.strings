@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "아직 기록된 게 없어. 분명히 말해——'…가 좋아'——그러면 남아.";
 "The journal holds no %@ yet." = "일지에는 아직 %@가 없어.";
 "This waking began at " = "이번 깨어남은 이때 시작했어: ";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assault는 꺼진 상태로 유지됩니다 — %@가 Standard에 따라 금지합니다.";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "%@에 의해 꺼짐 유지 — Standard는 이 조건에서 Net-Assault를 금지합니다. 조건이 열려 있을 때만 무장합니다.";

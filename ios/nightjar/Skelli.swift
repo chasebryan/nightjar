@@ -2124,28 +2124,7 @@ final class SkelliCenter: ObservableObject {
             && nameDevice(q) {
             return
         }
-        if q.contains("assault")
-            && (q.contains("stand down")
-                || q.contains("stop")) {
-            navigate(to: 7)
-            say("Net-Assault stands down from its own "
-                + "section — the button is in the "
-                + "dashboard there, under the skull. "
-                + "Taken you to EMCON.")
-            return
-        }
-        if q.contains("assault")
-            || (q.contains("analy")
-                && q.contains("wire")
-                && !q.contains("stop")) {
-            navigate(to: 7)
-            say("Net-Assault keeps its own arming: the "
-                + "confirmation there names the "
-                + "consequence — watchers, intrusion "
-                + "detection, questions — and that tap "
-                + "stays yours by design. I've taken you "
-                + "to EMCON; the section sits under the "
-                + "skull, second from the top.")
+        if assaultAsk(q) {
             return
         }
         if q.contains("clear") || q.contains("delete")
@@ -4013,29 +3992,107 @@ final class SkelliCenter: ObservableObject {
                 .joined(separator: "\n")
     }
 
+    /// Net-Assault is hers to run: an order to
+    /// analyze the wire turns it loose when the
+    /// Standard permits, a status ask reads the run's
+    /// own findings, and a stand-down holsters it —
+    /// all from chat, never a trip to another tab.
+    /// What she will not do is lift EMCON herself:
+    /// a condition that holds it dark is named,
+    /// plainly, as the blocker.
+    private func assaultAsk(_ q: String) -> Bool {
+        let mentioned = q.contains("assault")
+            || (q.contains("analy") && q.contains("wire"))
+        guard mentioned else { return false }
+        let center = AssaultCenter.shared
+        if q.contains("stand down") || q.contains("stop")
+            || q.contains("holster") {
+            if center.running {
+                center.disarm()
+                say("Stood down. Net-Assault is "
+                    + "holstered — \(center.passes) "
+                    + "pass(es), \(center.newThisRun) new "
+                    + "device(s), \(center.driftThisRun) "
+                    + "drift line(s). The after-action "
+                    + "is filed.")
+            } else {
+                say("It isn't running — the wire is "
+                    + "quiet.")
+            }
+            return true
+        }
+        if center.running {
+            var line = "It's running the wire: "
+                + center.phase + ". \(center.passes) "
+                + "pass(es) in — \(center.newThisRun) "
+                + "new, \(center.driftThisRun) drift, "
+                + "\(center.probedThisRun) ports knocked."
+            if let latest = center.findings.last {
+                line += " Latest: " + latest + "."
+            }
+            say(line)
+            return true
+        }
+        let runIntent = q.contains("analy")
+            || q.contains("run") || q.contains("start")
+            || q.contains("arm") || q.contains("begin")
+            || q.contains("launch") || q.contains("loose")
+        if !runIntent {
+            if EmconStandard.refused(.netAssault) {
+                say("Holstered — and held dark: "
+                    + EmconCondition.current.declared
+                    + " forbids it. The Standard keeps "
+                    + "loud organs down; lift the "
+                    + "condition and I'll run it.")
+            } else {
+                say("Holstered. Say 'analyze the wire' "
+                    + "and I'll turn it loose myself.")
+            }
+            return true
+        }
+        if EmconStandard.refused(.netAssault) {
+            say("It stays dark: "
+                + EmconCondition.current.declared
+                + " forbids Net-Assault — the Standard "
+                + "holds loud organs down. Lift the "
+                + "condition and the wire is mine to "
+                + "run.")
+            return true
+        }
+        center.arm()
+        if center.running {
+            say("Loose. Net-Assault is on the wire — "
+                + "sweep, browse, knock, pass after "
+                + "pass. It's loud by design: anything "
+                + "watching will see this phone coming. "
+                + "'Stand down the assault' and I'll "
+                + "holster it.")
+        } else {
+            say("It won't arm — the EMCON section "
+                + "shows its state.")
+        }
+        return true
+    }
+
     // MARK: guidance for the levers that stay the operator's
 
     private func clearGuidance(for q: String) -> String {
         if q.contains("night log") || q.contains("journal")
             || q.contains("log") {
-            navigate(to: 7)
             return "The Night log clears from its own "
                 + "page — the Entries section holds "
                 + "'Clear the log', behind a "
                 + "confirmation, and the seal chain "
-                + "starts fresh. Clears stay your tap; "
-                + "I've taken you to EMCON, where the "
-                + "brief and the log live."
+                + "starts fresh. Clears stay your tap."
         }
         if q.contains("neighbor") || q.contains("wire")
             || q.contains("devices") {
-            navigate(to: 4)
             return "The Neighborhood clears from its "
                 + "board in Scan — open the Devices "
                 + "door and 'Clear the Neighborhood' "
                 + "sits at the bottom, behind a "
                 + "confirmation; their Map placements "
-                + "go with them. Taken you there."
+                + "go with them."
         }
         if q.contains("map") {
             navigate(to: 4)
@@ -4046,24 +4103,20 @@ final class SkelliCenter: ObservableObject {
         }
         if q.contains("thread") || q.contains("knocktalk")
             || q.contains("cadence") {
-            navigate(to: 8)
             return "Knocktalk's Housekeeping holds both "
                 + "doors: 'Clear all threads' and "
                 + "'Forget cadence profiles', each "
                 + "behind a confirmation. The pairing "
-                + "key is never touched. Taken you "
-                + "there."
+                + "key is never touched."
         }
         if q.contains("mind") || q.contains("subconscious")
             || q.contains("facts") {
-            navigate(to: 7)
             return "The mind's memory resets from the "
                 + "Subconscious's own Housekeeping — "
                 + "and single facts can be forgotten "
                 + "one by one in 'What the house has "
                 + "learned', where the forgetting "
-                + "itself is remembered. Open the mind "
-                + "from EMCON."
+                + "itself is remembered."
         }
         return "Every store in the house has its own "
             + "clear, behind its own confirmation — "

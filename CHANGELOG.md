@@ -221,6 +221,23 @@
   keeps of you — never
   from invention.
 
+- **She runs it herself.**
+  Ask for a thing and
+  she does it — the
+  wire analysis turns
+  loose from her own
+  hand when the
+  Standard permits, its
+  runs reported while
+  they last, and stands
+  down on her word. A
+  condition that holds
+  an organ dark is
+  named plainly, never
+  hidden behind a trip
+  to another tab — and
+  the module speaks
+  its refusals too.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

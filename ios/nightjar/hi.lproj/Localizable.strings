@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "अभी कुछ दर्ज नहीं। साफ़ कहो — 'मुझे पसंद है…' — और वह रह जाएगा।";
 "The journal holds no %@ yet." = "जर्नल में अभी कोई %@ नहीं है।";
 "This waking began at " = "यह जागरण शुरू हुआ ";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assault अंधेरे में रहता है — %@ मानक के तहत इसे प्रतिबंधित करता है।";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "%@ द्वारा अंधेरे में रखा गया — मानक इस स्थिति में Net-Assault को प्रतिबंधित करता है; यह केवल स्थिति खुली रहने पर ही सशस्त्र होता है।";

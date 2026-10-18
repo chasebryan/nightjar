@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "还没记录任何东西。直说吧——“我喜欢……”——它就会留下来。";
 "The journal holds no %@ yet." = "日志里还没有%@。";
 "This waking began at " = "这次醒来开始于";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assault 保持沉默 — %@ 根据标准禁止其运行。";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "被 %@ 保持沉默 — 标准在此条件下禁止 Net-Assault;仅在条件开放时才能启动。";

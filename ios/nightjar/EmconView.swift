@@ -166,12 +166,21 @@ struct EmconView: View {
             titleVisibility: .visible) {
             Button(L("Begin the assault"), role: .destructive) {
                 assault.arm()
-                // The run starts now; the ignition theatre
-                // lays over its first pass, a breath behind
-                // this dialog so the two never race.
-                DispatchQueue.main.asyncAfter(
-                    deadline: .now() + 0.35) {
-                    assaultIgnition = true
+                if assault.running {
+                    // The run starts now; the ignition
+                    // theatre lays over its first pass, a
+                    // breath behind this dialog so the two
+                    // never race.
+                    DispatchQueue.main.asyncAfter(
+                        deadline: .now() + 0.35) {
+                        assaultIgnition = true
+                    }
+                } else {
+                    // A refused arm is spoken, never
+                    // silent: the Standard held it dark,
+                    // and the operator hears why.
+                    toasts.show(String(format: L("Net-Assault stays dark — %@ forbids it under the Standard."),
+                                       EmconCondition.current.declared))
                 }
             }
             Button(L("Not yet"), role: .cancel) {}

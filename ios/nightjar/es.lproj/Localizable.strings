@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "Nada archivado aún. Dímelo claramente —«me gusta…»— y se queda.";
 "The journal holds no %@ yet." = "El diario aún no guarda ningún %@.";
 "This waking began at " = "Este despertar comenzó a las ";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assault permanece a oscuras — %@ lo prohíbe según el Estándar.";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "Mantenido a oscuras por %@ — el Estándar prohíbe Net-Assault bajo esta condición; solo se arma mientras la condición está abierta.";

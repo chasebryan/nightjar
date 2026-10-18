@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "Пока ничего не записано. Скажи прямо — «мне нравится…» — и это останется.";
 "The journal holds no %@ yet." = "В журнале пока нет ни одного %@.";
 "This waking began at " = "Это бодрствование началось в ";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assault остаётся в темноте — %@ запрещает его по Стандарту.";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "Удерживается в темноте из-за %@ — Стандарт запрещает Net-Assault при этом условии; он активируется только при открытом условии.";

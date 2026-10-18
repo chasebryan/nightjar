@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "まだ何も記録されていない。はっきり言って——「…が好き」——そうすれば残る。";
 "The journal holds no %@ yet." = "記録にはまだ%@がない。";
 "This waking began at " = "この覚醒はここから始まった：";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "Net-Assaultは沈黙を保ちます — %@ がStandardの下で禁止しています。";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "%@ により沈黙中 — Standardはこの条件下でNet-Assaultを禁止します。条件が開いている間のみ起動します。";

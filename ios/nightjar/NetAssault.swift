@@ -676,6 +676,12 @@ struct NetAssaultSectionView: View {
                   systemImage: "exclamationmark.shield.fill")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
+            if !EmconCondition.current.permits(.netAssault) {
+                Label(String(format: L("Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open."), EmconCondition.current.declared),
+                      systemImage: "lock.shield.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.red)
+            }
             Picker(L("Depth"), selection: $depth) {
                 Text(L("Sweep")).tag(0)
                 Text(L("+ Bonjour")).tag(1)
@@ -710,6 +716,8 @@ struct NetAssaultSectionView: View {
                 }
             }
             .foregroundStyle(.red)
+            .disabled(
+                !EmconCondition.current.permits(.netAssault))
             if center.passes > 0
                 || center.lastReport != nil {
                 // A door, not a ShareLink: a bare ShareLink

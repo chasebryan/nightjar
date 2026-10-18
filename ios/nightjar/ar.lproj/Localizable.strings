@@ -1628,3 +1628,5 @@
 "Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "لا شيء محفوظ بعد. قلها بوضوح — «أحب…» — وستبقى.";
 "The journal holds no %@ yet." = "لا يحتوي السجل على أي %@ بعد.";
 "This waking began at " = "بدأت هذه اليقظة في ";
+"Net-Assault stays dark — %@ forbids it under the Standard." = "يبقى Net-Assault مطفأً — %@ يمنعه بموجب المعيار.";
+"Held dark by %@ — the Standard forbids Net-Assault under this condition; it arms only while the condition is open." = "مُبقى مطفأً بواسطة %@ — المعيار يمنع Net-Assault في هذه الحالة؛ لا يتسلح إلا أثناء فتح الحالة.";
