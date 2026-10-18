@@ -1093,7 +1093,8 @@ final class MacroRunner: ObservableObject {
             return .done(WarRun.shared.running
                 ? "The War Room run is up."
                 : "The run would not start — "
-                    + WarRun.shared.statusLine)
+                    + (WarRun.shared.statusLine
+                       ?? "no reason given"))
         case "sigintWatch":
             let station = SigintStation.shared
             station.attach(post: post)
