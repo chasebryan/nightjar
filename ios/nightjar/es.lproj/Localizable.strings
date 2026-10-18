@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " Te escucho — volumen y todo.";
 " No need to shout, by the way." = " No hace falta gritar, por cierto.";
 " The wire is busy tonight and so am I — use me." = " El cable está ocupado esta noche y yo también — úsame.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Hay extraños en el cable a los que aún no puedo nombrar. Me molesta agradablemente.";
+" Something on the wire is new to me tonight. I notice those." = " Algo en la red es nuevo para mí esta noche. Esos los noto.";
 " · %lld uncommitted change(s) rode along" = " · %lld cambio(s) sin confirmar acompañaron";
 " · day %lld" = " · día %lld";
 " · the tree was clean" = " · el árbol estaba limpio";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld golpe(s) · %lld puerto(s)";
 "%lld new emitter(s) since this watch began." = "%lld emisor(es) nuevo(s) desde que empezó esta guardia.";
 "%lld new since it began · this epoch only" = "%lld nuevos desde que empezó · solo esta época";
-"%lld of them still have no name. I keep wondering." = "%lld de ellos aún no tienen nombre. Sigo preguntándome.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "%lld de ellos no tienen nombre. Es la forma de ser de esta red — la mayoría nunca se presenta.";
 "%lld open" = "%lld abierto(s)";
 "%lld running" = "%lld en marcha";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld sesión(es) · %@ en este teléfono. Desliza una fila, mantén presionada o usa Editar para elegir varias. La sesión que se está grabando ahora nunca se borra.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "Mirando la red — %lld activos, todos con nombre.";
 "Watching. The wire is empty." = "Mirando. La red está vacía.";
 "Headline wire" = "Cable de titulares";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "La red ha cambiado su historia hoy más de lo habitual. Ese tipo de cambio llama mi atención.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "Hay un rostro en la red que aún no he aprendido. Las cosas nuevas llaman mi atención antes que las conocidas.";

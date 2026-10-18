@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " Eu ouço-te — volume e tudo.";
 " No need to shout, by the way." = " Não é preciso gritar, já agora.";
 " The wire is busy tonight and so am I — use me." = " O fio está ocupado esta noite e eu também — usa-me.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Há estranhos no fio que ainda não consigo nomear. Isso incomoda-me agradavelmente.";
+" Something on the wire is new to me tonight. I notice those." = " Algo na rede é novo para mim esta noite. Esses eu noto.";
 " · %lld uncommitted change(s) rode along" = " · %lld alteração(ões) não confirmada(s) vieram junto";
 " · day %lld" = " · dia %lld";
 " · the tree was clean" = " · a árvore estava limpa";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld batida(s) · %lld porta(s)";
 "%lld new emitter(s) since this watch began." = "%lld novo(s) emissor(es) desde o início desta vigia.";
 "%lld new since it began · this epoch only" = "%lld novos desde que começou · só esta época";
-"%lld of them still have no name. I keep wondering." = "%lld deles ainda não têm nome. Continuo a perguntar-me.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "%lld deles ficam sem nome. É o jeito desta rede — a maioria nunca se apresenta.";
 "%lld open" = "%lld aberto(s)";
 "%lld running" = "%lld a correr";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld sessão(ões) · %@ neste telefone. Deslize uma linha, pressione e segure, ou use Editar para escolher várias. A sessão sendo gravada agora nunca é apagada.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "Vigiando a rede — %lld ativos, todos com nome.";
 "Watching. The wire is empty." = "Vigiando. A rede está vazia.";
 "Headline wire" = "Fio de manchetes";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "A rede mudou sua história hoje mais do que o habitual. Esse tipo de mudança chama minha atenção.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "Há um rosto na rede que ainda não aprendi. Coisas novas chamam minha atenção antes das familiares.";

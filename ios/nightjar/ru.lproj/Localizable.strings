@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " Я тебя слышу — громкость и всё прочее.";
 " No need to shout, by the way." = " Не надо кричать, кстати.";
 " The wire is busy tonight and so am I — use me." = " Провод занят сегодня ночью, и я тоже — используй меня.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " На проводе есть незнакомцы, которых я пока не могу назвать. Это приятно беспокоит.";
+" Something on the wire is new to me tonight. I notice those." = " Сегодня ночью в сети есть что-то новое для меня. Такое я замечаю.";
 " · %lld uncommitted change(s) rode along" = " · %lld неподтверждённое(ые) изменение(я) пришло(и) следом";
 " · day %lld" = " · день %lld";
 " · the tree was clean" = " · дерево было чистым";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld стук(а) · %lld порт(а)";
 "%lld new emitter(s) since this watch began." = "%lld нов(ых) излучател(я/ей) с начала этой вахты.";
 "%lld new since it began · this epoch only" = "%lld новых с начала · только эта эпоха";
-"%lld of them still have no name. I keep wondering." = "%lld из них всё ещё без имени. Я всё гадаю.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "%lld из них остаются без имени. Таков этот эфир — большинство никогда не представляется.";
 "%lld open" = "%lld открыто";
 "%lld running" = "%lld запущено";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld сессия(й) · %@ на этом телефоне. Смахните строку, удерживайте её или используйте «Изменить», чтобы выбрать несколько. Сессия, которая записывается сейчас, никогда не удаляется.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "Наблюдаю сеть — %lld на связи, все названы.";
 "Watching. The wire is empty." = "Наблюдаю. Сеть пуста.";
 "Headline wire" = "Лента заголовков";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "Сеть сегодня меняла свою историю чаще обычного. Такие перемены привлекают моё внимание.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "В сети есть лицо, которое я ещё не выучила. Новое привлекает моё внимание раньше знакомого.";

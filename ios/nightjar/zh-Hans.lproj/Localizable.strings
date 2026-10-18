@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " 我听得见——连音量一起。";
 " No need to shout, by the way." = " 另外，不用大喊。";
 " The wire is busy tonight and so am I — use me." = " 今晚线路很忙，我也是——用我吧。";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " 线上还有我叫不出名字的陌生人。怪让我惦记的，还挺愉快。";
+" Something on the wire is new to me tonight. I notice those." = " 今晚网络上有我没见过的东西。这种我会注意到。";
 " · %lld uncommitted change(s) rode along" = " · 有 %lld 项未提交的更改随之而来";
 " · day %lld" = " · 第 %lld 天";
 " · the tree was clean" = " · 工作树是干净的";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld 次敲门 · %lld 个端口";
 "%lld new emitter(s) since this watch began." = "这次值守开始以来 %lld 个新发射源。";
 "%lld new since it began · this epoch only" = "自开始以来新增 %lld 个 · 仅本纪元";
-"%lld of them still have no name. I keep wondering." = "其中 %lld 个还没有名字。我一直惦记着。";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "其中 %lld 个没有名字。这就是这张网络的样子——大多数从不自我介绍。";
 "%lld open" = "%lld 个开放";
 "%lld running" = "%lld 个正在运行";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld 个会话 · %@（在本手机上）。滑动一行、长按一行，或用“编辑”选择多个。正在录制的会话永不删除。";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "守望线路 — %lld 台在线，全都有名。";
 "Watching. The wire is empty." = "守望中。线上无人。";
 "Headline wire" = "头条滚动";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "今天这张网络比平时变得多。这种变化会引起我的注意。";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "网络上有一张我还没记住的面孔。陌生的事物比熟悉的更先引起我的注意。";

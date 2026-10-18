@@ -526,6 +526,26 @@
   pool of glow behind
   her portrait, visible
   at last.
+- **She learns her
+  wire.** A wire is
+  mostly strangers,
+  and most of it never
+  introduces itself —
+  that is its natural
+  state, not a threat.
+  She banks each day's
+  shape and judges
+  today against the
+  wire's own learned
+  baseline: drift,
+  crowds, and the
+  unnamed stir her
+  only when they run
+  beyond what this
+  wire usually does.
+  A genuinely new
+  face still gets her
+  attention first.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

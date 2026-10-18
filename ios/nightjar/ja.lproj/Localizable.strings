@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " 聞こえてる — 音量ごとね。";
 " No need to shout, by the way." = " ちなみに、叫ぶ必要はないよ。";
 " The wire is busy tonight and so am I — use me." = " 今夜は回線が忙しい。私もだ — 使ってくれ。";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " 名前を付けられない他人がネットワークにいる。妙に心地よく引っかかってる。";
+" Something on the wire is new to me tonight. I notice those." = " 今夜はネットワークに初めて見るものがあります。そういうのは目に留まります。";
 " · %lld uncommitted change(s) rode along" = " · 未コミットの変更 %lld 件が含まれていました";
 " · day %lld" = " · %lld 日目";
 " · the tree was clean" = " · ツリーはクリーンでした";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld回のノック · %lld個のポート";
 "%lld new emitter(s) since this watch began." = "この見張りが始まってから %lld 件の新しい発信源。";
 "%lld new since it began · this epoch only" = "開始以来 %lld 件の新規 · このエポックのみ";
-"%lld of them still have no name. I keep wondering." = "うち%lldにはまだ名前が付いていない。気になってる。";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "そのうち %lld 台は名乗りません。このネットワークはそういうものです — たいてい名乗らないのです。";
 "%lld open" = "%lld件開いている";
 "%lld running" = "%lld件実行中";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld 件のセッション · %@（この電話内）。行をスワイプ、長押し、または「編集」で複数選択できます。現在記録中のセッションは決して削除されません。";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "回線を見張り中 — %lld台、全て名がある。";
 "Watching. The wire is empty." = "見張り中。回線は空。";
 "Headline wire" = "ニュース速報";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "今日はネットワークの様子がいつもより変わっています。そういう変化は目に留まります。";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "まだ覚えていない顔がネットワークにいます。新しいものは、見慣れたものより先に目に留まります。";

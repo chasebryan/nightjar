@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " Je t'entends — volume et tout.";
 " No need to shout, by the way." = " Pas besoin de crier, au passage.";
 " The wire is busy tonight and so am I — use me." = " Le câble est occupé ce soir et moi aussi — utilise-moi.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Il y a des étrangers sur le câble que je ne peux pas encore nommer. Ça me dérange agréablement.";
+" Something on the wire is new to me tonight. I notice those." = " Quelque chose de nouveau est sur le réseau ce soir. Ceux-là, je les remarque.";
 " · %lld uncommitted change(s) rode along" = " · %lld modification(s) non validée(s) ont suivi";
 " · day %lld" = " · jour %lld";
 " · the tree was clean" = " · l'arbre était propre";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld coup(s) · %lld port(s)";
 "%lld new emitter(s) since this watch began." = "%lld nouvel(le)(s) émetteur(s) depuis le début de cette veille.";
 "%lld new since it began · this epoch only" = "%lld nouveaux depuis le début · cette époque seulement";
-"%lld of them still have no name. I keep wondering." = "%lld d'entre eux n'ont toujours pas de nom. Je continue de me demander.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "%lld d'entre eux restent sans nom. C'est la nature de ce réseau — la plupart ne se présentent jamais.";
 "%lld open" = "%lld ouvert(s)";
 "%lld running" = "%lld en cours";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld session(s) · %@ sur ce téléphone. Balayez une ligne, touchez-la longuement ou utilisez Modifier pour en choisir plusieurs. La session en cours d'enregistrement n'est jamais supprimée.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "Je veille sur le réseau — %lld présents, tous nommés.";
 "Watching. The wire is empty." = "Je veille. Le réseau est vide.";
 "Headline wire" = "Fil d'actualités";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "Le réseau a changé son histoire aujourd'hui plus que d'habitude. Ce genre de changement attire mon attention.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "Il y a un visage sur le réseau que je n'ai pas encore appris. Le nouveau attire mon attention avant le familier.";

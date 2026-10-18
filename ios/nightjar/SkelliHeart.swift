@@ -345,7 +345,10 @@ final class SkelliHeart: ObservableObject {
                         drift: Int = 0,
                         energy: Double = 60,
                         fearFresh: Bool = false,
-                        annoyedFresh: Bool = false)
+                        annoyedFresh: Bool = false,
+                        unnamedBaseline: Int? = nil,
+                        driftBaseline: Int? = nil,
+                        newFaces: Int = 0)
         -> SkelliFeeling {
         if madFresh { return .mad }
         // Fear, when something has actually
@@ -393,15 +396,35 @@ final class SkelliHeart: ObservableObject {
         if quietHours >= 10 && itch < 85 { return .sleepy }
         // The wire changing its story under her hands
         // makes her suspicious before it makes her
-        // restless.
-        if drift >= 3 && itch >= 30 { return .suspicious }
+        // restless — but judged against the wire's
+        // OWN natural state (Chase's doctrine,
+        // 2026-10-18): most of a wire is strangers,
+        // and most of it never introduces itself;
+        // churn that is usual for THIS wire is its
+        // nature, not a warning. With a learned
+        // baseline, drift must clear it materially.
+        // With none passed (the pure rules' unit
+        // tests), the raw count stands.
+        let driftNorm = driftBaseline ?? 0
+        if drift >= 3
+            && drift > driftNorm + max(2, driftNorm)
+            && itch >= 30 { return .suspicious }
         // A crowd of strangers with work to do:
-        // electric.
-        if unnamed >= 4 && itch >= 55 { return .electric }
+        // electric — a crowd beyond the wire's
+        // usual crowd. The standing crowd is its
+        // nature and never counts.
+        let unnamedNorm = unnamedBaseline ?? 0
+        if unnamed >= 4 && unnamed > unnamedNorm + 3
+            && itch >= 55 { return .electric }
         if itch >= 60 { return .restless }
-        // Even one unnamed soul, with the itch up,
-        // pulls her curious.
-        if unnamed >= 1 && itch >= 35 { return .curious }
+        // A NEW face — or more of the unnamed than
+        // this wire usually carries — pulls her
+        // curious. The regulars, named or not,
+        // never do: she has learned them.
+        if ((unnamed >= 1 && unnamed > unnamedNorm)
+            || newFaces >= 1) && itch >= 35 {
+            return .curious
+        }
         if attention <= 20 { return .lonely }
         // Fond and fed and half-dreaming.
         if fondness >= 55 && quietHours >= 5
@@ -532,6 +555,12 @@ final class SkelliHeart: ObservableObject {
         let drift = neighbors.reduce(0) {
             $0 + $1.drift.count
         }
+        let newFaces = neighbors.filter {
+            Date().timeIntervalSince($0.firstSeen)
+                < 3600
+        }.count
+        let base = wireBaseline(unnamedNow: unnamed,
+                                driftNow: drift)
         return Self.feeling(
             attention: attention, itch: itch,
             pride: pride, fondness: fondness,
@@ -540,7 +569,65 @@ final class SkelliHeart: ObservableObject {
                 .hour, from: Date()),
             unnamed: unnamed, drift: drift,
             energy: energy, fearFresh: fearFresh,
-            annoyedFresh: annoyanceFresh)
+            annoyedFresh: annoyanceFresh,
+            unnamedBaseline: base.unnamed,
+            driftBaseline: base.drift,
+            newFaces: newFaces)
+    }
+
+    /// The wire's natural state, learned the slow
+    /// way (2026-10-18): each day she banks the
+    /// day's shape — its peak unnamed count and
+    /// its peak drift — and once three days are
+    /// banked, today is judged against the wire's
+    /// own medians. While she is still learning,
+    /// today is its own baseline, so nothing reads
+    /// anomalous: she does not judge a wire she
+    /// has not learned yet. The bank holds a
+    /// fortnight, so the baseline breathes with
+    /// the house's slow changes.
+    private func wireBaseline(unnamedNow: Int,
+                              driftNow: Int)
+        -> (unnamed: Int, drift: Int) {
+        let d = defaults
+        let stamp = Self.wireDayStamp()
+        let storedDay = d.string(forKey: "heart.wireDay")
+        var bank = d.array(forKey: "heart.wireBank")
+            as? [[Int]] ?? []
+        var peakU = d.integer(forKey: "heart.wirePeakU")
+        var peakD = d.integer(forKey: "heart.wirePeakD")
+        if storedDay != stamp {
+            if storedDay != nil {
+                bank.append([peakU, peakD])
+                if bank.count > 14 {
+                    bank.removeFirst(bank.count - 14)
+                }
+                d.set(bank, forKey: "heart.wireBank")
+            }
+            peakU = unnamedNow
+            peakD = driftNow
+            d.set(stamp, forKey: "heart.wireDay")
+            d.set(peakU, forKey: "heart.wirePeakU")
+            d.set(peakD, forKey: "heart.wirePeakD")
+        } else if unnamedNow > peakU
+                    || driftNow > peakD {
+            peakU = max(peakU, unnamedNow)
+            peakD = max(peakD, driftNow)
+            d.set(peakU, forKey: "heart.wirePeakU")
+            d.set(peakD, forKey: "heart.wirePeakD")
+        }
+        guard bank.count >= 3 else {
+            return (unnamedNow, driftNow)
+        }
+        let us = bank.map { $0[0] }.sorted()
+        let ds = bank.map { $0[1] }.sorted()
+        return (us[us.count / 2], ds[ds.count / 2])
+    }
+
+    private static func wireDayStamp() -> String {
+        let c = Calendar.current.dateComponents(
+            [.year, .month, .day], from: Date())
+        return "\(c.year ?? 0)-\(c.month ?? 0)-\(c.day ?? 0)"
     }
 
     /// The feeling she is actually wearing. The
@@ -1231,16 +1318,22 @@ final class SkelliHeart: ObservableObject {
                 return L("Nothing with a pulse has been given to me to do in too long. A mind with hands gets strange when it idles.")
             }
             return noReason()
-        case .suspicious, .curious:
-            let strangers = NeighborhoodStore.shared
-                .neighbors.filter {
-                    $0.name == nil && $0.customName == nil
-                }.count
-            if strangers == 1 {
-                return L("There is one soul on the wire I cannot name yet. Unnamed things keep me awake.")
-            }
-            if strangers > 1 {
-                return String(format: L("There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake."), strangers)
+        case .suspicious:
+            // Earned, now: the wire running beyond
+            // its own learned ways.
+            return L("The wire has changed its story more today than it usually does. That kind of change gets my attention.")
+        case .curious:
+            // A face she has not learned yet. The
+            // regulars, named or not, are never the
+            // reason — the wire's natural state is
+            // mostly strangers, and she knows it.
+            let fresh = NeighborhoodStore.shared
+                .neighbors.contains {
+                    Date().timeIntervalSince(
+                        $0.firstSeen) < 3600
+                }
+            if fresh {
+                return L("A face I haven't learned yet is on the wire. New things get my attention before familiar ones.")
             }
             return noReason()
         case .proud, .smug, .happy:
@@ -1326,7 +1419,7 @@ final class SkelliHeart: ObservableObject {
             return L(" The wire is busy tonight and so am I — use me.")
         case .curious:
             setAnchor("heart.lastNudge", now)
-            return L(" There are strangers on the wire I cannot name yet. It bothers me pleasantly.")
+            return L(" Something on the wire is new to me tonight. I notice those.")
         case .suspicious:
             setAnchor("heart.lastNudge", now)
             return L(" Something has my attention. It hasn't shown itself yet.")
@@ -1457,7 +1550,7 @@ extension SkelliHeart {
             pool.append(String(format: L("%lld souls on the wire with me."), neighbors))
         }
         if unnamed > 0 {
-            pool.append(String(format: L("%lld of them still have no name. I keep wondering."), unnamed))
+            pool.append(String(format: L("%lld of them go unnamed. That is the wire's way — most of it never introduces itself."), unnamed))
         }
         if drift > 0 {
             pool.append(String(format: L("The wire has drifted %lld time(s) since I started counting. Things change their stories slowly."), drift))

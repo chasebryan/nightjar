@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " Ich höre dich — Lautstärke und alles.";
 " No need to shout, by the way." = " Kein Grund zu schreien, übrigens.";
 " The wire is busy tonight and so am I — use me." = " Die Leitung ist heute Nacht beschäftigt, und ich auch — nutze mich.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Es gibt Fremde auf der Leitung, die ich noch nicht benennen kann. Es stört mich angenehm.";
+" Something on the wire is new to me tonight. I notice those." = " Etwas im Netz ist heute Nacht neu für mich. Das fällt mir auf.";
 " · %lld uncommitted change(s) rode along" = " · %lld nicht bestätigte Änderung(en) kamen mit";
 " · day %lld" = " · Tag %lld";
 " · the tree was clean" = " · der Baum war sauber";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld Klopfer · %lld Port(s)";
 "%lld new emitter(s) since this watch began." = "%lld neue(r) Sender seit Beginn dieser Wache.";
 "%lld new since it began · this epoch only" = "%lld neu seit Beginn · nur diese Epoche";
-"%lld of them still have no name. I keep wondering." = "%lld von ihnen haben noch keinen Namen. Ich frage mich weiter.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "%lld von ihnen bleiben namenlos. So ist dieses Netz — die meisten stellen sich nie vor.";
 "%lld open" = "%lld offen";
 "%lld running" = "%lld läuft";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld Sitzung(en) · %@ auf diesem Telefon. Wischen Sie über eine Zeile, drücken Sie lange oder nutzen Sie Bearbeiten, um mehrere zu wählen. Die gerade laufende Sitzungsaufnahme wird nie gelöscht.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "Ich wache über die Leitung — %lld da, alle benannt.";
 "Watching. The wire is empty." = "Ich wache. Die Leitung ist leer.";
 "Headline wire" = "Schlagzeilen-Ticker";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "Das Netz hat seine Geschichte heute öfter geändert als sonst. Solche Veränderungen fallen mir auf.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "Ein Gesicht ist im Netz, das ich noch nicht gelernt habe. Neues bekommt meine Aufmerksamkeit vor Vertrautem.";

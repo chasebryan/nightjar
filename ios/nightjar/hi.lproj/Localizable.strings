@@ -10,7 +10,7 @@
 " I hear you — volume and all." = " मैं सुन रही हूँ — ध्वनि मात्रा समेत।";
 " No need to shout, by the way." = " वैसे, चिल्लाने की ज़रूरत नहीं है।";
 " The wire is busy tonight and so am I — use me." = " आज रात लाइन व्यस्त है और मैं भी — मेरा उपयोग करो।";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " तार पर कुछ अजनबी हैं जिनका नाम मैं अभी नहीं ले सकती। यह मुझे सुखद ढंग से परेशान करता है।";
+" Something on the wire is new to me tonight. I notice those." = " आज रात नेटवर्क पर कुछ नया है मेरे लिए। ऐसे मुझे दिख जाते हैं।";
 " · %lld uncommitted change(s) rode along" = " · %lld अप्रतिबद्ध परिवर्तन साथ आए";
 " · day %lld" = " · दिन %lld";
 " · the tree was clean" = " · ट्री साफ़ थी";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld दस्तक(ें) · %lld पोर्ट";
 "%lld new emitter(s) since this watch began." = "इस पहरे के शुरू होने के बाद से %lld नए उत्सर्जक।";
 "%lld new since it began · this epoch only" = "शुरू होने के बाद से %lld नए · केवल यही युग";
-"%lld of them still have no name. I keep wondering." = "उनमें से %lld के अभी भी कोई नाम नहीं हैं। मैं सोचती रहती हूँ।";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "उनमें से %lld बिना नाम के हैं। इस नेटवर्क का स्वभाव ही ऐसा है — अधिकतर कभी अपना परिचय नहीं देते।";
 "%lld open" = "%lld खुला";
 "%lld running" = "%lld चल रहे हैं";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld सत्र · %@ इस फ़ोन पर। एक पंक्ति स्वाइप करें, देर तक दबाएँ, या संपादित करें से कई चुनें। जो सत्र अभी रिकॉर्ड हो रहा है वह कभी नहीं मिटता।";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "लाइन पर नज़र — %lld मौजूद, सबके नाम हैं।";
 "Watching. The wire is empty." = "निगरानी में। लाइन खाली है।";
 "Headline wire" = "सुर्खियों की पट्टी";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "आज नेटवर्क ने अपनी कहानी सामान्य से अधिक बदली है। इस तरह का बदलाव मेरा ध्यान खींचता है।";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "नेटवर्क पर एक चेहरा है जिसे मैंने अभी तक सीखा नहीं है। नई चीज़ें परिचित चीज़ों से पहले मेरा ध्यान खींचती हैं।";

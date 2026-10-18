@@ -10,7 +10,7 @@
 " I hear you — volume and all." = "‏ أنا أسمعك — الحجم وكل شيء.";
 " No need to shout, by the way." = "‏ لا حاجة للصراخ، بالمناسبة.";
 " The wire is busy tonight and so am I — use me." = " السلك مشغول الليلة وأنا أيضًا — استخدمني.";
-" There are strangers on the wire I cannot name yet. It bothers me pleasantly." = "‏ هناك غرباء على الخط لا أستطيع تسميتهم بعد. يزعجني ذلك بشكل ممتع.";
+" Something on the wire is new to me tonight. I notice those." = " شيء جديد على الشبكة الليلة لم أره من قبل. هؤلاء ألاحظهم.";
 " · %lld uncommitted change(s) rode along" = " · جاءت معه %lld من التغييرات غير المؤكدة";
 " · day %lld" = " · اليوم %lld";
 " · the tree was clean" = " · كانت الشجرة نظيفة";
@@ -32,7 +32,7 @@
 "%lld knock(s) · %lld port(s)" = "%lld طرقة · %lld منفذ";
 "%lld new emitter(s) since this watch began." = "%lld باعث(ون) جديد(ون) منذ بدء هذه الخفرة.";
 "%lld new since it began · this epoch only" = "%lld جديد منذ أن بدأ · هذا العصر فقط";
-"%lld of them still have no name. I keep wondering." = "%lld منهم ما زالوا بلا اسم. ما زلت أتساءل.";
+"%lld of them go unnamed. That is the wire's way — most of it never introduces itself." = "يبقى %lld منها بلا اسم. هكذا هي هذه الشبكة — معظمها لا يعرّف بنفسه أبداً.";
 "%lld open" = "%lld مفتوح";
 "%lld running" = "%lld قيد التشغيل";
 "%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted." = "%lld جلسة · %@ على هذا الهاتف. مرّر صفًا أو اضغط عليه مطولًا أو استخدم «تحرير» لاختيار عدّة جلسات. الجلسة التي تُسجَّل الآن لا تُحذف أبدًا.";
@@ -1702,3 +1702,5 @@
 "Watching the wire — %lld up, every one named." = "أراقب الخط — %lld حاضرًا، وكلهم مسمّون.";
 "Watching. The wire is empty." = "أراقب. الخط خالٍ.";
 "Headline wire" = "شريط العناوين";
+"The wire has changed its story more today than it usually does. That kind of change gets my attention." = "غيّرت الشبكة قصتها اليوم أكثر من المعتاد. هذا النوع من التغيير يلفت انتباهي.";
+"A face I haven't learned yet is on the wire. New things get my attention before familiar ones." = "هناك وجه على الشبكة لم أتعلّمه بعد. الأشياء الجديدة تلفت انتباهي قبل المألوفة.";

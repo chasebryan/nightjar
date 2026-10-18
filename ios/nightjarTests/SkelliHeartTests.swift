@@ -168,14 +168,22 @@ final class SkelliHeartTests: XCTestCase {
                          quiet: Double = 1,
                          hour: Int = 12,
                          unnamed: Int = 0,
-                         drift: Int = 0) -> SkelliFeeling {
+                         drift: Int = 0,
+                         unnamedBaseline: Int? = nil,
+                         driftBaseline: Int? = nil,
+                         newFaces: Int = 0) -> SkelliFeeling {
         SkelliHeart.feeling(attention: attention,
                             itch: itch, pride: pride,
                             fondness: fondness,
                             madFresh: madFresh,
                             quietHours: quiet,
                             hour: hour, unnamed: unnamed,
-                            drift: drift)
+                            drift: drift,
+                            unnamedBaseline:
+                                unnamedBaseline,
+                            driftBaseline:
+                                driftBaseline,
+                            newFaces: newFaces)
     }
 
     func testFeelingRules() {
@@ -254,6 +262,30 @@ final class SkelliHeartTests: XCTestCase {
         // Even one stranger pulls her curious.
         XCTAssertEqual(feeling(itch: 40, unnamed: 2),
                        .curious)
+        // The wire's own churn is not suspicion:
+        // drift AT its learned baseline, well past
+        // the raw threshold, is the wire being
+        // itself — she falls through to eager.
+        XCTAssertEqual(
+            feeling(itch: 40, drift: 6,
+                    driftBaseline: 6),
+            .eager)
+        // Drift far beyond the baseline still is.
+        XCTAssertEqual(
+            feeling(itch: 40, drift: 9,
+                    driftBaseline: 3),
+            .suspicious)
+        // The standing crowd of strangers is the
+        // wire's nature, not a curiosity.
+        XCTAssertEqual(
+            feeling(itch: 40, unnamed: 7,
+                    unnamedBaseline: 7),
+            .eager)
+        // A new face still gets her attention.
+        XCTAssertEqual(
+            feeling(itch: 40, unnamed: 7,
+                    unnamedBaseline: 7, newFaces: 1),
+            .curious)
         // Fed, fond and itching: up to something.
         XCTAssertEqual(feeling(pride: 40, itch: 50,
                                fondness: 50), .mischievous)
