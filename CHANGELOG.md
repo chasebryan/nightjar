@@ -430,6 +430,26 @@
   a thing, get the
   page; order a thing,
   get the thing.
+- **Thousands of ways
+  to say it.** Her
+  composed voice grew
+  from a handful of
+  circumstance clauses
+  to thirty-odd facts
+  of the moment — the
+  wire's population,
+  the exact quiet, the
+  hour, the season,
+  the moon, her own
+  ledger — each in its
+  phrasings, laid one
+  or two at a time on
+  every conversational
+  answer she gives.
+  The combinations run
+  to the thousands per
+  line, and every one
+  of them is true.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

@@ -1018,7 +1018,7 @@ final class SkelliHeart: ObservableObject {
         // Her greeting is composed, not retrieved:
         // the opener, plus one true clause of the
         // moment when the moment offers one.
-        let clause = SkelliVoice.clause(
+        let clause = SkelliVoice.garnish(
             seed: count("heart.talks"), heart: self)
         if let name = SkelliScrapbook.shared.operatorName {
             return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name) + clause
@@ -1168,7 +1168,7 @@ final class SkelliHeart: ObservableObject {
         // when she is asked why. Mad stays clipped:
         // no garnish on anger.
         guard f != .mad else { return line }
-        return line + SkelliVoice.clause(
+        return line + SkelliVoice.garnish(
             seed: count("heart.talks") + 3, heart: self)
     }
 

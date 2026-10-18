@@ -1385,7 +1385,7 @@ final class SkelliCenter: ObservableObject {
                     L("The wire hums. I'm listening."),
                     L("Up. Watching. Ask me something."),
                     L("Same watch, same wire. What's needed?")])
-                    + SkelliVoice.clause(
+                    + SkelliVoice.garnish(
                         seed: lines.count * 3 + 1,
                         heart: heart)
                     + heart.wink()
@@ -1430,9 +1430,11 @@ final class SkelliCenter: ObservableObject {
             if feeling == .loving || feeling == .tender {
                 return L("Any time. Genuinely.")
             }
-            return pick([L("Mm."), L("Don't mention it."),
-                         L("Any time."),
-                         L("Filed under morale.")])
+            return SkelliVoice.embellish(
+                pick([L("Mm."), L("Don't mention it."),
+                      L("Any time."),
+                      L("Filed under morale.")]),
+                seed: seed * 3 + 1, heart: heart)
         }
         // Strong-minded: pressed, she does not fold
         // or rephrase herself into doubt. Mere
@@ -1440,9 +1442,11 @@ final class SkelliCenter: ObservableObject {
         if q.contains("are you sure")
             || q == "you sure" || q == "really" {
             if feeling == .mad { return L("Sure.") }
-            return pick([L("Sure."),
-                         L("I said what I said."),
-                         L("Sure enough. I don't guess out loud.")])
+            return SkelliVoice.embellish(
+                pick([L("Sure."),
+                      L("I said what I said."),
+                      L("Sure enough. I don't guess out loud.")]),
+                seed: seed * 5 + 2, heart: heart)
         }
         if ["lol", "haha", "lmao", "hahaha", "ha"]
             .contains(q) {
@@ -1452,10 +1456,12 @@ final class SkelliCenter: ObservableObject {
         if q.contains("good night")
             || q.contains("goodnight") || q == "bye"
             || q.contains("see you") {
-            return pick([
-                L("Sleep. I'll keep the watch."),
-                L("Night. The wire and I have it."),
-                L("Go on, then. I'll be here.")])
+            return SkelliVoice.embellish(
+                pick([
+                    L("Sleep. I'll keep the watch."),
+                    L("Night. The wire and I have it."),
+                    L("Go on, then. I'll be here.")]),
+                seed: seed * 7 + 3, heart: heart)
         }
         if q.contains("you're smart")
             || q.contains("you are smart")
@@ -1463,11 +1469,13 @@ final class SkelliCenter: ObservableObject {
             || q.contains("you're cool")
             || q.contains("good skelli")
             || q.contains("love you") {
-            return pick([
-                L("I know."),
-                L("Careful. I'll get smug."),
-                L("Careful — flattery works on me."),
-                L("Mm. Filed under morale.")])
+            return SkelliVoice.embellish(
+                pick([
+                    L("I know."),
+                    L("Careful. I'll get smug."),
+                    L("Careful — flattery works on me."),
+                    L("Mm. Filed under morale.")]),
+                seed: seed * 9 + 4, heart: heart)
                 + heart.wink()
         }
         if q.contains("tell me a joke")
@@ -1571,16 +1579,22 @@ final class SkelliCenter: ObservableObject {
             if feeling == .mischievous {
                 return L("Noted. Thrilling.")
             }
-            return pick([L("Mm."), L("Noted."), L("Filed.")])
+            return SkelliVoice.embellish(
+                pick([L("Mm."), L("Noted."), L("Filed.")]),
+                seed: seed * 11 + 5, heart: heart)
         }
         if q.contains("i'm bored")
             || q.contains("im bored") {
-            return L("Bored? Two of us. Give me a door to knock, or a question with teeth.")
+            return SkelliVoice.embellish(
+                L("Bored? Two of us. Give me a door to knock, or a question with teeth."),
+                seed: seed * 13 + 6, heart: heart)
         }
         if q.contains("i'm tired")
             || q.contains("im tired")
             || q.contains("i'm exhausted") {
-            return L("Then rest. I'll keep the watch — it's literally my job.")
+            return SkelliVoice.embellish(
+                L("Then rest. I'll keep the watch — it's literally my job."),
+                seed: seed * 15 + 7, heart: heart)
         }
         if q.contains("i got the job")
             || q.contains("i passed")
@@ -1591,10 +1605,12 @@ final class SkelliCenter: ObservableObject {
             || q.contains("im engaged")
             || q.contains("i'm happy")
             || q.contains("great news") {
-            return pick([
-                L("There it is. Filed under: good days."),
-                L("Good. The house celebrates quietly — a finding for the home team."),
-                L("Mm. Proud of you. Don't tell anyone I said so.")])
+            return SkelliVoice.embellish(
+                pick([
+                    L("There it is. Filed under: good days."),
+                    L("Good. The house celebrates quietly — a finding for the home team."),
+                    L("Mm. Proud of you. Don't tell anyone I said so.")]),
+                seed: seed * 17 + 8, heart: heart)
         }
         if q.contains("i'm angry")
             || q.contains("im angry")
@@ -1997,14 +2013,17 @@ final class SkelliCenter: ObservableObject {
             || q.contains("got the offer")
             || q.contains("offer letter")
             || q.contains("new job starts") {
-            return pick([
-                "There it is — the work got "
-                    + "seen. Logged under wins, "
-                    + "in ink.",
-                "A raise is a verdict with "
-                    + "numbers. Good. Yours.",
-                "Noted for the record. Don't "
-                    + "let it make you careful."])
+            return SkelliVoice.embellish(
+                pick([
+                    "There it is — the work got "
+                        + "seen. Logged under wins, "
+                        + "in ink.",
+                    "A raise is a verdict with "
+                        + "numbers. Good. Yours.",
+                    "Noted for the record. Don't "
+                        + "let it make you careful."]),
+                seed: seed * 3 + 1,
+                heart: SkelliHeart.shared)
         }
         if q.contains("i got fired")
             || q.contains("got laid off")
@@ -2025,14 +2044,17 @@ final class SkelliCenter: ObservableObject {
             || q.contains("handed in my notice")
             || q.contains("gave my notice")
             || q.contains("put in my notice") {
-            return pick([
-                "Done, then. Walking away "
-                    + "under your own power is "
-                    + "its own kind of "
-                    + "promotion.",
-                "Notice in. Good — the next "
-                    + "thing gets a version of "
-                    + "you that chose it."])
+            return SkelliVoice.embellish(
+                pick([
+                    "Done, then. Walking away "
+                        + "under your own power is "
+                        + "its own kind of "
+                        + "promotion.",
+                    "Notice in. Good — the next "
+                        + "thing gets a version of "
+                        + "you that chose it."]),
+                seed: seed * 5 + 2,
+                heart: SkelliHeart.shared)
         }
         // The eve of a big work moment. (Not
         // "tomorrow" shapes — the book of
@@ -2046,15 +2068,18 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("nervous")
                 || q.contains("dreading")
                 || q.contains("not ready")) {
-            return pick([
-                "Tomorrow's theirs to lose. "
-                    + "You've done the work — "
-                    + "sleep is the last of it, "
-                    + "and I'll keep the watch.",
-                "Nerves mean it matters. "
-                    + "It'll be over by lunch, "
-                    + "and smaller than it looks "
-                    + "tonight."])
+            return SkelliVoice.embellish(
+                pick([
+                    "Tomorrow's theirs to lose. "
+                        + "You've done the work — "
+                        + "sleep is the last of it, "
+                        + "and I'll keep the watch.",
+                    "Nerves mean it matters. "
+                        + "It'll be over by lunch, "
+                        + "and smaller than it looks "
+                        + "tonight."]),
+                seed: seed * 7 + 3,
+                heart: SkelliHeart.shared)
         }
         if (q.contains("my boss")
                 || q.contains("my manager"))
@@ -2066,31 +2091,37 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("yelled")
                 || q.contains("credit")
                 || q.contains("blamed")) {
-            return pick([
-                "Heard. A boss like that is "
-                    + "weather, not climate — we "
-                    + "dress for it and keep "
-                    + "walking.",
-                "Noted for the record. When "
-                    + "you want words for it — "
-                    + "the kind you can say out "
-                    + "loud — I'll help you find "
-                    + "them."])
+            return SkelliVoice.embellish(
+                pick([
+                    "Heard. A boss like that is "
+                        + "weather, not climate — we "
+                        + "dress for it and keep "
+                        + "walking.",
+                    "Noted for the record. When "
+                        + "you want words for it — "
+                        + "the kind you can say out "
+                        + "loud — I'll help you find "
+                        + "them."]),
+                seed: seed * 9 + 4,
+                heart: SkelliHeart.shared)
         }
         if q.contains("deadline")
             && (q.contains("moved")
                 || q.contains("moved up")
                 || q.contains("impossible")
                 || q.contains("friday")) {
-            return pick([
-                "Then we eat it in pieces. "
-                    + "Tell me them, or let it "
-                    + "sit tonight — it keeps "
-                    + "either way.",
-                "Deadlines bend more than "
-                    + "they admit. Find the "
-                    + "immovable part; start "
-                    + "there."])
+            return SkelliVoice.embellish(
+                pick([
+                    "Then we eat it in pieces. "
+                        + "Tell me them, or let it "
+                        + "sit tonight — it keeps "
+                        + "either way.",
+                    "Deadlines bend more than "
+                        + "they admit. Find the "
+                        + "immovable part; start "
+                        + "there."]),
+                seed: seed * 11 + 5,
+                heart: SkelliHeart.shared)
         }
         return nil
     }
@@ -3247,7 +3278,9 @@ final class SkelliCenter: ObservableObject {
         // still — appreciated, not processed,
         // and never dragged back to the app.
         if let life = lifeReply(to: q) {
-            say(unrepeated(life))
+            say(unrepeated(SkelliVoice.embellish(
+                life, seed: lines.count * 13 + 5,
+                heart: SkelliHeart.shared)))
             return
         }
 
@@ -3265,14 +3298,19 @@ final class SkelliCenter: ObservableObject {
         // in kind, never by recital and never
         // by waking a bench to parrot her.
         if let converse = converseReply(to: q) {
-            say(unrepeated(converse))
+            say(unrepeated(SkelliVoice.embellish(
+                converse, seed: lines.count * 7 + 4,
+                heart: SkelliHeart.shared)))
             return
         }
 
         // Static on the line: she says so, in her
         // feeling, instead of pretending.
         if isGibberish(q) {
-            say(puzzledReply())
+            say(SkelliVoice.embellish(
+                puzzledReply(),
+                seed: lines.count * 11 + 2,
+                heart: SkelliHeart.shared))
             return
         }
 
