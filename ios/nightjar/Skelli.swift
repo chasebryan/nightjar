@@ -2049,6 +2049,9 @@ final class SkelliCenter: ObservableObject {
             runAudit()
             return
         }
+        if emconOrganAsk(q) {
+            return
+        }
         if q.contains("go dark") || q.contains("emcon on")
             || q.contains("activate emcon") {
             goDark()
@@ -3476,6 +3479,119 @@ final class SkelliCenter: ObservableObject {
                     }.joined(separator: "\n"))
             }
         }
+    }
+
+    /// The EMCON organs that had no voice, worked
+    /// by voice: the condition set by name, and the
+    /// dead hand armed, checked in, and disarmed
+    /// (the defaults key and the center call
+    /// together, exactly as its toggle does them).
+    /// The tripwire already has its own gates and
+    /// keeps them.
+    private func emconOrganAsk(_ q: String) -> Bool {
+        let defaults = UserDefaults.standard
+        let deadHandOn = defaults.bool(forKey: "deadHand.on")
+        // The check-in, bare: the hand's own word.
+        if q.contains("check in") && deadHandOn {
+            emcon?.deadHandCheckIn()
+            if let due = emcon?.deadHandDeadline {
+                say("Checked in. The hand now falls "
+                    + "at " + due.formatted(date: .abbreviated,
+                                            time: .shortened)
+                    + " if you go quiet.")
+            } else {
+                say("Checked in — the clock is reset.")
+            }
+            return true
+        }
+        if q.contains("dead hand") {
+            guard let emcon else {
+                say("EMCON's organs haven't reached "
+                    + "me yet — open the EMCON tab "
+                    + "once and ask again.")
+                return true
+            }
+            if q.contains("disarm") || q.contains("off")
+                || q.contains("stand down")
+                || q.contains("stop") {
+                defaults.set(false, forKey: "deadHand.on")
+                emcon.deadHandDisarm()
+                say("The dead hand is disarmed — "
+                    + "no clock runs.")
+                return true
+            }
+            if q.contains("check in") {
+                if deadHandOn {
+                    emcon.deadHandCheckIn()
+                    say("Checked in — the clock is "
+                        + "reset.")
+                } else {
+                    say("It isn't armed — there's no "
+                        + "clock to reset.")
+                }
+                return true
+            }
+            if q.contains("arm") || q.contains("set")
+                || q.contains("turn on")
+                || q.contains("start") {
+                let hours = defaults.integer(
+                    forKey: "deadHand.hours")
+                defaults.set(true, forKey: "deadHand.on")
+                emcon.deadHandArm()
+                say("The dead hand is armed. Check "
+                    + "in within \(hours > 0 ? hours : 24) "
+                    + "hours — say 'check in' — or the "
+                    + "next opening burns the house "
+                    + "dark.")
+                return true
+            }
+            if deadHandOn, let due = emcon.deadHandDeadline {
+                say(emcon.deadHandOverdue
+                    ? "Armed — and overdue. Check in "
+                      + "before the next opening."
+                    : "Armed. The hand falls at "
+                      + due.formatted(date: .abbreviated,
+                                      time: .shortened)
+                      + " if you go quiet.")
+            } else {
+                say("The dead hand is disarmed.")
+            }
+            return true
+        }
+        if q.contains("emcon") || q.contains("condition") {
+            let named: [(String, EmconCondition)] = [
+                ("alpha", .alpha), ("bravo", .bravo),
+                ("charlie", .charlie)]
+            for (name, target) in named
+            where q.contains(name) {
+                guard let emcon, let mouth else {
+                    say("EMCON's organs haven't "
+                        + "reached me yet — open the "
+                        + "EMCON tab once and ask "
+                        + "again.")
+                    return true
+                }
+                if emcon.condition == target {
+                    say("Already there — "
+                        + target.declared + " stands.")
+                } else {
+                    emcon.activate(mouth: mouth,
+                                   condition: target)
+                    say(target.declared + " stands. "
+                        + "What it forbids is dark, "
+                        + "and the tripwire is "
+                        + "armed.")
+                }
+                return true
+            }
+            if q.contains("emcon off")
+                || q.contains("condition open")
+                || q.contains("to open") {
+                standDown()
+                return true
+            }
+        }
+        return false
     }
 
     private func goDark() {
