@@ -73,6 +73,73 @@ extension SkelliCenter {
                             as? Double) ?? 24))
     }
 
+    /// The Recon bench's port list, from its stored key.
+    func warReconPorts() -> [Int] {
+        let text = UserDefaults.standard.string(
+            forKey: "reconPorts")
+            ?? "22,80,443,445,1883,8080,8443,9100"
+        return Array(Set(text.split(separator: ",")
+            .compactMap {
+                Int($0.trimmingCharacters(in: .whitespaces))
+            }.filter { (1...65535).contains($0) })).sorted()
+    }
+
+    func warReconUDP() -> Bool {
+        (UserDefaults.standard.object(forKey: "reconKnockUDP")
+         as? Bool) ?? false
+    }
+
+    /// Serve's doors as the settings hold them — the
+    /// defender's real doors for a War Games card.
+    func warServeDoors() -> [WarDoor] {
+        let d = UserDefaults.standard
+        func flag(_ key: String, _ fallback: Bool) -> Bool {
+            (d.object(forKey: key) as? Bool) ?? fallback
+        }
+        func port(_ key: String, _ fallback: String) -> Int {
+            Int(d.string(forKey: key) ?? fallback) ?? 0
+        }
+        var doors: [WarDoor] = []
+        if flag("serveUseTCP", true) {
+            doors.append(WarDoor(
+                port: port("serveTcpPort", "9000"),
+                proto: "tcp", service: "custom",
+                confirmed: false))
+        }
+        if flag("serveUseUDP", false) {
+            doors.append(WarDoor(
+                port: port("serveUdpPort", "9001"),
+                proto: "udp", service: "custom",
+                confirmed: false))
+        }
+        if flag("serveUseHTTP", false) {
+            doors.append(WarDoor(
+                port: port("serveHttpPort", "8080"),
+                proto: "tcp", service: "http",
+                confirmed: false))
+        }
+        return doors.filter { $0.port > 0 }
+    }
+
+    /// The defender's decoys, parsed the way the War
+    /// Games room parses them.
+    func warParseDecoys() -> [String] {
+        let text = UserDefaults.standard.string(
+            forKey: "warGamesDecoys") ?? ""
+        var seen = Set<String>()
+        var out: [String] = []
+        for part in text.split(whereSeparator: {
+            $0 == "," || $0 == ";" || $0 == "\n"
+        }) {
+            let clean = part.trimmingCharacters(
+                in: .whitespaces).lowercased()
+            if !clean.isEmpty, seen.insert(clean).inserted {
+                out.append(clean)
+            }
+        }
+        return Array(out.prefix(12))
+    }
+
     /// The war rooms, by voice — the 7.0.0 campaign under
     /// her hands like everything else: the Banshee, the
     /// SIGINT watches, the Helm, the chests, a War Room
@@ -161,6 +228,27 @@ extension SkelliCenter {
 
         // The War Chest — dress the rig.
         if q.contains("chest") {
+            if q.contains("pack") || q.contains("capture") {
+                var name = "Packed by Skelli"
+                for marker in ["called ", "named "] {
+                    if let range = q.range(of: marker) {
+                        let rest = String(q[range.upperBound...])
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                        if !rest.isEmpty { name = rest }
+                        break
+                    }
+                }
+                var shelf = NJChestStore.load()
+                shelf.append(NJChest.capture(
+                    id: UUID().uuidString, name: name))
+                NJChestStore.save(shelf)
+                say("Packed “\(name)” — the rig as it "
+                    + "stands, on the shelf. Applying it "
+                    + "later dresses everything and starts "
+                    + "nothing.")
+                return true
+            }
             let chests = NJChestStore.load()
             if q.contains("apply") || q.contains("wear")
                 || q.contains("load") || q.contains("dress") {
@@ -279,6 +367,50 @@ extension SkelliCenter {
                 }
                 return true
             }
+            if q.contains("begin") || q.contains("attack now")
+                || q.contains("start the attack") {
+                guard games.role == "attacker" else {
+                    say("You are set as the \(games.role) — "
+                        + "a challenge makes you the attacker.")
+                    return true
+                }
+                guard !games.challengedPeer.isEmpty else {
+                    say("No challenge is out — challenge "
+                        + "the defender's address first.")
+                    return true
+                }
+                guard games.phase.contains("READY") else {
+                    say("The defender has not answered "
+                        + "READY yet. \(games.phase)")
+                    return true
+                }
+                games.beginAttack(config: warRoomConfig(),
+                                  knockPorts: warReconPorts(),
+                                  knockUDP: warReconUDP())
+                say("START sent to \(games.challengedPeer) "
+                    + "— the trace runs at them, then the "
+                    + "knocks on the Recon ports. The card "
+                    + "files itself when the round closes; "
+                    + "ask me for the score.")
+                return true
+            }
+            if q.contains("defend") || q.contains("defense") {
+                if games.role != "defender" {
+                    games.setRole("defender")
+                }
+                let doors = warServeDoors()
+                let decoys = warParseDecoys()
+                games.setDefense(serveDoors: doors,
+                                 decoys: decoys)
+                say("Defense set: \(doors.count) of Serve's "
+                    + "doors held as real, \(decoys.count) "
+                    + "decoys flying"
+                    + (decoys.isEmpty ? ""
+                       : " (\(decoys.joined(separator: ", ")))")
+                    + ". The catch window is the Serve "
+                    + "inbox — keep Serve up and serving.")
+                return true
+            }
             if q.contains("challenge") {
                 let words = q.split(separator: " ")
                 let ip = words.first {
@@ -315,16 +447,20 @@ extension SkelliCenter {
         // Spoofy — costumes and mimicry shapes.
         if q.contains("spoofy") || q.contains("costume")
             || q.contains("mimic") || q.contains("wear the")
-            || q.contains("disguise") {
+            || q.contains("disguise") || q.contains("rotat") {
             guard let mouth = mouth else { return false }
             if q.contains("drop") {
-                if MimicCenter.shared.activePersona != nil {
-                    MimicCenter.shared.drop(mouth: mouth)
-                    say("Shape dropped — the wardrobe it "
-                        + "found is restored.")
+                say(MimicCenter.shared.drop(mouth: mouth))
+                return true
+            }
+            if q.contains("rotat") {
+                if q.contains("stop") || q.contains("still") {
+                    SpoofyRotator.shared.stop()
+                    say("The rack stands still — the name "
+                        + "stays where the rotation left it.")
                 } else {
-                    say("No shape is being worn — the rack "
-                        + "is as it was.")
+                    say(SpoofyRotator.shared.start(
+                        mouth: mouth))
                 }
                 return true
             }
@@ -334,18 +470,18 @@ extension SkelliCenter {
                                      mouth: mouth))
                 return true
             }
-            if let persona = SpoofyPersona.all.first(where: {
+            let shapes = SpoofyPersona.all
+                + SpoofyStore.loadPersonas()
+            if let persona = shapes.first(where: {
                 q.contains($0.id)
                     || warNameScore($0.label, in: q) >= 2
             }) {
-                MimicCenter.shared.don(persona, mouth: mouth)
-                say("Wearing the \(persona.label): the air "
-                    + "name is “\(persona.beaconName)” and "
-                    + "Serve is dressed in character. Say "
-                    + "drop the shape to restore the wardrobe.")
+                say(MimicCenter.shared.don(persona,
+                                            mouth: mouth))
                 return true
             }
-            let costume = Spoofy.costumeNames
+            let costume = (Spoofy.costumeNames
+                + SpoofyStore.loadCostumes())
                 .map { (n: $0, s: warNameScore($0, in: q)) }
                 .filter { $0.s >= 1 }
                 .sorted { $0.s > $1.s }.first

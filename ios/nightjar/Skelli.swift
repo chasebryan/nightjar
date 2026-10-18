@@ -992,6 +992,11 @@ final class SkelliCenter: ObservableObject {
                 facts.append("wearing the "
                     + "\(persona.label) shape")
             }
+            if SpoofyRotator.shared.rotating {
+                facts.append("the air name is rotating "
+                    + "every \(SpoofyRotator.shared.minutes) "
+                    + "minutes")
+            }
             let station = SigintStation.shared
             if !station.emitters.isEmpty {
                 facts.append("the SIGINT registry holds "

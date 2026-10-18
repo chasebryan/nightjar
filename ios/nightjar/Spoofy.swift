@@ -84,13 +84,66 @@ enum Spoofy {
     }
 }
 
+// MARK: - The operator's own rack
+
+/// Costumes and personas the operator makes himself,
+/// kept beside the built-in rack — same shelf discipline
+/// as the chests and the Helm.
+enum SpoofyStore {
+    static let costumeKey = "spoofy.costumes.v1"
+    static let personaKey = "spoofy.personas.v1"
+
+    static func loadCostumes() -> [String] {
+        guard let data = UserDefaults.standard
+            .data(forKey: costumeKey),
+              let names = try? JSONDecoder()
+                .decode([String].self, from: data)
+        else { return [] }
+        return names
+    }
+
+    static func addCostume(_ name: String) {
+        var names = loadCostumes()
+        guard !names.contains(name),
+              !Spoofy.costumeNames.contains(name)
+        else { return }
+        names.append(name)
+        saveCostumes(names)
+    }
+
+    static func saveCostumes(_ names: [String]) {
+        if let data = try? JSONEncoder()
+            .encode(names) {
+            UserDefaults.standard
+                .set(data, forKey: costumeKey)
+        }
+    }
+
+    static func loadPersonas() -> [SpoofyPersona] {
+        guard let data = UserDefaults.standard
+            .data(forKey: personaKey),
+              let personas = try? JSONDecoder()
+                .decode([SpoofyPersona].self, from: data)
+        else { return [] }
+        return personas
+    }
+
+    static func savePersonas(_ personas: [SpoofyPersona]) {
+        if let data = try? JSONEncoder()
+            .encode(personas) {
+            UserDefaults.standard
+                .set(data, forKey: personaKey)
+        }
+    }
+}
+
 // MARK: - Mimicry personas
 
 /// A full shape: a class of device, worn across every
 /// surface at once — the air name, the greeting, and the
 /// Serve dress (which listeners, which ports, what they
 /// answer). Classes, never a specific device.
-struct SpoofyPersona: Identifiable {
+struct SpoofyPersona: Identifiable, Codable {
     var id: String
     var label: String
     var beaconName: String
@@ -226,6 +279,7 @@ final class MimicCenter: ObservableObject {
     static let shared = MimicCenter()
 
     @Published private(set) var activePersona: SpoofyPersona?
+    @Published private(set) var wornSince: Date?
 
     private struct Wardrobe {
         var values: [String: Any]
@@ -234,6 +288,12 @@ final class MimicCenter: ObservableObject {
         var wasGatt: Bool
         var wasStealth: Bool
         var stealthTouched: Bool
+        /// The air organs' exact found state — payloads
+        /// included — so a drop restores what was really
+        /// flying, not a name-shaped guess at it.
+        var wasBeaconPayload: Data
+        var wasGattPayload: Data
+        var wasAirName: String
     }
 
     private var wardrobe: Wardrobe?
@@ -244,8 +304,16 @@ final class MimicCenter: ObservableObject {
         "serveHttpPort", "serveReply", "serveReplyMode",
     ]
 
-    func don(_ persona: SpoofyPersona, mouth: Mouth) {
+    @discardableResult
+    func don(_ persona: SpoofyPersona,
+             mouth: Mouth) -> String {
+        if BansheeCenter.shared.screaming {
+            return "Not while the banshee screams — its "
+                + "own snapshot owns the posture. Cease it "
+                + "first."
+        }
         if activePersona != nil { drop(mouth: mouth) }
+        SpoofyRotator.shared.stop()
         let defaults = UserDefaults.standard
         var values: [String: Any] = [:]
         for key in Self.keys {
@@ -254,12 +322,16 @@ final class MimicCenter: ObservableObject {
             }
         }
         let touchStealth = persona.listed && mouth.stealth
-        wardrobe = Wardrobe(values: values,
-                            wasServing: mouth.serveRunning,
-                            wasBeacon: mouth.beaconOn,
-                            wasGatt: mouth.gattHostOn,
-                            wasStealth: mouth.stealth,
-                            stealthTouched: touchStealth)
+        wardrobe = Wardrobe(
+            values: values,
+            wasServing: mouth.serveRunning,
+            wasBeacon: mouth.beaconOn,
+            wasGatt: mouth.gattHostOn,
+            wasStealth: mouth.stealth,
+            stealthTouched: touchStealth,
+            wasBeaconPayload: mouth.currentBeaconPayload,
+            wasGattPayload: mouth.currentGattPayload,
+            wasAirName: mouth.currentAirName)
 
         defaults.set(persona.beaconName, forKey: "beaconName")
         defaults.set(persona.useTCP, forKey: "serveUseTCP")
@@ -285,13 +357,25 @@ final class MimicCenter: ObservableObject {
         wear(persona.beaconName,
              greeting: persona.greeting, mouth: mouth)
         activePersona = persona
+        wornSince = Date()
         Journal.log("spoofy", "mimicry",
                     "wearing the \(persona.label) — "
                     + "“\(persona.beaconName)”")
+        let live = mouth.serveRunning || mouth.beaconOn
+            || mouth.gattHostOn
+        return live
+            ? "Wearing the \(persona.label) — live now, "
+            + "in character on every surface it owns."
+            : "Wearing the \(persona.label) — the dress "
+            + "is set; it goes live when Serve or the "
+            + "air organs next start."
     }
 
-    func drop(mouth: Mouth) {
-        guard let persona = activePersona else { return }
+    @discardableResult
+    func drop(mouth: Mouth) -> String {
+        guard let persona = activePersona else {
+            return "No shape is being worn."
+        }
         let defaults = UserDefaults.standard
         if let wardrobe = wardrobe {
             for key in Self.keys {
@@ -308,24 +392,28 @@ final class MimicCenter: ObservableObject {
             if wardrobe.stealthTouched {
                 mouth.setStealth(wardrobe.wasStealth)
             }
-            let name = defaults.string(forKey: "beaconName")
-                ?? "nightjar-post"
             if wardrobe.wasBeacon, mouth.beaconOn {
                 mouth.stopBeacon()
-                mouth.startBeacon(payload: Data(name.utf8),
-                                  name: name)
+                mouth.startBeacon(
+                    payload: wardrobe.wasBeaconPayload,
+                    name: wardrobe.wasAirName)
             }
             if wardrobe.wasGatt, mouth.gattHostOn {
                 mouth.stopGattHost()
-                mouth.startGattHost(payload: Data(name.utf8),
-                                    name: name)
+                mouth.startGattHost(
+                    payload: wardrobe.wasGattPayload,
+                    name: wardrobe.wasAirName)
             }
         }
         wardrobe = nil
         activePersona = nil
+        wornSince = nil
         Journal.log("spoofy", "mimicry",
                     "dropped the \(persona.label) — the "
                     + "wardrobe it found is restored")
+        return "Shape dropped — the wardrobe it found is "
+            + "restored whole: settings, stealth, and the "
+            + "exact payloads the air was carrying."
     }
 
     /// Restart whichever air organ is live, wearing the
@@ -344,13 +432,80 @@ final class MimicCenter: ObservableObject {
     }
 }
 
+// MARK: - The rotator
+
+/// The rack, revolving: while rotation runs, the air
+/// name steps through the rack — built-ins and the
+/// operator's own — on an interval. It turns only this
+/// device's own name, the way the system itself rotates
+/// its radio address; it steps aside while a persona is
+/// worn, and stops when one is donned.
+final class SpoofyRotator: ObservableObject {
+    static let shared = SpoofyRotator()
+
+    @Published private(set) var rotating = false
+    @Published var minutes: Int = 15
+
+    private var timer: Timer?
+    private var names: [String] = []
+    private var index = 0
+
+    @discardableResult
+    func start(mouth: Mouth) -> String {
+        names = Spoofy.costumeNames
+            + SpoofyStore.loadCostumes()
+        guard names.count > 1 else {
+            return "The rack needs more than one name "
+                + "to rotate."
+        }
+        stop()
+        if let current = names.firstIndex(
+            of: Spoofy.currentName) {
+            index = current
+        }
+        rotating = true
+        timer = Timer.scheduledTimer(
+            withTimeInterval: Double(minutes * 60),
+            repeats: true) { [weak self] _ in
+            self?.advance(mouth: mouth)
+        }
+        Journal.log("spoofy", "rotation",
+                    "the rack revolves — a new name every "
+                    + "\(minutes) minutes")
+        return "The rack revolves: a new name every "
+            + "\(minutes) minutes, through \(names.count) "
+            + "costumes."
+    }
+
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        if rotating {
+            rotating = false
+            Journal.log("spoofy", "rotation",
+                        "the rack stands still")
+        }
+    }
+
+    private func advance(mouth: Mouth) {
+        guard MimicCenter.shared.activePersona == nil
+        else { return }
+        index = (index + 1) % names.count
+        Spoofy.applyName(names[index], mouth: mouth)
+    }
+}
+
 // MARK: - The rack itself
 
 struct SpoofyView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @ObservedObject private var mimic = MimicCenter.shared
+    @ObservedObject private var rotator = SpoofyRotator.shared
     @State private var customName = ""
+    @State private var myCostumes: [String] = []
+    @State private var myPersonas: [SpoofyPersona] = []
+    @State private var showEditor = false
 
     private var hostName: String {
         var buffer = [CChar](repeating: 0, count: 256)
@@ -385,11 +540,25 @@ struct SpoofyView: View {
                         Label("Wearing the \(persona.label)",
                               systemImage: "theatermasks.fill")
                             .foregroundStyle(.purple)
+                        if let since = mimic.wornSince {
+                            LabeledContent(
+                                "Worn since",
+                                value: since.formatted(
+                                    date: .omitted,
+                                    time: .shortened))
+                        }
+                    }
+                    if rotator.rotating {
+                        LabeledContent(
+                            "Name rotation",
+                            value: "every "
+                                + "\(rotator.minutes) min")
                     }
                 }
 
                 Section("Costumes — a name for the air") {
-                    ForEach(Spoofy.costumeNames, id: \.self) {
+                    ForEach(Spoofy.costumeNames
+                        + myCostumes, id: \.self) {
                         name in
                         Button {
                             Haptics.select()
@@ -407,14 +576,35 @@ struct SpoofyView: View {
                         }
                         .foregroundStyle(.primary)
                     }
+                    .onDelete { offsets in
+                        // Only the operator's own rows delete;
+                        // built-ins sit before them.
+                        let mine = offsets.map {
+                            $0 - Spoofy.costumeNames.count
+                        }.filter {
+                            myCostumes.indices.contains($0)
+                        }
+                        guard !mine.isEmpty else { return }
+                        myCostumes = myCostumes.enumerated()
+                            .filter { !mine.contains($0.offset) }
+                            .map { $0.element }
+                        SpoofyStore.saveCostumes(myCostumes)
+                    }
                     HStack {
                         TextField("Your own costume name",
                                   text: $customName)
                             .autocorrectionDisabled()
                         Button("Wear") {
                             Haptics.tap()
+                            let name = customName
+                                .trimmingCharacters(
+                                    in: .whitespaces)
                             toasts.show(Spoofy.applyName(
-                                customName, mouth: mouth))
+                                name, mouth: mouth)
+                                + " Kept on your rack.")
+                            SpoofyStore.addCostume(name)
+                            myCostumes =
+                                SpoofyStore.loadCostumes()
                             customName = ""
                         }
                         .disabled(customName.trimmingCharacters(
@@ -432,7 +622,44 @@ struct SpoofyView: View {
                     Text("A costume sets the name the beacon "
                         + "and the GATT host wear. Live organs "
                         + "restart wearing it, with the name "
-                        + "as their greeting.")
+                        + "as their greeting. A name you type "
+                        + "is kept on your own rack — swipe "
+                        + "it away to clear it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("The revolving rack") {
+                    Picker("A new name every",
+                           selection: $rotator.minutes) {
+                        Text("5 min").tag(5)
+                        Text("15 min").tag(15)
+                        Text("30 min").tag(30)
+                        Text("60 min").tag(60)
+                    }
+                    .disabled(rotator.rotating)
+                    if rotator.rotating {
+                        Button("Stop the rotation",
+                               role: .destructive) {
+                            Haptics.tap()
+                            rotator.stop()
+                        }
+                        .buttonStyle(.borderless)
+                    } else {
+                        Button {
+                            Haptics.tap()
+                            toasts.show(rotator.start(
+                                mouth: mouth))
+                        } label: {
+                            Label("Start rotating names",
+                                  systemImage:
+                                    "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    Text("Rotation turns only this device's "
+                        + "own air name, stepping through "
+                        + "the rack. It stands aside while "
+                        + "a persona is worn.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -447,7 +674,8 @@ struct SpoofyView: View {
                             Button("Drop the shape",
                                    role: .destructive) {
                                 Haptics.tap()
-                                mimic.drop(mouth: mouth)
+                                toasts.show(mimic.drop(
+                                    mouth: mouth))
                             }
                             .buttonStyle(.borderless)
                         }
@@ -482,6 +710,34 @@ struct SpoofyView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Section("Mimicry — your own shapes") {
+                    ForEach(myPersonas) { persona in
+                        personaRow(persona)
+                    }
+                    .onDelete { offsets in
+                        myPersonas = myPersonas.enumerated()
+                            .filter {
+                                !offsets.contains($0.offset)
+                            }
+                            .map { $0.element }
+                        SpoofyStore.savePersonas(myPersonas)
+                    }
+                    Button {
+                        Haptics.tap()
+                        showEditor = true
+                    } label: {
+                        Label("Build a shape",
+                              systemImage: "plus.circle")
+                    }
+                    Text("Your own personas, built from the "
+                        + "same cloth as the rack's: a name, "
+                        + "a greeting, Serve's dress, and "
+                        + "whether the shape stands listed. "
+                        + "Swipe one away to clear it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section {
                     Text("Costumes dress this device in "
                         + "generic shapes; its own addresses "
@@ -495,6 +751,15 @@ struct SpoofyView: View {
                 }
             }
             .navigationTitle("Spoofy")
+            .onAppear {
+                myCostumes = SpoofyStore.loadCostumes()
+                myPersonas = SpoofyStore.loadPersonas()
+            }
+            .sheet(isPresented: $showEditor) {
+                SpoofyPersonaEditor {
+                    myPersonas = SpoofyStore.loadPersonas()
+                }
+            }
         }
     }
 
@@ -503,8 +768,7 @@ struct SpoofyView: View {
         -> some View {
         Button {
             Haptics.tap()
-            mimic.don(persona, mouth: mouth)
-            toasts.show("Wearing the " + persona.label)
+            toasts.show(mimic.don(persona, mouth: mouth))
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(persona.label)
@@ -530,5 +794,126 @@ struct SpoofyView: View {
             : "serves " + parts.joined(separator: " · ")
         if persona.listed { dress += " · listed" }
         return dress
+    }
+}
+
+// MARK: - Building a shape
+
+/// The persona workshop: every field of a shape, from
+/// the same cloth as the built-in rack — nothing a
+/// built-in persona wears is beyond the operator's own.
+struct SpoofyPersonaEditor: View {
+    @Environment(\.dismiss) private var dismiss
+    var onSave: () -> Void
+
+    @State private var label = ""
+    @State private var beaconName = ""
+    @State private var greeting = ""
+    @State private var useTCP = true
+    @State private var tcpPort = "9000"
+    @State private var useUDP = false
+    @State private var udpPort = "9001"
+    @State private var useHTTP = false
+    @State private var httpPort = "8080"
+    @State private var reply = ""
+    @State private var listed = false
+
+    private func port(_ text: String,
+                      fallback: Int) -> Int {
+        guard let value = Int(text),
+              (1...65535).contains(value)
+        else { return fallback }
+        return value
+    }
+
+    private var canSave: Bool {
+        !label.trimmingCharacters(in: .whitespaces).isEmpty
+            && !beaconName.trimmingCharacters(
+                in: .whitespaces).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("The shape") {
+                    TextField("Label — “Workshop radio”",
+                              text: $label)
+                    TextField("Air name — what it answers to",
+                              text: $beaconName)
+                        .autocorrectionDisabled()
+                    TextField("Greeting — the air payload",
+                              text: $greeting)
+                    Toggle("Stands listed (stealth off "
+                        + "while worn)", isOn: $listed)
+                }
+                Section("Serve's dress") {
+                    Toggle("TCP listener", isOn: $useTCP)
+                    if useTCP {
+                        TextField("TCP port", text: $tcpPort)
+                            .keyboardType(.numberPad)
+                    }
+                    Toggle("UDP listener", isOn: $useUDP)
+                    if useUDP {
+                        TextField("UDP port", text: $udpPort)
+                            .keyboardType(.numberPad)
+                    }
+                    Toggle("HTTP listener", isOn: $useHTTP)
+                    if useHTTP {
+                        TextField("HTTP port", text: $httpPort)
+                            .keyboardType(.numberPad)
+                    }
+                    TextField("What the listeners answer",
+                              text: $reply)
+                }
+                Section {
+                    Text("A shape is a class, never a "
+                        + "specific device — the rack's "
+                        + "line holds for your own cloth "
+                        + "too.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Build a shape")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Keep") {
+                        let persona = SpoofyPersona(
+                            id: "custom-"
+                                + UUID().uuidString
+                                    .prefix(8).lowercased(),
+                            label: label.trimmingCharacters(
+                                in: .whitespaces),
+                            beaconName: beaconName
+                                .trimmingCharacters(
+                                    in: .whitespaces),
+                            greeting: greeting.isEmpty
+                                ? beaconName : greeting,
+                            useTCP: useTCP,
+                            tcpPort: port(tcpPort,
+                                          fallback: 9000),
+                            useUDP: useUDP,
+                            udpPort: port(udpPort,
+                                          fallback: 9001),
+                            useHTTP: useHTTP,
+                            httpPort: port(httpPort,
+                                           fallback: 8080),
+                            reply: reply.isEmpty
+                                ? "ready\n" : reply,
+                            listed: listed)
+                        var personas =
+                            SpoofyStore.loadPersonas()
+                        personas.append(persona)
+                        SpoofyStore.savePersonas(personas)
+                        onSave()
+                        dismiss()
+                    }
+                    .disabled(!canSave)
+                }
+            }
+        }
     }
 }

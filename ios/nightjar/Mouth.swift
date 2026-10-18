@@ -691,6 +691,14 @@ final class Mouth: NSObject, ObservableObject {
     private var beaconPayload: Data = Data()
     private var beaconName = "nightjar"
     private var gattPayload: Data = Data()
+
+    /// Read-only peeks for the costume rack: what the air
+    /// organs carry and answer to right now, so a shape's
+    /// found wardrobe can be restored exactly — payload
+    /// and all, not a re-imagining of it.
+    var currentBeaconPayload: Data { beaconPayload }
+    var currentGattPayload: Data { gattPayload }
+    var currentAirName: String { beaconName }
     private var gattCharacteristic: CBMutableCharacteristic?
     /// Set by willRestoreState when iOS hands back a service with our
     /// UUID: it already exists, so startGattHost must not re-add it.

@@ -227,6 +227,11 @@ final class WarGamesCenter: ObservableObject {
 
     private init() {}
 
+    /// The peer a challenge is out to — Skelli's hands
+    /// begin an attack against the challenged defender,
+    /// never at a name spoken loosely.
+    var challengedPeer: String { peerIP }
+
     static func newMatchID() -> String {
         "WG-" + String(UUID().uuidString.prefix(4)).uppercased()
     }
