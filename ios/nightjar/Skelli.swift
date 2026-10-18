@@ -2186,7 +2186,7 @@ final class SkelliCenter: ObservableObject {
         if let nudge = lastNudge,
            Date().timeIntervalSince(nudge.at) < 600,
            nudgeFollow.contains(where: q.contains) {
-            let errand = SkelliHeart.shared.want()?.1
+            let errand = SkelliHeart.shared.want?.ask
                 ?? "go and look properly"
             say(L("Nothing I can point at — a feeling, not a finding (right now: ")
                 + nudge.feeling.localizedWord
