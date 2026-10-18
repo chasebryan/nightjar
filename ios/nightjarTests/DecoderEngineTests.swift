@@ -113,7 +113,7 @@ final class DecoderEngineTests: XCTestCase {
             row.observe(sighting(at: t))
         }
         XCTAssertEqual(row.cadenceText,
-                       "advertises about every 10 s")
+                       "heard about every 10 s")
     }
 
     func testShapeSignatureIgnoresValues() {

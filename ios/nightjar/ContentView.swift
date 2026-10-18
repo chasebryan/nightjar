@@ -942,6 +942,7 @@ struct AboutView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
+    @AppStorage("listen.bthomeV1") private var bthomeV1 = false
     @AppStorage("postName") private var postName = "phone"
     @State private var confirmReset = false
     @State private var showColours = false
@@ -1153,6 +1154,23 @@ struct AboutView: View {
                 }
                 Section(header: Text("Listening")) {
                     Toggle("Keep the screen awake while listening", isOn: $keepScreenAwake)
+                    Toggle("Decode BTHome v1 sensors", isOn: $bthomeV1)
+                    ExplainToggle(
+                        text: "BTHome v1 is the legacy "
+                            + "generation of the BTHome "
+                            + "sensor format. Its "
+                            + "encryption carries no "
+                            + "replay protection — a "
+                            + "captured v1 advertisement "
+                            + "can be replayed verbatim "
+                            + "and accepted — so the "
+                            + "house decodes v1 only "
+                            + "when you switch it on "
+                            + "here, and only ever "
+                            + "reads it: nothing in the "
+                            + "app acts on a v1 reading. "
+                            + "BTHome v2 is unaffected "
+                            + "and always decoded.")
                     ExplainToggle(
                         text: "Foreground sessions hear "
                             + "everything. In the "

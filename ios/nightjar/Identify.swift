@@ -63,6 +63,12 @@ struct Classification {
                                   preferredLabel: more.preferredLabel))
         }
 
+        if let expansion = ExpansionDecoders.identify(sighting) {
+            candidates.append(Classification(kind: expansion.kind, details: expansion.details,
+                                  rank: rankFor(specificity: expansion.specificity),
+                                  trackerShaped: false, rotatingPhone: false))
+        }
+
         // Services speaks once, at the rank its
         // specificity earns — full standing at
         // subfamily or better; below that, the
@@ -448,10 +454,10 @@ struct DeviceRow: Identifiable {
             ? String(format: "%.1f s", median)
             : "\(Int(median.rounded())) s"
         if high - low > median * 0.6 {
-            return "irregular cadence — about every "
-                + period + " between bursts"
+            return "irregular cadence — heard about "
+                + "every " + period + " between bursts"
         }
-        return "advertises about every " + period
+        return "heard about every " + period
     }
 
     /// How long the device has been in earshot this session.

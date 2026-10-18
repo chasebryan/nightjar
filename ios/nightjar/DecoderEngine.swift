@@ -183,6 +183,23 @@ enum DecoderEngine {
         var out = Analysis()
         out.batteries = batteryReadings(sighting)
         out.evidence = capabilities(sighting)
+        // Eddystone-TLM's counters are the air's
+        // own bookkeeping: advertisements since
+        // power-up, and the uptime they span.
+        if let frame = Services.decodeEddystone(
+            serviceData(sighting, Services.eddystone)
+                ?? []),
+           frame.frameType == 0x20,
+           let count = frame.advCount,
+           let uptime = frame.uptimeSeconds {
+            let hours = uptime / 3600
+            out.evidence.append(hours >= 1
+                ? "beacon bookkeeping: \(count) "
+                    + "advertisements over \(hours) h "
+                    + "of uptime"
+                : "beacon bookkeeping: \(count) "
+                    + "advertisements since power-up")
+        }
         if sighting.isConnectable == false {
             out.evidence.append(
                 "broadcast only — does not accept "
@@ -236,6 +253,20 @@ enum DecoderEngine {
                     component: "device", percent: nil,
                     millivolts: nil, state: findMy.battery,
                     source: "Find My", observedAt: at))
+            }
+            // Instant Hotspot reports the phone's
+            // own battery as a plain percentage.
+            for message in Continuity.parse(apple)
+            where message.type == 0x0E {
+                if let source = Continuity
+                    .decodeTetheringSource(message),
+                   let percent = source.battery {
+                    readings.append(BatteryReading(
+                        component: "device",
+                        percent: percent, millivolts: nil,
+                        state: nil, source: "Instant Hotspot",
+                        observedAt: at))
+                }
             }
         }
 
@@ -309,6 +340,10 @@ enum DecoderEngine {
                 millivolts: nil, state: nil,
                 source: "BTHome v2", observedAt: at))
         }
+        // The expansion batch's formats, read the
+        // same way.
+        readings += ExpansionDecoders
+            .batteryReadings(sighting)
         return readings
     }
 
