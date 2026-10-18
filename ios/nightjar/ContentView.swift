@@ -88,12 +88,12 @@ enum MoreStackBeat {
             retry(from: view)
             return
         }
-        guard let bar = findTabBar(in: window),
-              let more = bar.moreNavigationController
+        guard let bar = findTabBar(in: window)
         else {
             retry(from: view)
             return
         }
+        let more = bar.moreNavigationController
         installed = true
         var lastCount = more.viewControllers.count
         observation = more.observe(
