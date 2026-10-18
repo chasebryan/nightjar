@@ -356,10 +356,12 @@ extension SkelliCenter {
             say("The rack holds costumes — "
                 + Spoofy.costumeNames.prefix(4)
                     .joined(separator: ", ")
-                + " — and whole shapes: "
-                + SpoofyPersona.all.map { $0.label }
-                    .joined(separator: ", ")
-                + ". Say wear the printer, or roll the dice.")
+                + " — network gear (access point, "
+                + "gateway, mesh node, media server, hub) "
+                + "and device shapes (printer, TV, "
+                + "speaker, NAS, thermostat, vacuum). "
+                + "Say wear the access point, or roll "
+                + "the dice.")
             return true
         }
 

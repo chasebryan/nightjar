@@ -151,7 +151,7 @@ enum SkelliKnowledge {
             home: "the EMCON tab",
             keywords: ["spoofy", "costume", "mimicry",
                        "persona", "disguise", "beacon name"],
-            body: "The names and shapes this device wears. A costume renames the beacon and the GATT host; a mimicry persona dresses the whole device as a class of thing — a printer, a TV, a speaker — name, greeting and Serve dress together, until the shape is dropped and the wardrobe it found is restored. Generic shapes only: the device's own addresses stay its own, nothing copies a real device's identity, and there are no fake trackers in the rack."),
+            body: "The names and shapes this device wears. A costume renames the beacon and the GATT host; a mimicry persona dresses the whole device as a class of thing — a printer, a TV, a speaker — name, greeting and Serve dress together, until the shape is dropped and the wardrobe it found is restored. The rack also dresses the phone as the network's own gear — an access point, a gateway, a mesh node, a media server, a hub — worn on the air name, the listeners, the replies, and a listed posture; iOS lets no app broadcast an SSID, so the access point is a service presence in character, never a fake radio. Generic shapes only: the device's own addresses stay its own, nothing copies a real device's identity, and there are no fake trackers in the rack."),
         SkelliEntry(
             id: "tripwire", title: "The tripwire & prober files",
             home: "the EMCON tab",

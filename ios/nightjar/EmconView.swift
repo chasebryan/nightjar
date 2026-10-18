@@ -86,8 +86,10 @@ struct EmconView: View {
                 Text("The names and shapes this device "
                     + "wears: costumes for the air, and "
                     + "mimicry personas that dress the "
-                    + "whole device as a class of thing "
-                    + "until you drop the shape.")
+                    + "whole device as a class of thing — "
+                    + "or as the network's own gear, "
+                    + "access point included — until you "
+                    + "drop the shape.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

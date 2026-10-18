@@ -29,6 +29,9 @@ enum Spoofy {
         "BACKUP-NAS",
         "Robot Vacuum — Hallway",
         "Front Desk Bulb",
+        "HomeNet-5G",
+        "Home Gateway",
+        "Mesh Node — Kitchen",
     ]
 
     /// The name the beacon and GATT host wear, as the
@@ -99,8 +102,67 @@ struct SpoofyPersona: Identifiable {
     var useHTTP: Bool
     var httpPort: Int
     var reply: String
+    /// Infrastructure announces itself: while a listed
+    /// persona is worn, Serve stands listed (stealth off),
+    /// restored whole when the shape drops.
+    var listed: Bool = false
 
-    static let all: [SpoofyPersona] = [
+    /// The network gear — the phone dressed as the
+    /// infrastructure itself. An app cannot broadcast an
+    /// SSID or hold a radio AP (iOS keeps that), so the
+    /// access point is worn where an app can wear it: the
+    /// air name, the listeners on the wire, the replies in
+    /// character, and a listed posture.
+    static let gear: [SpoofyPersona] = [
+        SpoofyPersona(
+            id: "accesspoint", label: "Network access point",
+            beaconName: "HomeNet-5G",
+            greeting: "HomeNet-5G",
+            useTCP: false, tcpPort: 9000,
+            useUDP: false, udpPort: 9001,
+            useHTTP: true, httpPort: 8080,
+            reply: "AP/1.0 HomeNet-5G — clients 4, "
+                + "channel 44, uptime 6d 04:12\n",
+            listed: true),
+        SpoofyPersona(
+            id: "gateway", label: "Home gateway",
+            beaconName: "Home Gateway",
+            greeting: "gateway ready",
+            useTCP: false, tcpPort: 9000,
+            useUDP: false, udpPort: 9001,
+            useHTTP: true, httpPort: 80,
+            reply: "Home Gateway — status: connected, "
+                + "WAN up, LAN 24 clients\n",
+            listed: true),
+        SpoofyPersona(
+            id: "mesh", label: "Mesh Wi-Fi node",
+            beaconName: "Mesh Node — Hallway",
+            greeting: "Mesh node online",
+            useTCP: false, tcpPort: 9000,
+            useUDP: false, udpPort: 9001,
+            useHTTP: true, httpPort: 8080,
+            reply: "MESH/1 node — backhaul excellent, "
+                + "2 clients\n",
+            listed: true),
+        SpoofyPersona(
+            id: "mediaserver", label: "Media server",
+            beaconName: "Living Room Media",
+            greeting: "Media server ready",
+            useTCP: true, tcpPort: 32400,
+            useUDP: false, udpPort: 32401,
+            useHTTP: false, httpPort: 8080,
+            reply: "MediaServer/1.0 — library ready\n"),
+        SpoofyPersona(
+            id: "hub", label: "Smart home hub",
+            beaconName: "Home Hub",
+            greeting: "Home Hub ready",
+            useTCP: true, tcpPort: 8081,
+            useUDP: false, udpPort: 8082,
+            useHTTP: false, httpPort: 8080,
+            reply: "HUB/1 — 18 devices paired\n"),
+    ]
+
+    static let devices: [SpoofyPersona] = [
         SpoofyPersona(
             id: "printer", label: "Office printer",
             beaconName: "OfficeJet — 4th Floor",
@@ -117,7 +179,8 @@ struct SpoofyPersona: Identifiable {
             useTCP: true, tcpPort: 8008,
             useUDP: false, udpPort: 1901,
             useHTTP: false, httpPort: 8080,
-            reply: "TV/1.0 receiver ready\n"),
+            reply: "TV/1.0 receiver ready\n",
+            listed: true),
         SpoofyPersona(
             id: "speaker", label: "Smart speaker",
             beaconName: "Kitchen Speaker",
@@ -151,6 +214,8 @@ struct SpoofyPersona: Identifiable {
             useHTTP: false, httpPort: 8080,
             reply: "VAC/2 docked, battery 98\n"),
     ]
+
+    static let all: [SpoofyPersona] = gear + devices
 }
 
 /// Wearing and dropping shapes, with the same memory the
@@ -167,6 +232,8 @@ final class MimicCenter: ObservableObject {
         var wasServing: Bool
         var wasBeacon: Bool
         var wasGatt: Bool
+        var wasStealth: Bool
+        var stealthTouched: Bool
     }
 
     private var wardrobe: Wardrobe?
@@ -186,10 +253,13 @@ final class MimicCenter: ObservableObject {
                 values[key] = value
             }
         }
+        let touchStealth = persona.listed && mouth.stealth
         wardrobe = Wardrobe(values: values,
                             wasServing: mouth.serveRunning,
                             wasBeacon: mouth.beaconOn,
-                            wasGatt: mouth.gattHostOn)
+                            wasGatt: mouth.gattHostOn,
+                            wasStealth: mouth.stealth,
+                            stealthTouched: touchStealth)
 
         defaults.set(persona.beaconName, forKey: "beaconName")
         defaults.set(persona.useTCP, forKey: "serveUseTCP")
@@ -207,6 +277,10 @@ final class MimicCenter: ObservableObject {
         if mouth.serveRunning {
             mouth.stopServe()
             mouth.startServeFromSettings()
+        }
+        if touchStealth {
+            // In character, the shape announces itself.
+            mouth.setStealth(false)
         }
         wear(persona.beaconName,
              greeting: persona.greeting, mouth: mouth)
@@ -230,6 +304,9 @@ final class MimicCenter: ObservableObject {
             if mouth.serveRunning {
                 mouth.stopServe()
                 mouth.startServeFromSettings()
+            }
+            if wardrobe.stealthTouched {
+                mouth.setStealth(wardrobe.wasStealth)
             }
             let name = defaults.string(forKey: "beaconName")
                 ?? "nightjar-post"
@@ -360,7 +437,7 @@ struct SpoofyView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Mimicry — wear a class whole") {
+                Section("Mimicry — network gear") {
                     if let persona = mimic.activePersona {
                         HStack {
                             Label("Wearing the \(persona.label)",
@@ -375,25 +452,24 @@ struct SpoofyView: View {
                             .buttonStyle(.borderless)
                         }
                     }
-                    ForEach(SpoofyPersona.all) { persona in
-                        Button {
-                            Haptics.tap()
-                            mimic.don(persona, mouth: mouth)
-                            toasts.show("Wearing the "
-                                + persona.label)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(persona.label)
-                                    .font(.callout)
-                                Text("“\(persona.beaconName)” · "
-                                    + serveDress(persona))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .foregroundStyle(.primary)
-                        .disabled(mimic.activePersona?.id
-                                  == persona.id)
+                    ForEach(SpoofyPersona.gear) { persona in
+                        personaRow(persona)
+                    }
+                    Text("The network gear is worn where an "
+                        + "app can wear it — the air name, "
+                        + "the listeners, the replies, a "
+                        + "listed posture. iOS lets no app "
+                        + "broadcast an SSID, so there is no "
+                        + "fake radio here: the access point "
+                        + "is a shape on the wire, not a "
+                        + "transmitter.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Mimicry — wear a class whole") {
+                    ForEach(SpoofyPersona.devices) { persona in
+                        personaRow(persona)
                     }
                     Text("A persona dresses the whole device "
                         + "as a class of thing: the air name, "
@@ -422,6 +498,27 @@ struct SpoofyView: View {
         }
     }
 
+    @ViewBuilder
+    private func personaRow(_ persona: SpoofyPersona)
+        -> some View {
+        Button {
+            Haptics.tap()
+            mimic.don(persona, mouth: mouth)
+            toasts.show("Wearing the " + persona.label)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(persona.label)
+                    .font(.callout)
+                Text("“\(persona.beaconName)” · "
+                    + serveDress(persona))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .foregroundStyle(.primary)
+        .disabled(mimic.activePersona?.id == persona.id)
+    }
+
     private func serveDress(_ persona: SpoofyPersona) -> String {
         var parts: [String] = []
         if persona.useTCP { parts.append("TCP \(persona.tcpPort)") }
@@ -429,7 +526,9 @@ struct SpoofyView: View {
         if persona.useHTTP {
             parts.append("HTTP \(persona.httpPort)")
         }
-        return parts.isEmpty ? "air only"
+        var dress = parts.isEmpty ? "air only"
             : "serves " + parts.joined(separator: " · ")
+        if persona.listed { dress += " · listed" }
+        return dress
     }
 }
