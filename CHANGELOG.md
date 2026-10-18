@@ -398,6 +398,21 @@
   and it all returns.
   Nothing changes but
   the seeing.
+- **No echoes.**
+  Laughter has its own
+  dry answers now, and
+  the parrot guard
+  reads the whole
+  recent conversation:
+  a bench that hands
+  her back her own
+  words — from any of
+  her last lines, in
+  whole or in part —
+  is refused. She never
+  reads you the
+  conversation you
+  just had.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

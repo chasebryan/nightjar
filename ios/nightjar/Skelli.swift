@@ -2191,6 +2191,27 @@ final class SkelliCenter: ObservableObject {
                 L("Filed under: agreed."),
                 L("Mm. Settled, then.")])
         }
+        // Laughter, answered in kind — dryly.
+        // (2026-10-18: a bare "Ha!" once fell
+        // through to the bench, which handed
+        // back the whole conversation with
+        // "Ha!" appended. Laughter lives here
+        // now, deterministically.)
+        let bare = q.trimmingCharacters(
+            in: CharacterSet(charactersIn: "!. "))
+        if ["ha", "haha", "hahaha", "ha ha",
+            "lol", "lmao", "rofl", "heh",
+            "hehe"].contains(bare)
+            || (bare.count >= 4
+                && bare.allSatisfy {
+                    $0 == "h" || $0 == "a"
+                }) {
+            return pick([
+                L("I'll be here all night."),
+                L("Mm. It does land, doesn't it."),
+                L("Don't encourage me."),
+                L("Rare footage: you, amused. Filed.")])
+        }
         // Bare reactions: a sound, not a
         // sentence — answered in kind, briefly.
         if q == "ugh" || words.contains("hmm")
@@ -2211,11 +2232,20 @@ final class SkelliCenter: ObservableObject {
         return nil
     }
 
-    /// Parroting, detected: a text that is her
-    /// own last spoken line handed back to her
-    /// — exactly, or with only its edges
-    /// changed — is not an answer, from a bench
-    /// or from any lane.
+    /// Parroting, detected: her own recent
+    /// words handed back to her are not an
+    /// answer, from a bench or from any lane.
+    /// Three sights, widened 2026-10-18 after
+    /// a bench answered "Ha!" by re-reading
+    /// her last two answers wholesale — an
+    /// echo that whole-text checks against
+    /// only the last line could not see:
+    /// the whole text against the last line
+    /// (as before); any of her last four
+    /// lines riding whole inside the text,
+    /// wherever it sits; and any substantial
+    /// sentence of the text lifted out of
+    /// one of those lines.
     private func isParrot(_ text: String) -> Bool {
         func norm(_ s: String) -> String {
             s.lowercased()
@@ -2225,16 +2255,33 @@ final class SkelliCenter: ObservableObject {
                     in: CharacterSet(
                         charactersIn: ".!?…"))
         }
-        guard let last = lines.last(where: {
-            !$0.fromOperator
-        })?.text else { return false }
-        let a = norm(text), b = norm(last)
-        guard !a.isEmpty, !b.isEmpty else {
+        let hers = lines.filter { !$0.fromOperator }
+            .suffix(4).map { norm($0.text) }
+            .filter { $0.count > 24 }
+        guard let last = hers.last else {
             return false
         }
-        return a == b
-            || (a.count > 24 && b.hasPrefix(a))
-            || (b.count > 24 && a.hasPrefix(b))
+        let whole = norm(text)
+        guard !whole.isEmpty else { return false }
+        if whole == last
+            || (whole.count > 24 && last.hasPrefix(whole))
+            || (last.count > 24 && whole.hasPrefix(last)) {
+            return true
+        }
+        if hers.contains(where: {
+            whole.contains($0) }) {
+            return true
+        }
+        let segments = whole
+            .components(separatedBy: CharacterSet(
+                charactersIn: "\n.!?"))
+            .map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            .filter { $0.count > 24 }
+        return segments.contains { segment in
+            hers.contains { $0.contains(segment) }
+        }
     }
 
     /// The no-verbatim rule for her conversational
