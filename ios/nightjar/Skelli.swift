@@ -887,7 +887,18 @@ final class SkelliCenter: ObservableObject {
         let followsMaker = makerThreadOpen
             && (!askWords.isDisjoint(
                     with: ["him", "his", "he"])
-                || q.contains("more about"))
+                || q.contains("more about")
+                // A bare continuation — "tell
+                // me", "go on" — with the thread
+                // open can only mean him; the
+                // night "tell me" wandered off
+                // to the weights bench (and the
+                // jetsam wall beyond it) proved
+                // the thread matters as much as
+                // the wording.
+                || ["tell me", "go on", "continue",
+                    "and then", "more"]
+                    .contains(q))
         if q.contains("his name")
             || q.contains("his real name")
             || q.contains("maker's name") {
@@ -3356,63 +3367,126 @@ enum SkelliWeights {
             || folderURL != nil
     }
 
+    /// The ask in flight, if any — registered so
+    /// memory pressure can CANCEL it. The second
+    /// developer log taught why a reference drop
+    /// is not enough: the warning fired, the
+    /// bench was "set down", and the app died
+    /// anyway, because the generation itself
+    /// holds the container and keeps allocating.
+    /// Cancelling unwinds the perform, the last
+    /// references fall, and the model actually
+    /// leaves memory.
+    private static var inFlightAsk:
+        Task<String?, Never>?
+    private static var inFlightToken: UUID?
+
     static func ask(instructions: String,
                     prompt: String) async -> String? {
-        do {
-            let box = try await loadedContainer()
-            let text = try await box.perform {
-                context in
-                let userInput = UserInput(chat: [
-                    .system(instructions),
-                    .user(prompt)
-                ])
-                let input = try await context.processor
-                    .prepare(input: userInput)
-                var parameters = GenerateParameters()
-                // Room for a reasoning model to
-                // finish its thinking AND answer —
-                // the sanitizer discards the
-                // thinking; a starved budget once
-                // let it eat the whole reply.
-                parameters.maxTokens = 512
-                parameters.temperature = 0.6
-                let stream = try MLXLMCommon.generate(
-                    input: input,
-                    parameters: parameters,
-                    context: context)
-                var raw = ""
-                for await generation in stream {
-                    if let chunk = generation.chunk {
-                        raw += chunk
+        let token = UUID()
+        let work = Task<String?, Never> {
+            do {
+                let box = try await loadedContainer()
+                let text = try await box.perform {
+                    context in
+                    let userInput = UserInput(chat: [
+                        .system(instructions),
+                        .user(prompt)
+                    ])
+                    let input = try await context
+                        .processor
+                        .prepare(input: userInput)
+                    var parameters = GenerateParameters()
+                    // Room for a reasoning model
+                    // to finish its thinking AND
+                    // answer — the sanitizer
+                    // discards the thinking; a
+                    // starved budget once let it
+                    // eat the whole reply.
+                    parameters.maxTokens = 512
+                    parameters.temperature = 0.6
+                    let stream = try MLXLMCommon
+                        .generate(
+                            input: input,
+                            parameters: parameters,
+                            context: context)
+                    var raw = ""
+                    var tokens = 0
+                    var starved = false
+                    for await generation in stream {
+                        if Task.isCancelled { break }
+                        if let chunk = generation.chunk {
+                            raw += chunk
+                        }
+                        tokens += 1
+                        // The bench watches its
+                        // own oxygen: every 32
+                        // tokens, the kernel's
+                        // account of the room
+                        // left. Under 384 MB the
+                        // generation stops here —
+                        // a refused answer over a
+                        // jetsam kill, and no
+                        // reliance on the warning
+                        // arriving in time.
+                        if tokens % 32 == 0,
+                           os_proc_available_memory()
+                            < 402_653_184 {
+                            starved = true
+                            break
+                        }
                     }
+                    if starved {
+                        DevLog.event(
+                            "weights",
+                            "generation stopped — "
+                                + "oxygen low")
+                        return nil as String?
+                    }
+                    let trimmed = raw.trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                    return trimmed.isEmpty
+                        ? nil : trimmed
                 }
-                let trimmed = raw.trimmingCharacters(
-                    in: .whitespacesAndNewlines)
-                return trimmed.isEmpty ? nil : trimmed
+                // The bench tidies after itself:
+                // MLX's buffer cache otherwise
+                // keeps generation tensors warm,
+                // and the footprint creeps toward
+                // the jetsam line across a
+                // conversation.
+                MLX.Memory.clearCache()
+                DevLog.event(
+                    "weights",
+                    "answered — footprint "
+                        + "\(DevKit.footprintMB()) MB")
+                // Every mind's reply passes the
+                // sanitizer — scaffolding is never
+                // speech, whoever generated it.
+                return text.flatMap {
+                    SkelliMindSanitizer.clean($0)
+                }
+            } catch is CancellationError {
+                DevLog.event(
+                    "weights",
+                    "ask cancelled — the bench "
+                        + "was set down")
+                return nil
+            } catch {
+                DevLog.event(
+                    "weights",
+                    "ask failed: "
+                        + error.localizedDescription)
+                return nil
             }
-            // The bench tidies after itself:
-            // MLX's buffer cache otherwise keeps
-            // generation tensors warm, and the
-            // footprint creeps toward the jetsam
-            // line across a conversation.
-            MLX.Memory.clearCache()
-            DevLog.event(
-                "weights",
-                "answered — footprint "
-                    + "\(DevKit.footprintMB()) MB")
-            // Every mind's reply passes the
-            // sanitizer — scaffolding is never
-            // speech, whoever generated it.
-            return text.flatMap {
-                SkelliMindSanitizer.clean($0)
-            }
-        } catch {
-            DevLog.event(
-                "weights",
-                "ask failed: "
-                    + error.localizedDescription)
-            return nil
         }
+        inFlightAsk = work
+        inFlightToken = token
+        let result = await work.value
+        if inFlightToken == token {
+            inFlightAsk = nil
+            inFlightToken = nil
+        }
+        return result
     }
 
     /// One load in flight, ever: two asks landing
@@ -3483,7 +3557,12 @@ enum SkelliWeights {
         // is refused and the cascade falls back
         // to another mind — a duller answer over
         // a dead app.
-        let needed = modelBytes() + 805_306_368
+        // (The margin is the model's weight
+        // plus 1.25 GB: the first log's load
+        // passed a 768 MB margin on the kernel's
+        // optimistic arithmetic and the
+        // generation still outgrew the room.)
+        let needed = modelBytes() + 1_342_177_280
         let headroom = os_proc_available_memory()
         if headroom > 0, Int64(headroom) < needed {
             DevLog.event(
@@ -3561,12 +3640,19 @@ enum SkelliWeights {
         return max(total, 536_870_912)
     }
 
-    /// Memory pressure's answer: the resident
-    /// bench is set down and MLX's cache is
-    /// returned to the system. A generation in
-    /// flight holds its own reference and
-    /// finishes; nothing new compounds on it.
+    /// Memory pressure's answer: cancel the ask
+    /// in flight FIRST — it is the generation
+    /// that holds the model and keeps
+    /// allocating — then set the resident bench
+    /// down and return MLX's cache to the
+    /// system. (The first version only dropped
+    /// the reference; the second developer log
+    /// shows the app dying five seconds after
+    /// the drop, mid-generation.)
     static func dropResident() {
+        inFlightAsk?.cancel()
+        inFlightAsk = nil
+        inFlightToken = nil
         container = nil
         containerKey = nil
         MLX.Memory.clearCache()
