@@ -978,11 +978,34 @@ final class SkelliCenter: ObservableObject {
         // question — it once fell through to the
         // bench and came back wearing the model's
         // scaffolding. Hers to answer, in her voice.
+        // The shape counts too, not only the exact
+        // spelling: a doubled word ("what's is up")
+        // slips past every prefix and wakes a
+        // multi-gigabyte bench for a greeting —
+        // the developer log that taught this ended
+        // in a jetsam kill. A handful of words,
+        // all of them greeting words, is a greeting.
+        let greetingShape: Bool = {
+            let words = q.split(separator: " ")
+                .map(String.init)
+            guard words.count <= 5,
+                  words.contains("up"),
+                  words.contains(where: {
+                      ["what", "whats", "what's",
+                       "what’s"].contains($0) })
+            else { return false }
+            let allowed: Set<String> = [
+                "what", "whats", "what's", "what’s",
+                "up", "is", "the", "skelli", "hey"]
+            return words.allSatisfy {
+                allowed.contains($0) }
+        }()
         if q.hasPrefix("what's up")
             || q.hasPrefix("what’s up")
             || q.hasPrefix("whats up")
             || q.hasPrefix("what up")
-            || q == "sup" || q.hasPrefix("sup ") {
+            || q == "sup" || q.hasPrefix("sup ")
+            || greetingShape {
             switch feeling {
             case .mad: return L("Mm.")
             case .feral, .electric:
@@ -3286,6 +3309,7 @@ enum SkelliModelBox {
 #endif
 
 #if canImport(MLXLLM)
+import MLX
 import MLXLLM
 import MLXLMCommon
 #if canImport(MLXHuggingFace)
@@ -3366,6 +3390,16 @@ enum SkelliWeights {
                     in: .whitespacesAndNewlines)
                 return trimmed.isEmpty ? nil : trimmed
             }
+            // The bench tidies after itself:
+            // MLX's buffer cache otherwise keeps
+            // generation tensors warm, and the
+            // footprint creeps toward the jetsam
+            // line across a conversation.
+            MLX.Memory.clearCache()
+            DevLog.event(
+                "weights",
+                "answered — footprint "
+                    + "\(DevKit.footprintMB()) MB")
             // Every mind's reply passes the
             // sanitizer — scaffolding is never
             // speech, whoever generated it.
@@ -3434,6 +3468,32 @@ enum SkelliWeights {
             container = nil
             containerKey = nil
         }
+        // The headroom rule, learned from a
+        // developer log: the Qwen3-4B bench
+        // loaded, a memory warning fired at a
+        // 2.8 GB footprint, and the kernel
+        // jetsam-killed the app mid-generation
+        // seconds later — no signal, no record,
+        // the app simply gone. A bench is only
+        // woken when the process can afford it:
+        // os_proc_available_memory is the
+        // kernel's own account of the room left
+        // before that line. Below the model's
+        // weight plus room to think, the load
+        // is refused and the cascade falls back
+        // to another mind — a duller answer over
+        // a dead app.
+        let needed = modelBytes() + 805_306_368
+        let headroom = os_proc_available_memory()
+        if headroom > 0, Int64(headroom) < needed {
+            DevLog.event(
+                "weights",
+                "load refused — headroom "
+                    + "\(headroom / 1_048_576) MB "
+                    + "< needed "
+                    + "\(needed / 1_048_576) MB")
+            throw WeightsError.lowMemory
+        }
         let task = await loadGate.task(for: key) {
             try await makeContainer()
         }
@@ -3471,9 +3531,64 @@ enum SkelliWeights {
 
     private enum WeightsError: Error {
         case noBench
+        case lowMemory
+    }
+
+    /// The chosen bench's weight on disk — the
+    /// floor of what waking it will cost.
+    private static func modelBytes() -> Int64 {
+        let directory: URL?
+        if let id = downloadedSelection {
+            directory = WeightsCenter
+                .repoDirectory(id: id)
+        } else {
+            directory = folderURL
+        }
+        guard let directory,
+              let enumerator = FileManager.default
+                .enumerator(
+                    at: directory,
+                    includingPropertiesForKeys: [
+                        .fileSizeKey])
+        else { return 2_147_483_648 }
+        var total: Int64 = 0
+        for case let file as URL in enumerator {
+            if let size = try? file.resourceValues(
+                forKeys: [.fileSizeKey]).fileSize {
+                total += Int64(size)
+            }
+        }
+        return max(total, 536_870_912)
+    }
+
+    /// Memory pressure's answer: the resident
+    /// bench is set down and MLX's cache is
+    /// returned to the system. A generation in
+    /// flight holds its own reference and
+    /// finishes; nothing new compounds on it.
+    static func dropResident() {
+        container = nil
+        containerKey = nil
+        MLX.Memory.clearCache()
+        DevLog.event(
+            "weights",
+            "bench set down under memory pressure")
     }
 }
 #endif
+
+/// Memory pressure's door into the bench,
+/// spelled outside the MLX gate so any part
+/// of the house can knock: under pressure the
+/// resident model is set down before the
+/// kernel sets the whole app down.
+enum SkelliBenchRelief {
+    static func memoryWarning() {
+        #if canImport(MLXLLM)
+        SkelliWeights.dropResident()
+        #endif
+    }
+}
 
 // MARK: - Her body
 

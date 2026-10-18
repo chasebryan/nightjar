@@ -414,6 +414,11 @@ enum CrashRecorder {
                     "system",
                     "memory warning — footprint "
                         + "\(DevKit.footprintMB()) MB")
+                // Answer the pressure: the
+                // heaviest resident in the house
+                // is set down before the kernel
+                // settles the matter itself.
+                SkelliBenchRelief.memoryWarning()
             }
         DevLog.event("developer",
                      "crash recorder installed")
