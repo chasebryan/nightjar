@@ -279,17 +279,19 @@ struct MapView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L("Close")) { dismiss() }
+                    Button(L("Close")) { Haptics.tap(); dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
+                            Haptics.press()
                             model.sweep(port: 80)
                         } label: {
                             Label(L("Sweep the wire"),
                                   systemImage: "scope")
                         }
                         Button {
+                            Haptics.tap()
                             addingRoom = true
                         } label: {
                             Label(L("Add a room"),
@@ -297,6 +299,7 @@ struct MapView: View {
                         }
                         if station.currentWatch == nil {
                             Button {
+                                Haptics.tap()
                                 startingWatch = true
                             } label: {
                                 Label(L("Start a SIGINT watch"),
@@ -304,6 +307,7 @@ struct MapView: View {
                             }
                         }
                         Button(role: .destructive) {
+                            Haptics.warn()
                             confirmReset = true
                         } label: {
                             Label("Reset the map\u{2026}",
@@ -329,6 +333,7 @@ struct MapView: View {
             .alert(L("Name the room"), isPresented: $addingRoom) {
                 TextField(L("Living room"), text: $newRoomName)
                 Button(L("Add")) {
+                    Haptics.tap()
                     store.addRoom(name: newRoomName)
                     newRoomName = ""
                 }
@@ -339,6 +344,7 @@ struct MapView: View {
                 TextField(L("Evening watch"),
                           text: $watchNameDraft)
                 Button(L("Begin")) {
+                    Haptics.press()
                     station.startWatch(
                         name: watchNameDraft
                             .trimmingCharacters(

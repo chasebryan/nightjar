@@ -355,6 +355,7 @@ struct ForgeView: View {
                             design: .monospaced))
                         .frame(minHeight: 80)
                     Button(L("Teach her this pattern")) {
+                        Haptics.press()
                         let name = newPatternName
                             .trimmingCharacters(
                                 in: .whitespacesAndNewlines)
@@ -490,6 +491,7 @@ struct ForgeView: View {
                                 .disabled(runningCode)
                             }
                             Button(L("Copy")) {
+                                Haptics.tap()
                                 UIPasteboard.general
                                     .string = codeDraft
                                 toasts.show(

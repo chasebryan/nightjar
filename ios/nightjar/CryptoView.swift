@@ -111,6 +111,7 @@ struct CryptoView: View {
     private var filesSection: some View {
         Section(header: Text(L("Files"))) {
             Button {
+                Haptics.tap()
                 importingFile = true
             } label: {
                 Label(pickedFile == nil
@@ -195,10 +196,12 @@ struct CryptoView: View {
                                    .lastPathComponent)
                 HStack(spacing: 16) {
                     Button(L("Share / send it")) {
+                        Haptics.tap()
                         shareItem = ShareItem(
                             items: [producedFile])
                     }
                     Button(L("Forget the working copy")) {
+                        Haptics.tap()
                         self.producedFile = nil
                     }
                 }
@@ -227,6 +230,7 @@ struct CryptoView: View {
     }
 
     private func sealPickedFile() {
+        Haptics.press()
         guard let pickedFile else { return }
         if fileProtection.involvesPassword,
            filePassword.isEmpty {
@@ -266,6 +270,7 @@ struct CryptoView: View {
     }
 
     private func openPickedFile() {
+        Haptics.press()
         guard let pickedFile else { return }
         runFileWork(sealing: false) { output in
             let restored = try CryptoFiles.decrypt(
@@ -445,15 +450,18 @@ struct CryptoView: View {
                     .textSelection(.enabled)
                 HStack(spacing: 16) {
                     Button(L("Copy")) {
+                        Haptics.tap()
                         UIPasteboard.general.string =
                             output
                         toasts.show(L("Copied"))
                     }
                     Button(L("Share")) {
+                        Haptics.tap()
                         shareItem = ShareItem(
                             items: [output])
                     }
                     Button(L("Save to Deliveries")) {
+                        Haptics.press()
                         DeliveriesCenter.shared.add(
                             name: "vault-output",
                             text: output, ext: "txt")
@@ -492,6 +500,7 @@ struct CryptoView: View {
                         text: preset.detail)
                     Spacer()
                     Button(L("Use")) {
+                        Haptics.tap()
                         selectedPreset = preset.id
                     }
                     .font(.callout.weight(.semibold))
@@ -519,6 +528,7 @@ struct CryptoView: View {
                 Text(L("1,000,000")).tag(1_000_000)
             }
             Button(L("Save this configuration")) {
+                Haptics.press()
                 let name = customName
                     .trimmingCharacters(
                         in: .whitespaces)
@@ -542,12 +552,14 @@ struct CryptoView: View {
                     Text(custom.name)
                     Spacer()
                     Button(L("Use")) {
+                        Haptics.tap()
                         selectedPreset =
                             "user:" + custom.id
                     }
                     .font(.callout.weight(.semibold))
                     Button(L("Delete"),
                            role: .destructive) {
+                        Haptics.warn()
                         userPresets.removeAll {
                             $0.id == custom.id
                         }
@@ -590,9 +602,11 @@ struct CryptoView: View {
                               design: .monospaced))
                 .textSelection(.enabled)
             Button(L("Fresh random hex (32 bytes)")) {
+                Haptics.tap()
                 output = CryptoSuite.randomHex(32)
             }
             Button(L("Fresh password")) {
+                Haptics.tap()
                 output = CryptoSuite.randomPassword()
             }
             ExplainToggle(
@@ -631,6 +645,7 @@ extension CryptoView {
     }
 
     private func run() {
+        Haptics.press()
         notice = nil
         if let custom = userPreset {
             runCustom(custom)

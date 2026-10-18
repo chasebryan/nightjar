@@ -4532,6 +4532,7 @@ struct SkelliView: View {
     private func mindRow(_ mode: String, _ title: String,
                          _ symbol: String) -> some View {
         Button {
+            Haptics.select()
             mindMode = mode
         } label: {
             HStack {
@@ -4736,6 +4737,7 @@ struct SkelliView: View {
                     Spacer()
                     if let ask = want.ask {
                         Button {
+                            Haptics.press()
                             SkelliHeart.shared
                                 .noteWantAccepted()
                             input = ""

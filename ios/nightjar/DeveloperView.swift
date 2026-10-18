@@ -591,6 +591,7 @@ struct DeveloperSheet: View {
                               systemImage: "square.and.arrow.up")
                     }
                     Button {
+                        Haptics.tap()
                         UIPasteboard.general.string =
                             DevKit.exportText()
                         toasts.show("The developer log "
@@ -603,10 +604,12 @@ struct DeveloperSheet: View {
                 }
                 Section(header: Text("Prove the loop")) {
                     Button("Write a test crash record") {
+                        Haptics.warn()
                         CrashRecorder.writeTestRecord()
                         refresh()
                     }
                     Button("Write a test event") {
+                        Haptics.tap()
                         DevLog.event(
                             "developer",
                             "test event from the "
@@ -621,6 +624,7 @@ struct DeveloperSheet: View {
                     Button("Clear all developer "
                            + "records",
                            role: .destructive) {
+                        Haptics.warn()
                         confirmClear = true
                     }
                 }
@@ -628,7 +632,10 @@ struct DeveloperSheet: View {
             .navigationTitle("Developer")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        Haptics.tap()
+                        dismiss()
+                    }
                 }
             }
             .onAppear { refresh() }
@@ -638,6 +645,7 @@ struct DeveloperSheet: View {
                 isPresented: $confirmClear,
                 titleVisibility: .visible) {
                 Button("Clear all", role: .destructive) {
+                    Haptics.error()
                     CrashRecorder.clearAll()
                     refresh()
                 }

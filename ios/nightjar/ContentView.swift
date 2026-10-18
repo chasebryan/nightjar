@@ -110,6 +110,14 @@ struct ContentView: View {
                 .tag(11)
         }
         .tint(themes.current.accent)
+        // The tab beat rides the platform's own
+        // selection feedback: an onChange call
+        // missed selections made through the
+        // system's More list (the operator found
+        // More <-> Serve silent), while the
+        // trigger fires for every change of the
+        // binding, however it was made.
+        .sensoryFeedback(.selection, trigger: tab)
         .onAppear {
             // The specialist gets the house's real
             // organs, so its hands work the real
@@ -126,7 +134,6 @@ struct ContentView: View {
             }
         }
         .onChange(of: tab) { newTab in
-            Haptics.select()
             UserDefaults.standard.set(
                 newTab, forKey: "house.lastTab")
         }
@@ -989,6 +996,7 @@ struct AboutView: View {
                             .foregroundStyle(.secondary)
                     }
                     Button {
+                        Haptics.tap()
                         checkingSource = true
                         Task {
                             let head = await SourceStamp
@@ -1019,6 +1027,7 @@ struct AboutView: View {
                     if let release = updater.available {
                         if let install = release.installURL {
                             Button {
+                                Haptics.tap()
                                 openURL(install)
                             } label: {
                                 Label(String(format: L("Update to %@ — install now"), release.name),
@@ -1032,6 +1041,7 @@ struct AboutView: View {
                         }
                     }
                     Button {
+                        Haptics.tap()
                         Task { await updater.check() }
                     } label: {
                         HStack {
@@ -1052,6 +1062,7 @@ struct AboutView: View {
                 }
                 Section(header: Text(L("Language"))) {
                     Button {
+                        Haptics.tap()
                         showLanguageSheet = true
                     } label: {
                         HStack {
@@ -1074,6 +1085,7 @@ struct AboutView: View {
                     Toggle("Developer options",
                            isOn: $developerOn)
                         .onChange(of: developerOn) { on in
+                            Haptics.select()
                             UserDefaults.standard.set(
                                 on,
                                 forKey: DevKit.enabledKey)
@@ -1090,6 +1102,7 @@ struct AboutView: View {
                         }
                     if developerOn {
                         Button {
+                            Haptics.tap()
                             showDeveloperSheet = true
                         } label: {
                             HStack {
@@ -1111,6 +1124,7 @@ struct AboutView: View {
                         title: L("How your setup is kept"),
                         text: L("Your configuration — every toggle, picker and preference in the house — is mirrored into the Keychain as it changes. The Keychain outlives the app: the seven-day expiry, a deletion, a reinstall — a fresh install on this device restores your setup before anything reads a setting. Ordinary updates and re-signs keep it anyway: the data container belongs to the bundle, not the signature. Export writes it to one file for a new device; import reads that file back. Payloads, macros and logs are data, not settings, and keep their own exports."))
                     Button {
+                        Haptics.tap()
                         if let data = HouseSetup.exportData() {
                             let url = FileManager.default
                                 .temporaryDirectory
@@ -1129,6 +1143,7 @@ struct AboutView: View {
                               systemImage: "square.and.arrow.up")
                     }
                     Button {
+                        Haptics.tap()
                         importingSetup = true
                     } label: {
                         Label(L("Import setup"),
@@ -1137,6 +1152,7 @@ struct AboutView: View {
                 }
                 Section(header: Text(L("Appearance"))) {
                     Button {
+                        Haptics.tap()
                         showColours = true
                     } label: {
                         HStack {
@@ -1176,7 +1192,13 @@ struct AboutView: View {
                 }
                 Section(header: Text(L("Listening"))) {
                     Toggle(L("Keep the screen awake while listening"), isOn: $keepScreenAwake)
+                        .onChange(of: keepScreenAwake) { _ in
+                            Haptics.select()
+                        }
                     Toggle(L("Decode BTHome v1 sensors"), isOn: $bthomeV1)
+                        .onChange(of: bthomeV1) { _ in
+                            Haptics.select()
+                        }
                     ExplainToggle(
                         text: L("BTHome v1 is the legacy generation of the BTHome sensor format. Its encryption carries no replay protection — a captured v1 advertisement can be replayed verbatim and accepted — so the house decodes v1 only when you switch it on here, and only ever reads it: nothing in the app acts on a v1 reading. BTHome v2 is unaffected and always decoded."))
                     ExplainToggle(
@@ -1194,6 +1216,7 @@ struct AboutView: View {
 #if !STORE_BUILD
                 Section(header: Text(L("Support the work"))) {
                     Button {
+                        Haptics.tap()
                         showSupport = true
                     } label: {
                         HStack {
@@ -1220,6 +1243,7 @@ struct AboutView: View {
                         title: L("What a reset does"),
                         text: L("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise. A reset returns every setting to them, and forgets the setup mirror too, so the old configuration cannot restore itself later."))
                     Button(role: .destructive) {
+                        Haptics.warn()
                         confirmReset = true
                     } label: {
                         Text(L("Reset all settings to sane defaults"))
@@ -1241,6 +1265,7 @@ struct AboutView: View {
                             ToolbarItem(
                                 placement: .confirmationAction) {
                                 Button(L("Done")) {
+                                    Haptics.tap()
                                     showColours = false
                                 }
                             }
@@ -1280,6 +1305,7 @@ struct AboutView: View {
                             ToolbarItem(
                                 placement: .confirmationAction) {
                                 Button(L("Done")) {
+                                    Haptics.tap()
                                     showSupport = false
                                 }
                             }
@@ -1290,6 +1316,7 @@ struct AboutView: View {
             .confirmationDialog(L("Reset all settings?"),
                                 isPresented: $confirmReset) {
                 Button(L("Reset to sane defaults"), role: .destructive) {
+                    Haptics.error()
                     SaneDefaults.reset(mouth: mouth)
                     toasts.show("Settings reset — sane defaults restored")
                 }

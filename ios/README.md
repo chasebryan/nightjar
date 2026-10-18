@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 9.0b
+# nightjar-hack for iOS — 9.0c
 
 This is the flagship: the nightjar listening post — a
 receive-only scanner, a wide decoder bench and session

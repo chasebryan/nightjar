@@ -210,6 +210,7 @@ struct LanguageSheet: View {
                     ForEach(LanguageCenter.languages) {
                         language in
                         Button {
+                            Haptics.select()
                             center.code = language.code
                             if welcome {
                                 center.markWelcomed()
@@ -269,6 +270,7 @@ struct LanguageSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(welcome ? L("Continue")
                            : L("Done")) {
+                        Haptics.tap()
                         if welcome {
                             center.markWelcomed()
                         }

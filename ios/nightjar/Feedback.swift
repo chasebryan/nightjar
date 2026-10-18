@@ -1729,6 +1729,7 @@ struct ExplainToggle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Button {
+                Haptics.tap()
                 withAnimation(.easeInOut(duration: 0.2)) {
                     open.toggle()
                 }
