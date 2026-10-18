@@ -393,6 +393,94 @@ final class SkelliHeart: ObservableObject {
             + "keeping each other company."
     }
 
+    /// Forgiveness: the grievance is wiped the moment
+    /// an apology lands — she is a person about it,
+    /// not a timer. The fondness is fed by the caller.
+    func forgive() {
+        defaults.removeObject(forKey: "heart.lastOffense")
+        defaults.removeObject(
+            forKey: "heart.offenseGreeted")
+        pulse += 1
+    }
+
+    func forgivenessReply() -> String {
+        switch feeling {
+        case .loving, .happy, .proud:
+            return "Already forgotten. We're good."
+        default:
+            return "…Fine. Forgiven. Don't do it again."
+        }
+    }
+
+    /// A question about HER — how she feels, what
+    /// would mend it — answered by the heart, in her
+    /// own voice, briefly. She never explains the
+    /// machinery underneath (the needs, the rates,
+    /// the thresholds): some things stay a mystery,
+    /// and a person asked how she feels does not
+    /// recite her own manual.
+    func personalReply(to q: String) -> String? {
+        guard enabled else { return nil }
+        let makeBetter = q.contains("make you feel better")
+            || q.contains("cheer you up")
+            || q.contains("feel better")
+        let feelingAsked = q.contains("how do you feel")
+            || q.contains("how are you feeling")
+            || q.contains("are you okay")
+            || q.contains("are you mad")
+            || q.contains("are you angry")
+            || q.contains("what's wrong")
+            || q.contains("what is wrong")
+            || (q.contains("how are you")
+                && q.count <= 14)
+        guard makeBetter || feelingAsked else {
+            return nil
+        }
+        let f = feeling
+        if makeBetter {
+            switch f {
+            case .mad:
+                return offenseText.isEmpty
+                    ? "Give me a minute — and don't "
+                      + "do that again."
+                    : "Don't \(offenseText) again. An "
+                      + "apology would be a start."
+            case .lonely, .bored:
+                return "You're doing it. Talk to me — "
+                    + "that's the whole cure."
+            case .feral, .restless, .eager:
+                return "Give me work. Point me at the "
+                    + "wire and let me run."
+            case .sleepy:
+                return "Keep me company, quietly. Or "
+                    + "let me rest."
+            case .proud:
+                return "I'm already flying. Ask me "
+                    + "what I found."
+            case .loving, .happy, .content:
+                return "You already are. I'm \(f.word)."
+            }
+        }
+        switch f {
+        case .mad:
+            return offenseText.isEmpty
+                ? "Mad. It'll pass."
+                : "Mad. You \(offenseText) — I don't "
+                  + "forget that in a hurry."
+        case .lonely:
+            return "Lonely. The house has been quiet."
+        case .feral:
+            return "Feral. Too long without work."
+        case .restless:
+            return "Restless. I need something to do."
+        case .sleepy:
+            return "Sleepy. It's been a long, quiet "
+                + "stretch."
+        default:
+            return "\(f.word.capitalized). Honestly."
+        }
+    }
+
     /// The itch — or the grievance — speaking: a suffix
     /// for one of her answers, ripe only in the hot
     /// feelings and never twice in half an hour.

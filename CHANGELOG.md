@@ -569,6 +569,28 @@
   traps on long or pasted
   text.
 
+* Some things stay a
+  mystery. Her pages about
+  how she routes, weighs,
+  speaks and decides — her
+  doctrine — now steer her
+  silently: never recited
+  in chat, never listed in
+  her Directory. The manual
+  answers about the house,
+  not about her machinery.
+  Asked how she feels, or
+  how to make her feel
+  better, she answers as
+  herself, briefly, from
+  the feeling she is in.
+  And an apology is heard
+  as one: while she is
+  mad, saying sorry
+  forgives the grievance
+  on the spot — no timer,
+  no lecture.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:

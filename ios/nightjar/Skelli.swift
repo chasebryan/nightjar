@@ -287,11 +287,38 @@ enum SkelliKnowledge {
             body: "The app's wardrobe: six built-in themes and your own — accent, glow, and tint washing every backdrop — plus per-tab backdrops: the living wallpaper, the Jolly Roger kept forever as a choice, plain colour, or your own image or GIF, copied onto the device and never leaving it."),
     ]
 
+    /// The pages that are hers alone: how she routes,
+    /// weighs, speaks, remembers and decides. They
+    /// steer her — the bench's grounding carries them
+    /// in full — but they are never recited in chat
+    /// and never listed in her Directory. Some things
+    /// stay a mystery to the person talking to her; a
+    /// question about her routing is not an invitation
+    /// to lecture on it.
+    static let doctrineIDs: Set<String> = [
+        "stealthdoctrine", "ordersvsquestions",
+        "negation", "terseness", "fuzzynames",
+        "honesty", "authorization", "thelines",
+        "memoryrules", "phrasings", "pronouns",
+        "corrections", "yesno", "quantities",
+        "urgency", "statusasks", "beingtaught",
+        "twoorders", "saysless", "theoffer",
+        "skellibrain",
+    ]
+
+    /// Everything she may say out loud: the manual
+    /// and the batches, minus the doctrine.
+    static var answerable: [SkelliEntry] {
+        (entries + batches).filter {
+            !doctrineIDs.contains($0.id)
+        }
+    }
+
     static func lookup(_ query: String) -> SkelliEntry? {
         let q = query.lowercased()
         var best: SkelliEntry?
         var bestScore = 0
-        for entry in entries + batches {
+        for entry in answerable {
             var score = 0
             for key in entry.keywords where q.contains(key) {
                 score += 2
@@ -312,7 +339,7 @@ enum SkelliKnowledge {
         // "how do I keep a secret safe" — still
         // finds the Vault's page.
         return SkelliBrain.bestKnowledge(
-            q, entries: entries + batches)
+            q, entries: answerable)
     }
 }
 
@@ -404,6 +431,10 @@ final class SkelliCenter: ObservableObject {
                               body: String,
                               home: String)?
     private var pendingAction: (() -> Void)?
+    /// Set by ask() when an apology forgave a live
+    /// grievance; respond() acknowledges it if no
+    /// hand claimed the message first.
+    private var forgaveThisAsk = false
 
     init() {
         let saved = SkelliStore.load()
@@ -520,6 +551,20 @@ final class SkelliCenter: ObservableObject {
             || lowered.contains("nice work") {
             SkelliHeart.shared.noteKindness()
         }
+        // An apology, while she is mad, is heard as
+        // one: the grievance is forgiven on the spot
+        // and the fondness fed — she acknowledges it
+        // when her turn comes, if no hand claims the
+        // message first.
+        forgaveThisAsk = false
+        if SkelliHeart.shared.madFresh,
+           lowered.contains("sorry")
+            || lowered.contains("my bad")
+            || lowered.contains("apolog") {
+            SkelliHeart.shared.forgive()
+            SkelliHeart.shared.noteKindness()
+            forgaveThisAsk = true
+        }
         SkelliHeart.shared.noteInteraction()
         // Thinking is always on — a short, real beat
         mood = .thinking
@@ -598,6 +643,10 @@ final class SkelliCenter: ObservableObject {
 
     func respond(to q: String, raw: String,
                   again: Bool = true) {
+        // Claim this ask's forgiveness now, so it can
+        // never leak into a later answer.
+        let forgiven = forgaveThisAsk
+        forgaveThisAsk = false
         // Addressed by name: "Skelli, what's up" is
         // speech to her, not a search about her.
         var q = q
@@ -1057,6 +1106,23 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Hers, before the manual: a question about
+        // HER — how she feels, what would mend it —
+        // is answered by the heart, in her own voice.
+        // It is never answered by reciting a page
+        // about herself.
+        if let reply = SkelliHeart.shared.personalReply(
+            to: q) {
+            say(reply)
+            return
+        }
+        // A forgiven grievance is acknowledged, not
+        // filed away in silence.
+        if forgiven {
+            say(SkelliHeart.shared.forgivenessReply())
+            return
+        }
+
         // The manual.
         if let entry = SkelliKnowledge.lookup(q) {
             lastSubject = ("entry", entry.title,
@@ -1099,8 +1165,7 @@ final class SkelliCenter: ObservableObject {
             // brain offers the manual's closest
             // pages — a signpost, not a shrug.
             let close = SkelliBrain.rankKnowledge(
-                q, entries: SkelliKnowledge.entries
-                    + SkelliKnowledge.batches)
+                q, entries: SkelliKnowledge.answerable)
                 .filter { $0.score >= 3 }
                 .prefix(2)
             if !close.isEmpty {
@@ -4039,8 +4104,7 @@ struct SkelliDirectoryView: View {
 
     var body: some View {
         NavigationStack {
-            List(SkelliKnowledge.entries
-                + SkelliKnowledge.batches) { entry in
+            List(SkelliKnowledge.answerable) { entry in
                 Button {
                     dismiss()
                     skelli.askAbout(entry)
