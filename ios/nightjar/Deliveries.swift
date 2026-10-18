@@ -99,6 +99,45 @@ final class DeliveriesCenter: ObservableObject {
         persist()
     }
 
+    /// File something that already exists on
+    /// disk — a sealed or restored file from the
+    /// Vault — by copying it onto the shelf,
+    /// never loading it whole into memory.
+    @discardableResult
+    func addFile(at source: URL,
+                 displayName: String) -> URL? {
+        let file = (displayName as NSString)
+            .lastPathComponent
+        let url = directory.appendingPathComponent(
+            file)
+        do {
+            if FileManager.default.fileExists(
+                atPath: url.path) {
+                try FileManager.default.removeItem(
+                    at: url)
+            }
+            try FileManager.default.copyItem(
+                at: source, to: url)
+        } catch {
+            Journal.log("deliveries", "save",
+                "A file delivery could not be "
+                + "written: " + file)
+            return nil
+        }
+        let bytes = (try? FileManager.default
+            .attributesOfItem(atPath: url.path)[.size]
+            as? NSNumber)?.intValue ?? 0
+        items.removeAll { $0.file == file }
+        items.insert(
+            Item(name: (file as NSString)
+                    .deletingPathExtension,
+                 file: file, bytes: bytes,
+                 made: Date()),
+            at: 0)
+        persist()
+        return url
+    }
+
     func url(for item: Item) -> URL {
         directory.appendingPathComponent(item.file)
     }

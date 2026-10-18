@@ -390,6 +390,35 @@
   advertisement — then the
   standing word.
 
+- **Files, under seal.**
+  The Vault takes whole
+  files now: the NJCF
+  envelope seals any file
+  in authenticated chunks
+  under one random key —
+  and the protection is
+  how that key is kept.
+  By a password. By this
+  device's vault key. By
+  either — two wrappings,
+  each enough. By both —
+  the password and the
+  vault key each holding
+  half the secret, neither
+  sufficient alone. Or
+  sealed to a recipient's
+  public key, a dead drop
+  for files: seal it here,
+  hand it over by any
+  road, and only that
+  identity opens it. The
+  true filename travels
+  inside the encryption;
+  opening restores it, and
+  everything the Vault
+  makes is filed in
+  Deliveries.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:

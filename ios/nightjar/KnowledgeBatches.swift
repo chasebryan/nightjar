@@ -549,6 +549,13 @@ extension SkelliKnowledge {
                        "lens", "drift", "place a device"],
             body: "The Map holds wire and air together now: placements are keyed the way the SIGINT registry names emitters — lan: and ble: — so a Bluetooth device takes a spot in a room beside the router, and old bare-address placements were migrated untouched. Rooms move by dragging, resize by their corner grip, and rename in an editor with precise shape sliders; each room carries its census — how many here, how much drift. Tapping a device opens its inspector: facts, ports, battery and trend, cadence, the registry's claims with their channels — and drift is acknowledged THERE, its lines shown, never silently by the tap that used to select it. Lenses (All, Live, Drift, Air) and search dim the rest without moving anything. A running SIGINT watch rides above the canvas with its new-since count and a stop-and-file. Placement remains the operator's testimony — signal decorates a node, it never places or moves one."),
         SkelliEntry(
+            id: "vaultfiles", title: "Files, under seal — NJCF",
+            home: "the Vault tab — Files",
+            keywords: ["file", "files", "encrypt a file",
+                       "njcf", "upload", "download",
+                       "hand off", "handoff", "pass off"],
+            body: "The Vault seals whole files now, in the NJCF envelope: chunked authenticated encryption under one random file key, and the protection is only how that key is kept — by a password, by this device's vault key, by either (two wrappings, each sufficient), by both together (the password holds one half of the secret and the vault key the other, so neither alone suffices), or sealed to a recipient's P-256 public key as a dead drop: seal it here, hand the file over by any road — share sheet, Files, a message — and only the holder of that identity opens it. The original filename travels inside the encryption, so the outside of an envelope says nothing but its protection; opening restores the file under its own name, and the Vault files both the sealed and the restored file in Deliveries. My instant side still works text and keys; files are worked in the Vault room, where big things belong."),
+        SkelliEntry(
             id: "inteldeck", title: "Her intelligence deck",
             home: "Skelli's pinned bar",
             keywords: ["pinned bar", "deck", "widgets",

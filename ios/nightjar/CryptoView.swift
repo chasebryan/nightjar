@@ -30,6 +30,19 @@ struct CryptoView: View {
     /// never inside a redraw.
     @State private var identityPublic = ""
     @State private var identityFingerprint = ""
+    // Files: the NJCF side of the room.
+    @State private var pickedFile: URL?
+    @State private var pickedName = ""
+    @State private var pickedInfo: NJCFInfo?
+    @State private var fileProtection:
+        NJCFProtection = .password
+    @State private var filePassword = ""
+    @State private var fileRecipient = ""
+    @State private var fileBusy = false
+    @State private var fileNotice: String?
+    @State private var producedFile: URL?
+    @State private var producedLabel = ""
+    @State private var importingFile = false
 
     private var preset: CryptoPreset? {
         CryptoPreset.all.first {
@@ -55,6 +68,7 @@ struct CryptoView: View {
         NavigationStack {
             List {
                 workbenchSection
+                filesSection
                 presetsSection
                 customSection
                 keysSection
@@ -76,6 +90,299 @@ struct CryptoView: View {
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
+            .fileImporter(
+                isPresented: $importingFile,
+                allowedContentTypes: [.item]) { result in
+                takePickedFile(result)
+            }
+        }
+    }
+
+    // MARK: - Files
+
+    private var filesSection: some View {
+        Section(header: Text("Files")) {
+            Button {
+                importingFile = true
+            } label: {
+                Label(pickedFile == nil
+                      ? "Choose a file\u{2026}"
+                      : "Choose a different file\u{2026}",
+                      systemImage: "doc.badge.plus")
+            }
+            if let pickedFile {
+                LabeledContent(
+                    "File",
+                    value: pickedName)
+                LabeledContent(
+                    "Size",
+                    value: ByteCountFormatter.string(
+                        fromByteCount: Int64(
+                            pickedInfo?.byteCount
+                            ?? fileSize(pickedFile)),
+                        countStyle: .file))
+                if let info = pickedInfo {
+                    LabeledContent(
+                        "Protected by",
+                        value: info.protection.label)
+                    if info.protection.involvesPassword {
+                        SecureField(
+                            info.protection == .either
+                                ? "Password — blank uses "
+                                    + "the vault key"
+                                : "Password",
+                            text: $filePassword)
+                    }
+                    Button(action: openPickedFile) {
+                        Label("Open it",
+                              systemImage: "lock.open.fill")
+                            .font(.callout.weight(.semibold))
+                    }
+                    .disabled(fileBusy)
+                } else {
+                    Picker("Protection",
+                           selection: $fileProtection) {
+                        ForEach(NJCFProtection.allCases,
+                                id: \.self) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                    if fileProtection.involvesPassword {
+                        SecureField("Password",
+                                    text: $filePassword)
+                    }
+                    if fileProtection == .deadDrop {
+                        TextField(
+                            "Recipient public key "
+                            + "(base64) — empty seals "
+                            + "to this house",
+                            text: $fileRecipient)
+                            .font(.system(.caption,
+                                          design: .monospaced))
+                    }
+                    Button(action: sealPickedFile) {
+                        Label("Seal it",
+                              systemImage: "lock.fill")
+                            .font(.callout.weight(.semibold))
+                    }
+                    .disabled(fileBusy)
+                }
+            }
+            if fileBusy {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Working — large files "
+                         + "take a moment.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let fileNotice {
+                Text(fileNotice)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            if let producedFile {
+                LabeledContent(producedLabel,
+                               value: producedFile
+                                   .lastPathComponent)
+                HStack(spacing: 16) {
+                    Button("Share / send it") {
+                        shareItem = ShareItem(
+                            items: [producedFile])
+                    }
+                    Button("Forget the working copy") {
+                        self.producedFile = nil
+                    }
+                }
+                .font(.callout)
+            }
+            ExplainToggle(
+                text: "A file is sealed in chunks "
+                    + "under one random key; the "
+                    + "protection you choose is only "
+                    + "how that key is kept — by a "
+                    + "password (PBKDF2), by this "
+                    + "device's vault key, by either, "
+                    + "by both together (each holds "
+                    + "half the secret), or sealed "
+                    + "to a recipient's public key "
+                    + "for a dead-drop hand-off. The "
+                    + "original filename travels "
+                    + "inside the encryption, and the "
+                    + "finished file is filed in "
+                    + "Deliveries, ready to send by "
+                    + "any road. Opening restores "
+                    + "the file under its own name.")
+        }
+    }
+
+    private func fileSize(_ url: URL) -> Int {
+        (try? FileManager.default.attributesOfItem(
+            atPath: url.path)[.size]
+            as? NSNumber)?.intValue ?? 0
+    }
+
+    private func takePickedFile(
+        _ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result,
+              let url = urls.first else { return }
+        fileNotice = nil
+        producedFile = nil
+        pickedFile = url
+        pickedName = url.lastPathComponent
+        pickedInfo = try? CryptoFiles.inspect(url)
+    }
+
+    private func sealPickedFile() {
+        guard let pickedFile else { return }
+        if fileProtection.involvesPassword,
+           filePassword.isEmpty {
+            fileNotice = "That protection wants "
+                + "a password."
+            return
+        }
+        var recipient: P256.KeyAgreement.PublicKey?
+        if fileProtection == .deadDrop {
+            if fileRecipient.trimmingCharacters(
+                in: .whitespaces).isEmpty {
+                recipient = CryptoSuite.identity()
+                    .publicKey
+            } else if let data = Data(
+                base64Encoded: fileRecipient),
+                      let key = try? P256.KeyAgreement
+                        .PublicKey(
+                            rawRepresentation: data) {
+                recipient = key
+            } else {
+                fileNotice = "That recipient key "
+                    + "would not read — it wants "
+                    + "to be base64."
+                return
+            }
+        }
+        let sealedName = pickedName + ".njcf"
+        runFileWork(sealing: true) { output in
+            try CryptoFiles.encrypt(
+                input: pickedFile, output: output,
+                protection: fileProtection,
+                password: filePassword.isEmpty
+                    ? nil : filePassword,
+                recipient: recipient)
+            return sealedName
+        }
+    }
+
+    private func openPickedFile() {
+        guard let pickedFile else { return }
+        runFileWork(sealing: false) { output in
+            let restored = try CryptoFiles.decrypt(
+                input: pickedFile,
+                password: filePassword.isEmpty
+                    ? nil : filePassword,
+                outputDirectory: output
+                    .deletingLastPathComponent())
+            // The restored file takes the working
+            // path for filing, under its own name.
+            if restored != output {
+                try? FileManager.default.removeItem(
+                    at: output)
+                try FileManager.default.moveItem(
+                    at: restored, to: output)
+            }
+            return restored.lastPathComponent
+        }
+    }
+
+    /// Runs a file operation off the main
+    /// thread, files the product in Deliveries
+    /// under the name the work returns, and
+    /// reports in the room's own voice.
+    private func runFileWork(
+        sealing: Bool,
+        _ work: @escaping (URL) throws -> String) {
+        guard let pickedFile else { return }
+        fileBusy = true
+        fileNotice = nil
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                let scoped = pickedFile
+                    .startAccessingSecurityScopedResource()
+                defer {
+                    if scoped {
+                        pickedFile
+                            .stopAccessingSecurityScopedResource()
+                    }
+                }
+                let temp = FileManager.default
+                    .temporaryDirectory
+                    .appendingPathComponent(
+                        UUID().uuidString)
+                try? FileManager.default
+                    .createDirectory(
+                        at: temp,
+                        withIntermediateDirectories: true)
+                let working = temp
+                    .appendingPathComponent("working")
+                do {
+                    let display = try work(working)
+                    let filed = DeliveriesCenter.shared
+                        .addFile(at: working,
+                                 displayName: display)
+                    DispatchQueue.main.async {
+                        fileBusy = false
+                        if let filed {
+                            producedFile = filed
+                            producedLabel = sealing
+                                ? "Sealed, in Deliveries"
+                                : "Opened, in Deliveries"
+                            toasts.show(sealing
+                                ? "File sealed"
+                                : "File opened")
+                        } else {
+                            fileNotice = "The work "
+                                + "finished but the "
+                                + "filing failed."
+                        }
+                    }
+                } catch let error as CryptoFileError {
+                    DispatchQueue.main.async {
+                        fileBusy = false
+                        fileNotice = message(for: error)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        fileBusy = false
+                        fileNotice = "The file work "
+                            + "failed: "
+                            + error.localizedDescription
+                    }
+                }
+            }
+    }
+
+    private func message(
+        for error: CryptoFileError) -> String {
+        switch error {
+        case .notAnEnvelope:
+            return "That is not an NJCF envelope."
+        case .unsupportedVersion:
+            return "That envelope is from a newer "
+                + "Vault than this one."
+        case .needsPassword:
+            return "A password is wanted."
+        case .wrongKeyOrPassword:
+            return "It would not open — the "
+                + "password, the vault key or the "
+                + "identity is not the one that "
+                + "sealed it."
+        case .truncated:
+            return "The file ends early — it was "
+                + "cut off on its road here."
+        case .corrupt:
+            return "The envelope is damaged."
+        case .unreadable:
+            return "The file could not be read."
         }
     }
 
