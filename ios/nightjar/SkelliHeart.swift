@@ -1035,7 +1035,7 @@ final class SkelliHeart: ObservableObject {
         switch age {
         case ..<300: return L("minutes ago")
         case ..<3600: return L("less than an hour ago")
-        case ..<3 * 3600: return L("a few hours ago")
+        case ..<3 * 3600.0: return L("a few hours ago")
         default: return L("hours ago")
         }
     }
@@ -1331,6 +1331,8 @@ extension SkelliHeart {
             pool.append(L("I could knock politely. Where is the fun in politely."))
         case .eager, .content:
             pool.append(L("Everything is where I left it. Good."))
+        case .afraid:
+            pool.append(L("Doors checked twice. I am checking a third time."))
         }
         if hour == 3 {
             // The witching hour thickens the pool:
