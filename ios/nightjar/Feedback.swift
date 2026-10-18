@@ -859,6 +859,22 @@ struct BootView: View {
                 }
             }
             if Task.isCancelled { return }
+            if film != nil {
+                // The text kept the film's pace — but
+                // if the film itself ever ran a breath
+                // behind, the finale waits for its
+                // true last frame rather than arriving
+                // early to a still-moving picture.
+                var waited = 0.0
+                while filmProgress < 1 && waited < 2.0 {
+                    try? await Task.sleep(
+                        nanoseconds: 50_000_000)
+                    if Task.isCancelled {
+                        blink.cancel(); return
+                    }
+                    waited += 0.05
+                }
+            }
             // The finale: the title stands assembled,
             // the closing line takes the subtitle's
             // place, and the house holds its breath
@@ -1081,10 +1097,17 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var source: CGImageSource?
         private var starts: [Double] = []
         private var total = 0.0
-        private var t0: CFTimeInterval = 0
         private weak var view: UIImageView?
         private var onProgress: ((Double) -> Void)?
         private var shown = -1
+        /// The playhead, in film time. It advances
+        /// with the clock but never past a frame that
+        /// has not decoded — the film waits a breath
+        /// rather than skipping, so every authored
+        /// frame is shown at its authored cadence.
+        private var playhead = 0.0
+        private var lastTick: CFTimeInterval = 0
+        private var lastReported = -1.0
 
         // The decode ring: a worker queue decodes
         // ahead of the playhead into a small cache;
@@ -1097,7 +1120,7 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var wanted = 0
         private var pumping = false
         private var stoppedFlag = false
-        private let ahead = 16
+        private let ahead = 40
 
         func begin(in view: UIImageView, data: Data,
                    onProgress: @escaping (Double) -> Void) {
@@ -1124,7 +1147,7 @@ struct BootFilmPlayer: UIViewRepresentable {
                 view.image = UIImage(cgImage: first)
             }
             requestPrefetch(upTo: ahead)
-            t0 = CACurrentMediaTime()
+            lastTick = CACurrentMediaTime()
             let link = CADisplayLink(
                 target: self, selector: #selector(tick))
             link.add(to: .main, forMode: .common)
@@ -1176,58 +1199,83 @@ struct BootFilmPlayer: UIViewRepresentable {
             }
         }
 
+        /// The frame whose interval holds `time`.
+        private func frameIndex(at time: Double) -> Int {
+            var index = max(shown, 0)
+            while index + 1 < starts.count
+                    && starts[index + 1] <= time {
+                index += 1
+            }
+            return index
+        }
+
         @objc private func tick() {
-            let elapsed = CACurrentMediaTime() - t0
-            if elapsed >= total {
-                // The film ends on its TRUE last frame:
-                // if the ring has not delivered it yet,
-                // hold a breath rather than freeze on
-                // an earlier frame.
+            let now = CACurrentMediaTime()
+            let dt = min(now - lastTick, 0.1)
+            lastTick = now
+
+            lock.lock()
+            let readyEdge = ready.keys.max() ?? -1
+            lock.unlock()
+
+            // Advance with the clock, but cap the
+            // playhead at the end of the newest decoded
+            // frame: an undecoded frame is waited for,
+            // never skipped over.
+            var candidate = playhead + dt
+            if readyEdge + 1 < starts.count {
+                candidate = min(candidate,
+                                starts[readyEdge + 1])
+            }
+            playhead = candidate
+            let desired = frameIndex(at: playhead)
+            requestPrefetch(upTo: desired + ahead)
+
+            // Display exactly the playhead's frame when
+            // it is ready — by the cap it always is,
+            // short of the very frame being decoded.
+            let display = min(desired, readyEdge)
+            if display > shown {
                 lock.lock()
-                let lastImage = ready[starts.count - 1]
+                let image = ready[display]
+                if shown > 1 {
+                    ready = ready.filter {
+                        $0.key >= shown - 1
+                    }
+                }
                 lock.unlock()
-                if let lastImage = lastImage {
-                    if shown != starts.count - 1 {
+                if let image = image {
+                    shown = display
+                    view?.image = UIImage(cgImage: image)
+                }
+            }
+
+            if playhead >= total,
+               readyEdge == starts.count - 1 {
+                if shown != starts.count - 1 {
+                    lock.lock()
+                    let lastImage = ready[starts.count - 1]
+                    lock.unlock()
+                    if let lastImage = lastImage {
                         shown = starts.count - 1
                         view?.image = UIImage(
                             cgImage: lastImage)
                     }
-                    onProgress?(1)
-                    stop()
-                } else {
-                    onProgress?(1)
-                    requestPrefetch(
-                        upTo: starts.count - 1)
                 }
+                if lastReported != 1 {
+                    lastReported = 1
+                    onProgress?(1)
+                }
+                stop()
                 return
             }
-            var desired = max(shown, 0)
-            while desired + 1 < starts.count
-                    && starts[desired + 1] <= elapsed {
-                desired += 1
+
+            let progress = total > 0
+                ? min(1, playhead / total) : 0
+            if abs(progress - lastReported) > 0.01 {
+                lastReported = progress
+                onProgress?(progress)
             }
-            requestPrefetch(upTo: desired + ahead)
-            // Display the best ready frame at or behind
-            // the playhead — never an undecoded one,
-            // never backwards.
-            lock.lock()
-            var best: Int? = nil
-            for key in ready.keys
-            where key <= desired && key > shown {
-                if best == nil || key > best! {
-                    best = key
-                }
-            }
-            let image = best.flatMap { ready[$0] }
-            if shown > 1 {
-                ready = ready.filter { $0.key >= shown - 1 }
-            }
-            lock.unlock()
-            if let best = best, let image = image {
-                shown = best
-                view?.image = UIImage(cgImage: image)
-            }
-            onProgress?(min(1, elapsed / total))
         }
 
         func stop() {
@@ -1235,6 +1283,7 @@ struct BootFilmPlayer: UIViewRepresentable {
             link = nil
             lock.lock()
             stoppedFlag = true
+            ready.removeAll()
             lock.unlock()
         }
     }
