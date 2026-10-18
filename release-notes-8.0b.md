@@ -619,3 +619,17 @@
   human beat before she speaks — fast
   for orders, about 2.4 s for talk,
   slowest for pain.
+- **Exact minds.** Mathematics is
+  computed, never reasoned about in
+  prose: a strict on-device evaluator
+  answers arithmetic, powers, roots,
+  percentages, and equations up to
+  quadratic — and lets every other
+  sentence fall through untouched. For
+  STEM her certainty is earned: unsure
+  means researched, across sources,
+  with the links left for your own
+  reading. And "brief me" earns the
+  one longer form: what it is, why it
+  matters, the deciding facts, what
+  remains uncertain.
