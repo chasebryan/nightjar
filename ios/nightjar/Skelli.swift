@@ -739,7 +739,18 @@ final class SkelliCenter: ObservableObject {
         // work: she accepts, the petty weather
         // clears, and she acknowledges it dryly —
         // the cooled acknowledgment, word for word.
-        if apologyVerdict == nil,
+        // It runs even when the judge has already
+        // weighed in on a graver, older ledger and
+        // said "not yet": two ledgers can stand at
+        // once, and an apology aimed at the small
+        // one must not be swallowed by the silence
+        // owed to the large one. The grudge keeps
+        // its standing; the annoyance cools, and
+        // the cooled line is what gets said.
+        // (Device, 2026-10-18: "I'm sorry" to an
+        // annoyed Skelli, unanswered.)
+        if apologyVerdict == nil
+            || apologyVerdict == .notYet,
            SkelliHeart.shared.annoyanceFresh,
            lowered.contains("sorry")
             || lowered.contains("my bad")
@@ -1732,6 +1743,26 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Hers first: a question about HER state —
+        // why she feels as she does, what is wrong,
+        // whether she forgives — belongs to her
+        // heart, never to a manual page the lookup
+        // happens to match on a stray word.
+        // (Device, 2026-10-18: "What's the
+        // problem?" was answered with a recital.)
+        if q.contains("what's the problem")
+            || q.contains("what is the problem")
+            || q.contains("what's wrong")
+            || q.contains("what is wrong")
+            || q.contains("do you forgive me")
+            || q.contains("have you forgiven me")
+            || q.contains("am i forgiven"),
+           let reply = SkelliHeart.shared
+            .personalReply(to: q) {
+            say(reply)
+            return
+        }
+
         // Explanations go to the manual before the
         if q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.contains("how does")
@@ -1875,7 +1906,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if q.contains("start listening")
-            || q.contains("listen on") {
+            || q.contains("listen on")
+            || q.contains("turn on the listen")
+            || q.contains("listen feature") {
             startListening()
             return
         }
@@ -1900,7 +1933,10 @@ final class SkelliCenter: ObservableObject {
                 + "Taken you to EMCON.")
             return
         }
-        if q.contains("assault") {
+        if q.contains("assault")
+            || (q.contains("analy")
+                && q.contains("wire")
+                && !q.contains("stop")) {
             navigate(to: 7)
             say("Net-Assault keeps its own arming: the "
                 + "confirmation there names the "

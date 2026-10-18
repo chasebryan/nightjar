@@ -1050,6 +1050,8 @@ final class SkelliHeart: ObservableObject {
                             || q.contains("wrong")))
             || q.contains("what's wrong")
             || q.contains("what is wrong")
+            || q.contains("what's the problem")
+            || q.contains("what is the problem")
             || q.contains("how come")
             || q.contains("what happened to you")
         if whyAsked { return whyReply() }
@@ -1061,6 +1063,21 @@ final class SkelliHeart: ObservableObject {
         if likeAsked {
             return regardReply(
                 hate: q.contains("hate"))
+        }
+        // Asked outright whether she forgives —
+        // a question, not an apology — she answers
+        // from what actually stands in her ledgers.
+        let forgiveAsked = q.contains("do you forgive me")
+            || q.contains("have you forgiven me")
+            || q.contains("am i forgiven")
+        if forgiveAsked {
+            if madFresh || grudgeStands {
+                return L("Not yet.")
+            }
+            if annoyanceFresh {
+                return L("It's small. It fades — give it its minutes.")
+            }
+            return L("There's nothing standing between us.")
         }
         let makeBetter = q.contains("make you feel better")
             || q.contains("cheer you up")
