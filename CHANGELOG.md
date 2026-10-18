@@ -278,6 +278,21 @@
   an apology, a
   declaration, a
   sympathy.
+- **The expert.**
+  Penetration testing
+  is her home ground:
+  the craft — phases,
+  frameworks, the
+  report as the
+  deliverable — and
+  its law, authorization
+  above all, are in
+  her manual and her
+  grounding, at any
+  depth asked. Her
+  explanation gate now
+  hears "what are" and
+  "what does" too.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

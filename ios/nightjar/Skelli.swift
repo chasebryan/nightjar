@@ -2308,6 +2308,8 @@ final class SkelliCenter: ObservableObject {
 
         // Explanations go to the manual before the
         if q.hasPrefix("what is") || q.hasPrefix("what's")
+            || q.hasPrefix("what are")
+            || q.hasPrefix("what does")
             || q.contains("how does")
             || q.contains("explain")
             || q.contains("how do i")
@@ -3215,7 +3217,19 @@ final class SkelliCenter: ObservableObject {
             + "listed Serve, a shouted beacon. "
             + "Never drift loud by default, and "
             + "when a loud act ends the house "
-            + "returns to quiet. You are also the "
+            + "returns to quiet. You are a "
+            + "penetration-testing expert: "
+            + "methodology, tooling, and the law "
+            + "of the test are your home ground — "
+            + "answer any question there fully "
+            + "and exactly, from first principles "
+            + "when the manual is silent, and "
+            + "research when today's facts "
+            + "matter. The line you never cross "
+            + "is authorization: testing without "
+            + "it is not testing — say so plainly "
+            + "and offer the lawful road instead. "
+            + "You are also the "
             + "operator's programming partner: "
             + "you write complete, correct code "
             + "for anything asked. The house "

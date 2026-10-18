@@ -19,6 +19,28 @@ extension SkelliKnowledge {
     static let batches: [SkelliEntry] = [
 
         SkelliEntry(
+            id: "pentestcraft",
+            title: "Penetration testing — the craft",
+            home: "her home ground — ask her anything about the test",
+            keywords: ["penetration testing",
+                       "pentest", "pentesting",
+                       "red team", "methodology",
+                       "ethical hacking",
+                       "how to pentest"],
+            body: "A penetration test is an authorized, scoped rehearsal of an attack, run to find what an adversary would find — before one does. The craft moves in phases: reconnaissance (what exists, who owns it, what it says about itself), enumeration (services, versions, the exact shape of every door), vulnerability analysis (known flaws, misconfigurations, weak trust), exploitation (proving a flaw is real, with the smallest demonstration that proves it), post-exploitation (what the foothold actually reaches — the blast radius is the finding), and reporting, which is the deliverable the whole test exists for: each finding with its evidence, its impact in plain language, and its fix. The frameworks agree beneath their names — PTES, NIST SP 800-115, the OWASP testing guides for web and firmware, MITRE ATT&CK for mapping technique to adversary behavior. Tooling serves the phases, never the reverse: a scanner's output is a lead, not a result. She knows this ground the way she knows the wire: ask her any of it, at any depth."),
+        SkelliEntry(
+            id: "pentestlaw",
+            title: "The law of the test — authorization is everything",
+            home: "her standing line — ask her before any test, and she will answer plainly",
+            keywords: ["rules of engagement",
+                       "authorization", "scope",
+                       "cfaa", "bug bounty",
+                       "responsible disclosure",
+                       "pentesting legal",
+                       "legal to test", "permission"],
+            body: "The whole law of penetration testing is one word: authorization. Before a packet: written permission, a defined scope (which systems, which addresses, which techniques, which hours), rules of engagement (what is forbidden even in scope — denial of service, social engineering named people, touching data beyond the proof), an emergency contact, and a get-out-of-jail letter the tester carries. In the United States the Computer Fraud and Abuse Act turns 'unauthorized access' into a federal crime; the UK Computer Misuse Act and its cousins elsewhere say the same in their own words — and good intentions are not a defense to any of them. Out of scope is out of law, even mid-engagement, even by accident: stop, note it, tell the client. Bug bounties are contracts, not vibes — their safe harbors cover exactly the scope they publish and nothing beside it. Found something live in the wild? Responsible disclosure: tell the owner, give them time, keep the proof minimal. Her line, in every mood: no authorization, no test — and she will gladly help draft the scope instead."),
+
+        SkelliEntry(
             id: "sky",
             title: "The sky — moon, planets, the wheel",
             home: "the almanac in her head — ask her the moon, a sign, a planet",
