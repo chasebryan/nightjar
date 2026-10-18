@@ -942,6 +942,8 @@ struct AboutView: View {
     @State private var showColours = false
     @State private var setupShare: ShareItem?
     @State private var importingSetup = false
+    @State private var sourceVerdict: String?
+    @State private var checkingSource = false
 
     var body: some View {
         NavigationStack {
@@ -954,6 +956,48 @@ struct AboutView: View {
                         Label("Privacy Policy", systemImage: "hand.raised")
                     }
 #if !STORE_BUILD
+                    if let short = SourceStamp.shortCommit {
+                        Text("Source — built from \(short)"
+                             + (SourceStamp.uncommittedChanges > 0
+                                ? " · \(SourceStamp.uncommittedChanges) uncommitted change(s) rode along"
+                                : " · the tree was clean"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Source — no stamp in this build")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        checkingSource = true
+                        Task {
+                            let head = await SourceStamp
+                                .currentRemoteHead()
+                            checkingSource = false
+                            sourceVerdict = head.map {
+                                SourceStamp.verdict(
+                                    remoteHead: $0)
+                            } ?? "GitHub would not answer — "
+                                + "the check needs the "
+                                + "network."
+                        }
+                    } label: {
+                        HStack {
+                            Text("Verify against the "
+                                 + "current source")
+                            Spacer()
+                            if checkingSource {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(checkingSource)
+                    if let sourceVerdict {
+                        Text(sourceVerdict)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+#endif
                     if let release = updater.available {
                         if let install = release.installURL {
                             Button {

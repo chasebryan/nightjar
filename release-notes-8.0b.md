@@ -165,6 +165,18 @@
   file, for a new device;
   a reset forgets the
   mirror too.
+- **Provenance, provable.**
+  Every build stamps the
+  exact commit it was built
+  from — and whether the
+  tree was clean — into
+  the app as it builds.
+  About reads it back and,
+  on request, holds it
+  against the repository's
+  current HEAD: matches,
+  bit for bit — or exactly
+  how it differs.
 - **The organized house.**
   About is regrouped —
   Version, Your setup,

@@ -97,6 +97,7 @@
 				4E0A0001000000000000A006 /* Sources */,
 				4E0A0001000000000000A007 /* Frameworks */,
 				4E0A0001000000000000A008 /* Resources */,
+				4E0A0001000000000000A060 /* Stamp source commit */,
 			);
 			buildRules = (
 			);
@@ -200,6 +201,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		4E0A0001000000000000A060 /* Stamp source commit */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Stamp source commit";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "PLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nSHA=$(git -C \"${SRCROOT}\" rev-parse HEAD 2>/dev/null || echo \"unknown\")\nDIRTY=$(git -C \"${SRCROOT}\" status --porcelain 2>/dev/null | wc -l | tr -d ' ')\nSTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)\n/usr/libexec/PlistBuddy -c \"Delete :NJSourceCommit\" \"$PLIST\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :NJSourceCommit string $SHA\" \"$PLIST\"\n/usr/libexec/PlistBuddy -c \"Delete :NJSourceChanges\" \"$PLIST\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :NJSourceChanges string $DIRTY\" \"$PLIST\"\n/usr/libexec/PlistBuddy -c \"Delete :NJBuildStamp\" \"$PLIST\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :NJBuildStamp string $STAMP\" \"$PLIST\"\necho \"nightjar source stamp: $SHA (uncommitted changes: $DIRTY)\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		4E0A0001000000000000A006 /* Sources */ = {
