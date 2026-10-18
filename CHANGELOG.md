@@ -13,9 +13,18 @@
   six hundred megabytes of
   decoded film), the log's
   styles stretch across its
-  6.68 seconds, the loading
-  bar fills on the film's own
-  clock, and the title
+  6.68 seconds, the sphere
+  at the centre fills on the
+  film's own clock — two
+  counter-flowing lattices,
+  one rising from the bottom
+  of the circle, one falling
+  from the top, two arcs
+  running the rim against
+  each other — and when the
+  load completes it
+  crystallizes into its final
+  ring — and the title
   assembles — letters wide
   and dim drawing together,
   brightening — until, on

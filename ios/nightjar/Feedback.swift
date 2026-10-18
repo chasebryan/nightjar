@@ -318,7 +318,7 @@ extension View {
 /// The Jolly Roger stays inside the app; nothing of it is
 /// out here. The reel plays exactly once and the
 /// whole ceremony is timed against it — the log, the
-/// loading bar, the assembling title — ending on the
+/// sphere, the assembling title — ending on the
 /// film's last frame with the closing line delivered
 /// as the finale, one held beat, then the fade into
 /// the app. A tap skips it all. Without the reel in
@@ -459,6 +459,9 @@ struct BootView: View {
         var out: [BootLine] = [
             BootLine(text: "Host — \(UIDevice.current.name)",
                      tone: .ok),
+            BootLine(text: "System — iOS "
+                        + UIDevice.current.systemVersion,
+                     tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
             out.append(BootLine(text: "Address — \(ip)",
@@ -467,6 +470,11 @@ struct BootView: View {
             out.append(BootLine(text: "No address yet",
                                 tone: .off))
         }
+        let neighbors = NeighborhoodStore.shared
+            .neighbors.count
+        out.append(BootLine(
+            text: "Neighbors — \(neighbors) known",
+            tone: neighbors > 0 ? .ok : .off))
         out.append(BootLine(
             text: "Library — \(book.items.count) payloads loaded",
             tone: .ok))
@@ -496,6 +504,12 @@ struct BootView: View {
             out.append(BootLine(text: "Wallpaper — missing",
                                 tone: .off))
         }
+        let clock = DateFormatter()
+        clock.locale = Locale(identifier: "en_US_POSIX")
+        clock.dateFormat = "HH:mm"
+        out.append(BootLine(
+            text: "Time — \(clock.string(from: Date()))",
+            tone: .ok))
         // The closing line — "the world is yours" —
         // is not a log line: it is the finale,
         // delivered by the title block itself on
@@ -637,47 +651,108 @@ struct BootView: View {
         }
     }
 
-    /// The loading bar: twenty-six blocks that fill with a
-    /// phosphor glow as the log completes, and the count.
-    private var loadingBar: some View {
-        VStack(spacing: 7) {
-            GeometryReader { geo in
-                let count = 26
-                let gap: CGFloat = 2.5
-                let width = (geo.size.width
-                             - gap * CGFloat(count - 1))
-                            / CGFloat(count)
-                HStack(spacing: gap) {
-                    ForEach(0..<count, id: \.self) { i in
-                        let lit = Double(i)
-                            < Double(count)
-                                * Double(bootProgress)
-                        RoundedRectangle(cornerRadius: 1.5)
-                            .fill(lit ? color(.ok)
-                                      : Color.white.opacity(0.10))
-                            .frame(width: width, height: 14)
-                            .shadow(color: lit
-                                    ? color(.ok).opacity(0.85)
-                                    : .clear, radius: 5)
-                    }
-                }
-            }
-            .frame(height: 14)
-            HStack {
-                Text("LOADING THE NIGHT")
-                    .font(.system(.caption2, design: .monospaced))
-                    .tracking(2)
-                    .foregroundStyle(Color(white: 0.55))
-                    .shadow(color: .black.opacity(0.9), radius: 3)
-                Spacer()
-                Text("\(Int(bootProgress * 100))%")
-                    .font(.system(.caption, design: .monospaced)
-                          .weight(.bold))
-                    .foregroundStyle(color(.ok))
-                    .shadow(color: color(.ok).opacity(0.6), radius: 6)
+    /// The sphere: a matrix of points in two
+    /// counter-rotating lattices. One flow carries
+    /// from the bottom of the circle to the top, the
+    /// other from the top to the bottom, and two arcs
+    /// run the rim against each other to meet — until
+    /// the load completes and the whole form
+    /// crystallizes: the ring closes, the unlit
+    /// points turn to crystal, and the sphere settles.
+    private var orbView: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(
+                    colors: [color(.ok).opacity(
+                                 finale ? 0.20 : 0.09),
+                             .clear],
+                    center: .center,
+                    startRadius: 8, endRadius: 108))
+                .frame(width: 216, height: 216)
+            Circle()
+                .stroke(Color.white.opacity(0.08),
+                        lineWidth: 1.5)
+                .frame(width: 178, height: 178)
+            // The rising flow: from the bottom,
+            // clockwise.
+            Circle()
+                .trim(from: 0, to: bootProgress)
+                .stroke(color(.ok), style: StrokeStyle(
+                    lineWidth: 2, lineCap: .round))
+                .frame(width: 178, height: 178)
+                .rotationEffect(.degrees(90))
+            // The falling flow: from the top,
+            // counter-clockwise.
+            Circle()
+                .trim(from: 0, to: bootProgress)
+                .stroke(Color(red: 0.62, green: 0.83,
+                              blue: 1.0),
+                        style: StrokeStyle(
+                            lineWidth: 2, lineCap: .round))
+                .frame(width: 178, height: 178)
+                .rotationEffect(.degrees(-90))
+                .scaleEffect(x: -1, y: 1)
+            orbLayer(0, side: 178)
+            orbLayer(1, side: 178)
+            Text("\(Int(bootProgress * 100))%")
+                .font(.system(.title3, design: .monospaced)
+                      .weight(.bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.95),
+                        radius: 5, x: 0, y: 1)
+        }
+        .frame(width: 216, height: 216)
+        .scaleEffect(finale ? 1.0 : 0.97)
+        .animation(.spring(response: 0.9,
+                           dampingFraction: 0.72),
+                   value: finale)
+    }
+
+    /// One lattice of the sphere: points laid on a
+    /// Fibonacci spiral — a spherical matrix seen
+    /// face-on. Layer A lights as the load rises
+    /// through each point's height; layer B, turning
+    /// the other way, lights as it descends.
+    private func orbLayer(_ layer: Int,
+                          side: CGFloat) -> some View {
+        let count = 130
+        let golden = 2.399963229728653
+        let tint = layer == 0
+            ? color(.ok)
+            : Color(red: 0.62, green: 0.83, blue: 1.0)
+        return ZStack {
+            ForEach(0..<count, id: \.self) { i in
+                let idx = Double(i)
+                    + (layer == 0 ? 0.0 : 0.5)
+                let r = sqrt((idx + 0.5) / Double(count))
+                let theta = idx * golden
+                    + (layer == 0 ? 0.0 : 1.15)
+                let x = r * cos(theta)
+                let y = r * sin(theta)
+                let level = (y + 1) / 2
+                let threshold = layer == 0
+                    ? level : 1 - level
+                let lit = min(1, max(0,
+                    (Double(bootProgress) - threshold)
+                        / 0.06 + 0.5))
+                let opacity = finale
+                    ? 0.30 + 0.70 * lit
+                    : 0.08 + 0.92 * lit
+                let dot = 2.1 + 2.3 * (1 - r)
+                Circle()
+                    .fill(tint.opacity(opacity))
+                    .frame(width: dot, height: dot)
+                    .position(
+                        x: side / 2
+                            + CGFloat(x) * (side / 2 - 8),
+                        y: side / 2
+                            - CGFloat(y) * (side / 2 - 8))
             }
         }
-        .animation(.easeOut(duration: 0.25), value: shown)
+        .frame(width: side, height: side)
+        .rotationEffect(.degrees(
+            (layer == 0 ? 1.0 : -1.0)
+                * Double(bootProgress) * 120))
     }
 
     var body: some View {
@@ -739,15 +814,24 @@ struct BootView: View {
                 }
                 .padding(.top, 22)
                 Spacer()
+                VStack(spacing: 10) {
+                    orbView
+                    Text("LOADING THE NIGHT")
+                        .font(.system(.caption2,
+                                      design: .monospaced))
+                        .tracking(3)
+                        .foregroundStyle(Color(white: 0.55))
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 3)
+                }
+                Spacer()
                 VStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 5) {
                         logView
                     }
                     .frame(maxWidth: .infinity,
                            alignment: .leading)
-                    .frame(height: 172, alignment: .topLeading)
-                    loadingBar
-                        .padding(.top, 16)
+                    .frame(height: 198, alignment: .topLeading)
                     Text("TAP TO SKIP")
                         .font(.system(.caption2,
                                       design: .monospaced))
