@@ -105,7 +105,20 @@
   vacuum — air name, greeting,
   and Serve's listeners and
   replies all in character at
-  once. Dropping a shape
+  once. The rack also dresses
+  the phone as the network's
+  own gear — an access point,
+  a gateway, a mesh node, a
+  media server, a hub — the
+  listed shapes standing
+  announced, stealth dressed
+  off and restored with the
+  rest. An app cannot
+  broadcast an SSID, so the
+  access point is a service
+  presence in character,
+  never a fake radio.
+  Dropping a shape
   restores the wardrobe it
   found, whole. Generic shapes
   only: the device's own

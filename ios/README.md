@@ -231,7 +231,10 @@ Below the steps, the Send tab keeps working:
   emissions, so a quiet joined phone is no ghost.
   **Spoofy** is EMCON's costume rack — own-name
   costumes and class-shaped mimicry personas
-  with wardrobe restore — and the war engines
+  — device classes and the network gear:
+  access point, gateway, mesh node, media
+  server, hub — with wardrobe restore — and
+  the war engines
   are shared singletons: Skelli's hands work
   the chests, the Helm, SIGINT watches, the
   War Room, War Games, the Banshee and the
