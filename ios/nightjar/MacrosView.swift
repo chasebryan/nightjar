@@ -20,6 +20,7 @@ struct MacrosView: View {
     @State private var shareItem: ShareItem?
     @State private var showImporter = false
     @State private var macroToDelete: Macro?
+    @State private var editingMacro: Macro?
 
     var body: some View {
         NavigationStack {
@@ -60,22 +61,23 @@ struct MacrosView: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(macros) { macro in
-                        NavigationLink {
-                            MacroEditorView(
-                                macro: macro,
-                                onSave: { save($0) },
-                                onDelete: {
-                                    macros.removeAll {
-                                        $0.id == macro.id
-                                    }
-                                    persist()
-                                })
+                        Button {
+                            Haptics.tap()
+                            editingMacro = macro
                         } label: {
-                            MacroRow(macro: macro,
-                                     running: runner.running
+                            HStack {
+                                MacroRow(
+                                    macro: macro,
+                                    running: runner.running
                                         && runner.currentMacroName
                                             == macro.name)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
                         }
+                        .buttonStyle(.plain)
                         .swipeActions {
                             Button("Delete",
                                    role: .destructive) {
@@ -106,9 +108,7 @@ struct MacrosView: View {
                             let macro = template.make()
                             macros.append(macro)
                             persist()
-                            toasts.show("“\(macro.name)” is in "
-                                + "the library — open it to "
-                                + "make it yours.")
+                            editingMacro = macro
                         } label: {
                             Label("New — \(template.title)",
                                   systemImage: "square.stack.3d.up")
@@ -154,10 +154,10 @@ struct MacrosView: View {
                             name = "New Macro \(n)"
                             n += 1
                         }
-                        macros.append(Macro(name: name))
+                        let macro = Macro(name: name)
+                        macros.append(macro)
                         persist()
-                        toasts.show("“\(name)” added — open "
-                            + "it and add its first block.")
+                        editingMacro = macro
                     } label: {
                         Label("New macro", systemImage: "plus")
                     }
@@ -165,6 +165,19 @@ struct MacrosView: View {
             }
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
+            }
+            .sheet(item: $editingMacro) { macro in
+                NavigationStack {
+                    MacroEditorView(
+                        macro: macro,
+                        onSave: { save($0) },
+                        onDelete: {
+                            macros.removeAll {
+                                $0.id == macro.id
+                            }
+                            persist()
+                        })
+                }
             }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.json]) { result in
@@ -490,7 +503,16 @@ struct MacroEditorView: View {
         .navigationTitle(draft.name.isEmpty
             ? "Macro" : draft.name)
         .toolbar {
-            EditButton()
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    Haptics.tap()
+                    dismiss()
+                }
+                .fontWeight(.semibold)
+            }
         }
         .sheet(isPresented: $showPalette) {
             MacroPaletteSheet { kind in
