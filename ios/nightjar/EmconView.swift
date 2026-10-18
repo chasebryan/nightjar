@@ -8,6 +8,7 @@ struct EmconView: View {
     @EnvironmentObject private var emcon: Emcon
     @StateObject private var spar = Recon()
     @StateObject private var assault = AssaultCenter()
+    @StateObject private var banshee = BansheeCenter()
     @State private var armAssault = false
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
@@ -39,6 +40,41 @@ struct EmconView: View {
     var body: some View {
         List {
             statusSection
+            Section {
+                if banshee.screaming {
+                    HStack {
+                        Label("THE BANSHEE IS SCREAMING",
+                              systemImage: "speaker.wave.3.fill")
+                            .foregroundStyle(.red)
+                            .font(.callout.weight(.bold))
+                        Spacer()
+                        Button("Cease", role: .destructive) {
+                            Haptics.tap()
+                            banshee.cease(mouth: mouth,
+                                          assault: assault)
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                } else {
+                    Button {
+                        Haptics.tap()
+                        showBanshee = true
+                    } label: {
+                        Label("The Banshee — scream on "
+                            + "every channel",
+                              systemImage: "speaker.wave.3")
+                    }
+                }
+                Text("The opposite of everything on this "
+                    + "tab: Serve listed, stealth off, the "
+                    + "beacon shouting, Net-Assault armed, a "
+                    + "broadcast heartbeat — this device "
+                    + "announcing itself at full voice "
+                    + "until you cease it. Ceasing restores "
+                    + "the posture it found.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             NetAssaultSectionView(center: assault,
                                   armRequest: $armAssault,
                                   shareRequest: $shareAssaultReport)
@@ -102,6 +138,9 @@ struct EmconView: View {
         .sheet(isPresented: $showTagCensus) {
             TagCensusView()
         }
+        .sheet(isPresented: $showBanshee) {
+            BansheeView(assault: assault, banshee: banshee)
+        }
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
         }
@@ -159,6 +198,7 @@ struct EmconView: View {
     @State private var showMind = false
     @State private var showDuel = false
     @State private var showTagCensus = false
+    @State private var showBanshee = false
 
     // MARK: - status + score
 
