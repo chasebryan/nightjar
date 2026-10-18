@@ -84,9 +84,14 @@ final class TagCensus: NSObject, ObservableObject,
                 return
             }
             var found: Report
+            // Every specific tag the switch binds also
+            // speaks NDEF through the one protocol they
+            // share; the enum itself offers no conversion.
+            var ndefTag: NFCNDEFTag?
             switch tag {
             case .iso7816(let iso):
                 self.isoTag = iso
+                ndefTag = iso
                 found = Report(
                     kind: "ISO 14443 · ISO 7816",
                     uid: iso.identifier.censusHexString,
@@ -103,11 +108,13 @@ final class TagCensus: NSObject, ObservableObject,
                         + iso.initialSelectedAID)
                 }
             case .miFare(let mifare):
+                ndefTag = mifare
                 found = Report(
                     kind: "MIFARE "
                         + "(family \(mifare.mifareFamily.rawValue))",
                     uid: mifare.identifier.censusHexString)
             case .iso15693(let v):
+                ndefTag = v
                 found = Report(
                     kind: "ISO 15693",
                     uid: v.identifier.censusHexString)
@@ -117,6 +124,7 @@ final class TagCensus: NSObject, ObservableObject,
                 found.lines.append(
                     "IC serial: " + v.icSerialNumber.censusHexString)
             case .feliCa(let f):
+                ndefTag = f
                 found = Report(kind: "FeliCa",
                                uid: f.currentIDm.censusHexString)
                 found.lines.append(
@@ -129,7 +137,7 @@ final class TagCensus: NSObject, ObservableObject,
                                uid: "")
             }
             // NDEF, where the tag carries it: read whole.
-            if let ndefTag = tag.asNFCNDEFReaderSessionTag() {
+            if let ndefTag {
                 ndefTag.queryNDEFStatus { status, _, _ in
                     guard status == .readWrite
                             || status == .readOnly else {
@@ -186,8 +194,13 @@ final class TagCensus: NSObject, ObservableObject,
                 + "CLA INS P1 P2")
             return
         }
+        guard let apdu = NFCISO7816APDU(data: bytes) else {
+            apduLog.append("— that packet would not parse "
+                + "as an APDU")
+            return
+        }
         apduLog.append("→ " + bytes.censusHexString)
-        isoTag.sendCommand(commandPacket: bytes) {
+        isoTag.sendCommand(apdu: apdu) {
             [weak self] response, sw1, sw2, error in
             DispatchQueue.main.async {
                 if let error {
