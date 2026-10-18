@@ -307,6 +307,16 @@ final class ScanModel: ObservableObject {
         watchCycle()
     }
 
+    /// Stop a plain sweep mid-flight — the
+    /// generation bump makes the in-flight
+    /// group's completion stale, and the flag
+    /// drops now. The emergency stop reaches
+    /// the wire through here.
+    func stopSweep() {
+        sweepGeneration += 1
+        sweeping = false
+    }
+
     func stopWatch() {
         sweepGeneration += 1
         guard watching else { return }

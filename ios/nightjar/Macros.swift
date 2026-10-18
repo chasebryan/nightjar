@@ -882,6 +882,14 @@ final class MacroRunner: ObservableObject {
         }
     }
 
+    /// The emergency stop's reach: a fuzz the
+    /// playlist started dies here even when no
+    /// run is formally in flight.
+    func haltBenches() {
+        bench.stopFuzz()
+        warBench.stopFuzz()
+    }
+
     func stop() {
         guard running else { return }
         task?.cancel()

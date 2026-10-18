@@ -633,10 +633,18 @@ extension SkelliCenter {
                 return block("serveStop")
             }
             var extra: [String: String] = [:]
-            if s.contains("stealth on") {
-                extra["stealth"] = "On"
-            } else if s.contains("stealth off") {
+            // Her standing presumption, built in:
+            // stealth is desired unless the step
+            // says loud — a Serve she raises by
+            // voice goes up unlisted.
+            if s.contains("stealth off")
+                || s.contains("listed")
+                || s.contains("loud")
+                || s.contains("public")
+                || s.contains("visible") {
                 extra["stealth"] = "Off"
+            } else {
+                extra["stealth"] = "On"
             }
             return block("serveStart", extra)
         }

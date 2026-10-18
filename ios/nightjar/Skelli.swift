@@ -291,7 +291,7 @@ enum SkelliKnowledge {
         let q = query.lowercased()
         var best: SkelliEntry?
         var bestScore = 0
-        for entry in entries {
+        for entry in entries + batches {
             var score = 0
             for key in entry.keywords where q.contains(key) {
                 score += 2
@@ -367,6 +367,11 @@ final class SkelliCenter: ObservableObject {
     @Published var notes: [SkelliNote] = []
     @Published var mood: SkelliMood = .idle
     @Published var activity: String = "Ready."
+    /// After an emergency halt, her late callbacks —
+    /// a finished sweep reporting in, a mind answer
+    /// landing — speak into silence, until the
+    /// operator speaks again and lifts it.
+    var hushed = false
     /// Her outward eye, on unless the operator
     @Published var webResearchEnabled: Bool = true {
         didSet {
@@ -413,6 +418,7 @@ final class SkelliCenter: ObservableObject {
     }
 
     func say(_ text: String) {
+        guard !hushed else { return }
         lines.append(SkelliLine(fromOperator: false,
                                  text: text))
         persist()
@@ -471,6 +477,7 @@ final class SkelliCenter: ObservableObject {
         lines.append(SkelliLine(fromOperator: true,
                                  text: text))
         persist()
+        hushed = false
         // Thinking is always on — a short, real beat
         mood = .thinking
         let q = text.lowercased()
@@ -670,6 +677,18 @@ final class SkelliCenter: ObservableObject {
                 say(answer)
                 return
             }
+        }
+
+        // The emergency words stand ahead of every
+        // other hand: when the operator says stop
+        // everything, she stops everything.
+        if q.contains("vanish") || q.contains("panic")
+            || q.contains("stop everything")
+            || q.contains("halt everything")
+            || q.contains("go silent")
+            || q.contains("emergency stop") {
+            haltAndVanish()
+            return
         }
 
         // Macros before the single-action intents: a
@@ -1054,7 +1073,8 @@ final class SkelliCenter: ObservableObject {
     }
 
     private func mindGrounding() -> String {
-        let titles = SkelliKnowledge.entries
+        let titles = (SkelliKnowledge.entries
+            + SkelliKnowledge.batches)
             .map { $0.title }
             .joined(separator: ", ")
         return "You are Skelli, the intelligence "
@@ -1096,7 +1116,19 @@ final class SkelliCenter: ObservableObject {
             + "playlists block by block from the "
             + "operator's dictated steps, run them, "
             + "stop them, and report their runs. "
-            + "You are also the "
+            + "Your standing presumption: stealth "
+            + "is always desired unless the operator "
+            + "specifically says to be loud. Given "
+            + "any choice in how to do a thing, "
+            + "choose the quiet way — unlisted, "
+            + "unannounced, the smallest emission "
+            + "that does the work — and say which "
+            + "way you chose. Loud is a deliberate "
+            + "act with a name: the Banshee, a "
+            + "listed Serve, a shouted beacon. "
+            + "Never drift loud by default, and "
+            + "when a loud act ends the house "
+            + "returns to quiet. You are also the "
             + "operator's programming partner: "
             + "you write complete, correct code "
             + "for anything asked. The house "
@@ -1489,6 +1521,66 @@ final class SkelliCenter: ObservableObject {
                       + "and the Map has them in its "
                       + "tray.")
             }
+    }
+
+    /// The one voice allowed through a hush:
+    /// the halt's own confirmation.
+    func speakThroughHush(_ text: String) {
+        let was = hushed
+        hushed = false
+        say(text)
+        hushed = was
+    }
+
+    /// True while anything of hers is in flight —
+    /// the stop button reads it to know its name.
+    var anythingRunning: Bool {
+        mood == .working || mood == .thinking
+            || scanner.sweeping
+            || MacroRunner.shared.running
+    }
+
+    /// The emergency stop, and her resting
+    /// presumption made one act. Everything she is
+    /// doing halts NOW, every engine she can reach
+    /// goes quiet, and the house takes the most
+    /// stealthy posture it owns — for the moment
+    /// something is running that should not be.
+    /// The hush falls first, so the organs' own
+    /// completion reports land in silence; the
+    /// confirmation speaks through it; and she
+    /// stays quiet until the operator speaks.
+    func haltAndVanish() {
+        hushed = true
+        scanner.stopSweep()
+        scanner.stopWatch()
+        MacroRunner.shared.stop()
+        MacroRunner.shared.haltBenches()
+        WarRun.shared.stop()
+        WarGamesCenter.shared.detachHands()
+        if let post = post,
+           SigintStation.shared.currentWatch != nil {
+            SigintStation.shared.stopWatch(post: post)
+        }
+        if let mouth = mouth {
+            mouth.stopNetworkTrace()
+            mouth.stopServe()
+            mouth.stopBeacon()
+            mouth.stopGattHost()
+            mouth.setStealth(true)
+            emcon?.activate(mouth: mouth)
+        }
+        mood = .idle
+        activity = "Vanished — full stealth."
+        Journal.log("skelli", "vanish",
+                    "everything halted by the operator; "
+                    + "full stealth taken")
+        speakThroughHush("Stopped — everything I was "
+            + "doing is halted. Serve is down, the "
+            + "beacon and the GATT host are down, "
+            + "stealth is on, and EMCON is dark with "
+            + "the tripwire armed. I stay quiet "
+            + "until you speak.")
     }
 
     private func runSelfScan() {
@@ -2644,6 +2736,7 @@ final class SkelliFilmView: UIView {
 
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
+    @ObservedObject private var runner = MacroRunner.shared
     @ObservedObject private var probing = ProbingBeacon.shared
     @ObservedObject private var themes = ThemeCenter.shared
     @EnvironmentObject private var emcon: Emcon
@@ -2738,6 +2831,7 @@ struct SkelliView: View {
             header
             activityBar
             intelStrip
+            vanishBar
         }
         .padding(.top, 50)
         .background {
@@ -2878,6 +2972,60 @@ struct SkelliView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 4)
+    }
+
+    /// The emergency stop — always in reach in her
+    /// pinned header, and mutable: what it says and
+    /// how it burns follow what she is doing. Idle,
+    /// it is the Vanish control, one tap to full
+    /// stealth. Busy, it names the act — STOP —
+    /// and the same tap halts it and vanishes.
+    private var vanishBar: some View {
+        let busy = skelli.anythingRunning
+        return HStack(spacing: 10) {
+            Button {
+                Haptics.error()
+                skelli.haltAndVanish()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "octagon.fill")
+                    Text(busy
+                         ? "STOP — halt everything, "
+                           + "full stealth"
+                         : "Vanish — full stealth")
+                        .font(.callout.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer()
+                    if runner.running {
+                        Text("macro: "
+                             + runner.currentMacroName)
+                            .font(.caption)
+                            .foregroundStyle(
+                                .white.opacity(0.8))
+                            .lineLimit(1)
+                    } else if skelli.mood == .working
+                                || skelli.mood == .thinking {
+                        Text(skelli.activity)
+                            .font(.caption)
+                            .foregroundStyle(
+                                .white.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    busy ? Color.red
+                        : Color.red.opacity(0.28),
+                    in: RoundedRectangle(
+                        cornerRadius: 10,
+                        style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
     }
 
     private var header: some View {
@@ -3314,7 +3462,8 @@ struct SkelliDirectoryView: View {
 
     var body: some View {
         NavigationStack {
-            List(SkelliKnowledge.entries) { entry in
+            List(SkelliKnowledge.entries
+                + SkelliKnowledge.batches) { entry in
                 Button {
                     dismiss()
                     skelli.askAbout(entry)
