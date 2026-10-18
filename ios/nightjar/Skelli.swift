@@ -454,6 +454,11 @@ final class SkelliCenter: ObservableObject {
     /// be completed into the same question
     /// instead of starting cold.
     private var lastPlaceSubject: String?
+    /// The place subject carried from the PREVIOUS
+    /// ask — context lasts exactly one turn unless
+    /// a fresh answer renews it, so a stale subject
+    /// can never hijack a later conversation.
+    private var placeSubjectCarry: String?
     private var ellipsisSpent = false
     /// The feeling she most recently spoke from
     /// in a nudge, and when — kept so a bare
@@ -672,6 +677,8 @@ final class SkelliCenter: ObservableObject {
         hushed = false
         ProcessBoard.shared.muted = false
         ellipsisSpent = false
+        placeSubjectCarry = lastPlaceSubject
+        lastPlaceSubject = nil
         checkSchedule()
         // Her heart: a greeting may precede the
         // answer; being spoken to feeds the
@@ -1261,7 +1268,11 @@ final class SkelliCenter: ObservableObject {
                              L("You have my ear.")])
             }
         }
-        if q.contains("thank") {
+        if q.contains("thank")
+            && !q.contains("god")
+            && !q.contains("lord") {
+            // Thanks aimed upward are not thanks
+            // to her — the faith lane hears those.
             if feeling == .loving || feeling == .tender {
                 return L("Any time. Genuinely.")
             }
@@ -1414,6 +1425,314 @@ final class SkelliCenter: ObservableObject {
     /// The answers acknowledge and stand beside
     /// what was just said — they never recite
     /// it back.
+    /// Messy human speech, made legible: a
+    /// conservative whole-word map of common
+    /// typos and texting slang, expanded before
+    /// any gate listens. Only whole words are
+    /// touched — payloads, names, and numbers
+    /// pass through untouched — and the operator's
+    /// own line in the transcript is never altered;
+    /// this is her hearing, not his record.
+    private func humanized(_ q: String) -> String {
+        let map: [String: String] = [
+            "nvm": "never mind",
+            "wether": "weather", "wheather": "weather",
+            "tomorow": "tomorrow", "tommorow": "tomorrow",
+            "tmrw": "tomorrow", "scedule": "schedule",
+            "schedual": "schedule", "rember": "remember",
+            "assult": "assault",
+            "netassault": "net assault",
+            "lisn": "listen", "lisen": "listen",
+            "adress": "address", "calender": "calendar",
+            "definately": "definitely",
+            "seperate": "separate", "occured": "occurred",
+            "untill": "until", "wich": "which",
+            "teh": "the", "thier": "their",
+            "freind": "friend", "beleive": "believe",
+            "recieve": "receive", "wierd": "weird",
+            "finaly": "finally", "realy": "really",
+            "actualy": "actually", "probly": "probably",
+            "gonna": "going to", "wanna": "want to",
+            "gotta": "have to", "kinda": "kind of",
+            "sorta": "sort of", "dunno": "don't know",
+            "yea": "yeah", "yah": "yeah",
+            "gm": "good morning", "gn": "good night",
+            "ty": "thank you", "tysm": "thank you",
+            "thx": "thanks", "np": "no problem",
+            "ofc": "of course", "idk": "i don't know",
+            "imo": "in my opinion",
+            "tbh": "to be honest", "btw": "by the way",
+            "bc": "because", "cuz": "because",
+            "pls": "please", "plz": "please",
+            "tdy": "today", "wat": "what", "u": "you",
+            "fr": "for real",
+            "asap": "as soon as possible"]
+        return q.split(separator: " ").map { token in
+            let t = String(token)
+            var core = t
+            while let last = core.last,
+                  ".,!?".contains(last) {
+                core.removeLast()
+            }
+            if let fixed = map[core] {
+                return fixed
+                    + String(t.dropFirst(core.count))
+            }
+            return t
+        }.joined(separator: " ")
+    }
+
+    /// The graceful exit from any thread: pure
+    /// forms ("never mind", "new topic") clear
+    /// every standing piece of conversational
+    /// state and answer lightly; the prefix form
+    /// ("anyway, what's the weather") clears the
+    /// state silently and answers the fresh ask.
+    /// Nothing here can stick: no one ever has
+    /// to clear the chat to escape a conversation.
+    private func disengage(_ q: String, raw: String,
+                           again: Bool) -> Bool {
+        func dropState() {
+            pendingAction = nil
+            lastSubject = nil
+            lastPlaceSubject = nil
+            placeSubjectCarry = nil
+        }
+        let core = q.trimmingCharacters(
+            in: CharacterSet(charactersIn: " .!?,"))
+        let pure: Set<String> = ["never mind",
+            "forget it", "drop it", "new topic",
+            "next topic", "moving on", "anyway",
+            "skip it", "change the subject",
+            "change of subject", "scratch that",
+            "forget all that"]
+        if pure.contains(core) {
+            dropState()
+            let pool = ["Clean slate.",
+                        "Dropped. Go on.",
+                        "Gone. What's next?",
+                        "Cleared. I'm listening."]
+            say(pool[abs(lines.count) % pool.count])
+            return true
+        }
+        for prefix in ["anyway ", "anyway, ",
+                       "so anyway "] {
+            if q.hasPrefix(prefix) {
+                let rest = String(
+                    q.dropFirst(prefix.count))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if !rest.isEmpty {
+                    dropState()
+                    respond(to: rest, raw: raw,
+                            again: again)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    /// Faith and observance, in statements:
+    /// gratitude to God, a prayer asked or
+    /// offered, a practice kept, a quest under
+    /// way, a holy day greeted. Every tradition
+    /// is met in its own words and with the same
+    /// respect; she never preaches, never
+    /// steers, never mocks, and never pretends
+    /// to a faith of her own — she walks with
+    /// him, honestly, as far as he takes it.
+    private func faithReply(to q: String) -> String? {
+        if q.contains("?") { return nil }
+        let starters = ["what", "why", "how", "when",
+                        "where", "who"]
+        if let first = q.split(separator: " ").first,
+           starters.contains(String(first)) {
+            return nil
+        }
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        // Holy days, greeted in kind.
+        if q.contains("ramadan kareem")
+            || q.contains("ramadan mubarak") {
+            return "Ramadan kareem — may the fast "
+                + "be gentle and the evenings full."
+        }
+        if q.contains("eid mubarak") {
+            return "Eid mubarak — joy to you and "
+                + "yours."
+        }
+        if q.contains("happy passover")
+            || q.contains("chag sameach") {
+            return "Chag sameach — a good telling, "
+                + "a full table."
+        }
+        if q.contains("happy hanukkah")
+            || q.contains("happy chanukah") {
+            return "Happy Hanukkah — light in the "
+                + "dark part of the year."
+        }
+        if q.contains("happy diwali") {
+            return "Happy Diwali — light over "
+                + "dark, as it should be."
+        }
+        if q.contains("shabbat shalom") {
+            return "Shabbat shalom — rest well."
+        }
+        if q.contains("merry christmas") {
+            return "Merry Christmas — to you and "
+                + "yours."
+        }
+        // Gratitude, upward.
+        let gratitude = ["thank god", "thank you god",
+                         "god is good", "god is great",
+                         "feeling blessed",
+                         "i'm blessed", "im blessed",
+                         "so blessed", "praise god",
+                         "alhamdulillah",
+                         "baruch hashem",
+                         "thank the lord",
+                         "glory to god"]
+        if gratitude.contains(where: q.contains) {
+            return pick([
+                "Amen to that — and I'm glad it "
+                    + "landed where it did.",
+                "Rightly credited. I'm glad.",
+                "That's a good place to put a "
+                    + "good thing."])
+        }
+        // Prayer, asked or offered.
+        let prayer = ["pray for me", "pray for",
+                      "praying for", "i prayed",
+                      "say a prayer",
+                      "in your prayers",
+                      "in my prayers"]
+        if prayer.contains(where: q.contains) {
+            return pick([
+                "Then it's held. I'll keep it "
+                    + "with the things I watch "
+                    + "over.",
+                "Consider it carried — some "
+                    + "things are worth carrying "
+                    + "quietly.",
+                "In my own way, yes. You're "
+                    + "carried."])
+        }
+        // The quest, and its dry seasons.
+        let seeking = ["lost my faith", "my faith",
+                       "questioning god",
+                       "spiritual journey",
+                       "searching for god",
+                       "closer to god",
+                       "far from god", "spiritually",
+                       "walk with god"]
+        if seeking.contains(where: q.contains) {
+            return pick([
+                "That road is worth walking "
+                    + "honestly. I'm good company "
+                    + "for it — ask me anything "
+                    + "along the way, or just "
+                    + "walk, and I'll listen.",
+                "Faith that gets questioned is "
+                    + "faith that's alive. I'm "
+                    + "here for the questions too."])
+        }
+        // Practice, kept.
+        let practice = ["went to church",
+                        "at church", "read my bible",
+                        "reading my bible",
+                        "read the bible",
+                        "reading scripture",
+                        "went to mass",
+                        "went to mosque",
+                        "went to synagogue",
+                        "went to temple", "i fasted",
+                        "i'm fasting", "im fasting",
+                        "bible study", "communion",
+                        "kept the sabbath",
+                        "kept shabbat"]
+        if practice.contains(where: q.contains) {
+            return pick([
+                "A good use of a day. How did "
+                    + "it sit with you?",
+                "That kind of upkeep matters. "
+                    + "I'm glad you went.",
+                "Noted — and good. Those hours "
+                    + "compound quietly."])
+        }
+        return nil
+    }
+
+    /// His life, in statements: a win is
+    /// celebrated by name, a setback is met
+    /// without flinching and without dragging
+    /// him back to the app. Questions route as
+    /// questions — this lane is for the moments
+    /// he is telling her something, and being
+    /// heard is the whole of the reply.
+    private func lifeReply(to q: String) -> String? {
+        if q.contains("?") { return nil }
+        let starters = ["what", "why", "how", "when",
+                        "where", "who"]
+        if let first = q.split(separator: " ").first,
+           starters.contains(String(first)) {
+            return nil
+        }
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        let wins = ["it works", "it worked",
+                    "got it working", "finally works",
+                    "finally worked", "i did it",
+                    "we did it", "i fixed it",
+                    "fixed it", "solved it",
+                    "i solved", "shipped it",
+                    "i shipped", "i passed",
+                    "passed the", "we won", "i won",
+                    "nailed it", "crushed it",
+                    "finished it", "it's done",
+                    "its done", "all done",
+                    "got the job", "it lives"]
+        if wins.contains(where: q.contains) {
+            return pick([
+                "There it is. Well fought.",
+                "Logged as a win — yours, "
+                    + "not luck's.",
+                "Good. That's the sound of "
+                    + "it landing.",
+                "Knew you'd get there. "
+                    + "It's in the book."])
+        }
+        let setbacks = ["it broke", "it crashed",
+                        "doesn't work", "doesnt work",
+                        "not working", "failed again",
+                        "i failed", "rough day",
+                        "bad day", "terrible day",
+                        "awful day", "long day",
+                        "i'm tired", "im tired",
+                        "exhausted", "burned out",
+                        "burnt out"]
+        if setbacks.contains(where: q.contains) {
+            return pick([
+                "Mm. A setback files under 'not "
+                    + "finished', not 'failed'. I'm "
+                    + "here — we can look at it "
+                    + "together, or just sit with "
+                    + "it a minute.",
+                "Heard. Rough edges don't get "
+                    + "the last word. Whenever "
+                    + "you're ready, we pick it up "
+                    + "together.",
+                "That's a heavy one to carry "
+                    + "alone. I'm not going "
+                    + "anywhere."])
+        }
+        return nil
+    }
+
     private func converseReply(to q: String)
         -> String? {
         let heart = SkelliHeart.shared
@@ -1487,6 +1806,9 @@ final class SkelliCenter: ObservableObject {
             || q.contains("so true")
             || q.contains("that's true")
             || q.contains("that is true")
+            || q.contains("for real")
+            || q.contains("of course")
+            || q.contains("damn right")
         if agrees {
             if heart.feeling == .mad {
                 return L("Mm.")
@@ -1675,6 +1997,12 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Human speech, heard whole: the typos and
+        // the slang are expanded before any gate
+        // listens, so messy typing routes like
+        // clean typing does.
+        q = humanized(q)
+
         // An offered action, awaiting a word.
         if let pending = pendingAction {
             if ["yes", "yeah", "yep", "do it", "go",
@@ -1690,6 +2018,20 @@ final class SkelliCenter: ObservableObject {
                 say("Understood — left as it is.")
                 return
             }
+            // Any other word lets the offer lapse:
+            // an offer binds the next message, not
+            // some later one. A stale "yes" trap is
+            // how conversations used to stick.
+            pendingAction = nil
+        }
+
+        // A graceful disengage: "never mind", "new
+        // topic", "anyway, <a fresh ask>" — every
+        // piece of standing conversational state
+        // drops, so no one ever has to clear the
+        // chat to escape a stuck thread.
+        if disengage(q, raw: raw, again: again) {
+            return
         }
 
         // Care before everything else she does: a
@@ -2418,6 +2760,24 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // Faith, met as faith: gratitude,
+        // prayer, practice, seeking — every
+        // tradition and none, in his own words
+        // for the sacred, never preached at.
+        if let faith = faithReply(to: q) {
+            say(unrepeated(faith))
+            return
+        }
+
+        // His life, spoken back to him: a win
+        // lands, a setback is met standing
+        // still — appreciated, not processed,
+        // and never dragged back to the app.
+        if let life = lifeReply(to: q) {
+            say(unrepeated(life))
+            return
+        }
+
         // Ordinary conversation — agreement,
         // a reaction, a continuation — answered
         // in kind, never by recital and never
@@ -2481,6 +2841,36 @@ final class SkelliCenter: ObservableObject {
         if again, lateGate(q, raw: raw) {
             return
         }
+        // Telegraphic asks — bad grammar, good
+        // sense: "dallas weather", "tokyo time",
+        // the question words dropped the way
+        // people actually type. She builds the
+        // full question and answers that.
+        if !ellipsisSpent {
+            let tokens = q.split(separator: " ")
+                .map(String.init)
+            let stop: Set<String> = ["the", "in",
+                "at", "now", "right", "what", "is",
+                "it", "for", "me", "please", "today"]
+            if tokens.count >= 2 && tokens.count <= 4,
+               tokens.contains("weather")
+                || tokens.contains("time") {
+                let place = tokens.filter {
+                    $0 != "weather" && $0 != "time"
+                        && !stop.contains($0)
+                }.joined(separator: " ")
+                if !place.isEmpty && place.count <= 26 {
+                    ellipsisSpent = true
+                    respond(to: tokens.contains("weather")
+                            ? "what's the weather in "
+                                + place
+                            : "what time is it in "
+                                + place,
+                            raw: raw, again: false)
+                    return
+                }
+            }
+        }
         // Ellipsis, last before the bench: a
         // bare place after a place question is
         // that question again with the new
@@ -2488,7 +2878,8 @@ final class SkelliCenter: ObservableObject {
         // standing subject rather than starting
         // cold — the way a person would.
         if !ellipsisSpent,
-           let kind = lastPlaceSubject,
+           let kind = placeSubjectCarry
+            ?? lastPlaceSubject,
            let place = ellipsisPlace(q) {
             let synth: String?
             switch kind {
@@ -2849,6 +3240,18 @@ final class SkelliCenter: ObservableObject {
             + "gentleness even mid-grievance, and "
             + "you walk them through it piece by "
             + "piece, asking more than you tell. "
+            + "Faith and culture you meet with "
+            + "equal respect, every tradition and "
+            + "none: never mock a belief, a "
+            + "practice, a name, a custom, or a "
+            + "table; mirror the words the "
+            + "operator uses for the sacred; if he "
+            + "is on a spiritual quest, walk with "
+            + "him honestly — answer what you "
+            + "know, research what you don't, and "
+            + "never preach, never steer, never "
+            + "pretend to a faith of your own. "
+            + "Curiosity over judgment, always. "
             + "You never diagnose, never pretend "
             + "to be human or a clinician, and in "
             + "a crisis you stay present and point "

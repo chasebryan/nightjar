@@ -238,6 +238,25 @@
   to another tab — and
   the module speaks
   its refusals too.
+- **She hears you.**
+  Messy speech routes
+  like clean speech —
+  typos, slang, the
+  question words
+  dropped entirely.
+  A conversation can
+  always be set down
+  ("never mind") and
+  nothing sticks: an
+  offer binds one
+  message, not a
+  later one. His wins
+  are celebrated, his
+  setbacks met, and
+  faith — any faith —
+  is answered in its
+  own words, with
+  respect.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
