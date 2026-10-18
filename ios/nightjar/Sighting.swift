@@ -88,7 +88,7 @@ struct Sighting {
         }
 
         if let connectable = advertisementData[
-            CBAdvertisementDataIsConnectableKey] as? NSNumber {
+            CBAdvertisementDataIsConnectable] as? NSNumber {
             self.isConnectable = connectable.boolValue
         } else {
             self.isConnectable = nil
