@@ -17,9 +17,18 @@ struct ContentView: View {
         // work continues where it stopped.
         let stored = UserDefaults.standard
             .object(forKey: "house.lastTab") as? Int
+        // Every tag the tab view below declares. This
+        // set must name them all: a clamp narrower than
+        // the house silently drops the sections past
+        // it on relaunch — Macros, tag 10, was lost to
+        // a 0...9 clamp the day it landed, and the app
+        // reopened on Listen instead of where the
+        // operator had been working.
+        let knownTabs: Set<Int> =
+            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10]
         _tab = State(initialValue:
             stored.flatMap {
-                (0...9).contains($0) ? $0 : nil
+                knownTabs.contains($0) ? $0 : nil
             } ?? 0)
     }
     @ObservedObject private var themes = ThemeCenter.shared

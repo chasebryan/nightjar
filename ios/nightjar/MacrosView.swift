@@ -21,6 +21,9 @@ struct MacrosView: View {
     @State private var showImporter = false
     @State private var macroToDelete: Macro?
     @State private var editingMacro: Macro?
+    // The macro left open in the editor, kept across
+    // launches: a close mid-edit resumes in it.
+    @AppStorage("macros.editingID") private var editingID = ""
 
     var body: some View {
         NavigationStack {
@@ -209,6 +212,18 @@ struct MacrosView: View {
             }
             .onAppear {
                 macros = MacroStore.load()
+                // Resume the editor where it was left:
+                // a stored id from a house that closed
+                // mid-edit reopens the same macro.
+                if editingMacro == nil, !editingID.isEmpty,
+                   let id = UUID(uuidString: editingID),
+                   let macro = macros.first(
+                       where: { $0.id == id }) {
+                    editingMacro = macro
+                }
+            }
+            .onChange(of: editingMacro) { macro in
+                editingID = macro?.id.uuidString ?? ""
             }
         }
     }
@@ -304,6 +319,16 @@ struct MacroEditorView: View {
          onSave: @escaping (Macro) -> Void,
          onDelete: @escaping () -> Void) {
         _draft = State(initialValue: macro)
+        // The blocks left folded open stay folded
+        // open — the editor resumes exactly as it
+        // was left, per macro.
+        let folded = UserDefaults.standard.string(
+            forKey: "macros.expanded."
+                + macro.id.uuidString) ?? ""
+        _expanded = State(initialValue: Set(
+            folded.split(separator: ",").compactMap {
+                UUID(uuidString: String($0))
+            }))
         self.onSave = onSave
         self.onDelete = onDelete
     }
@@ -505,6 +530,13 @@ struct MacroEditorView: View {
         }
         .navigationTitle(draft.name.isEmpty
             ? "Macro" : draft.name)
+        .onChange(of: expanded) { open in
+            UserDefaults.standard.set(
+                open.map(\.uuidString)
+                    .joined(separator: ","),
+                forKey: "macros.expanded."
+                    + draft.id.uuidString)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 EditButton()

@@ -2649,7 +2649,10 @@ struct SkelliView: View {
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var post: ListeningPost
-    @State private var input = ""
+    // The composer's half-written line is kept, so
+    // a close mid-thought reopens with the draft
+    // still in the box. Sending clears it as before.
+    @AppStorage("skelli.draft") private var input = ""
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
