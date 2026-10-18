@@ -172,6 +172,30 @@
   the operator's own costumes
   and shapes beside the
   built-ins.
+- **The dynamics pass.** Five
+  passes over how the organs
+  move together. Layered
+  snapshots warn instead of
+  clobbering: a shape dropped
+  over a changed dress says
+  so, and a chest applied
+  under a shape carries the
+  warning up front. Skelli
+  wakes the SIGINT station
+  rather than read a sleeping
+  registry as empty, and a
+  watch with the ear down
+  says what it cannot hear.
+  Persona switches turn in
+  one motion, the wardrobe
+  inherited, the wire seeing
+  a single restart. A War
+  Room run refuses a busy
+  trace. And her war rooms
+  stand ahead of the weights
+  bench in her gate, so a
+  room's name is never
+  mistaken for a model.
 
 ## 6.0.0 — 2026-10-17 — the open mind
 

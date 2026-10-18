@@ -172,7 +172,11 @@ score put on an honest footing.
   Skelli works every war room herself: chests,
   the Helm, watches, War Room runs, whole War
   Games rounds by voice, the Banshee, the
-  rack.
+  rack. A dynamics pass then taught the
+  organs to move together — warned restores,
+  a woken station, one-motion shape
+  switches, a trace that refuses double
+  work.
 
 ## What's new in 6.0.0 — "the open mind"
 

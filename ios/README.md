@@ -242,6 +242,12 @@ Below the steps, the Send tab keeps working:
   exact-wardrobe restore, name rotation,
   whole War Games rounds by voice — her
   manual and sitrep covering all of it.
+  A dynamics pass followed: warned,
+  drift-aware restores, a station Skelli
+  wakes on ask, one-motion persona
+  switches, a trace-busy guard in the War
+  Room run, and her war rooms ahead of the
+  weights bench in the gate.
 - **What 6.0.0 added.** An intelligence pass over
   the whole instrument, and her hands in
   conversation. Skelli's chat now performs the
