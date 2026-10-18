@@ -1179,9 +1179,23 @@ extension UIImage {
         guard count > 1 else { return UIImage(data: data) }
         var frames: [UIImage] = []
         var total = 0.0
+        // A decoded-frame budget, spent as frames
+        // land. This decoder serves backdrops the
+        // operator chose themselves, and a GIF is
+        // a claim about memory: frames x pixels x
+        // four bytes, all resident at once. A long,
+        // large film can claim gigabytes — the same
+        // jetsam wall the weights bench hit. Past
+        // the budget the film simply ends early;
+        // a shorter loop over a dead app.
+        var budget: Int64 = 384 * 1_048_576
         for i in 0..<count {
             guard let cg = CGImageSourceCreateImageAtIndex(
                 source, i, nil) else { continue }
+            let cost = Int64(cg.width)
+                * Int64(cg.height) * 4
+            if cost > budget { break }
+            budget -= cost
             var delay = 0.1
             if let props = CGImageSourceCopyPropertiesAtIndex(
                 source, i, nil) as? [String: Any],
