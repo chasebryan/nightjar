@@ -67,7 +67,15 @@ struct ContentView: View {
                 .tag(6)
             EmconView()
                 .appThemed(.emcon)
-                .tabItem { Label("EMCON", systemImage: "shield.slash") }
+                .tabItem {
+                    // The bare "shield.slash" name renders
+                    // as nothing on the operator's symbol
+                    // set; the base shield with the slash
+                    // variant asked for explicitly degrades
+                    // to a visible shield, never a blank.
+                    Label("EMCON", systemImage: "shield")
+                        .symbolVariant(.slash)
+                }
                 .tag(7)
             KnockChatView()
                 .appThemed(.knocktalk)

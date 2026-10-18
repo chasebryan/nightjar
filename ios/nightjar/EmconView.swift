@@ -228,7 +228,7 @@ struct EmconView: View {
         Section {
             HStack(spacing: 14) {
                 Image(systemName: emcon.active
-                      ? "shield.slash.fill" : "shield")
+                      ? "checkmark.shield.fill" : "shield")
                     .font(.title)
                     .foregroundStyle(emcon.active ? .green : .secondary)
                 VStack(alignment: .leading, spacing: 2) {
@@ -291,7 +291,10 @@ struct EmconView: View {
                     Haptics.tap()
                     goDark()
                 } label: {
-                    Label("Go dark now", systemImage: "shield.slash")
+                    HStack(spacing: 6) {
+                        Image(systemName: "shield")
+                        Text("Go dark now")
+                    }
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -309,7 +312,10 @@ struct EmconView: View {
                     Haptics.tap()
                     goDark()
                 } label: {
-                    Label("Go dark", systemImage: "shield.slash")
+                    HStack(spacing: 6) {
+                        Image(systemName: "shield")
+                        Text("Go dark")
+                    }
                 }
                 .buttonStyle(.borderedProminent)
             }

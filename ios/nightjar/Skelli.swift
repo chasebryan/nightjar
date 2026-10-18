@@ -2988,6 +2988,9 @@ struct SkelliView: View {
     }
 
     private var liveScore: Emcon.Score {
+        // The same full v2 inputs the EMCON tab and her
+        // sitrep use — presence weighed first — so the
+        // pinned widget reads the same number they do.
         Emcon.score(
             gattHostOn: mouth.gattHostOn,
             beaconOn: mouth.beaconOn,
@@ -2995,7 +2998,12 @@ struct SkelliView: View {
             stealth: mouth.stealth,
             deviceName: emcon.deviceName,
             exposureCount: emcon.exposures.count,
-            announcerCount: emcon.announcers.count)
+            announcerCount: emcon.announcers.count,
+            assaultOn: AssaultCenter.shared.running,
+            serveListeners: mouth.serveListenerCount,
+            probingOn: false,
+            onLan: Mouth.localIPAddress() != nil,
+            hostName: emcon.hostName)
     }
 
     private var exposurePanel: some View {
