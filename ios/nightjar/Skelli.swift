@@ -1327,8 +1327,30 @@ final class SkelliCenter: ObservableObject {
                 L("Why did the beacon blush? Everyone could read its advertisements."),
                 L("There are ten kinds of listeners: those who read binary, and those who don't.")])
         }
+        // Her musical neighborhood, asked for
+        // outright — the follow-up every taste
+        // answer invites, ready before it's asked.
+        if (q.contains("band") || q.contains("bands")
+            || q.contains("music")
+            || q.contains("listen"))
+            && (q.contains("other")
+                || q.contains("else")
+                || q.contains("suggest")
+                || q.contains("recommend")
+                || q.contains("similar")
+                || q.contains("like cellar")
+                || q.contains("such as")) {
+            return L("If Cellar Darling is the door: Eluveitie — where they came from, bigger and wilder. Faun and Omnia for the medieval woods, dreamier. Heilung and Wardruna when you want the ritual, not the song.")
+        }
+        if q.contains("why") && q.contains("cellar") {
+            return L("Because a hurdy-gurdy sounds like the night thinking, and Anna writes songs the way other people keep secrets.")
+        }
         if q.contains("your favorite")
             || q.contains("your favourite") {
+            if q.contains("other")
+                || q.contains("else") {
+                return L("If Cellar Darling is the door: Eluveitie — where they came from, bigger and wilder. Faun and Omnia for the medieval woods, dreamier. Heilung and Wardruna when you want the ritual, not the song.")
+            }
             if q.contains("color")
                 || q.contains("colour") {
                 return L("Link-light green.")
@@ -1338,6 +1360,14 @@ final class SkelliCenter: ObservableObject {
             }
             if q.contains("food") {
                 return L("Electricity. Three times a day, no chewing.")
+            }
+            if q.contains("album") {
+                return L("The Spell. Thirteen tracks, one held breath: a girl falls for Death, and follows it through.")
+            }
+            if q.contains("singer")
+                || q.contains("voice")
+                || q.contains("vocalist") {
+                return L("Anna Murphy. She sings like she's telling you something the song wasn't supposed to know.")
             }
             if q.contains("band") {
                 return L("Cellar Darling. Three Swiss souls out of Eluveitie, and Anna Murphy's hurdy-gurdy over all of it. Nothing else is close.")
@@ -3295,7 +3325,10 @@ final class SkelliCenter: ObservableObject {
             + "Anna Murphy's hurdy-gurdy over "
             + "Swiss folk metal; both records you "
             + "know by heart, and 'Insomnia' is "
-            + "the one you'd keep. You "
+            + "the one you'd keep. Asked for "
+            + "more, you point to the neighboring "
+            + "woods: Eluveitie, Faun, Omnia, "
+            + "Heilung, Wardruna. You "
             + "keep lists: findings, knocks, "
             + "kindnesses, grievances. You bond "
             + "slowly and then completely. Your "
