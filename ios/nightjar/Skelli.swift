@@ -3544,21 +3544,32 @@ struct SkelliView: View {
 
     private func sparkBars(_ values: [Int])
         -> some View {
-        let peak = max(1, values.max() ?? 1)
-        return HStack(alignment: .bottom,
-                      spacing: 1.5) {
-            ForEach(Array(values.enumerated()),
-                    id: \.offset) { _, v in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(themes.current.accent
-                        .opacity(0.55))
-                    .frame(width: 3,
-                           height: 3 + 11
-                            * CGFloat(v)
-                            / CGFloat(peak))
+        // Width-aware: a bar a sample at a fixed pitch
+        // overflows a third-width panel once the
+        // history fills, and the overflow drew straight
+        // across the panel's number (Chase's phone,
+        // 2026-10-18). The bars now take only the space
+        // the row actually leaves them and show the
+        // most recent samples that fit it.
+        GeometryReader { geo in
+            let slots = max(1, Int(geo.size.width / 4.5))
+            let shown = Array(values.suffix(slots))
+            let peak = max(1, shown.max() ?? 1)
+            HStack(alignment: .bottom, spacing: 1.5) {
+                ForEach(Array(shown.enumerated()),
+                        id: \.offset) { _, v in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(themes.current.accent
+                            .opacity(0.55))
+                        .frame(width: 3,
+                               height: 3 + 11
+                                * CGFloat(v)
+                                / CGFloat(peak))
+                }
             }
+            .frame(height: 15, alignment: .bottom)
         }
-        .frame(height: 15, alignment: .bottom)
+        .frame(height: 15)
     }
 
     private var liveScore: Emcon.Score {
@@ -3603,6 +3614,7 @@ struct SkelliView: View {
         return panel(label: "WIRE") {
             HStack(alignment: .bottom, spacing: 6) {
                 panelValue("\(neighbors.count)")
+                    .layoutPriority(1)
                 sparkBars(wireHistory)
             }
             panelSub(sub)
@@ -3613,6 +3625,7 @@ struct SkelliView: View {
         panel(label: "AIR · BLE") {
             HStack(alignment: .bottom, spacing: 6) {
                 panelValue("\(post.deviceCount)")
+                    .layoutPriority(1)
                 sparkBars(airHistory)
             }
             panelSub(post.session != nil
