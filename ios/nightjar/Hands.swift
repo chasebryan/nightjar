@@ -156,6 +156,16 @@ extension SkelliCenter {
     /// system.
     func macroAsk(_ q: String, raw: String) -> Bool {
         guard q.contains("macro") else { return false }
+        // A question ABOUT a macro is not a
+        // macro command: "when did a macro last
+        // run" must never reach the run branch
+        // below, which keys on the word "run".
+        // Her memory lane answers those.
+        if q.contains("when did")
+            || q.contains("when was")
+            || q.hasPrefix("when ") {
+            return false
+        }
         let runner = MacroRunner.shared
 
         if q.contains("status") || q.contains("how is the macro")

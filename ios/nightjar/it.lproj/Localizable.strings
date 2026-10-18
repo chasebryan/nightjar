@@ -1624,3 +1624,7 @@
 "1 day ago." = "1 giorno fa.";
 "1 day from today." = "Tra 1 giorno.";
 "That is today." = "È oggi.";
+"And %lld more in the book." = "E altri %lld nel libro.";
+"Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "Niente archiviato. Dimmelo chiaro —«mi piace…»— e resta.";
+"The journal holds no %@ yet." = "Il diario non conserva ancora nessun %@.";
+"This waking began at " = "Questo risveglio è iniziato alle ";

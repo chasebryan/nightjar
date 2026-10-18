@@ -433,6 +433,11 @@ final class SkelliCenter: ObservableObject {
     private var idleWork: DispatchWorkItem?
     /// The conversation's short-term memory: the device
     private var lastDeviceIP: String?
+    /// When this waking began — the center is
+    /// raised with the app, so its birth is the
+    /// honest anchor for "how long have you
+    /// been up".
+    private let wokeAt = Date()
     /// …and its subject: what "tell me more about
     /// it" refers to — the last manual page she
     /// taught or the last device she reported on,
@@ -2251,6 +2256,10 @@ final class SkelliCenter: ObservableObject {
             say(wireReport())
             return
         }
+        if let memory = memoryReply(to: q) {
+            say(memory)
+            return
+        }
         if q.contains("last night") || q.contains("knocked")
             || q.contains("what happened") {
             say(nightReport())
@@ -3828,6 +3837,110 @@ final class SkelliCenter: ObservableObject {
                 + "the Map?"
         }
         return report
+    }
+
+    /// Her memory, questioned: how long this
+    /// waking has run, what she keeps of the
+    /// operator, and when a thing last
+    /// happened — read from the sealed journal
+    /// and the scrapbook, never invented. A
+    /// topic the journal has never sealed is
+    /// answered honestly: no record, no story.
+    private func memoryReply(to q: String)
+        -> String? {
+        if q.contains("how long have you been up")
+            || q.contains("how long have you been awake")
+            || q.contains("how long have you been on")
+            || q.contains("when did you wake up")
+            || q.contains("when did you last wake") {
+            let clock = DateFormatter()
+            clock.dateStyle = .none
+            clock.timeStyle = .short
+            return L("This waking began at ")
+                + clock.string(from: wokeAt)
+                + " ("
+                + SkelliHeart.agoPhrase(
+                    Date().timeIntervalSince(wokeAt))
+                + ")."
+        }
+        if q.contains("remember about me")
+            || q.contains("know about me") {
+            let facts = SkelliScrapbook.shared.facts
+            guard !facts.isEmpty else {
+                return L("Nothing filed yet. Tell me plainly — 'I like…' — and it stays.")
+            }
+            let shown = facts.suffix(5).map {
+                String($0.prefix(1)).uppercased()
+                    + String($0.dropFirst())
+            }
+            var line = shown.joined(separator: ". ")
+                + "."
+            if facts.count > 5 {
+                line += " " + String(
+                    format: L("And %lld more in the book."),
+                    facts.count - 5)
+            }
+            return line
+        }
+        let wheny = q.contains("when did")
+            || q.contains("when was")
+            || q.contains("last time")
+            || q.contains("when's the last")
+        guard wheny else { return nil }
+        let topics: [(String, String,
+                      (NightEvent) -> Bool)] = [
+            ("tripwire", "tripwire", {
+                $0.kind.contains("knock")
+                    || $0.text.lowercased()
+                        .contains("tripwire")
+            }),
+            ("knock", "knock", {
+                $0.kind.contains("knock")
+                    || $0.module.contains("knock")
+            }),
+            ("assault", "assault", {
+                $0.module == "assault"
+            }),
+            ("macro", "macro", {
+                $0.module == "macro"
+            }),
+            ("arrival", "arrival", {
+                $0.module == "serve"
+                    || $0.module == "neighborhood"
+            }),
+            ("serve", "serve", {
+                $0.module == "serve"
+            }),
+            ("device", "new device", {
+                $0.module == "neighborhood"
+                    && $0.kind == "new"
+            }),
+            ("neighbor", "new device", {
+                $0.module == "neighborhood"
+                    && $0.kind == "new"
+            }),
+            ("banshee", "banshee", {
+                $0.module == "banshee"
+            }),
+            ("vanish", "vanish", {
+                $0.text.lowercased().contains("vanish")
+            }),
+        ]
+        for (word, name, match) in topics
+        where q.contains(word) {
+            let hit = Journal.events(limit: 4000)
+                .first(where: match)
+            guard let hit else {
+                return String(
+                    format: L("The journal holds no %@ yet."),
+                    name)
+            }
+            return hit.text + " — "
+                + SkelliHeart.agoPhrase(
+                    Date().timeIntervalSince(hit.when))
+                + "."
+        }
+        return nil
     }
 
     private func nightReport() -> String {

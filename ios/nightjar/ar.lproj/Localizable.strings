@@ -1624,3 +1624,7 @@
 "1 day ago." = "قبل يوم واحد.";
 "1 day from today." = "بعد يوم واحد من اليوم.";
 "That is today." = "إنه اليوم.";
+"And %lld more in the book." = "و%lld أخرى في السجل.";
+"Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "لا شيء محفوظ بعد. قلها بوضوح — «أحب…» — وستبقى.";
+"The journal holds no %@ yet." = "لا يحتوي السجل على أي %@ بعد.";
+"This waking began at " = "بدأت هذه اليقظة في ";

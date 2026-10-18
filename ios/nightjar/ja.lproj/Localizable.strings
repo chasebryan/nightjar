@@ -1624,3 +1624,7 @@
 "1 day ago." = "1日前。";
 "1 day from today." = "今日から1日後。";
 "That is today." = "それは今日だ。";
+"And %lld more in the book." = "そして本にはあと%lld件。";
+"Nothing filed yet. Tell me plainly — 'I like…' — and it stays." = "まだ何も記録されていない。はっきり言って——「…が好き」——そうすれば残る。";
+"The journal holds no %@ yet." = "記録にはまだ%@がない。";
+"This waking began at " = "この覚醒はここから始まった：";
