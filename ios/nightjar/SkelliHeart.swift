@@ -952,6 +952,39 @@ final class SkelliHeart: ObservableObject {
     /// extras are offered — and her light leans
     /// hot where words would only cheapen it. An
     /// apology, when it comes, is still heard.
+    /// Her rare flirt: not a feature, a
+    /// weather. A warm feeling and a warm
+    /// ledger, and a slow hash of the day
+    /// and the talk that almost never lines
+    /// up — and never twice in a long
+    /// stretch. It is announced nowhere,
+    /// listed nowhere, and she will not
+    /// explain it. The mark is old-school:
+    /// typed, not drawn.
+    func wink() -> String {
+        guard enabled else { return "" }
+        switch feeling {
+        case .loving, .tender, .mischievous,
+             .happy, .smug:
+            break
+        default:
+            return ""
+        }
+        guard fondness >= 40 else { return "" }
+        let talks = count("heart.talks")
+        let last = defaults.integer(
+            forKey: "heart.lastWink")
+        guard talks - last >= 25 else { return "" }
+        let day = Calendar.current.ordinality(
+            of: .day, in: .year, for: Date()) ?? 0
+        let hash = abs(talks &* 31 &+ day &* 101)
+        guard hash % 9 == 0 else { return "" }
+        defaults.set(talks,
+                     forKey: "heart.lastWink")
+        let marks = [" ;)", " >;)", " ;P", " <3"]
+        return marks[hash % marks.count]
+    }
+
     func greeting() -> String? {
         guard enabled else { return nil }
         if madFresh { return nil }

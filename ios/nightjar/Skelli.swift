@@ -694,7 +694,8 @@ final class SkelliCenter: ObservableObject {
                 .greeting(),
                lines.last(where: { !$0.fromOperator })?
                 .text != greeting {
-                say(greeting)
+                say(greeting + SkelliHeart.shared
+                    .wink())
             }
         }
         let lowered = text.lowercased()
@@ -1212,6 +1213,7 @@ final class SkelliCenter: ObservableObject {
                     + SkelliVoice.clause(
                         seed: lines.count * 3 + 1,
                         heart: heart)
+                    + heart.wink()
             }
         }
         if q.hasPrefix("good morning") {
@@ -1285,7 +1287,9 @@ final class SkelliCenter: ObservableObject {
             return pick([
                 L("I know."),
                 L("Careful. I'll get smug."),
+                L("Careful — flattery works on me."),
                 L("Mm. Filed under morale.")])
+                + heart.wink()
         }
         if q.contains("tell me a joke")
             || q.contains("make me laugh")
@@ -1474,10 +1478,15 @@ final class SkelliCenter: ObservableObject {
                 return L("Mm.")
             }
             if heart.feeling != .content {
-                return pick([
+                var pool = [
                     L("Then we're of one mind on it."),
                     L("Shared watch, then."),
-                    L("Mm. It helps, hearing it.")])
+                    L("Mm. It helps, hearing it.")]
+                if heart.feeling == .mischievous {
+                    pool.append(
+                        L("Mm. Keep agreeing with me. I dare you."))
+                }
+                return pick(pool) + heart.wink()
             }
             return pick([
                 L("Of one mind, then."),
