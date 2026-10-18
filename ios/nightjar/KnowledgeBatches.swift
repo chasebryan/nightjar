@@ -496,7 +496,7 @@ extension SkelliKnowledge {
             keywords: ["morning brief", "overnight",
                        "while i was gone", "digest",
                        "what happened overnight"],
-            body: "The journal's morning brief opens the day: what the house did and heard while the operator wasn't watching — arrivals, trips of the wire, posture changes, watch findings — folded into one reading from the sealed log. It is a report, not a ritual: asked for at noon it covers the same ground and calls it last night. Because the journal is hash-chained, the brief can say the record itself is intact — the one claim about the past the house can make with its whole chest."),,
+            body: "The journal's morning brief opens the day: what the house did and heard while the operator wasn't watching — arrivals, trips of the wire, posture changes, watch findings — folded into one reading from the sealed log. It is a report, not a ritual: asked for at noon it covers the same ground and calls it last night. Because the journal is hash-chained, the brief can say the record itself is intact — the one claim about the past the house can make with its whole chest."),
         SkelliEntry(
             id: "vault", title: "The Vault — the cryptography suite",
             home: "the Vault tab",
@@ -521,6 +521,13 @@ extension SkelliKnowledge {
                        "restore settings", "keychain mirror",
                        "export setup", "import setup"],
             body: "Every setting in the house is mirrored into the Keychain as it changes, so the seven-day expiry, a deletion and a reinstall cannot lose it: a fresh install on the same device restores the setup before anything reads a setting. About — Your setup holds export and import as one file (nightjar-setup.json) for a new device. Payloads, macros, chests and logs are data, not settings, and keep their own exports. A reset forgets the mirror too."),
+        SkelliEntry(
+            id: "skellibrain", title: "Her brain — how she understands",
+            home: "Skelli's tab",
+            keywords: ["brain", "understand", "negation",
+                       "don't", "paraphrase", "stemming",
+                       "how does she think", "routing"],
+            body: "Between the operator's words and my hands sits a deterministic brain. It stems words — sealing, sealed and seals are one word to me — so phrasing my chain never listed still routes. It honors negation absolutely: 'don't sweep' means I do not sweep, and I say so. It ranks the whole manual by stemmed overlap, so a paraphrased question finds its page, and when no mind is awake it names the closest pages instead of shrugging at the web. And it keeps the conversation's subject — the last device or page we spoke of — so 'tell me more about it' has somewhere to land. The same sentence always routes the same way; there is no mood in it."),
 
     ]
 }

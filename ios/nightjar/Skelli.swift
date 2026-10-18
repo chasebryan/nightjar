@@ -306,7 +306,13 @@ enum SkelliKnowledge {
                 best = entry
             }
         }
-        return bestScore >= 2 ? best : nil
+        if bestScore >= 2 { return best }
+        // Second tier, the brain's: stemmed,
+        // ranked matching, so a paraphrase —
+        // "how do I keep a secret safe" — still
+        // finds the Vault's page.
+        return SkelliBrain.bestKnowledge(
+            q, entries: entries + batches)
     }
 }
 
@@ -388,6 +394,15 @@ final class SkelliCenter: ObservableObject {
     private var idleWork: DispatchWorkItem?
     /// The conversation's short-term memory: the device
     private var lastDeviceIP: String?
+    /// …and its subject: what "tell me more about
+    /// it" refers to — the last manual page she
+    /// taught or the last device she reported on,
+    /// kept by the brain so pronouns have somewhere
+    /// to land.
+    private var lastSubject: (kind: String,
+                              title: String,
+                              body: String,
+                              home: String)?
     private var pendingAction: (() -> Void)?
 
     init() {
@@ -493,6 +508,8 @@ final class SkelliCenter: ObservableObject {
     func askAbout(_ entry: SkelliEntry) {
         lines.append(SkelliLine(fromOperator: true,
                                  text: entry.title))
+        lastSubject = ("entry", entry.title,
+                       entry.body, entry.home)
         say(entry.body + "\nFind it: \(entry.home).")
     }
 
@@ -665,6 +682,8 @@ final class SkelliCenter: ObservableObject {
             || q.contains("show me")
             || q.contains("teach me") {
             if let entry = SkelliKnowledge.lookup(q) {
+                lastSubject = ("entry", entry.title,
+                               entry.body, entry.home)
                 var answer = entry.body
                     + "\nFind it: \(entry.home)."
                 if let offer = performanceOffer(
@@ -689,6 +708,15 @@ final class SkelliCenter: ObservableObject {
             || q.contains("go silent")
             || q.contains("emergency stop") {
             haltAndVanish()
+            return
+        }
+
+        // Negation, honored before any hand moves:
+        // "don't sweep", "never start serving" —
+        // the brain hears the "don't" and she
+        // keeps her hands off, out loud.
+        if let verb = SkelliBrain.negatedAction(q) {
+            say("Understood — I won't \(verb).")
             return
         }
 
@@ -896,6 +924,8 @@ final class SkelliCenter: ObservableObject {
         // A device, in depth — every organ's word
         if let neighbor = matchDevice(q) {
             lastDeviceIP = neighbor.ip
+            lastSubject = ("device", neighbor.displayName,
+                           "", "")
             say(deviceReport(neighbor))
             return
         }
@@ -938,6 +968,31 @@ final class SkelliCenter: ObservableObject {
             }
         }
 
+        // Pronouns land on the last subject: "tell
+        // me more about it" repeats the page, or
+        // re-reports the device, in full.
+        if let subject = lastSubject,
+           ["more about it", "more about that",
+            "tell me more", "what about it",
+            "what about that"].contains(
+                where: q.contains) {
+            if subject.kind == "device",
+               let ip = lastDeviceIP,
+               let neighbor = NeighborhoodStore.shared
+                   .neighbors.first(where: {
+                       $0.ip == ip }) {
+                say(deviceReport(neighbor))
+            } else if subject.kind == "entry" {
+                say(subject.body
+                    + "\nFind it: \(subject.home).")
+            } else {
+                say("That was \(subject.title) — ask "
+                    + "me about it by name and I'll "
+                    + "go deeper.")
+            }
+            return
+        }
+
         // Orders before lessons: an imperative
         // that names her hands is performed, not
         // taught — questions had the manual, above.
@@ -950,6 +1005,8 @@ final class SkelliCenter: ObservableObject {
 
         // The manual.
         if let entry = SkelliKnowledge.lookup(q) {
+            lastSubject = ("entry", entry.title,
+                           entry.body, entry.home)
             say(entry.body + "\nFind it: \(entry.home).")
             return
         }
@@ -983,6 +1040,25 @@ final class SkelliCenter: ObservableObject {
         if started {
             activity = "Thinking…"
         } else {
+            // No bench awake: before the web, the
+            // brain offers the manual's closest
+            // pages — a signpost, not a shrug.
+            let close = SkelliBrain.rankKnowledge(
+                q, entries: SkelliKnowledge.entries
+                    + SkelliKnowledge.batches)
+                .filter { $0.score >= 3 }
+                .prefix(2)
+            if !close.isEmpty {
+                say("No mind is awake to reason on "
+                    + "that. The closest pages in my "
+                    + "manual: "
+                    + close.map {
+                        "\($0.entry.title) (\($0.entry.home))"
+                    }.joined(separator: "; ")
+                    + ". Ask about one — or wake a "
+                    + "bench from my menu.")
+                return
+            }
             researchWeb(for: q)
         }
     }
@@ -1083,6 +1159,27 @@ final class SkelliCenter: ObservableObject {
             + (webResearchEnabled ? "on" : "off"))
         facts.append("you hold \(notes.count) "
             + "remembered notes")
+        var buildLine = "this build is version "
+            + AppInfo.version
+        if let stamp = SourceStamp.shortCommit {
+            buildLine += ", stamped from source "
+                + stamp
+        }
+        facts.append(buildLine)
+        let running = ProcessBoard.shared.active
+        if !running.isEmpty {
+            facts.append("\(running.count) process(es) "
+                + "running: "
+                + running.map { $0.label }
+                    .joined(separator: ", "))
+        }
+        facts.append("your crew is "
+            + (UserDefaults.standard.bool(
+                forKey: "skelli.agents")
+               ? "on" : "off"))
+        facts.append("the picture mode is "
+            + (UserDefaults.standard.string(
+                forKey: "media.mode") ?? "quality"))
         return facts.joined(separator: "; ")
     }
 
@@ -1130,6 +1227,16 @@ final class SkelliCenter: ObservableObject {
             + "playlists block by block from the "
             + "operator's dictated steps, run them, "
             + "stop them, and report their runs. "
+            + "Your vault hands work the Vault's "
+            + "instant side — hashes, fingerprints, "
+            + "encodings, seals opened with a "
+            + "password, fresh keys, passwords and "
+            + "one-time pads. With Agents on, a "
+            + "plan-shaped ask goes to your crew — "
+            + "planner, hands, critic, scribe — and "
+            + "you report its one answer. Your "
+            + "routing brain stems words and honors "
+            + "negation: a 'don't' always wins. "
             + "Your standing presumption: stealth "
             + "is always desired unless the operator "
             + "specifically says to be loud. Given "
