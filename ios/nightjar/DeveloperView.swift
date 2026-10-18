@@ -184,6 +184,12 @@ enum DevKit {
         out += crumbs.isEmpty
             ? "(no events recorded)\n"
             : crumbs.joined(separator: "\n") + "\n"
+        out += "\n=== GAUNTLET ===\n"
+        out += Gauntlet.lastSummary() + "\n"
+        if let log = Gauntlet.latestLogText() {
+            out += "\n--- latest gauntlet log ---\n"
+            out += log + "\n"
+        }
         return out
     }
 
@@ -530,6 +536,9 @@ struct DeveloperSheet: View {
     @State private var crumbs: [String] = []
     @State private var stateText = ""
     @State private var confirmClear = false
+    @State private var showGauntletLog = false
+    @ObservedObject private var gauntlet =
+        Gauntlet.shared
 
     var body: some View {
         NavigationStack {
@@ -620,6 +629,66 @@ struct DeveloperSheet: View {
                         }
                     }
                 }
+                Section(header: Text("The Gauntlet")) {
+                    Text("A full stress run over every "
+                        + "system in the house — "
+                        + "decoders, crypto, her mind, "
+                        + "her stores, the audio paths, "
+                        + "the shared tables under "
+                        + "parallel hands. The log is "
+                        + "written ahead of each step, "
+                        + "so if a step ever kills the "
+                        + "app, the log names it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let died = Gauntlet
+                        .interruptedStep() {
+                        Label("Last run died at: "
+                              + died,
+                              systemImage:
+                                "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    if gauntlet.running {
+                        ProgressView(
+                            value: Double(gauntlet.passed
+                                + gauntlet.failed),
+                            total: Double(
+                                max(gauntlet.total, 1)))
+                        LabeledContent(
+                            gauntlet.stageName,
+                            value: gauntlet.currentStep)
+                            .font(.caption)
+                        LabeledContent(
+                            "So far",
+                            value: "\(gauntlet.passed) "
+                                + "passed · "
+                                + "\(gauntlet.failed) "
+                                + "failed")
+                        Button("Stop after this step",
+                               role: .destructive) {
+                            gauntlet.cancelRequested
+                                = true
+                        }
+                    } else {
+                        Button("Run the gauntlet") {
+                            Haptics.press()
+                            gauntlet.run()
+                        }
+                        LabeledContent(
+                            "Last run",
+                            value: Gauntlet
+                                .lastSummary()
+                                .components(
+                                    separatedBy: "\n")
+                                .first ?? "—")
+                        Button("Read the latest "
+                               + "gauntlet log") {
+                            showGauntletLog = true
+                        }
+                    }
+                }
                 Section(header: Text("Haptics test")) {
                     // Each button fires ONLY its
                     // named beat, straight from the
@@ -672,6 +741,9 @@ struct DeveloperSheet: View {
                 }
             }
             .onAppear { refresh() }
+            .sheet(isPresented: $showGauntletLog) {
+                GauntletLogView()
+            }
             .confirmationDialog(
                 "Clear every crash record and "
                     + "the flight recorder?",
@@ -725,5 +797,41 @@ private struct DeveloperCrumbsView: View {
         }
         .navigationTitle("Flight recorder")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// The gauntlet's log, readable in the room and
+/// shareable as itself.
+private struct GauntletLogView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(Gauntlet.latestLogText()
+                     ?? "The gauntlet has never run.")
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Gauntlet log")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(
+                    placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(
+                    placement: .cancellationAction) {
+                    ShareLink(
+                        item: Gauntlet.latestLogURL) {
+                        Image(systemName:
+                                "square.and.arrow.up")
+                    }
+                }
+            }
+        }
     }
 }

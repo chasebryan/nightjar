@@ -620,3 +620,16 @@
   format — the crash
   that killed it on its
   first beep is fixed.
+- **The Gauntlet.** The
+  developer room gains
+  a full stress run:
+  every decoder fuzzed,
+  every seal opened and
+  attacked, her mind,
+  her stores, the audio
+  paths, the shared
+  tables under parallel
+  hands — with a
+  write-ahead log that
+  names the step a
+  crash died in.
