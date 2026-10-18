@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "लाइन पर नज़र — %lld मौजूद, %lld बेनाम।";
 "Watching the wire — %lld up, every one named." = "लाइन पर नज़र — %lld मौजूद, सबके नाम हैं।";
 "Watching. The wire is empty." = "निगरानी में। लाइन खाली है।";
+"Headline wire" = "सुर्खियों की पट्टी";

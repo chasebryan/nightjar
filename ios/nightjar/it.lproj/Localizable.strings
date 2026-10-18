@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "Veglio sulla rete — %lld presenti, %lld senza nome.";
 "Watching the wire — %lld up, every one named." = "Veglio sulla rete — %lld presenti, tutti con nome.";
 "Watching. The wire is empty." = "Veglio. La rete è vuota.";
+"Headline wire" = "Filo di titoli";

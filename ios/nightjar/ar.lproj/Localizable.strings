@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "أراقب الخط — %lld حاضرًا، %lld بلا اسم.";
 "Watching the wire — %lld up, every one named." = "أراقب الخط — %lld حاضرًا، وكلهم مسمّون.";
 "Watching. The wire is empty." = "أراقب. الخط خالٍ.";
+"Headline wire" = "شريط العناوين";

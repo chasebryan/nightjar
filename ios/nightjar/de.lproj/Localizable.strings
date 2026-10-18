@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "Ich wache über die Leitung — %lld da, %lld namenlos.";
 "Watching the wire — %lld up, every one named." = "Ich wache über die Leitung — %lld da, alle benannt.";
 "Watching. The wire is empty." = "Ich wache. Die Leitung ist leer.";
+"Headline wire" = "Schlagzeilen-Ticker";

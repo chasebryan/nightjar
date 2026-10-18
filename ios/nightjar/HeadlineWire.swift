@@ -46,6 +46,20 @@ final class HeadlineWire: ObservableObject {
     @Published private(set) var headlines: [String] = []
     @Published private(set) var fetchedAt: Date?
 
+    /// The operator's switch for the wire,
+    /// living in her options beside her other
+    /// switches. Off silences the ticker and
+    /// stops the fetching — the line falls
+    /// back to her own readout. On is the
+    /// house default, and a reset restores it.
+    @Published var enabled: Bool = true {
+        didSet {
+            UserDefaults.standard.set(
+                enabled, forKey: "headlines.enabled")
+            if enabled { start() }
+        }
+    }
+
     private enum Desk { case world, usa, cyber }
     private struct Feed {
         let url: String
@@ -85,13 +99,17 @@ final class HeadlineWire: ObservableObject {
             .stringArray(forKey: cacheKey) ?? []
         fetchedAt = UserDefaults.standard.object(
             forKey: cacheDateKey) as? Date
+        enabled = UserDefaults.standard.object(
+            forKey: "headlines.enabled")
+            as? Bool ?? true
     }
 
     /// The ribbon, when there is anything to
     /// scroll: the latest set she holds,
     /// joined for the marquee.
     var tickerText: String? {
-        guard !headlines.isEmpty else { return nil }
+        guard enabled, !headlines.isEmpty
+        else { return nil }
         return headlines.joined(
             separator: "  ···  ") + "  ···  "
     }
@@ -127,7 +145,7 @@ final class HeadlineWire: ObservableObject {
     }
 
     private func fetch() {
-        guard !fetching else { return }
+        guard !fetching, enabled else { return }
         guard SkelliCenter.shared.webResearchEnabled
         else { return }
         fetching = true

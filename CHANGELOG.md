@@ -496,6 +496,19 @@
   on a quiet timer —
   and the dot keeps
   its watch beside it.
+- **The wire has a
+  switch.** Her options
+  gain a Headline wire
+  toggle beside Web
+  research: off, the
+  ticker silences, the
+  fetching stops, and
+  the activity line
+  returns to her own
+  composed readout. A
+  reset restores it on,
+  like the web switch
+  beside it.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

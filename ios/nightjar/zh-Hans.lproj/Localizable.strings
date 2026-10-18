@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "守望线路 — %lld 台在线，%lld 台无名。";
 "Watching the wire — %lld up, every one named." = "守望线路 — %lld 台在线，全都有名。";
 "Watching. The wire is empty." = "守望中。线上无人。";
+"Headline wire" = "头条滚动";

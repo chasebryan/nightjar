@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "회선을 지켜보는 중 — %lld대, 무명 %lld대.";
 "Watching the wire — %lld up, every one named." = "회선을 지켜보는 중 — %lld대, 전부 이름이 있다.";
 "Watching. The wire is empty." = "지켜보는 중. 회선은 비었다.";
+"Headline wire" = "헤드라인 와이어";

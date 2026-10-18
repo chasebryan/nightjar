@@ -1701,3 +1701,4 @@
 "Watching the wire — %lld up, %lld unnamed." = "回線を見張り中 — %lld台、うち%lld台が無名。";
 "Watching the wire — %lld up, every one named." = "回線を見張り中 — %lld台、全て名がある。";
 "Watching. The wire is empty." = "見張り中。回線は空。";
+"Headline wire" = "ニュース速報";

@@ -650,6 +650,7 @@ final class SkelliCenter: ObservableObject {
         pendingAction = nil
         lastDeviceIP = nil
         webResearchEnabled = true
+        HeadlineWire.shared.enabled = true
         mood = .idle
         SkelliStore.wipe()
     }
@@ -7544,6 +7545,12 @@ struct SkelliView: View {
                             Toggle(isOn: $skelli.webResearchEnabled) {
                                 Label(L("Web research"),
                                       systemImage: "globe")
+                            }
+                            .padding(.vertical, 5)
+                            rowDivider
+                            Toggle(isOn: $wire.enabled) {
+                                Label(L("Headline wire"),
+                                      systemImage: "newspaper")
                             }
                             .padding(.vertical, 5)
                             rowDivider
