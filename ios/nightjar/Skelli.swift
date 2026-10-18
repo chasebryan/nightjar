@@ -5464,7 +5464,9 @@ struct SkelliView: View {
                     .foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
+            .padding(.vertical, 11)
         }
+        .buttonStyle(.plain)
     }
 
     /// A destructive door: red in icon and word
@@ -5485,76 +5487,157 @@ struct SkelliView: View {
                 Spacer()
             }
             .contentShape(Rectangle())
+            .padding(.vertical, 11)
         }
+        .buttonStyle(.plain)
+    }
+
+    /// One card of her options, built the way her
+    /// room's deck panels are built — top-lit
+    /// gradient, hairline stroke, soft shadow —
+    /// over her own backdrop. (The sheet used to
+    /// be a system List: flat gray cards and a
+    /// tint flood on every label, a stark stranger
+    /// in her own house. Device, 2026-10-18.)
+    private func optionsCard<Content: View>(
+        _ header: String?,
+        @ViewBuilder content: () -> Content)
+        -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let header {
+                Text(header)
+                    .font(.system(size: 11,
+                                  weight: .semibold))
+                    .tracking(1.1)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
+            }
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.065),
+                            Color.white.opacity(0.028)],
+                        startPoint: .top,
+                        endPoint: .bottom)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.09),
+                            lineWidth: 0.75))
+            .shadow(color: .black.opacity(0.30),
+                    radius: 6, x: 0, y: 2)
+        }
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .padding(.leading, 38)
+            .opacity(0.6)
     }
 
     private var optionsSheet: some View {
         NavigationStack {
-            List {
-                Section(L("Rooms")) {
-                    doorRow(L("Directory of the house"),
-                            "book") {
-                        openDoor { showDirectory = true }
+            ZStack {
+                Color(red: 0.016, green: 0.020,
+                      blue: 0.018)
+                    .ignoresSafeArea()
+                SkelliBackdrop()
+                    .ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading,
+                           spacing: 20) {
+                        optionsCard(L("Rooms")) {
+                            doorRow(L("Directory of the house"),
+                                    "book") {
+                                openDoor {
+                                    showDirectory = true }
+                            }
+                            rowDivider
+                            doorRow(L("Memory"), "brain") {
+                                openDoor { showMemory = true }
+                            }
+                            rowDivider
+                            doorRow(L("Weights"),
+                                    "memorychip") {
+                                openDoor { showWeights = true }
+                            }
+                            rowDivider
+                            doorRow(L("Forge"), "hammer") {
+                                openDoor { showForge = true }
+                            }
+                            rowDivider
+                            doorRow(L("Deliveries"),
+                                    "shippingbox") {
+                                openDoor {
+                                    showDeliveries = true }
+                            }
+                        }
+                        optionsCard(L("Switches")) {
+                            Toggle(isOn: $skelli.webResearchEnabled) {
+                                Label(L("Web research"),
+                                      systemImage: "globe")
+                            }
+                            .padding(.vertical, 5)
+                            rowDivider
+                            Toggle(isOn: $agentsEnabled) {
+                                Label(L("Agents — her crew"),
+                                      systemImage: "person.3")
+                            }
+                            .padding(.vertical, 5)
+                            rowDivider
+                            Toggle(isOn: $moodsEnabled) {
+                                Label(L("Moods — her heart"),
+                                      systemImage: "heart")
+                            }
+                            .padding(.vertical, 5)
+                            rowDivider
+                            Toggle(isOn: $placeEnabled) {
+                                Label(L("Place — where in the world"),
+                                      systemImage: "mappin.and.ellipse")
+                            }
+                            .padding(.vertical, 5)
+                        }
+                        if SkelliMind.weightsReady {
+                            optionsCard(L("Mind")) {
+                                mindRow("council",
+                                        L("Council of both"),
+                                        "person.2")
+                                rowDivider
+                                mindRow("apple",
+                                        L("Apple only"),
+                                        "apple.logo")
+                                rowDivider
+                                mindRow("weights",
+                                        L("Weights only"),
+                                        "scalemass")
+                            }
+                        }
+                        optionsCard(nil) {
+                            dangerRow(L("Clear conversation"),
+                                      "trash") {
+                                openDoor { confirmClear = true }
+                            }
+                            rowDivider
+                            dangerRow(L("Reset to defaults"),
+                                      "arrow.counterclockwise") {
+                                openDoor { confirmReset = true }
+                            }
+                        }
                     }
-                    doorRow(L("Memory"), "brain") {
-                        openDoor { showMemory = true }
-                    }
-                    doorRow(L("Weights"), "memorychip") {
-                        openDoor { showWeights = true }
-                    }
-                    doorRow(L("Forge"), "hammer") {
-                        openDoor { showForge = true }
-                    }
-                    doorRow(L("Deliveries"),
-                            "shippingbox") {
-                        openDoor { showDeliveries = true }
-                    }
-                }
-                Section(L("Switches")) {
-                    Toggle(isOn: $skelli.webResearchEnabled) {
-                        Label(L("Web research"),
-                              systemImage: "globe")
-                    }
-                    Toggle(isOn: $agentsEnabled) {
-                        Label(L("Agents — her crew"),
-                              systemImage: "person.3")
-                    }
-                    Toggle(isOn: $moodsEnabled) {
-                        Label(L("Moods — her heart"),
-                              systemImage: "heart")
-                    }
-                    Toggle(isOn: $placeEnabled) {
-                        Label(L("Place — where in the world"),
-                              systemImage: "mappin.and.ellipse")
-                    }
-                }
-                if SkelliMind.weightsReady {
-                    Section(L("Mind")) {
-                        mindRow("council", L("Council of both"),
-                                "person.2")
-                        mindRow("apple", L("Apple only"),
-                                "apple.logo")
-                        mindRow("weights", L("Weights only"),
-                                "scalemass")
-                    }
-                }
-                Section {
-                    dangerRow(L("Clear conversation"),
-                              "trash") {
-                        openDoor { confirmClear = true }
-                    }
-                    dangerRow(L("Reset to defaults"),
-                              "arrow.counterclockwise") {
-                        openDoor { confirmReset = true }
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(
-                Color(red: 0.016, green: 0.020,
-                      blue: 0.018))
             .navigationTitle(L("Options"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden,
+                               for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("Done")) { showOptions = false }
@@ -5586,7 +5669,9 @@ struct SkelliView: View {
                 }
             }
             .contentShape(Rectangle())
+            .padding(.vertical, 11)
         }
+        .buttonStyle(.plain)
     }
 
     private var activityBar: some View {
