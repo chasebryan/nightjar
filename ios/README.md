@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 7.7.7
+# nightjar-hack for iOS — 8.0a
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -200,6 +200,25 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
+- **What 8.0a added.** Macros — a tab of
+  its own: playlists of the rig's moves
+  built block by block. Thirty-two block
+  kinds cover every engine (sends, Serve
+  doors, the beacon and GATT, Helm
+  buttons, chests, EMCON, the Banshee,
+  costumes and personas, listening,
+  sweeps, knocks, the fuzzer, the war
+  rooms) plus the passive blocks —
+  waits, holds for an arrival or a
+  sighting, journal notes, announce,
+  stop. Blocks fold open to configure,
+  drag to order, repeat; macros carry
+  a name, icon, colour and note;
+  templates, export/import as copies,
+  honest run logs — and Skelli builds
+  them from dictated steps and runs
+  them by voice. The 7.7.7 whetstone
+  sweep rides inside, untagged.
 - **What 7.7.7 added.** The whetstone: a
   quality pass over the whole tree, no new
   rooms. A race in the weights download line
@@ -416,7 +435,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 ## Building the current build
 
-`main` carries 7.7.7, and with it the build
+`main` carries 8.0a, and with it the build
 requirements that arrived with Skelli in 5.0.0.
 In the order you'll meet them:
 

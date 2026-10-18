@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**7.7.7 — "the whetstone."**
+**8.0a — "the conductor."**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -118,18 +118,20 @@ against. It boots over a living reel — the boot log typing itself across the f
   door for anyone who wants to chip in toward the
   costs.
 
-## What's new in 7.7.7 — "the whetstone"
+## What's new in 8.0a — "the conductor"
 
-7.7.7 is the quality release: no new rooms.
-The whole tree was audited end to end and
-sharpened — a download-queue race closed, a
-match tick that never stood down taught to,
-the night log's hash chain made honest, the
-NFC entitlement the tag census needs added,
-the last bare share brought through the door,
-clears and folds completed, and a tap for
-every primary action. The war campaign it
-sharpens, from 7.0.0:
+8.0a gives the rig a conductor: Macros,
+a tab of its own, where the instrument's
+moves become playlists. Thirty-two block
+kinds — every engine in the app, plus
+waits that hold the list for an arrival
+or a sighting — fold open to configure,
+drag into order, and run under one
+runner; Skelli builds them from dictated
+steps and runs them by voice. 8.0a also
+carries the whole 7.7.7 whetstone sweep:
+the tree audited end to end and sharpened.
+The war campaign it conducts, from 7.0.0:
 
 - **The War Chest** — whole-rig mission profiles.
   One chest captures the standing configuration
@@ -230,15 +232,15 @@ and stepped down at the operator's word. The orb
 keeps the wallpaper; the bloom is kept in `assets/`
 under its own name.
 
-## Two ways in: 7.7.7, or v4.0.0
+## Two ways in: 8.0a, or v4.0.0
 
-7.7.7 is the current release, and it asks more of
+8.0a is the current release, and it asks more of
 your gear than the older line did. There are two
 supported ways in, and which one is yours depends
 on your Mac and your phone.
 
 **The current build** (this repo, `main`, the
-7.7.7 release) carries Skelli and everything in
+8.0a release) carries Skelli and everything in
 6.0.0 — the Map, the Subconscious, the Instrument,
 her conversational hands, the intelligence pass —
 plus the whole war campaign above. Building it requires:

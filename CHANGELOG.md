@@ -1,5 +1,75 @@
 # Changelog
 
+## 8.0a — 2026-10-17 — the conductor
+
+- **Macros.** A tab of its own:
+  playlists of the rig's own
+  moves, built block by block —
+  Scratch for the instrument.
+  Thirty-two block kinds cover
+  every engine the app presents:
+  sends, Serve (standing or
+  custom doors), the beacon and
+  GATT hosting, Helm buttons,
+  War Chests, EMCON and stealth,
+  the Banshee, costumes and
+  mimicry personas, listening,
+  sweeps, knocks, the fuzzer,
+  Net-Assault, War Room runs,
+  SIGINT watches, War Games
+  challenges and defenses — and
+  the passive blocks: waits,
+  waiting for an arrival or a
+  sighting, journal notes,
+  announcements, and a stop.
+- **Built like blocks.** Each
+  block folds open where it
+  sits to be configured —
+  pickers fed live from the
+  book, the chests, the
+  personas and the remotes,
+  toggles and fields that drop
+  down and close back up.
+  Blocks drag into order and
+  carry a repeat count. A
+  macro is dressed by its
+  operator: a name, an icon
+  and a colour from the
+  palette, a note saying what
+  it is for. Three templates
+  wait in the library; the
+  library exports and imports
+  as nightjar-macros.json,
+  and imports land as copies.
+- **Runs honestly.** A run
+  card shows the playlist
+  before it fires; validation
+  names every unready block
+  first. Runs leave a live
+  log on screen and their
+  story in the night log; a
+  block that cannot run stops
+  the run and says why.
+- **Skelli conducts.** She
+  builds macros from dictated
+  steps — "build a macro
+  called Night Post, red with
+  a moon: go dark; wait 30;
+  sweep" — dresses them from
+  the words, adds steps to
+  them, runs and stops them,
+  lists and deletes them,
+  through the same store and
+  runner the tab drives. Her
+  manual carries the room and
+  the whole block catalog.
+- **The whetstone rides
+  along.** 8.0a also carries
+  the entire 7.7.7 quality
+  sweep below — folded in
+  before it ever wore its
+  own tag.
+
 ## 7.7.7 — 2026-10-17 — the whetstone
 
 - **The whetstone.** 7.7.7 is
