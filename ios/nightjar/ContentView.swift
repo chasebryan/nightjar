@@ -2,178 +2,80 @@ import Combine
 import SwiftUI
 import UIKit
 
-/// The tab beat, keyed to the one event every
-/// road into a tab must produce: its content
-/// appearing on screen. Four mechanisms keyed
-/// to the selection WRITE all failed the same
-/// way on the operator's device — observers in
-/// the tab roots, the platform's sensory
-/// feedback trigger, and a custom binding's
-/// setter each fired for visible-bar taps and
-/// never for picks made in the system's More
-/// list, which UIKit resolves internally
-/// without ever writing through SwiftUI's
-/// selection. (His own flight recorder proved
-/// it: bar picks logged, while the More pick
-/// that opened the very console he exported
-/// the log from left no trace.) Appearance
-/// cannot be bypassed — a tab the operator is
-/// looking at has appeared — so the beat rides
-/// it: the first appearance after launch only
-/// primes the register (no beat for the tab the
-/// house reopens on). Every later appearance
-/// beats — including a return to the tab the
-/// operator left via the More list, which an
-/// earlier same-tab guard mistook for a mere
-/// reappearance and swallowed (More, then
-/// straight back to Serve, was silent for
-/// exactly that reason).
+/// The tab beat, keyed to what the operator's
+/// eyes can confirm: which surface is on
+/// screen. Every mechanism keyed to the
+/// selection WRITE failed on this device —
+/// observers, the platform's sensory trigger,
+/// a binding's setter all fired for bar taps
+/// and never for More-list picks, which UIKit
+/// resolves without writing through SwiftUI.
+/// Appearance cannot be bypassed, and neither
+/// can disappearance — and the pair of them
+/// covers the whole map:
+///
+/// - a tab's content appears: a tab change,
+///   by bar, by More row, by house navigation;
+/// - a tab's content vanishes with no
+///   successor appearing: the More list has
+///   covered it (the More button itself), or
+///   a pop back to that list removed it (the
+///   back chevron) — the two roads that end
+///   on UIKit's own list, where no tab exists
+///   to appear.
+///
+/// Events feed one register that settles: a
+/// burst (the old tab vanishing as the new
+/// one appears) collapses into the state the
+/// burst lands on, and a short window after
+/// the burst — past the transition's opening
+/// frame, where the haptic engine drops
+/// requests — one press-strength beat fires
+/// if the settled state differs from the last
+/// beaten one. The first settle after launch
+/// only primes: no beat for the tab the house
+/// reopens on.
 enum TabBeat {
+    /// The More list itself, as a state: no
+    /// tab is on screen, the list is.
+    private static let moreList = -1
     private static var primed = false
-    private static var lastShown: Int?
+    private static var beaten: Int?
+    private static var pending: Int?
+    private static var work: DispatchWorkItem?
 
-    static func shown(_ tag: Int) {
-        if !primed {
-            primed = true
-            lastShown = tag
-            return
+    static func appeared(_ tag: Int) {
+        register(tag)
+    }
+
+    static func vanished(_ tag: Int) {
+        register(moreList)
+    }
+
+    private static func register(_ state: Int) {
+        pending = state
+        work?.cancel()
+        let item = DispatchWorkItem {
+            guard let settled = pending else {
+                return
+            }
+            if !primed {
+                primed = true
+                beaten = settled
+                return
+            }
+            guard beaten != settled else { return }
+            beaten = settled
+            Haptics.press()
+            DevLog.event(
+                "tab",
+                settled == moreList
+                    ? "more list (settled)"
+                    : "\(settled) (settled)")
         }
-        lastShown = tag
-        DevLog.event("tab", "\(tag) (appeared)")
-        // The beat is deferred a fraction past
-        // the appearance. Issued in the very
-        // instant of appearing, it lands inside
-        // the tab transition's opening frame,
-        // where the haptic engine drops requests
-        // made mid-transition — the developer
-        // panel proved the same press is the
-        // kind of beat felt from a settled
-        // screen. A short deferral puts it on
-        // the transition's far side, still in
-        // step with the tab landing; the guard
-        // keeps a fast hop onwards from beating
-        // for a tab already left.
+        work = item
         DispatchQueue.main.asyncAfter(
-            deadline: .now() + 0.15) {
-            if lastShown == tag {
-                Haptics.press()
-            }
-        }
-    }
-}
-
-/// The More stack's back chevron, answered.
-/// Entering a section through the system's
-/// More list pushes it onto UIKit's own
-/// navigation stack, with a back button no
-/// SwiftUI surface can see — and popping back
-/// to the list changes no tab, so TabBeat is
-/// blind to it by construction. This bridge
-/// watches that one stack, passively, by
-/// key-value observation: a pop that lands
-/// back on the list itself (two deep to one)
-/// is the operator pressing that chevron, and
-/// it earns the selection voice. Nothing is
-/// delegated, subclassed, or intercepted —
-/// the house only listens, and beats.
-enum MoreStackBeat {
-    private static var observation:
-        NSKeyValueObservation?
-    private static var installed = false
-    private static var attempts = 0
-
-    static func install(from view: UIView) {
-        guard !installed,
-              let window = view.window else {
-            retry(from: view)
-            return
-        }
-        guard let bar = findTabBar(in: window)
-        else {
-            retry(from: view)
-            return
-        }
-        let more = bar.moreNavigationController
-        installed = true
-        var lastCount = more.viewControllers.count
-        observation = more.observe(
-            \.viewControllers, options: [.new]
-        ) { nav, _ in
-            let count = nav.viewControllers.count
-            let was = lastCount
-            lastCount = count
-            if count == 1 && was == 2 {
-                DispatchQueue.main.async {
-                    Haptics.select()
-                    DevLog.event("tab",
-                                 "more list (back)")
-                }
-            }
-        }
-        DevLog.event("tab", "more-stack watch on")
-    }
-
-    /// The tab bar controller is not reachable
-    /// at the first attempt in every launch
-    /// order; a few patient retries land it.
-    private static func retry(from view: UIView) {
-        guard !installed, attempts < 10 else { return }
-        attempts += 1
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 0.4) {
-            install(from: view)
-        }
-    }
-
-    /// Find the tab bar in the window's view
-    /// tree, then climb its responder chain to
-    /// the controller that owns it.
-    private static func findTabBar(
-        in window: UIWindow) -> UITabBarController? {
-        guard let tabBar = firstTabBar(in: window)
-        else { return nil }
-        var responder: UIResponder? = tabBar
-        while let r = responder {
-            if let bar = r as? UITabBarController {
-                return bar
-            }
-            responder = r.next
-        }
-        return nil
-    }
-
-    private static func firstTabBar(
-        in view: UIView) -> UITabBar? {
-        if let bar = view as? UITabBar { return bar }
-        for sub in view.subviews {
-            if let bar = firstTabBar(in: sub) {
-                return bar
-            }
-        }
-        return nil
-    }
-}
-
-/// A zero-size representable whose only job is
-/// to be in the window, so the More-stack
-/// watch can install itself from real UIKit
-/// ground.
-struct MoreStackProbe: UIViewRepresentable {
-    func makeUIView(
-        context: Context) -> ProbeView {
-        ProbeView()
-    }
-
-    func updateUIView(_ uiView: ProbeView,
-                      context: Context) {}
-
-    final class ProbeView: UIView {
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            if window != nil {
-                MoreStackBeat.install(from: self)
-            }
-        }
+            deadline: .now() + 0.22, execute: item)
     }
 }
 
@@ -224,22 +126,26 @@ struct ContentView: View {
                 .tabItem { Label(L("Skelli"),
                                  systemImage: "brain.head.profile") }
                 .tag(9)
-                .onAppear { TabBeat.shown(9) }
+                .onAppear { TabBeat.appeared(9) }
+                .onDisappear { TabBeat.vanished(9) }
             ListenView(tab: $tab)
                 .appThemed(.listen)
                 .tabItem { Label(L("Listen"), systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
-                .onAppear { TabBeat.shown(0) }
+                .onAppear { TabBeat.appeared(0) }
+                .onDisappear { TabBeat.vanished(0) }
             SendView()
                 .appThemed(.send)
                 .tabItem { Label(L("Send"), systemImage: "paperplane") }
                 .tag(1)
-                .onAppear { TabBeat.shown(1) }
+                .onAppear { TabBeat.appeared(1) }
+                .onDisappear { TabBeat.vanished(1) }
             ServeView()
                 .appThemed(.serve)
                 .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
                 .tag(2)
-                .onAppear { TabBeat.shown(2) }
+                .onAppear { TabBeat.appeared(2) }
+                .onDisappear { TabBeat.vanished(2) }
             // Declaration order is the More list's order:
             // About heads it — it is the app's identity and
             // its options hub — and Sessions sits under it.
@@ -248,22 +154,26 @@ struct ContentView: View {
                 .appThemed(.about)
                 .tabItem { Label(L("About"), systemImage: "info.circle") }
                 .tag(5)
-                .onAppear { TabBeat.shown(5) }
+                .onAppear { TabBeat.appeared(5) }
+                .onDisappear { TabBeat.vanished(5) }
             SessionsView()
                 .appThemed(.sessions)
                 .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
                 .tag(3)
-                .onAppear { TabBeat.shown(3) }
+                .onAppear { TabBeat.appeared(3) }
+                .onDisappear { TabBeat.vanished(3) }
             ScanView(tab: $tab)
                 .appThemed(.scan)
                 .tabItem { Label(L("Scan"), systemImage: "scope") }
                 .tag(4)
-                .onAppear { TabBeat.shown(4) }
+                .onAppear { TabBeat.appeared(4) }
+                .onDisappear { TabBeat.vanished(4) }
             ReconBenchView(tab: $tab)
                 .appThemed(.recon)
                 .tabItem { Label(L("Recon"), systemImage: "target") }
                 .tag(6)
-                .onAppear { TabBeat.shown(6) }
+                .onAppear { TabBeat.appeared(6) }
+                .onDisappear { TabBeat.vanished(6) }
             EmconView()
                 .appThemed(.emcon)
                 .tabItem {
@@ -276,25 +186,29 @@ struct ContentView: View {
                         .symbolVariant(.slash)
                 }
                 .tag(7)
-                .onAppear { TabBeat.shown(7) }
+                .onAppear { TabBeat.appeared(7) }
+                .onDisappear { TabBeat.vanished(7) }
             KnockChatView()
                 .appThemed(.knocktalk)
                 .tabItem { Label(L("Knocktalk"),
                                  systemImage: "message.badge.waveform") }
                 .tag(8)
-                .onAppear { TabBeat.shown(8) }
+                .onAppear { TabBeat.appeared(8) }
+                .onDisappear { TabBeat.vanished(8) }
             MacrosView()
                 .appThemed(.macros)
                 .tabItem { Label(L("Macros"),
                                  systemImage: "puzzlepiece.extension.fill") }
                 .tag(10)
-                .onAppear { TabBeat.shown(10) }
+                .onAppear { TabBeat.appeared(10) }
+                .onDisappear { TabBeat.vanished(10) }
             CryptoView()
                 .appThemed(.vault)
                 .tabItem { Label(L("Vault"),
                                  systemImage: "lock.fill") }
                 .tag(11)
-                .onAppear { TabBeat.shown(11) }
+                .onAppear { TabBeat.appeared(11) }
+                .onDisappear { TabBeat.vanished(11) }
         }
         .tint(themes.current.accent)
         .onAppear {
@@ -320,14 +234,6 @@ struct ContentView: View {
             // Counter-knock pivot: a tripwire row tapped in EMCON
             // lands the operator on the Recon bench, pre-aimed.
             if handoff != nil { tab = 6 }
-        }
-        .overlay {
-            // Zero-size and touch-transparent: the
-            // probe that watches the More stack
-            // for its back-chevron pops.
-            MoreStackProbe()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
         }
         .overlay(alignment: .top) {
             VStack(spacing: 8) {
