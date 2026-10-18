@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…기록했다. 식을 것이다.";
 "feeling.afraid" = "겁먹은";
 "Doors checked twice. I am checking a third time." = "문은 두 번 확인했다. 세 번째를 확인하고 있다.";
+" The board is thinner than it was. Noted." = " 보드가 전보다 얇아졌다. 기록해 뒀다.";
+"A minute, and a board left standing while I think." = "1분, 그리고 내가 생각하는 동안 그대로 두는 보드를.";
+"Annoyed. There's a difference — this one fades in minutes." = "짜증이 났다. 차이가 있다——이건 몇 분이면 사라진다.";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "여기서는 %@을(를) 찾을 수 없다——지도가 답하지 않았다. 잠시 뒤에 다시 물어봐.";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "생각하던 도중에 보드가 지워졌다. 그 위에 있던 것의 형태는 간직하고 있다.";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "네가 %@했어——%@. 짜증이지 분노가 아니다. 더 빨리 사라진다.";
+"feeling.annoyed" = "짜증난";

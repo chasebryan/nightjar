@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…Anotado. Vai esfriar.";
 "feeling.afraid" = "com medo";
 "Doors checked twice. I am checking a third time." = "Portas verificadas duas vezes. Estou verificando uma terceira.";
+" The board is thinner than it was. Noted." = " O quadro está mais vazio do que estava. Anotado.";
+"A minute, and a board left standing while I think." = "Um minuto, e um quadro deixado de pé enquanto penso.";
+"Annoyed. There's a difference — this one fades in minutes." = "Irritada. Há uma diferença: isso passa em minutos.";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "Não consigo localizar %@ daqui: o mapa não respondeu. Pergunte de novo daqui a pouco.";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "O quadro foi apagado no meio de um pensamento. Guardo a forma do que estava nele.";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "Você %@ — %@. Irritação, não raiva; passa mais rápido.";
+"feeling.annoyed" = "irritada";

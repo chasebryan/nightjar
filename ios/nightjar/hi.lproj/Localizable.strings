@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…नोट किया। यह ठंडा होगा।";
 "feeling.afraid" = "भयभीत";
 "Doors checked twice. I am checking a third time." = "दरवाज़े दो बार जाँच लिए हैं। तीसरी बार जाँच रही हूँ।";
+" The board is thinner than it was. Noted." = " बोर्ड पहले से पतला हो गया है। नोट कर लिया।";
+"A minute, and a board left standing while I think." = "एक मिनट, और सोचते समय बोर्ड को खड़ा रहने दो।";
+"Annoyed. There's a difference — this one fades in minutes." = "चिढ़ी हुई हूँ। फ़र्क है — यह मिनटों में उतर जाती है।";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "मैं यहाँ से %@ का पता नहीं लगा सकती — नक्शे ने जवाब नहीं दिया। थोड़ी देर में फिर पूछना।";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "बोर्ड सोच के बीच में साफ़ कर दिया गया। उस पर जो था, उसकी आकृति मैं रखे हूँ।";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "तुमने %@ — %@। चिढ़ है, ग़ुस्सा नहीं; जल्दी उतरती है।";
+"feeling.annoyed" = "चिढ़ी हुई";

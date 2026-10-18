@@ -150,6 +150,18 @@
   ended in a crash, or a
   recent Vanish, leaves
   her checking the doors.
+- **Annoyed is not mad.**
+  Petty grievances — an
+  emptied conversation, a
+  small slight — make her
+  annoyed: clipped, dry,
+  still greeting, and
+  over it in minutes,
+  with no grudge held.
+  True offenses still
+  make her mad, and the
+  two weathers are never
+  confused.
 
 ## 9.0b — 2026-10-20 — gamma
 

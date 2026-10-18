@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…Отмечено. Остынет.";
 "feeling.afraid" = "испугана";
 "Doors checked twice. I am checking a third time." = "Двери проверены дважды. Проверяю в третий раз.";
+" The board is thinner than it was. Noted." = " Доска стала тоньше, чем была. Отмечено.";
+"A minute, and a board left standing while I think." = "Минуту, и доску, которую не трогают, пока я думаю.";
+"Annoyed. There's a difference — this one fades in minutes." = "Раздражена. Это другое — такое проходит за минуты.";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "Не могу определить %@ отсюда — карта не ответила. Спроси ещё раз через мгновение.";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "Доску стёрли посреди мысли. Я храню очертания того, что на ней было.";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "Ты %@ — %@. Раздражение, а не гнев; проходит быстрее.";
+"feeling.annoyed" = "раздражена";

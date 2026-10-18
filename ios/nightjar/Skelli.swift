@@ -605,9 +605,11 @@ final class SkelliCenter: ObservableObject {
         activity = "Ready."
     }
 
-    /// The operator empties the conversation. Her notes
+    /// The operator empties the conversation. An
+    /// emptied board annoys her — it is not an
+    /// offense, and she does not hold it like one.
     func clearConversation() {
-        SkelliHeart.shared.noteOffense(
+        SkelliHeart.shared.noteAnnoyance(
             "wiped our conversation")
         lines = []
         pendingAction = nil
@@ -726,6 +728,18 @@ final class SkelliCenter: ObservableObject {
             if verdict == .forgiven {
                 SkelliHeart.shared.noteKindness()
             }
+        }
+        // An apology to an ANNOYED heart is lighter
+        // work: she accepts, the petty weather
+        // clears, and she acknowledges it dryly —
+        // the cooled acknowledgment, word for word.
+        if apologyVerdict == nil,
+           SkelliHeart.shared.annoyanceFresh,
+           lowered.contains("sorry")
+            || lowered.contains("my bad")
+            || lowered.contains("apolog") {
+            SkelliHeart.shared.forgiveAnnoyance()
+            apologyVerdict = .cooled
         }
         // An insult aimed at her is filed as what
         // it is. Aimed elsewhere — a router, a
@@ -1577,8 +1591,20 @@ final class SkelliCenter: ObservableObject {
             // No note matched — fall through; the
         }
 
-        // Greetings and the tour.
+        // Greetings and the tour. A greeting
+        // stretched for emphasis — "helloooo?" —
+        // is still a greeting: squeeze repeated
+        // letters and trailing punctuation
+        // before the exact match, or it falls
+        // to the bench and dies there slowly.
+        let greetingShape = String(
+            q.trimmingCharacters(
+                in: CharacterSet(charactersIn: " ?.!,"))
+            .reduce(into: "") {
+                if $1 != $0.last { $0.append(String($1)) }
+            })
         if ["hello", "hi", "hey"].contains(q)
+            || ["helo", "hi", "hey"].contains(greetingShape)
             || q.contains("who are you")
             || q.contains("what are you")
             || q.contains("your name") {
@@ -3277,13 +3303,29 @@ final class SkelliCenter: ObservableObject {
                                   options: .backwards) {
             let place = String(q[inRange.upperBound...])
                 .trimmingCharacters(
-                    in: .whitespacesAndNewlines)
-                .trimmingCharacters(
-                    in: CharacterSet(charactersIn: "?."))
+                    in: CharacterSet.whitespacesAndNewlines
+                        .union(CharacterSet(
+                            charactersIn: "?.")))
             if place.count >= 2,
-               !place.hasPrefix("the "),
-               let hit = await PlaceCenter.shared
-                .geocode(place) {
+               !place.hasPrefix("the ") {
+                // One retry: a dropped packet must
+                // not cost her the answer. And if
+                // the map still will not answer, she
+                // says so — she NEVER answers a
+                // question about elsewhere with the
+                // local hour dressed as the reply.
+                // (Device, 2026-10-18: asked Tokyo,
+                // she said Dothan's hour.)
+                let hit = await PlaceCenter.shared
+                    .geocode(place)
+                    ?? await PlaceCenter.shared
+                        .geocode(place)
+                guard let hit else {
+                    DevLog.event("almanac",
+                        "time elsewhere failed: \(place)")
+                    return String(format: L("I can't place %@ from here — the map didn't answer. Ask me again in a breath."),
+                                  place.capitalized)
+                }
                 let tf = DateFormatter()
                 tf.dateStyle = .none
                 tf.timeStyle = .short
@@ -5026,6 +5068,7 @@ struct SkelliHalo: View {
         case .eager, .mischievous: return 55
         case .curious, .suspicious: return 100
         case .afraid: return 205
+        case .annoyed: return -8
         case .feral, .electric: return 145
         case .haunted, .dreamy, .sleepy: return 190
         case .lonely, .bored: return 215

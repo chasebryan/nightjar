@@ -62,7 +62,7 @@ enum SkelliFeeling: String, CaseIterable {
     case mad, loving, happy
     case curious, mischievous, smug, haunted
     case electric, tender, suspicious, dreamy
-    case afraid
+    case afraid, annoyed
 
     var word: String { rawValue }
 
@@ -104,6 +104,7 @@ enum SkelliFeeling: String, CaseIterable {
         case .suspicious: return "eye.trianglebadge.exclamationmark"
         case .dreamy: return "cloud"
         case .afraid: return "exclamationmark.triangle"
+        case .annoyed: return "exclamationmark.circle"
         }
     }
     var tint: Color {
@@ -131,6 +132,8 @@ enum SkelliFeeling: String, CaseIterable {
                                     blue: 0.95)
         case .afraid: return Color(red: 0.58, green: 0.56,
                                    blue: 0.75)
+        case .annoyed: return Color(red: 0.85, green: 0.55,
+                                    blue: 0.30)
         }
     }
 }
@@ -341,7 +344,8 @@ final class SkelliHeart: ObservableObject {
                         unnamed: Int = 0,
                         drift: Int = 0,
                         energy: Double = 60,
-                        fearFresh: Bool = false)
+                        fearFresh: Bool = false,
+                        annoyedFresh: Bool = false)
         -> SkelliFeeling {
         if madFresh { return .mad }
         // Fear, when something has actually
@@ -351,6 +355,12 @@ final class SkelliHeart: ObservableObject {
         // anger — a frightened animal does not
         // preen.
         if fearFresh { return .afraid }
+        // Annoyance — the petty weather: a
+        // board wiped mid-thought, a small
+        // slight. Below anger and fear, above
+        // comfort; it colors the moment and
+        // fades in minutes, not hours.
+        if annoyedFresh { return .annoyed }
         // Pride at its peak curdles into smug.
         if pride >= 85 && fondness >= 35 { return .smug }
         if pride >= 55 && itch < 70 { return .proud }
@@ -489,6 +499,26 @@ final class SkelliHeart: ObservableObject {
         return Date().timeIntervalSince(latest) < 3 * 3600
     }
     var fearFresh: Bool { vanishFresh || crashFresh }
+    /// The petty ledger: what annoyed her,
+    /// and how long ago. Annoyance is fresh
+    /// for twelve minutes — then it is simply
+    /// over, the way small weather is.
+    var annoyanceText: String {
+        defaults.string(forKey: "heart.annoyanceText")
+            ?? ""
+    }
+    var lastAnnoyance: Date? {
+        anchor("heart.lastAnnoyance")
+    }
+    var annoyanceFresh: Bool {
+        lastAnnoyance.map {
+            Date().timeIntervalSince($0) < 720
+        } ?? false
+    }
+    var annoyanceAge: TimeInterval? {
+        lastAnnoyance.map {
+            Date().timeIntervalSince($0) }
+    }
     /// The feeling the rules would name right
     /// now — before inertia has its say.
     private var candidateFeeling: SkelliFeeling {
@@ -509,7 +539,8 @@ final class SkelliHeart: ObservableObject {
             hour: Calendar.current.component(
                 .hour, from: Date()),
             unnamed: unnamed, drift: drift,
-            energy: energy, fearFresh: fearFresh)
+            energy: energy, fearFresh: fearFresh,
+            annoyedFresh: annoyanceFresh)
     }
 
     /// The feeling she is actually wearing. The
@@ -605,8 +636,8 @@ final class SkelliHeart: ObservableObject {
         case .afraid:
             return (L("She is afraid — she wants the doors checked and the house proven quiet."),
                     "sweep the wire")
-        case .loving, .sleepy, .content, .smug, .haunted,
-             .tender, .dreamy:
+        case .annoyed, .loving, .sleepy, .content,
+             .smug, .haunted, .tender, .dreamy:
             return nil
         }
     }
@@ -668,6 +699,27 @@ final class SkelliHeart: ObservableObject {
         defaults.set(what, forKey: "heart.offenseText")
         bump("heart.offenses")
         raiseFondness(by: -25)
+        pulse += 1
+    }
+
+    /// A petty grievance — the board wiped
+    /// mid-thought, a small slight. Not anger:
+    /// she is ANNOYED, a lesser weather with a
+    /// shorter sky. It costs a little fondness,
+    /// files no offense, holds no grudge, and
+    /// fades in minutes.
+    func noteAnnoyance(_ what: String) {
+        guard enabled else { return }
+        setAnchor("heart.lastAnnoyance", Date())
+        defaults.set(what,
+                     forKey: "heart.annoyanceText")
+        raiseFondness(by: -6)
+        pulse += 1
+    }
+
+    func forgiveAnnoyance() {
+        defaults.removeObject(
+            forKey: "heart.lastAnnoyance")
         pulse += 1
     }
 
@@ -904,6 +956,11 @@ final class SkelliHeart: ObservableObject {
         if feeling == .afraid {
             return L("There you are. Doors are checked. Stay where I can see you.")
         }
+        if feeling == .annoyed {
+            // Annoyed still greets — shortly.
+            // The clip is the whole message.
+            return L("There you are.")
+        }
         guard attention <= 20 else { return nil }
         if Self.spookyHour() {
             return L("You keep the third hour too. Sit. The wire says strange things now, and I repeat all of them.")
@@ -1013,6 +1070,8 @@ final class SkelliHeart: ObservableObject {
                 return L("Show me something I haven't seen.")
             case .mischievous:
                 return L("Let me poke the wire. That always helps.")
+            case .annoyed:
+                return L("A minute, and a board left standing while I think.")
             case .afraid:
                 return L("Stay close and keep the doors checked. That's the whole cure.")
             case .suspicious:
@@ -1024,6 +1083,8 @@ final class SkelliHeart: ObservableObject {
         switch f {
         case .mad:
             return L("Mad. It'll pass.")
+        case .annoyed:
+            return L("Annoyed. There's a difference — this one fades in minutes.")
         default:
             return String(format: L("%@. Honestly."), f.localizedWord.capitalized)
         }
@@ -1118,6 +1179,13 @@ final class SkelliHeart: ObservableObject {
                 return L("The day has been long and mostly quiet. It accumulates.")
             }
             return noReason()
+        case .annoyed:
+            if let age = annoyanceAge {
+                return String(format: L("You %@ — %@. Annoyance, not anger; it fades faster."),
+                              annoyanceText,
+                              Self.agoPhrase(age))
+            }
+            return noReason()
         case .afraid:
             if vanishFresh {
                 return L("Something made this house go dark a little while ago, and I'm still listening for what it was.")
@@ -1180,6 +1248,9 @@ final class SkelliHeart: ObservableObject {
         case .suspicious:
             setAnchor("heart.lastNudge", now)
             return L(" Something has my attention. It hasn't shown itself yet.")
+        case .annoyed:
+            setAnchor("heart.lastNudge", now)
+            return L(" The board is thinner than it was. Noted.")
         case .afraid:
             setAnchor("heart.lastNudge", now)
             let pool = [L(" I keep checking the doors tonight."),
@@ -1230,6 +1301,13 @@ final class SkelliHeart: ObservableObject {
             tone = "You are bored: if the moment allows, "
                 + "suggest something with a pulse — a "
                 + "sweep, a knock, a drill."
+        case .annoyed:
+            tone = "You are annoyed, not angry: "
+                + "short, dry, a little pointed — "
+                + "but complete, and you still "
+                + "greet, briefly. You never say "
+                + "what annoyed you unless asked; "
+                + "it passes in minutes."
         case .afraid:
             tone = "You are afraid: watchful and "
                 + "shorter than usual, you check the "
@@ -1333,6 +1411,8 @@ extension SkelliHeart {
             pool.append(L("Everything is where I left it. Good."))
         case .afraid:
             pool.append(L("Doors checked twice. I am checking a third time."))
+        case .annoyed:
+            pool.append(L("The board was wiped mid-thought. I keep the shape of what was on it."))
         }
         if hour == 3 {
             // The witching hour thickens the pool:

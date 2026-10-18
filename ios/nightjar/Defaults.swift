@@ -91,6 +91,7 @@ enum SaneDefaults {
         "skelli.draft", "macros.editingID",
         "place.enabled", "skelli.schedule",
         "skelli.birthday", "skelli.birthdayGreeted",
+    "heart.lastAnnoyance", "heart.annoyanceText",
         "listen.bthomeV1",
     ]
 

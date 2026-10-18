@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "……记下了。它会冷下来。";
 "feeling.afraid" = "害怕";
 "Doors checked twice. I am checking a third time." = "门已经检查过两遍了。我在检查第三遍。";
+" The board is thinner than it was. Noted." = " 板子比之前空了。记下了。";
+"A minute, and a board left standing while I think." = "给我一分钟，还有一块在我思考时别动的板子。";
+"Annoyed. There's a difference — this one fades in minutes." = "恼火。这不一样——这种几分钟就散了。";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "我从这里定位不了%@——地图没有回应。过一会儿再问我。";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "板子在我思考到一半时被清空了。上面有过的东西，我还记得形状。";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "你%@了——%@。是恼火，不是愤怒；散得更快。";
+"feeling.annoyed" = "恼火";

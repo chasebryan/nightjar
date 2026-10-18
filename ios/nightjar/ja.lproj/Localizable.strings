@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…記録した。冷めるだろう。";
 "feeling.afraid" = "こわがっている";
 "Doors checked twice. I am checking a third time." = "扉は二度確認した。三度目を確認している。";
+" The board is thinner than it was. Noted." = "盤面が前より薄くなっている。記録した。";
+"A minute, and a board left standing while I think." = "1分と、考えている間そのままにしておいてくれる盤面を。";
+"Annoyed. There's a difference — this one fades in minutes." = "苛立っている。違いがある——これは数分で消える。";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "ここからでは%@を特定できない——地図が答えなかった。少ししてからもう一度聞いて。";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "考えの途中で盤面が消された。その上にあったものの形は覚えている。";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "あなたは%@した——%@。苛立ちであって怒りではない。消えるのも早い。";
+"feeling.annoyed" = "苛立っている";

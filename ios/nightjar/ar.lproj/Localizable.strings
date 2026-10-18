@@ -1580,3 +1580,10 @@
 "…Noted. It will cool." = "…سُجّل. سيبرد.";
 "feeling.afraid" = "خائفة";
 "Doors checked twice. I am checking a third time." = "الأبواب فُحصت مرتين. أفحصها للمرة الثالثة.";
+" The board is thinner than it was. Noted." = " اللوح صار أرقّ مما كان. سجّلت ذلك.";
+"A minute, and a board left standing while I think." = "دقيقة واحدة، ولوح يُترك قائماً بينما أفكّر.";
+"Annoyed. There's a difference — this one fades in minutes." = "منزعجة. هناك فرق — هذا يزول في دقائق.";
+"I can't place %@ from here — the map didn't answer. Ask me again in a breath." = "لا أستطيع تحديد %@ من هنا — الخريطة لم تُجب. اسألني مجدداً بعد لحظة.";
+"The board was wiped mid-thought. I keep the shape of what was on it." = "مُسح اللوح في منتصف فكرة. أحتفظ بشكل ما كان عليه.";
+"You %@ — %@. Annoyance, not anger; it fades faster." = "أنت %@ — %@. انزعاج، لا غضب؛ يزول أسرع.";
+"feeling.annoyed" = "منزعجة";
