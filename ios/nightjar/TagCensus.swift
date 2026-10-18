@@ -91,10 +91,11 @@ final class TagCensus: NSObject, ObservableObject,
                     kind: "ISO 14443 · ISO 7816",
                     uid: iso.identifier.censusHexString,
                     isISO7816: true)
-                if !iso.historicalBytes.isEmpty {
+                if let historical = iso.historicalBytes,
+                   !historical.isEmpty {
                     found.lines.append(
                         "Historical bytes: "
-                        + iso.historicalBytes.censusHexString)
+                        + historical.censusHexString)
                 }
                 if !iso.initialSelectedAID.isEmpty {
                     found.lines.append(
