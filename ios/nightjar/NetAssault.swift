@@ -90,6 +90,13 @@ final class AssaultCenter: ObservableObject {
     @Published var probedThisRun = 0
     @Published var startedAt: Date?
     @Published var log: [String] = []
+    /// This run's named findings — not counts, the actual
+    /// news: who arrived, who drifted, who answers what,
+    /// who went silent. The report is built from these.
+    @Published private(set) var findings: [String] = []
+    /// The last completed run's report, persisted — a
+    /// relaunch no longer burns the after-action.
+    @Published private(set) var lastReport: String?
 
     private enum Stage { case idle, sweeping, browsing,
                          knocking, resting }
@@ -99,6 +106,23 @@ final class AssaultCenter: ObservableObject {
     private let recon = Recon()
     private var timer: Timer?
     private var knockQueue: [Neighbor] = []
+    /// The sweep stage works the whole port rotation in
+    /// one pass now — a device that only answers on 443
+    /// no longer waits five passes to be found.
+    private var sweepQueue: [Int] = []
+    /// Pass baselines, for naming what THIS pass found.
+    private var passIPs: Set<String> = []
+    private var passDrift: [String: Int] = [:]
+    /// Consecutive passes that found nothing — the wire
+    /// is quiet, so the rest between passes backs off.
+    private var quietStreak = 0
+    /// The host currently under the knock, for harvesting
+    /// its answers when the bench finishes.
+    private var knockingNow: Neighbor?
+    private var browseStarted = Date.distantPast
+    private var browseCountAtStart = 0
+    private var boardID: UUID?
+    private static let lastReportKey = "assault.lastReport"
 
     // MARK: - knock memory
 
@@ -161,6 +185,17 @@ final class AssaultCenter: ObservableObject {
         return v > 0 ? v : 75
     }
 
+    /// The operator's chosen run-length cap, in hours;
+    /// 0 means until stood down by hand.
+    private var maxHours: Double {
+        UserDefaults.standard.double(forKey: "assault.maxHours")
+    }
+
+    init() {
+        lastReport = UserDefaults.standard.string(
+            forKey: Self.lastReportKey)
+    }
+
     func arm() {
         guard !running else { return }
         if EmconStandard.refused(.netAssault) {
@@ -168,16 +203,24 @@ final class AssaultCenter: ObservableObject {
                  + EmconCondition.current.declared)
             return
         }
+        Haptics.start()
         running = true
         passes = 0
         newThisRun = 0
         driftThisRun = 0
         probedThisRun = 0
+        findings = []
+        quietStreak = 0
+        knockingNow = nil
         log = []
         startedAt = Date()
         baseNeighbors = NeighborhoodStore.shared
             .neighbors.count
         baseDrift = Self.totalDrift()
+        boardID = ProcessBoard.shared.begin(
+            label: "Net-Assault", organ: "Assault",
+            detail: "depth \(depth)", announce: false,
+            stop: { AssaultCenter.shared.disarm() })
         Journal.log("assault", "armed",
                     "net-assault armed — depth "
                     + "\(depth), rest "
@@ -197,8 +240,16 @@ final class AssaultCenter: ObservableObject {
         timer?.invalidate()
         timer = nil
         model.stopDiscovery()
+        model.stopSweep()
+        recon.cancelKnock()
+        knockingNow = nil
         stage = .idle
         phase = "Stood down"
+        if let boardID {
+            ProcessBoard.shared.end(boardID,
+                                    .done("Stood down"))
+            self.boardID = nil
+        }
         Journal.log("assault", "disarmed",
                     "net-assault stood down after "
                     + "\(passes) pass(es) — \(reason). "
@@ -206,6 +257,12 @@ final class AssaultCenter: ObservableObject {
                     + "\(driftThisRun) drift line(s), "
                     + "\(probedThisRun) ports knocked.")
         note("Stood down after \(passes) pass(es).")
+        // The after-action survives the run — and the
+        // relaunch: it is filed before anything resets.
+        let text = buildReport(reason: reason)
+        lastReport = text
+        UserDefaults.standard.set(text,
+                                  forKey: Self.lastReportKey)
     }
 
     private static func totalDrift() -> Int {
@@ -225,8 +282,24 @@ final class AssaultCenter: ObservableObject {
 
     private func startPass() {
         cycle += 1
-        let port = sweepPorts[(cycle - 1) % sweepPorts.count]
+        // Baselines first: what this pass finds is measured
+        // against the wire as it stands this moment.
+        let neighbors = NeighborhoodStore.shared.neighbors
+        passIPs = Set(neighbors.map(\.ip))
+        passDrift = Dictionary(uniqueKeysWithValues:
+            neighbors.map { ($0.ip, $0.drift.count) })
+        // The whole rotation in one pass, starting at a
+        // rotating offset so consecutive passes do not
+        // always knock the same door first.
+        let offset = (cycle - 1) % sweepPorts.count
+        sweepQueue = Array(sweepPorts[offset...])
+            + Array(sweepPorts[..<offset])
         stage = .sweeping
+        sweepNext()
+    }
+
+    private func sweepNext() {
+        guard let port = sweepQueue.first else { return }
         phase = "Pass \(cycle): sweeping the wire on "
             + "port \(port)"
         model.sweep(port: port)
@@ -234,35 +307,42 @@ final class AssaultCenter: ObservableObject {
 
     private func tick() {
         guard running else { return }
-        newThisRun = max(0, NeighborhoodStore.shared
-            .neighbors.count - baseNeighbors)
-        driftThisRun = Self.totalDrift() - baseDrift
+        // The background check comes FIRST: a sleeping
+        // house does no arithmetic at all.
         if UIApplication.shared.applicationState != .active {
             phase = "Paused — the house sleeps; "
                 + "it resumes when you return"
             return
         }
+        newThisRun = max(0, NeighborhoodStore.shared
+            .neighbors.count - baseNeighbors)
+        driftThisRun = max(0, Self.totalDrift() - baseDrift)
+        if maxHours > 0, let startedAt,
+           Date().timeIntervalSince(startedAt)
+            > maxHours * 3600 {
+            disarm(reason: "the run reached its set length "
+                   + "of \(Int(maxHours))h")
+            return
+        }
         switch stage {
         case .sweeping:
             if !model.sweeping && !model.scanning {
-                passes += 1
-                let line = "Pass \(cycle) swept: "
-                    + "\(NeighborhoodStore.shared.neighbors.count) "
-                    + "devices known, \(newThisRun) new this run."
-                note(line)
-                Journal.log("assault", "pass", line)
-                if depth >= 1 {
-                    stage = .browsing
-                    stageEnds = Date().addingTimeInterval(12)
-                    phase = "Listening to the wire announce "
-                        + "itself (Bonjour)"
-                    model.startDiscovery()
+                sweepQueue.removeFirst()
+                if !sweepQueue.isEmpty {
+                    sweepNext()
                 } else {
-                    rest()
+                    finishSweepStage()
                 }
             }
         case .browsing:
-            if Date() > stageEnds {
+            // The browse ends on its deadline — or early,
+            // when the wire has had six seconds and
+            // announced nothing new: silence is also a
+            // complete answer.
+            let quiet = Date().timeIntervalSince(browseStarted)
+                > 6 && model.discovered.count
+                == browseCountAtStart
+            if Date() > stageEnds || quiet {
                 model.stopDiscovery()
                 if depth >= 2 {
                     beginKnocking()
@@ -272,24 +352,14 @@ final class AssaultCenter: ObservableObject {
             }
         case .knocking:
             if !recon.knocking {
+                if let done = knockingNow {
+                    harvestKnock(done)
+                    knockingNow = nil
+                }
                 if knockQueue.isEmpty {
                     rest()
                 } else {
-                    let next = knockQueue.removeFirst()
-                    let census = ScanModel.topPorts.map { $0.0 }
-                    probedThisRun += census.count
-                    phase = "Knocking \(next.displayName) — "
-                        + "the full census (\(census.count) ports)"
-                    var records = Self.loadKnockRecords()
-                    records[next.ip] = KnockRecord(
-                        lastKnocked: Date()
-                            .timeIntervalSince1970,
-                        driftSeen: next.drift.count,
-                        ports: next.ports.sorted(),
-                        cycle: cycle)
-                    Self.saveKnockRecords(records)
-                    recon.knock(host: next.ip, ports: census,
-                                udp: false, speak: false)
+                    knockNext()
                 }
             }
         case .resting:
@@ -297,12 +367,126 @@ final class AssaultCenter: ObservableObject {
             if left <= 0 {
                 startPass()
             } else {
-                phase = "Resting — next pass in \(left)s. "
-                    + "The ear stays up."
+                phase = quietStreak > 0
+                    ? "Resting — the wire is quiet; next "
+                      + "pass in \(left)s."
+                    : "Resting — next pass in \(left)s. "
+                      + "The ear stays up."
             }
         case .idle:
             break
         }
+    }
+
+    /// The sweep chain is complete: name what the pass
+    /// actually found — arrivals and drift, by name — then
+    /// move the run along.
+    private func finishSweepStage() {
+        passes += 1
+        let neighbors = NeighborhoodStore.shared.neighbors
+        var found: [String] = []
+        for neighbor in neighbors
+        where !passIPs.contains(neighbor.ip) {
+            found.append("Arrived on the wire: "
+                         + "\(neighbor.displayName) "
+                         + "(\(neighbor.ip))")
+        }
+        for neighbor in neighbors {
+            let before = passDrift[neighbor.ip]
+                ?? neighbor.drift.count
+            if neighbor.drift.count > before {
+                found.append("Drift at "
+                             + "\(neighbor.displayName): "
+                             + "+\(neighbor.drift.count - before) "
+                             + "line(s)")
+            }
+        }
+        for line in found { addFinding(line) }
+        if found.isEmpty {
+            quietStreak += 1
+        } else {
+            quietStreak = 0
+        }
+        let line = "Pass \(cycle) swept: "
+            + "\(neighbors.count) devices known, "
+            + "\(newThisRun) new this run"
+            + (found.isEmpty ? "."
+               : " — " + found.joined(separator: "; ") + ".")
+        note(line)
+        Journal.log("assault", "pass", line)
+        if depth >= 1 {
+            stage = .browsing
+            stageEnds = Date().addingTimeInterval(12)
+            browseStarted = Date()
+            browseCountAtStart = model.discovered.count
+            phase = "Listening to the wire announce "
+                + "itself (Bonjour)"
+            model.startDiscovery()
+        } else {
+            rest()
+        }
+    }
+
+    /// One host under the bench: the question set fits
+    /// what the host is. New and drifted hosts get the
+    /// full census — something about them is unknown.
+    /// A returning host whose picture is merely old gets
+    /// its known doors re-asked, not the thousand
+    /// questions again.
+    private func knockNext() {
+        let next = knockQueue.removeFirst()
+        let records = Self.loadKnockRecords()
+        let record = records[next.ip]
+        let drifted = next.drift.count
+            > (record?.driftSeen ?? 0)
+        let census = ScanModel.topPorts.map { $0.0 }
+        let ports: [Int]
+        if record == nil || drifted {
+            ports = census
+        } else {
+            let known = Set(record!.ports + next.ports)
+            ports = known.isEmpty ? census : known.sorted()
+        }
+        probedThisRun += ports.count
+        phase = "Knocking \(next.displayName) — "
+            + "\(ports.count) ports"
+        var updated = records
+        updated[next.ip] = KnockRecord(
+            lastKnocked: Date().timeIntervalSince1970,
+            driftSeen: next.drift.count,
+            ports: next.ports.sorted(),
+            cycle: cycle)
+        Self.saveKnockRecords(updated)
+        knockingNow = next
+        recon.knock(host: next.ip, ports: ports,
+                    udp: false, speak: false)
+    }
+
+    /// The bench finished with a host: its answers are a
+    /// finding — what it speaks, or that it has gone
+    /// silent on doors it used to answer.
+    private func harvestKnock(_ neighbor: Neighbor) {
+        let opens = recon.hits.filter { $0.isOpen }
+        if !opens.isEmpty {
+            let doors = opens.map {
+                "\($0.port) \($0.service)"
+            }.joined(separator: " · ")
+            addFinding("\(neighbor.displayName) answers: "
+                       + doors)
+        } else if let record =
+                    Self.loadKnockRecords()[neighbor.ip],
+                  !record.ports.isEmpty {
+            addFinding("\(neighbor.displayName) went silent "
+                       + "— none of its known doors answered")
+        }
+    }
+
+    private func addFinding(_ line: String) {
+        findings.append(line)
+        if findings.count > 120 {
+            findings.removeFirst(findings.count - 120)
+        }
+        Journal.log("assault", "finding", line)
     }
 
     /// The queue is ordered by significance, not
@@ -352,25 +536,60 @@ final class AssaultCenter: ObservableObject {
             + "in order of significance"
     }
 
+    /// The governor: rest is the operator's setting,
+    /// stretched while the wire stays quiet — a pass that
+    /// found nothing earns the next one at 1.5x, up to
+    /// three stretches and a ten-minute ceiling — and
+    /// snapped back to the setting the moment anything
+    /// is found. Pressure where there is news; patience
+    /// where there is none.
     private func rest() {
         stage = .resting
-        stageEnds = Date().addingTimeInterval(restSeconds)
+        let stretch = pow(1.5, Double(min(quietStreak, 3)))
+        let seconds = min(600, restSeconds * stretch)
+        stageEnds = Date().addingTimeInterval(seconds)
+        if quietStreak > 0 {
+            phase = "Resting — the wire is quiet "
+                + "(\(quietStreak) empty pass(es)); "
+                + "next pass in \(Int(seconds))s."
+        }
     }
 
-    /// The after-action report: the run, on one page.
-    var report: String {
+    /// The after-action report: the run, on one page —
+    /// the tallies, the findings by name, then the log.
+    private func buildReport(reason: String) -> String {
         var lines = ["NET-ASSAULT — after-action report",
+                     "Stood down: \(reason).",
                      "Passes: \(passes) · new devices: "
                         + "\(newThisRun) · drift: "
                         + "\(driftThisRun) · ports knocked: "
                         + "\(probedThisRun)",
                      ""]
+        if findings.isEmpty {
+            lines.append("Findings: none — the wire "
+                         + "said nothing new.")
+        } else {
+            lines.append("Findings:")
+            lines += findings.map { "  · " + $0 }
+        }
+        lines.append("")
         lines += log
         lines.append("")
         lines.append("The sealed journal carries the same "
                      + "run under module 'assault', citable "
                      + "line by line.")
         return lines.joined(separator: "\n")
+    }
+
+    /// What the share door offers: the standing run's own
+    /// page while it runs, the filed after-action after.
+    var report: String {
+        if running || lastReport == nil {
+            return buildReport(reason: running
+                ? "report taken mid-run"
+                : "the operator stood it down")
+        }
+        return lastReport!
     }
 }
 
@@ -386,6 +605,7 @@ struct NetAssaultSectionView: View {
         ThemeCenter.shared
     @AppStorage("assault.depth") private var depth = 2
     @AppStorage("assault.rest") private var restSeconds = 75.0
+    @AppStorage("assault.maxHours") private var maxHours = 0.0
 
     var body: some View {
         Section {
@@ -429,11 +649,15 @@ struct NetAssaultSectionView: View {
     private var idlePitch: some View {
         Group {
             Text("Every organ in the house, one continuous "
-                 + "autonomous run: sweep the wire on "
-                 + "rotating ports, let it announce itself, "
-                 + "then knock the full census against every "
-                 + "known device — pass after pass, for as "
-                 + "long as you leave it armed. Everything "
+                 + "autonomous run: sweep the wire on every "
+                 + "port in the rotation, let it announce "
+                 + "itself, then knock — new and drifted "
+                 + "devices get the full census, settled "
+                 + "ones get their known doors re-asked — "
+                 + "pass after pass, for as long as you "
+                 + "leave it armed. Findings are named, not "
+                 + "just counted: who arrived, who drifted, "
+                 + "who answers, who went silent. Everything "
                  + "it learns walks the usual roads: the "
                  + "Neighborhood, the Map, the sealed log, "
                  + "the mind underneath.")
@@ -463,9 +687,19 @@ struct NetAssaultSectionView: View {
                  + "pass — sweep, browse, knock — and the "
                  + "next. Shorter keeps the pressure "
                  + "continuous; longer revisits on a slower, "
-                 + "quieter cadence.")
+                 + "quieter cadence. While the wire stays "
+                 + "quiet the rest stretches itself, up to "
+                 + "ten minutes, and snaps back the moment "
+                 + "a pass finds something.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Picker("Run length", selection: $maxHours) {
+                Text("Until stood down").tag(0.0)
+                Text("1 hour").tag(1.0)
+                Text("3 hours").tag(3.0)
+                Text("8 hours").tag(8.0)
+            }
+            .pickerStyle(.segmented)
             Button {
                 armRequest = true
             } label: {
@@ -477,7 +711,8 @@ struct NetAssaultSectionView: View {
                 }
             }
             .foregroundStyle(.red)
-            if center.passes > 0 {
+            if center.passes > 0
+                || center.lastReport != nil {
                 // A door, not a ShareLink: a bare ShareLink
                 // buried in a List section cannot find a
                 // presentation host in this app and dies
@@ -507,6 +742,12 @@ struct NetAssaultSectionView: View {
                 stat("Elapsed", elapsed)
                 stat("Known",
                      "\(NeighborhoodStore.shared.neighbors.count)")
+            }
+            if let latest = center.findings.last {
+                Text("Latest: \(latest)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
             if let top = mind.insights.first {
                 Text("The mind, watching: \(top.title)")

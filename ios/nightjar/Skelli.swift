@@ -180,7 +180,7 @@ enum SkelliKnowledge {
             keywords: ["net-assault", "net assault",
                        "assault", "autonomous", "passes",
                        "after-action", "after action"],
-            body: "The house turned loose on its own wire: sweeps on rotating ports, the Bonjour browse, and the bench knocking the full census against every known neighbor, pass after pass until you stand it down. Loud by design — it warns twice, runs only while the app is awake, and exports an after-action report when it stands down. Arming plays the ignition reel."),
+            body: "The house turned loose on its own wire: every pass sweeps the whole port rotation, browses Bonjour, then knocks — new and drifted devices get the full census, settled ones get their known doors re-asked, in order of significance. Findings are named, not counted: arrivals, drift, the doors a device answers, a device gone silent. A governor stretches the rest while the wire is quiet and snaps back at news; a run can be capped at one, three or eight hours; the run rides the process board, and its after-action report is filed and survives a relaunch. Loud by design — it warns twice, and runs only while the app is awake. Arming plays the ignition reel."),
         SkelliEntry(
             id: "steward", title: "The Steward",
             home: "the EMCON tab",

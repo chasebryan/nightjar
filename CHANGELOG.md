@@ -457,6 +457,36 @@
   by a saved GATT arm
   returning at launch.
 
+- **Net-Assault, grown
+  teeth.** A pass now
+  sweeps every port in
+  the rotation, not one —
+  nothing waits five
+  passes to be found.
+  Findings are named, not
+  just counted: who
+  arrived, who drifted,
+  which doors a device
+  answers, who went
+  silent on doors it used
+  to answer. The knock
+  fits the target: new
+  and drifted devices get
+  the full census,
+  settled ones get their
+  known doors re-asked.
+  A governor stretches
+  the rest while the wire
+  stays quiet and snaps
+  back at the first
+  finding; a run-length
+  cap can be set; the
+  after-action report is
+  filed and survives a
+  relaunch; and the run
+  rides the process board
+  like everything else.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:
