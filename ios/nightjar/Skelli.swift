@@ -5075,25 +5075,38 @@ struct SkelliBackdrop: View {
 
 /// Her halo: an extremely thin ring of light
 /// standing just outside her portrait's
-/// circle, carrying the full spectrum, and a
-/// small beam that traces it, endlessly
-/// recircling. It is keyed to her — its tempo
-/// follows her mood, its colors lean toward
-/// her feeling's family, it swells when her
-/// state turns, and at spontaneous moments it
-/// surges, reverses, or drifts its hue for no
-/// reason it will ever give. Nothing in the
-/// house explains it, no legend decodes it,
-/// and she will not be asked to: it means
-/// things about her the way weather means
-/// things about the sea. Technically it is
-/// only rotation, hue and opacity — a pure
+/// circle, and a small beam that traces it,
+/// endlessly recircling. It is not a rainbow
+/// worn forever: her feeling OWNS its colors
+/// — the spectrum fans out around her
+/// feeling's hue, bright at one pole of the
+/// ring and falling to an ember opposite, so
+/// her state can be read from across the
+/// room. When the house goes dark — the
+/// EMCON silence, her sleep, the small hours
+/// — the spectrum folds into shades of
+/// black: a graphite sheen riding a
+/// near-black ring, the rainbow told by
+/// value alone. Its tempo follows her mood,
+/// its comet lengthens with her itch, a
+/// stranger on the wire sends a pulse around
+/// it, and at spontaneous moments it surges,
+/// reverses, or drifts its hue for no reason
+/// it will ever give. Nothing in the house
+/// explains it, no legend decodes it, and
+/// she will not be asked to: it means things
+/// about her the way weather means things
+/// about the sea. Technically it is only
+/// rotation, hue and opacity — a pure
 /// function of time and state, rendered by a
 /// timeline at thirty frames, still under
 /// reduced motion.
 struct SkelliHalo: View {
     let mood: SkelliMood
     let feeling: SkelliFeeling
+    let itch: Double
+    let unnamed: Int
+    let darkHouse: Bool
 
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
@@ -5107,32 +5120,77 @@ struct SkelliHalo: View {
     @State private var swell: Double = 0
     @State private var idleSince: Date?
 
-    /// The whole spectrum, sampled every
-    /// fifteen degrees of hue so the colors
-    /// melt into one another instead of
-    /// standing in bands — light through a
-    /// prism, not paint in stripes.
-    private var spectrum: AngularGradient {
-        AngularGradient(
-            colors: (0...24).map {
-                Color(hue: Double($0) / 24.0,
-                      saturation: 0.82,
-                      brightness: 1.0)
-            },
-            center: .center)
+    /// How wide her feeling lets the light
+    /// roam, in degrees of hue: rage is a
+    /// tight knot of red, fear a narrow cold
+    /// slit, contentment nearly lets the
+    /// whole wheel run.
+    private func spread(_ feeling: SkelliFeeling)
+        -> Double {
+        switch feeling {
+        case .mad: return 55
+        case .afraid: return 60
+        case .annoyed: return 75
+        case .haunted, .dreamy, .sleepy:
+            return 85
+        case .curious, .suspicious: return 100
+        case .content: return 150
+        default: return 115
+        }
     }
 
-    /// One stratum of the beam: an arc of the
-    /// spectrum ending at the shared head, so
+    /// Her palette, drawn fresh from her
+    /// state: the spectrum FANNED around her
+    /// feeling's hue instead of the whole
+    /// wheel forever — sampled every fifteen
+    /// degrees so the colors melt, fullest at
+    /// one pole of the ring and falling away
+    /// to a banked ember opposite. In the
+    /// dark register the same fan folds into
+    /// shades of black: a graphite sheen at
+    /// the pole, near-black at the ember, the
+    /// rainbow by value alone.
+    private func palette(dark: Bool)
+        -> AngularGradient {
+        let anchor = ((hue.truncatingRemainder(
+            dividingBy: 360)) + 360) / 360
+        let fan = spread(feeling) / 360
+        let colors: [Color] = (0...24).map { i in
+            let t = Double(i) / 24.0
+            let pole = 0.5 + 0.5
+                * cos(2 * Double.pi * t)
+            let h = anchor + (t - 0.5) * fan
+            let wrapped = h - floor(h)
+            if dark {
+                return Color(
+                    hue: wrapped,
+                    saturation: 0.10 * pole,
+                    brightness: 0.03
+                        + 0.34 * pow(pole, 1.2))
+            }
+            return Color(
+                hue: wrapped,
+                saturation: 0.50 + 0.32 * pole,
+                brightness: 0.16
+                    + 0.84 * pow(pole, 1.3))
+        }
+        return AngularGradient(colors: colors,
+                               center: .center)
+    }
+
+    /// One stratum of the beam: an arc of her
+    /// palette ending at the shared head, so
     /// strata of falling length and rising
     /// light stack into a comet's fall.
     private func beamArc(_ len: Double,
                          _ width: Double,
                          _ opacity: Double,
-                         _ head: Double) -> some View {
+                         _ head: Double,
+                         _ palette: AngularGradient)
+        -> some View {
         Circle()
             .trim(from: 0, to: len)
-            .stroke(spectrum, style: StrokeStyle(
+            .stroke(palette, style: StrokeStyle(
                 lineWidth: width, lineCap: .round))
             .rotationEffect(.degrees(
                 head - len * 360))
@@ -5228,22 +5286,38 @@ struct SkelliHalo: View {
             let drift = now.timeIntervalSince(epoch)
                 * 9
             let head = angle(at: now) + 100.8
+            // The dark register: the house gone
+            // silent, her sleep, or the
+            // witching hour — the spectrum
+            // folds to shades of black.
+            let hour = Calendar.current.component(
+                .hour, from: now)
+            let dark = darkHouse
+                || feeling == .sleepy
+                || hour == 3
+            let shades = palette(dark: dark)
             let beam = min(1, presence + 0.3
                            + swell * 0.3)
+                * (dark ? 0.75 : 1)
+            // Her itch stretches the comet: a
+            // restless beam runs long, a settled
+            // one burns short.
+            let reach = 0.75
+                + min(max(itch, 0), 100) / 100 * 0.9
             ZStack {
                 // The ring, twice over: a wide,
-                // blurred copy beneath, so the
-                // spectrum reads as light falling
-                // on the dark; the hairline itself
-                // above it.
+                // blurred copy beneath, so her
+                // colors read as light falling
+                // on the dark; the hairline
+                // itself above it.
                 Circle()
-                    .stroke(spectrum, lineWidth: 4.5)
+                    .stroke(shades, lineWidth: 4.5)
                     .blur(radius: 3.5)
                     .rotationEffect(.degrees(drift))
                     .opacity((presence + swell * 0.3)
                              * 0.35)
                 Circle()
-                    .stroke(spectrum,
+                    .stroke(shades,
                             lineWidth: 1.25)
                     .rotationEffect(.degrees(drift))
                     .opacity(min(1, presence + 0.25
@@ -5254,10 +5328,14 @@ struct SkelliHalo: View {
                 // not a dash — and at the head a
                 // bead of real white light, hot
                 // at the core and falling soft.
-                beamArc(0.28, 2.4, 0.10 * beam, head)
-                beamArc(0.19, 2.2, 0.18 * beam, head)
-                beamArc(0.12, 2.0, 0.34 * beam, head)
-                beamArc(0.06, 1.8, 0.60 * beam, head)
+                beamArc(0.28 * reach, 2.4,
+                        0.10 * beam, head, shades)
+                beamArc(0.19 * reach, 2.2,
+                        0.18 * beam, head, shades)
+                beamArc(0.12 * reach, 2.0,
+                        0.34 * beam, head, shades)
+                beamArc(0.06 * reach, 1.8,
+                        0.60 * beam, head, shades)
                 ZStack {
                     Color.clear
                     Circle()
@@ -5275,7 +5353,6 @@ struct SkelliHalo: View {
                 .rotationEffect(.degrees(head))
                 .opacity(beam)
             }
-            .hueRotation(.degrees(hue))
             .saturation(
                 feeling == .lonely
                     || feeling == .bored
@@ -5306,6 +5383,18 @@ struct SkelliHalo: View {
                     + Double.random(in: -8...8)
             }
             pulse(0.85)
+        }
+        // A stranger takes a shape on the
+        // wire: one swell of light, nothing
+        // announced.
+        .onChange(of: unnamed) { _ in
+            pulse(0.7)
+        }
+        // The house going dark (or waking) is
+        // felt in the ring before it is read
+        // anywhere.
+        .onChange(of: darkHouse) { _ in
+            pulse(0.8)
         }
         .task {
             // Spontaneity: at unhurried, uneven
@@ -5862,7 +5951,12 @@ struct SkelliView: View {
                     .overlay {
                         SkelliHalo(
                             mood: skelli.mood,
-                            feeling: heart.feeling)
+                            feeling: heart.feeling,
+                            itch: heart.itch,
+                            unnamed: SkelliVoice
+                                .unnamedCount(),
+                            darkHouse: emcon.condition
+                                >= .bravo)
                     }
             }
             VStack(alignment: .leading, spacing: 3) {

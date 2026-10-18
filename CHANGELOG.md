@@ -181,6 +181,24 @@
   make her mad, and the
   two weathers are never
   confused.
+- **Her halo reads her.**
+  The ring around her
+  face is no longer a
+  rainbow worn forever:
+  its colors gather in
+  her feeling's family,
+  bright at one pole and
+  banked to an ember
+  opposite, and when the
+  house goes dark its
+  spectrum folds into
+  shades of black. Her
+  restlessness stretches
+  its comet; a stranger
+  on the wire sends a
+  pulse around it.
+  Nothing anywhere
+  explains it.
 
 ## 9.0b — 2026-10-20 — gamma
 
