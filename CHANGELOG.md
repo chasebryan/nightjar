@@ -13,18 +13,18 @@
   player — decoded once, at
   a capped size — the log's
   styles stretch across its
-  6.68 seconds, the sphere
-  at the centre fills on the
-  film's own clock — two
-  counter-flowing lattices,
-  one rising from the bottom
-  of the circle, one falling
-  from the top, two arcs
-  running the rim against
-  each other — and when the
-  load completes it
-  crystallizes into its final
-  ring — and the title
+  6.68 seconds, and at the
+  centre a fingerprint
+  derives itself on the
+  film's own clock — ridge
+  by ridge the whorl grows,
+  bone-white with an accent
+  core, the house proving
+  its identity as it wakes —
+  and when the load
+  completes the print stands
+  whole and bright — and
+  the title
   assembles — letters wide
   and dim drawing together,
   brightening — until, on
@@ -144,12 +144,12 @@
 - **Picture, in two
   modes.** Also under Boot:
   Quality decodes the boot
-  film wide, the sphere at
+  film wide, the print at
   full density, the reels
   at full size; Performance
   decodes light — about a
   fifth of the film's
-  memory, a thinner sphere,
+  memory, a thinner print,
   a capped reel — for hot
   or struggling devices.
 - **Your setup, kept.**
@@ -237,7 +237,7 @@
   Witnesses; the Veil is
   drawn or lifted; the
   hour is an Epoch; the
-  sphere no longer loads
+  print no longer loads
   the night, it derives
   it; the subtitle stands
   UNDER SEAL until the

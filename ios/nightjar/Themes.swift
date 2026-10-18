@@ -620,7 +620,7 @@ private struct BootRow: View {
             Toggle("Boot screen", isOn: $bootEnabled)
             ExplainToggle(
                 text: "What plays when the app "
-                    + "opens: the film, the sphere, "
+                    + "opens: the film, the print, "
                     + "and the manifest of true facts "
                     + "about this device. Off stops "
                     + "the ceremony entirely — the "
@@ -641,12 +641,12 @@ private struct BootRow: View {
             ExplainToggle(
                 text: "Quality decodes the boot "
                     + "film at 1024 px with the "
-                    + "sphere at full density, and "
+                    + "print at full density, and "
                     + "the wallpaper reel plays "
                     + "full-size. Performance "
                     + "decodes the film at 512 — "
                     + "about a fifth of the memory — "
-                    + "thins the sphere, and caps "
+                    + "thins the print, and caps "
                     + "the reel at 640. Same app, "
                     + "lighter feet: choose "
                     + "Performance when the device "
