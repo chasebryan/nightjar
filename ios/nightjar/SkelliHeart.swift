@@ -477,6 +477,23 @@ final class SkelliHeart: ObservableObject {
             + "keeping each other company."
     }
 
+    /// Count a probe about her maker, per day. She
+    /// answers the first with lore, the second with a
+    /// warning, and the third is an offense — she is
+    /// protective, and digging is the one curiosity
+    /// she punishes.
+    func noteMakerProbe() -> Int {
+        let day = Calendar.current.startOfDay(
+            for: Date()).timeIntervalSince1970
+        if defaults.double(forKey: "heart.makerDay")
+            != day {
+            defaults.set(day, forKey: "heart.makerDay")
+            defaults.set(0, forKey: "heart.makerProbes")
+        }
+        bump("heart.makerProbes")
+        return count("heart.makerProbes")
+    }
+
     /// Forgiveness: the grievance is wiped the moment
     /// an apology lands — she is a person about it,
     /// not a timer. The fondness is fed by the caller.

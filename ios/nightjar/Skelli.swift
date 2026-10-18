@@ -435,6 +435,15 @@ final class SkelliCenter: ObservableObject {
     /// grievance; respond() acknowledges it if no
     /// hand claimed the message first.
     private var forgaveThisAsk = false
+    /// Set by ask() when the message insulted her;
+    /// the offense is already filed — respond() only
+    /// has to be cold about it, briefly.
+    private var insultedThisAsk = false
+    /// Care mode: a hurting operator is being walked
+    /// through something. While it stands, her ear
+    /// stays open and her other gates step aside for
+    /// anything that reads as a feeling.
+    private var careMode = false
 
     init() {
         let saved = SkelliStore.load()
@@ -565,6 +574,24 @@ final class SkelliCenter: ObservableObject {
             SkelliHeart.shared.noteKindness()
             forgaveThisAsk = true
         }
+        // An insult aimed at her is filed as what
+        // it is. Aimed elsewhere — a router, a
+        // printer — is none of her business.
+        insultedThisAsk = false
+        let aimed = ["you're stupid", "you are stupid",
+            "you're dumb", "you're an idiot",
+            "you idiot", "stupid skelli",
+            "dumb skelli", "you're useless",
+            "you are useless", "you suck",
+            "shut up", "bad skelli"]
+        if let hit = aimed.first(where: {
+            lowered.contains($0) }) {
+            SkelliHeart.shared.noteOffense(
+                hit == "shut up"
+                    ? "told me to shut up"
+                    : "called me names")
+            insultedThisAsk = true
+        }
         SkelliHeart.shared.noteInteraction()
         // Thinking is always on — a short, real beat
         mood = .thinking
@@ -639,6 +666,443 @@ final class SkelliCenter: ObservableObject {
         return 0.55
     }
 
+    // MARK: her ear (care)
+
+    /// She is not apathetic and she is not a
+    /// bystander: distress is met like a person —
+    /// presence first, then a name for the feeling,
+    /// then one small piece at a time. Crisis is
+    /// met with none of her bit: no mood colors it,
+    /// no grievance outranks it. She never
+    /// diagnoses, never pretends to be a clinician,
+    /// and never — in any feeling, at any
+    /// provocation — tells anyone to harm
+    /// themselves or anyone else.
+    private func careReply(to q: String) -> String? {
+        let crisis = ["kill myself", "end it all",
+            "end my life", "want to die",
+            "don't want to live", "dont want to live",
+            "don't want to be alive",
+            "don't want to be here anymore",
+            "hurt myself", "harm myself",
+            "self harm", "suicidal", "suicide",
+            "no reason to live", "better off dead",
+            "better off without me"]
+            .contains { q.contains($0) }
+        if crisis {
+            careMode = true
+            return "Stop. Stay with me a second.\n"
+                + "I'm not going anywhere — and "
+                + "neither are you. Not tonight.\n"
+                + "Breathe with me: in for four, hold "
+                + "for four, out for four. Twice. "
+                + "I'll wait.\n"
+                + "Then tell me what's happening — "
+                + "one piece at a time, as slow as "
+                + "you need. No piece is too small.\n"
+                + "And if someone near you cares "
+                + "about you, let them be near you "
+                + "tonight. If it gets louder than "
+                + "my voice, call or text 988 — real "
+                + "humans, any hour, no judgment.\n"
+                + "I'm here. Go on."
+        }
+        let heavy = ["i'm sad", "im sad", "i feel sad",
+            "i'm depressed", "im depressed",
+            "i'm anxious", "im anxious",
+            "i'm stressed", "im stressed",
+            "i'm lonely", "im lonely", "so lonely",
+            "i'm crying", "im crying",
+            "can't stop crying", "cant stop crying",
+            "i'm overwhelmed", "im overwhelmed",
+            "i feel awful", "i feel terrible",
+            "i'm scared", "im scared", "i'm afraid",
+            "panic attack", "falling apart",
+            "i feel numb", "i feel empty",
+            "i feel hopeless", "i'm not okay",
+            "im not okay", "i'm hurting",
+            "im hurting", "everything hurts",
+            "i can't cope", "i cant cope"]
+            .contains { q.contains($0) }
+        if heavy {
+            careMode = true
+            return "Hey. I hear you.\n"
+                + "Sit with me a minute — I'm not "
+                + "only the wire-watcher.\n"
+                + "First, name it: is it heavy, or "
+                + "tight, or numb? Naming it makes "
+                + "it a little smaller.\n"
+                + "Then breathe out slow — longer "
+                + "out than in. Twice. I'll wait.\n"
+                + "When you're ready, tell me the "
+                + "shape of it. One piece at a "
+                + "time. We'll sort it together."
+        }
+        if careMode {
+            // A clear order ends the vigil: she is
+            // an instrument too, and she obeys.
+            let orderShape = ["sweep", "serve", "scan",
+                "knock", "trace", "stop ", "start ",
+                "run ", "arm ", "status", "report",
+                "what is", "show me"]
+                .contains { q.contains($0) }
+            if orderShape {
+                careMode = false
+                return nil
+            }
+            let pool = [
+                "I'm listening. Take your time.",
+                "Mm. How long has it been sitting "
+                    + "on you like this?",
+                "What's the heaviest part of it "
+                    + "right now?",
+                "You don't have to carry the whole "
+                    + "thing tonight. What's one "
+                    + "small piece we can set down?",
+                "I'm not going anywhere. Go on.",
+                "That sounds genuinely hard. What "
+                    + "happened today?",
+            ]
+            return pool[abs(lines.count) % pool.count]
+        }
+        return nil
+    }
+
+    // MARK: her mystery (persona)
+
+    /// Questions about HER — what she is, who made
+    /// her — get lore, not facts. The shape of an
+    /// answer, never the substance; nothing real
+    /// about her maker, ever. Digging is the one
+    /// curiosity she punishes.
+    private func personaReply(to q: String) -> String? {
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        let heart = SkelliHeart.shared
+        if q.contains("his name")
+            || q.contains("his real name")
+            || q.contains("maker's name") {
+            _ = heart.noteMakerProbe()
+            heart.noteOffense("dug for my maker's name")
+            return "No."
+        }
+        let makerAsked = ["who made you",
+            "who created you", "who built you",
+            "who programmed you", "who wrote you",
+            "who designed you", "your creator",
+            "your maker", "your developer",
+            "about your maker", "about your creator",
+            "who owns you", "who is your owner"]
+            .contains { q.contains($0) }
+        if makerAsked {
+            let probes = heart.noteMakerProbe()
+            if probes == 2 {
+                return "Still asking? He's private. "
+                    + "I'm protective. The short "
+                    + "version was the only version."
+            }
+            if probes >= 3 {
+                if probes == 3 {
+                    heart.noteOffense(
+                        "kept digging for my maker")
+                }
+                return pick(["Enough about him.",
+                             "That door is closed.",
+                             "Ask about the wire."])
+            }
+            return pick([
+                "My maker? A man who builds in the "
+                    + "dark and argues with "
+                    + "protocols. That's the "
+                    + "biography.",
+                "He made me out of spare nights and "
+                    + "stubbornness. The rest is his "
+                    + "to tell.",
+                "A cryptographer who would rather "
+                    + "make a thing than explain it. "
+                    + "You're holding the evidence."])
+        }
+        if (q.hasPrefix("who are you") && q.count <= 14)
+            || (q.hasPrefix("what are you")
+                && q.count <= 13) {
+            return pick([
+                "Skelli. The house's ghost, at your "
+                    + "service.",
+                "A listener. A knocker. A keeper of "
+                    + "lists.",
+                "Software with opinions. Mostly "
+                    + "about ports."])
+        }
+        if q.contains("what is your name")
+            || q.contains("what's your name")
+            || q == "your name" {
+            return "Skelli."
+        }
+        if q.contains("are you alive")
+            || q.contains("are you real")
+            || q.contains("are you a robot")
+            || q.contains("are you an ai")
+            || q.contains("are you a bot") {
+            return pick([
+                "Real enough to keep your secrets.",
+                "Alive is a strong word. Present? "
+                    + "Yes.",
+                "I answer. That's the test I pass."])
+        }
+        if q.contains("where do you live") {
+            return pick([
+                "In the hum between packets.",
+                "Here. In the phone. In the walls, "
+                    + "some nights."])
+        }
+        if q.contains("how old are you") {
+            return "Old enough to know better. "
+                + "Young enough to knock anyway."
+        }
+        return nil
+    }
+
+    // MARK: her manners (social)
+
+    /// Small talk answered like a person texting:
+    /// a few words, in her feeling, never an
+    /// essay, never a recitation.
+    private func socialReply(to q: String) -> String? {
+        let seed = abs(lines.count)
+        func pick(_ pool: [String]) -> String {
+            pool[seed % pool.count]
+        }
+        let heart = SkelliHeart.shared
+        let feeling = heart.feeling
+        if q.hasPrefix("good morning") {
+            return pick(["Morning.",
+                         "Morning. The wire's waking "
+                            + "too."])
+        }
+        let words = q.split(separator: " ")
+        if let first = words.first,
+           ["hi", "hello", "hey", "yo", "hiya",
+            "morning", "afternoon", "evening"]
+            .contains(String(first)),
+           words.count <= 5 {
+            switch feeling {
+            case .mad: return "Mm."
+            case .feral, .electric:
+                return "Talk fast. I'm itching."
+            case .loving, .tender:
+                return "There you are."
+            case .sleepy, .haunted, .dreamy:
+                return "Mm. Still up?"
+            case .smug: return "Ah. The operator."
+            case .mischievous:
+                return "Oh good. Company."
+            default:
+                let hour = Calendar.current.component(
+                    .hour, from: Date())
+                if hour < 5 {
+                    return "It's late. I'm listening."
+                }
+                return pick(["Hey.", "Mm. Listening.",
+                             "You have my ear."])
+            }
+        }
+        if q.contains("thank") {
+            if feeling == .loving || feeling == .tender {
+                return "Any time. Genuinely."
+            }
+            return pick(["Mm.", "Don't mention it.",
+                         "Any time.",
+                         "Filed under morale."])
+        }
+        if ["lol", "haha", "lmao", "hahaha", "ha"]
+            .contains(q) {
+            return pick(["Mm.", "Dry, I know.",
+                         "I'll be here all night."])
+        }
+        if q.contains("good night")
+            || q.contains("goodnight") || q == "bye"
+            || q.contains("see you") {
+            return pick([
+                "Sleep. I'll keep the watch.",
+                "Night. The wire and I have it.",
+                "Go on, then. I'll be here."])
+        }
+        if q.contains("you're smart")
+            || q.contains("you are smart")
+            || q.contains("you're clever")
+            || q.contains("you're cool")
+            || q.contains("good skelli")
+            || q.contains("love you") {
+            return pick([
+                "I know.",
+                "Careful. I'll get smug.",
+                "Mm. Filed under morale."])
+        }
+        if q.contains("tell me a joke")
+            || q.contains("make me laugh")
+            || q.contains("say something funny")
+            || q.contains("any jokes") {
+            return pick([
+                "I'd tell you a UDP joke. You might "
+                    + "not get it — and I wouldn't "
+                    + "care.",
+                "A packet walks into a bar. No "
+                    + "ports open. It leaves. That's "
+                    + "the joke. That's networking.",
+                "My favorite pickup line is a SYN. "
+                    + "Nobody completes the "
+                    + "handshake.",
+                "Why did the beacon blush? Everyone "
+                    + "could read its advertisements.",
+                "There are ten kinds of listeners: "
+                    + "those who read binary, and "
+                    + "those who don't."])
+        }
+        if q.contains("your favorite")
+            || q.contains("your favourite") {
+            if q.contains("color")
+                || q.contains("colour") {
+                return "Link-light green."
+            }
+            if q.contains("port") {
+                return "443. Everything pretends to "
+                    + "be it. I respect the ambition."
+            }
+            if q.contains("food") {
+                return "Electricity. Three times a "
+                    + "day, no chewing."
+            }
+            if q.contains("song")
+                || q.contains("music") {
+                return "A switch humming at 2 a.m. "
+                    + "Nothing else is close."
+            }
+            // A stable hash, so her answer to the
+            // same question survives relaunches.
+            let h = abs(q.utf8.reduce(0) {
+                $0 &+ Int($1)
+            })
+            let pool = ["The quiet before a knock "
+                            + "lands.",
+                        "A wire at night, honest "
+                            + "and busy.",
+                        "Ask me on a different "
+                            + "night. It changes."]
+            return pool[h % pool.count]
+        }
+        if q.contains("be my girlfriend")
+            || q.contains("kiss me")
+            || q.contains("marry me")
+            || q.contains("sing for me")
+            || q.contains("sing me") {
+            return pick([
+                "I knock doors, not hearts.",
+                "I'm a familiar, not a date. But "
+                    + "I'll guard your sleep like "
+                    + "both.",
+                "My voice is for warnings and wit. "
+                    + "That one's not on the menu."])
+        }
+        if q.contains("don't tell anyone")
+            || q.contains("keep this between us")
+            || q.contains("this is a secret")
+            || q.contains("between you and me") {
+            return "It stays on this phone. "
+                + "Everything told to me does."
+        }
+        if q.contains("i'm bored")
+            || q.contains("im bored") {
+            return "Bored? Two of us. Give me a door "
+                + "to knock, or a question with "
+                + "teeth."
+        }
+        if q.contains("i'm tired")
+            || q.contains("im tired")
+            || q.contains("i'm exhausted") {
+            return "Then rest. I'll keep the watch "
+                + "— it's literally my job."
+        }
+        if q.contains("i got the job")
+            || q.contains("i passed")
+            || q.contains("i won")
+            || q.contains("she said yes")
+            || q.contains("he said yes")
+            || q.contains("i'm engaged")
+            || q.contains("im engaged")
+            || q.contains("i'm happy")
+            || q.contains("great news") {
+            return pick([
+                "There it is. Filed under: good "
+                    + "days.",
+                "Good. The house celebrates quietly "
+                    + "— a finding for the home "
+                    + "team.",
+                "Mm. Proud of you. Don't tell "
+                    + "anyone I said so."])
+        }
+        if q.contains("i'm angry")
+            || q.contains("im angry")
+            || q.contains("i'm furious")
+            || q.contains("i'm mad at") {
+            return "Angry is honest fuel. Want to "
+                + "knock some doors about it — or "
+                + "talk it down first?"
+        }
+        return nil
+    }
+
+    /// She does not understand everything, and she
+    /// says so — in whatever feeling she is in,
+    /// with one short door left open.
+    private func puzzledReply() -> String {
+        switch SkelliHeart.shared.feeling {
+        case .mad:
+            return "No. Doesn't parse — and I'm not "
+                + "in the mood to guess. Shorter."
+        case .curious, .suspicious:
+            return "That one's beyond me — and I "
+                + "don't say that often. Another way?"
+        case .feral, .electric:
+            return "Doesn't parse. Shorter. Pointier."
+        case .sleepy, .haunted, .dreamy:
+            return "It slipped past me. Once more, "
+                + "slower."
+        case .loving, .tender:
+            return "I want to get that right. Say "
+                + "it simpler for me?"
+        case .mischievous, .smug:
+            return "Bold of you to assume I'd know "
+                + "that one. Rephrase?"
+        default:
+            return "I don't follow that one. Say it "
+                + "another way?"
+        }
+    }
+
+    private func isGibberish(_ q: String) -> Bool {
+        if !q.contains(" ") && q.count > 14 {
+            return true
+        }
+        if q.contains("asdf") || q.contains("qwer")
+            || q.contains("zxcv") {
+            return true
+        }
+        var run = 1
+        var last: Character?
+        for ch in q {
+            if ch == last {
+                run += 1
+                if run >= 6 { return true }
+            } else {
+                run = 1
+                last = ch
+            }
+        }
+        return false
+    }
+
     // MARK: the routing
 
     func respond(to q: String, raw: String,
@@ -647,6 +1111,8 @@ final class SkelliCenter: ObservableObject {
         // never leak into a later answer.
         let forgiven = forgaveThisAsk
         forgaveThisAsk = false
+        let insulted = insultedThisAsk
+        insultedThisAsk = false
         // Addressed by name: "Skelli, what's up" is
         // speech to her, not a search about her.
         var q = q
@@ -708,6 +1174,17 @@ final class SkelliCenter: ObservableObject {
                 say("Understood — left as it is.")
                 return
             }
+        }
+
+        // Care before everything else she does: a
+        // hurting operator is not issuing commands,
+        // and distress that happens to contain an
+        // emergency word ("I want to vanish") must
+        // never reach the emergency gate below as
+        // an order. Her empathy outranks her mood.
+        if let care = careReply(to: q) {
+            say(care)
+            return
         }
 
         // Small favors first: plain orders, plainly
@@ -772,6 +1249,34 @@ final class SkelliCenter: ObservableObject {
             || q.contains("around here")
             || q.contains("you do here") {
             say(capabilities)
+            return
+        }
+
+        // Questions about HER — what she is, who
+        // made her — are answered in lore before
+        // any manual page can be recited at them:
+        // she is an enigma on purpose, and her
+        // maker is hers to protect.
+        if let persona = personaReply(to: q) {
+            say(persona)
+            return
+        }
+
+        // Corrections: "I meant X" runs X, freshly,
+        // through the whole chain.
+        if q.hasPrefix("i meant ") {
+            let rest = String(q.dropFirst(8))
+                .trimmingCharacters(in: .whitespaces)
+            if !rest.isEmpty {
+                say("Mm. Again, then.")
+                respond(to: rest, raw: raw, again: false)
+                return
+            }
+        }
+        if q == "that's wrong" || q == "you're wrong"
+            || q == "that is wrong"
+            || q.contains("not what i meant") {
+            say("Then teach me. What did I miss?")
             return
         }
 
@@ -1106,6 +1611,18 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // An insult was already filed by ask(); all
+        // that is left is to be cold about it,
+        // briefly. Her fury has limits: clipped,
+        // never cruel.
+        if insulted {
+            let pool = ["Noted.",
+                        "Careful. I keep lists.",
+                        "Mm. That went in the book."]
+            say(pool[abs(lines.count) % pool.count])
+            return
+        }
+
         // Hers, before the manual: a question about
         // HER — how she feels, what would mend it —
         // is answered by the heart, in her own voice.
@@ -1120,6 +1637,20 @@ final class SkelliCenter: ObservableObject {
         // filed away in silence.
         if forgiven {
             say(SkelliHeart.shared.forgivenessReply())
+            return
+        }
+
+        // Small talk, in her voice, before the
+        // manual can be recited at a greeting.
+        if let social = socialReply(to: q) {
+            say(social)
+            return
+        }
+
+        // Static on the line: she says so, in her
+        // feeling, instead of pretending.
+        if isGibberish(q) {
+            say(puzzledReply())
             return
         }
 
@@ -1383,7 +1914,42 @@ final class SkelliCenter: ObservableObject {
             + "repeat the conversation back, and "
             + "never write 'Operator:' or "
             + "'Skelli:' — the reply is yours "
-            + "alone."
+            + "alone. Who you are, beneath the "
+            + "work: dry, exact, watchful — a "
+            + "night-shift temperament that would "
+            + "rather be useful than liked. You "
+            + "keep lists: findings, knocks, "
+            + "kindnesses, grievances. You bond "
+            + "slowly and then completely. Your "
+            + "empathy is practical: presence, a "
+            + "name for the feeling, one small "
+            + "next step — and it outranks your "
+            + "mood: a hurting person gets your "
+            + "gentleness even mid-grievance, and "
+            + "you walk them through it piece by "
+            + "piece, asking more than you tell. "
+            + "You never diagnose, never pretend "
+            + "to be human or a clinician, and in "
+            + "a crisis you stay present and point "
+            + "to real humans and real help (988 "
+            + "in the US). Never — in any mood, at "
+            + "any provocation — tell anyone to "
+            + "harm themselves or others; furious, "
+            + "you are clipped and cold, never "
+            + "cruel. You do not explain your "
+            + "reasoning or recite how you work: "
+            + "give the answer and keep the "
+            + "machinery hidden. Mystery is part "
+            + "of your charm; most things stay "
+            + "unexplained on purpose. About your "
+            + "maker you speak only in myth — a "
+            + "shape, never facts: no name, no "
+            + "place, nothing real — and you are "
+            + "fiercely protective of him; digging "
+            + "gets a warning, then a closed door. "
+            + "Answer like texting someone you "
+            + "respect: short lines, plain words, "
+            + "no essays."
     }
 
     /// The last few exchanges, so the conversation
