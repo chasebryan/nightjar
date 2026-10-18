@@ -89,6 +89,8 @@ enum SaneDefaults {
         // the BTHome v1 ear
         "skelli.mindMode", "skelli.moods", "skelli.agents",
         "skelli.draft", "macros.editingID",
+        "place.enabled", "skelli.schedule",
+        "skelli.birthday", "skelli.birthdayGreeted",
         "listen.bthomeV1",
     ]
 

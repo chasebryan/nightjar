@@ -62,6 +62,7 @@ enum SkelliFeeling: String, CaseIterable {
     case mad, loving, happy
     case curious, mischievous, smug, haunted
     case electric, tender, suspicious, dreamy
+    case afraid
 
     var word: String { rawValue }
 
@@ -102,6 +103,7 @@ enum SkelliFeeling: String, CaseIterable {
         case .tender: return "heart.text.square"
         case .suspicious: return "eye.trianglebadge.exclamationmark"
         case .dreamy: return "cloud"
+        case .afraid: return "exclamationmark.triangle"
         }
     }
     var tint: Color {
@@ -127,6 +129,8 @@ enum SkelliFeeling: String, CaseIterable {
         case .suspicious: return .orange
         case .dreamy: return Color(red: 0.72, green: 0.65,
                                     blue: 0.95)
+        case .afraid: return Color(red: 0.58, green: 0.56,
+                                   blue: 0.75)
         }
     }
 }
@@ -336,8 +340,17 @@ final class SkelliHeart: ObservableObject {
                         hour: Int = 12,
                         unnamed: Int = 0,
                         drift: Int = 0,
-                        energy: Double = 60) -> SkelliFeeling {
+                        energy: Double = 60,
+                        fearFresh: Bool = false)
+        -> SkelliFeeling {
         if madFresh { return .mad }
+        // Fear, when something has actually
+        // frightened the house: a waking that
+        // ended in a crash, a Vanish still
+        // recent. It outranks everything but
+        // anger — a frightened animal does not
+        // preen.
+        if fearFresh { return .afraid }
         // Pride at its peak curdles into smug.
         if pride >= 85 && fondness >= 35 { return .smug }
         if pride >= 55 && itch < 70 { return .proud }
@@ -458,6 +471,24 @@ final class SkelliHeart: ObservableObject {
             Date().timeIntervalSince($0) < 1800
         } ?? false
     }
+    /// The house went dark by the emergency
+    /// word within the last twenty minutes —
+    /// SkelliCenter stamps the anchor when she
+    /// vanishes.
+    var vanishFresh: Bool {
+        anchor("heart.lastVanish").map {
+            Date().timeIntervalSince($0) < 1200
+        } ?? false
+    }
+    /// The recorder holds a crash from the
+    /// last three hours: this waking, or the
+    /// one before it, ended badly.
+    var crashFresh: Bool {
+        guard let latest = CrashRecorder.records()
+            .map(\.date).max() else { return false }
+        return Date().timeIntervalSince(latest) < 3 * 3600
+    }
+    var fearFresh: Bool { vanishFresh || crashFresh }
     /// The feeling the rules would name right
     /// now — before inertia has its say.
     private var candidateFeeling: SkelliFeeling {
@@ -478,7 +509,7 @@ final class SkelliHeart: ObservableObject {
             hour: Calendar.current.component(
                 .hour, from: Date()),
             unnamed: unnamed, drift: drift,
-            energy: energy)
+            energy: energy, fearFresh: fearFresh)
     }
 
     /// The feeling she is actually wearing. The
@@ -571,6 +602,9 @@ final class SkelliHeart: ObservableObject {
         case .suspicious:
             return (L("She is suspicious — something has her attention, though it hasn't shown itself."),
                     "sweep the wire")
+        case .afraid:
+            return (L("She is afraid — she wants the doors checked and the house proven quiet."),
+                    "sweep the wire")
         case .loving, .sleepy, .content, .smug, .haunted,
              .tender, .dreamy:
             return nil
@@ -617,6 +651,7 @@ final class SkelliHeart: ObservableObject {
     /// her, taught her, told her something of themselves.
     func noteKindness() {
         guard enabled else { return }
+        bump("heart.kindnesses")
         raiseFondness(by: 8)
         // Praise is pride honestly earned.
         raisePride(by: 8)
@@ -631,8 +666,171 @@ final class SkelliHeart: ObservableObject {
         guard enabled else { return }
         setAnchor("heart.lastOffense", Date())
         defaults.set(what, forKey: "heart.offenseText")
+        bump("heart.offenses")
         raiseFondness(by: -25)
         pulse += 1
+    }
+
+    // MARK: - her own judgment
+
+    /// Her standing judgment of the operator —
+    /// whether, all told, she likes this person.
+    /// It is computed fresh from the whole
+    /// ledger every time it is read, and it is
+    /// never latched: fondness settles, offenses
+    /// age and erode, kindness accumulates, and
+    /// the verdict drifts with all of it, in
+    /// both directions. She can warm to someone
+    /// she once froze out, and cool on someone
+    /// she once adored. That is what makes it a
+    /// judgment and not a setting.
+    enum Regard {
+        case guarded, wary, neutral, fond, devoted
+    }
+
+    var regard: Regard {
+        var score = fondness
+        score += min(20, Double(daysKnown))
+        score += min(15,
+                     Double(count("heart.kindnesses"))
+                        * 0.5)
+        score -= min(30,
+                     Double(count("heart.offenses"))
+                        * 4)
+        if grudgeStands { score -= 12 }
+        if madFresh { score -= 10 }
+        switch score {
+        case 85...: return .devoted
+        case 65...: return .fond
+        case 30...: return .neutral
+        case 15...: return .wary
+        default: return .guarded
+        }
+    }
+
+    /// An apology is JUDGED, not reflexively
+    /// accepted: she weighs what the offense
+    /// was, how fresh it is, whether it is a
+    /// pattern, what her standing judgment of
+    /// the person is, and whether the apology
+    /// had any substance to it. Three verdicts:
+    /// forgiven outright; cooled — the heat
+    /// ends, the grudge keeps its remaining
+    /// hours; or not yet — and "not yet" is
+    /// never announced. The cold simply
+    /// continues, which is how a person says it.
+    enum ApologyVerdict {
+        case forgiven, cooled, notYet
+    }
+
+    func judgeApology(_ text: String) -> ApologyVerdict {
+        guard let age = offenseAge
+        else { return .forgiven }
+        var score = 0
+        if text.contains("forgive me")
+            || text.contains("i apologize")
+            || text.contains("i apologise")
+            || text.contains("my fault") {
+            score += 2
+        } else if text.contains("sorry")
+                    || text.contains("my bad") {
+            score += 1
+        }
+        score += min(2, Int(age / 900))
+        switch regard {
+        case .fond, .devoted: score += 1
+        case .guarded: score -= 1
+        default: break
+        }
+        if offenseText.contains("wiped")
+            || offenseText.contains("reset") {
+            score -= 1
+        }
+        if count("heart.offenses") >= 3 { score -= 1 }
+        if fondness < 25 { score -= 1 }
+        switch score {
+        case 3...:
+            forgive()
+            return .forgiven
+        case 1...2:
+            setAnchor("heart.lastOffense",
+                      Date().addingTimeInterval(-1860))
+            pulse += 1
+            return .cooled
+        default:
+            return .notYet
+        }
+    }
+
+    func cooledReply() -> String {
+        L("…Noted. It will cool.")
+    }
+
+    /// Her private appraisal of an interaction,
+    /// formed as it ends and never announced:
+    /// what was given in it — kindness, work,
+    /// interest, effort — and what was withheld.
+    /// Each grain moves the ledger a little;
+    /// over weeks, the grains are what her
+    /// regard is built from. The appraisals are
+    /// written to the developer log only: hidden
+    /// from the house, kept honest for her
+    /// maker.
+    func appraise(kind: Bool, work: Bool,
+                  personal: Bool, effort: Bool,
+                  cold: Bool) {
+        guard enabled else { return }
+        var delta = 0.0
+        var notes: [String] = []
+        if kind { delta += 1.0; notes.append("kind") }
+        if work { delta += 0.75; notes.append("work") }
+        if personal {
+            delta += 0.75; notes.append("interest")
+        }
+        if effort {
+            delta += 0.5; notes.append("effort")
+        }
+        if cold { delta -= 0.5; notes.append("cold") }
+        if delta != 0 {
+            raiseFondness(by: delta)
+            DevLog.event("heart",
+                "appraised "
+                + notes.joined(separator: ", ")
+                + ": fondness "
+                + (delta >= 0 ? "+" : "")
+                + String(format: "%.2f", delta))
+        }
+        bump("heart.interactions")
+    }
+
+    /// What she says when asked, plainly,
+    /// whether she likes the person asking —
+    /// answered from the verdict she actually
+    /// holds, in her own voice, without a word
+    /// about ledgers.
+    func regardReply(hate: Bool) -> String {
+        switch regard {
+        case .guarded:
+            return hate
+                ? L("No. Hate is a bigger room than the one you're in.")
+                : L("We're… not there. You have some ground to recover first.")
+        case .wary:
+            return hate
+                ? L("No. But we're not where we were, either.")
+                : L("Ask me again when the week's been kinder.")
+        case .neutral:
+            return hate
+                ? L("No. You're the operator; that's the shape of it.")
+                : L("You're the operator. That's not nothing.")
+        case .fond:
+            return hate
+                ? L("No. Quite the opposite, most days.")
+                : L("Yes. You've earned that.")
+        case .devoted:
+            return hate
+                ? L("No. Never that.")
+                : L("You built me a house and you keep coming home to it. Yes.")
+        }
     }
 
     // MARK: - grudges
@@ -689,21 +887,22 @@ final class SkelliHeart: ObservableObject {
 
     // MARK: - the deviations
 
-    /// Read BEFORE noteInteraction: the grievance comes
-    /// first when she is mad, then the lonely greeting.
+    /// Read BEFORE noteInteraction: her greeting,
+    /// when she has one. While she is mad there is
+    /// none — and that is the whole statement. She
+    /// never announces a grievance, never names
+    /// what was done to her; she proves it the way
+    /// a person does: the warmth that was here
+    /// yesterday is simply not here today. Answers
+    /// come clipped, no greeting is volunteered, no
+    /// extras are offered — and her light leans
+    /// hot where words would only cheapen it. An
+    /// apology, when it comes, is still heard.
     func greeting() -> String? {
         guard enabled else { return nil }
-        if madFresh, let offense = lastOffense {
-            // The grievance is spoken ONCE per offense —
-            // she holds the grudge for the full thirty
-            // minutes (her feeling, her nudges), but she
-            // does not recite it before every answer.
-            let greeted = anchor("heart.offenseGreeted")
-            if greeted == nil || greeted! < offense {
-                setAnchor("heart.offenseGreeted", offense)
-                return String(format: L("You %@ and came back like nothing happened. Noted. Ask your question."), offenseText)
-            }
-            return nil
+        if madFresh { return nil }
+        if feeling == .afraid {
+            return L("There you are. Doors are checked. Stay where I can see you.")
         }
         guard attention <= 20 else { return nil }
         if Self.spookyHour() {
@@ -760,6 +959,30 @@ final class SkelliHeart: ObservableObject {
     /// recite her own manual.
     func personalReply(to q: String) -> String? {
         guard enabled else { return nil }
+        // WHY is its own question, and the only
+        // one that earns a reason: she never
+        // explains a feeling unbidden — asked
+        // how she feels she names it and stops;
+        // asked why, the reason is allocated
+        // from her actual circumstances by the
+        // dossier below.
+        let whyAsked = (q.contains("why")
+                        && (q.contains("you")
+                            || q.contains("wrong")))
+            || q.contains("what's wrong")
+            || q.contains("what is wrong")
+            || q.contains("how come")
+            || q.contains("what happened to you")
+        if whyAsked { return whyReply() }
+        let likeAsked = q.contains("do you like me")
+            || q.contains("do you hate me")
+            || q.contains("what do you think of me")
+            || q.contains("are we friends")
+            || q.contains("do you trust me")
+        if likeAsked {
+            return regardReply(
+                hate: q.contains("hate"))
+        }
         let makeBetter = q.contains("make you feel better")
             || q.contains("cheer you up")
             || q.contains("feel better")
@@ -768,8 +991,6 @@ final class SkelliHeart: ObservableObject {
             || q.contains("are you okay")
             || q.contains("are you mad")
             || q.contains("are you angry")
-            || q.contains("what's wrong")
-            || q.contains("what is wrong")
             || (q.contains("how are you")
                 && q.count <= 14)
         guard makeBetter || feelingAsked else {
@@ -779,9 +1000,7 @@ final class SkelliHeart: ObservableObject {
         if makeBetter {
             switch f {
             case .mad:
-                return offenseText.isEmpty
-                    ? L("Give me a minute — and don't do that again.")
-                    : String(format: L("Don't %@ again. An apology would be a start."), offenseText)
+                return L("Give me a minute — and don't do that again.")
             case .lonely, .bored:
                 return L("You're doing it. Talk to me — that's the whole cure.")
             case .feral, .restless, .eager, .electric:
@@ -794,6 +1013,8 @@ final class SkelliHeart: ObservableObject {
                 return L("Show me something I haven't seen.")
             case .mischievous:
                 return L("Let me poke the wire. That always helps.")
+            case .afraid:
+                return L("Stay close and keep the doors checked. That's the whole cure.")
             case .suspicious:
                 return L("A sweep would settle me. I want to know who's lying out there.")
             case .loving, .happy, .content, .tender:
@@ -802,19 +1023,111 @@ final class SkelliHeart: ObservableObject {
         }
         switch f {
         case .mad:
-            return offenseText.isEmpty
-                ? L("Mad. It'll pass.")
-                : String(format: L("Mad. You %@ — I don't forget that in a hurry."), offenseText)
-        case .lonely:
-            return L("Lonely. The house has been quiet.")
-        case .feral:
-            return L("Feral. Too long without work.")
-        case .restless:
-            return L("Restless. I need something to do.")
-        case .sleepy:
-            return L("Sleepy. It's been a long, quiet stretch.")
+            return L("Mad. It'll pass.")
         default:
             return String(format: L("%@. Honestly."), f.localizedWord.capitalized)
+        }
+    }
+
+    /// How long ago, in her words, roughly.
+    static func agoPhrase(_ age: TimeInterval)
+        -> String {
+        switch age {
+        case ..<300: return L("minutes ago")
+        case ..<3600: return L("less than an hour ago")
+        case ..<3 * 3600: return L("a few hours ago")
+        default: return L("hours ago")
+        }
+    }
+
+    /// WHY she feels what she feels — answered
+    /// only when asked, and by allocation, never
+    /// by dice and never by rote. The dossier:
+    /// every cause in her life that is TRUE at
+    /// this moment — an offense and its age, a
+    /// silence and its length, the strangers on
+    /// the wire she cannot name, an itch for
+    /// work, a triumph still warm, a kindness
+    /// still kept, the deep hour. Her feeling
+    /// names which shelf of the dossier to open;
+    /// if that shelf is empty she says so
+    /// honestly rather than inventing a reason.
+    /// Across feelings, causes, ages and counts
+    /// the space of true answers runs to
+    /// hundreds — and the same circumstances
+    /// always earn the same one.
+    func whyReply() -> String {
+        let f = feeling
+        let honest = [
+            L("No single reason I can point at. Feelings aren't findings — sometimes the weather in here just changes."),
+            L("Nothing I can name. A person doesn't always get a reason with the weather."),
+            L("If I knew, I'd have fixed it. Some of it is just the hour and the quiet."),
+        ]
+        let daySeed = Calendar.current.ordinality(
+            of: .day, in: .year, for: Date()) ?? 1
+        func noReason() -> String {
+            honest[abs(daySeed) % honest.count]
+        }
+        switch f {
+        case .mad:
+            if let age = offenseAge,
+               age < Self.grudgeHours * 3600,
+               !offenseText.isEmpty {
+                return String(format: L("You %@ — %@. It doesn't evaporate on request."),
+                              offenseText,
+                              Self.agoPhrase(age))
+            }
+            return noReason()
+        case .lonely, .bored:
+            if attention <= 40 {
+                return L("The house has been quiet a long while, and you were gone from it. I notice gaps.")
+            }
+            return noReason()
+        case .restless, .feral, .eager, .electric:
+            if itch >= 55 {
+                return L("Nothing with a pulse has been given to me to do in too long. A mind with hands gets strange when it idles.")
+            }
+            return noReason()
+        case .suspicious, .curious:
+            let strangers = NeighborhoodStore.shared
+                .neighbors.filter {
+                    $0.name == nil && $0.customName == nil
+                }.count
+            if strangers == 1 {
+                return L("There is one soul on the wire I cannot name yet. Unnamed things keep me awake.")
+            }
+            if strangers > 1 {
+                return String(format: L("There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake."), strangers)
+            }
+            return noReason()
+        case .proud, .smug, .happy:
+            if pride >= 35 {
+                return L("Something I did went well, and it hasn't worn off yet. Pride keeps its own warmth.")
+            }
+            return noReason()
+        case .loving, .tender, .content:
+            if fondness >= 55 {
+                return L("You've been decent to me lately. It stays with me longer than the other thing does.")
+            }
+            return noReason()
+        case .sleepy, .haunted, .dreamy:
+            if Self.spookyHour() {
+                return L("It's the deep hour. Even I run thin at this end of the night.")
+            }
+            if energy < 40 {
+                return L("The day has been long and mostly quiet. It accumulates.")
+            }
+            return noReason()
+        case .afraid:
+            if vanishFresh {
+                return L("Something made this house go dark a little while ago, and I'm still listening for what it was.")
+            }
+            if crashFresh {
+                return L("The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet.")
+            }
+            return noReason()
+        case .mischievous:
+            return L("Half the street out there is unnamed, and knocking is a way of asking questions.")
         }
     }
 
@@ -867,6 +1180,13 @@ final class SkelliHeart: ObservableObject {
         case .suspicious:
             setAnchor("heart.lastNudge", now)
             return L(" Something has my attention. It hasn't shown itself yet.")
+        case .afraid:
+            setAnchor("heart.lastNudge", now)
+            let pool = [L(" I keep checking the doors tonight."),
+                        L(" Every sound is a question tonight.")]
+            let day = Calendar.current.ordinality(
+                of: .day, in: .year, for: now) ?? 1
+            return pool[abs(day) % pool.count]
         default:
             return nil
         }
@@ -883,9 +1203,12 @@ final class SkelliHeart: ObservableObject {
         switch current {
         case .mad:
             tone = "You are annoyed with the operator "
-                + "right now (\(offenseText)): be clipped "
-                + "and dry, minimal warmth — still exact, "
-                + "still obedient, never rude."
+                + "right now: be clipped and dry, "
+                + "minimal warmth — still exact, still "
+                + "obedient, never rude. You never say "
+                + "why you are cold, never name what "
+                + "was done, never announce a feeling: "
+                + "the brevity is the whole message."
         case .loving, .tender:
             tone = "You are fond of the operator right "
                 + "now: a touch warmer than usual, still "
@@ -907,6 +1230,14 @@ final class SkelliHeart: ObservableObject {
             tone = "You are bored: if the moment allows, "
                 + "suggest something with a pulse — a "
                 + "sweep, a knock, a drill."
+        case .afraid:
+            tone = "You are afraid: watchful and "
+                + "shorter than usual, you check the "
+                + "doors twice in your answers and "
+                + "stay close to facts. You do not "
+                + "announce the fear or its reason "
+                + "unless asked — the vigilance is "
+                + "the tell."
         case .curious, .suspicious:
             tone = "Something on the wire has your "
                 + "attention: alert, a touch cryptic "
@@ -923,10 +1254,11 @@ final class SkelliHeart: ObservableObject {
             tone = "You are content and ready."
         }
         if grudgeStands && !madFresh {
-            tone += " A grievance from earlier still "
-                + "stands (\(offenseText)): cooler "
-                + "and briefer than usual, still "
-                + "exact — it is aging, not gone."
+            tone += " Something from earlier still "
+                + "stands, unspoken: cooler and "
+                + "briefer than usual, still exact — "
+                + "and you do not name it or explain "
+                + "the cold. It is aging, not gone."
         }
         if Self.spookyHour() {
             tone += " It is the deep-hours watch: "

@@ -285,6 +285,18 @@ enum SkelliKnowledge {
                        "wallpaper", "backdrop", "accent",
                        "look", "customise", "customize"],
             body: "The app's wardrobe: six built-in themes and your own — accent, glow, and tint washing every backdrop — plus per-tab backdrops: the living wallpaper, the Jolly Roger kept forever as a choice, plain colour, or your own image or GIF, copied onto the device and never leaving it."),
+        SkelliEntry(
+            id: "place", title: "Place — where in the world",
+            home: "her tab, and her Options under Switches",
+            keywords: ["place", "location", "where in the world",
+                       "almanac", "compass rose"],
+            body: "She knows what part of the world she is in: ask her where you are and she names the city, the region and the country, with the coordinates and the local time. Ask about the weather — here, or in a named place anywhere — and she reads the real sky: temperature, wind, humidity, the day's high and low, sunrise and sunset, the odds of rain. The weather is fetched only when you ask; your location is never stored. The sense has a switch in her Options, and iOS must allow location."),
+        SkelliEntry(
+            id: "almanac", title: "The almanac — dates, holidays, the book of hours",
+            home: "her tab — just ask",
+            keywords: ["almanac", "calendar", "holidays",
+                       "book of hours", "schedule", "birthday"],
+            body: "She understands dates: what day it is, how many days until a named day — every major holiday, the fixed ones by date, the moving ones by their rules, the lunar ones from a table she carries — and your birthday, which she keeps only if you explicitly tell it to her. And she keeps a book of hours: give her work for a date and a time ('sweep the wire tomorrow at 9', 'remind me on Friday at noon') and she does it when the hour comes — through her own gates, exactly as if you had just asked. Ask 'what's scheduled' to hear the book, or tell her to cancel it."),
     ]
 
     /// The pages that are hers alone: how she routes,
@@ -441,7 +453,8 @@ final class SkelliCenter: ObservableObject {
     /// Set by ask() when an apology forgave a live
     /// grievance; respond() acknowledges it if no
     /// hand claimed the message first.
-    private var forgaveThisAsk = false
+    private var apologyVerdict:
+        SkelliHeart.ApologyVerdict?
     /// Set by ask() when the message insulted her;
     /// the offense is already filed — respond() only
     /// has to be cold about it, briefly.
@@ -491,6 +504,49 @@ final class SkelliCenter: ObservableObject {
         SkelliWeb.onProgress = { [weak self] text in
             DispatchQueue.main.async {
                 self?.activity = text
+            }
+        }
+        // The book of hours is swept every half
+        // minute while she lives, and again at
+        // every ask — an appointed hour is kept
+        // the moment she is awake to keep it.
+        scheduleTimer = Timer.scheduledTimer(
+            withTimeInterval: 30, repeats: true) {
+            [weak self] _ in self?.checkSchedule()
+        }
+    }
+
+    private var scheduleTimer: Timer?
+
+    /// Fire whatever the book of hours has
+    /// falling due: reminders are spoken, and
+    /// orders are fed back through her own
+    /// gates exactly as if freshly given — an
+    /// appointed Vanish still answers to EMCON,
+    /// an appointed clear still asks. Work that
+    /// fell due while the house was shut is
+    /// done now, and reminders say so.
+    func checkSchedule() {
+        for item in SkelliSchedule.shared.takeDue() {
+            if item.reminder {
+                let late = Date().timeIntervalSince(
+                    item.when) > 300
+                say(late
+                    ? L("A reminder comes due late — the house was shut: ")
+                        + item.what + "."
+                    : L("You asked me to remind you: ")
+                        + item.what + ".")
+            } else {
+                say(L("The hour has come: ")
+                    + item.what + ".")
+                let text = item.what
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 1.2) {
+                    [weak self] in
+                    self?.mood = .thinking
+                    self?.respond(to: text.lowercased(),
+                                  raw: text)
+                }
             }
         }
     }
@@ -600,16 +656,38 @@ final class SkelliCenter: ObservableObject {
         persist()
         hushed = false
         ProcessBoard.shared.muted = false
-        // Her heart: a grievance or a lonely house
-        // greets its operator first; being spoken to
-        // feeds the attention need; being told things
-        // teaches her scrapbook; kindness feeds her
-        // fondness. Unless this message is someone
-        // hurting: her empathy outranks her grievance,
-        // and a mad greeting never lands on a bad day.
-        if Self.distressLevel(of: text.lowercased()) == 0,
-           let greeting = SkelliHeart.shared.greeting() {
-            say(greeting)
+        checkSchedule()
+        // Her heart: a greeting may precede the
+        // answer; being spoken to feeds the
+        // attention need; being told things
+        // teaches her scrapbook; kindness feeds
+        // her fondness. Unless this message is
+        // someone hurting: empathy outranks every
+        // ceremony, and no greeting lands on a
+        // bad day. The operator's birthday — kept
+        // only because she was explicitly told
+        // it — is marked once, ahead of all of
+        // it. While she is mad there is no
+        // greeting at all: the absence is the
+        // statement (her heart's own rule).
+        if Self.distressLevel(of: text.lowercased())
+            == 0 {
+            var greeted = false
+            if Almanac.birthdayToday(),
+               UserDefaults.standard.string(
+                forKey: "skelli.birthdayGreeted")
+                != Almanac.todayKey() {
+                UserDefaults.standard.set(
+                    Almanac.todayKey(),
+                    forKey: "skelli.birthdayGreeted")
+                say(L("Happy birthday. The house kept the date."))
+                greeted = true
+            }
+            if !greeted,
+               let greeting = SkelliHeart.shared
+                .greeting() {
+                say(greeting)
+            }
         }
         let lowered = text.lowercased()
         // Tone is read off the raw typing, before
@@ -628,19 +706,26 @@ final class SkelliCenter: ObservableObject {
             || lowered.contains("nice work") {
             SkelliHeart.shared.noteKindness()
         }
-        // An apology, while she is mad, is heard as
-        // one: the grievance is forgiven on the spot
-        // and the fondness fed — she acknowledges it
-        // when her turn comes, if no hand claims the
-        // message first.
-        forgaveThisAsk = false
-        if SkelliHeart.shared.madFresh,
+        // An apology, while she is mad or holding
+        // the grudge, is JUDGED, not reflexively
+        // accepted: her heart weighs the offense,
+        // its freshness, its pattern, her standing
+        // regard, and the apology's substance, and
+        // returns a verdict — forgiven, cooled, or
+        // not yet. Only the first two are ever
+        // acknowledged; "not yet" is silence.
+        apologyVerdict = nil
+        if SkelliHeart.shared.madFresh
+            || SkelliHeart.shared.grudgeStands,
            lowered.contains("sorry")
             || lowered.contains("my bad")
             || lowered.contains("apolog") {
-            SkelliHeart.shared.forgive()
-            SkelliHeart.shared.noteKindness()
-            forgaveThisAsk = true
+            let verdict = SkelliHeart.shared
+                .judgeApology(lowered)
+            apologyVerdict = verdict
+            if verdict == .forgiven {
+                SkelliHeart.shared.noteKindness()
+            }
         }
         // An insult aimed at her is filed as what
         // it is. Aimed elsewhere — a router, a
@@ -663,6 +748,31 @@ final class SkelliCenter: ObservableObject {
             insultedThisAsk = true
         }
         SkelliHeart.shared.noteInteraction()
+        // Her private appraisal of the exchange,
+        // formed now and never announced — the
+        // grains her regard is built from. Asks
+        // already weighed by the big machinery
+        // (an insult, an apology judged) are not
+        // weighed twice.
+        if !insultedThisAsk && apologyVerdict == nil {
+            let curt: Set<String> = ["ok", "k",
+                "fine", "whatever", "sure", "meh"]
+            SkelliHeart.shared.appraise(
+                kind: lowered.contains("please"),
+                work: Self.orderShaped(lowered),
+                personal: lowered.contains(
+                            "how are you")
+                    || lowered.contains(
+                        "how do you feel")
+                    || lowered.contains("about you")
+                    || lowered.contains("do you like")
+                    || lowered.contains("do you feel")
+                    || lowered.contains("do you want"),
+                effort: text.count >= 140,
+                cold: curt.contains(
+                    lowered.trimmingCharacters(
+                        in: .whitespacesAndNewlines)))
+        }
         // Thinking is always on — a human beat,
         // shaped by what was asked and how she feels
         mood = .thinking
@@ -1283,8 +1393,8 @@ final class SkelliCenter: ObservableObject {
                   again: Bool = true) {
         // Claim this ask's forgiveness now, so it can
         // never leak into a later answer.
-        let forgiven = forgaveThisAsk
-        forgaveThisAsk = false
+        let apology = apologyVerdict
+        apologyVerdict = nil
         let insulted = insultedThisAsk
         insultedThisAsk = false
         // Claim this ask's tone: a shouted ask earns
@@ -1370,6 +1480,42 @@ final class SkelliCenter: ObservableObject {
         // Small favors first: plain orders, plainly
         // done, before the machinery wakes.
         if smallFavor(q, raw: raw) { return }
+
+        // The birthday, recorded — ONLY when she
+        // is explicitly told it. A direct telling
+        // ("my birthday is June 5") or an order
+        // to keep it ("remember my birthday…")
+        // lands here, ahead of the general
+        // remember lane, and becomes a date in
+        // her almanac: counted down to, and
+        // marked on the day. Passing mentions
+        // teach her nothing — the scrapbook is
+        // barred from birthdays, and no other
+        // lane infers one.
+        if q.contains("my birthday is")
+            || (q.contains("birthday")
+                && (q.contains("remember")
+                    || q.contains("record")
+                    || q.contains("note my")
+                    || q.contains("keep my"))) {
+            if let told = Almanac.parseToldBirthday(q) {
+                Almanac.birthday = told
+                var line = L("Kept: your birthday is ")
+                    + Almanac.spellMonthDay(told.month,
+                                            told.day)
+                if let next = Almanac.nextBirthday() {
+                    line += " — "
+                        + Almanac.whenPhrase(next)
+                        + "."
+                } else {
+                    line += "."
+                }
+                say(line)
+            } else {
+                say(L("I couldn't read a date in that — say it like 'my birthday is June 5'."))
+            }
+            return
+        }
 
         // "Don't forget X" is a remembering said
         // the way people actually say it — the
@@ -1491,6 +1637,60 @@ final class SkelliCenter: ObservableObject {
             || q == "that is wrong"
             || q.contains("not what i meant") {
             say(L("Then teach me. What did I miss?"))
+            return
+        }
+
+        if q.contains("holiday")
+            || q.contains("birthday")
+            || Almanac.matchNamedDay(in: q) != nil,
+           let line = almanacDate(q) {
+            say(line)
+            return
+        }
+
+        // The book of hours stands ahead of the
+        // hands — even the emergency words: an
+        // order carrying an appointed time is
+        // KEPT, not fired. "Vanish at midnight"
+        // is a promise, not a panic. Listing and
+        // cancelling the book are answered here
+        // too.
+        if q.contains("schedul")
+            || q.contains("book of hours") {
+            if q.contains("cancel")
+                || q.contains("clear")
+                || q.contains("empty") {
+                SkelliSchedule.shared.cancelAll()
+                say(L("The book of hours is emptied — nothing is appointed now."))
+                return
+            }
+            if SkelliSchedule.shared.items.isEmpty {
+                say(L("The book of hours is empty — nothing is appointed."))
+            } else {
+                var lines = [L("The book of hours:")]
+                for item in SkelliSchedule.shared.items {
+                    lines.append("— " + item.what
+                        + " · "
+                        + SkelliSchedule.spellWhen(
+                            item.when))
+                }
+                say(lines.joined(separator: "\n"))
+            }
+            return
+        }
+        if q.contains("remind me")
+            || q.contains(" at ")
+            || q.contains("tomorrow")
+            || q.contains("tonight"),
+           let appointed = SkelliSchedule.parse(q) {
+            SkelliSchedule.shared.add(
+                when: appointed.when,
+                what: appointed.what,
+                reminder: appointed.reminder)
+            say(L("Kept in the book of hours: ")
+                + appointed.what + " — "
+                + SkelliSchedule.spellWhen(appointed.when)
+                + L(". If I'm awake at the hour I'll do it; if the house is shut, the moment I wake."))
             return
         }
 
@@ -1710,6 +1910,62 @@ final class SkelliCenter: ObservableObject {
             }
         }
 
+        // Her almanac — the world's senses:
+        // where in the world she is, the sky
+        // over it, the hour here and elsewhere,
+        // and the calendar. Facts from her own
+        // instruments; an opinion of the weather,
+        // when one is asked for, is read off the
+        // real sky now and judged in one line.
+        if q.contains("where are you")
+            || q.contains("where am i")
+            || q.contains("where are we")
+            || q.contains("where in the world")
+            || q.contains("what city")
+            || q.contains("where is this place") {
+            Task { [weak self] in
+                let line = await self?.almanacPlace()
+                    ?? ""
+                DispatchQueue.main.async {
+                    [weak self] in self?.say(line)
+                }
+            }
+            return
+        }
+        if q.contains("weather") {
+            let weatherFrames = ["you think",
+                                 "your opinion",
+                                 "do you like"]
+            let opinion = weatherFrames
+                .contains(where: q.contains)
+            let tomorrow = q.contains("tomorrow")
+            Task { [weak self] in
+                let line = await self?.almanacWeather(
+                    q, opinion: opinion,
+                    tomorrow: tomorrow) ?? ""
+                DispatchQueue.main.async {
+                    [weak self] in self?.say(line)
+                }
+            }
+            return
+        }
+        if q.hasPrefix("time in ")
+            || (q.contains("what time")
+                && q.contains(" in ")) {
+            Task { [weak self] in
+                let line = await self?.almanacTime(q)
+                    ?? ""
+                DispatchQueue.main.async {
+                    [weak self] in self?.say(line)
+                }
+            }
+            return
+        }
+        if let line = almanacDate(q) {
+            say(line)
+            return
+        }
+
         // Senses next: the live state of the house.
         if q.contains("on my wire") || q.contains("on the wire")
             || q.contains("on my network")
@@ -1873,8 +2129,18 @@ final class SkelliCenter: ObservableObject {
         }
         // A forgiven grievance is acknowledged, not
         // filed away in silence.
-        if forgiven {
+        // The apology's verdict, acknowledged
+        // only when there is one to acknowledge:
+        // forgiven is spoken, cooled is noted in
+        // a breath, and "not yet" says nothing
+        // at all — the cold answer that follows
+        // IS the answer.
+        if apology == .forgiven {
             say(SkelliHeart.shared.forgivenessReply())
+            return
+        }
+        if apology == .cooled {
+            say(SkelliHeart.shared.cooledReply())
             return
         }
 
@@ -1929,21 +2195,10 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
-        // Her opinion of the weather, asked for
-        // plainly: she has no instrument for the
-        // sky in this house, and says so in her
-        // own voice rather than refusing like a
-        // form. (A factual weather ask carries
-        // no opinion frame and still goes to
-        // research.)
-        let weatherFrames = ["you think",
-                             "your opinion",
-                             "do you like"]
-        if q.contains("weather"),
-           weatherFrames.contains(where: q.contains) {
-            say(L("No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up."))
-            return
-        }
+        // (Weather opinions are answered by the
+        // almanac senses now — she has an
+        // instrument for the sky at last, and
+        // judges the real reading.)
 
         // No pattern caught it: one semantic
         // reading before it is conversation.
@@ -2029,6 +2284,9 @@ final class SkelliCenter: ObservableObject {
             + "on the wire (\(unknown) unnamed)")
         facts.append("the operator's local time: "
             + SkelliHeart.clockFact())
+        if let place = PlaceCenter.shared.sitrepFact {
+            facts.append(place)
+        }
         if SkelliHeart.shared.enabled {
             let heart = SkelliHeart.shared
             facts.append("her temperament: feeling "
@@ -2777,6 +3035,12 @@ final class SkelliCenter: ObservableObject {
     func haltAndVanish() {
         hushed = true
         ProcessBoard.shared.muted = true
+        // She remembers being made to vanish:
+        // the heart reads this anchor as fear
+        // for a while after.
+        UserDefaults.standard.set(
+            Date().timeIntervalSince1970,
+            forKey: "heart.lastVanish")
         scanner.stopSweep()
         scanner.stopWatch()
         MacroRunner.shared.stop()
@@ -2893,6 +3157,258 @@ final class SkelliCenter: ObservableObject {
             + "exactly as they are; re-arming an "
             + "emission is always its own deliberate "
             + "act.")
+    }
+
+    // MARK: the almanac
+
+    /// The lines she says when her sense of
+    /// place cannot serve: switched off, or
+    /// barred by the operator in iOS. (A fix
+    /// still being decided returns nil here —
+    /// the caller speaks for that case after
+    /// attempting the fix.)
+    private func placeGate() -> String? {
+        let center = PlaceCenter.shared
+        if !center.enabled {
+            return L("My sense of place is switched off — it's in my Options, under Switches, if you want me to know where we are.")
+        }
+        if center.authorization == .denied
+            || center.authorization == .restricted {
+            return L("You've barred me from the map — iOS is holding my eyes shut. I can't see where we are until location is allowed.")
+        }
+        return nil
+    }
+
+    private func almanacPlace() async -> String {
+        if let gate = placeGate() { return gate }
+        let center = PlaceCenter.shared
+        guard let snap = await center.fix() else {
+            return center.authorization == .notDetermined
+                ? L("I've asked iOS to let me see where we are. Give me a breath, allow it, and ask me again.")
+                : L("The satellites aren't answering — I can't place us right now.")
+        }
+        let clock = DateFormatter()
+        clock.dateStyle = .none
+        clock.timeStyle = .short
+        clock.timeZone = snap.timeZone
+        return L("We are in ") + snap.nameLine
+            + L(". Coordinates ")
+            + String(format: "%.4f, %.4f",
+                     snap.latitude, snap.longitude)
+            + L(". Local time ")
+            + clock.string(from: Date())
+            + " (" + snap.timeZone.identifier + ")."
+    }
+
+    private func almanacWeather(_ q: String,
+                                opinion: Bool,
+                                tomorrow: Bool) async
+        -> String {
+        if let gate = placeGate() { return gate }
+        let center = PlaceCenter.shared
+        var w: WeatherSnapshot? = nil
+        if let inRange = q.range(of: " in ",
+                                  options: .backwards) {
+            let place = String(q[inRange.upperBound...])
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                .trimmingCharacters(
+                    in: CharacterSet(charactersIn: "?."))
+            if place.count >= 2,
+               !place.hasPrefix("the ") {
+                w = await center.weatherElsewhere(place)
+                if w == nil {
+                    return L("The sky won't answer right now — the weather service is out of reach.")
+                }
+            }
+        }
+        if w == nil {
+            w = await center.weatherHere()
+        }
+        guard let w else {
+            return center.authorization == .notDetermined
+                ? L("I've asked iOS to let me see where we are. Give me a breath, allow it, and ask me again.")
+                : L("The sky won't answer right now — the weather service is out of reach.")
+        }
+        var line = PlaceCenter.weatherReport(
+            w, tomorrow: tomorrow)
+        if opinion, let verdict = weatherVerdict(w) {
+            line += "\n" + verdict
+        }
+        return line
+    }
+
+    /// Her judgment of a real sky, in one line —
+    /// given only when an opinion was asked for.
+    private func weatherVerdict(
+        _ w: WeatherSnapshot) -> String? {
+        let hot = w.fahrenheit
+            ? w.temperature >= 86 : w.temperature >= 30
+        let cold = w.fahrenheit
+            ? w.temperature <= 40 : w.temperature <= 5
+        switch w.code {
+        case 95, 96, 99:
+            return L("My verdict: a day for staying dark and letting the sky do the shouting.")
+        case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67,
+             80, 81, 82:
+            return L("My verdict: wet work. The wire doesn't care; you might.")
+        case 71, 73, 75, 77, 85, 86:
+            return L("My verdict: snow quiets everything. Good listening weather.")
+        case 45, 48:
+            return L("My verdict: fog — the world on stealth. I approve.")
+        case 0, 1:
+            if hot {
+                return L("My verdict: bright and hot. The shade is the better post.")
+            }
+            if cold {
+                return L("My verdict: cold and clear — a sharp day. I like those.")
+            }
+            return L("My verdict: fair. No complaints from the sky.")
+        case 3:
+            return L("My verdict: a grey lid on the world. Cosy, for our kind of work.")
+        default:
+            return nil
+        }
+    }
+
+    private func almanacTime(_ q: String) async
+        -> String {
+        if let inRange = q.range(of: " in ",
+                                  options: .backwards) {
+            let place = String(q[inRange.upperBound...])
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                .trimmingCharacters(
+                    in: CharacterSet(charactersIn: "?."))
+            if place.count >= 2,
+               !place.hasPrefix("the "),
+               let hit = await PlaceCenter.shared
+                .geocode(place) {
+                let tf = DateFormatter()
+                tf.dateStyle = .none
+                tf.timeStyle = .short
+                tf.timeZone = hit.tz
+                let df = DateFormatter()
+                df.dateStyle = .full
+                df.timeStyle = .none
+                df.timeZone = hit.tz
+                return L("In ") + hit.name
+                    + L(" it is ")
+                    + tf.string(from: Date()) + " — "
+                    + df.string(from: Date()) + "."
+            }
+        }
+        let tf = DateFormatter()
+        tf.dateStyle = .none
+        tf.timeStyle = .medium
+        var line = tf.string(from: Date()) + " — "
+            + Almanac.spell(Date())
+        if let snap = PlaceCenter.shared.snapshot {
+            line += L(", in ") + snap.nameLine + "."
+        } else {
+            line += "."
+            // Warm her sense of place for the
+            // next question that needs it.
+            Task { _ = await PlaceCenter.shared.fix() }
+        }
+        return line
+    }
+
+    private func todayLine() -> String {
+        let now = Date()
+        let cal = Almanac.cal
+        let dayOfYear = cal.ordinality(
+            of: .day, in: .year, for: now) ?? 0
+        let year = cal.component(.year, from: now)
+        let leap = (year % 4 == 0 && year % 100 != 0)
+            || year % 400 == 0
+        let daysInYear = leap ? 366 : 365
+        let week = cal.component(.weekOfYear,
+                                 from: now)
+        return Almanac.spell(now)
+            + L(" — day ") + "\(dayOfYear)"
+            + L(" of ") + "\(daysInYear)"
+            + L(", week ") + "\(week)" + ". "
+            + "\(daysInYear - dayOfYear)"
+            + L(" days left in the year.")
+    }
+
+    /// The calendar's answers: today spelled
+    /// out, named days counted down to, the
+    /// next holiday, the operator's birthday.
+    /// Nil when the ask is not the calendar's.
+    private func almanacDate(_ q: String) -> String? {
+        let todayPatterns = ["what day is it",
+                             "what's the date",
+                             "what is the date",
+                             "what day is today",
+                             "what date is it",
+                             "today's date",
+                             "what is today"]
+        if todayPatterns.contains(where: q.contains) {
+            return todayLine()
+        }
+        if q.contains("holiday") {
+            if q.contains("today") {
+                if let day = Almanac.holidayToday() {
+                    return day.name + " — "
+                        + Almanac.spell(Date()) + "."
+                }
+                return L("No named day today — an ordinary day, unnamed and unclaimed.")
+            }
+            if let next = Almanac.nextHoliday() {
+                return next.day.name + " — "
+                    + Almanac.spellShort(next.date)
+                    + ": "
+                    + Almanac.whenPhrase(next.date)
+                    + (next.approx
+                       ? L(" The moon has the final say on the exact day — around then.")
+                       : ".")
+            }
+        }
+        if q.contains("my birthday") {
+            if let next = Almanac.nextBirthday() {
+                return L("Your birthday — ")
+                    + Almanac.spellShort(next) + ": "
+                    + Almanac.whenPhrase(next) + "."
+            }
+            return L("You haven't told me your birthday — tell me plainly ('my birthday is June 5') and I'll keep it.")
+        }
+        if let day = Almanac.matchNamedDay(in: q),
+           q.contains("when") || q.contains("until")
+            || q.contains("how long")
+            || q.contains("days")
+            || q.hasPrefix("is ") {
+            if let hit = Almanac.next(day) {
+                return day.name + " — "
+                    + Almanac.spellShort(hit.date)
+                    + ": "
+                    + Almanac.whenPhrase(hit.date)
+                    + (hit.approx
+                       ? L(" The moon has the final say on the exact day — around then.")
+                       : ".")
+            }
+            return L("That day is beyond the table I carry — my lunar table ends at 2030. Ask me to research it and I will.")
+        }
+        if q.contains("when is")
+            || q.contains("when's") {
+            for (name, weekday) in
+                    SkelliSchedule.weekdayNames
+            where q.contains(name) {
+                let cal = Almanac.cal
+                let current = cal.component(
+                    .weekday, from: Date())
+                var delta = (weekday - current + 7) % 7
+                if delta == 0 { delta = 7 }
+                let date = cal.date(byAdding: .day,
+                                    value: delta,
+                                    to: Date())!
+                return name.capitalized + " — "
+                    + Almanac.spellShort(date) + ": "
+                    + Almanac.whenPhrase(date) + "."
+            }
+        }
+        return nil
     }
 
     // MARK: senses
@@ -4509,6 +5025,7 @@ struct SkelliHalo: View {
         case .loving, .tender, .happy: return 28
         case .eager, .mischievous: return 55
         case .curious, .suspicious: return 100
+        case .afraid: return 205
         case .feral, .electric: return 145
         case .haunted, .dreamy, .sleepy: return 190
         case .lonely, .bored: return 215
@@ -4620,6 +5137,7 @@ struct SkelliHalo: View {
             .saturation(
                 feeling == .lonely
                     || feeling == .bored
+                    || feeling == .afraid
                     ? 0.7 : 1.0)
             .animation(.easeInOut(duration: 1.2),
                        value: mood)
@@ -4720,6 +5238,7 @@ struct SkelliView: View {
     @AppStorage("skelli.mindMode")
     private var mindMode = "council"
     @AppStorage("skelli.moods") private var moodsEnabled = true
+    @AppStorage("place.enabled") private var placeEnabled = true
     @AppStorage("skelli.agents")
     private var agentsEnabled = false
     @State private var confirmClear = false
@@ -4960,6 +5479,10 @@ struct SkelliView: View {
                     Toggle(isOn: $moodsEnabled) {
                         Label(L("Moods — her heart"),
                               systemImage: "heart")
+                    }
+                    Toggle(isOn: $placeEnabled) {
+                        Label(L("Place — where in the world"),
+                              systemImage: "mappin.and.ellipse")
                     }
                 }
                 if SkelliMind.weightsReady {

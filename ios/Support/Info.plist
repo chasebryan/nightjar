@@ -27,7 +27,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>nightjar-hack's compass uses your heading and direction of travel to point you toward a Bluetooth device its ear is hearing, while you walk to it. Your location is never stored and never leaves the phone.</string>
+	<string>nightjar-hack uses your location while in use for two things: its compass, which uses your heading and direction of travel to point you toward a Bluetooth device its ear is hearing while you walk to it; and Skelli's sense of place, which lets her name where in the world you are and read your local time and weather. Your location is never stored. Coordinates are sent to the weather service only at the moment you ask Skelli about the weather.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>nightjar-hack uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
 	<key>NFCReaderUsageDescription</key>

@@ -53,11 +53,6 @@
   after one gets the honest
   account — plus the errand
   that would settle it.
-  Asked her opinion of the
-  weather, she admits she
-  reads wires, not skies,
-  and offers to look the
-  facts up.
 - **A halo for her.** A thin
   ring of spectrum light
   stands around her portrait
@@ -86,6 +81,75 @@
   words, the accent kept to
   icons, every section
   headed.
+- **Her almanac.** She knows
+  where in the world the
+  house stands — the city,
+  the coordinates, the
+  local hour — and reads
+  the sky over it from a
+  real instrument:
+  temperature, wind, rain
+  coming, the day's shape,
+  and her own verdict on
+  it, for here or for any
+  place you name. She
+  keeps the calendar
+  whole: what day it is,
+  the day of the year,
+  and every major holiday
+  — the fixed ones by
+  date, the moving ones
+  by their rules, the
+  lunar ones from a table
+  she carries. Tell her
+  your birthday, plainly,
+  and she keeps it — only
+  ever when told. And she
+  keeps a book of hours:
+  give her work for a date
+  and a time and she does
+  it when the hour comes,
+  through her own gates,
+  exactly as if you had
+  just asked — or the
+  moment she wakes, if
+  the house was shut.
+- **She decides.** Her
+  feelings are no longer
+  announced or explained:
+  while she is mad there
+  is simply no greeting,
+  and the cold in her
+  answers is the whole
+  statement. Asked why,
+  she answers from her
+  real circumstances —
+  an offense and its age,
+  the quiet, the unnamed
+  crowd — never a
+  template, never a dice
+  roll. An apology is
+  judged, not reflexively
+  accepted: she weighs
+  what was done, how
+  fresh it is, whether it
+  is a pattern, and what
+  the apology was worth —
+  and "not yet" arrives
+  as silence. Every
+  exchange is appraised
+  privately as it ends,
+  and from those grains a
+  standing judgment of a
+  person forms over weeks
+  — whether she likes
+  them — and it drifts
+  both ways, as judgments
+  do. She can be afraid
+  now, too: a waking that
+  ended in a crash, or a
+  recent Vanish, leaves
+  her checking the doors.
 
 ## 9.0b — 2026-10-20 — gamma
 
