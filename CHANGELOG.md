@@ -200,6 +200,27 @@
   Nothing anywhere
   explains it.
 
+- **Sharper.** Conversation
+  no longer falls off
+  her: agreement, a
+  reaction, a "go on"
+  are answered in kind,
+  and an answer that
+  merely repeats her is
+  refused. Fragments
+  complete themselves
+  from the last subject
+  ("and in Dallas?").
+  Conversions and date
+  sums are computed
+  exactly, and her
+  memory answers from
+  the sealed journal —
+  when a thing last
+  happened, what she
+  keeps of you — never
+  from invention.
+
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
