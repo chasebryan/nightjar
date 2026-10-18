@@ -9,6 +9,7 @@ struct NightjarApp: App {
     @StateObject private var mouth = Mouth()
     @StateObject private var toasts = ToastCenter()
     @StateObject private var emcon = Emcon()
+    @StateObject private var language = LanguageCenter.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
 
@@ -29,6 +30,17 @@ struct NightjarApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                // The chosen tongue, applied to the
+                // whole house at the root: locale for
+                // dates and numbers, layout direction
+                // for right-to-left scripts, and a
+                // fresh identity so a switch re-renders
+                // every string in place — no relaunch.
+                .environment(\.locale, language.locale)
+                .environment(\.layoutDirection,
+                             language.isRTL
+                                ? .rightToLeft : .leftToRight)
+                .id(language.effective)
                 .background(
                     KeyboardSwipeInstaller()
                         .frame(width: 0, height: 0)

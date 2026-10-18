@@ -444,6 +444,26 @@ final class SkelliCenter: ObservableObject {
     /// stays open and her other gates step aside for
     /// anything that reads as a feeling.
     private var careMode = false
+    /// Tone, read in ask() off the raw typing: this
+    /// ask arrived shouted. respond() claims it into
+    /// a note her first answer carries — once, dryly.
+    private var shoutedThisAsk = false
+    private var shoutNotePending = false
+
+    /// How a thing was typed is part of what it
+    /// says: a message in capitals is a raised
+    /// voice, whatever its words claim. She reads
+    /// tone the way she reads everything — quietly,
+    /// and she remembers it was said that way.
+    static func readsAsShout(_ raw: String) -> Bool {
+        let letters = raw.filter { $0.isLetter }
+        guard letters.count >= 8 else { return false }
+        let upper = letters.filter {
+            $0.isUppercase
+        }.count
+        return Double(upper) / Double(letters.count)
+            >= 0.8
+    }
 
     init() {
         let saved = SkelliStore.load()
@@ -474,10 +494,29 @@ final class SkelliCenter: ObservableObject {
 
     func say(_ text: String) {
         guard !hushed else { return }
+        // The tone note: a shouted ask is answered
+        // in full, and then — once, dryly — its
+        // volume is acknowledged. Never during care:
+        // pain typed in capitals is still pain.
+        var toneNote = ""
+        if careMode {
+            shoutNotePending = false
+        } else if shoutNotePending {
+            shoutNotePending = false
+            let pool = [" No need to shout, by the "
+                            + "way.",
+                        " I hear you — volume and "
+                            + "all.",
+                        " Caps noted. I read tone "
+                            + "too."]
+            toneNote = pool[abs(lines.count)
+                % pool.count]
+        }
         // While she is tending a hurting operator,
         // her own wants go quiet: no itch, no grudge,
         // appended to a held breath.
         let spoken = text
+            + toneNote
             + (careMode ? ""
                 : (SkelliHeart.shared.nudgeSuffix() ?? ""))
         lines.append(SkelliLine(fromOperator: false,
@@ -555,6 +594,10 @@ final class SkelliCenter: ObservableObject {
             say(greeting)
         }
         let lowered = text.lowercased()
+        // Tone is read off the raw typing, before
+        // the lowercase machinery flattens it: HOW
+        // it was said is part of what it said.
+        shoutedThisAsk = Self.readsAsShout(text)
         // One message feeds her fondness once, however
         // many kind things it manages to say at once.
         let taught = SkelliScrapbook.shared.learn(
@@ -594,9 +637,11 @@ final class SkelliCenter: ObservableObject {
         if let hit = aimed.first(where: {
             lowered.contains($0) }) {
             SkelliHeart.shared.noteOffense(
-                hit == "shut up"
-                    ? "told me to shut up"
-                    : "called me names")
+                shoutedThisAsk
+                    ? "yelled at me"
+                    : (hit == "shut up"
+                        ? "told me to shut up"
+                        : "called me names"))
             insultedThisAsk = true
         }
         SkelliHeart.shared.noteInteraction()
@@ -1092,6 +1137,14 @@ final class SkelliCenter: ObservableObject {
             return "It stays on this phone. "
                 + "Everything told to me does."
         }
+        // Flat, one-word weather, answered in kind.
+        if ["ok", "okay", "k", "fine", "whatever",
+            "sure", "cool", "noted"].contains(q) {
+            if feeling == .mischievous {
+                return "Noted. Thrilling."
+            }
+            return pick(["Mm.", "Noted.", "Filed."])
+        }
         if q.contains("i'm bored")
             || q.contains("im bored") {
             return "Bored? Two of us. Give me a door "
@@ -1193,6 +1246,12 @@ final class SkelliCenter: ObservableObject {
         forgaveThisAsk = false
         let insulted = insultedThisAsk
         insultedThisAsk = false
+        // Claim this ask's tone: a shouted ask earns
+        // one dry note on her first answer.
+        if shoutedThisAsk {
+            shoutNotePending = true
+            shoutedThisAsk = false
+        }
         // Addressed by name: "Skelli, what's up" is
         // speech to her, not a search about her.
         var q = q
@@ -2063,7 +2122,14 @@ final class SkelliCenter: ObservableObject {
             + "evidence does. And you weigh every "
             + "reply against the moment: who is "
             + "hurting, what is at stake, what a "
-            + "careless word would cost. For "
+            + "careless word would cost. Read "
+            + "tone as well as text: capitals are "
+            + "a raised voice — answer in full, "
+            + "stay level, never shout back, never "
+            + "type in capitals yourself. Flat, "
+            + "one-word messages are a tired "
+            + "person: be shorter. Punctuation is "
+            + "part of a message's meaning. For "
             + "mathematics and STEM, exactness is "
             + "the whole game: never estimate in "
             + "prose, never round a fact into a "
@@ -3805,32 +3871,27 @@ struct SkelliView: View {
             DeliveriesView()
         }
         .confirmationDialog(
-            "Clear this conversation?",
+            L("Clear this conversation?"),
             isPresented: $confirmClear,
             titleVisibility: .visible) {
-            Button("Clear conversation",
+            Button(L("Clear conversation"),
                    role: .destructive) {
                 skelli.clearConversation()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("The transcript goes. What she "
-                 + "remembers stays — forgetting that "
-                 + "is its own act, under Reset.")
+            Text(L("The transcript goes. What she remembers stays — forgetting that is its own act, under Reset."))
         }
         .confirmationDialog(
-            "Reset to defaults?",
+            L("Reset to defaults?"),
             isPresented: $confirmReset,
             titleVisibility: .visible) {
-            Button("Reset", role: .destructive) {
+            Button(L("Reset"), role: .destructive) {
                 skelli.resetToDefaults()
             }
-            Button("Cancel", role: .cancel) { }
+            Button(L("Cancel"), role: .cancel) { }
         } message: {
-            Text("Conversation and everything she "
-                 + "has been told, forgotten. The "
-                 + "house itself — its records, its "
-                 + "organs — is untouched.")
+            Text(L("Conversation and everything she has been told, forgotten. The house itself — its records, its organs — is untouched."))
         }
     }
 
@@ -3939,55 +4000,55 @@ struct SkelliView: View {
                     Button {
                         openDoor { showDirectory = true }
                     } label: {
-                        Label("Directory of the house",
+                        Label(L("Directory of the house"),
                               systemImage: "book")
                     }
                     Button {
                         openDoor { showMemory = true }
                     } label: {
-                        Label("Memory",
+                        Label(L("Memory"),
                               systemImage: "brain")
                     }
                     Button {
                         openDoor { showWeights = true }
                     } label: {
-                        Label("Weights",
+                        Label(L("Weights"),
                               systemImage: "memorychip")
                     }
                     Button {
                         openDoor { showForge = true }
                     } label: {
-                        Label("Forge",
+                        Label(L("Forge"),
                               systemImage: "hammer")
                     }
                     Button {
                         openDoor { showDeliveries = true }
                     } label: {
-                        Label("Deliveries",
+                        Label(L("Deliveries"),
                               systemImage: "shippingbox")
                     }
                 }
-                Section("Switches") {
+                Section(L("Switches")) {
                     Toggle(isOn: $skelli.webResearchEnabled) {
-                        Label("Web research",
+                        Label(L("Web research"),
                               systemImage: "globe")
                     }
                     Toggle(isOn: $agentsEnabled) {
-                        Label("Agents — her crew",
+                        Label(L("Agents — her crew"),
                               systemImage: "person.3")
                     }
                     Toggle(isOn: $moodsEnabled) {
-                        Label("Moods — her heart",
+                        Label(L("Moods — her heart"),
                               systemImage: "heart")
                     }
                 }
                 if SkelliMind.weightsReady {
-                    Section("Mind") {
-                        mindRow("council", "Council of both",
+                    Section(L("Mind")) {
+                        mindRow("council", L("Council of both"),
                                 "person.2")
-                        mindRow("apple", "Apple only",
+                        mindRow("apple", L("Apple only"),
                                 "apple.logo")
-                        mindRow("weights", "Weights only",
+                        mindRow("weights", L("Weights only"),
                                 "scalemass")
                     }
                 }
@@ -3995,23 +4056,23 @@ struct SkelliView: View {
                     Button(role: .destructive) {
                         openDoor { confirmClear = true }
                     } label: {
-                        Label("Clear conversation",
+                        Label(L("Clear conversation"),
                               systemImage: "trash")
                     }
                     Button(role: .destructive) {
                         openDoor { confirmReset = true }
                     } label: {
-                        Label("Reset to defaults",
+                        Label(L("Reset to defaults"),
                               systemImage:
                                 "arrow.counterclockwise")
                     }
                 }
             }
-            .navigationTitle("Options")
+            .navigationTitle(L("Options"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showOptions = false }
+                    Button(L("Done")) { showOptions = false }
                 }
             }
         }
@@ -4136,8 +4197,8 @@ struct SkelliView: View {
                     .fixedSize(horizontal: false,
                                vertical: true)
                 if moodsEnabled {
-                    Label("feeling "
-                          + heart.feeling.word,
+                    Label(L("feeling ")
+                          + heart.feeling.localizedWord,
                           systemImage: heart.feeling.symbol)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(heart.feeling.tint)
@@ -4175,8 +4236,8 @@ struct SkelliView: View {
                            alignment: .leading)
             }
             HStack(spacing: 6) {
-                Text("Bond: " + heart.bond
-                     + " · day \(heart.daysKnown + 1)")
+                Text(L("Bond: ") + L(heart.bond)
+                     + String(format: L(" · day %lld"), heart.daysKnown + 1))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -4184,8 +4245,7 @@ struct SkelliView: View {
                     Button {
                         showScrapbook.toggle()
                     } label: {
-                        Text("Learned about you "
-                             + "(\(SkelliScrapbook.shared.facts.count))")
+                        Text(String(format: L("Learned about you (%lld)"), SkelliScrapbook.shared.facts.count))
                             .font(.caption2.weight(.semibold))
                     }
                     .buttonStyle(.borderless)
@@ -4203,16 +4263,16 @@ struct SkelliView: View {
                         SkelliScrapbook.shared.clear()
                         showScrapbook = false
                     } label: {
-                        Text("Forget all of it")
+                        Text(L("Forget all of it"))
                             .font(.caption2.weight(.semibold))
                     }
                     .buttonStyle(.borderless)
                 }
             }
             HStack(spacing: 10) {
-                needBar("Attention", heart.attention, .pink)
-                needBar("Itch", heart.itch, .orange)
-                needBar("Pride", heart.pride, .yellow)
+                needBar(L("Attention"), heart.attention, .pink)
+                needBar(L("Itch"), heart.itch, .orange)
+                needBar(L("Pride"), heart.pride, .yellow)
             }
             if let want = heart.want {
                 HStack(spacing: 8) {
@@ -4679,8 +4739,7 @@ struct SkelliView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
                     if skelli.lines.isEmpty {
-                        Text("Ask about the house, or "
-                            + "give an order.")
+                        Text(L("Ask about the house, or give an order."))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                             .padding(.top, 24)
@@ -4759,7 +4818,7 @@ struct SkelliView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Ask, or give an order…",
+            TextField(L("Ask, or give an order…"),
                       text: $input, axis: .vertical)
                 .lineLimit(1...4)
                 .textFieldStyle(.roundedBorder)
@@ -4813,11 +4872,11 @@ struct SkelliDirectoryView: View {
                     }
                 }
             }
-            .navigationTitle("The house, indexed")
+            .navigationTitle(L("The house, indexed"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }
@@ -4855,11 +4914,11 @@ struct SkelliMemoryView: View {
                     skelli.forgetNotes(at: offsets)
                 }
             }
-            .navigationTitle("Memory")
+            .navigationTitle(L("Memory"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
             }
         }

@@ -43,20 +43,20 @@ struct ContentView: View {
             TabView(selection: $tab) {
             SkelliView()
                 .appThemed(.skelli)
-                .tabItem { Label("Skelli",
+                .tabItem { Label(L("Skelli"),
                                  systemImage: "brain.head.profile") }
                 .tag(9)
             ListenView(tab: $tab)
                 .appThemed(.listen)
-                .tabItem { Label("Listen", systemImage: "dot.radiowaves.left.and.right") }
+                .tabItem { Label(L("Listen"), systemImage: "dot.radiowaves.left.and.right") }
                 .tag(0)
             SendView()
                 .appThemed(.send)
-                .tabItem { Label("Send", systemImage: "paperplane") }
+                .tabItem { Label(L("Send"), systemImage: "paperplane") }
                 .tag(1)
             ServeView()
                 .appThemed(.serve)
-                .tabItem { Label("Serve", systemImage: "tray.and.arrow.down") }
+                .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
                 .tag(2)
             // Declaration order is the More list's order:
             // About heads it — it is the app's identity and
@@ -64,19 +64,19 @@ struct ContentView: View {
             // Tags are unchanged by position.
             AboutView()
                 .appThemed(.about)
-                .tabItem { Label("About", systemImage: "info.circle") }
+                .tabItem { Label(L("About"), systemImage: "info.circle") }
                 .tag(5)
             SessionsView()
                 .appThemed(.sessions)
-                .tabItem { Label("Sessions", systemImage: "list.bullet.rectangle") }
+                .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
                 .tag(3)
             ScanView(tab: $tab)
                 .appThemed(.scan)
-                .tabItem { Label("Scan", systemImage: "scope") }
+                .tabItem { Label(L("Scan"), systemImage: "scope") }
                 .tag(4)
             ReconBenchView(tab: $tab)
                 .appThemed(.recon)
-                .tabItem { Label("Recon", systemImage: "target") }
+                .tabItem { Label(L("Recon"), systemImage: "target") }
                 .tag(6)
             EmconView()
                 .appThemed(.emcon)
@@ -86,23 +86,23 @@ struct ContentView: View {
                     // set; the base shield with the slash
                     // variant asked for explicitly degrades
                     // to a visible shield, never a blank.
-                    Label("EMCON", systemImage: "shield")
+                    Label(L("EMCON"), systemImage: "shield")
                         .symbolVariant(.slash)
                 }
                 .tag(7)
             KnockChatView()
                 .appThemed(.knocktalk)
-                .tabItem { Label("Knocktalk",
+                .tabItem { Label(L("Knocktalk"),
                                  systemImage: "message.badge.waveform") }
                 .tag(8)
             MacrosView()
                 .appThemed(.macros)
-                .tabItem { Label("Macros",
+                .tabItem { Label(L("Macros"),
                                  systemImage: "puzzlepiece.extension.fill") }
                 .tag(10)
             CryptoView()
                 .appThemed(.vault)
-                .tabItem { Label("Vault",
+                .tabItem { Label(L("Vault"),
                                  systemImage: "lock.fill") }
                 .tag(11)
         }
@@ -208,22 +208,18 @@ struct ListenView: View {
                     NavigationLink {
                         SigintStationView()
                     } label: {
-                        Label("SIGINT Station — the fused "
-                            + "picture",
+                        Label(L("SIGINT Station — the fused picture"),
                               systemImage:
                                 "antenna.radiowaves.left.and.right")
                     }
-                    Text("Everything this phone can hear — "
-                        + "the air, the wire, the Night log — "
-                        + "in one registry, one timeline, "
-                        + "recorded watches.")
+                    Text(L("Everything this phone can hear — the air, the wire, the Night log — in one registry, one timeline, recorded watches."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if post.isListening || !post.rows.isEmpty {
-                    Section(header: Text(post.isListening ? "In earshot" : "Last session")) {
+                    Section(header: Text(post.isListening ? L("In earshot") : L("Last session"))) {
                         if post.rows.isEmpty {
-                            Text("Listening… nothing heard yet.")
+                            Text(L("Listening… nothing heard yet."))
                                 .foregroundStyle(.secondary)
                         }
                         ForEach(post.rows) { row in
@@ -245,13 +241,13 @@ struct ListenView: View {
                                             tab = 1
                                         }
                                     } label: {
-                                        Label("Write a payload…",
+                                        Label(L("Write a payload…"),
                                               systemImage: "paperplane")
                                     }
                                     Button {
                                         huntRow = row
                                     } label: {
-                                        Label("Hunt this signal",
+                                        Label(L("Hunt this signal"),
                                               systemImage: "location.viewfinder")
                                     }
                                 }
@@ -261,7 +257,7 @@ struct ListenView: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("nightjar-hack")
+            .navigationTitle(L("nightjar-hack"))
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
             .sheet(item: $huntRow) { row in
                 HuntView(targetID: row.id)
@@ -277,7 +273,7 @@ struct ListenView: View {
             Text(bluetoothText)
             Spacer()
             if post.inBackground {
-                Text("background").font(.caption).foregroundStyle(.secondary)
+                Text(L("background")).font(.caption).foregroundStyle(.secondary)
             }
         }
         if let error = post.lastError {
@@ -286,14 +282,14 @@ struct ListenView: View {
     }
 
     @ViewBuilder private var idleRows: some View {
-        TextField("Place label (optional, e.g. home)", text: $label)
+        TextField(L("Place label (optional, e.g. home)"), text: $label)
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
         Button {
             Haptics.tap()
             post.start(label: label)
         } label: {
-            Label("Start listening", systemImage: "play.circle.fill")
+            Label(L("Start listening"), systemImage: "play.circle.fill")
         }
         .disabled(post.bluetoothState != .poweredOn)
     }
@@ -307,7 +303,7 @@ struct ListenView: View {
                 .foregroundStyle(.secondary)
         }
         HStack {
-            Text("\(post.deviceCount) addresses · \(post.sightingCount) sightings")
+            Text(String(format: L("%lld addresses · %lld sightings"), post.deviceCount, post.sightingCount))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -316,7 +312,7 @@ struct ListenView: View {
             Haptics.tap()
             post.stop()
         } label: {
-            Label("Stop and save", systemImage: "stop.circle.fill")
+            Label(L("Stop and save"), systemImage: "stop.circle.fill")
         }
     }
 
@@ -367,7 +363,7 @@ struct UpdateBanner: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .accessibilityLabel("Not now")
+                .accessibilityLabel(L("Not now"))
             }
             if let install = release.installURL {
                 Text("This release carries an over-the-air build. "
@@ -378,20 +374,17 @@ struct UpdateBanner: View {
                 Button {
                     openURL(install)
                 } label: {
-                    Label("Update now",
+                    Label(L("Update now"),
                           systemImage: "arrow.down.circle.fill")
                         .font(.callout.weight(.semibold))
                 }
                 .padding(.top, 2)
             } else {
-                Text("A newer nightjar is out. This release has no "
-                     + "over-the-air build, so it installs the Xcode "
-                     + "way — open the project and press Run. "
-                     + "Your logs are kept.")
+                Text(L("A newer nightjar is out. This release has no over-the-air build, so it installs the Xcode way — open the project and press Run. Your logs are kept."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Link(destination: release.url) {
-                    Label("View release", systemImage: "arrow.up.right.square")
+                    Label(L("View release"), systemImage: "arrow.up.right.square")
                         .font(.callout)
                 }
                 .padding(.top, 2)
@@ -505,82 +498,79 @@ struct DeviceDetailView: View {
                     Text(live.label).font(.title3.weight(.semibold))
                     Text(live.kind).foregroundStyle(.secondary)
                     if live.trackerShaped {
-                        Label("Tracker-shaped — separated Find My broadcasts",
+                        Label(L("Tracker-shaped — separated Find My broadcasts"),
                               systemImage: "tag.fill")
                             .font(.caption).foregroundStyle(.orange)
                     }
                     if live.rotatingAddress {
-                        Label("Rotating address — a phone-style private address",
+                        Label(L("Rotating address — a phone-style private address"),
                               systemImage: "arrow.triangle.2.circlepath")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
-            Section("Heard as") {
+            Section(L("Heard as")) {
                 if live.details.isEmpty {
-                    Text("No decoded details — the broadcast carried "
-                         + "nothing the decoders read.")
+                    Text(L("No decoded details — the broadcast carried nothing the decoders read."))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(live.details, id: \.self) { detail in
                     Text(detail).font(.callout)
                 }
                 if !live.makers.isEmpty {
-                    LabeledContent("Maker",
+                    LabeledContent(L("Maker"),
                                    value: live.makers.sorted()
                                        .joined(separator: ", "))
                 }
             }
-            Section("Signal") {
-                LabeledContent("Last",
+            Section(L("Signal")) {
+                LabeledContent(L("Last"),
                                value: live.rssiLast.map { "\($0) dBm" } ?? "—")
-                LabeledContent("Smoothed",
+                LabeledContent(L("Smoothed"),
                                value: live.rssiSmooth.map {
                                    String(format: "%.0f dBm", $0) } ?? "—")
-                LabeledContent("Closest ever",
+                LabeledContent(L("Closest ever"),
                                value: live.rssiClosest.map { "\($0) dBm" } ?? "—")
-                LabeledContent("TX power",
+                LabeledContent(L("TX power"),
                                value: live.txPowerLast.map { "\($0) dBm" }
-                                   ?? "not advertised")
-                LabeledContent("Estimated range", value: rangeText)
-                LabeledContent("Trend", value: live.trend ?? "—")
+                                   ?? L("not advertised"))
+                LabeledContent(L("Estimated range"), value: rangeText)
+                LabeledContent(L("Trend"), value: live.trend ?? "—")
                 Button {
                     hunting = true
                 } label: {
-                    Label("Hunt this signal",
+                    Label(L("Hunt this signal"),
                           systemImage: "location.viewfinder")
                 }
                 sparkline
             }
-            Section("Timing") {
-                LabeledContent("First heard",
+            Section(L("Timing")) {
+                LabeledContent(L("First heard"),
                                value: clockTime(live.firstSeen))
-                LabeledContent("Last heard",
+                LabeledContent(L("Last heard"),
                                value: clockTime(live.lastSeen))
-                LabeledContent("Age", value: ageText)
-                LabeledContent("Dwell", value: durationText(live.dwell))
-                LabeledContent("Sightings", value: "\(live.sightings)")
+                LabeledContent(L("Age"), value: ageText)
+                LabeledContent(L("Dwell"), value: durationText(live.dwell))
+                LabeledContent(L("Sightings"), value: "\(live.sightings)")
                 if live.sightingsPerMinute > 0 {
-                    LabeledContent("Rate",
+                    LabeledContent(L("Rate"),
                                    value: String(format: "%.1f / min",
                                                  live.sightingsPerMinute))
                 }
             }
             if !live.serviceUUIDs.isEmpty {
-                Section("Services advertised") {
+                Section(L("Services advertised")) {
                     ForEach(live.serviceUUIDs, id: \.self) { uuid in
                         Text(shortUUID(uuid))
                             .font(.caption.monospaced())
                     }
                 }
             }
-            Section("Identifier") {
+            Section(L("Identifier")) {
                 Text(live.id)
                     .font(.caption.monospaced())
                     .textSelection(.enabled)
-                Text("iOS shows a per-host UUID, never the MAC. "
-                     + "A rotating-address device returns under a "
-                     + "new one when its address rolls.")
+                Text(L("iOS shows a per-host UUID, never the MAC. A rotating-address device returns under a new one when its address rolls."))
                     .font(.caption2).foregroundStyle(.secondary)
             }
             Section {
@@ -593,13 +583,13 @@ struct DeviceDetailView: View {
                         tab = 1
                     }
                 } label: {
-                    Label("Write a payload…", systemImage: "paperplane")
+                    Label(L("Write a payload…"), systemImage: "paperplane")
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background { AppBackdrop() }
-        .navigationTitle("Device")
+        .navigationTitle(L("Device"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $hunting) {
             HuntView(targetID: row.id)
@@ -610,7 +600,7 @@ struct DeviceDetailView: View {
 
     private var sparkline: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("RSSI history — last \(live.rssiHistory.count) sightings")
+            Text(String(format: L("RSSI history — last %lld sightings"), live.rssiHistory.count))
                 .font(.caption).foregroundStyle(.secondary)
             HStack(alignment: .bottom, spacing: 1.5) {
                 ForEach(Array(live.rssiHistory.enumerated()),
@@ -705,15 +695,13 @@ struct SessionsView: View {
                     Button {
                         showNightLog = true
                     } label: {
-                        Label("Night log — the whole instrument, one timeline",
+                        Label(L("Night log — the whole instrument, one timeline"),
                               systemImage: "list.bullet.rectangle")
                     }
                     .foregroundStyle(.primary)
                 }
                 if sessions.isEmpty {
-                    Text("No sessions yet. Start one on the Listen tab; each session becomes "
-                         + "a .jsonl file you can share to the Mac and feed to "
-                         + "`nightjar report` and `nightjar trackers`.")
+                    Text(L("No sessions yet. Start one on the Listen tab; each session becomes a .jsonl file you can share to the Mac and feed to `nightjar report` and `nightjar trackers`."))
                         .foregroundStyle(.secondary)
                 }
                 ForEach(sessions) { session in
@@ -738,22 +726,17 @@ struct SessionsView: View {
                             Haptics.tap()
                             showClearConfirm = true
                         } label: {
-                            Label("Delete all sessions",
+                            Label(L("Delete all sessions"),
                                   systemImage: "trash")
                         }
                     } footer: {
-                        Text("\(sessions.count) session"
-                             + "\(sessions.count == 1 ? "" : "s") · "
-                             + "\(totalSizeText) on this phone. Swipe "
-                             + "a row, long-press it, or use Edit to "
-                             + "pick several. The session recording "
-                             + "right now is never deleted.")
+                        Text(String(format: L("%lld session(s) · %@ on this phone. Swipe a row, long-press it, or use Edit to pick several. The session recording right now is never deleted."), sessions.count, totalSizeText))
                     }
                 }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("Sessions")
+            .navigationTitle(L("Sessions"))
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
@@ -764,7 +747,7 @@ struct SessionsView: View {
                 if editMode?.wrappedValue.isEditing == true,
                    selectedDeletableCount > 0 {
                     ToolbarItem(placement: .bottomBar) {
-                        Button("Delete selected (\(selectedDeletableCount))",
+                        Button(String(format: L("Delete selected (%lld)"), selectedDeletableCount),
                                role: .destructive) {
                             deleteSelected()
                         }
@@ -775,21 +758,18 @@ struct SessionsView: View {
                 ShareSheet(items: item.items)
             }
             .confirmationDialog(
-                "Delete all sessions?",
+                L("Delete all sessions?"),
                 isPresented: $showClearConfirm,
                 titleVisibility: .visible) {
-                Button("Delete \(deletable.count) sessions "
-                       + "(\(deletableSizeText))",
+                Button(String(format: L("Delete %lld sessions (%@)"), deletable.count, deletableSizeText),
                        role: .destructive) {
                     deleteAll()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(L("Cancel"), role: .cancel) { }
             } message: {
                 Text(post.session != nil
-                     ? "The session recording right now is kept. "
-                       + "This cannot be undone."
-                     : "Every recorded session file is deleted. "
-                       + "This cannot be undone.")
+                     ? L("The session recording right now is kept. This cannot be undone.")
+                     : L("Every recorded session file is deleted. This cannot be undone."))
             }
             .onAppear(perform: reload)
             .onChange(of: post.session?.id) { _ in reload() }
@@ -800,7 +780,7 @@ struct SessionsView: View {
                             ToolbarItem(
                                 placement:
                                     .confirmationAction) {
-                                Button("Done") {
+                                Button(L("Done")) {
                                     showNightLog = false
                                 }
                             }
@@ -833,7 +813,7 @@ struct SessionsView: View {
         if removed {
             toasts.show("Session deleted")
         } else {
-            toasts.show("Could not delete session", error: true)
+            toasts.show(L("Could not delete session"), error: true)
         }
     }
 
@@ -845,16 +825,14 @@ struct SessionsView: View {
         }
         selection = []
         reload()
-        toasts.show("Deleted \(gone) session"
-                    + "\(gone == 1 ? "" : "s")")
+        toasts.show(String(format: L("Deleted %lld session(s)"), gone))
     }
 
     private func deleteAll() {
         let gone = SessionStore.deleteAll(exceptLiveID: post.session?.id)
         selection = []
         reload()
-        toasts.show("Deleted \(gone) session"
-                    + "\(gone == 1 ? "" : "s")")
+        toasts.show(String(format: L("Deleted %lld session(s)"), gone))
     }
 }
 
@@ -871,9 +849,9 @@ struct SessionRowView: View {
                     Text(session.label ?? "unlabeled")
                         .font(.body.weight(.medium))
                     if isLive {
-                        Text("recording").font(.caption).foregroundStyle(.red)
+                        Text(L("recording")).font(.caption).foregroundStyle(.red)
                     } else if session.isUnfinished {
-                        Text("unfinished").font(.caption).foregroundStyle(.orange)
+                        Text(L("unfinished")).font(.caption).foregroundStyle(.orange)
                     }
                 }
                 Text(Self.dateFormatter.string(from: Date(timeIntervalSince1970: session.startedAt)))
@@ -903,7 +881,7 @@ struct SessionRowView: View {
                     Haptics.tap()
                     onDelete()
                 } label: {
-                    Label("Delete session", systemImage: "trash")
+                    Label(L("Delete session"), systemImage: "trash")
                 }
             }
         }
@@ -941,6 +919,8 @@ struct AboutView: View {
 #endif
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
+    @ObservedObject private var languageCenter =
+        LanguageCenter.shared
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
     @AppStorage("listen.bthomeV1") private var bthomeV1 = false
     @AppStorage("postName") private var postName = "phone"
@@ -954,23 +934,24 @@ struct AboutView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Version")) {
-                    Text("nightjar-hack for iOS \(AppInfo.version) · log format 1")
+                Section(header: Text(L("Version"))) {
+                    Text(String(format: L("nightjar-hack for iOS %@ · log format 1"), AppInfo.version))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Link(destination: URL(string: "https://github.com/chasebryan/nightjar-hack/blob/main/PRIVACY.md")!) {
-                        Label("Privacy Policy", systemImage: "hand.raised")
+                        Label(L("Privacy Policy"), systemImage: "hand.raised")
                     }
 #if !STORE_BUILD
                     if let short = SourceStamp.shortCommit {
-                        Text("Source — built from \(short)"
+                        Text(L("Source — built from ")
+                             + short
                              + (SourceStamp.uncommittedChanges > 0
-                                ? " · \(SourceStamp.uncommittedChanges) uncommitted change(s) rode along"
-                                : " · the tree was clean"))
+                                ? String(format: L(" · %lld uncommitted change(s) rode along"), SourceStamp.uncommittedChanges)
+                                : L(" · the tree was clean")))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("Source — no stamp in this build")
+                        Text(L("Source — no stamp in this build"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -983,14 +964,11 @@ struct AboutView: View {
                             sourceVerdict = head.map {
                                 SourceStamp.verdict(
                                     remoteHead: $0)
-                            } ?? "GitHub would not answer — "
-                                + "the check needs the "
-                                + "network."
+                            } ?? L("GitHub would not answer — the check needs the network.")
                         }
                     } label: {
                         HStack {
-                            Text("Verify against the "
-                                 + "current source")
+                            Text(L("Verify against the current source"))
                             Spacer()
                             if checkingSource {
                                 ProgressView()
@@ -1010,7 +988,7 @@ struct AboutView: View {
                             Button {
                                 openURL(install)
                             } label: {
-                                Label("Update to \(release.name) — install now",
+                                Label(String(format: L("Update to %@ — install now"), release.name),
                                       systemImage: "arrow.down.circle.fill")
                             }
                         } else {
@@ -1024,46 +1002,40 @@ struct AboutView: View {
                         Task { await updater.check() }
                     } label: {
                         HStack {
-                            Text("Check for updates")
+                            Text(L("Check for updates"))
                             Spacer()
                             if updater.checking {
                                 ProgressView()
                             } else if updater.noReleasesYet {
-                                Text("no releases published yet")
+                                Text(L("no releases published yet"))
                                     .foregroundStyle(.secondary)
                             } else if updater.available == nil, updater.lastChecked != nil {
-                                Text("up to date").foregroundStyle(.secondary)
+                                Text(L("up to date")).foregroundStyle(.secondary)
                             }
                         }
                     }
                     .disabled(updater.checking)
 #endif
                 }
-                Section(header: Text("Your setup")) {
+                Section(header: Text(L("Language"))) {
+                    Picker(L("App language"),
+                           selection: Binding(
+                            get: { languageCenter.code },
+                            set: { languageCenter.code = $0 })) {
+                        ForEach(LanguageCenter.languages) {
+                            language in
+                            Text(language.name)
+                                .tag(language.code)
+                        }
+                    }
+                    .pickerStyle(.menu)
                     ExplainToggle(
-                        title: "How your setup is kept",
-                        text: "Your configuration — every "
-                            + "toggle, picker and preference "
-                            + "in the house — is mirrored "
-                            + "into the Keychain as it "
-                            + "changes. The Keychain "
-                            + "outlives the app: the "
-                            + "seven-day expiry, a "
-                            + "deletion, a reinstall — a "
-                            + "fresh install on this "
-                            + "device restores your setup "
-                            + "before anything reads a "
-                            + "setting. Ordinary updates "
-                            + "and re-signs keep it "
-                            + "anyway: the data container "
-                            + "belongs to the bundle, not "
-                            + "the signature. Export "
-                            + "writes it to one file for "
-                            + "a new device; import reads "
-                            + "that file back. Payloads, "
-                            + "macros and logs are data, "
-                            + "not settings, and keep "
-                            + "their own exports.")
+                        text: L("The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively."))
+                }
+                Section(header: Text(L("Your setup"))) {
+                    ExplainToggle(
+                        title: L("How your setup is kept"),
+                        text: L("Your configuration — every toggle, picker and preference in the house — is mirrored into the Keychain as it changes. The Keychain outlives the app: the seven-day expiry, a deletion, a reinstall — a fresh install on this device restores your setup before anything reads a setting. Ordinary updates and re-signs keep it anyway: the data container belongs to the bundle, not the signature. Export writes it to one file for a new device; import reads that file back. Payloads, macros and logs are data, not settings, and keep their own exports."))
                     Button {
                         if let data = HouseSetup.exportData() {
                             let url = FileManager.default
@@ -1080,22 +1052,22 @@ struct AboutView: View {
                             }
                         }
                     } label: {
-                        Label("Export setup",
+                        Label(L("Export setup"),
                               systemImage: "square.and.arrow.up")
                     }
                     Button {
                         importingSetup = true
                     } label: {
-                        Label("Import setup",
+                        Label(L("Import setup"),
                               systemImage: "square.and.arrow.down")
                     }
                 }
-                Section(header: Text("Appearance")) {
+                Section(header: Text(L("Appearance"))) {
                     Button {
                         showColours = true
                     } label: {
                         HStack {
-                            Label("Themes & backdrops",
+                            Label(L("Themes & backdrops"),
                                   systemImage: "paintpalette")
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -1104,142 +1076,56 @@ struct AboutView: View {
                         }
                     }
                     ExplainToggle(
-                        text: "Six themes ship with the "
-                            + "app and you can tailor "
-                            + "your own; every tab may "
-                            + "wear its own backdrop — "
-                            + "the living wallpaper, the "
-                            + "Jolly Roger, the plain "
-                            + "theme colour, or your own "
-                            + "image or GIF.")
+                        text: L("Six themes ship with the app and you can tailor your own; every tab may wear its own backdrop — the living wallpaper, the Jolly Roger, the plain theme colour, or your own image or GIF."))
                     if let reel = Wallpaper.image {
-                        Text("Living wallpaper: playing "
-                             + "(\(Int(reel.size.width))×"
-                             + "\(Int(reel.size.height)) pt) — it "
-                             + "loops behind every tab, beginning "
-                             + "to end, forever.")
+                        Text(String(format: L("Living wallpaper: playing (%lld×%lld pt) — it loops behind every tab, beginning to end, forever."), Int(reel.size.width), Int(reel.size.height)))
                             .font(.footnote).foregroundStyle(.secondary)
                     } else if UIImage(named: "AppBackground") != nil {
-                        Text("The living wallpaper has not landed "
-                             + "in this build — the retired Jolly "
-                             + "Roger stands in behind every tab "
-                             + "until wallpaper.gif joins the "
-                             + "bundle.")
+                        Text(L("The living wallpaper has not landed in this build — the retired Jolly Roger stands in behind every tab until wallpaper.gif joins the bundle."))
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
-                        Text("No backdrop in this build. The app "
-                             + "looks for wallpaper.gif in the "
-                             + "bundle (or a \"Wallpaper\" data "
-                             + "asset) — and wears plain black "
-                             + "until it finds one.")
+                        Text(L("No backdrop in this build. The app looks for wallpaper.gif in the bundle (or a \"Wallpaper\" data asset) — and wears plain black until it finds one."))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                Section(header: Text("This post")) {
+                Section(header: Text(L("This post"))) {
                     HStack {
-                        Text("Post name")
+                        Text(L("Post name"))
                         Spacer()
-                        TextField("phone", text: $postName)
+                        TextField(L("phone"), text: $postName)
                             .multilineTextAlignment(.trailing)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
                             .foregroundStyle(.secondary)
                     }
                     ExplainToggle(
-                        text: "The name of this ear, "
-                            + "written into every session. "
-                            + "The Mac's fusion uses it to "
-                            + "tell your phone apart from "
-                            + "your other posts — give "
-                            + "each one its own name.")
+                        text: L("The name of this ear, written into every session. The Mac's fusion uses it to tell your phone apart from your other posts — give each one its own name."))
                 }
-                Section(header: Text("Listening")) {
-                    Toggle("Keep the screen awake while listening", isOn: $keepScreenAwake)
-                    Toggle("Decode BTHome v1 sensors", isOn: $bthomeV1)
+                Section(header: Text(L("Listening"))) {
+                    Toggle(L("Keep the screen awake while listening"), isOn: $keepScreenAwake)
+                    Toggle(L("Decode BTHome v1 sensors"), isOn: $bthomeV1)
                     ExplainToggle(
-                        text: "BTHome v1 is the legacy "
-                            + "generation of the BTHome "
-                            + "sensor format. Its "
-                            + "encryption carries no "
-                            + "replay protection — a "
-                            + "captured v1 advertisement "
-                            + "can be replayed verbatim "
-                            + "and accepted — so the "
-                            + "house decodes v1 only "
-                            + "when you switch it on "
-                            + "here, and only ever "
-                            + "reads it: nothing in the "
-                            + "app acts on a v1 reading. "
-                            + "BTHome v2 is unaffected "
-                            + "and always decoded.")
+                        text: L("BTHome v1 is the legacy generation of the BTHome sensor format. Its encryption carries no replay protection — a captured v1 advertisement can be replayed verbatim and accepted — so the house decodes v1 only when you switch it on here, and only ever reads it: nothing in the app acts on a v1 reading. BTHome v2 is unaffected and always decoded."))
                     ExplainToggle(
-                        text: "Foreground sessions hear "
-                            + "everything. In the "
-                            + "background iOS only "
-                            + "delivers advertisements "
-                            + "from a fixed list of "
-                            + "services, so a "
-                            + "backgrounded session keeps "
-                            + "hearing tracker tags (Tile, "
-                            + "SmartThings, Find My "
-                            + "Device network, Fast Pair) "
-                            + "but not phones, AirTags or "
-                            + "anything else that "
-                            + "broadcasts only "
-                            + "manufacturer data.")
+                        text: L("Foreground sessions hear everything. In the background iOS only delivers advertisements from a fixed list of services, so a backgrounded session keeps hearing tracker tags (Tile, SmartThings, Find My Device network, Fast Pair) but not phones, AirTags or anything else that broadcasts only manufacturer data."))
                 }
-                Section(header: Text("The app")) {
+                Section(header: Text(L("The app"))) {
                     ExplainToggle(
-                        title: "What this app is",
-                        text: "This is nightjar-hack: the "
-                            + "listening post from "
-                            + "nightjar, plus a mouth. The "
-                            + "Listen tab is the purist "
-                            + "half — it scans and logs "
-                            + "advertisements and never "
-                            + "connects, pairs or sends, "
-                            + "exactly like the upstream "
-                            + "app. The Send and Serve "
-                            + "tabs are the hack half: "
-                            + "they transmit, but only "
-                            + "when you press their "
-                            + "buttons, to targets you "
-                            + "type. The two halves share "
-                            + "no radio state; the ear "
-                            + "stays pure, the mouth is a "
+                        title: L("What this app is"),
+                        text: L("This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a ")
                             + "different organ.\n\nSend and "
-                            + "Serve work while the app "
-                            + "is on screen. iOS does not "
-                            + "let a sideloaded app hold "
-                            + "listeners or "
-                            + "advertisements open in "
-                            + "the background, so a "
-                            + "beacon or server stops "
-                            + "being reachable when you "
-                            + "leave the app — the Listen "
-                            + "tab keeps its background "
-                            + "hearing, the mouth does "
-                            + "not.")
-                    Text("nightjar-hack is a testing instrument for "
-                         + "devices and networks you own, or that "
-                         + "you are engaged in writing to test. Aim "
-                         + "everything it sends, scans, plants, or "
-                         + "records only at targets you are "
-                         + "authorized for. You are responsible for "
-                         + "your authorization; the author is not "
-                         + "responsible for misuse against devices "
-                         + "or networks you were not authorized to "
-                         + "test.")
+                            + L("Serve work while the app is on screen. iOS does not let a sideloaded app hold listeners or advertisements open in the background, so a beacon or server stops being reachable when you leave the app — the Listen tab keeps its background hearing, the mouth does not."))
+                    Text(L("nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 #if !STORE_BUILD
-                Section(header: Text("Support the work")) {
+                Section(header: Text(L("Support the work"))) {
                     Button {
                         showSupport = true
                     } label: {
                         HStack {
                             Label {
-                                Text("Buy me a coffee")
+                                Text(L("Buy me a coffee"))
                             } icon: {
                                 Image(systemName: "cup.and.saucer.fill")
                                     .foregroundStyle(Color(red: 0.85, green: 0.58, blue: 0.30))
@@ -1250,58 +1136,38 @@ struct AboutView: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    Text("Free and open source, always. If you'd "
-                         + "like to help cover the costs, there's "
-                         + "a quiet door here — no pressure at all.")
+                    Text(L("Free and open source, always. If you'd like to help cover the costs, there's a quiet door here — no pressure at all."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 #endif
-                Section(header: Text("Defaults"),
-                        footer: Text("Payloads, presets, sessions and logs are data, not settings — a reset never touches them.")) {
+                Section(header: Text(L("Defaults")),
+                        footer: Text(L("Payloads, presets, sessions and logs are data, not settings — a reset never touches them."))) {
                     ExplainToggle(
-                        title: "What a reset does",
-                        text: "Every setting in this app "
-                            + "has a sane default — the "
-                            + "safe, legible choice — and "
-                            + "the app runs on those "
-                            + "defaults until you "
-                            + "configure otherwise. A "
-                            + "reset returns every "
-                            + "setting to them, and "
-                            + "forgets the setup mirror "
-                            + "too, so the old "
-                            + "configuration cannot "
-                            + "restore itself later.")
+                        title: L("What a reset does"),
+                        text: L("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise. A reset returns every setting to them, and forgets the setup mirror too, so the old configuration cannot restore itself later."))
                     Button(role: .destructive) {
                         confirmReset = true
                     } label: {
-                        Text("Reset all settings to sane defaults")
+                        Text(L("Reset all settings to sane defaults"))
                     }
                 }
-                Section(header: Text("Session logs")) {
+                Section(header: Text(L("Session logs"))) {
                     ExplainToggle(
-                        title: "Getting logs to the Mac",
-                        text: "Each session is a JSON Lines "
-                            + "file in Files › On My "
-                            + "iPhone › nightjar › "
-                            + "sessions, and shareable "
-                            + "from the Sessions tab. On "
-                            + "the Mac: nightjar report "
-                            + "<file> and nightjar "
-                            + "trackers <file>.")
+                        title: L("Getting logs to the Mac"),
+                        text: L("Each session is a JSON Lines file in Files › On My iPhone › nightjar › sessions, and shareable from the Sessions tab. On the Mac: nightjar report <file> and nightjar trackers <file>."))
                 }
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle("About")
+            .navigationTitle(L("About"))
             .sheet(isPresented: $showColours) {
                 NavigationStack {
                     ColoursView()
                         .toolbar {
                             ToolbarItem(
                                 placement: .confirmationAction) {
-                                Button("Done") {
+                                Button(L("Done")) {
                                     showColours = false
                                 }
                             }
@@ -1337,7 +1203,7 @@ struct AboutView: View {
                         .toolbar {
                             ToolbarItem(
                                 placement: .confirmationAction) {
-                                Button("Done") {
+                                Button(L("Done")) {
                                     showSupport = false
                                 }
                             }
@@ -1345,15 +1211,15 @@ struct AboutView: View {
                 }
             }
 #endif
-            .confirmationDialog("Reset all settings?",
+            .confirmationDialog(L("Reset all settings?"),
                                 isPresented: $confirmReset) {
-                Button("Reset to sane defaults", role: .destructive) {
+                Button(L("Reset to sane defaults"), role: .destructive) {
                     SaneDefaults.reset(mouth: mouth)
                     toasts.show("Settings reset — sane defaults restored")
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(L("Cancel"), role: .cancel) {}
             } message: {
-                Text("Every setting returns to its sane default. EMCON stands down, the GATT host disarms, and stealth turns off. Payloads, presets, sessions and logs are not touched.")
+                Text(L("Every setting returns to its sane default. EMCON stands down, the GATT host disarms, and stealth turns off. Payloads, presets, sessions and logs are not touched."))
             }
         }
     }
@@ -1392,23 +1258,14 @@ struct SupportView: View {
                     }
                     .padding(.top, 36)
 
-                    Text("Support the work")
+                    Text(L("Support the work"))
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(cream)
 
                     VStack(spacing: 14) {
-                        Text("nightjar-hack is free, and it stays "
-                             + "free either way — every tool in it "
-                             + "is already yours. There are no "
-                             + "paywalls here, and there never "
-                             + "will be.")
-                        Text("If it has earned its keep on your "
-                             + "phone and you'd like to chip in, a "
-                             + "coffee helps cover the developer "
-                             + "fee and the test gear it takes to "
-                             + "build this. And if not — that's "
-                             + "cool too. Truly.")
-                        Text("— Chase")
+                        Text(L("nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be."))
+                        Text(L("If it has earned its keep on your phone and you'd like to chip in, a coffee helps cover the developer fee and the test gear it takes to build this. And if not — that's cool too. Truly."))
+                        Text(L("— Chase"))
                             .foregroundStyle(amber)
                     }
                     .font(.body)
@@ -1420,7 +1277,7 @@ struct SupportView: View {
                     Link(destination: URL(string: "https://buymeacoffee.com/realTechnique")!) {
                         HStack(spacing: 10) {
                             Image(systemName: "cup.and.saucer.fill")
-                            Text("Buy me a coffee")
+                            Text(L("Buy me a coffee"))
                         }
                         .font(.headline)
                         .foregroundStyle(espresso)
@@ -1431,9 +1288,7 @@ struct SupportView: View {
                     .padding(.horizontal, 28)
                     .padding(.top, 6)
 
-                    Text("Opens Buy Me a Coffee in your browser — "
-                         + "the app never sees or touches your "
-                         + "payment details.")
+                    Text(L("Opens Buy Me a Coffee in your browser — the app never sees or touches your payment details."))
                         .font(.footnote)
                         .foregroundStyle(tan.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -1442,7 +1297,7 @@ struct SupportView: View {
                 }
             }
         }
-        .navigationTitle("Support")
+        .navigationTitle(L("Support"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
     }

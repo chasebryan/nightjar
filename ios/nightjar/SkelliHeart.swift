@@ -64,6 +64,15 @@ enum SkelliFeeling: String, CaseIterable {
     case electric, tender, suspicious, dreamy
 
     var word: String { rawValue }
+
+    /// Her feeling's name in the app's chosen
+    /// language — for her header and her room. Her
+    /// sentences keep the English word: grammar is
+    /// not a label, and her voice translates whole
+    /// or not at all.
+    var localizedWord: String {
+        LanguageCenter.t("feeling." + rawValue)
+    }
     var symbol: String {
         switch self {
         case .content: return "heart"

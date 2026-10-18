@@ -21,6 +21,8 @@ enum SaneDefaults {
     /// what "restore the default" means: the next read falls back
     /// to the @AppStorage default declared beside the setting.
     static let keys: [String] = [
+        // The app itself
+        "app.language",
         // This post / listening
         "postName", "keepScreenAwake",
         // Send

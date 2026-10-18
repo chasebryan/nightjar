@@ -633,3 +633,34 @@
   one longer form: what it is, why it
   matters, the deciding facts, what
   remains uncertain.
+- **Her many tongues.** The whole
+  house can be spoken in twelve
+  tongues — English, Spanish,
+  French, German, Portuguese,
+  Italian, Russian, Japanese,
+  Korean, Chinese, Arabic, and
+  Hindi — chosen in About and
+  applied the moment you choose,
+  with no relaunch, and laid
+  out right-to-left for Arabic.
+  Every string travels one
+  seam, and a string not yet
+  translated shows in English -
+  never blank, never missing -
+  so no language waits for a
+  feature another one has. The
+  device's own fonts carry
+  every script, so nothing
+  needs bundling.
+- **She reads tone.** How a
+  thing is typed is part of
+  what it says: she reads
+  capitals as a raised voice —
+  the order still lands, and
+  then, once, dryly, the volume
+  is noted. A shouted insult is
+  filed as yelling. Flat
+  one-word answers are met in
+  kind. And pain typed in
+  capitals is still pain: care
+  hears no tone at all.
