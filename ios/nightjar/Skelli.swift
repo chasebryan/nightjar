@@ -103,7 +103,55 @@ enum SkelliKnowledge {
             home: "the EMCON tab",
             keywords: ["emcon", "score", "posture", "ghost",
                        "exposure", "dark", "visible"],
-            body: "Emission control: one number for how visible this phone is — its own listeners, its announcements, its radios — with the weights shown. Going dark silences what the house owns: stealth on, beacon and GATT host down, tripwire armed. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
+            body: "Emission control: one number for how visible this phone is — its own listeners, its announcements, its radios, and its mere presence: a joined phone is on the wire, and the hostname it answers to is spoken plainly — with the weights shown. Going dark silences what the house owns: stealth on, beacon and GATT host down, tripwire armed. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
+        SkelliEntry(
+            id: "warchest", title: "War Chest — the rig, packed",
+            home: "the Send tab's Trace section",
+            keywords: ["war chest", "chest", "configuration",
+                       "preset", "rig", "loadout"],
+            body: "A whole rig in one named box: the trace's posture, every Serve switch and reply, stealth, the beacon and Recon settings, the emitter identity — captured in a tap and kept in the shelf. Applying a chest dresses the rig and starts nothing: a chest is never a trigger. Chests export as nightjar-chests.json, and the old presets were carried onto the shelf once, unchanged in meaning."),
+        SkelliEntry(
+            id: "helm", title: "The Helm — remotes for the rig",
+            home: "the Send and EMCON tabs",
+            keywords: ["helm", "remote", "button", "fire",
+                       "learn mode"],
+            body: "Remotes: named buttons, each bound to a saved payload and a target, fired by tap through the Send tab's own path — templates substituted, every framing honored. Learn mode listens to the Serve inbox and drafts remotes from what arrives: keep an arrival as a payload, and the Helm files a button beside it, aimed back at its sender."),
+        SkelliEntry(
+            id: "tagcensus", title: "The tag census",
+            home: "EMCON's census door",
+            keywords: ["tag census", "nfc", "tag", "census",
+                       "apdu", "ndef"],
+            body: "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room."),
+        SkelliEntry(
+            id: "warroom", title: "The War Room",
+            home: "the Send tab",
+            keywords: ["war room", "operation", "timeline",
+                       "warroom"],
+            body: "One operation, every organ: Listen sweeps the air while the trace maps the wire, then the Recon bench knocks — inside the run — at the doors the trace found touched this run. Everything lands on one timeline, and the run exports as nightjar.war-room v1 with the full trace packed inside it. Stopping is polite: organs you had running are left running."),
+        SkelliEntry(
+            id: "sigint", title: "The SIGINT station",
+            home: "the Listen tab",
+            keywords: ["sigint", "station", "emitter",
+                       "registry", "watch", "epoch"],
+            body: "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export."),
+        SkelliEntry(
+            id: "wargames", title: "War Games",
+            home: "the Send tab",
+            keywords: ["war games", "wargames", "sparring",
+                       "match", "decoys", "cards"],
+            body: "Two phones spar. The attacker traces the defender and knocks at its doors; the defender, serving, counts what touched it and which decoys went unseen. Each side files a card — the NJWG/1 protocol rides the ordinary Serve inbox — and swapped cards score the round: found and confirmed doors against missed ones and unseen decoys. Files work when the handshake cannot: send your card, import theirs."),
+        SkelliEntry(
+            id: "banshee", title: "The Banshee",
+            home: "the EMCON tab",
+            keywords: ["banshee", "scream", "loud", "announce",
+                       "be seen"],
+            body: "The opposite of going dark, on purpose: one tap raises everything this phone owns — Serve listed and stealth off, the BLE beacon shouting, Net-Assault armed on the deep ladder, and a named broadcast heartbeat on the subnet. The posture it found is written down first and restored whole when the scream ceases, stealth last. Self-announcement only: it touches no one else's traffic."),
+        SkelliEntry(
+            id: "spoofy", title: "Spoofy — the costume rack",
+            home: "the EMCON tab",
+            keywords: ["spoofy", "costume", "mimicry",
+                       "persona", "disguise", "beacon name"],
+            body: "The names and shapes this device wears. A costume renames the beacon and the GATT host; a mimicry persona dresses the whole device as a class of thing — a printer, a TV, a speaker — name, greeting and Serve dress together, until the shape is dropped and the wardrobe it found is restored. Generic shapes only: the device's own addresses stay its own, nothing copies a real device's identity, and there are no fake trackers in the rack."),
         SkelliEntry(
             id: "tripwire", title: "The tripwire & prober files",
             home: "the EMCON tab",
@@ -900,6 +948,8 @@ final class SkelliCenter: ObservableObject {
             + "on the wire (\(unknown) unnamed)")
         if let emcon = emcon, let mouth = mouth {
             let score = Emcon.score(
+                assaultOn: AssaultCenter.shared.running,
+                serveListeners: mouth.serveListenerCount,
                 gattHostOn: mouth.gattHostOn,
                 beaconOn: mouth.beaconOn,
                 serveRunning: mouth.serveRunning,
@@ -908,7 +958,10 @@ final class SkelliCenter: ObservableObject {
                 exposureCount:
                     emcon.exposures.count,
                 announcerCount:
-                    emcon.announcers.count)
+                    emcon.announcers.count,
+                probingOn: false,
+                onLan: mouth.localIPAddress() != nil,
+                hostName: emcon.hostName)
             var line = "exposure \(score.value) "
                 + "(\(score.band))"
             if let loud = score.parts.max(by: {
@@ -930,6 +983,30 @@ final class SkelliCenter: ObservableObject {
                 facts.append("\(mouth.inbox.count) "
                     + "payloads waiting in the "
                     + "Serve inbox")
+            }
+            if BansheeCenter.shared.screaming {
+                facts.append("the banshee is screaming")
+            }
+            if let persona = MimicCenter.shared
+                .activePersona {
+                facts.append("wearing the "
+                    + "\(persona.label) shape")
+            }
+            let station = SigintStation.shared
+            if !station.emitters.isEmpty {
+                facts.append("the SIGINT registry holds "
+                    + "\(station.emitters.count) emitters "
+                    + "this epoch")
+            }
+            if station.currentWatch != nil {
+                facts.append("a SIGINT watch is running")
+            }
+            let games = WarGamesCenter.shared
+            if games.myCard != nil || games.theirCard != nil {
+                facts.append("a War Games round is scored "
+                    + "or scoring (match "
+                    + "\(games.matchID), round "
+                    + "\(games.round))")
             }
         }
         if let post = post {
@@ -983,7 +1060,15 @@ final class SkelliCenter: ObservableObject {
             + "Serve, arm the tripwire, work the "
             + "ear, name devices, forge payloads "
             + "into the armory, remember and "
-            + "forget. You are also the "
+            + "forget. Your war hands: apply a "
+            + "War Chest, fire Helm buttons, start "
+            + "and file SIGINT watches and read "
+            + "their deltas, run the War Room, "
+            + "challenge and score War Games, "
+            + "raise and cease the Banshee, and "
+            + "dress this device from the Spoofy "
+            + "rack — costumes and whole mimicry "
+            + "shapes. You are also the "
             + "operator's programming partner: "
             + "you write complete, correct code "
             + "for anything asked. The house "

@@ -19,6 +19,10 @@ import SwiftUI
 // stealth, beacon, assault — is restored exactly.
 
 final class BansheeCenter: ObservableObject {
+    /// One banshee for the house — the EMCON tab and
+    /// Skelli's hands raise and cease the same scream.
+    static let shared = BansheeCenter()
+
     @Published private(set) var screaming = false
     @Published private(set) var startedAt: Date?
     @Published private(set) var shoutsSent = 0

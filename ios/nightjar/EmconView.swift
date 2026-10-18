@@ -7,8 +7,8 @@ struct EmconView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @EnvironmentObject private var emcon: Emcon
     @StateObject private var spar = Recon()
-    @StateObject private var assault = AssaultCenter()
-    @StateObject private var banshee = BansheeCenter()
+    @ObservedObject private var assault = AssaultCenter.shared
+    @ObservedObject private var banshee = BansheeCenter.shared
     @State private var armAssault = false
     @State private var assaultIgnition = false
     @State private var shareAssaultReport = false
@@ -72,6 +72,22 @@ struct EmconView: View {
                     + "announcing itself at full voice "
                     + "until you cease it. Ceasing restores "
                     + "the posture it found.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                Button {
+                    Haptics.tap()
+                    showSpoofy = true
+                } label: {
+                    Label("Spoofy — the costume rack",
+                          systemImage: "theatermasks")
+                }
+                Text("The names and shapes this device "
+                    + "wears: costumes for the air, and "
+                    + "mimicry personas that dress the "
+                    + "whole device as a class of thing "
+                    + "until you drop the shape.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -141,6 +157,9 @@ struct EmconView: View {
         .sheet(isPresented: $showBanshee) {
             BansheeView(assault: assault, banshee: banshee)
         }
+        .sheet(isPresented: $showSpoofy) {
+            SpoofyView()
+        }
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
         }
@@ -199,6 +218,7 @@ struct EmconView: View {
     @State private var showDuel = false
     @State private var showTagCensus = false
     @State private var showBanshee = false
+    @State private var showSpoofy = false
 
     // MARK: - status + score
 

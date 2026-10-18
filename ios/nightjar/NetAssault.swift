@@ -77,6 +77,11 @@ struct SkullMark: View {
 // MARK: - The center
 
 final class AssaultCenter: ObservableObject {
+    /// One assault engine for the whole house — the EMCON
+    /// tab and Skelli's hands work the same instance, so a
+    /// run armed in one room is the run the other room sees.
+    static let shared = AssaultCenter()
+
     @Published var running = false
     @Published var phase = "Standing by"
     @Published var passes = 0

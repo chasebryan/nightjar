@@ -21,6 +21,348 @@ extension SkelliCenter {
         if deleteAsk(q) { return true }
         if forgeAsk(q, raw: raw) { return true }
         if weightsAsk(q) { return true }
+        if warAsk(q) { return true }
+        return false
+    }
+
+    /// Score a candidate name against the words: every word
+    /// of the name (3+ characters) the ask carries adds one.
+    func warNameScore(_ name: String, in q: String) -> Int {
+        let words = name.lowercased()
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+        return words.filter { $0.count >= 3 && q.contains($0) }
+            .count
+    }
+
+    /// This phone's wire name, first label.
+    func warHostName() -> String {
+        var buffer = [CChar](repeating: 0, count: 256)
+        guard gethostname(&buffer, buffer.count) == 0
+        else { return "this phone" }
+        let raw = String(cString: buffer)
+        return raw.split(separator: ".").first.map(String.init)
+            ?? raw
+    }
+
+    /// The War Room's configuration, from the same stored
+    /// keys the rooms themselves read.
+    func warRoomConfig() -> WarConfig {
+        let d = UserDefaults.standard
+        func ports(_ text: String) -> [Int] {
+            Array(Set(text.split(separator: ",").compactMap {
+                Int($0.trimmingCharacters(in: .whitespaces))
+            }.filter { (1...65535).contains($0) })).sorted()
+        }
+        return WarConfig(
+            scopeText: d.string(forKey: "traceScope") ?? "",
+            discoveryPorts: ports(d.string(
+                forKey: "traceDiscoveryPorts")
+                ?? "80,443,22,445,1883,8080,8443,9100"),
+            profilePorts: ports(d.string(
+                forKey: "traceProfilePorts") ?? ""),
+            includeBonjour: (d.object(forKey: "traceBonjour")
+                             as? Bool) ?? true,
+            adaptive: (d.object(forKey: "traceAdaptive")
+                       as? Bool) ?? true,
+            rulesText: d.string(forKey: "traceRules") ?? "",
+            includeBLE: true,
+            knockTimeout: (d.object(forKey: "reconTimeout")
+                           as? Double) ?? 1.5,
+            knockJobs: Int((d.object(forKey: "reconJobs")
+                            as? Double) ?? 24))
+    }
+
+    /// The war rooms, by voice — the 7.0.0 campaign under
+    /// her hands like everything else: the Banshee, the
+    /// SIGINT watches, the Helm, the chests, a War Room
+    /// run, War Games scores and challenges, and the
+    /// Spoofy rack with its mimicry shapes.
+    func warAsk(_ q: String) -> Bool {
+        // The Banshee — one word in this house is an order.
+        if q.contains("banshee") || q.contains("scream") {
+            guard let mouth = mouth else { return false }
+            if q.contains("cease") || q.contains("stop")
+                || q.contains("silence")
+                || q.contains("quiet") {
+                BansheeCenter.shared.cease(
+                    mouth: mouth, assault: AssaultCenter.shared)
+                say("The banshee is silent. The posture it "
+                    + "found is restored, stealth last of all.")
+            } else {
+                BansheeCenter.shared.scream(
+                    mouth: mouth, assault: AssaultCenter.shared)
+                say("The banshee screams: Serve listed and "
+                    + "stealth off, the beacon shouting, "
+                    + "Net-Assault armed, a broadcast "
+                    + "heartbeat on the subnet. Say cease the "
+                    + "banshee and the room returns to what "
+                    + "it was.")
+            }
+            return true
+        }
+
+        // The SIGINT station — watches and the registry.
+        let station = SigintStation.shared
+        if q.contains("registry") || q.contains("emitters") {
+            let air = station.emitters
+                .filter { $0.kind == "ble" }.count
+            let wire = station.emitters
+                .filter { $0.kind == "lan" }.count
+            let top = station.emitters
+                .sorted { $0.priority > $1.priority }
+                .prefix(3).map { $0.label }
+            say("The registry holds \(station.emitters.count) "
+                + "emitters this epoch — \(air) in the air, "
+                + "\(wire) on the wire."
+                + (top.isEmpty ? ""
+                   : " Loudest: \(top.joined(separator: ", "))."))
+            return true
+        }
+        if q.contains("watch") {
+            guard let post = post else { return false }
+            if q.contains("stop") || q.contains("file")
+                || q.contains("end") {
+                guard station.currentWatch != nil else {
+                    say("No watch is running.")
+                    return true
+                }
+                station.stopWatch(post: post)
+                say("Watch filed. "
+                    + (station.lastWatch?.summaryText ?? ""))
+                return true
+            }
+            if q.contains("find") || q.contains("found")
+                || q.contains("summar") || q.contains("show") {
+                if let watch = station.lastWatch {
+                    say(watch.summaryText)
+                } else {
+                    say("No watch has been filed yet — "
+                        + "start one, work the room, stop it, "
+                        + "and I will read you the delta.")
+                }
+                return true
+            }
+            if q.contains("start") || q.contains("begin")
+                || q.contains("run") {
+                let scope = (q.contains("air")
+                             || q.contains("ble")) ? "air"
+                    : (q.contains("wire")
+                       || q.contains("lan")) ? "wire" : "mixed"
+                station.startWatch(name: "Skelli's watch",
+                                   scope: scope, post: post)
+                say("Watch running (\(scope)). The registry "
+                    + "records; stop it and I will read the "
+                    + "delta — what arrived, what vanished, "
+                    + "which doors changed.")
+                return true
+            }
+        }
+
+        // The War Chest — dress the rig.
+        if q.contains("chest") {
+            let chests = NJChestStore.load()
+            if q.contains("apply") || q.contains("wear")
+                || q.contains("load") || q.contains("dress") {
+                guard let mouth = mouth else { return false }
+                let hit = chests
+                    .map { (c: $0, s: warNameScore($0.name, in: q)) }
+                    .filter { $0.s >= 1 }
+                    .sorted { $0.s > $1.s }.first
+                guard let chest = hit?.c else {
+                    say(chests.isEmpty
+                        ? "No chests are packed yet."
+                        : "Which chest? Packed: "
+                        + chests.map { $0.name }
+                            .joined(separator: ", ") + ".")
+                    return true
+                }
+                chest.apply(mouth: mouth)
+                say("The \(chest.name) chest is on — Send, "
+                    + "Serve, Recon and the trace wear it. "
+                    + "Nothing was started; a chest dresses "
+                    + "the rig, it does not pull a trigger.")
+                return true
+            }
+            say(chests.isEmpty
+                ? "No chests are packed yet — pack one in "
+                + "the Send tab's Trace section."
+                : "Packed chests: "
+                + chests.map { $0.name }
+                    .joined(separator: ", ")
+                + ". Say apply one and I will dress the rig.")
+            return true
+        }
+
+        // The Helm — fire a button by name.
+        if q.contains("fire") || q.contains("press") {
+            guard let mouth = mouth else { return false }
+            let remotes = HelmStore.load()
+            var best: (button: HelmButton, score: Int)?
+            for remote in remotes {
+                for button in remote.buttons {
+                    let s = warNameScore(
+                        button.label + " " + remote.name, in: q)
+                    if s > 0, best == nil || s > best!.score {
+                        best = (button, s)
+                    }
+                }
+            }
+            guard let hit = best else {
+                let labels = remotes.flatMap { $0.buttons }
+                    .map { $0.label }
+                say(remotes.isEmpty
+                    ? "The Helm holds no remotes yet."
+                    : "No button matches that. On the "
+                    + "shelf: "
+                    + labels.joined(separator: ", ") + ".")
+                return true
+            }
+            say(HelmFire.fire(hit.button,
+                              book: PayloadBook(), mouth: mouth))
+            return true
+        }
+
+        // The War Room — one run, three organs, one timeline.
+        if q.contains("war room") {
+            guard let mouth = mouth, let post = post
+            else { return false }
+            let run = WarRun.shared
+            if q.contains("status") || q.contains("how") {
+                say("War Room: "
+                    + run.phase.rawValue.lowercased()
+                    + " — \(run.events.count) timeline events "
+                    + "so far.")
+                return true
+            }
+            if run.running {
+                say("A Skelli-started run is already working "
+                    + "— \(run.phase.rawValue.lowercased()). "
+                    + "The room's own console keeps its own "
+                    + "run; the two never share a trace.")
+                return true
+            }
+            run.start(mouth: mouth, post: post,
+                      recon: Recon(), book: PayloadBook(),
+                      config: warRoomConfig())
+            if run.phase == .failed || run.phase == .blocked {
+                say(run.statusLine
+                    ?? "The run did not start.")
+            } else {
+                say("The War Room is working — Listen, "
+                    + "trace, then knocks at the doors the "
+                    + "trace touches, one timeline. Ask me "
+                    + "for its status.")
+            }
+            return true
+        }
+
+        // War Games — scores and challenges.
+        if q.contains("war game") || q.contains("wargame") {
+            guard let mouth = mouth, let post = post
+            else { return false }
+            let games = WarGamesCenter.shared
+            games.attach(mouth: mouth, post: post)
+            if q.contains("score") || q.contains("verdict")
+                || q.contains("who won") {
+                games.tryScore()
+                if let report = games.report {
+                    say(report.verdict)
+                } else {
+                    say("No scored round yet — the cards are "
+                        + "not both in (mine: "
+                        + (games.myCard == nil
+                           ? "not filed" : "filed")
+                        + ", theirs: "
+                        + (games.theirCard == nil
+                           ? "not received" : "in") + ").")
+                }
+                return true
+            }
+            if q.contains("challenge") {
+                let words = q.split(separator: " ")
+                let ip = words.first {
+                    $0.split(separator: ".").count == 4
+                        && $0.allSatisfy {
+                            $0.isNumber || $0 == "."
+                        }
+                }
+                guard let ip = ip else {
+                    say("Challenge whom? Give me the "
+                        + "defender's address — challenge "
+                        + "192.168.4.31.")
+                    return true
+                }
+                let port = Int(UserDefaults.standard.string(
+                    forKey: "serveTcpPort") ?? "9000") ?? 9000
+                games.setRole("attacker")
+                games.challenge(defenderIP: String(ip),
+                                port: port, myControlPort: port,
+                                myLabel: warHostName())
+                say("Challenge sent to \(ip) — the defender "
+                    + "must be serving with its War Games "
+                    + "room open. When READY lands, the round "
+                    + "is set from the War Games room in the "
+                    + "Send tab.")
+                return true
+            }
+            say("War Games: match \(games.matchID), round "
+                + "\(games.round), you fight as the "
+                + "\(games.role). \(games.phase)")
+            return true
+        }
+
+        // Spoofy — costumes and mimicry shapes.
+        if q.contains("spoofy") || q.contains("costume")
+            || q.contains("mimic") || q.contains("wear the")
+            || q.contains("disguise") {
+            guard let mouth = mouth else { return false }
+            if q.contains("drop") {
+                if MimicCenter.shared.activePersona != nil {
+                    MimicCenter.shared.drop(mouth: mouth)
+                    say("Shape dropped — the wardrobe it "
+                        + "found is restored.")
+                } else {
+                    say("No shape is being worn — the rack "
+                        + "is as it was.")
+                }
+                return true
+            }
+            if q.contains("dice") || q.contains("roll")
+                || q.contains("random") {
+                say(Spoofy.applyName(Spoofy.diceName(),
+                                     mouth: mouth))
+                return true
+            }
+            if let persona = SpoofyPersona.all.first(where: {
+                q.contains($0.id)
+                    || warNameScore($0.label, in: q) >= 2
+            }) {
+                MimicCenter.shared.don(persona, mouth: mouth)
+                say("Wearing the \(persona.label): the air "
+                    + "name is “\(persona.beaconName)” and "
+                    + "Serve is dressed in character. Say "
+                    + "drop the shape to restore the wardrobe.")
+                return true
+            }
+            let costume = Spoofy.costumeNames
+                .map { (n: $0, s: warNameScore($0, in: q)) }
+                .filter { $0.s >= 1 }
+                .sorted { $0.s > $1.s }.first
+            if let hit = costume {
+                say(Spoofy.applyName(hit.n, mouth: mouth))
+                return true
+            }
+            say("The rack holds costumes — "
+                + Spoofy.costumeNames.prefix(4)
+                    .joined(separator: ", ")
+                + " — and whole shapes: "
+                + SpoofyPersona.all.map { $0.label }
+                    .joined(separator: ", ")
+                + ". Say wear the printer, or roll the dice.")
+            return true
+        }
+
         return false
     }
 

@@ -113,6 +113,12 @@ struct WarConfig {
 /// every door the trace confirmed — all of it feeding the one
 /// timeline. Operator-started, foreground, stoppable.
 final class WarRun: ObservableObject {
+    /// The room's own console keeps its own run; this one is
+    /// Skelli's, so a run she starts is a run with its own
+    /// coordinator — and the trace's own busy guard keeps
+    /// the two from ever colliding on the wire.
+    static let shared = WarRun()
+
     enum Phase: String {
         case idle = "Ready"
         case tracing = "Tracing the wire"
@@ -133,7 +139,11 @@ final class WarRun: ObservableObject {
     private var timer: Timer?
     private weak var mouth: Mouth?
     private weak var post: ListeningPost?
-    private weak var recon: Recon?
+    /// Held, not weak: a run Skelli starts hands over a
+    /// bench of her own, and the run must keep it alive for
+    /// as long as the knocks run. The console's bench is
+    /// owned by its view and outlives the run either way.
+    private var recon: Recon?
     private var book: PayloadBook?
 
     private var runID = ""
