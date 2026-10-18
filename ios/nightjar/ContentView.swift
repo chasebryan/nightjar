@@ -40,10 +40,36 @@ struct ContentView: View {
     }
     @ObservedObject private var themes = ThemeCenter.shared
 
+    /// The tab selection with the beat inside its
+    /// setter. Every change of tab — a bar tap, a
+    /// pick from the system's More list, any road
+    /// the platform offers — is written through
+    /// this setter by the TabView itself, so the
+    /// selection haptic rides the one chokepoint
+    /// nothing can bypass. Two view-level roads
+    /// were tried and both missed More-list picks
+    /// on the operator's device: an onChange in
+    /// the tab roots, and the platform's own
+    /// sensoryFeedback trigger on the TabView —
+    /// its change-diffing never delivered. Writes
+    /// that set the property directly (house
+    /// navigation) pass silently, as they should:
+    /// the beat answers a finger, not the house.
+    private var tabSelection: Binding<Int> {
+        Binding(
+            get: { tab },
+            set: { newValue in
+                if newValue != tab {
+                    Haptics.select()
+                }
+                tab = newValue
+            })
+    }
+
     var body: some View {
         ZStack {
             AppBackdrop()
-            TabView(selection: $tab) {
+            TabView(selection: tabSelection) {
             SkelliView()
                 .appThemed(.skelli)
                 .tabItem { Label(L("Skelli"),
@@ -110,14 +136,6 @@ struct ContentView: View {
                 .tag(11)
         }
         .tint(themes.current.accent)
-        // The tab beat rides the platform's own
-        // selection feedback: an onChange call
-        // missed selections made through the
-        // system's More list (the operator found
-        // More <-> Serve silent), while the
-        // trigger fires for every change of the
-        // binding, however it was made.
-        .sensoryFeedback(.selection, trigger: tab)
         .onAppear {
             // The specialist gets the house's real
             // organs, so its hands work the real
