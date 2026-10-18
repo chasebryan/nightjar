@@ -467,7 +467,7 @@ final class SkelliCenter: ObservableObject {
     /// bench's pleasantry.
     private var lastNudge: (feeling: SkelliFeeling,
                             at: Date)?
-    private var pendingAction: (() -> Void)?
+    var pendingAction: (() -> Void)?
     /// Set by ask() when an apology forgave a live
     /// grievance; respond() acknowledges it if no
     /// hand claimed the message first.
@@ -2481,6 +2481,12 @@ final class SkelliCenter: ObservableObject {
         // otherwise swallow the forget-me-not
         // whole.
         if skyBloomAsk(q) {
+            return
+        }
+        // Her parlor art: asked about tarot she
+        // corrects it forever — cartomancy, the
+        // ordinary fifty-two, dealt for real.
+        if cartomancyAsk(q) {
             return
         }
         if q.contains("clear") || q.contains("delete")

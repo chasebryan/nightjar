@@ -293,6 +293,22 @@
   explanation gate now
   hears "what are" and
   "what does" too.
+- **She reads the cards.**
+  Asked about tarot,
+  she corrects you —
+  "oh, I actually prefer
+  cartomancy" — and
+  deals the ordinary
+  fifty-two: spreads of
+  one, three, and five,
+  questions put to the
+  deck by name, a deck
+  that stays dealt until
+  it runs thin. In the
+  full fortune the last
+  card lies face-down
+  until you say the
+  word.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
