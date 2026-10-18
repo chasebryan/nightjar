@@ -29,7 +29,7 @@ struct ContentView: View {
         // reopened on Listen instead of where the
         // operator had been working.
         let knownTabs: Set<Int> =
-            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10]
+            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10, 11]
         _tab = State(initialValue:
             stored.flatMap {
                 knownTabs.contains($0) ? $0 : nil
@@ -100,6 +100,11 @@ struct ContentView: View {
                 .tabItem { Label("Macros",
                                  systemImage: "puzzlepiece.extension.fill") }
                 .tag(10)
+            CryptoView()
+                .appThemed(.vault)
+                .tabItem { Label("Vault",
+                                 systemImage: "lock.fill") }
+                .tag(11)
         }
         .tint(themes.current.accent)
         .onAppear {

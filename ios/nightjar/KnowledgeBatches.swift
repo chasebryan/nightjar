@@ -496,6 +496,31 @@ extension SkelliKnowledge {
             keywords: ["morning brief", "overnight",
                        "while i was gone", "digest",
                        "what happened overnight"],
-            body: "The journal's morning brief opens the day: what the house did and heard while the operator wasn't watching — arrivals, trips of the wire, posture changes, watch findings — folded into one reading from the sealed log. It is a report, not a ritual: asked for at noon it covers the same ground and calls it last night. Because the journal is hash-chained, the brief can say the record itself is intact — the one claim about the past the house can make with its whole chest."),
+            body: "The journal's morning brief opens the day: what the house did and heard while the operator wasn't watching — arrivals, trips of the wire, posture changes, watch findings — folded into one reading from the sealed log. It is a report, not a ritual: asked for at noon it covers the same ground and calls it last night. Because the journal is hash-chained, the brief can say the record itself is intact — the one claim about the past the house can make with its whole chest."),,
+        SkelliEntry(
+            id: "vault", title: "The Vault — the cryptography suite",
+            home: "the Vault tab",
+            keywords: ["vault", "crypto", "cryptography",
+                       "encrypt", "decrypt", "seal",
+                       "cipher", "aes", "chacha", "pbkdf2",
+                       "hkdf", "hash", "sha", "fingerprint",
+                       "one-time pad", "dead-drop", "p-256"],
+            body: "The house's cryptography and cryptology suite, a complete system in its own right. Hashes (SHA-256/384/512, legacy SHA-1/MD5 labeled as such), HMAC, HKDF and a hand-rolled PBKDF2-HMAC-SHA256; authenticated sealing by ChaCha20-Poly1305 and AES-256-GCM; a self-describing password envelope (NJCS) any copy of the suite can open; P-256 dead-drop envelopes by ephemeral ECDH; a true one-time pad; hex and base32/base64 encodings; secure randomness. Nine presets ship — Sealed note, Vault seal, Dead-drop, Hash card, Fingerprint, One-time pad and their openers — and the operator saves their own configurations (cipher, rounds, dress), which ride the setup mirror. Two kept keys live in the Keychain: the Vault's AES-256 key and the house P-256 identity. I work its instant side myself — hash, fingerprint, encodings, fresh keys and passwords; sealing under a password belongs to the Vault room, where passwords get proper fields."),
+        SkelliEntry(
+            id: "crew", title: "Her crew — agents",
+            home: "Skelli's menu — Agents: her crew",
+            keywords: ["crew", "agents", "planner",
+                       "critic", "scribe", "multi-agent",
+                       "cooperate", "coordinate"],
+            body: "When the operator toggles Agents on in my menu, an ask with a plan's shape — a chain joined by 'then', or an explicit call to the crew — is worked by roles instead of one pass: a Planner breaks it into steps over the house's real resources, the Hands work each step through the same organs my direct intents use (sweeps, self-scans, audits, EMCON, the manual, the sitrep, the Vault's instant work), a Critic checks the shared board for gaps, and a Scribe writes the one answer. The roles are one bench in different states — Qwen or Apple's model wearing different briefs — because a device holds one set of weights; the cooperation lives in the briefs and the board. Runs register on the ProcessBoard, and Vanish stops a crew between steps like anything else."),
+        SkelliEntry(
+            id: "setupkept", title: "Your setup, kept",
+            home: "About — Your setup",
+            keywords: ["setup", "settings survive",
+                       "expire", "expiry", "reinstall",
+                       "restore settings", "keychain mirror",
+                       "export setup", "import setup"],
+            body: "Every setting in the house is mirrored into the Keychain as it changes, so the seven-day expiry, a deletion and a reinstall cannot lose it: a fresh install on the same device restores the setup before anything reads a setting. About — Your setup holds export and import as one file (nightjar-setup.json) for a new device. Payloads, macros, chests and logs are data, not settings, and keep their own exports. A reset forgets the mirror too."),
+
     ]
 }

@@ -1,0 +1,566 @@
+import CryptoKit
+import SwiftUI
+
+/// The Vault: the cryptography suite's own room.
+/// A workbench (material in, a preset chosen,
+/// the result out), the preset catalogue, the
+/// operator's own saved configurations, and the
+/// house's kept keys — every explanation folded
+/// behind a What-this-does row, per the house's
+/// doctrine. The engine is CryptoSuite; this
+/// room is only its furniture.
+struct CryptoView: View {
+    @EnvironmentObject private var toasts: ToastCenter
+    @State private var input = ""
+    @State private var inputEncoding = "text"
+    @State private var password = ""
+    @State private var recipientKey = ""
+    @State private var selectedPreset = "sealed-note"
+    @State private var output = ""
+    @State private var notice: String?
+    @State private var shareItem: ShareItem?
+    @State private var userPresets =
+        CryptoUserPreset.load()
+    @State private var customName = ""
+    @State private var customCipher =
+        "ChaCha20-Poly1305"
+    @State private var customRounds = 600_000
+    /// The identity's public face, read from
+    /// the Keychain once when the room opens —
+    /// never inside a redraw.
+    @State private var identityPublic = ""
+    @State private var identityFingerprint = ""
+
+    private var preset: CryptoPreset? {
+        CryptoPreset.all.first {
+            $0.id == selectedPreset
+        }
+    }
+
+    private var userPreset: CryptoUserPreset? {
+        userPresets.first {
+            "user:" + $0.id == selectedPreset
+        }
+    }
+
+    private var needsPassword: Bool {
+        if userPreset != nil { return true }
+        guard let preset else { return false }
+        return preset.operation == .sealPassword
+            || preset.operation == .openPassword
+            || preset.operation == .oneTimePad
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                workbenchSection
+                presetsSection
+                customSection
+                keysSection
+            }
+            .navigationTitle("Vault")
+            .onAppear {
+                if identityPublic.isEmpty {
+                    let identity = CryptoSuite
+                        .identity()
+                    identityPublic = identity
+                        .publicKey.rawRepresentation
+                        .base64EncodedString()
+                    identityFingerprint =
+                        CryptoSuite.fingerprint(
+                            identity.publicKey
+                                .rawRepresentation)
+                }
+            }
+            .sheet(item: $shareItem) { item in
+                ShareSheet(items: item.items)
+            }
+        }
+    }
+
+    // MARK: - The workbench
+
+    private var workbenchSection: some View {
+        Section(header: Text("The workbench")) {
+            Picker("Preset", selection: $selectedPreset) {
+                ForEach(CryptoPreset.all) { preset in
+                    Text(preset.name).tag(preset.id)
+                }
+                ForEach(userPresets) { custom in
+                    Text(custom.name)
+                        .tag("user:" + custom.id)
+                }
+            }
+            if let preset {
+                ExplainToggle(title: preset.name,
+                              text: preset.detail)
+            } else if let userPreset {
+                ExplainToggle(
+                    title: userPreset.name,
+                    text: "Your configuration: "
+                        + "\(userPreset.cipher) under "
+                        + "a password, PBKDF2-HMAC-"
+                        + "SHA256 at "
+                        + "\(userPreset.iterations) "
+                        + "rounds, output as "
+                        + "\(userPreset.encoding). "
+                        + "Run seals; to open, paste "
+                        + "an envelope and run — the "
+                        + "bench tells a sealed "
+                        + "envelope by its mark.")
+            }
+            TextEditor(text: $input)
+                .frame(minHeight: 90)
+                .font(.system(.callout,
+                              design: .monospaced))
+            Picker("Input is", selection: $inputEncoding) {
+                Text("Text").tag("text")
+                Text("Hex").tag("hex")
+                Text("Base64").tag("base64")
+            }
+            .pickerStyle(.segmented)
+            if needsPassword {
+                SecureField(
+                    preset?.operation == .oneTimePad
+                        ? "Pad (hex) — only to open"
+                        : "Password",
+                    text: $password)
+            }
+            if preset?.operation == .envelopeSeal {
+                TextField("Recipient public key "
+                          + "(base64) — empty seals "
+                          + "to this house",
+                          text: $recipientKey)
+                    .font(.system(.caption,
+                                  design: .monospaced))
+            }
+            Button(action: run) {
+                Label(runLabel,
+                      systemImage: "play.fill")
+                    .font(.callout.weight(.semibold))
+            }
+            if let notice {
+                Text(notice)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            if !output.isEmpty {
+                Text(output)
+                    .font(.system(.caption,
+                                  design: .monospaced))
+                    .textSelection(.enabled)
+                HStack(spacing: 16) {
+                    Button("Copy") {
+                        UIPasteboard.general.string =
+                            output
+                        toasts.show("Copied")
+                    }
+                    Button("Share") {
+                        shareItem = ShareItem(
+                            items: [output])
+                    }
+                    Button("Save to Deliveries") {
+                        DeliveriesCenter.shared.add(
+                            name: "vault-output",
+                            text: output, ext: "txt")
+                        toasts.show("Filed in "
+                                    + "Deliveries")
+                    }
+                }
+                .font(.callout)
+            }
+            ExplainToggle(
+                text: "Material goes in, a preset "
+                    + "is chosen, the result comes "
+                    + "out below — copyable, "
+                    + "shareable, or filed into "
+                    + "Deliveries. Sealed things "
+                    + "travel as base64 envelopes "
+                    + "that describe their own "
+                    + "construction, so any copy "
+                    + "of the suite can open them "
+                    + "with the password. Nothing "
+                    + "here leaves the device "
+                    + "unless you send it.")
+        }
+    }
+
+    private var runLabel: String {
+        guard let preset else { return "Seal" }
+        switch preset.operation {
+        case .sealPassword, .sealVaultKey,
+             .envelopeSeal, .oneTimePad:
+            return "Seal"
+        case .openPassword, .openVaultKey,
+             .envelopeOpen:
+            return "Open"
+        case .hashDigest, .fingerprintCard:
+            return "Work it"
+        }
+    }
+
+    // MARK: - The catalogue
+
+    private var presetsSection: some View {
+        Section(header: Text("Presets")) {
+            ForEach(CryptoPreset.all) { preset in
+                HStack {
+                    ExplainToggle(
+                        title: preset.name,
+                        text: preset.detail)
+                    Spacer()
+                    Button("Use") {
+                        selectedPreset = preset.id
+                    }
+                    .font(.callout.weight(.semibold))
+                }
+            }
+        }
+    }
+
+    // MARK: - The operator's own configurations
+
+    private var customSection: some View {
+        Section(header: Text("Your configurations")) {
+            TextField("Name it", text: $customName)
+            Picker("Cipher", selection: $customCipher) {
+                Text("ChaCha20-Poly1305")
+                    .tag("ChaCha20-Poly1305")
+                Text("AES-256-GCM")
+                    .tag("AES-256-GCM")
+            }
+            Picker("PBKDF2 rounds",
+                   selection: $customRounds) {
+                Text("100,000").tag(100_000)
+                Text("210,000").tag(210_000)
+                Text("600,000").tag(600_000)
+                Text("1,000,000").tag(1_000_000)
+            }
+            Button("Save this configuration") {
+                let name = customName
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                guard !name.isEmpty else {
+                    notice = "Name the configuration "
+                        + "first."
+                    return
+                }
+                userPresets.append(CryptoUserPreset(
+                    id: UUID().uuidString,
+                    name: name,
+                    cipher: customCipher,
+                    iterations: customRounds,
+                    encoding: "base64"))
+                CryptoUserPreset.save(userPresets)
+                customName = ""
+                toasts.show("Configuration saved")
+            }
+            ForEach(userPresets) { custom in
+                HStack {
+                    Text(custom.name)
+                    Spacer()
+                    Button("Use") {
+                        selectedPreset =
+                            "user:" + custom.id
+                    }
+                    .font(.callout.weight(.semibold))
+                    Button("Delete",
+                           role: .destructive) {
+                        userPresets.removeAll {
+                            $0.id == custom.id
+                        }
+                        CryptoUserPreset.save(
+                            userPresets)
+                    }
+                    .font(.callout)
+                }
+            }
+            ExplainToggle(
+                text: "Your own named "
+                    + "configurations — cipher, "
+                    + "derivation rounds, output "
+                    + "dress — saved beside the "
+                    + "presets and kept with the "
+                    + "house's setup, mirror and "
+                    + "all. A configuration seals "
+                    + "and opens with a password "
+                    + "in the workbench.")
+        }
+    }
+
+    // MARK: - The kept keys
+
+    private var keysSection: some View {
+        Section(header: Text("Keys")) {
+            HStack {
+                Text("Vault key")
+                Spacer()
+                Text("AES-256 · in the Keychain")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            }
+            HStack {
+                Text("House identity")
+                Spacer()
+                Text("P-256 · in the Keychain")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            }
+            Text("Public key — " + identityPublic)
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .textSelection(.enabled)
+            Text("Its fingerprint — "
+                 + identityFingerprint)
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .textSelection(.enabled)
+            Button("Fresh random hex (32 bytes)") {
+                output = CryptoSuite.randomHex(32)
+            }
+            Button("Fresh password") {
+                output = CryptoSuite.randomPassword()
+            }
+            ExplainToggle(
+                text: "Two keys are kept for the "
+                    + "house, both in the "
+                    + "Keychain, neither ever "
+                    + "shown: the Vault's AES-256 "
+                    + "key, and the P-256 identity "
+                    + "whose public half (above) "
+                    + "others seal dead-drops to. "
+                    + "Private keys do not leave "
+                    + "the Keychain — that is the "
+                    + "whole arrangement.")
+        }
+    }
+}
+
+
+extension CryptoView {
+    /// The input, in the dress it declared.
+    private func inputData() -> Data? {
+        switch inputEncoding {
+        case "hex":
+            return CryptoSuite.hexDecode(input)
+        case "base64":
+            return Data(base64Encoded: input
+                .filter { !$0.isWhitespace })
+        default:
+            return Data(input.utf8)
+        }
+    }
+
+    /// An envelope as it arrives: base64 words,
+    /// whatever the input picker says.
+    private func envelopeData() -> Data? {
+        Data(base64Encoded: input
+            .filter { !$0.isWhitespace })
+    }
+
+    /// Opened material as words when it is
+    /// words, hex when it is not.
+    private func present(_ data: Data) -> String {
+        String(data: data, encoding: .utf8)
+            ?? CryptoSuite.hexEncode(data)
+    }
+
+    private func run() {
+        notice = nil
+        if let custom = userPreset {
+            runCustom(custom)
+            return
+        }
+        guard let preset else { return }
+        switch preset.operation {
+        case .sealPassword:
+            guard let data = inputData() else {
+                notice = "The input would not "
+                    + "read in its declared dress."
+                return
+            }
+            guard !password.isEmpty else {
+                notice = "A password is wanted."
+                return
+            }
+            if let sealed = CryptoSuite
+                .sealWithPassword(
+                    data, password: password,
+                    cipher: preset.cipher,
+                    iterations: preset.iterations) {
+                output = sealed.base64EncodedString()
+            } else {
+                notice = "The seal failed."
+            }
+        case .openPassword:
+            guard let envelope = envelopeData()
+            else {
+                notice = "The envelope wants to "
+                    + "arrive as base64."
+                return
+            }
+            guard !password.isEmpty else {
+                notice = "A password is wanted."
+                return
+            }
+            if let opened = CryptoSuite
+                .openWithPassword(envelope,
+                                  password: password) {
+                output = present(opened)
+            } else {
+                notice = "It would not open — the "
+                    + "password or the envelope is "
+                    + "not right."
+            }
+        case .sealVaultKey:
+            guard let data = inputData() else {
+                notice = "The input would not read."
+                return
+            }
+            if let sealed = CryptoSuite.seal(
+                .aes, key: CryptoSuite.vaultKey(),
+                data: data) {
+                output = sealed.base64EncodedString()
+            } else {
+                notice = "The seal failed."
+            }
+        case .openVaultKey:
+            guard let envelope = envelopeData(),
+                  let opened = CryptoSuite.open(
+                    .aes, key: CryptoSuite.vaultKey(),
+                    sealed: envelope)
+            else {
+                notice = "It would not open — "
+                    + "that was not sealed under "
+                    + "this house's vault key."
+                return
+            }
+            output = present(opened)
+        case .envelopeSeal:
+            guard let data = inputData() else {
+                notice = "The input would not read."
+                return
+            }
+            let recipient: P256.KeyAgreement.PublicKey
+            if recipientKey.isEmpty {
+                recipient = CryptoSuite.identity()
+                    .publicKey
+            } else if let keyData = Data(
+                        base64Encoded: recipientKey),
+                      let parsed = try? P256
+                        .KeyAgreement.PublicKey(
+                            rawRepresentation: keyData) {
+                recipient = parsed
+            } else {
+                notice = "That recipient key would "
+                    + "not read — it wants a P-256 "
+                    + "public key as base64."
+                return
+            }
+            if let sealed = CryptoSuite
+                .envelopeSeal(data, for: recipient) {
+                output = sealed.base64EncodedString()
+            } else {
+                notice = "The envelope failed."
+            }
+        case .envelopeOpen:
+            guard let envelope = envelopeData(),
+                  let opened = CryptoSuite
+                    .envelopeOpen(envelope)
+            else {
+                notice = "It would not open — "
+                    + "that envelope was not sealed "
+                    + "to this house's identity."
+                return
+            }
+            output = present(opened)
+        case .hashDigest:
+            guard let data = inputData() else {
+                notice = "The input would not read."
+                return
+            }
+            output = "SHA-256  "
+                + CryptoSuite.hexEncode(
+                    CryptoSuite.hash(.sha256, data))
+                + "\nSHA-512  "
+                + CryptoSuite.hexEncode(
+                    CryptoSuite.hash(.sha512, data))
+                + "\nFingerprint  "
+                + CryptoSuite.fingerprint(data)
+        case .fingerprintCard:
+            guard let data = inputData() else {
+                notice = "The input would not read."
+                return
+            }
+            output = CryptoSuite.fingerprint(data)
+        case .oneTimePad:
+            guard let data = inputData() else {
+                notice = "The input would not read."
+                return
+            }
+            if password.isEmpty {
+                let pad = CryptoSuite.randomBytes(
+                    data.count)
+                let cipher = xor(data, pad)
+                output = "Cipher (hex)\n"
+                    + CryptoSuite.hexEncode(cipher)
+                    + "\nPad (hex)\n"
+                    + CryptoSuite.hexEncode(pad)
+            } else if let pad = CryptoSuite
+                        .hexDecode(password) {
+                output = present(xor(data, pad))
+            } else {
+                notice = "The pad wants to be hex."
+            }
+        }
+    }
+
+    private func runCustom(
+        _ custom: CryptoUserPreset) {
+        let cipher: CryptoSuite.Cipher =
+            custom.cipher == "AES-256-GCM"
+            ? .aes : .chacha
+        guard !password.isEmpty else {
+            notice = "A password is wanted."
+            return
+        }
+        // An envelope announces itself; anything
+        // else is material to seal.
+        if let envelope = envelopeData(),
+           envelope.count > 26,
+           envelope.prefix(4) == Data("NJCS".utf8) {
+            if let opened = CryptoSuite
+                .openWithPassword(envelope,
+                                  password: password) {
+                output = present(opened)
+            } else {
+                notice = "It would not open — the "
+                    + "password is not right."
+            }
+            return
+        }
+        guard let data = inputData() else {
+            notice = "The input would not read."
+            return
+        }
+        if let sealed = CryptoSuite.sealWithPassword(
+            data, password: password, cipher: cipher,
+            iterations: custom.iterations) {
+            output = custom.encoding == "hex"
+                ? CryptoSuite.hexEncode(sealed)
+                : sealed.base64EncodedString()
+        } else {
+            notice = "The seal failed."
+        }
+    }
+
+    private func xor(_ a: Data, _ b: Data) -> Data {
+        var out = Data()
+        out.reserveCapacity(min(a.count, b.count))
+        for i in 0..<min(a.count, b.count) {
+            out.append(a[i] ^ b[i])
+        }
+        return out
+    }
+}

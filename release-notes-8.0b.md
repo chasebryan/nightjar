@@ -177,6 +177,52 @@
   current HEAD: matches,
   bit for bit — or exactly
   how it differs.
+- **The Vault.** A tab of
+  its own: the house's
+  cryptography and
+  cryptology suite, a
+  complete system in
+  itself — hashes, HMAC,
+  HKDF, PBKDF2, ChaCha20-
+  Poly1305 and AES-256-GCM
+  sealing, a self-
+  describing password
+  envelope, P-256 dead-
+  drop envelopes, a true
+  one-time pad, encodings
+  and secure randomness.
+  Nine presets ship; the
+  operator's own
+  configurations save
+  beside them and ride
+  the setup mirror. Two
+  kept keys live in the
+  Keychain. Skelli works
+  its instant side by
+  voice — hashes,
+  fingerprints, fresh
+  keys and passwords.
+- **Her crew.** In
+  Skelli's menu, a toggle:
+  Agents. On, an ask with
+  a plan's shape is
+  worked by roles — a
+  Planner breaking it
+  into steps over the
+  house's real resources,
+  her own hands working
+  them against a shared
+  board, a Critic
+  checking for gaps, a
+  Scribe writing the one
+  answer — Qwen or
+  Apple's model in
+  different states, one
+  bench cooperating with
+  itself. Runs register
+  on the ProcessBoard;
+  Vanish stops a crew
+  like anything else.
 - **The organized house.**
   About is regrouped —
   Version, Your setup,

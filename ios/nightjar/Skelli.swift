@@ -701,6 +701,19 @@ final class SkelliCenter: ObservableObject {
         // speaks only when the sentence names a macro.
         if macroAsk(q, raw: raw) { return }
 
+        // The Vault's instant work — hashes,
+        // fingerprints, encodings, fresh keys —
+        // before the general hands, whose verbs
+        // ("new", "key") would muddy it.
+        if cryptoAsk(q, raw: raw) { return }
+
+        // Her crew, when the operator has
+        // toggled it on: a planned ask is
+        // decomposed and worked by role —
+        // planner, hands, critic, scribe —
+        // over whichever bench is awake.
+        if crewAsk(q, raw: raw) { return }
+
         // Hands first: the action intents.
         if q.contains("sweep") {
             runSweep()
@@ -1489,6 +1502,78 @@ final class SkelliCenter: ObservableObject {
             + "it never connects or pairs — and its "
             + "sightings land in the Listen tab and "
             + "the log.")
+    }
+
+    /// The crew's hands: one named step, worked
+    /// by the same organs her direct intents
+    /// use, the outcome returned as words for
+    /// the crew's shared board. Nil when the
+    /// step names nothing she can do. Lives in
+    /// the class because her hands are private
+    /// by design; the crew engine lives in
+    /// SkelliCrew.swift and reaches her here.
+    func crewHands(_ step: String) -> String? {
+        let s = step.lowercased()
+        if s.contains("vanish")
+            || s.contains("stop everything") {
+            haltAndVanish()
+            return "The house vanished: everything "
+                + "halted, full stealth."
+        }
+        if s.contains("sitrep")
+            || s.contains("situation report")
+            || s.contains("status of the house") {
+            return sitrep()
+        }
+        if s.contains("sweep") {
+            if scanner.sweeping {
+                return "A sweep was already "
+                    + "running."
+            }
+            runSweep()
+            return "A sweep of the wire was set "
+                + "in motion; its findings will "
+                + "arrive as their own word and "
+                + "land in the Neighborhood."
+        }
+        if s.contains("self scan")
+            || s.contains("selfscan")
+            || s.contains("exposure") {
+            runSelfScan()
+            return "The self-scan was worked; "
+                + "its reading stands in EMCON."
+        }
+        if s.contains("audit") {
+            runAudit()
+            return "The audit was worked."
+        }
+        if s.contains("go dark")
+            || s.contains("emcon on") {
+            emcon?.activate(mouth: mouth)
+            return "EMCON is on — the house is dark."
+        }
+        if s.contains("look up")
+            || s.contains("lookup")
+            || s.contains("manual") {
+            let topic = s
+                .replacingOccurrences(
+                    of: "look up", with: "")
+                .replacingOccurrences(
+                    of: "lookup", with: "")
+                .replacingOccurrences(
+                    of: "the manual", with: "")
+                .replacingOccurrences(
+                    of: "manual", with: "")
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            if let entry = SkelliKnowledge
+                .lookup(topic.isEmpty ? s : topic) {
+                return "\(entry.title): \(entry.body)"
+            }
+            return "The manual holds nothing "
+                + "under that name."
+        }
+        return nil
     }
 
     private func runSweep() {
@@ -2756,6 +2841,8 @@ struct SkelliView: View {
     @State private var showDeliveries = false
     @AppStorage("skelli.mindMode")
     private var mindMode = "council"
+    @AppStorage("skelli.agents")
+    private var agentsEnabled = false
     @State private var confirmClear = false
     @State private var confirmReset = false
     @FocusState private var inputFocused: Bool
@@ -2914,6 +3001,10 @@ struct SkelliView: View {
             Toggle(isOn: $skelli.webResearchEnabled) {
                 Label("Web research",
                       systemImage: "globe")
+            }
+            Toggle(isOn: $agentsEnabled) {
+                Label("Agents — her crew",
+                      systemImage: "person.3")
             }
             if SkelliMind.weightsReady {
                 Menu {
