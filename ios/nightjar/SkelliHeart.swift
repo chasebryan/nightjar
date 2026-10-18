@@ -569,7 +569,7 @@ final class SkelliHeart: ObservableObject {
         case .electric:
             return (L("She is electric — the wire is busy and she wants in."), "sweep the wire")
         case .suspicious:
-            return (L("She is suspicious — something on the wire changed its story."),
+            return (L("She is suspicious — something has her attention, though it hasn't shown itself."),
                     "sweep the wire")
         case .loving, .sleepy, .content, .smug, .haunted,
              .tender, .dreamy:
@@ -866,7 +866,7 @@ final class SkelliHeart: ObservableObject {
             return L(" There are strangers on the wire I cannot name yet. It bothers me pleasantly.")
         case .suspicious:
             setAnchor("heart.lastNudge", now)
-            return L(" Something on the wire changed its story. I noticed. I always notice.")
+            return L(" Something has my attention. It hasn't shown itself yet.")
         default:
             return nil
         }

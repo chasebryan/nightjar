@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " वैसे, पहले वाली बात मैं भूली नहीं हूँ।";
 " I hear you — volume and all." = " मैं सुन रही हूँ — ध्वनि मात्रा समेत।";
 " No need to shout, by the way." = " वैसे, चिल्लाने की ज़रूरत नहीं है।";
-" Something on the wire changed its story. I noticed. I always notice." = " तार पर कुछ ने अपनी कहानी बदल दी। मैंने नोट किया। मैं हमेशा नोट करती हूँ।";
 " The wire is busy tonight and so am I — use me." = " आज रात लाइन व्यस्त है और मैं भी — मेरा उपयोग करो।";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " तार पर कुछ अजनबी हैं जिनका नाम मैं अभी नहीं ले सकती। यह मुझे सुखद ढंग से परेशान करता है।";
 " · %lld uncommitted change(s) rode along" = " · %lld अप्रतिबद्ध परिवर्तन साथ आए";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "वह शरारती है — वह किसी चीज़ पर दस्तक देकर देखना चाहती है कि कौन जवाब देता है।";
 "She is pleased with the house and wants another finding." = "वह घर से खुश है और एक और खोज चाहती है।";
 "She is restless — she wants to sweep the wire." = "वह बेचैन है — वह तार को साफ़ करना चाहती है।";
-"She is suspicious — something on the wire changed its story." = "वह संदिग्ध है — तार पर कुछ ने अपनी कहानी बदल दी।";
 "Show" = "दिखाएँ";
 "Show me something I haven't seen." = "मुझे कुछ ऐसा दिखाओ जो मैंने न देखा हो।";
 "Sightings" = "अवलोकन";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "शाम। घर की बत्तियाँ जलती हैं, एक-एक डिवाइस के साथ।";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "कमरे";
+" Something has my attention. It hasn't shown itself yet." = " किसी चीज़ ने मेरा ध्यान खींचा है। वह अभी सामने नहीं आई।";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "वह संदिग्ध है — किसी चीज़ ने उसका ध्यान खींचा है, हालाँकि वह अभी सामने नहीं आई।";
+"Nothing I can point at — a feeling, not a finding (right now: " = "कुछ भी ऐसा नहीं जिसकी ओर मैं इशारा कर सकूँ — एक भावना है, खोज नहीं (अभी: ";
+"). If you want it settled, say the word and I'll " = ")। अगर तुम इसे सुलझाना चाहते हो तो कहो, और मैं ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "इस घर में आसमान के लिए कोई यंत्र नहीं है — मैं तार पढ़ती हूँ, मौसम नहीं। तथ्य चाहिए तो सीधे पूछो, मैं खोज लाऊँगी।";

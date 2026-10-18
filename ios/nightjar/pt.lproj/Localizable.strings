@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " Não esqueci o que houve antes, já agora.";
 " I hear you — volume and all." = " Eu ouço-te — volume e tudo.";
 " No need to shout, by the way." = " Não é preciso gritar, já agora.";
-" Something on the wire changed its story. I noticed. I always notice." = " Algo no fio mudou sua história. Eu notei. Eu sempre noto.";
 " The wire is busy tonight and so am I — use me." = " O fio está ocupado esta noite e eu também — usa-me.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Há estranhos no fio que ainda não consigo nomear. Isso incomoda-me agradavelmente.";
 " · %lld uncommitted change(s) rode along" = " · %lld alteração(ões) não confirmada(s) vieram junto";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Ela é travessa — quer bater em algo e ver quem responde.";
 "She is pleased with the house and wants another finding." = "Ela está satisfeita com a casa e quer outra descoberta.";
 "She is restless — she wants to sweep the wire." = "Ela está inquieta — quer varrer o fio.";
-"She is suspicious — something on the wire changed its story." = "Ela está desconfiada — algo no fio mudou a sua história.";
 "Show" = "Mostrar";
 "Show me something I haven't seen." = "Mostra-me algo que eu não tenha visto.";
 "Sightings" = "Avistamentos";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Entardecer. As luzes da casa acendem, aparelho por aparelho.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Salas";
+" Something has my attention. It hasn't shown itself yet." = " Algo tem a minha atenção. Ainda não se mostrou.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "Ela está desconfiada — algo tem a atenção dela, embora ainda não se tenha mostrado.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Nada que eu possa apontar — um sentimento, não uma constatação (agora: ";
+"). If you want it settled, say the word and I'll " = "). Se queres resolver isto, diz a palavra e eu ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "Sem instrumentos para o céu nesta casa — leio fios, não o tempo. Se queres os factos, pede directamente e eu procuro.";

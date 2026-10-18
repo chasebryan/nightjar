@@ -43,6 +43,19 @@
   house warms its stores, so
   the first ask meets warm
   machinery.
+- **No inventions.** She no
+  longer reports events that
+  did not happen: a feeling
+  is voiced as a feeling,
+  and "tell me about it"
+  after one gets the honest
+  account — plus the errand
+  that would settle it.
+  Asked her opinion of the
+  weather, she admits she
+  reads wires, not skies,
+  and offers to look the
+  facts up.
 - **A halo for her.** A thin
   ring of spectrum light
   stands around her portrait

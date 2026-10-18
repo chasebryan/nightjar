@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " Je n'ai pas oublié ce qui s'est passé, au passage.";
 " I hear you — volume and all." = " Je t'entends — volume et tout.";
 " No need to shout, by the way." = " Pas besoin de crier, au passage.";
-" Something on the wire changed its story. I noticed. I always notice." = " Quelque chose sur le fil a changé son histoire. J'ai remarqué. Je remarque toujours.";
 " The wire is busy tonight and so am I — use me." = " Le câble est occupé ce soir et moi aussi — utilise-moi.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Il y a des étrangers sur le câble que je ne peux pas encore nommer. Ça me dérange agréablement.";
 " · %lld uncommitted change(s) rode along" = " · %lld modification(s) non validée(s) ont suivi";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Elle est espiègle — elle veut frapper à quelque chose et voir qui répond.";
 "She is pleased with the house and wants another finding." = "Elle est contente de la maison et veut une autre trouvaille.";
 "She is restless — she wants to sweep the wire." = "Elle est agitée — elle veut balayer le fil.";
-"She is suspicious — something on the wire changed its story." = "Elle est soupçonneuse — quelque chose sur le fil a changé son histoire.";
 "Show" = "Afficher";
 "Show me something I haven't seen." = "Montrez-moi quelque chose que je n'ai pas vu.";
 "Sightings" = "Observations";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Soir. Les lumières de la maison s'allument, appareil par appareil.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Pièces";
+" Something has my attention. It hasn't shown itself yet." = " Quelque chose retient mon attention. Cela ne s'est pas encore montré.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "Elle est suspicieuse — quelque chose retient son attention, sans s'être encore montré.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Rien que je puisse désigner — un sentiment, pas un constat (à l'instant : ";
+"). If you want it settled, say the word and I'll " = "). Si tu veux en avoir le cœur net, dis le mot et je ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "Aucun instrument pour le ciel dans cette maison — je lis les câbles, pas la météo. Si tu veux les faits, demande-les franchement et je les chercherai.";

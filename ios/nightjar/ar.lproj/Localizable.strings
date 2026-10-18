@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = "‏ لم أنسَ ما حدث سابقًا، بالمناسبة.";
 " I hear you — volume and all." = "‏ أنا أسمعك — الحجم وكل شيء.";
 " No need to shout, by the way." = "‏ لا حاجة للصراخ، بالمناسبة.";
-" Something on the wire changed its story. I noticed. I always notice." = "‏ شيء ما على الخط غيّر قصته. لاحظت. أنا ألاحظ دائمًا.";
 " The wire is busy tonight and so am I — use me." = " السلك مشغول الليلة وأنا أيضًا — استخدمني.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = "‏ هناك غرباء على الخط لا أستطيع تسميتهم بعد. يزعجني ذلك بشكل ممتع.";
 " · %lld uncommitted change(s) rode along" = " · جاءت معه %lld من التغييرات غير المؤكدة";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "إنها شقية — تريد أن تطرق شيئًا وترى من يرد.";
 "She is pleased with the house and wants another finding." = "إنها مسرورة بالبيت وتريد اكتشافًا آخر.";
 "She is restless — she wants to sweep the wire." = "إنها قلقة — تريد أن تمسح الخط.";
-"She is suspicious — something on the wire changed its story." = "إنها مرتابة — شيء على الخط غيّر قصته.";
 "Show" = "إظهار";
 "Show me something I haven't seen." = "أرني شيئًا لم أره من قبل.";
 "Sightings" = "المشاهدات";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "المساء. أضواء البيت تضاء، جهازًا بعد جهاز.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "الغرف";
+" Something has my attention. It hasn't shown itself yet." = " شيء ما جذب انتباهي. لم يُظهر نفسه بعد.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "هي مرتابة — شيء ما جذب انتباهها، وإن لم يُظهر نفسه بعد.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "لا شيء يمكنني الإشارة إليه — شعور، لا اكتشاف (الآن: ";
+"). If you want it settled, say the word and I'll " = "). إن أردت حسم الأمر، قل الكلمة وسأ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "لا أدوات للسماء في هذا البيت — أقرأ الأسلاك، لا الطقس. إن أردت الحقائق فاسأل مباشرة وسأبحث عنها.";

@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " Ich habe das von vorhin übrigens nicht vergessen.";
 " I hear you — volume and all." = " Ich höre dich — Lautstärke und alles.";
 " No need to shout, by the way." = " Kein Grund zu schreien, übrigens.";
-" Something on the wire changed its story. I noticed. I always notice." = " Etwas auf dem Draht hat seine Geschichte geändert. Mir ist es aufgefallen. Mir fällt es immer auf.";
 " The wire is busy tonight and so am I — use me." = " Die Leitung ist heute Nacht beschäftigt, und ich auch — nutze mich.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Es gibt Fremde auf der Leitung, die ich noch nicht benennen kann. Es stört mich angenehm.";
 " · %lld uncommitted change(s) rode along" = " · %lld nicht bestätigte Änderung(en) kamen mit";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Sie ist schelmisch — sie will an etwas klopfen und sehen, wer antwortet.";
 "She is pleased with the house and wants another finding." = "Sie ist mit dem Haus zufrieden und will einen weiteren Fund.";
 "She is restless — she wants to sweep the wire." = "Sie ist ruhelos — sie will die Leitung fegen.";
-"She is suspicious — something on the wire changed its story." = "Sie ist misstrauisch — etwas auf der Leitung hat seine Geschichte geändert.";
 "Show" = "Zeigen";
 "Show me something I haven't seen." = "Zeigen Sie mir etwas, das ich noch nicht gesehen habe.";
 "Sightings" = "Sichtungen";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Abend. Die Lichter im Haus gehen an, Gerät für Gerät.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Räume";
+" Something has my attention. It hasn't shown itself yet." = " Etwas hat meine Aufmerksamkeit. Es hat sich noch nicht gezeigt.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "Sie ist misstrauisch — etwas hat ihre Aufmerksamkeit, auch wenn es sich noch nicht gezeigt hat.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Nichts, worauf ich zeigen könnte — ein Gefühl, kein Befund (gerade: ";
+"). If you want it settled, say the word and I'll " = "). Wenn du es geklärt haben willst, sag das Wort und ich ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "Keine Instrumente für den Himmel in diesem Haus — ich lese Leitungen, kein Wetter. Wenn du die Fakten willst, frag geradeheraus und ich sehe nach.";

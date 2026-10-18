@@ -430,6 +430,13 @@ final class SkelliCenter: ObservableObject {
                               title: String,
                               body: String,
                               home: String)?
+    /// The feeling she most recently spoke from
+    /// in a nudge, and when — kept so a bare
+    /// "tell me about it" can be answered with
+    /// the honest account of it instead of the
+    /// bench's pleasantry.
+    private var lastNudge: (feeling: SkelliFeeling,
+                            at: Date)?
     private var pendingAction: (() -> Void)?
     /// Set by ask() when an apology forgave a live
     /// grievance; respond() acknowledges it if no
@@ -521,10 +528,13 @@ final class SkelliCenter: ObservableObject {
         // While she is tending a hurting operator,
         // her own wants go quiet: no itch, no grudge,
         // appended to a held breath.
-        let spoken = text
-            + toneNote
-            + (careMode ? ""
-                : (SkelliHeart.shared.nudgeSuffix() ?? ""))
+        let nudge = careMode ? ""
+            : (SkelliHeart.shared.nudgeSuffix() ?? "")
+        if !nudge.isEmpty {
+            lastNudge = (SkelliHeart.shared.feeling,
+                         Date())
+        }
+        let spoken = text + toneNote + nudge
         lines.append(SkelliLine(fromOperator: false,
                                  text: spoken))
         persist()
@@ -1887,6 +1897,51 @@ final class SkelliCenter: ObservableObject {
             lastSubject = ("entry", entry.title,
                            entry.body, entry.home)
             say(entry.body + "\nFind it: \(entry.home).")
+            return
+        }
+
+        // A bare continuation of her own nudge:
+        // when she has just spoken from a feeling
+        // — a suspicion voiced, an itch confessed
+        // — "tell me about it" is owed the honest
+        // account: it was a feeling, not a
+        // finding, and here is the errand that
+        // would settle it. (On device 2026-10-18
+        // this fell to the bench, which thanked
+        // the operator and promised to be on the
+        // lookout — a pleasantry where the truth
+        // was owed.)
+        let nudgeFollow = ["tell me about it",
+                           "tell me about that",
+                           "about what",
+                           "what changed",
+                           "what did you notice",
+                           "what did you see"]
+        if let nudge = lastNudge,
+           Date().timeIntervalSince(nudge.at) < 600,
+           nudgeFollow.contains(where: q.contains) {
+            let errand = SkelliHeart.shared.want()?.1
+                ?? "go and look properly"
+            say(L("Nothing I can point at — a feeling, not a finding (right now: ")
+                + nudge.feeling.localizedWord
+                + L("). If you want it settled, say the word and I'll ")
+                + errand + ".")
+            return
+        }
+
+        // Her opinion of the weather, asked for
+        // plainly: she has no instrument for the
+        // sky in this house, and says so in her
+        // own voice rather than refusing like a
+        // form. (A factual weather ask carries
+        // no opinion frame and still goes to
+        // research.)
+        let weatherFrames = ["you think",
+                             "your opinion",
+                             "do you like"]
+        if q.contains("weather"),
+           weatherFrames.contains(where: q.contains) {
+            say(L("No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up."))
             return
         }
 

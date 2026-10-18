@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " ちなみに、さっきの件はまだ忘れてないよ。";
 " I hear you — volume and all." = " 聞こえてる — 音量ごとね。";
 " No need to shout, by the way." = " ちなみに、叫ぶ必要はないよ。";
-" Something on the wire changed its story. I noticed. I always notice." = " ワイヤーの何かが物語を変えた。気づいたよ。私はいつも気づく。";
 " The wire is busy tonight and so am I — use me." = " 今夜は回線が忙しい。私もだ — 使ってくれ。";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " 名前を付けられない他人がネットワークにいる。妙に心地よく引っかかってる。";
 " · %lld uncommitted change(s) rode along" = " · 未コミットの変更 %lld 件が含まれていました";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "彼女はいらずら心だ — 何かをノックして誰が応えるか見たがっている。";
 "She is pleased with the house and wants another finding." = "彼女は家に満足し、もう一つ発見がほしい。";
 "She is restless — she wants to sweep the wire." = "彼女は落ち着かない — 回線を掃引したい。";
-"She is suspicious — something on the wire changed its story." = "彼女は疑っている — 回線上の何かがその話を変えた。";
 "Show" = "表示";
 "Show me something I haven't seen." = "まだ見たことのないものを見せて。";
 "Sightings" = "観測";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "夕方。家の明かりが一つずつ灯る。";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "部屋";
+" Something has my attention. It hasn't shown itself yet." = " 何かに注意を引かれている。まだ姿を見せていない。";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "彼女は疑っている — 何かが彼女の注意を引いているが、まだ姿を見せていない。";
+"Nothing I can point at — a feeling, not a finding (right now: " = "指し示せるものは何もない — 発見ではなく感情だ（今は：";
+"). If you want it settled, say the word and I'll " = "）。確かめたければ言ってくれ、私が";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "この家に空を読む道具はない — 私が読むのは回線で、天気ではない。事実が欲しければ、はっきり聞いてくれれば調べる。";

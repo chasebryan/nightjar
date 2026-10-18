@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " Я, кстати, не забыла то, что случилось раньше.";
 " I hear you — volume and all." = " Я тебя слышу — громкость и всё прочее.";
 " No need to shout, by the way." = " Не надо кричать, кстати.";
-" Something on the wire changed its story. I noticed. I always notice." = " Что-то на проводе изменило свою историю. Я заметила. Я всегда замечаю.";
 " The wire is busy tonight and so am I — use me." = " Провод занят сегодня ночью, и я тоже — используй меня.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " На проводе есть незнакомцы, которых я пока не могу назвать. Это приятно беспокоит.";
 " · %lld uncommitted change(s) rode along" = " · %lld неподтверждённое(ые) изменение(я) пришло(и) следом";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Она озорная — хочет постучать во что-нибудь и посмотреть, кто ответит.";
 "She is pleased with the house and wants another finding." = "Она довольна домом и хочет ещё одну находку.";
 "She is restless — she wants to sweep the wire." = "Она беспокойна — она хочет пройтись по проводу.";
-"She is suspicious — something on the wire changed its story." = "Она подозрительна — что-то на проводе изменило свою историю.";
 "Show" = "Показать";
 "Show me something I haven't seen." = "Покажи мне что-то, чего я ещё не видела.";
 "Sightings" = "Наблюдения";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Вечер. В доме зажигаются огни, устройство за устройством.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Комнаты";
+" Something has my attention. It hasn't shown itself yet." = " Что-то привлекло моё внимание. Оно ещё не показалось.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "Она подозрительна — что-то привлекло её внимание, хотя ещё не показалось.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Ничего, на что я могла бы указать, — чувство, а не находка (сейчас: ";
+"). If you want it settled, say the word and I'll " = "). Если хочешь разобраться, скажи слово, и я ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "В этом доме нет приборов для неба — я читаю провода, а не погоду. Если нужны факты, спроси прямо, и я их найду.";

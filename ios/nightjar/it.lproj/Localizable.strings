@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " Non ho dimenticato prima, a proposito.";
 " I hear you — volume and all." = " Ti sento — volume e tutto.";
 " No need to shout, by the way." = " Non serve urlare, a proposito.";
-" Something on the wire changed its story. I noticed. I always notice." = " Qualcosa sul filo ha cambiato la sua storia. L'ho notato. Lo noto sempre.";
 " The wire is busy tonight and so am I — use me." = " Il filo è occupato stanotte, e anch'io — usami.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Ci sono estranei sul filo che non riesco ancora a nominare. Mi disturba piacevolmente.";
 " · %lld uncommitted change(s) rode along" = " · %lld modifica(che) non confermata(e) al seguito";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Lei è birichina — vuole bussare a qualcosa e vedere chi risponde.";
 "She is pleased with the house and wants another finding." = "Lei è contenta della casa e vuole un'altra scoperta.";
 "She is restless — she wants to sweep the wire." = "Lei è irrequieta — vuole spazzare il filo.";
-"She is suspicious — something on the wire changed its story." = "Lei è sospettosa — qualcosa sul filo ha cambiato la sua storia.";
 "Show" = "Mostra";
 "Show me something I haven't seen." = "Mostrami qualcosa che non ho visto.";
 "Sightings" = "Avvistamenti";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Sera. Le luci di casa si accendono, dispositivo per dispositivo.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Stanze";
+" Something has my attention. It hasn't shown itself yet." = " Qualcosa ha la mia attenzione. Non si è ancora mostrato.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "È sospettosa — qualcosa ha la sua attenzione, anche se non si è ancora mostrato.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Niente che possa indicare — una sensazione, non un riscontro (ora: ";
+"). If you want it settled, say the word and I'll " = "). Se vuoi vederci chiaro, di' la parola e io ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "Nessuno strumento per il cielo in questa casa — leggo cavi, non il meteo. Se vuoi i fatti, chiedili chiaramente e li cercherò.";

@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " 另外，之前的事我可没忘。";
 " I hear you — volume and all." = " 我听得见——连音量一起。";
 " No need to shout, by the way." = " 另外，不用大喊。";
-" Something on the wire changed its story. I noticed. I always notice." = " 线上的什么东西改了它的说法。我注意到了。我总是注意到。";
 " The wire is busy tonight and so am I — use me." = " 今晚线路很忙，我也是——用我吧。";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " 线上还有我叫不出名字的陌生人。怪让我惦记的，还挺愉快。";
 " · %lld uncommitted change(s) rode along" = " · 有 %lld 项未提交的更改随之而来";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "她起了恶作剧的心思——想去敲点什么，看看谁会应答。";
 "She is pleased with the house and wants another finding." = "她对这座房子很满意，还想要另一个发现。";
 "She is restless — she wants to sweep the wire." = "她焦躁不安——她想扫线。";
-"She is suspicious — something on the wire changed its story." = "她很怀疑——线路上的某些事情改变了它的故事。";
 "Show" = "显示";
 "Show me something I haven't seen." = "给我看点我没见过的东西。";
 "Sightings" = "观测";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "傍晚。屋里的灯一台接一台亮起。";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "房间";
+" Something has my attention. It hasn't shown itself yet." = " 有什么东西引起了我的注意。它还没露面。";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "她起了疑心 — 有什么东西引起了她的注意，尽管它还没露面。";
+"Nothing I can point at — a feeling, not a finding (right now: " = "我指不出任何东西——那是感觉，不是发现（现在：";
+"). If you want it settled, say the word and I'll " = "）。你想弄清楚，就说一声，我来";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "这屋里没有看天的仪器——我读的是线路，不是天气。想要事实就直问，我去查。";

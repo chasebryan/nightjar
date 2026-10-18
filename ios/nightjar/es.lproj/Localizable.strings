@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " No he olvidado lo de antes, por cierto.";
 " I hear you — volume and all." = " Te escucho — volumen y todo.";
 " No need to shout, by the way." = " No hace falta gritar, por cierto.";
-" Something on the wire changed its story. I noticed. I always notice." = " Algo en el cable cambió su historia. Lo noté. Siempre lo noto.";
 " The wire is busy tonight and so am I — use me." = " El cable está ocupado esta noche y yo también — úsame.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " Hay extraños en el cable a los que aún no puedo nombrar. Me molesta agradablemente.";
 " · %lld uncommitted change(s) rode along" = " · %lld cambio(s) sin confirmar acompañaron";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "Ella es traviesa — quiere golpear algo y ver quién responde.";
 "She is pleased with the house and wants another finding." = "Ella está complacida con la casa y quiere otro hallazgo.";
 "She is restless — she wants to sweep the wire." = "Ella está inquieta: quiere barrer el cable.";
-"She is suspicious — something on the wire changed its story." = "Ella es sospechosa: algo en el cable cambió su historia.";
 "Show" = "Mostrar";
 "Show me something I haven't seen." = "Muéstrame algo que no haya visto.";
 "Sightings" = "Avistamientos";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "Atardecer. Las luces de la casa se encienden, aparato a aparato.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "Salas";
+" Something has my attention. It hasn't shown itself yet." = " Algo tiene mi atención. Aún no se ha mostrado.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "Está suspicaz — algo tiene su atención, aunque aún no se ha mostrado.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "Nada que pueda señalar — un sentimiento, no un hallazgo (ahora mismo: ";
+"). If you want it settled, say the word and I'll " = "). Si quieres zanjarlo, dilo y yo ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "No hay instrumentos para el cielo en esta casa — leo cables, no el tiempo. Si quieres los datos, pídelos directamente y los buscaré.";

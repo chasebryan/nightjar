@@ -9,7 +9,6 @@
 " I haven't forgotten earlier, by the way." = " 아까 일은 못 잊었어, 참고로.";
 " I hear you — volume and all." = " 듣고 있어 — 볼륨까지 다.";
 " No need to shout, by the way." = " 소리 지를 필요는 없어, 참고로.";
-" Something on the wire changed its story. I noticed. I always notice." = " 와이어의 무언가가 이야기를 바꿨어. 알아챘지. 난 항상 알아채.";
 " The wire is busy tonight and so am I — use me." = " 오늘 밤 회선은 바쁘고 나도 그래 — 나를 써.";
 " There are strangers on the wire I cannot name yet. It bothers me pleasantly." = " 아직 이름을 못 붙인 낯선 자들이 선에 있어. 기분 좋게 신경 쓰여.";
 " · %lld uncommitted change(s) rode along" = " · 커밋되지 않은 변경 %lld개가 함께 왔습니다";
@@ -1020,7 +1019,6 @@
 "She is mischievous — she wants to knock on something and see who answers." = "그녀는 장난기가 돈다 — 무언가를 두드려 누가 답하는지 보고 싶어 한다.";
 "She is pleased with the house and wants another finding." = "그녀는 집이 마음에 들고 또 다른 발견을 원한다.";
 "She is restless — she wants to sweep the wire." = "그녀는 안절부절못한다 — 선을 쓸고 싶어 한다.";
-"She is suspicious — something on the wire changed its story." = "그녀는 수상쩍어한다 — 선 위의 무언가가 이야기를 바꿨다.";
 "Show" = "보이기";
 "Show me something I haven't seen." = "아직 못 본 걸 보여줘.";
 "Sightings" = "관측";
@@ -1474,3 +1472,8 @@
 "Evening. The house lights come on, device by device." = "저녁. 집의 불이 기기마다 하나씩 켜진다.";
 "Nightjar — %@" = "Nightjar — %@";
 "Rooms" = "방";
+" Something has my attention. It hasn't shown itself yet." = " 무언가가 내 주의를 끌고 있다. 아직 모습을 드러내지 않았다.";
+"She is suspicious — something has her attention, though it hasn't shown itself." = "그녀는 의심하고 있다 — 무언가가 그녀의 주의를 끌었지만 아직 모습을 드러내지 않았다.";
+"Nothing I can point at — a feeling, not a finding (right now: " = "가리킬 수 있는 것은 없다 — 발견이 아니라 감정이다 (지금: ";
+"). If you want it settled, say the word and I'll " = "). 확실히 하고 싶다면 말해, 내가 ";
+"No instruments for the sky in this house — I read wires, not weather. If you want the facts of it, ask me straight and I'll look them up." = "이 집에는 하늘을 읽는 도구가 없다 — 나는 날씨가 아니라 회선을 읽는다. 사실이 필요하면 똑바로 물어봐, 찾아보겠다.";
