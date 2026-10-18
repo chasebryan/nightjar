@@ -452,48 +452,54 @@ struct BootView: View {
     }
 
     private var lines: [BootLine] {
+        // Plain statements of fact, set like a
+        // plaque — no prompt glyphs, no brackets,
+        // no slashes: the machine stating its name
+        // and its condition, nothing more.
         var out: [BootLine] = [
-            BootLine(text: "> nightjar-hack // ios", tone: .cmd),
-            BootLine(text: "[ ok ] host      \(UIDevice.current.name)",
+            BootLine(text: "Host — \(UIDevice.current.name)",
                      tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
-            out.append(BootLine(text: "[ ok ] net en0 \(ip)",
+            out.append(BootLine(text: "Address — \(ip)",
                                 tone: .ok))
         } else {
-            out.append(BootLine(text: "[ -- ] net no address yet",
+            out.append(BootLine(text: "No address yet",
                                 tone: .off))
         }
         out.append(BootLine(
-            text: "[ ok ] library   \(book.items.count) payloads loaded",
+            text: "Library — \(book.items.count) payloads loaded",
             tone: .ok))
         switch CBManager.authorization {
         case .allowedAlways:
-            out.append(BootLine(text: "[ ok ] ble permission granted",
-                                tone: .ok))
+            out.append(BootLine(
+                text: "Bluetooth — permission granted",
+                tone: .ok))
         case .denied, .restricted:
-            out.append(BootLine(text: "[ !! ] ble permission denied",
-                                tone: .warn))
+            out.append(BootLine(
+                text: "Bluetooth — permission denied",
+                tone: .warn))
         default:
-            out.append(BootLine(text: "[ -- ] ble permission not determined",
-                                tone: .off))
+            out.append(BootLine(
+                text: "Bluetooth — permission undecided",
+                tone: .off))
         }
         out.append(stealthMode
-            ? BootLine(text: "[ ok ] stealth   ON — unlisted, silent",
+            ? BootLine(text: "Stealth — on, unlisted and silent",
                        tone: .ok)
-            : BootLine(text: "[ -- ] stealth   off", tone: .off))
+            : BootLine(text: "Stealth — off", tone: .off))
         if Wallpaper.image != nil
             || UIImage(named: "AppBackground") != nil {
-            out.append(BootLine(text: "[ ok ] backdrop loaded",
+            out.append(BootLine(text: "Wallpaper — loaded",
                                 tone: .ok))
         } else {
-            out.append(BootLine(text: "[ -- ] backdrop image missing",
+            out.append(BootLine(text: "Wallpaper — missing",
                                 tone: .off))
         }
-        // The old closing line — "> the world is
-        // yours" — is no longer a log line: it is
-        // the finale, delivered by the title block
-        // itself on the film's last frame.
+        // The closing line — "the world is yours" —
+        // is not a log line: it is the finale,
+        // delivered by the title block itself on
+        // the film's last frame.
         return out
     }
 
@@ -559,7 +565,7 @@ struct BootView: View {
     /// churns deterministically per step.
     private func scrambled(_ line: BootLine,
                            index: Int) -> String {
-        let glyphs = Array("!<>-_/[]{}=+*^?#01")
+        let glyphs = Array("░▒▓█▄▀·")
         let resolved = max(0, min(
             line.text.count,
             (scrambleStep - index * 2) * 2))
@@ -675,17 +681,19 @@ struct BootView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            if let data = backdropData {
-                if BootMedia.isGIF(data) {
-                    BootFilmPlayer(data: data) { value in
-                        if abs(value - filmProgress) > 0.004
-                            || value == 1 {
-                            filmProgress = value
+        GeometryReader { geo in
+            ZStack {
+                Color.black
+                if let data = backdropData {
+                    if BootMedia.isGIF(data) {
+                        BootFilmPlayer(data: data) { value in
+                            if abs(value - filmProgress) > 0.004
+                                || value == 1 {
+                                filmProgress = value
+                            }
                         }
-                    }
-                    .ignoresSafeArea()
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
                 } else if let image = UIImage(
                     data: data) {
                     Image(uiImage: image)
@@ -716,8 +724,8 @@ struct BootView: View {
                         .shadow(color: .black.opacity(0.9),
                                 radius: 5, x: 0, y: 1)
                     Text(finale
-                         ? "> the world is yours"
-                         : "IOS BUILD · FIELD UNIT")
+                         ? "the world is yours"
+                         : "FIELD UNIT")
                         .font(.system(.caption2,
                                       design: .monospaced))
                         .tracking(2)
@@ -753,6 +761,9 @@ struct BootView: View {
                 .padding(.horizontal, 26)
                 .padding(.bottom, 30)
             }
+            }
+            .frame(width: geo.size.width,
+                   height: geo.size.height)
         }
         .contentShape(Rectangle())
         .onTapGesture { onDone() }
@@ -1030,11 +1041,14 @@ struct GIFPlayerView: UIViewRepresentable {
 }
 
 /// The boot film: a GIF played exactly once, frame
-/// by frame off the clock, decoding each frame as
-/// it is reached and holding only that one — a
-/// long film costs one frame of memory, not all of
-/// them. The last frame holds when the film ends,
-/// and progress reports the playhead's true place.
+/// by frame off the clock. Decoding never touches
+/// the main thread: a worker keeps a small ring of
+/// frames ready AHEAD of the playhead, and the
+/// display link only ever displays — so the film
+/// runs smooth at its authored pace, and a long
+/// film costs a ring of memory, not all of it. The
+/// last frame holds when the film ends, and
+/// progress reports the playhead's true place.
 struct BootFilmPlayer: UIViewRepresentable {
     let data: Data
     var onProgress: (Double) -> Void
@@ -1072,6 +1086,19 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var onProgress: ((Double) -> Void)?
         private var shown = -1
 
+        // The decode ring: a worker queue decodes
+        // ahead of the playhead into a small cache;
+        // the display link never waits on a decode.
+        private let decodeQueue = DispatchQueue(
+            label: "nightjar.bootfilm", qos: .userInitiated)
+        private var ready: [Int: CGImage] = [:]
+        private let lock = NSLock()
+        private var nextToDecode = 0
+        private var wanted = 0
+        private var pumping = false
+        private var stoppedFlag = false
+        private let ahead = 16
+
         func begin(in view: UIImageView, data: Data,
                    onProgress: @escaping (Double) -> Void) {
             self.view = view
@@ -1087,7 +1114,16 @@ struct BootFilmPlayer: UIViewRepresentable {
                 acc += delay
             }
             total = acc
-            setFrame(0)
+            // The first frame paints at once, decoded
+            // here; every frame after it comes off the
+            // worker's ring.
+            if let first = decode(0) {
+                ready[0] = first
+                nextToDecode = 1
+                shown = 0
+                view.image = UIImage(cgImage: first)
+            }
+            requestPrefetch(upTo: ahead)
             t0 = CACurrentMediaTime()
             let link = CADisplayLink(
                 target: self, selector: #selector(tick))
@@ -1095,35 +1131,111 @@ struct BootFilmPlayer: UIViewRepresentable {
             self.link = link
         }
 
+        private func decode(_ index: Int) -> CGImage? {
+            guard let source = source,
+                  index >= 0, index < starts.count
+            else { return nil }
+            return CGImageSourceCreateImageAtIndex(
+                source, index, nil)
+        }
+
+        /// Keep the ring filled to `target` — the
+        /// playhead's frame plus a run ahead of it.
+        private func requestPrefetch(upTo target: Int) {
+            lock.lock()
+            wanted = max(wanted,
+                         min(target, starts.count - 1))
+            let shouldPump = !pumping && !stoppedFlag
+            if shouldPump { pumping = true }
+            lock.unlock()
+            if shouldPump {
+                decodeQueue.async { [weak self] in
+                    self?.pump()
+                }
+            }
+        }
+
+        private func pump() {
+            while true {
+                lock.lock()
+                guard !stoppedFlag,
+                      nextToDecode <= wanted,
+                      nextToDecode < starts.count else {
+                    pumping = false
+                    lock.unlock()
+                    return
+                }
+                let index = nextToDecode
+                nextToDecode += 1
+                lock.unlock()
+                if let image = decode(index) {
+                    lock.lock()
+                    ready[index] = image
+                    lock.unlock()
+                }
+            }
+        }
+
         @objc private func tick() {
             let elapsed = CACurrentMediaTime() - t0
             if elapsed >= total {
-                setFrame(starts.count - 1)
-                onProgress?(1)
-                stop()
+                // The film ends on its TRUE last frame:
+                // if the ring has not delivered it yet,
+                // hold a breath rather than freeze on
+                // an earlier frame.
+                lock.lock()
+                let lastImage = ready[starts.count - 1]
+                lock.unlock()
+                if let lastImage = lastImage {
+                    if shown != starts.count - 1 {
+                        shown = starts.count - 1
+                        view?.image = UIImage(
+                            cgImage: lastImage)
+                    }
+                    onProgress?(1)
+                    stop()
+                } else {
+                    onProgress?(1)
+                    requestPrefetch(
+                        upTo: starts.count - 1)
+                }
                 return
             }
-            var index = max(shown, 0)
-            while index + 1 < starts.count
-                    && starts[index + 1] <= elapsed {
-                index += 1
+            var desired = max(shown, 0)
+            while desired + 1 < starts.count
+                    && starts[desired + 1] <= elapsed {
+                desired += 1
             }
-            if index != shown { setFrame(index) }
+            requestPrefetch(upTo: desired + ahead)
+            // Display the best ready frame at or behind
+            // the playhead — never an undecoded one,
+            // never backwards.
+            lock.lock()
+            var best: Int? = nil
+            for key in ready.keys
+            where key <= desired && key > shown {
+                if best == nil || key > best! {
+                    best = key
+                }
+            }
+            let image = best.flatMap { ready[$0] }
+            if shown > 1 {
+                ready = ready.filter { $0.key >= shown - 1 }
+            }
+            lock.unlock()
+            if let best = best, let image = image {
+                shown = best
+                view?.image = UIImage(cgImage: image)
+            }
             onProgress?(min(1, elapsed / total))
-        }
-
-        private func setFrame(_ index: Int) {
-            guard let source = source,
-                  index >= 0, index < starts.count,
-                  let cg = CGImageSourceCreateImageAtIndex(
-                    source, index, nil) else { return }
-            shown = index
-            view?.image = UIImage(cgImage: cg)
         }
 
         func stop() {
             link?.invalidate()
             link = nil
+            lock.lock()
+            stoppedFlag = true
+            lock.unlock()
         }
     }
 }
