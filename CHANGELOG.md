@@ -546,6 +546,24 @@
   A genuinely new
   face still gets her
   attention first.
+- **The dot learns
+  the house.** The
+  activity dot reads
+  real senses now, in
+  a strict ladder, and
+  never moves: red for
+  contact at the
+  tripwire, violet
+  when she is afraid,
+  amber for a raised
+  posture, an earned
+  suspicion, or a new
+  face — the accent
+  while she works, and
+  soft at a clear
+  watch. The ticker,
+  rebuilt clock-driven,
+  cannot stall.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

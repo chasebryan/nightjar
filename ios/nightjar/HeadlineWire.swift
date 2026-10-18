@@ -317,39 +317,51 @@ private final class RSSHeadlines: NSObject,
 /// reading pace, two copies nose-to-tail so
 /// the loop never shows its seam. If the
 /// ribbon is shorter than the line, it simply
-/// rests. One Text, measured once — nothing
-/// here can grow, index, or race.
+/// rests.
+///
+/// Second construction (2026-10-18): the
+/// first hung its motion on a Boolean state
+/// flip driving an animation — and on device
+/// the scroll died, because this view's
+/// parents re-render constantly and a
+/// stranded flip never restarts. Now the
+/// offset is a pure function of the clock,
+/// recomputed every frame by a TimelineView:
+/// there is no state to strand, no animation
+/// to drop. A refresh restarts the ribbon
+/// from its head, as a wire's should.
 struct HeadlineTicker: View {
     let text: String
 
     @State private var copyWidth: CGFloat = 0
-    @State private var scrolling = false
+    @State private var born = Date()
 
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                ribbon
-                ribbon
-            }
-            .offset(x: scrolling ? -copyWidth : 0)
-            .animation(
-                .linear(duration: max(
-                    copyWidth / 45, 1))
-                .repeatForever(autoreverses: false),
-                value: scrolling)
-            .onAppear {
-                scrolling = copyWidth > geo.size.width
-            }
-            .onChange(of: copyWidth) { w in
-                scrolling = w > geo.size.width
-            }
-            .onChange(of: text) { _ in
-                scrolling = false
+            TimelineView(.animation) { ctx in
+                let wide = copyWidth
+                    > geo.size.width
+                let elapsed = max(0, ctx.date
+                    .timeIntervalSince(born))
+                let travel = wide
+                    ? CGFloat(elapsed) * 45 : 0
+                let off = wide && copyWidth > 0
+                    ? -(travel.truncatingRemainder(
+                        dividingBy: copyWidth))
+                    : 0
+                HStack(spacing: 0) {
+                    ribbon
+                    ribbon
+                }
+                .offset(x: off)
             }
         }
         .frame(height: 17)
         .clipped()
-        .id(text)
+        .onChange(of: text) { _ in
+            copyWidth = 0
+            born = Date()
+        }
     }
 
     private var ribbon: some View {
@@ -361,9 +373,16 @@ struct HeadlineTicker: View {
                        vertical: false)
             .background(
                 GeometryReader { proxy in
-                    Color.clear.onAppear {
-                        copyWidth = proxy.size.width
-                    }
+                    Color.clear
+                        .onAppear {
+                            copyWidth =
+                                proxy.size.width
+                        }
+                        .onChange(
+                            of: proxy.size.width
+                        ) { w in
+                            copyWidth = w
+                        }
                 })
     }
 }

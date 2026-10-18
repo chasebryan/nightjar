@@ -7652,19 +7652,24 @@ struct SkelliView: View {
     }
 
     /// The activity line, alive (2026-10-18):
-    /// the dot carries her state in COLOR
-    /// only — the accent while she works,
-    /// amber under a raised EMCON, a soft
-    /// accent at a clear watch — and it does
-    /// not move. (It pulsed at first; on
-    /// device the throb beside the scrolling
-    /// text was a distraction, and the dot
-    /// was steady again within the hour. An
-    /// unnamed soul on the wire is ordinary
-    /// weather, not an alarm: it no longer
-    /// colors the dot.) The text: work
-    /// narrates itself first, always; at an
-    /// idle watch the headline wire scrolls
+    /// the dot is INTELLIGENT — its color is
+    /// read off the house's real senses in a
+    /// strict ladder, and it never moves (it
+    /// pulsed once; the throb was a
+    /// distraction, and it will not again):
+    /// RED — contact: a knock at the tripwire
+    /// within five minutes; something touched
+    /// the house. PURPLE — she is afraid.
+    /// AMBER — a raised EMCON, or suspicion
+    /// she has actually earned against the
+    /// wire's learned baseline, or a new face
+    /// within the quarter hour. The ACCENT at
+    /// full strength — she is working. The
+    /// accent soft — a clear watch, the wire
+    /// in its natural state. Contact outranks
+    /// mood, mood outranks weather. The text:
+    /// work narrates itself first, always; at
+    /// an idle watch the headline wire scrolls
     /// the world's latest past the line; and
     /// when the wire is silent — or the reader
     /// asks stillness of motion — her composed
@@ -7673,14 +7678,31 @@ struct SkelliView: View {
     /// both the dot and the text know things.
     private var activityBar: some View {
         let busy = skelli.mood != .idle
-        let attention = !busy
-            && emcon.condition >= .bravo
-        let dotColor: Color = busy
-            ? themes.current.accent
-            : (attention
-                ? Color.orange
-                : themes.current.accent
-                    .opacity(0.75))
+        let contact = emcon.events
+            .map(\.when).max().map {
+                Date().timeIntervalSince($0) < 300
+            } ?? false
+        let newFace = NeighborhoodStore.shared
+            .neighbors.contains {
+                Date().timeIntervalSince(
+                    $0.firstSeen) < 900
+            }
+        let dotColor: Color = {
+            if contact { return .red }
+            if heart.feeling == .afraid {
+                return .purple
+            }
+            if emcon.condition >= .bravo
+                || heart.feeling == .suspicious
+                || newFace {
+                return .orange
+            }
+            if busy {
+                return themes.current.accent
+            }
+            return themes.current.accent
+                .opacity(0.75)
+        }()
         return HStack(spacing: 6) {
             Circle()
                 .fill(dotColor)
