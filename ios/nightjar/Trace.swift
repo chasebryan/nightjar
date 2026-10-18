@@ -46,6 +46,21 @@ import CryptoKit
 /// references are not followed. Matching `contains` is
 /// case-insensitive against the banner+reply text.
 struct TraceRule {
+    /// The sample rules text every surface shows before the
+    /// operator writes their own — one text, one default,
+    /// so the Send tab, the War Room and War Games can
+    /// never drift apart on what an untouched box means.
+    /// (Comment-only: it parses to no rules at all.)
+    static let sampleText = """
+        # Rules — one per line. They steer the trace and
+        # the centipede: followup sends the named library
+        # payload to the same door, tag files a label,
+        # stop leaves the reply where it lies.
+        # contains nginx => tag web
+        # contains Redis => followup Redis PING (RESP)
+        # port 22 => tag ssh
+        """
+
     enum Matcher {
         case contains(String)   // stored lowercased
         case port(Int)
@@ -1082,6 +1097,16 @@ extension Mouth {
         probeFor: @escaping (String) -> (data: Data, name: String)?,
         payloadNamed: @escaping (String) -> Data?
     ) {
+        // The trace answers to the Standard as a sweep —
+        // whoever asks for it (a hand, a macro, a game),
+        // the funnel refuses it under BRAVO and ALPHA.
+        if EmconStandard.refused(.sweep) {
+            traceStatus = "The trace stays holstered — "
+                + EmconCondition.current.declared
+            ui("The trace stays holstered — "
+               + EmconCondition.current.declared, error: true)
+            return
+        }
         guard !traceBusy, !crawlBusy, !talkBusy else { return }
         let ownIP = Mouth.localIPAddress()
         guard let base = Mouth.sweepBase(scopeText, ownIP: ownIP)

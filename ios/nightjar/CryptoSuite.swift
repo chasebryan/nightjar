@@ -68,11 +68,44 @@ enum CryptoSuite {
         var bits = 0
         for char in clean {
             let value: UInt32
+            // Values come from the matched range itself,
+            // never from force-unwrapped ASCII: a pasted
+            // decomposed character (a letter plus a
+            // combining mark) can satisfy a range match
+            // while its asciiValue is nil.
             switch char {
-            case "A"..."Z":
-                value = UInt32(char.asciiValue! - 65)
-            case "2"..."7":
-                value = UInt32(char.asciiValue! - 50)
+            case "A": value = 0
+            case "B": value = 1
+            case "C": value = 2
+            case "D": value = 3
+            case "E": value = 4
+            case "F": value = 5
+            case "G": value = 6
+            case "H": value = 7
+            case "I": value = 8
+            case "J": value = 9
+            case "K": value = 10
+            case "L": value = 11
+            case "M": value = 12
+            case "N": value = 13
+            case "O": value = 14
+            case "P": value = 15
+            case "Q": value = 16
+            case "R": value = 17
+            case "S": value = 18
+            case "T": value = 19
+            case "U": value = 20
+            case "V": value = 21
+            case "W": value = 22
+            case "X": value = 23
+            case "Y": value = 24
+            case "Z": value = 25
+            case "2": value = 26
+            case "3": value = 27
+            case "4": value = 28
+            case "5": value = 29
+            case "6": value = 30
+            case "7": value = 31
             default:
                 return nil
             }

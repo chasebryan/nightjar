@@ -521,6 +521,49 @@
   under one toggle:
   Moods, in her menu.
 
+* The sweep. Before this
+  build settled, the whole
+  tree was hunted end to
+  end, and what the hunt
+  found is fixed: the
+  living wallpaper plays
+  on every screen again
+  (a shared animated image
+  could stall in some
+  screens and never
+  restart); the network
+  trace now answers to the
+  EMCON Standard like
+  everything else — gated
+  at its funnel, silenced
+  when a condition engages,
+  and counted in the score;
+  Reset to defaults truly
+  resets (seventeen
+  settings and three
+  backdrop slots were
+  quietly surviving it);
+  her options open as a
+  sheet that cannot clip
+  its last row; Net-
+  Assault's governor hears
+  knock findings, so its
+  rest snaps back on news,
+  and a device gone silent
+  is news once, not
+  forever; her sleepy
+  feeling can actually
+  occur, her grievance is
+  spoken once per offense,
+  and her scrapbook no
+  longer files "call me
+  when the sweep ends" as
+  your name; two DNS
+  builders and the base32
+  decoder lost their crash
+  traps on long or pasted
+  text.
+
 ## 8.0a — 2026-10-17 — the conductor
 
 - **Macros.** A tab of its own:

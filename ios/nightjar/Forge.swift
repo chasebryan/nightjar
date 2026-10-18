@@ -59,7 +59,7 @@ enum ForgeKit {
             0x00, 0x00, 0x00, 0x00,
         ]
         for label in host.split(separator: ".") {
-            bytes.append(UInt8(label.utf8.count))
+            bytes.append(UInt8(clamping: label.utf8.count))
             bytes.append(
                 contentsOf: label.utf8.map { $0 })
         }

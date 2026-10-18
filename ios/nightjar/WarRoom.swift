@@ -614,7 +614,8 @@ struct WarRoomView: View {
     @AppStorage("traceProfilePorts") private var traceProfilePorts = ""
     @AppStorage("traceBonjour") private var traceBonjour = true
     @AppStorage("traceAdaptive") private var traceAdaptive = true
-    @AppStorage("traceRules") private var traceRules = ""
+    @AppStorage("traceRules") private var traceRules =
+        TraceRule.sampleText
     @AppStorage("warRoomBLE") private var includeBLE = true
     @AppStorage("reconTimeout") private var reconTimeout = 1.5
     @AppStorage("reconJobs") private var reconJobs = 24.0

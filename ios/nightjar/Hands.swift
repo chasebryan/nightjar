@@ -78,11 +78,13 @@ extension SkelliCenter {
                             as? Double) ?? 24))
     }
 
-    /// The Recon bench's port list, from its stored key.
+    /// The Recon bench's port list, from its stored key —
+    /// one fallback for every reader: the bench's own
+    /// default set, so no surface invents its own list.
     func warReconPorts() -> [Int] {
-        let text = UserDefaults.standard.string(
-            forKey: "reconPorts")
-            ?? "22,80,443,445,1883,8080,8443,9100"
+        guard let text = UserDefaults.standard.string(
+                forKey: "reconPorts"), !text.isEmpty
+        else { return ReconPayloads.defaultPorts }
         return Array(Set(text.split(separator: ",")
             .compactMap {
                 Int($0.trimmingCharacters(in: .whitespaces))

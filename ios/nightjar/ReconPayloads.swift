@@ -134,7 +134,7 @@ enum ReconPayloads {
         let trimmed = name.hasSuffix(".") ? String(name.dropLast()) : name
         for label in trimmed.split(separator: ".") {
             let raw = Data(String(label).utf8)
-            out.append(UInt8(raw.count))
+            out.append(UInt8(clamping: raw.count))
             out += raw
         }
         out.append(0)

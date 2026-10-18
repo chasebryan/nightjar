@@ -528,7 +528,8 @@ final class SubconsciousCenter: ObservableObject {
         let defaults = UserDefaults.standard
         if defaults.bool(forKey: "deadHand.on") {
             let last = defaults.double(forKey: "deadHand.last")
-            let hours = defaults.double(forKey: "deadHand.hours")
+            let hours = Double(
+                defaults.integer(forKey: "deadHand.hours"))
             if last > 0, hours > 0 {
                 let age = now.timeIntervalSince1970 - last
                 if age > hours * 3600 * 0.5 {

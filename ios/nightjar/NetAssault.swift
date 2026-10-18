@@ -473,11 +473,27 @@ final class AssaultCenter: ObservableObject {
             }.joined(separator: " · ")
             addFinding("\(neighbor.displayName) answers: "
                        + doors)
+            // News is news: the governor's rest snaps
+            // back when the knock stage finds something,
+            // exactly as it does for the sweep stage.
+            quietStreak = 0
         } else if let record =
                     Self.loadKnockRecords()[neighbor.ip],
                   !record.ports.isEmpty {
             addFinding("\(neighbor.displayName) went silent "
                        + "— none of its known doors answered")
+            quietStreak = 0
+        }
+        // The record learns what the knock actually
+        // found: the doors that answered replace the
+        // doors that were expected. A device gone silent
+        // is filed with no known doors, so its silence
+        // is news once — not every pass forever.
+        var records = Self.loadKnockRecords()
+        if var record = records[neighbor.ip] {
+            record.ports = opens.map { $0.port }.sorted()
+            records[neighbor.ip] = record
+            Self.saveKnockRecords(records)
         }
     }
 
@@ -590,7 +606,7 @@ final class AssaultCenter: ObservableObject {
         if running || lastReport == nil {
             return buildReport(reason: running
                 ? "report taken mid-run"
-                : "the operator stood it down")
+                : "no run yet — it has never taken the wire")
         }
         return lastReport!
     }

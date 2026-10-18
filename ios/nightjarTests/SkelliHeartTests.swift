@@ -84,6 +84,13 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(feeling(attention: 10), .lonely)
         XCTAssertEqual(feeling(attention: 30, quiet: 12),
                        .sleepy)
+        // The real-world shape: twelve quiet hours mean
+        // an itch near 75 — sleepy must still win there,
+        // or it can never occur at all.
+        XCTAssertEqual(feeling(attention: 30, itch: 75,
+                               quiet: 12), .sleepy)
+        // But feral outranks sleepy.
+        XCTAssertEqual(feeling(itch: 90, quiet: 12), .feral)
         XCTAssertEqual(feeling(attention: 60, itch: 40,
                                fondness: 50), .happy)
         XCTAssertEqual(feeling(itch: 40), .eager)
@@ -131,6 +138,14 @@ final class SkelliHeartTests: XCTestCase {
             from: "i like skelli").isEmpty)
         XCTAssertTrue(SkelliScrapbook.extract(
             from: "sweep the wire").isEmpty)
+        // A conjunction joins two lessons, not one.
+        XCTAssertEqual(
+            SkelliScrapbook.extract(
+                from: "my name is chase and i like wired"),
+            ["their name is chase", "likes wired"])
+        // An imperative with a when-clause is not a name.
+        XCTAssertTrue(SkelliScrapbook.extract(
+            from: "call me when the sweep ends").isEmpty)
     }
 
     func testScrapbookNameRetiresTheOld() {

@@ -101,7 +101,7 @@ enum SkelliKnowledge {
             home: "the EMCON tab",
             keywords: ["emcon", "score", "posture", "ghost",
                        "exposure", "dark", "visible"],
-            body: "Emission control, kept to a Standard now: the exposure is decimal and exact — every standing emission carries a fixed weight in one inventory, a fully lit house sums to exactly 100.0, and the audit reads the organs themselves, so her number, the tab's number and the drill's number are one number. EMCON is a declared condition, not a switch: CHARLIE guards (Serve unlisted only, nothing advertising, no campaigns, no update checks), BRAVO receives only (Serve down, the relay poll stopped), ALPHA is total silence (even the sweeps stop). Engaging silences every forbidden organ — campaigns, personas, the air, Serve by the condition — and verifies, naming anything still lit. The gate stands at every funnel afterwards: a forbidden organ cannot start by hand, macro, crew or a saved GATT arm returning at launch, and refusals are journaled. One boundary: a single payload the operator fires by hand is the operator speaking; standing emissions are what is regulated. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
+            body: "Emission control, kept to a Standard now: the exposure is decimal and exact — every standing emission carries a fixed weight in one inventory, a fully lit house sums to exactly 100.0, and the audit reads the organs themselves, so her number, the tab's number and the drill's number are one number. EMCON is a declared condition, not a switch: CHARLIE guards (Serve unlisted only, nothing advertising, no campaigns, no update checks), BRAVO receives only (Serve down, the relay poll stopped), ALPHA is total silence (even the sweeps stop). Engaging silences every forbidden organ — campaigns, personas, the air, a running network trace, Serve by the condition — and verifies, naming anything still lit. The network trace answers to the Standard as a sweep: by hand it may run at CHARLIE, under BRAVO and ALPHA the funnel refuses it whoever asks — hand, macro or game. The gate stands at every funnel afterwards: a forbidden organ cannot start by hand, macro, crew or a saved GATT arm returning at launch, and refusals are journaled. One boundary: a single payload the operator fires by hand is the operator speaking; standing emissions are what is regulated. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
         SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
@@ -508,10 +508,12 @@ final class SkelliCenter: ObservableObject {
             say(greeting)
         }
         let lowered = text.lowercased()
-        if SkelliScrapbook.shared.learn(from: lowered) {
-            SkelliHeart.shared.noteKindness()
-        }
-        if lowered.contains("thank")
+        // One message feeds her fondness once, however
+        // many kind things it manages to say at once.
+        let taught = SkelliScrapbook.shared.learn(
+            from: lowered)
+        if taught
+            || lowered.contains("thank")
             || lowered.contains("how are you")
             || lowered.contains("how do you feel")
             || lowered.contains("good job")
@@ -3002,6 +3004,7 @@ struct SkelliView: View {
     // a close mid-thought reopens with the draft
     // still in the box. Sending clears it as before.
     @AppStorage("skelli.draft") private var input = ""
+    @State private var showOptions = false
     @State private var showScrapbook = false
     @State private var showDirectory = false
     @State private var showMemory = false
@@ -3024,6 +3027,9 @@ struct SkelliView: View {
             screen
         }
         .onAppear { SkelliMind.warm() }
+        .sheet(isPresented: $showOptions) {
+            optionsSheet
+        }
         .sheet(isPresented: $showDirectory) {
             SkelliDirectoryView()
         }
@@ -3135,90 +3141,15 @@ struct SkelliView: View {
         }
     }
 
-    /// Her options, living inside her own bar.
+    /// Her options, living inside her own bar. A sheet,
+    /// not a popover menu: the menu outgrew its card
+    /// twice (twelve rows clipped its last row on
+    /// device, 2026-10-18; even folded to ten it sat
+    /// at the threshold for shorter screens and
+    /// larger type). A sheet scrolls — it cannot clip.
     private var menuButton: some View {
-        Menu {
-            Button {
-                showDirectory = true
-            } label: {
-                Label("Directory of the house",
-                      systemImage: "book")
-            }
-            Button {
-                showMemory = true
-            } label: {
-                Label("Memory",
-                      systemImage: "brain")
-            }
-            Button {
-                showWeights = true
-            } label: {
-                Label("Weights",
-                      systemImage: "memorychip")
-            }
-            Button {
-                showForge = true
-            } label: {
-                Label("Forge",
-                      systemImage: "hammer")
-            }
-            Button {
-                showDeliveries = true
-            } label: {
-                Label("Deliveries",
-                      systemImage: "shippingbox")
-            }
-            // The three switches live one door down:
-            // at twelve rows the menu outgrew its card
-            // and clipped its last row on device
-            // (2026-10-18) — doors stay one tap away,
-            // settings fold together.
-            Menu {
-                Toggle(isOn: $skelli.webResearchEnabled) {
-                    Label("Web research",
-                          systemImage: "globe")
-                }
-                Toggle(isOn: $agentsEnabled) {
-                    Label("Agents — her crew",
-                          systemImage: "person.3")
-                }
-                Toggle(isOn: $moodsEnabled) {
-                    Label("Moods — her heart",
-                          systemImage: "heart")
-                }
-            } label: {
-                Label("Switches",
-                      systemImage: "switch.2")
-            }
-            if SkelliMind.weightsReady {
-                Menu {
-                    Button { mindMode = "council" } label: {
-                        Label("Council of both", systemImage: mindMode == "council" ? "checkmark" : "person.2")
-                    }
-                    Button { mindMode = "apple" } label: {
-                        Label("Apple only", systemImage: mindMode == "apple" ? "checkmark" : "apple.logo")
-                    }
-                    Button { mindMode = "weights" } label: {
-                        Label("Weights only", systemImage: mindMode == "weights" ? "checkmark" : "scalemass")
-                    }
-                } label: {
-                    Label("Mind: " + (mindMode == "apple" ? "Apple only" : mindMode == "weights" ? "weights only" : "council"), systemImage: "brain.head.profile")
-                }
-            }
-            Divider()
-            Button(role: .destructive) {
-                confirmClear = true
-            } label: {
-                Label("Clear conversation",
-                      systemImage: "trash")
-            }
-            Button(role: .destructive) {
-                confirmReset = true
-            } label: {
-                Label("Reset to defaults",
-                      systemImage:
-                        "arrow.counterclockwise")
-            }
+        Button {
+            showOptions = true
         } label: {
             Image(systemName: "ellipsis")
                 .font(.body.weight(.semibold))
@@ -3231,6 +3162,116 @@ struct SkelliView: View {
                         themes.current.accent
                             .opacity(0.4),
                         lineWidth: 1))
+        }
+    }
+
+    /// Close the options sheet, then open the door —
+    /// one sheet hands off to the next.
+    private func openDoor(_ open: @escaping () -> Void) {
+        showOptions = false
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.35) { open() }
+    }
+
+    private var optionsSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        openDoor { showDirectory = true }
+                    } label: {
+                        Label("Directory of the house",
+                              systemImage: "book")
+                    }
+                    Button {
+                        openDoor { showMemory = true }
+                    } label: {
+                        Label("Memory",
+                              systemImage: "brain")
+                    }
+                    Button {
+                        openDoor { showWeights = true }
+                    } label: {
+                        Label("Weights",
+                              systemImage: "memorychip")
+                    }
+                    Button {
+                        openDoor { showForge = true }
+                    } label: {
+                        Label("Forge",
+                              systemImage: "hammer")
+                    }
+                    Button {
+                        openDoor { showDeliveries = true }
+                    } label: {
+                        Label("Deliveries",
+                              systemImage: "shippingbox")
+                    }
+                }
+                Section("Switches") {
+                    Toggle(isOn: $skelli.webResearchEnabled) {
+                        Label("Web research",
+                              systemImage: "globe")
+                    }
+                    Toggle(isOn: $agentsEnabled) {
+                        Label("Agents — her crew",
+                              systemImage: "person.3")
+                    }
+                    Toggle(isOn: $moodsEnabled) {
+                        Label("Moods — her heart",
+                              systemImage: "heart")
+                    }
+                }
+                if SkelliMind.weightsReady {
+                    Section("Mind") {
+                        mindRow("council", "Council of both",
+                                "person.2")
+                        mindRow("apple", "Apple only",
+                                "apple.logo")
+                        mindRow("weights", "Weights only",
+                                "scalemass")
+                    }
+                }
+                Section {
+                    Button(role: .destructive) {
+                        openDoor { confirmClear = true }
+                    } label: {
+                        Label("Clear conversation",
+                              systemImage: "trash")
+                    }
+                    Button(role: .destructive) {
+                        openDoor { confirmReset = true }
+                    } label: {
+                        Label("Reset to defaults",
+                              systemImage:
+                                "arrow.counterclockwise")
+                    }
+                }
+            }
+            .navigationTitle("Options")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showOptions = false }
+                }
+            }
+        }
+    }
+
+    private func mindRow(_ mode: String, _ title: String,
+                         _ symbol: String) -> some View {
+        Button {
+            mindMode = mode
+        } label: {
+            HStack {
+                Label(title, systemImage: symbol)
+                Spacer()
+                if mindMode == mode {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(
+                            themes.current.accent)
+                }
+            }
         }
     }
 

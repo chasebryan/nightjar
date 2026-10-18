@@ -386,9 +386,11 @@ struct NeighborhoodSectionView: View {
                             Text(neighbor.displayName)
                                 .font(.callout.weight(.semibold))
                                 .foregroundStyle(.primary)
+                                .lineLimit(1)
                             Text(neighborCaption(neighbor))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     }
                 }

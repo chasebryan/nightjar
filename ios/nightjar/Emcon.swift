@@ -307,7 +307,7 @@ final class Emcon: ObservableObject {
         snapshot.warKnocking =
             WarRun.shared.phase == .knocking
         snapshot.warTracing =
-            WarRun.shared.phase == .tracing
+            WarRun.shared.phase == .tracing || mouth.traceBusy
         snapshot.bansheeOn = BansheeCenter.shared.screaming
         snapshot.relayPolling = chat.relayPolling
         snapshot.writeScanning = mouth.writeScanning
@@ -411,6 +411,10 @@ final class Emcon: ObservableObject {
             WarRun.shared.stop()
             silenced.append("the War Room run")
         }
+        if mouth.traceBusy {
+            mouth.stopNetworkTrace()
+            silenced.append("the network trace")
+        }
         if ProbingBeacon.shared.active {
             ProbingBeacon.shared.silence()
             silenced.append("active probing")
@@ -447,6 +451,9 @@ final class Emcon: ObservableObject {
         }
         if !goal.permits(.warRun), WarRun.shared.running {
             lit.append("the War Room run")
+        }
+        if mouth.traceBusy {
+            lit.append("the network trace")
         }
         if !goal.permits(.probing),
            ProbingBeacon.shared.active {

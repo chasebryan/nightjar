@@ -40,7 +40,7 @@ enum SaneDefaults {
         "canaryPersona", "canaryPort",
         "canaryHoneydrop", "canaryDrop", "flare.on",
         "canaryLearnedPaths", "conductorOn", "conductorRules",
-        "conductorFired", "stewardOn", "stewardLatitude",
+        "conductorFiredCounts", "stewardOn", "stewardLatitude",
         "stewardProposals", "stewardFired", "stewardLastShift",
         "stewardDismissals", "stewardOrders", "stewardWatches",
         "stewardCases",
@@ -74,6 +74,20 @@ enum SaneDefaults {
         "theme.backdrop.sessions", "theme.backdrop.scan",
         "theme.backdrop.recon", "theme.backdrop.emcon",
         "theme.backdrop.knocktalk", "theme.backdrop.about",
+        "theme.backdrop.skelli", "theme.backdrop.macros",
+        "theme.backdrop.vault",
+        // Recon bench, Net-Assault, the war rooms
+        "reconHost", "reconPorts", "reconKnockUDP",
+        "reconJobs", "reconTimeout",
+        "assault.depth", "assault.rest", "assault.maxHours",
+        "warRoomBLE",
+        "warGamesPeerIP", "warGamesMatchPort",
+        "warGamesDecoys",
+        // Her mind and her switches, the Macros editor,
+        // the BTHome v1 ear
+        "skelli.mindMode", "skelli.moods", "skelli.agents",
+        "skelli.draft", "macros.editingID",
+        "listen.bthomeV1",
     ]
 
     /// Restore every setting to its sane default and reconcile the

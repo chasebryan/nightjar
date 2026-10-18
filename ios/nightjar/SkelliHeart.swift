@@ -189,9 +189,15 @@ final class SkelliHeart: ObservableObject {
             return .loving
         }
         if itch >= 85 { return .feral }
+        // Sleepy sits above restless and lonely on
+        // purpose: ten quiet hours always mean an itch
+        // of 75 or more (the itch grows 6 an hour and
+        // actions only ever happen inside a conversation),
+        // so a sleepy rule parked below them — or one
+        // demanding a low itch — could never fire at all.
+        if quietHours >= 10 && itch < 85 { return .sleepy }
         if itch >= 60 { return .restless }
         if attention <= 20 { return .lonely }
-        if quietHours >= 10 && itch < 60 { return .sleepy }
         if fondness >= 45 && attention >= 45 && itch < 50 {
             return .happy
         }
@@ -364,10 +370,19 @@ final class SkelliHeart: ObservableObject {
     /// first when she is mad, then the lonely greeting.
     func greeting() -> String? {
         guard enabled else { return nil }
-        if madFresh {
-            return "You \(offenseText) and came back like "
-                + "nothing happened. Noted. Ask your "
-                + "question."
+        if madFresh, let offense = lastOffense {
+            // The grievance is spoken ONCE per offense —
+            // she holds the grudge for the full thirty
+            // minutes (her feeling, her nudges), but she
+            // does not recite it before every answer.
+            let greeted = anchor("heart.offenseGreeted")
+            if greeted == nil || greeted! < offense {
+                setAnchor("heart.offenseGreeted", offense)
+                return "You \(offenseText) and came back "
+                    + "like nothing happened. Noted. Ask "
+                    + "your question."
+            }
+            return nil
         }
         guard attention <= 20 else { return nil }
         if let name = SkelliScrapbook.shared.operatorName {
@@ -587,7 +602,11 @@ final class SkelliScrapbook {
     /// nothing else is ever learned.
     static func extract(from q: String) -> [String] {
         var out: [String] = []
+        // Clauses end at commas AND at " and " — "my name
+        // is Chase and I like wired keyboards" teaches
+        // her both halves, not just the first.
         let clauses = q.components(separatedBy: ",")
+            .flatMap { $0.components(separatedBy: " and ") }
             .map { $0.trimmingCharacters(in: .whitespaces) }
         for clause in clauses {
             func value(after prefix: String) -> String? {
@@ -597,8 +616,14 @@ final class SkelliScrapbook {
                 let raw = String(clause.dropFirst(
                     prefix.count))
                     .trimmingCharacters(in: .whitespaces)
+                // A value carrying a "when" clause is a
+                // sentence fragment, not a fact — "call
+                // me when the sweep ends" must never be
+                // filed as a name she calls them.
                 guard raw.count >= 2, raw.count <= 40,
-                      !raw.contains("skelli") else {
+                      !raw.contains("skelli"),
+                      !raw.hasPrefix("when "),
+                      !raw.contains(" when ") else {
                     return nil
                 }
                 return raw

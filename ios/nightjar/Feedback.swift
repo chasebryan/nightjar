@@ -139,6 +139,7 @@ struct ToastView: View {
             Text(toast.message)
                 .font(.callout.weight(.medium))
                 .multilineTextAlignment(.leading)
+                .lineLimit(3)
             if toast.count > 1 {
                 Text("×\(toast.count)")
                     .font(.caption.weight(.bold))
@@ -177,19 +178,49 @@ enum Wallpaper {
 }
 
 /// A full-bleed player for one shared animated image.
+///
+/// Every backdrop in the app shares the one decoded
+/// wallpaper, and one animated UIImage handed to a
+/// dozen image views animates only where UIKit feels
+/// like it — on device the Vault and Macros backdrops
+/// sat dark while others played (2026-10-18). So each
+/// view now runs its OWN animation from the shared
+/// decoded frames — the pattern the GIF player below
+/// already proves — and updateUIView restarts a view
+/// that stopped (a tab switch, a recycled hierarchy),
+/// so coming back to a screen always finds it playing.
 struct AnimatedImageView: UIViewRepresentable {
     let image: UIImage
 
     func makeUIView(context: Context) -> UIImageView {
-        let view = UIImageView(image: image)
+        let view = UIImageView()
         view.contentMode = .scaleAspectFill
         view.clipsToBounds = true
         view.backgroundColor = .black
-        view.startAnimating()
+        configure(view)
         return view
     }
 
-    func updateUIView(_ view: UIImageView, context: Context) {}
+    func updateUIView(_ view: UIImageView,
+                      context: Context) {
+        configure(view)
+    }
+
+    private func configure(_ view: UIImageView) {
+        guard let frames = image.images,
+              frames.count > 1 else {
+            view.image = image
+            return
+        }
+        if view.animationImages == nil {
+            view.image = frames.first
+            view.animationImages = frames
+            view.animationDuration = image.duration
+        }
+        if !view.isAnimating {
+            view.startAnimating()
+        }
+    }
 }
 
 /// The app's backdrop, wearing whatever Colours says this

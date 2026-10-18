@@ -796,9 +796,10 @@ struct WarGamesView: View {
     @AppStorage("traceProfilePorts") private var traceProfilePorts = ""
     @AppStorage("traceBonjour") private var traceBonjour = true
     @AppStorage("traceAdaptive") private var traceAdaptive = true
-    @AppStorage("traceRules") private var traceRules = ""
+    @AppStorage("traceRules") private var traceRules =
+        TraceRule.sampleText
     @AppStorage("reconPorts")
-    private var reconPorts = "22,80,443,445,1883,8080,8443,9100"
+    private var reconPorts = ""
     @AppStorage("reconKnockUDP") private var reconKnockUDP = false
     @AppStorage("reconTimeout") private var reconTimeout = 1.5
     @AppStorage("reconJobs") private var reconJobs = 24.0
@@ -1191,7 +1192,9 @@ struct WarGamesView: View {
                 includeBLE: post.session != nil,
                 knockTimeout: reconTimeout,
                 knockJobs: Int(reconJobs)),
-            knockPorts: warGamesParsePorts(reconPorts),
+            knockPorts: reconPorts.isEmpty
+                ? ReconPayloads.defaultPorts
+                : warGamesParsePorts(reconPorts),
             knockUDP: reconKnockUDP)
     }
 
