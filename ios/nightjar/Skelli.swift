@@ -3310,8 +3310,8 @@ enum SkelliWeights {
         private var inFlightKey: String?
 
         func task(for key: String,
-                  make: @Sendable () async throws
-                      -> ModelContainer)
+                  make: @escaping @Sendable ()
+                      async throws -> ModelContainer)
             -> Task<ModelContainer, Error> {
             if let inFlight, inFlightKey == key {
                 return inFlight
