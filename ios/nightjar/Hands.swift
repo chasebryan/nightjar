@@ -19,12 +19,11 @@ extension SkelliCenter {
     /// the cascade's question lanes run earlier.
     func handsGate(_ q: String, raw: String) -> Bool {
         if deleteAsk(q) { return true }
-        // Macros next: "macro" is a word no other bench
-        // speaks, and a build's steps carry the forge's
-        // and the war rooms' verbs inside them — the
-        // playlist must claim the sentence before its
-        // steps can be mistaken for single orders.
-        if macroAsk(q, raw: raw) { return true }
+        // Macros are NOT gated here: macroAsk runs in
+        // respond() ahead of the single-action intents,
+        // because a build's steps carry those intents'
+        // verbs inside them and the intents would claim
+        // the sentence for its last verb alone.
         if forgeAsk(q, raw: raw) { return true }
         // The war rooms before the weights bench: the
         // bench's verbs are the fuzziest in the house
@@ -361,6 +360,8 @@ extension SkelliCenter {
             stepsText = String(q[q.index(after: colon)...])
         }
         var phrases: [String]
+        let dictated = stepsText.contains(";")
+            || stepsText.contains(", ")
         if stepsText.contains(";") {
             phrases = stepsText.split(separator: ";")
                 .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -374,6 +375,16 @@ extension SkelliCenter {
         } else {
             phrases = [stepsText.trimmingCharacters(
                 in: .whitespaces)]
+        }
+        if !dictated {
+            // Natural speech joins steps with "and" —
+            // "goes dark and disguises as the printer"
+            // is two steps wearing one coat.
+            phrases = phrases.flatMap {
+                $0.components(separatedBy: " and ")
+            }.map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
         }
         phrases = phrases.filter { !$0.isEmpty }
 
@@ -762,17 +773,25 @@ extension SkelliCenter {
             }
             return block("chestApply", ["chest": chest])
         }
-        if s.contains("persona") {
+        if s.contains("persona") || s.contains("disguise")
+            || s.contains("mimic")
+            || s.contains("pretend") {
             if s.contains("drop") || s.contains("take off")
                 || s.contains("remove") {
                 return block("persona", ["mode": "Drop"])
             }
-            guard let persona = bestName(
-                MacroNames.personaNames(), in: s) else {
-                return nil
+            if let persona = bestName(
+                MacroNames.personaNames(), in: s) {
+                return block("persona",
+                             ["mode": "Don", "name": persona])
             }
-            return block("persona",
-                         ["mode": "Don", "name": persona])
+            // A disguise can be a costume, too — try
+            // the rack before giving the step up.
+            if let costume = bestName(
+                MacroNames.costumeNames(), in: s) {
+                return block("costume", ["name": costume])
+            }
+            return nil
         }
         if s.contains("costume") || s.contains("wear") {
             let name = bestName(MacroNames.costumeNames(),

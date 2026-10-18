@@ -672,6 +672,15 @@ final class SkelliCenter: ObservableObject {
             }
         }
 
+        // Macros before the single-action intents: a
+        // macro sentence carries its steps' verbs
+        // inside it ("…then sweeps the wire"), and the
+        // intents below would claim the whole sentence
+        // for its last verb alone — she swept instead
+        // of building (Chase, 2026-10-17). macroAsk
+        // speaks only when the sentence names a macro.
+        if macroAsk(q, raw: raw) { return }
+
         // Hands first: the action intents.
         if q.contains("sweep") {
             runSweep()
