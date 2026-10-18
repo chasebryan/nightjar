@@ -685,9 +685,15 @@ final class SkelliCenter: ObservableObject {
                 say(L("Happy birthday. The house kept the date."))
                 greeted = true
             }
+            // Never the same greeting twice in a
+            // row: whatever her feeling, a verbatim
+            // repeat reads as a machine loop, not
+            // a mood. (Device, 2026-10-18.)
             if !greeted,
                let greeting = SkelliHeart.shared
-                .greeting() {
+                .greeting(),
+               lines.last(where: { !$0.fromOperator })?
+                .text != greeting {
                 say(greeting)
             }
         }

@@ -957,9 +957,16 @@ final class SkelliHeart: ObservableObject {
             return L("There you are. Doors are checked. Stay where I can see you.")
         }
         if feeling == .annoyed {
-            // Annoyed still greets — shortly.
-            // The clip is the whole message.
-            return L("There you are.")
+            // Annoyed still greets — shortly, and
+            // never twice in the same words: the
+            // talks count turns a small dry pool.
+            // (A single fixed line, repeated ask
+            // after ask, read as broken on device.)
+            let pool = [L("There you are."),
+                        L("Back again."),
+                        L("Mm. Yes?")]
+            return pool[abs(count("heart.talks"))
+                        % pool.count]
         }
         guard attention <= 20 else { return nil }
         if Self.spookyHour() {
