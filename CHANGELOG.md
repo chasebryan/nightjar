@@ -322,6 +322,20 @@
   challenges in steps,
   the plan held with
   you.
+- **Her hands are complete.**
+  The last two doors
+  answer to her voice:
+  a knocktalk is sealed
+  and sent from the
+  chat ("knocktalk: …"),
+  refused aloud if the
+  road won't carry it;
+  and the house map is
+  hers to work — rooms
+  raised by name,
+  devices stood in
+  them, devices taken
+  off the wall.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

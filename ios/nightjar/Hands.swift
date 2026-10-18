@@ -1566,5 +1566,297 @@ extension SkelliCenter {
         }
         return false
     }
-}
 
+    // MARK: her knocktalk hand — she sends
+
+    /// "knocktalk: <words>", "knocktalk <words>",
+    /// "send a knocktalk to <peer> saying <words>":
+    /// she seals and sends it herself, through
+    /// the same chat the tab holds. The payload
+    /// rides the RAW ask — his casing is his —
+    /// and a message the road refuses for length
+    /// is refused aloud, never truncated.
+    func knocktalkAsk(_ q: String, raw: String) -> Bool {
+        guard let chat = emcon?.chat else { return false }
+        var payloadQ: String? = nil
+        var peerHint: String? = nil
+        if q.hasPrefix("knocktalk:") {
+            payloadQ = String(q.dropFirst(10))
+        } else if q.hasPrefix("knocktalk ") {
+            payloadQ = String(q.dropFirst(10))
+        } else if q.contains("send a knocktalk")
+            || q.contains("send knocktalk") {
+            if let r = q.range(of: "saying ") {
+                payloadQ = String(q[r.upperBound...])
+            } else if let idx = q.lastIndex(of: ":") {
+                payloadQ = String(
+                    q[q.index(after: idx)...])
+            }
+            if let r = q.range(of: " to ") {
+                var tail = String(q[r.upperBound...])
+                if let end = tail.range(
+                    of: " saying") {
+                    tail = String(tail[..<end.lowerBound])
+                } else if let end = tail.range(of: ":") {
+                    tail = String(tail[..<end.lowerBound])
+                }
+                peerHint = tail.trimmingCharacters(
+                    in: .whitespaces)
+            }
+        }
+        guard var payload = payloadQ?
+            .trimmingCharacters(in: .whitespaces),
+              !payload.isEmpty, !payload.contains("?")
+        else { return false }
+        // Status words are not messages: the
+        // threads reporter owns those.
+        if ["status", "threads", "thread", "open",
+             "help", "read"].contains(payload) {
+            return false
+        }
+        guard let key = KnockKeyStore.key else {
+            say("Knocktalk isn't paired on this "
+                + "phone — there's no key in the "
+                + "Keychain to seal with.")
+            return true
+        }
+        let peers = chat.peersByRecency
+        guard !peers.isEmpty else {
+            say("No knocktalk threads yet — "
+                + "there's nobody on the other end "
+                + "of the knock road. Pair from "
+                + "the Knocktalk door first.")
+            return true
+        }
+        let peer: String
+        if let hint = peerHint, !hint.isEmpty {
+            if let match = peers.first(where: {
+                $0.lowercased().contains(hint)
+                    || hint.contains($0.lowercased())
+            }) {
+                peer = match
+            } else {
+                say("I don't have a thread with "
+                    + "'" + hint + "'. The threads "
+                    + "stand: "
+                    + peers.joined(separator: ", ")
+                    + ".")
+                return true
+            }
+        } else if peers.count == 1 {
+            peer = peers[0]
+        } else {
+            say("More than one thread stands — "
+                + "name the peer. The threads: "
+                + peers.joined(separator: ", ")
+                + ".")
+            return true
+        }
+        // His casing, from the raw ask: mirror
+        // the separator the clean ask matched.
+        var text = payload
+        if raw.lowercased().hasPrefix("knocktalk") {
+            text = String(raw.dropFirst(10))
+                .trimmingCharacters(in: .whitespaces)
+            if text.hasPrefix(":") {
+                text = String(text.dropFirst())
+                    .trimmingCharacters(
+                        in: .whitespaces)
+            }
+        } else if let r = raw.range(
+            of: "saying ",
+            options: .caseInsensitive) {
+            text = String(raw[r.upperBound...])
+                .trimmingCharacters(in: .whitespaces)
+        }
+        if text.isEmpty { text = payload }
+        payload = text
+        if chat.send(text: text, to: peer, key: key) {
+            Journal.log("knocktalk", "sent by voice",
+                        "\(text.prefix(40)) → \(peer)")
+            say("Sent by knock to " + peer + ": \u{201C}"
+                + text + "\u{201D}")
+        } else {
+            say("Too long for the knock road — "
+                + "it refused rather than "
+                + "truncate. Shorten it, and "
+                + "I'll send.")
+        }
+        return true
+    }
+
+    // MARK: her map hand — rooms and placements
+
+    /// "add a room called <name>", "put the
+    /// <device> in the <room>", "take the
+    /// <device> off the map": she works the
+    /// house map herself — rooms raised, devices
+    /// stood in them by name, at the room's
+    /// heart. A room she doesn't have is named
+    /// as missing, with the words that raise it.
+    func mapPlaceAsk(_ q: String) -> Bool {
+        let store = MapStore.shared
+
+        if let r = q.range(of: "room called ") {
+            let name = String(q[r.upperBound...])
+                .trimmingCharacters(
+                    in: CharacterSet(
+                        charactersIn: " ?.!,"))
+            guard !name.isEmpty, name.count <= 30
+            else { return false }
+            if store.rooms.contains(where: {
+                $0.name.lowercased() == name }) {
+                say("The " + name.capitalized
+                    + " is already on the map.")
+            } else {
+                store.addRoom(name: name.capitalized)
+                say("Raised the " + name.capitalized
+                    + " on the map — empty floor, "
+                    + "waiting for its things.")
+            }
+            return true
+        }
+
+        let neighbors = NeighborhoodStore.shared
+            .neighbors
+        func resolveDevice(_ phrase: String)
+            -> (match: Neighbor?, many: [Neighbor]) {
+            let hits = neighbors.filter { n in
+                if let name = n.name?.lowercased(),
+                   name.contains(phrase)
+                    || phrase.contains(name) {
+                    return true
+                }
+                return phrase.contains(n.ip)
+                    || n.ip.contains(phrase)
+            }
+            return (hits.count == 1 ? hits[0] : nil,
+                    hits)
+        }
+        func deviceNames(_ list: [Neighbor]) -> String {
+            list.prefix(8).map { $0.name ?? $0.ip }
+                .joined(separator: ", ")
+        }
+
+        // Off the map.
+        if q.contains("from the map")
+            || q.contains("off the map") {
+            var phrase = q
+            for verb in ["remove ", "take ",
+                         "pull "] {
+                if let r = phrase.range(of: verb) {
+                    phrase = String(phrase[r.upperBound...])
+                    break
+                }
+            }
+            for tail in [" from the map",
+                         " off the map"] {
+                if let r = phrase.range(of: tail) {
+                    phrase = String(phrase[..<r.lowerBound])
+                    break
+                }
+            }
+            phrase = phrase.trimmingCharacters(
+                in: .whitespaces)
+            if phrase.hasPrefix("the ") {
+                phrase = String(phrase.dropFirst(4))
+            }
+            guard !phrase.isEmpty else { return false }
+            let found = resolveDevice(phrase)
+            if let device = found.match {
+                store.unplace(key: device.ip)
+                say((device.name ?? device.ip)
+                    + " is off the map. The wire "
+                    + "still knows it; the wall "
+                    + "doesn't.")
+                return true
+            }
+            if found.many.count > 1 {
+                say("That name covers more than "
+                    + "one: "
+                    + deviceNames(found.many) + ".")
+                return true
+            }
+            return false
+        }
+
+        // Into a room.
+        guard q.hasPrefix("put ")
+            || q.hasPrefix("place ")
+            || q.hasPrefix("move ")
+        else { return false }
+        var rest = q
+        for verb in ["put ", "place ", "move "] {
+            if rest.hasPrefix(verb) {
+                rest = String(rest.dropFirst(verb.count))
+                break
+            }
+        }
+        if rest.hasPrefix("the ") {
+            rest = String(rest.dropFirst(4))
+        }
+        var devicePhrase: String? = nil
+        var roomPhrase: String? = nil
+        for sep in [" in the ", " in ", " to the ",
+                    " to "] {
+            if let r = rest.range(of: sep,
+                                  options: .backwards) {
+                devicePhrase = String(rest[..<r.lowerBound])
+                roomPhrase = String(rest[r.upperBound...])
+                break
+            }
+        }
+        guard var device = devicePhrase,
+              var roomName = roomPhrase
+        else { return false }
+        device = device.trimmingCharacters(
+            in: .whitespaces)
+        roomName = roomName.trimmingCharacters(
+            in: CharacterSet(charactersIn: " ?.!,"))
+        if roomName.hasPrefix("the ") {
+            roomName = String(roomName.dropFirst(4))
+        }
+        guard !device.isEmpty, !roomName.isEmpty
+        else { return false }
+
+        guard let room = store.rooms.first(where: {
+            $0.name.lowercased() == roomName
+                || $0.name.lowercased()
+                    .contains(roomName)
+                || roomName.contains(
+                    $0.name.lowercased())
+        }) else {
+            say("There's no room called "
+                + roomName.capitalized
+                + " on the map. Say 'add a room "
+                + "called " + roomName
+                + "' and I'll raise it — then "
+                + "I'll put things in it.")
+            return true
+        }
+        let found = resolveDevice(device)
+        if let target = found.match {
+            store.place(key: target.ip,
+                        x: room.x + room.w / 2,
+                        y: room.y + room.h / 2)
+            say((target.name ?? target.ip)
+                + " stands in the " + room.name
+                + " now.")
+            return true
+        }
+        if found.many.count > 1 {
+            say("That name covers more than one: "
+                + deviceNames(found.many)
+                + ". Name the one, and I'll "
+                + "stand it in the " + room.name
+                + ".")
+            return true
+        }
+        say("I don't know a '" + device
+            + "' on this wire. The neighborhood "
+            + "holds: " + (neighbors.isEmpty
+                ? "nobody yet"
+                : deviceNames(neighbors)) + ".")
+        return true
+    }
+}

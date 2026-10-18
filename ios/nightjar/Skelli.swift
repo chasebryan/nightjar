@@ -2442,6 +2442,12 @@ final class SkelliCenter: ObservableObject {
         if emconOrganAsk(q) {
             return
         }
+        if knocktalkAsk(q, raw: raw) {
+            return
+        }
+        if mapPlaceAsk(q) {
+            return
+        }
         if q.contains("go dark") || q.contains("emcon on")
             || q.contains("activate emcon") {
             goDark()
