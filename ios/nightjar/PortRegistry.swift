@@ -45,7 +45,7 @@ enum PortRegistry {
     }
 
     private static let chunks: [String] = [
-        """
+"""
 1	tcpmux
 1u	tcpmux
 2	compressnet
@@ -946,8 +946,8 @@ enum PortRegistry {
 537u	nmsp
 538	gdomap
 538u	gdomap
-        """,
-        """
+""",
+"""
 539	apertus-ldp
 539u	apertus-ldp
 540	uucp
@@ -1848,8 +1848,8 @@ enum PortRegistry {
 1210u	eoss
 1211	groove-dpp
 1211u	groove-dpp
-        """,
-        """
+""",
+"""
 1212	lupa
 1212u	lupa
 1213	mpc-lifenet
@@ -2750,8 +2750,8 @@ enum PortRegistry {
 1661u	netview-aix-1
 1662	netview-aix-2
 1662u	netview-aix-2
-        """,
-        """
+""",
+"""
 1663	netview-aix-3
 1663u	netview-aix-3
 1664	netview-aix-4
@@ -3652,8 +3652,8 @@ enum PortRegistry {
 2114u	newheights
 2115	kdm
 2115u	kdm
-        """,
-        """
+""",
+"""
 2116	ccowcmr
 2116u	ccowcmr
 2117	mentaclient
@@ -4554,8 +4554,8 @@ enum PortRegistry {
 2574	blockade-bpsp
 2574u	blockade-bpsp
 2575	hl7
-        """,
-        """
+""",
+"""
 2575u	hl7
 2576	tclprodebugger
 2576u	tclprodebugger
@@ -5456,8 +5456,8 @@ enum PortRegistry {
 3029u	LiebDevMgmt_A
 3030	arepa-cas
 3030u	arepa-cas
-        """,
-        """
+""",
+"""
 3031	eppc
 3031u	eppc
 3032	redwood-chat
@@ -6358,8 +6358,8 @@ enum PortRegistry {
 3486u	ifsf-hb-port
 3487	ltctcp
 3487u	ltcudp
-        """,
-        """
+""",
+"""
 3488	fs-rh-srv
 3488u	fs-rh-srv
 3489	dtp-dia
@@ -7260,8 +7260,8 @@ enum PortRegistry {
 3942	srdp
 3942u	srdp
 3943	tig
-        """,
-        """
+""",
+"""
 3943u	tig
 3944	sops
 3944u	sops
@@ -8162,8 +8162,8 @@ enum PortRegistry {
 4458	mcp
 4458u	mcp
 4460	ntske
-        """,
-        """
+""",
+"""
 4480	proxy-plus
 4484	hpssmgmt
 4484u	hpssmgmt
@@ -9064,8 +9064,8 @@ enum PortRegistry {
 5602	a1-msc
 5602u	a1-msc
 5603	a1-bs
-        """,
-        """
+""",
+"""
 5603u	a1-bs
 5604	a3-sdunode
 5604u	a3-sdunode
@@ -9966,8 +9966,8 @@ enum PortRegistry {
 7168	cnckadserver
 7169	ccag-pib
 7169u	ccag-pib
-        """,
-        """
+""",
+"""
 7170	nsrp
 7170u	nsrp
 7171	drm-production
@@ -10868,8 +10868,8 @@ enum PortRegistry {
 9217	fsc-port
 9217u	fsc-port
 9222	teamcoherence
-        """,
-        """
+""",
+"""
 9222u	teamcoherence
 9255	mon
 9255u	mon
@@ -11770,8 +11770,8 @@ enum PortRegistry {
 25793u	vocaltec-hos
 25900	tasp-net
 25900u	tasp-net
-        """,
-        """
+""",
+"""
 25901	niobserver
 25901u	niobserver
 25902	nilinkanalyst
@@ -12165,6 +12165,6 @@ enum PortRegistry {
 62078	iphone-sync
 64738u	murmur
 65301	pcanywhere
-        """
+"""
     ]
 }

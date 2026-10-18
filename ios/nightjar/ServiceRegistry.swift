@@ -41,7 +41,7 @@ enum ServiceRegistry {
     }()
 
     private static let chunks: [String] = [
-        """
+"""
 1800	Generic Access
 1801	Generic Attribute
 1802	Immediate Alert
@@ -118,6 +118,6 @@ FE2C	Fast Pair Service
 FE59	Secure DFU Service
 FEAA	Eddystone
 FEBB	File Transfer Service by Adafruit
-        """
+"""
     ]
 }

@@ -44,7 +44,7 @@ enum CompanyRegistry {
 
     private static let chunks: [String] = [
 
-        """
+"""
 0000	Ericsson AB
 0001	Nokia Mobile Phones
 0002	Intel Corp.
@@ -745,8 +745,8 @@ enum CompanyRegistry {
 02E8	American Music Environments
 02E9	Sensogram Technologies, Inc.
 02EA	Fujitsu Limited
-        """,
-        """
+""",
+"""
 02EB	Ardic Technology
 02ED	HTC Corporation
 02EE	Citizen Holdings Co., Ltd.
@@ -1447,8 +1447,8 @@ enum CompanyRegistry {
 05DF	VIRTUALCLINIC.DIRECT LIMITED
 05E0	Viper Design LLC
 05E1	Human, Incorporated
-        """,
-        """
+""",
+"""
 05E2	stAPPtronics GmbH
 05E3	Elemental Machines, Inc.
 05E4	Taiyo Yuden Co., Ltd
@@ -2149,8 +2149,8 @@ enum CompanyRegistry {
 08CA	Nubia Technology Co.,Ltd.
 08CB	JT INNOVATIONS LIMITED
 08CC	TGM TECHNOLOGY CO., LTD.
-        """,
-        """
+""",
+"""
 08CD	ifly
 08CE	ZIMI CORPORATION
 08CF	betternotstealmybike UG (with limited liability)
@@ -2851,8 +2851,8 @@ enum CompanyRegistry {
 0BC1	Miele & Cie. KG
 0BC2	EntWick Co.
 0BC3	MCOT INC.
-        """,
-        """
+""",
+"""
 0BC4	TECHTICS ENGINEERING B.V.
 0BC5	Aperia Technologies, Inc.
 0BC6	TCL COMMUNICATION EQUIPMENT CO.,LTD.
@@ -3553,8 +3553,8 @@ enum CompanyRegistry {
 0EA3	OLIS ELECTRONICS, LLC
 0EA4	BiTECH Automotive (Wuhu) Co.,Ltd
 0EA6	AMG Lab LLC
-        """,
-        """
+""",
+"""
 0EA7	BrickXter GmbH
 0EA8	Dongguan Trangjan Industrial Co., Ltd
 0EA9	Makichie Co., Ltd.
@@ -4076,6 +4076,6 @@ enum CompanyRegistry {
 1114	Metabowerke GmbH
 1115	Thermia Aktiebolag
 1116	ALLRA LIMITED
-        """
+"""
     ]
 }
