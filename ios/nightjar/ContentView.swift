@@ -2,80 +2,77 @@ import Combine
 import SwiftUI
 import UIKit
 
-/// The tab beat, keyed to what the operator's
-/// eyes can confirm: which surface is on
-/// screen. Every mechanism keyed to the
-/// selection WRITE failed on this device —
-/// observers, the platform's sensory trigger,
-/// a binding's setter all fired for bar taps
-/// and never for More-list picks, which UIKit
-/// resolves without writing through SwiftUI.
-/// Appearance cannot be bypassed, and neither
-/// can disappearance — and the pair of them
-/// covers the whole map:
+/// The tab beat, in two independent parts.
 ///
-/// - a tab's content appears: a tab change,
-///   by bar, by More row, by house navigation;
-/// - a tab's content vanishes with no
-///   successor appearing: the More list has
-///   covered it (the More button itself), or
-///   a pop back to that list removed it (the
-///   back chevron) — the two roads that end
-///   on UIKit's own list, where no tab exists
-///   to appear.
-///
-/// Events feed one register that settles: a
-/// burst (the old tab vanishing as the new
-/// one appears) collapses into the state the
-/// burst lands on, and a short window after
-/// the burst — past the transition's opening
+/// The tab part keys on the one event every
+/// road into a tab must produce: its content
+/// appearing on screen. Selection writes are
+/// invisible to half the roads (the More list
+/// resolves inside UIKit and never writes
+/// through SwiftUI — the flight recorder
+/// proved it), but a tab the operator is
+/// looking at has appeared. Each appearance
+/// answers with a press-strength beat deferred
+/// a fraction past the transition's opening
 /// frame, where the haptic engine drops
-/// requests — one press-strength beat fires
-/// if the settled state differs from the last
-/// beaten one. The first settle after launch
-/// only primes: no beat for the tab the house
-/// reopens on.
+/// requests; the first appearance after
+/// launch only primes (no beat for the tab
+/// the house reopens on). This part keeps no
+/// state beyond the current tab, deliberately:
+/// a coalesced register that settled bursts
+/// into states desynced after a few trips
+/// through the More stack — appearance events
+/// there arrive with extras and reordering,
+/// and a register that trusts the last event
+/// ends up swallowing real changes as "no
+/// change". Dumb and independent wins.
+///
+/// The list part covers the two roads that
+/// end on the system's own More list, where
+/// no tab appears: the More button's tap (the
+/// current tab is covered and vanishes) and
+/// the back chevron's pop (the section's tab
+/// is removed and vanishes). A vanish that no
+/// appearance follows within a breath is one
+/// of those two, and it earns the same beat —
+/// additively only: this path can add a beat,
+/// never take one away.
 enum TabBeat {
-    /// The More list itself, as a state: no
-    /// tab is on screen, the list is.
-    private static let moreList = -1
     private static var primed = false
-    private static var beaten: Int?
-    private static var pending: Int?
-    private static var work: DispatchWorkItem?
+    private static var current: Int?
+    private static var sequence = 0
 
     static func appeared(_ tag: Int) {
-        register(tag)
+        sequence += 1
+        current = tag
+        if !primed {
+            primed = true
+            return
+        }
+        DevLog.event("tab", "\(tag) (appeared)")
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.15) {
+            if current == tag {
+                Haptics.press()
+            }
+        }
     }
 
     static func vanished(_ tag: Int) {
-        register(moreList)
-    }
-
-    private static func register(_ state: Int) {
-        pending = state
-        work?.cancel()
-        let item = DispatchWorkItem {
-            guard let settled = pending else {
-                return
-            }
-            if !primed {
-                primed = true
-                beaten = settled
-                return
-            }
-            guard beaten != settled else { return }
-            beaten = settled
+        sequence += 1
+        let mine = sequence
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.35) {
+            // A successor appeared after this
+            // vanish — a plain tab change, whose
+            // appearance already answered. Only
+            // a vanish still unanswered at this
+            // distance is the More list's.
+            guard sequence == mine else { return }
             Haptics.press()
             DevLog.event(
-                "tab",
-                settled == moreList
-                    ? "more list (settled)"
-                    : "\(settled) (settled)")
+                "tab", "more list (vanish \(tag))")
         }
-        work = item
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + 0.22, execute: item)
     }
 }
 
