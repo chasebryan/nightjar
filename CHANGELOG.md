@@ -336,6 +336,25 @@
   devices stood in
   them, devices taken
   off the wall.
+- **Every organ answers.**
+  The last quiet corners
+  of the house take her
+  word: the canary rises
+  and falls, the
+  conductor's book is
+  read aloud and its
+  reflexes built in a
+  sentence, a time
+  capsule is sealed (and
+  ground open) from the
+  chat, the hunt's
+  signal is reported
+  live, and her own
+  theme and tongue
+  change by voice —
+  the answer arriving
+  in the language asked
+  for.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

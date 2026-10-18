@@ -1859,4 +1859,575 @@ extension SkelliCenter {
                 : deviceNames(neighbors)) + ".")
         return true
     }
+
+    // MARK: her canary hand — the decoy rises
+
+    /// "raise the ssh canary", "canary status",
+    /// "stop the canary": she raises the decoy
+    /// herself, on the house's stored choices
+    /// (persona, port, honeydrop) unless the
+    /// ask names its own — the same defaults the
+    /// knock vault raises it by.
+    func canaryAsk(_ q: String) -> Bool {
+        guard q.contains("canary") else { return false }
+        guard let mouth else { return false }
+        let canary = mouth.canary
+        if q.contains("stop") || q.contains("down")
+            || q.contains("cease") || q.contains("kill")
+            || q.contains("silence") {
+            if canary.runningPersona != nil {
+                canary.stop()
+                say("The canary is down. Whatever "
+                    + "it heard is filed in the "
+                    + "inbox.")
+            } else {
+                say("No canary is singing.")
+            }
+            return true
+        }
+        if q.contains("status") || q.contains("?")
+            || q.contains("running") {
+            if let persona = canary.runningPersona,
+               let port = canary.runningPort {
+                say("The " + persona + " canary is "
+                    + "singing on port \(port) — "
+                    + "in character, and listening.")
+            } else {
+                say("No canary is up. The personas "
+                    + "on the rack: ssh, http, "
+                    + "mqtt, smtp.")
+            }
+            return true
+        }
+        // Raise it.
+        var persona: String? = nil
+        for name in CanaryHost.personas
+        where q.contains(name) {
+            persona = name
+            break
+        }
+        if persona == nil {
+            if q.contains("web") { persona = "http" }
+            else if q.contains("mail") {
+                persona = "smtp"
+            } else if q.contains("broker") {
+                persona = "mqtt"
+            }
+        }
+        let defaults = UserDefaults.standard
+        let chosen = persona ?? defaults.string(
+            forKey: "canaryPersona") ?? "ssh"
+        var port = CanaryHost.defaultPort(chosen)
+        if q.contains("port") {
+            let digits = q.split(
+                separator: " ").compactMap {
+                    Int($0.trimmingCharacters(
+                        in: CharacterSet(
+                            charactersIn: ".,!")) )
+                }.filter { $0 >= 1 && $0 <= 65535 }
+            if let named = digits.last { port = named }
+        }
+        canary.start(
+            mouth: mouth, persona: chosen, port: port,
+            honeydrop: defaults.bool(
+                forKey: "canaryHoneydrop"),
+            drop: defaults.string(
+                forKey: "canaryDrop") ?? "")
+        say("The " + chosen + " canary rises on "
+            + "port \(port) — in character, and "
+            + "every word spoken to it is filed "
+            + "in the inbox.")
+        return true
+    }
+
+    // MARK: her conductor hand — reflexes kept
+
+    /// The conductor's rules, by voice: the
+    /// master switch, the book of reflexes, a
+    /// rule woken or stilled by name, and new
+    /// reflexes built from the house's own
+    /// trigger and action vocabularies.
+    func conductorAsk(_ q: String) -> Bool {
+        guard q.contains("conductor")
+            || q.contains("reflex") else { return false }
+        let defaults = UserDefaults.standard
+        var rules = Conductor.loadRules()
+
+        if q.contains("when ")
+            && (q.contains("rule")
+                || q.contains("reflex")
+                || q.contains("conductor")
+                || q.contains("whenever")) {
+            let trigger = Conductor.triggers.first {
+                ruleWords($0.id, in: q)
+            }
+            let action = Conductor.actions.first {
+                ruleWords($0.id, in: q)
+            }
+            if let trigger, let action {
+                let name = trigger.label + " → "
+                    + action.label
+                if rules.contains(where: {
+                    $0.trigger == trigger.id
+                        && $0.action == action.id }) {
+                    say("That reflex already stands: "
+                        + name + ".")
+                    return true
+                }
+                rules.append(Conductor.Rule(
+                    id: UUID().uuidString, name: name,
+                    trigger: trigger.id,
+                    action: action.id, enabled: true))
+                Conductor.saveRules(rules)
+                say("A new reflex stands: when "
+                    + trigger.label.lowercased()
+                    + ", I " + action.label.lowercased()
+                    + ". The conductor is "
+                    + (defaults.bool(
+                        forKey: "conductorOn")
+                        ? "awake — it will fire."
+                        : "asleep — wake it and it will."))
+                return true
+            }
+            say("A reflex is a trigger and an act. "
+                + "Triggers: a fingerprinted knock, "
+                + "a honeydrop taken, the knock vault "
+                + "opening, a new source, any knock, "
+                + "foreign hands. Acts: answer in "
+                + "character, load the bench on them, "
+                + "raise Serve, raise the second "
+                + "sense, burn the threads, mark the "
+                + "journal. Name one of each.")
+            return true
+        }
+
+        if q.contains("rules") || q.contains("list")
+            || q.contains("book") {
+            if rules.isEmpty {
+                say("The book of reflexes is empty.")
+            } else {
+                var lines = ["The conductor's book:"]
+                for rule in rules {
+                    lines.append("— " + rule.name
+                        + (rule.enabled
+                            ? " (awake)" : " (stilled)"))
+                }
+                lines.append("The conductor itself is "
+                    + (defaults.bool(
+                        forKey: "conductorOn")
+                        ? "awake." : "asleep."))
+                say(lines.joined(separator: "\n"))
+            }
+            return true
+        }
+
+        let waking = q.contains("enable")
+            || q.contains("turn on") || q.contains("wake")
+            || q.contains(" on")
+        let stilling = q.contains("disable")
+            || q.contains("turn off")
+            || q.contains("still")
+            || q.contains(" off")
+        if waking || stilling {
+            // A rule named, or the master himself.
+            if let hit = rules.firstIndex(where: {
+                q.contains($0.name.lowercased())
+                    || ruleWords($0.trigger, in: q)
+                        && ruleWords($0.action, in: q)
+            }) {
+                rules[hit].enabled = waking
+                Conductor.saveRules(rules)
+                say("The reflex '" + rules[hit].name
+                    + "' is "
+                    + (waking ? "awake." : "stilled."))
+                return true
+            }
+            defaults.set(waking, forKey: "conductorOn")
+            say(waking
+                ? "The conductor wakes. Its reflexes "
+                    + "will fire as the wire moves."
+                : "The conductor sleeps. Its rules "
+                    + "keep, unfired.")
+            return true
+        }
+
+        if q.contains("off") || q.contains("sleep") {
+            defaults.set(false, forKey: "conductorOn")
+            say("The conductor sleeps. Its rules "
+                + "keep, unfired.")
+            return true
+        }
+        if q.contains("status") || q.contains("?")
+            || q == "conductor" {
+            let lit = rules.filter { $0.enabled }.count
+            say("The conductor is "
+                + (defaults.bool(forKey: "conductorOn")
+                    ? "awake" : "asleep") + " — "
+                + "\(rules.count) reflexes in the "
+                + "book, \(lit) of them awake.")
+            return true
+        }
+        return false
+    }
+
+    /// A conductor vocabulary word, heard in an
+    /// ask by its id's own keywords.
+    private func ruleWords(_ id: String,
+                           in q: String) -> Bool {
+        switch id {
+        case "fingerprinted":
+            return q.contains("fingerprint")
+        case "honeydrop":
+            return q.contains("honeydrop")
+        case "vault":
+            return q.contains("vault")
+        case "newSource":
+            return q.contains("new source")
+                || q.contains("new knock")
+        case "anyKnock":
+            return q.contains("any knock")
+                || q.contains("every knock")
+        case "foreignHands":
+            return q.contains("foreign")
+        case "answerInCharacter":
+            return q.contains("answer in character")
+                || q.contains("answer them")
+                || q.contains("in character")
+        case "pivotRecon":
+            return q.contains("load the bench")
+                || q.contains("bench on them")
+                || q.contains("recon")
+        case "raiseServe":
+            return q.contains("raise serve")
+                || q.contains("open serve")
+        case "tighten":
+            return q.contains("second sense")
+                || q.contains("tighten")
+        case "burnThreads":
+            return q.contains("burn")
+        case "journalMark":
+            return q.contains("journal")
+                || q.contains("mark it")
+        default:
+            return false
+        }
+    }
+
+    // MARK: her capsule hand — sealed in time
+
+    /// "seal a capsule: <words> for <a span>" —
+    /// she forges the time-lock (on a side
+    /// queue; prime-forging is heavy) and hands
+    /// back the blob to carry by any road.
+    /// "grind this capsule: <blob>" starts the
+    /// squarings; she speaks when it opens.
+    func capsuleAsk(_ q: String, raw: String) -> Bool {
+        guard q.contains("capsule") else { return false }
+
+        if q.contains("grind") || q.contains("open") {
+            let token = raw.split(separator: " ")
+                .map(String.init)
+                .filter {
+                    $0.count >= 40 && $0.allSatisfy {
+                        $0.isLetter || $0.isNumber
+                            || $0 == "+" || $0 == "/"
+                            || $0 == "="
+                    }
+                }.max { $0.count < $1.count }
+            guard let blob = token else {
+                say("Paste the capsule blob with "
+                    + "the order, and I'll grind it.")
+                return true
+            }
+            let control = GrindControl()
+            say("Grinding — the squarings run one "
+                + "by one; that's the lock working. "
+                + "I'll speak when it opens.")
+            DispatchQueue.global(
+                qos: .userInitiated).async { [weak self] in
+                TimeCapsule.grind(
+                    blob: blob, control: control,
+                    progress: { _ in },
+                    completion: { text in
+                        DispatchQueue.main.async {
+                            if let text {
+                                self?.say("The capsule "
+                                    + "opens: \u{201C}"
+                                    + text + "\u{201D}")
+                            } else {
+                                self?.say("The grind "
+                                    + "finished with "
+                                    + "nothing inside "
+                                    + "— that blob was "
+                                    + "not a capsule, "
+                                    + "or not whole.")
+                            }
+                        }
+                    })
+            }
+            return true
+        }
+
+        guard q.contains("seal")
+            || q.hasPrefix("capsule") else { return false }
+        // The span: "for <n> <unit>", defaulting
+        // to the module's own ten minutes.
+        var seconds: Double = 600
+        var spanWords = "ten minutes"
+        let units: [(String, Double)] = [
+            ("second", 1), ("minute", 60),
+            ("hour", 3600), ("day", 86400)]
+        if let r = q.range(of: " for ") {
+            let tail = String(q[r.upperBound...])
+            for (unit, mult) in units
+            where tail.contains(unit) {
+                let head = tail.components(
+                    separatedBy: unit)[0]
+                let numText = head.split(
+                    separator: " ").last.map(String.init)
+                let n = numText.flatMap(Double.init)
+                    ?? (head.contains("an")
+                        || head.contains(" a ") ? 1 : nil)
+                if let n {
+                    seconds = n * mult
+                    spanWords = "\(Int(n)) "
+                        + unit + (n == 1 ? "" : "s")
+                }
+                break
+            }
+        }
+        // The words to seal: what follows the
+        // colon or "saying", minus the span.
+        var text: String? = nil
+        if let cr = q.range(of: "capsule"),
+           let idx = q[cr.upperBound...]
+            .firstIndex(of: ":") {
+            text = String(q[q.index(after: idx)...])
+        } else if let r = q.range(of: "saying ") {
+            text = String(q[r.upperBound...])
+        } else if let r = q.range(of: "capsule ") {
+            text = String(q[r.upperBound...])
+        }
+        guard var words = text?
+            .trimmingCharacters(in: .whitespaces),
+              !words.isEmpty else {
+            say("Seal what words? 'Seal a capsule: "
+                + "<the words> for <the span>'.")
+            return true
+        }
+        if let r = words.range(of: " for ") {
+            words = String(words[..<r.lowerBound])
+                .trimmingCharacters(in: .whitespaces)
+        }
+        guard words.utf8.count + 28
+                <= Knocktalk.maxSealedBytes else {
+            say("Too many words for a capsule — "
+                + "the lock carries only so much. "
+                + "Shorten them.")
+            return true
+        }
+        let suite = emcon?.chat.sendSuite
+            ?? Knocktalk.suiteChaCha
+        let span = spanWords
+        say("Forging the lock…")
+        DispatchQueue.global(
+            qos: .userInitiated).async { [weak self] in
+            let blob = TimeCapsule.seal(
+                message: words, seconds: seconds,
+                suite: suite) { _ in }
+            DispatchQueue.main.async {
+                if let blob {
+                    self?.say("Sealed under a " + span
+                        + " lock. The capsule — "
+                        + "carry it by any road:\n"
+                        + blob)
+                } else {
+                    self?.say("The lock wouldn't "
+                        + "forge. Say it again and "
+                        + "I'll try once more.")
+                }
+            }
+        }
+        return true
+    }
+
+    // MARK: her hunt hand — the signal half
+
+    /// The hunt is walked — tone and haptics in
+    /// the hand — but its numbers are hers to
+    /// read aloud: which device, how loud, how
+    /// lately, and whether it's worth the walk.
+    func huntAsk(_ q: String) -> Bool {
+        guard q.contains("hunt") else { return false }
+        guard let post else { return false }
+        let rows = post.rows
+        guard !rows.isEmpty else {
+            say("The ear isn't up — there's "
+                + "nothing on the air to hunt. "
+                + "Start the listen and the air "
+                + "fills in.")
+            return true
+        }
+        func label(_ row: DeviceRow) -> String {
+            row.preferredLabel ?? row.name ?? row.kind
+        }
+        var phrase: String? = nil
+        if let r = q.range(of: "hunt ") {
+            var tail = String(q[r.upperBound...])
+            for pre in ["for the ", "for ", "the "] {
+                if tail.hasPrefix(pre) {
+                    tail = String(tail.dropFirst(pre.count))
+                    break
+                }
+            }
+            let cleaned = tail.trimmingCharacters(
+                in: CharacterSet(charactersIn: " ?.!,"))
+            if !cleaned.isEmpty { phrase = cleaned }
+        }
+        let pool: [DeviceRow]
+        if let phrase {
+            pool = rows.filter {
+                label($0).lowercased().contains(phrase)
+                    || $0.kind.lowercased()
+                        .contains(phrase)
+            }
+        } else {
+            pool = rows
+        }
+        guard let best = pool.max(by: {
+            ($0.rssiSmooth ?? -999)
+                < ($1.rssiSmooth ?? -999)
+        }) else {
+            say("Nothing on the air answers to "
+                + "that name. The loudest voices: "
+                + rows.sorted {
+                    ($0.rssiSmooth ?? -999)
+                        > ($1.rssiSmooth ?? -999)
+                }.prefix(3).map { label($0) }
+                .joined(separator: ", ") + ".")
+            return true
+        }
+        let age = max(0, Int(Date()
+            .timeIntervalSince1970 - best.lastSeen))
+        let rssi = best.rssiLast
+            ?? Int(best.rssiSmooth ?? -99)
+        let strength: String
+        switch rssi {
+        case -55...0:
+            strength = "close — practically in reach"
+        case -70 ..< -55:
+            strength = "near — a room's reach"
+        case -85 ..< -70:
+            strength = "faint, but present"
+        default:
+            strength = "a whisper at the edge"
+        }
+        say(label(best) + ": " + strength + ". "
+            + "Last heard \(age) seconds ago at "
+            + "\(rssi) dBm"
+            + (best.rssiSmooth != nil
+                ? " (smoothed "
+                    + "\(Int(best.rssiSmooth!)))"
+                : "")
+            + ", seen \(best.sightings)×. The "
+            + "tone that rises as you close is "
+            + "walked from its Listen row — I'll "
+            + "keep the numbers; you keep the "
+            + "feet.")
+        return true
+    }
+
+    // MARK: her own dress — theme and tongue
+
+    /// "wear the <theme>", "what theme", "speak
+    /// spanish", "language to german": her
+    /// wardrobe and her tongue answer to her
+    /// voice like everything else in the house.
+    func dressAsk(_ q: String) -> Bool {
+        // Her tongue.
+        let tongues: [([String], String, String)] = [
+            (["spanish", "español"], "es",
+             "Español, entonces. ¿Qué necesitas?"),
+            (["french", "français"], "fr",
+             "Français, alors. Que puis-je faire ?"),
+            (["german", "deutsch"], "de",
+             "Deutsch, also. Was brauchst du?"),
+            (["portuguese", "português"], "pt",
+             "Português, então. Do que precisas?"),
+            (["italian", "italiano"], "it",
+             "Italiano, allora. Di cosa hai bisogno?"),
+            (["russian", "русский"], "ru",
+             "Русский, значит. Что нужно?"),
+            (["japanese", "日本語"], "ja",
+             "日本語で。何が要りますか。"),
+            (["korean", "한국어"], "ko",
+             "한국어로. 무엇이 필요해?"),
+            (["chinese", "中文"], "zh-Hans",
+             "中文,好。需要什么?"),
+            (["arabic", "العربية"], "ar",
+             "العربية إذن. ما الذي تحتاجه؟"),
+            (["hindi", "हिन्दी"], "hi",
+             "हिन्दी, ठीक है। क्या चाहिए?"),
+            (["english"], "en",
+             "English, then. What do you need?")]
+        let languageCued = q.contains("language")
+            || q.contains("speak")
+            || q.contains("switch")
+            || q.hasPrefix("in ")
+        if languageCued {
+            if q.contains("system") {
+                LanguageCenter.shared.code = "system"
+                say("Following the system's tongue, "
+                    + "then.")
+                return true
+            }
+            for (names, code, line) in tongues
+            where names.contains(where: {
+                q.contains($0) }) {
+                if LanguageCenter.shared.code == code {
+                    say("We're already speaking "
+                        + LanguageCenter.englishName(
+                            for: code) + ".")
+                } else {
+                    LanguageCenter.shared.code = code
+                    say(line)
+                }
+                return true
+            }
+            if q.contains("language")
+                && (q.contains("what")
+                    || q.contains("which")
+                    || q.contains("?")) {
+                say("My tongue is set to "
+                    + LanguageCenter.englishName(
+                        for: LanguageCenter.shared.code)
+                    + " — I keep twelve and the "
+                    + "system's own. Name one and "
+                    + "I'll wear it.")
+                return true
+            }
+        }
+
+        // Her wardrobe. Applying a named theme
+        // is applyThemeAsk's standing job, later
+        // in the cascade — a name match yields
+        // to it; what this answers is the live
+        // question: what the house wears, and
+        // what the rack holds.
+        if q.contains("theme") {
+            let center = ThemeCenter.shared
+            if center.allThemes.contains(where: {
+                q.contains($0.name.lowercased())
+            }) {
+                return false
+            }
+            say("The house wears "
+                + center.current.name + ". The "
+                + "rack: " + center.allThemes
+                    .map { $0.name }
+                    .joined(separator: ", ") + ".")
+            return true
+        }
+        return false
+    }
 }

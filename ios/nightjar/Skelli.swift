@@ -2352,6 +2352,16 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // His conductor book is live state, not
+        // manual text: the rules listing and the
+        // master switch answer before the manual
+        // can recite over them. (Teaching shapes
+        // — "what is the conductor" — fall
+        // through his lane untouched.)
+        if conductorAsk(q) {
+            return
+        }
+
         // Explanations go to the manual before the
         if q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.hasPrefix("what are")
@@ -2446,6 +2456,18 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if mapPlaceAsk(q) {
+            return
+        }
+        if canaryAsk(q) {
+            return
+        }
+        if capsuleAsk(q, raw: raw) {
+            return
+        }
+        if huntAsk(q) {
+            return
+        }
+        if dressAsk(q) {
             return
         }
         if q.contains("go dark") || q.contains("emcon on")
