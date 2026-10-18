@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 6.0.0
+# nightjar-hack for iOS — 7.0.0
 
 The unpure build. This is the nightjar listening post — the same
 receive-only scanner, decoders and session logs as the app in
@@ -200,6 +200,32 @@ Below the steps, the Send tab keeps working:
   read through HealthKit (heart rate, sleep, an
   Apple Watch as a purely passive sensor), feeding
   the Subconscious's baseline.
+- **What 7.0.0 added.** The war campaign, and an
+  honest score. The **War Chest** captures the whole
+  rig's standing configuration — Send, Serve, Recon,
+  the trace, stealth included — into named profiles
+  applied in one tap (applying starts nothing; the old
+  presets migrate once). The **Helm** is a shelf of
+  named remotes for the operator's own gear, firing
+  the payload book through the Send path, with Learn
+  mode binding received payloads into buttons; the
+  **tag census** in EMCON reads the operator's own
+  NFC cards and tags whole (NDEF, chip identity, an
+  ISO 7816 APDU explorer — nothing written, nothing
+  emulated). The **War Room** runs Listen, the trace
+  and the knock bench as one operation on one /24
+  with one timeline and one wrapper export. The
+  **SIGINT Station** fuses BLE hearing, the LAN
+  census and Night-log activity into one emitter
+  registry, merged only within an epoch, with
+  recorded watches and stated limits. **War Games**
+  spars two of the operator's phones — defender
+  serving with decoys, attacker tracing and knocking,
+  the protocol riding the Serve inbox, the scoring
+  diffing found against missed against caught. And
+  EMCON's exposure score now weighs presence itself —
+  on the wire, answering under its own name — before
+  emissions, so a quiet joined phone is no ghost.
 - **What 6.0.0 added.** An intelligence pass over
   the whole instrument, and her hands in
   conversation. Skelli's chat now performs the
@@ -355,7 +381,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 ## Building the current build
 
-`main` carries 6.0.0, and with it the build
+`main` carries 7.0.0, and with it the build
 requirements that arrived with Skelli in 5.0.0.
 In the order you'll meet them:
 

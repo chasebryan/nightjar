@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**6.0.0 — "the open mind."**
+**7.0.0 — "the war chest."**
 
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
@@ -118,6 +118,43 @@ against. It boots over a living reel — the boot log typing itself across the f
   door for anyone who wants to chip in toward the
   costs.
 
+## What's new in 7.0.0 — "the war chest"
+
+7.0.0 is the war release: five rooms built for
+running this instrument as one rig, and one
+score put on an honest footing.
+
+- **The War Chest** — whole-rig mission profiles.
+  One chest captures the standing configuration
+  of Send, Serve, Recon and the trace — every
+  setting, stealth included — and applies it in
+  one tap. Applying dresses the rig; it starts
+  nothing. Old presets migrate once, untouched.
+- **The Helm** — named remotes for your own gear.
+  Big buttons fire the payload book through the
+  Send path, and Learn mode binds what your gear
+  sends you into a new button. In EMCON, the tag
+  census reads your own NFC cards and tags whole
+  — NDEF, chip identity, an APDU explorer.
+  Nothing written, nothing emulated.
+- **The War Room** — Listen, the trace and the
+  knock bench as one operation on one /24, one
+  timestamped timeline, one export carrying the
+  whole record with the trace export embedded.
+- **The SIGINT Station** — one emitter registry
+  fusing BLE hearing, the LAN census and the
+  Night log, merged only within an epoch (no
+  cross-epoch stitching, ever), with recorded
+  watches that file themselves with their delta.
+- **War Games** — two of your phones spar:
+  defender serving with decoys flying, attacker
+  tracing and knocking, the match protocol
+  riding the Serve inbox, and a scored report.
+- **EMCON's score, honestly based** — presence
+  itself is weighed now: on the wire, and
+  answering under its own name, before a single
+  emission counts.
+
 ## What's new in 6.0.0 — "the open mind"
 
 6.0.0 is an intelligence release. Nothing was
@@ -163,18 +200,18 @@ and stepped down at the operator's word. The orb
 keeps the wallpaper; the bloom is kept in `assets/`
 under its own name.
 
-## Two ways in: 6.0.0, or v4.0.0
+## Two ways in: 7.0.0, or v4.0.0
 
-6.0.0 is the current release, and it asks more of
+7.0.0 is the current release, and it asks more of
 your gear than the older line did. There are two
 supported ways in, and which one is yours depends
 on your Mac and your phone.
 
 **The current build** (this repo, `main`, the
-6.0.0 release) carries Skelli and everything in
-4.2.0 — the Map, the Subconscious, the Instrument —
-plus 5.0.0's Deliveries and 6.0.0's intelligence
-pass. Building it requires:
+7.0.0 release) carries Skelli and everything in
+6.0.0 — the Map, the Subconscious, the Instrument,
+her conversational hands, the intelligence pass —
+plus the whole war campaign above. Building it requires:
 
 - **Xcode 26** on the Mac. Skelli's Apple-model code
   is written against the iOS 26 SDK.
