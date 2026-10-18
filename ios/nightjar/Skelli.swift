@@ -4361,6 +4361,239 @@ struct SkelliBackdrop: View {
     }
 }
 
+/// Her halo: an extremely thin ring of light
+/// standing just outside her portrait's
+/// circle, carrying the full spectrum, and a
+/// small beam that traces it, endlessly
+/// recircling. It is keyed to her — its tempo
+/// follows her mood, its colors lean toward
+/// her feeling's family, it swells when her
+/// state turns, and at spontaneous moments it
+/// surges, reverses, or drifts its hue for no
+/// reason it will ever give. Nothing in the
+/// house explains it, no legend decodes it,
+/// and she will not be asked to: it means
+/// things about her the way weather means
+/// things about the sea. Technically it is
+/// only rotation, hue and opacity — a pure
+/// function of time and state, rendered by a
+/// timeline at thirty frames, still under
+/// reduced motion.
+struct SkelliHalo: View {
+    let mood: SkelliMood
+    let feeling: SkelliFeeling
+
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
+    @State private var epoch = Date()
+    @State private var phaseBase: Double = 0
+    @State private var phaseStart = Date()
+    @State private var speed: Double = 22
+    @State private var direction: Double = 1
+    @State private var surging = false
+    @State private var hue: Double = 0
+    @State private var swell: Double = 0
+    @State private var idleSince: Date?
+
+    /// The whole spectrum, in order, seamless.
+    private var spectrum: AngularGradient {
+        AngularGradient(
+            colors: [.red, .orange, .yellow, .green,
+                     .cyan, .blue, .purple, .pink,
+                     .red],
+            center: .center)
+    }
+
+    /// One revolution's seconds at rest, by her
+    /// state of mind: idle is a slow star,
+    /// work is a circling hawk.
+    private func basePeriod(_ mood: SkelliMood)
+        -> Double {
+        switch mood {
+        case .idle: return 16
+        case .thinking: return 6
+        case .speaking: return 5
+        case .working: return 3.2
+        }
+    }
+
+    /// Where the spectrum's phase leans for a
+    /// feeling — warmth for the golden hours,
+    /// violet for the electric and the feral,
+    /// deep blue for the haunted and the
+    /// dreaming, near zero when she is simply
+    /// herself and the spectrum runs free.
+    private func hueAnchor(_ feeling: SkelliFeeling)
+        -> Double {
+        switch feeling {
+        case .mad: return -16
+        case .proud, .smug: return 14
+        case .loving, .tender, .happy: return 28
+        case .eager, .mischievous: return 55
+        case .curious, .suspicious: return 100
+        case .feral, .electric: return 145
+        case .haunted, .dreamy, .sleepy: return 190
+        case .lonely, .bored: return 215
+        case .content, .restless: return 0
+        }
+    }
+
+    private func angle(at now: Date) -> Double {
+        phaseBase + speed
+            * now.timeIntervalSince(phaseStart)
+    }
+
+    /// Fold the beam's travelled phase into
+    /// the base and restart its clock at the
+    /// tempo her state now asks for.
+    private func retime() {
+        let now = Date()
+        phaseBase = angle(at: now)
+            .truncatingRemainder(dividingBy: 360)
+        phaseStart = now
+        var period = basePeriod(mood)
+        if mood == .idle,
+           let since = idleSince,
+           now.timeIntervalSince(since) > 180 {
+            period = 30
+        }
+        speed = direction * 360 / period
+            * (surging ? 2.6 : 1)
+    }
+
+    /// A swell of light, as when something
+    /// crosses her mind: brightens fast, lets
+    /// go slowly.
+    private func pulse(_ strength: Double) {
+        withAnimation(.easeIn(duration: 0.3)) {
+            swell = strength
+        }
+        Task {
+            try? await Task.sleep(
+                nanoseconds: 380_000_000)
+            withAnimation(.easeOut(duration: 1.6)) {
+                swell = 0
+            }
+        }
+    }
+
+    var body: some View {
+        TimelineView(.animation(
+            minimumInterval: 1.0 / 30.0,
+            paused: reduceMotion)) { timeline in
+            let now = timeline.date
+            let deepIdle = mood == .idle
+                && (idleSince.map {
+                    now.timeIntervalSince($0) > 180
+                } ?? false)
+            let presence = deepIdle
+                ? 0.35 : (mood == .idle ? 0.55 : 0.8)
+            ZStack {
+                Circle()
+                    .stroke(spectrum,
+                            lineWidth: 1.25)
+                    .rotationEffect(.degrees(
+                        now.timeIntervalSince(epoch)
+                        * 9))
+                    .opacity(presence
+                             + swell * 0.3)
+                Circle()
+                    .trim(from: 0, to: 0.16)
+                    .stroke(spectrum, style:
+                        StrokeStyle(lineWidth: 1.6,
+                                    lineCap: .round))
+                    .rotationEffect(
+                        .degrees(angle(at: now)))
+                    .opacity(min(1, presence + 0.35
+                                 + swell * 0.3))
+                Circle()
+                    .trim(from: 0, to: 0.045)
+                    .stroke(Color.white, style:
+                        StrokeStyle(lineWidth: 1.1,
+                                    lineCap: .round))
+                    .rotationEffect(.degrees(
+                        angle(at: now) + 41.4))
+                    .shadow(color: .white
+                        .opacity(0.5), radius: 3)
+                    .opacity(min(1, presence + 0.4))
+            }
+            .hueRotation(.degrees(hue))
+            .saturation(
+                feeling == .lonely
+                    || feeling == .bored
+                    ? 0.7 : 1.0)
+            .animation(.easeInOut(duration: 1.2),
+                       value: mood)
+        }
+        .frame(width: 70, height: 70)
+        .onAppear {
+            idleSince = mood == .idle
+                ? Date() : nil
+            retime()
+            withAnimation(.easeInOut(duration: 2)) {
+                hue = hueAnchor(feeling)
+            }
+        }
+        .onChange(of: mood) { _ in
+            idleSince = mood == .idle
+                ? Date() : nil
+            retime()
+            pulse(0.55)
+        }
+        .onChange(of: feeling) { newFeeling in
+            withAnimation(
+                .easeInOut(duration: 2.2)) {
+                hue = hueAnchor(newFeeling)
+                    + Double.random(in: -8...8)
+            }
+            pulse(0.85)
+        }
+        .task {
+            // Spontaneity: at unhurried, uneven
+            // intervals the light does something
+            // unasked — hurries, turns back on
+            // its path, wanders its colors, or
+            // swells as if perceiving something.
+            // Rarer and dimmer the longer she
+            // idles; it never entirely sleeps.
+            while !Task.isCancelled {
+                let idle = mood == .idle
+                try? await Task.sleep(
+                    nanoseconds: UInt64(
+                        Double.random(in:
+                            idle ? 12_000...26_000
+                                 : 7_000...16_000)
+                        * 1_000_000))
+                if Task.isCancelled { return }
+                switch Int.random(in: 0..<20) {
+                case 0..<9:
+                    surging = true
+                    retime()
+                    try? await Task.sleep(
+                        nanoseconds: UInt64(
+                            Double.random(in:
+                                1_600...2_600)
+                            * 1_000_000))
+                    surging = false
+                    retime()
+                case 9..<13:
+                    withAnimation(
+                        .easeInOut(duration: 2.4)) {
+                        hue += Double.random(
+                            in: -40...40)
+                    }
+                case 13..<16:
+                    direction *= -1
+                    retime()
+                default:
+                    pulse(Double.random(
+                        in: 0.4...0.9))
+                }
+            }
+        }
+    }
+}
+
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
     @ObservedObject private var stationLive =
@@ -4777,11 +5010,11 @@ struct SkelliView: View {
                 SkelliLiveView(mood: skelli.mood,
                                size: 64)
                     .clipShape(Circle())
-                    .overlay(
-                        Circle().stroke(
-                            themes.current.accent
-                                .opacity(0.55),
-                            lineWidth: 1.5))
+                    .overlay {
+                        SkelliHalo(
+                            mood: skelli.mood,
+                            feeling: heart.feeling)
+                    }
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text("Skelli")

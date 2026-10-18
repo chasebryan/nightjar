@@ -45,6 +45,19 @@
   house warms its stores, so
   the first ask meets warm
   machinery.
+- **A halo for her.** A thin
+  ring of spectrum light
+  stands around her portrait
+  now, and a small beam
+  traces it, endlessly
+  recircling. It quickens
+  when she works, leans its
+  colors with her feeling,
+  and does stranger things
+  at hours of its own
+  choosing. It is not
+  explained anywhere in the
+  app.
 - **Her room, redecorated.**
   Skelli's tab wears a
   composed backdrop now — a
