@@ -482,6 +482,9 @@ final class AssaultCenter: ObservableObject {
     }
 
     private func addFinding(_ line: String) {
+        // A finding feeds her pride — the heart hears
+        // about every one the house makes.
+        SkelliHeart.shared.noteTriumph()
         findings.append(line)
         if findings.count > 120 {
             findings.removeFirst(findings.count - 120)

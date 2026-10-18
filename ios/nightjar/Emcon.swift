@@ -1115,6 +1115,11 @@ final class Emcon: ObservableObject {
                         "\(labeled) → \(proto)/\(port) — \(verdict)")
             self.knockEngine.note(source: labeled, port: port,
                                   proto: proto, verdict: verdict)
+            // A knock at the door is a finding too:
+            // her pride hears about it.
+            if !mine {
+                SkelliHeart.shared.noteTriumph()
+            }
             self.maybeEscalate(source: labeled, port: port,
                                proto: proto, verdict: verdict,
                                mine: mine)

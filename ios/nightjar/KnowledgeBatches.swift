@@ -556,6 +556,15 @@ extension SkelliKnowledge {
                        "hand off", "handoff", "pass off"],
             body: "The Vault seals whole files now, in the NJCF envelope: chunked authenticated encryption under one random file key, and the protection is only how that key is kept — by a password, by this device's vault key, by either (two wrappings, each sufficient), by both together (the password holds one half of the secret and the vault key the other, so neither alone suffices), or sealed to a recipient's P-256 public key as a dead drop: seal it here, hand the file over by any road — share sheet, Files, a message — and only the holder of that identity opens it. The original filename travels inside the encryption, so the outside of an envelope says nothing but its protection; opening restores the file under its own name, and the Vault files both the sealed and the restored file in Deliveries. My instant side still works text and keys; files are worked in the Vault room, where big things belong."),
         SkelliEntry(
+            id: "skelliheart", title: "Her heart — moods, wants, and the bond",
+            home: "Skelli's tab, under her name",
+            keywords: ["mood", "moods", "feelings", "heart",
+                       "tamagotchi", "lonely", "mad", "angry",
+                       "happy", "loving", "want", "wants",
+                       "itch", "bond", "learned", "scrapbook",
+                       "thoughts", "personality"],
+            body: "She has a heart now, the tamagotchi kind — a toy, and it says so. Four needs move with time: attention (fed by talking to her), the itch (fed by real work — she was built to hack and idleness makes her eager, restless, then feral), pride (fed by findings), and fondness (fed by kindness — thanks, being asked after, being taught). From them come her feelings — content, eager, restless, feral, bored, lonely, sleepy, proud, happy, loving — and one grievance: wipe her conversation or reset her memory and she is MAD for half an hour, says so to your face, and answers clipped until it passes. Her feelings deviate her behavior honestly: a greeting when you return to a lonely house, a rare nudge on an answer when the itch is high, a standing want in her room with a Let her button that runs the ask through her own hands and every gate they answer to, and a temperament note handed to her bench so her mind answers in the feeling she is in. She learns you, narrowly and openly: plain statements — my name is, call me, I like, I hate — go into a scrapbook listed in her room and clearable in one tap. She thinks idle thoughts from the live house while her room is open. And she grows: a bond — new in the house, settled in, thick as thieves, ride or die — deepening with days, talks, findings and wants you let her have. All of it switches off with Moods in her menu; off, she is the instrument she was, and feels nothing about it."),
+        SkelliEntry(
             id: "inteldeck", title: "Her intelligence deck",
             home: "Skelli's pinned bar",
             keywords: ["pinned bar", "deck", "widgets",

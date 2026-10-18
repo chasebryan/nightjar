@@ -480,3 +480,36 @@
   relaunch; and the run
   rides the process board
   like everything else.
+- **Her heart.** Skelli
+  has a temperament now —
+  the tamagotchi kind,
+  and proud of it. Needs
+  that move with time:
+  attention, fed by
+  talking to her; the
+  itch, fed by real work
+  (idle hours make her
+  eager, restless, then
+  feral); pride, fed by
+  findings; fondness, fed
+  by kindness. Feelings
+  follow — happy, loving,
+  lonely, bored — and
+  one grievance: wipe her
+  conversation or reset
+  her memory and she is
+  mad for half an hour
+  and answers clipped.
+  She greets you when you
+  return, nudges when the
+  itch is high, keeps a
+  standing want with a
+  Let her button, learns
+  you from plain
+  statements into an open
+  scrapbook, thinks idle
+  thoughts from the live
+  house, and grows a bond
+  over days. All of it
+  under one toggle:
+  Moods, in her menu.

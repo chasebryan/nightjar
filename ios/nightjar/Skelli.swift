@@ -434,8 +434,10 @@ final class SkelliCenter: ObservableObject {
 
     func say(_ text: String) {
         guard !hushed else { return }
+        let spoken = text
+            + (SkelliHeart.shared.nudgeSuffix() ?? "")
         lines.append(SkelliLine(fromOperator: false,
-                                 text: text))
+                                 text: spoken))
         persist()
         mood = .speaking
         idleWork?.cancel()
@@ -450,6 +452,8 @@ final class SkelliCenter: ObservableObject {
 
     /// The operator empties the conversation. Her notes
     func clearConversation() {
+        SkelliHeart.shared.noteOffense(
+            "wiped our conversation")
         lines = []
         pendingAction = nil
         lastDeviceIP = nil
@@ -458,6 +462,7 @@ final class SkelliCenter: ObservableObject {
 
     /// Back to her defaults: no conversation, no notes,
     func resetToDefaults() {
+        SkelliHeart.shared.noteOffense("reset my memory")
         lines = []
         notes = []
         pendingAction = nil
@@ -494,6 +499,26 @@ final class SkelliCenter: ObservableObject {
         persist()
         hushed = false
         ProcessBoard.shared.muted = false
+        // Her heart: a grievance or a lonely house
+        // greets its operator first; being spoken to
+        // feeds the attention need; being told things
+        // teaches her scrapbook; kindness feeds her
+        // fondness.
+        if let greeting = SkelliHeart.shared.greeting() {
+            say(greeting)
+        }
+        let lowered = text.lowercased()
+        if SkelliScrapbook.shared.learn(from: lowered) {
+            SkelliHeart.shared.noteKindness()
+        }
+        if lowered.contains("thank")
+            || lowered.contains("how are you")
+            || lowered.contains("how do you feel")
+            || lowered.contains("good job")
+            || lowered.contains("nice work") {
+            SkelliHeart.shared.noteKindness()
+        }
+        SkelliHeart.shared.noteInteraction()
         // Thinking is always on — a short, real beat
         mood = .thinking
         let q = text.lowercased()
@@ -511,6 +536,30 @@ final class SkelliCenter: ObservableObject {
         lastSubject = ("entry", entry.title,
                        entry.body, entry.home)
         say(entry.body + "\nFind it: \(entry.home).")
+    }
+
+    /// Her passive thinking, for her room: one thought
+    /// assembled from the live house and her feeling,
+    /// re-seeded every 25 seconds by the view's clock.
+    func idleThought() -> String {
+        let neighbors = NeighborhoodStore.shared.neighbors
+        let unnamed = neighbors.filter {
+            $0.name == nil && $0.customName == nil
+        }.count
+        let drift = neighbors.reduce(0) {
+            $0 + $1.drift.count
+        }
+        let hour = Calendar.current.component(
+            .hour, from: Date())
+        return SkelliHeart.thought(
+            feeling: SkelliHeart.shared.feeling,
+            neighbors: neighbors.count,
+            unnamed: unnamed, drift: drift,
+            knocks: emcon?.events.count ?? 0,
+            emconDeclared: (emcon?.active ?? false)
+                ? emcon?.condition.declared : nil,
+            hour: hour,
+            seed: Int(Date().timeIntervalSince1970 / 25))
     }
 
     private func navigate(to tab: Int) {
@@ -1027,7 +1076,8 @@ final class SkelliCenter: ObservableObject {
     func consultMindOrResearch(_ q: String) {
         let started = SkelliMind.consult(
             question: q,
-            grounding: mindGrounding(),
+            grounding: mindGrounding()
+                + SkelliHeart.shared.directive(),
             recent: recentLines()) { [weak self] verdict in
             guard let self = self else { return }
             switch verdict {
@@ -1074,6 +1124,14 @@ final class SkelliCenter: ObservableObject {
         }.count
         facts.append("\(neighbors.count) devices "
             + "on the wire (\(unknown) unnamed)")
+        if SkelliHeart.shared.enabled {
+            let heart = SkelliHeart.shared
+            facts.append("her temperament: feeling "
+                + "\(heart.feeling.word) — attention "
+                + "\(Int(heart.attention)), itch "
+                + "\(Int(heart.itch)), pride "
+                + "\(Int(heart.pride))")
+        }
         if let emcon = emcon, let mouth = mouth {
             let score = emcon.currentScore(mouth: mouth)
             var line = "exposure \(Emcon.fmt(score.value)) "
@@ -1288,6 +1346,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
+        SkelliHeart.shared.noteAction()
         activity = "Researching…"
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
@@ -1569,6 +1628,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
+        SkelliHeart.shared.noteAction()
         emcon.runDrill(mouth: mouth)
         say("The drill is running — scan, go dark, "
             + "scan again. Its readout lands in "
@@ -1677,6 +1737,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
+        SkelliHeart.shared.noteAction()
         activity = "Sweeping the wire on port 80…"
         scanner.sweep(port: 80)
         sweepWatch = scanner.$sweeping
@@ -1772,6 +1833,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
+        SkelliHeart.shared.noteAction()
         activity = "Knocking this phone, every "
             + "census port…"
         emcon.runSelfScan { [weak self] in
@@ -1804,6 +1866,7 @@ final class SkelliCenter: ObservableObject {
             return
         }
         mood = .working
+        SkelliHeart.shared.noteAction()
         activity = "Listening for this phone's own "
             + "announcements…"
         emcon.runBonjourAudit { [weak self] in
@@ -2922,6 +2985,7 @@ struct SkelliView: View {
     @ObservedObject private var boardLive =
         ProcessBoard.shared
     @ObservedObject private var runner = MacroRunner.shared
+    @ObservedObject private var heart = SkelliHeart.shared
     @ObservedObject private var probing = ProbingBeacon.shared
     @ObservedObject private var themes = ThemeCenter.shared
     @EnvironmentObject private var emcon: Emcon
@@ -2931,6 +2995,7 @@ struct SkelliView: View {
     // a close mid-thought reopens with the draft
     // still in the box. Sending clears it as before.
     @AppStorage("skelli.draft") private var input = ""
+    @State private var showScrapbook = false
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
@@ -2938,6 +3003,7 @@ struct SkelliView: View {
     @State private var showDeliveries = false
     @AppStorage("skelli.mindMode")
     private var mindMode = "council"
+    @AppStorage("skelli.moods") private var moodsEnabled = true
     @AppStorage("skelli.agents")
     private var agentsEnabled = false
     @State private var confirmClear = false
@@ -3103,6 +3169,10 @@ struct SkelliView: View {
                 Label("Agents — her crew",
                       systemImage: "person.3")
             }
+            Toggle(isOn: $moodsEnabled) {
+                Label("Moods — her heart",
+                      systemImage: "heart")
+            }
             if SkelliMind.weightsReady {
                 Menu {
                     Button { mindMode = "council" } label: {
@@ -3248,6 +3318,14 @@ struct SkelliView: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false,
                                vertical: true)
+                if moodsEnabled {
+                    Label("feeling "
+                          + heart.feeling.word,
+                          systemImage: heart.feeling.symbol)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(heart.feeling.tint)
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Spacer()
@@ -3256,6 +3334,116 @@ struct SkelliView: View {
         .padding(.horizontal)
         .padding(.top, 4)
         .padding(.bottom, 2)
+    }
+
+    // MARK: her heart
+
+    /// The tamagotchi strip: her three needs as thin
+    /// bars, and her standing want with a door that lets
+    /// her do it — the ask goes through her own respond
+    /// path, so every gate her hands answer to (EMCON
+    /// first of all) still stands. Shown only while
+    /// Moods is on in her menu.
+    private var heartStrip: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            TimelineView(.periodic(from: .now, by: 25)) {
+                _ in
+                Text(skelli.idleThought())
+                    .font(.caption.italic())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false,
+                               vertical: true)
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
+            }
+            HStack(spacing: 6) {
+                Text("Bond: " + heart.bond
+                     + " · day \(heart.daysKnown + 1)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if !SkelliScrapbook.shared.facts.isEmpty {
+                    Button {
+                        showScrapbook.toggle()
+                    } label: {
+                        Text("Learned about you "
+                             + "(\(SkelliScrapbook.shared.facts.count))")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            if showScrapbook {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(SkelliScrapbook.shared.facts,
+                            id: \.self) { fact in
+                        Text("· " + fact)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button(role: .destructive) {
+                        SkelliScrapbook.shared.clear()
+                        showScrapbook = false
+                    } label: {
+                        Text("Forget all of it")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            HStack(spacing: 10) {
+                needBar("Attention", heart.attention, .pink)
+                needBar("Itch", heart.itch, .orange)
+                needBar("Pride", heart.pride, .yellow)
+            }
+            if let want = heart.want {
+                HStack(spacing: 8) {
+                    Text(want.text)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false,
+                                   vertical: true)
+                    Spacer()
+                    if let ask = want.ask {
+                        Button {
+                            SkelliHeart.shared
+                                .noteWantAccepted()
+                            input = ""
+                            skelli.ask(ask)
+                        } label: {
+                            Text("Let her")
+                                .font(.caption.weight(.bold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+        .id(heart.pulse)
+    }
+
+    private func needBar(_ label: String, _ value: Double,
+                         _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(.system(size: 8.5, weight: .semibold))
+                .foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.12))
+                    Capsule().fill(tint)
+                        .frame(width: max(3, geo.size.width
+                            * CGFloat(value) / 100))
+                }
+            }
+            .frame(height: 4)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: her analysis deck
