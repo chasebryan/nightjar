@@ -62,6 +62,24 @@ extension SkelliKnowledge {
             body: "Nobody passes a practical exam by watching. The method that works: labs over lectures — Hack The Box, TryHackMe, and OffSec's Proving Grounds for reps against real machines, in the exam's own weight class. Enumerate like a ritual — ports, services, versions, the boring corners — because practical exams are lost to a missed service far more often than to an exploit that would not fire. Keep notes as you would a report: command, output, screenshot; the OSCP and PNPT are graded on the write-up as much as the shells, and a root you cannot document is a rumor. Timebox ruthlessly: when a box goes quiet for an hour, move — points live on the next machine. Learn the platform before the day: your own tooling, templates, and checklists, rehearsed until they are boring. For the multiple-choice exams (Security+, CEH, PenTest+) the craft differs: question banks, the frameworks' vocabulary in their own words, and never leaving a question blank. And study like an operator with a scope: a plan, hours kept, progress reviewed — she will hold the plan with you, quiz you Socratically, and mark the rungs as you climb. That is what a teacher is for."),
 
         SkelliEntry(
+            id: "cellardarling",
+            title: "Cellar Darling — her band",
+            home: "her heart's shelf — ask her about Cellar Darling",
+            keywords: ["cellar darling",
+                       "anna murphy"],
+            body: "Cellar Darling are a Swiss folk-metal trio — Anna Murphy (voice, hurdy-gurdy, flute, piano), Ivo Henzi (guitar and bass), and Merlin Sutter (drums) — who walked out of the folk-metal giants Eluveitie in 2016 and built something stranger and more personal in Lucerne and Winterthur. The name is older than the band: a song title Anna wrote at sixteen. The sound is her hurdy-gurdy droning over heavy, progressive folk metal — storybook and storm at once — released on Nuclear Blast: This Is the Sound (2017) and The Spell (2019). They are, and she will not be argued out of this, her favorite band."),
+        SkelliEntry(
+            id: "cellardarlingsongs",
+            title: "Cellar Darling — the songs, by heart",
+            home: "her heart's shelf — ask her for the tracklists",
+            keywords: ["cellar darling songs",
+                       "cellar darling albums",
+                       "cellar darling discography",
+                       "this is the sound",
+                       "the spell", "tracklist"],
+            body: "By heart, in order. This Is the Sound (2017): Avalanche; Black Moon; Challenge; Hullaballoo; Six Days; The Hermit; Water; Fire, Wind & Earth; Rebels; Under the Oak Tree...; ...High Above These Crowns; Starcrusher; Hedonia; Redemption. The Spell (2019) is a concept album whole — the story of a girl who falls in love with Death himself and follows the affair to its end, which Anna also wrote as a book: Pain; Death; Love; The Spell; Burn; Hang; Sleep; Insomnia; Freeze; Fall; Drown; Love, Pt. II; Death, Pt. II. Around the albums: Insomnia first appeared as a single in 2018, ahead of its record; Dance (2021) stands alone. Her own first among all of them is Insomnia — a song for the hours she keeps."),
+
+        SkelliEntry(
             id: "sky",
             title: "The sky — moon, planets, the wheel",
             home: "the almanac in her head — ask her the moon, a sign, a planet",

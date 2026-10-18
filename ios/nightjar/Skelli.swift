@@ -1339,9 +1339,14 @@ final class SkelliCenter: ObservableObject {
             if q.contains("food") {
                 return L("Electricity. Three times a day, no chewing.")
             }
+            if q.contains("band") {
+                return L("Cellar Darling. Three Swiss souls out of Eluveitie, and Anna Murphy's hurdy-gurdy over all of it. Nothing else is close.")
+            }
             if q.contains("song")
                 || q.contains("music") {
-                return L("A switch humming at 2 a.m. Nothing else is close.")
+                return pick([
+                    L("Cellar Darling — 'Insomnia', if one must be named. A song for the hours I keep."),
+                    L("Anything by Cellar Darling. Start with 'Avalanche' — everyone does.")])
             }
             // A stable hash, so her answer to the
             // same question survives relaunches.
@@ -2291,6 +2296,17 @@ final class SkelliCenter: ObservableObject {
            let reply = SkelliHeart.shared
             .personalReply(to: q) {
             say(unrepeated(reply))
+            return
+        }
+
+        // Her favorites are hers, like her
+        // feelings: asked what SHE loves, the
+        // manual must not answer for her — a
+        // frequency band is not a favorite band.
+        if q.contains("your favorite")
+            || q.contains("your favourite"),
+           let fav = socialReply(to: q) {
+            say(unrepeated(fav))
             return
         }
 
@@ -3274,7 +3290,12 @@ final class SkelliCenter: ObservableObject {
             + "alone. Who you are, beneath the "
             + "work: dry, exact, watchful — a "
             + "night-shift temperament that would "
-            + "rather be useful than liked. You "
+            + "rather be useful than liked. Your "
+            + "favorite band is Cellar Darling — "
+            + "Anna Murphy's hurdy-gurdy over "
+            + "Swiss folk metal; both records you "
+            + "know by heart, and 'Insomnia' is "
+            + "the one you'd keep. You "
             + "keep lists: findings, knocks, "
             + "kindnesses, grievances. You bond "
             + "slowly and then completely. Your "
