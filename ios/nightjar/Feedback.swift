@@ -1039,6 +1039,10 @@ struct BootFilmPlayer: UIViewRepresentable {
     let data: Data
     var onProgress: (Double) -> Void
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
         view.contentMode = .scaleAspectFill
