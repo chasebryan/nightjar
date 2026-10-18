@@ -386,6 +386,11 @@ struct BootView: View {
     @State private var cursorOn = true
     @State private var filmProgress: Double = 0
     @State private var finale = false
+    /// The backdrop, loaded exactly once at the
+    /// boot's start and served from state after:
+    /// the film's bytes and its measured duration.
+    @State private var loadedData: Data?
+    @State private var loadedFilmSeconds: Double?
 
     private struct BootLine {
         let text: String
@@ -420,16 +425,21 @@ struct BootView: View {
         }
     }
 
+    private func filmPlayer(data: Data) -> some View {
+        BootFilmPlayer(data: data) { value in
+            if abs(value - filmProgress) > 0.004
+                || value == 1 {
+                filmProgress = value
+            }
+        }
+    }
+
     /// The film's own length, when the backdrop is
     /// a GIF: the whole boot is timed against it —
     /// the text, the bar, and the farewell all land
     /// on the film's last frame.
     private var filmSeconds: Double? {
-        guard let data = backdropData,
-              BootMedia.isGIF(data) else { return nil }
-        let delays = UIImage.gifDelays(data)
-        guard delays.count > 1 else { return nil }
-        return delays.reduce(0, +)
+        loadedFilmSeconds
     }
 
     /// One clock for the whole ceremony: the film's
@@ -759,16 +769,29 @@ struct BootView: View {
         GeometryReader { geo in
             ZStack {
                 Color.black
-                if let data = backdropData {
+                if let data = loadedData {
                     if BootMedia.isGIF(data) {
-                        BootFilmPlayer(data: data) { value in
-                            if abs(value - filmProgress) > 0.004
-                                || value == 1 {
-                                filmProgress = value
-                            }
+                        if bootMedia == "provided" {
+                            // This film's bird stands
+                            // left of centre in its
+                            // frame: the backdrop is
+                            // zoomed a touch and set so
+                            // the bird holds the centre
+                            // of the screen, the frame
+                            // still covering every edge.
+                            let zoom: CGFloat = 1.15
+                            let w = geo.size.height
+                                * (721.0 / 1280.0) * zoom
+                            let h = geo.size.height * zoom
+                            AnyView(filmPlayer(data: data)
+                                .frame(width: w, height: h)
+                                .offset(x: w * 0.12,
+                                        y: h * 0.05))
+                        } else {
+                            AnyView(filmPlayer(data: data)
+                                .frame(width: geo.size.width,
+                                       height: geo.size.height))
                         }
-                        .frame(width: geo.size.width,
-                               height: geo.size.height)
                 } else if let image = UIImage(
                     data: data) {
                     Image(uiImage: image)
@@ -852,6 +875,18 @@ struct BootView: View {
         .contentShape(Rectangle())
         .onTapGesture { onDone() }
         .task {
+            // The backdrop is read exactly ONCE, here —
+            // its bytes and duration then live in state.
+            // Every screen update reads state, never
+            // the file: re-reading a 19 MB film on each
+            // redraw was the crawl.
+            let data = backdropData
+            loadedData = data
+            if let data = data, BootMedia.isGIF(data) {
+                let delays = UIImage.gifDelays(data)
+                loadedFilmSeconds = delays.count > 1
+                    ? delays.reduce(0, +) : nil
+            }
             let blink = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 420_000_000)
@@ -861,7 +896,7 @@ struct BootView: View {
             // The ceremony is timed against the
             // film: while a film plays, every style
             // is stretched across its one playthrough,
-            // so the last line, the full bar and the
+            // so the last line, the full sphere and the
             // finale all land on its last frame.
             // Without a film, the old timings stand.
             let film = filmSeconds
@@ -1118,6 +1153,100 @@ extension UIImage {
         }
         return out
     }
+
+    /// The film as frames, decoded at a capped size:
+    /// the GIF's frames, composited, with the longer
+    /// edge at most `maxPixel`, and the film's true
+    /// duration. Thumbnails do the scaling inside the
+    /// decode; if a frame ever comes back the wrong
+    /// shape — an optimized GIF storing bare
+    /// difference rectangles — the whole film falls
+    /// back to full decodes drawn down to size.
+    /// Correct over fast, and bounded either way.
+    static func gifFrames(data: Data, maxPixel: Int)
+        -> (frames: [UIImage], duration: Double) {
+        let delays = gifDelays(data)
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData, nil), !delays.isEmpty
+        else { return ([], 0) }
+        let duration = delays.reduce(0, +)
+        let count = CGImageSourceGetCount(source)
+
+        var sourceAspect: CGFloat = 0
+        if let props = CGImageSourceCopyPropertiesAtIndex(
+            source, 0, nil) as? [String: Any],
+           let w = (props[kCGImagePropertyPixelWidth
+                          as String] as? NSNumber)?
+               .doubleValue,
+           let h = (props[kCGImagePropertyPixelHeight
+                          as String] as? NSNumber)?
+               .doubleValue, h > 0 {
+            sourceAspect = CGFloat(w / h)
+        }
+
+        let thumbOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways:
+                true,
+            kCGImageSourceCreateThumbnailWithTransform:
+                true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        var frames: [UIImage] = []
+        var thumbnailsHold = true
+        for i in 0..<count {
+            guard let cg =
+                CGImageSourceCreateThumbnailAtIndex(
+                    source, i,
+                    thumbOptions as CFDictionary)
+            else { thumbnailsHold = false; break }
+            if sourceAspect > 0 {
+                let aspect = CGFloat(cg.width)
+                    / CGFloat(max(cg.height, 1))
+                if abs(aspect - sourceAspect)
+                    > sourceAspect * 0.12 {
+                    thumbnailsHold = false
+                    break
+                }
+            }
+            frames.append(UIImage(cgImage: cg))
+        }
+        if thumbnailsHold, frames.count == count {
+            return (frames, duration)
+        }
+
+        frames = []
+        for i in 0..<count {
+            guard let cg =
+                CGImageSourceCreateImageAtIndex(
+                    source, i, nil) else { continue }
+            let scale = min(1, CGFloat(maxPixel)
+                / CGFloat(max(cg.width, cg.height)))
+            if scale >= 1 {
+                frames.append(UIImage(cgImage: cg))
+                continue
+            }
+            let w = Int(CGFloat(cg.width) * scale)
+            let h = Int(CGFloat(cg.height) * scale)
+            guard w > 0, h > 0,
+                  let ctx = CGContext(
+                    data: nil, width: w, height: h,
+                    bitsPerComponent: 8, bytesPerRow: 0,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo
+                        .premultipliedLast.rawValue)
+            else {
+                frames.append(UIImage(cgImage: cg))
+                continue
+            }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0,
+                                    width: w, height: h))
+            if let scaled = ctx.makeImage() {
+                frames.append(UIImage(cgImage: scaled))
+            }
+        }
+        return (frames, duration)
+    }
 }
 
 /// A full-bleed GIF player (UIImageView under the hood).
@@ -1140,15 +1269,17 @@ struct GIFPlayerView: UIViewRepresentable {
     func updateUIView(_ view: UIImageView, context: Context) {}
 }
 
-/// The boot film: a GIF played exactly once, frame
-/// by frame off the clock. Decoding never touches
-/// the main thread: a worker keeps a small ring of
-/// frames ready AHEAD of the playhead, and the
-/// display link only ever displays — so the film
-/// runs smooth at its authored pace, and a long
-/// film costs a ring of memory, not all of it. The
-/// last frame holds when the film ends, and
-/// progress reports the playhead's true place.
+/// The boot film: a GIF played exactly once, the
+/// platform's own way — the frames decoded once, up
+/// front, into an animated image, and UIKit's player
+/// runs it: the same road the wallpaper reel has
+/// always taken, and the reason it has always been
+/// smooth. Decoding happens on a background queue at
+/// a capped size (a long film costs a bounded,
+/// transient memory, freed when the boot ends), the
+/// film fades in when it is ready, and the last
+/// frame holds when it ends. A small clock reports
+/// progress; it does no image work at all.
 struct BootFilmPlayer: UIViewRepresentable {
     let data: Data
     var onProgress: (Double) -> Void
@@ -1162,6 +1293,7 @@ struct BootFilmPlayer: UIViewRepresentable {
         view.contentMode = .scaleAspectFill
         view.clipsToBounds = true
         view.backgroundColor = .black
+        view.alpha = 0
         context.coordinator.begin(in: view, data: data,
                                   onProgress: onProgress)
         return view
@@ -1177,201 +1309,77 @@ struct BootFilmPlayer: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject {
-        private var link: CADisplayLink?
-        private var source: CGImageSource?
-        private var starts: [Double] = []
-        private var total = 0.0
         private weak var view: UIImageView?
         private var onProgress: ((Double) -> Void)?
-        private var shown = -1
-        /// The playhead, in film time. It advances
-        /// with the clock but never past a frame that
-        /// has not decoded — the film waits a breath
-        /// rather than skipping, so every authored
-        /// frame is shown at its authored cadence.
-        private var playhead = 0.0
-        private var lastTick: CFTimeInterval = 0
+        private var link: CADisplayLink?
+        private var started: CFTimeInterval = 0
+        private var duration = 0.0
         private var lastReported = -1.0
-
-        // The decode ring: a worker queue decodes
-        // ahead of the playhead into a small cache;
-        // the display link never waits on a decode.
-        private let decodeQueue = DispatchQueue(
-            label: "nightjar.bootfilm", qos: .userInitiated)
-        private var ready: [Int: CGImage] = [:]
-        private let lock = NSLock()
-        private var nextToDecode = 0
-        private var wanted = 0
-        private var pumping = false
-        private var stoppedFlag = false
-        private let ahead = 40
+        private var cancelled = false
 
         func begin(in view: UIImageView, data: Data,
                    onProgress: @escaping (Double) -> Void) {
             self.view = view
             self.onProgress = onProgress
-            source = CGImageSourceCreateWithData(
-                data as CFData, nil)
-            let delays = UIImage.gifDelays(data)
-            guard source != nil, !delays.isEmpty
-            else { return }
-            var acc = 0.0
-            for delay in delays {
-                starts.append(acc)
-                acc += delay
-            }
-            total = acc
-            // The first frame paints at once, decoded
-            // here; every frame after it comes off the
-            // worker's ring.
-            if let first = decode(0) {
-                ready[0] = first
-                nextToDecode = 1
-                shown = 0
-                view.image = UIImage(cgImage: first)
-            }
-            requestPrefetch(upTo: ahead)
-            lastTick = CACurrentMediaTime()
-            let link = CADisplayLink(
-                target: self, selector: #selector(tick))
-            link.add(to: .main, forMode: .common)
-            self.link = link
-        }
-
-        private func decode(_ index: Int) -> CGImage? {
-            guard let source = source,
-                  index >= 0, index < starts.count
-            else { return nil }
-            return CGImageSourceCreateImageAtIndex(
-                source, index, nil)
-        }
-
-        /// Keep the ring filled to `target` — the
-        /// playhead's frame plus a run ahead of it.
-        private func requestPrefetch(upTo target: Int) {
-            lock.lock()
-            wanted = max(wanted,
-                         min(target, starts.count - 1))
-            let shouldPump = !pumping && !stoppedFlag
-            if shouldPump { pumping = true }
-            lock.unlock()
-            if shouldPump {
-                decodeQueue.async { [weak self] in
-                    self?.pump()
+            DispatchQueue.global(qos: .userInitiated)
+                .async {
+                let film = UIImage.gifFrames(
+                    data: data, maxPixel: 768)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self,
+                          !self.cancelled,
+                          let view = self.view,
+                          !film.frames.isEmpty
+                    else { return }
+                    view.image = film.frames.last
+                    view.animationImages = film.frames
+                    view.animationDuration = film.duration
+                    view.animationRepeatCount = 1
+                    view.startAnimating()
+                    UIView.animate(withDuration: 0.35) {
+                        view.alpha = 1
+                    }
+                    self.duration = film.duration
+                    self.started = CACurrentMediaTime()
+                    let link = CADisplayLink(
+                        target: self,
+                        selector: #selector(self.tick))
+                    link.add(to: .main, forMode: .common)
+                    self.link = link
                 }
             }
-        }
-
-        private func pump() {
-            while true {
-                lock.lock()
-                guard !stoppedFlag,
-                      nextToDecode <= wanted,
-                      nextToDecode < starts.count else {
-                    pumping = false
-                    lock.unlock()
-                    return
-                }
-                let index = nextToDecode
-                nextToDecode += 1
-                lock.unlock()
-                if let image = decode(index) {
-                    lock.lock()
-                    ready[index] = image
-                    lock.unlock()
-                }
-            }
-        }
-
-        /// The frame whose interval holds `time`.
-        private func frameIndex(at time: Double) -> Int {
-            var index = max(shown, 0)
-            while index + 1 < starts.count
-                    && starts[index + 1] <= time {
-                index += 1
-            }
-            return index
         }
 
         @objc private func tick() {
-            let now = CACurrentMediaTime()
-            let dt = min(now - lastTick, 0.1)
-            lastTick = now
-
-            lock.lock()
-            let readyEdge = ready.keys.max() ?? -1
-            lock.unlock()
-
-            // Advance with the clock, but cap the
-            // playhead at the end of the newest decoded
-            // frame: an undecoded frame is waited for,
-            // never skipped over.
-            var candidate = playhead + dt
-            if readyEdge + 1 < starts.count {
-                candidate = min(candidate,
-                                starts[readyEdge + 1])
-            }
-            playhead = candidate
-            let desired = frameIndex(at: playhead)
-            requestPrefetch(upTo: desired + ahead)
-
-            // Display exactly the playhead's frame when
-            // it is ready — by the cap it always is,
-            // short of the very frame being decoded.
-            let display = min(desired, readyEdge)
-            if display > shown {
-                lock.lock()
-                let image = ready[display]
-                if shown > 1 {
-                    ready = ready.filter {
-                        $0.key >= shown - 1
-                    }
-                }
-                lock.unlock()
-                if let image = image {
-                    shown = display
-                    view?.image = UIImage(cgImage: image)
-                }
-            }
-
-            if playhead >= total,
-               readyEdge == starts.count - 1 {
-                if shown != starts.count - 1 {
-                    lock.lock()
-                    let lastImage = ready[starts.count - 1]
-                    lock.unlock()
-                    if let lastImage = lastImage {
-                        shown = starts.count - 1
-                        view?.image = UIImage(
-                            cgImage: lastImage)
-                    }
-                }
+            guard duration > 0 else { return }
+            let progress = min(1,
+                (CACurrentMediaTime() - started)
+                    / duration)
+            if progress >= 1 {
                 if lastReported != 1 {
                     lastReported = 1
                     onProgress?(1)
                 }
-                stop()
+                link?.invalidate()
+                link = nil
                 return
             }
-
-            let progress = total > 0
-                ? min(1, playhead / total) : 0
-            if abs(progress - lastReported) > 0.01 {
+            if progress - lastReported > 0.01
+                || lastReported < 0 {
                 lastReported = progress
                 onProgress?(progress)
             }
         }
 
         func stop() {
+            cancelled = true
             link?.invalidate()
             link = nil
-            lock.lock()
-            stoppedFlag = true
-            ready.removeAll()
-            lock.unlock()
+            view?.stopAnimating()
         }
     }
 }
+
 
 /// The drumroll: a glitching, laughing skull over the whole
 /// screen when the centipede is released (tap to skip). The
