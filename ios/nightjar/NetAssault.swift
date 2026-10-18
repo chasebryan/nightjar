@@ -610,10 +610,12 @@ struct AssaultIgnitionView: View {
     /// The GIF's own play length plus a breath, clamped
     /// sane; 3 s for the fallback card.
     private var splashSeconds: Double {
-        guard let data = gifData,
-              let image = UIImage.animatedGIF(data: data)
-        else { return 3.0 }
-        return min(max(image.duration + 0.3, 1.5), 6.0)
+        guard let data = gifData else { return 3.0 }
+        // The length from the frame headers alone —
+        // never a full decode just to tell time.
+        let seconds = UIImage.gifDelays(data).reduce(0, +)
+        guard seconds > 0 else { return 3.0 }
+        return min(max(seconds + 0.3, 1.5), 6.0)
     }
 
     var body: some View {

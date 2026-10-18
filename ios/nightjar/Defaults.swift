@@ -91,6 +91,10 @@ enum SaneDefaults {
     static func reset(mouth: Mouth) {
         let defaults = UserDefaults.standard
         for key in keys { defaults.removeObject(forKey: key) }
+        // The setup mirror forgets too, or the
+        // old configuration would restore itself
+        // into the next fresh install.
+        HouseSetup.forgetMirror()
         if mouth.gattHostOn { mouth.stopGattHost() }
         defaults.removeObject(forKey: "gattArm.on")
         if mouth.beaconOn { mouth.stopBeacon() }

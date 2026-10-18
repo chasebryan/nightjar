@@ -334,30 +334,25 @@ struct ColoursView: View {
                 }
             }
 
-            Section(header: Text("Backdrops"),
-                    footer: Text("Every tab may wear its own. "
-                        + "The Jolly Roger is the backdrop the "
-                        + "app was born with — retired from "
-                        + "default duty, never from the wardrobe. "
-                        + "Your own art is copied into the app "
-                        + "and never leaves this device; a GIF "
-                        + "plays, a photograph holds still.")) {
+            Section(header: Text("Backdrops")) {
                 ForEach(BackdropSlot.allCases) { slot in
                     BackdropRow(slot: slot)
                 }
+                ExplainToggle(
+                    title: "How backdrops work",
+                    text: "Every tab may wear its "
+                        + "own. The Jolly Roger is "
+                        + "the backdrop the app was "
+                        + "born with — retired from "
+                        + "default duty, never from "
+                        + "the wardrobe. Your own "
+                        + "art is copied into the "
+                        + "app and never leaves this "
+                        + "device; a GIF plays, a "
+                        + "photograph holds still.")
             }
 
-            Section(header: Text("Boot screen"),
-                    footer: Text("The film behind "
-                        + "the boot log and how its "
-                        + "text arrives, from the "
-                        + "next launch. Your own "
-                        + "art is copied into the "
-                        + "app and never leaves "
-                        + "this device; a GIF "
-                        + "plays, a photograph "
-                        + "holds still. A tap "
-                        + "still skips.")) {
+            Section(header: Text("Boot screen")) {
                 BootRow()
             }
         }
@@ -613,26 +608,58 @@ private struct BootRow: View {
     private var bootEnabled = true
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = true
+    @AppStorage(BootMedia.modeKey)
+    private var pictureMode = "quality"
     @State private var pickerItem: PhotosPickerItem?
     @State private var notice: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Toggle("Boot screen", isOn: $bootEnabled)
-            Text("The ceremony that plays when the "
-                 + "app opens — film, sphere and "
-                 + "manifest. Off, the app opens "
-                 + "straight onto its tabs.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            ExplainToggle(
+                text: "What plays when the app "
+                    + "opens: the film, the sphere, "
+                    + "and the manifest of true facts "
+                    + "about this device. Off stops "
+                    + "the ceremony entirely — the "
+                    + "app opens straight onto its "
+                    + "tabs, and none of it runs.")
+            HStack {
+                Text("Picture")
+                Spacer()
+                Picker("", selection: $pictureMode) {
+                    Text("Quality").tag("quality")
+                    Text("Performance")
+                        .tag("performance")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 200)
+            }
+            ExplainToggle(
+                text: "Quality decodes the boot "
+                    + "film at 1024 px with the "
+                    + "sphere at full density, and "
+                    + "the wallpaper reel plays "
+                    + "full-size. Performance "
+                    + "decodes the film at 512 — "
+                    + "about a fifth of the memory — "
+                    + "thins the sphere, and caps "
+                    + "the reel at 640. Same app, "
+                    + "lighter feet: choose "
+                    + "Performance when the device "
+                    + "runs hot or the boot feels "
+                    + "heavy.")
             Toggle("Animated GIFs", isOn: $gifsEnabled)
-            Text("Off, every GIF in the house — "
-                 + "the boot film, the wallpaper "
-                 + "reel, the splashes — stands as "
-                 + "a still frame instead of "
-                 + "playing.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            ExplainToggle(
+                text: "Off stills every GIF in "
+                    + "the house: the boot film and "
+                    + "the splashes stand on their "
+                    + "first frame, and the "
+                    + "wallpaper reel holds still. "
+                    + "Nothing is removed — the "
+                    + "pictures stay, the motion "
+                    + "goes.")
             HStack {
                 Text("Backdrop")
                 Spacer()
@@ -697,6 +724,15 @@ private struct BootRow: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+            ExplainToggle(
+                title: "About your own art",
+                text: "Your own art is copied "
+                    + "into the app and never "
+                    + "leaves this device; a GIF "
+                    + "plays, a photograph holds "
+                    + "still. Changes take hold "
+                    + "from the next launch, and a "
+                    + "tap still skips the boot.")
         }
         .onChange(of: pickerItem) { item in
             guard let item else { return }

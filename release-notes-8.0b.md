@@ -139,3 +139,41 @@
   splashes then stand as
   still frames instead of
   playing.
+- **Picture, in two
+  modes.** Also under Boot:
+  Quality decodes the boot
+  film wide, the sphere at
+  full density, the reels
+  at full size; Performance
+  decodes light — about a
+  fifth of the film's
+  memory, a thinner sphere,
+  a capped reel — for hot
+  or struggling devices.
+- **Your setup, kept.**
+  Every setting in the
+  house is mirrored into
+  the Keychain as it
+  changes: the seven-day
+  expiry, a deletion and a
+  reinstall cannot lose it,
+  and a fresh install on
+  the same device restores
+  it before anything reads
+  a setting. About holds
+  export and import as one
+  file, for a new device;
+  a reset forgets the
+  mirror too.
+- **The organized house.**
+  About is regrouped —
+  Version, Your setup,
+  Appearance, This post,
+  Listening, The app,
+  Defaults, Session logs —
+  and explanations across
+  About and Colours now
+  fold behind a quiet
+  "What this does" row:
+  terse, exact, and open
+  only when asked.

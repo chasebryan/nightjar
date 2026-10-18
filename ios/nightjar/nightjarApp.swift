@@ -13,6 +13,11 @@ struct NightjarApp: App {
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
 
     init() {
+        // The house's setup first: a fresh install
+        // restores its configuration from the
+        // Keychain mirror before anything reads a
+        // setting, and the mirror starts watching.
+        HouseSetup.prepare()
 #if !STORE_BUILD
         // Before launch finishes, on every launch — the
         // background update checker's handler must be on

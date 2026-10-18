@@ -940,28 +940,12 @@ struct AboutView: View {
     @AppStorage("postName") private var postName = "phone"
     @State private var confirmReset = false
     @State private var showColours = false
+    @State private var setupShare: ShareItem?
+    @State private var importingSetup = false
 
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("The unpure build")) {
-                    Text("This is nightjar-hack: the listening post from nightjar, "
-                         + "plus a mouth. The Listen tab is the purist half — it scans "
-                         + "and logs advertisements and never connects, pairs or sends, "
-                         + "exactly like the upstream app. The Send and Serve tabs are "
-                         + "the hack half: they transmit, but only when you press their "
-                         + "buttons, to targets you type. The two halves share no radio "
-                         + "state; the ear stays pure, the mouth is a different organ.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text("Send and Serve work while the app is on screen. iOS does not "
-                         + "let a sideloaded app hold listeners or advertisements open "
-                         + "in the background, so a beacon or server stops being "
-                         + "reachable when you leave the app — the Listen tab keeps "
-                         + "its background hearing, the mouth does not.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
                 Section(header: Text("Version")) {
                     Text("nightjar-hack for iOS \(AppInfo.version) · log format 1")
                         .font(.footnote)
@@ -1004,6 +988,182 @@ struct AboutView: View {
                     .disabled(updater.checking)
 #endif
                 }
+                Section(header: Text("Your setup")) {
+                    ExplainToggle(
+                        title: "How your setup is kept",
+                        text: "Your configuration — every "
+                            + "toggle, picker and preference "
+                            + "in the house — is mirrored "
+                            + "into the Keychain as it "
+                            + "changes. The Keychain "
+                            + "outlives the app: the "
+                            + "seven-day expiry, a "
+                            + "deletion, a reinstall — a "
+                            + "fresh install on this "
+                            + "device restores your setup "
+                            + "before anything reads a "
+                            + "setting. Ordinary updates "
+                            + "and re-signs keep it "
+                            + "anyway: the data container "
+                            + "belongs to the bundle, not "
+                            + "the signature. Export "
+                            + "writes it to one file for "
+                            + "a new device; import reads "
+                            + "that file back. Payloads, "
+                            + "macros and logs are data, "
+                            + "not settings, and keep "
+                            + "their own exports.")
+                    Button {
+                        if let data = HouseSetup.exportData() {
+                            let url = FileManager.default
+                                .temporaryDirectory
+                                .appendingPathComponent(
+                                    "nightjar-setup.json")
+                            if (try? data.write(
+                                    to: url)) != nil {
+                                setupShare = ShareItem(
+                                    items: [url])
+                            } else {
+                                toasts.show("The setup file "
+                                    + "would not write")
+                            }
+                        }
+                    } label: {
+                        Label("Export setup",
+                              systemImage: "square.and.arrow.up")
+                    }
+                    Button {
+                        importingSetup = true
+                    } label: {
+                        Label("Import setup",
+                              systemImage: "square.and.arrow.down")
+                    }
+                }
+                Section(header: Text("Appearance")) {
+                    Button {
+                        showColours = true
+                    } label: {
+                        HStack {
+                            Label("Themes & backdrops",
+                                  systemImage: "paintpalette")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    ExplainToggle(
+                        text: "Six themes ship with the "
+                            + "app and you can tailor "
+                            + "your own; every tab may "
+                            + "wear its own backdrop — "
+                            + "the living wallpaper, the "
+                            + "Jolly Roger, the plain "
+                            + "theme colour, or your own "
+                            + "image or GIF.")
+                    if let reel = Wallpaper.image {
+                        Text("Living wallpaper: playing "
+                             + "(\(Int(reel.size.width))×"
+                             + "\(Int(reel.size.height)) pt) — it "
+                             + "loops behind every tab, beginning "
+                             + "to end, forever.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    } else if UIImage(named: "AppBackground") != nil {
+                        Text("The living wallpaper has not landed "
+                             + "in this build — the retired Jolly "
+                             + "Roger stands in behind every tab "
+                             + "until wallpaper.gif joins the "
+                             + "bundle.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text("No backdrop in this build. The app "
+                             + "looks for wallpaper.gif in the "
+                             + "bundle (or a \"Wallpaper\" data "
+                             + "asset) — and wears plain black "
+                             + "until it finds one.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                Section(header: Text("This post")) {
+                    HStack {
+                        Text("Post name")
+                        Spacer()
+                        TextField("phone", text: $postName)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .foregroundStyle(.secondary)
+                    }
+                    ExplainToggle(
+                        text: "The name of this ear, "
+                            + "written into every session. "
+                            + "The Mac's fusion uses it to "
+                            + "tell your phone apart from "
+                            + "your other posts — give "
+                            + "each one its own name.")
+                }
+                Section(header: Text("Listening")) {
+                    Toggle("Keep the screen awake while listening", isOn: $keepScreenAwake)
+                    ExplainToggle(
+                        text: "Foreground sessions hear "
+                            + "everything. In the "
+                            + "background iOS only "
+                            + "delivers advertisements "
+                            + "from a fixed list of "
+                            + "services, so a "
+                            + "backgrounded session keeps "
+                            + "hearing tracker tags (Tile, "
+                            + "SmartThings, Find My "
+                            + "Device network, Fast Pair) "
+                            + "but not phones, AirTags or "
+                            + "anything else that "
+                            + "broadcasts only "
+                            + "manufacturer data.")
+                }
+                Section(header: Text("The app")) {
+                    ExplainToggle(
+                        title: "What this app is",
+                        text: "This is nightjar-hack: the "
+                            + "listening post from "
+                            + "nightjar, plus a mouth. The "
+                            + "Listen tab is the purist "
+                            + "half — it scans and logs "
+                            + "advertisements and never "
+                            + "connects, pairs or sends, "
+                            + "exactly like the upstream "
+                            + "app. The Send and Serve "
+                            + "tabs are the hack half: "
+                            + "they transmit, but only "
+                            + "when you press their "
+                            + "buttons, to targets you "
+                            + "type. The two halves share "
+                            + "no radio state; the ear "
+                            + "stays pure, the mouth is a "
+                            + "different organ.\n\nSend and "
+                            + "Serve work while the app "
+                            + "is on screen. iOS does not "
+                            + "let a sideloaded app hold "
+                            + "listeners or "
+                            + "advertisements open in "
+                            + "the background, so a "
+                            + "beacon or server stops "
+                            + "being reachable when you "
+                            + "leave the app — the Listen "
+                            + "tab keeps its background "
+                            + "hearing, the mouth does "
+                            + "not.")
+                    Text("nightjar-hack is a testing instrument for "
+                         + "devices and networks you own, or that "
+                         + "you are engaged in writing to test. Aim "
+                         + "everything it sends, scans, plants, or "
+                         + "records only at targets you are "
+                         + "authorized for. You are responsible for "
+                         + "your authorization; the author is not "
+                         + "responsible for misuse against devices "
+                         + "or networks you were not authorized to "
+                         + "test.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
 #if !STORE_BUILD
                 Section(header: Text("Support the work")) {
                     Button {
@@ -1029,106 +1189,39 @@ struct AboutView: View {
                         .foregroundStyle(.secondary)
                 }
 #endif
-                Section(header: Text("Colours")) {
-                    Button {
-                        showColours = true
-                    } label: {
-                        HStack {
-                            Label("Themes & backdrops",
-                                  systemImage: "paintpalette")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    Text("Six themes ship with the app and "
-                         + "you can tailor your own; every tab "
-                         + "may wear its own backdrop — the "
-                         + "living wallpaper, the Jolly Roger, "
-                         + "the plain theme colour, or your own "
-                         + "image or GIF.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                Section(header: Text("Backdrop")) {
-                    if let reel = Wallpaper.image {
-                        Text("Living wallpaper: playing "
-                             + "(\(Int(reel.size.width))×"
-                             + "\(Int(reel.size.height)) pt) — it "
-                             + "loops behind every tab, beginning "
-                             + "to end, forever.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    } else if UIImage(named: "AppBackground") != nil {
-                        Text("The living wallpaper has not landed "
-                             + "in this build — the retired Jolly "
-                             + "Roger stands in behind every tab "
-                             + "until wallpaper.gif joins the "
-                             + "bundle.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    } else {
-                        Text("No backdrop in this build. The app "
-                             + "looks for wallpaper.gif in the "
-                             + "bundle (or a \"Wallpaper\" data "
-                             + "asset) — and wears plain black "
-                             + "until it finds one.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
-                Section(header: Text("Authorized use")) {
-                    Text("nightjar-hack is a testing instrument for "
-                         + "devices and networks you own, or that "
-                         + "you are engaged in writing to test. Aim "
-                         + "everything it sends, scans, plants, or "
-                         + "records only at targets you are "
-                         + "authorized for. You are responsible for "
-                         + "your authorization; the author is not "
-                         + "responsible for misuse against devices "
-                         + "or networks you were not authorized to "
-                         + "test.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                Section(header: Text("This post"),
-                        footer: Text("The name of this ear, written into every session. "
-                                     + "The Mac's fusion uses it to tell your phone apart "
-                                     + "from your other posts — give each one its own name.")) {
-                    HStack {
-                        Text("Post name")
-                        Spacer()
-                        TextField("phone", text: $postName)
-                            .multilineTextAlignment(.trailing)
-                            .textInputAutocapitalization(.never)
-                            .disableAutocorrection(true)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Section(header: Text("Listening")) {
-                    Toggle("Keep the screen awake while listening", isOn: $keepScreenAwake)
-                    Text("Foreground sessions hear everything. In the background iOS only "
-                         + "delivers advertisements from a fixed list of services, so a "
-                         + "backgrounded session keeps hearing tracker tags (Tile, "
-                         + "SmartThings, Find My Device network, Fast Pair) but not "
-                         + "phones, AirTags or anything else that broadcasts only "
-                         + "manufacturer data.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
                 Section(header: Text("Defaults"),
                         footer: Text("Payloads, presets, sessions and logs are data, not settings — a reset never touches them.")) {
-                    Text("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                    ExplainToggle(
+                        title: "What a reset does",
+                        text: "Every setting in this app "
+                            + "has a sane default — the "
+                            + "safe, legible choice — and "
+                            + "the app runs on those "
+                            + "defaults until you "
+                            + "configure otherwise. A "
+                            + "reset returns every "
+                            + "setting to them, and "
+                            + "forgets the setup mirror "
+                            + "too, so the old "
+                            + "configuration cannot "
+                            + "restore itself later.")
                     Button(role: .destructive) {
                         confirmReset = true
                     } label: {
                         Text("Reset all settings to sane defaults")
                     }
                 }
-                Section(header: Text("Getting logs to the Mac")) {
-                    Text("Each session is a JSON Lines file in Files › On My iPhone › "
-                         + "nightjar › sessions, and shareable from the Sessions tab. On "
-                         + "the Mac: nightjar report <file> and nightjar trackers <file>.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                Section(header: Text("Session logs")) {
+                    ExplainToggle(
+                        title: "Getting logs to the Mac",
+                        text: "Each session is a JSON Lines "
+                            + "file in Files › On My "
+                            + "iPhone › nightjar › "
+                            + "sessions, and shareable "
+                            + "from the Sessions tab. On "
+                            + "the Mac: nightjar report "
+                            + "<file> and nightjar "
+                            + "trackers <file>.")
                 }
             }
             .scrollContentBackground(.hidden)
@@ -1145,6 +1238,28 @@ struct AboutView: View {
                                 }
                             }
                         }
+                }
+            }
+            .sheet(item: $setupShare) { item in
+                ShareSheet(items: item.items)
+            }
+            .fileImporter(isPresented: $importingSetup,
+                          allowedContentTypes: [.json]) { result in
+                guard case .success(let url) = result,
+                      url.startAccessingSecurityScopedResource(),
+                      let data = try? Data(contentsOf: url)
+                else {
+                    toasts.show("That setup file would "
+                                + "not come")
+                    return
+                }
+                url.stopAccessingSecurityScopedResource()
+                if HouseSetup.importData(data) {
+                    toasts.show("Setup restored — relaunch "
+                                + "to see it everywhere")
+                } else {
+                    toasts.show("That is not a nightjar "
+                                + "setup file")
                 }
             }
 #if !STORE_BUILD

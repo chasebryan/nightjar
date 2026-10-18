@@ -340,6 +340,18 @@ enum BootMedia {
     /// reel, the splashes. Off, every GIF stands
     /// as a still frame instead.
     static let gifsKey = "media.gifsEnabled"
+    /// The house's picture mode: "quality" or
+    /// "performance" — how much of the device
+    /// the films, reels and the boot's sphere
+    /// may spend.
+    static let modeKey = "media.mode"
+
+    /// True when the operator has chosen
+    /// performance over quality.
+    static var performanceMode: Bool {
+        UserDefaults.standard.string(forKey: modeKey)
+            == "performance"
+    }
 
     static var file: URL {
         let docs = FileManager.default.urls(
@@ -389,6 +401,8 @@ struct BootView: View {
     private var bootText = "lines"
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = true
+    @AppStorage(BootMedia.modeKey)
+    private var pictureMode = "quality"
     @State private var shown = 0
     @State private var typed = 0
     @State private var scrambleStep = 0
@@ -440,7 +454,9 @@ struct BootView: View {
                             focusY: CGFloat = 0.5,
                             zoom: CGFloat = 1) -> some View {
         BootFilmPlayer(data: data, focusX: focusX,
-                       focusY: focusY, zoom: zoom) { value in
+                       focusY: focusY, zoom: zoom,
+                       maxPixel: pictureMode == "performance"
+                           ? 512 : 1024) { value in
             if abs(value - filmProgress) > 0.004
                 || value == 1 {
                 filmProgress = value
@@ -474,6 +490,16 @@ struct BootView: View {
             (Double(bootProgress) - 0.45) / 0.55))
         return CGFloat(11 * (1 - t))
     }
+
+    /// The manifest's clock, built once — a
+    /// formatter is far too expensive to build
+    /// on every redraw.
+    private static let clockFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
 
     private var lines: [BootLine] {
         // Plain statements of fact, set like a
@@ -528,11 +554,8 @@ struct BootView: View {
             out.append(BootLine(text: "Wallpaper — missing",
                                 tone: .off))
         }
-        let clock = DateFormatter()
-        clock.locale = Locale(identifier: "en_US_POSIX")
-        clock.dateFormat = "HH:mm"
         out.append(BootLine(
-            text: "Time — \(clock.string(from: Date()))",
+            text: "Time — \(Self.clockFormatter.string(from: Date()))",
             tone: .ok))
         // The closing line — "the world is yours" —
         // is not a log line: it is the finale,
@@ -739,7 +762,11 @@ struct BootView: View {
     /// the other way, lights as it descends.
     private func orbLayer(_ layer: Int,
                           side: CGFloat) -> some View {
-        let count = 130
+        // The lattice's density is the mode's
+        // to spend: full in quality, light in
+        // performance.
+        let count = pictureMode == "performance"
+            ? 70 : 130
         let golden = 2.399963229728653
         let tint = layer == 0
             ? color(.ok)
@@ -1282,21 +1309,42 @@ struct GIFPlayerView: UIViewRepresentable {
         configure(view)
     }
 
-    /// Play the reel, or — when the house has
-    /// stilled its GIFs — stand its first frame.
+    /// Play the reel — full-size in quality
+    /// mode, decoded light in performance
+    /// mode — or, when the house has stilled
+    /// its GIFs, stand its first frame.
     private func configure(_ view: UIImageView) {
-        if gifsEnabled {
-            if view.isAnimating { return }
-            if let image = UIImage.animatedGIF(data: data) {
-                view.image = image
-                view.startAnimating()
-            }
-        } else {
+        guard gifsEnabled else {
             view.stopAnimating()
             view.animationImages = nil
             if view.image == nil
                 || view.image?.images != nil {
                 view.image = UIImage(data: data)
+            }
+            return
+        }
+        if BootMedia.performanceMode {
+            // Already standing on the capped decode.
+            if view.animationImages != nil { return }
+            let film = UIImage.gifFrames(
+                data: data, maxPixel: 640)
+            guard let first = film.frames.first
+            else { return }
+            view.image = first
+            view.animationImages = film.frames
+            view.animationDuration = film.duration
+            view.startAnimating()
+        } else {
+            if view.animationImages != nil {
+                // Came from the capped decode;
+                // rebuild at full size.
+                view.animationImages = nil
+                view.image = nil
+            }
+            if view.isAnimating { return }
+            if let image = UIImage.animatedGIF(data: data) {
+                view.image = image
+                view.startAnimating()
             }
         }
     }
@@ -1366,6 +1414,10 @@ struct BootFilmPlayer: UIViewRepresentable {
     var focusX: CGFloat = 0.5
     var focusY: CGFloat = 0.5
     var zoom: CGFloat = 1
+    /// The decode cap, from the house's picture
+    /// mode: quality decodes wide, performance
+    /// decodes light.
+    var maxPixel: Int = 1024
     var onProgress: (Double) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -1378,6 +1430,7 @@ struct BootFilmPlayer: UIViewRepresentable {
         view.zoom = zoom
         view.alpha = 0
         context.coordinator.begin(in: view, data: data,
+                                  maxPixel: maxPixel,
                                   onProgress: onProgress)
         return view
     }
@@ -1402,13 +1455,14 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var cancelled = false
 
         func begin(in view: BootFilmContainer, data: Data,
+                   maxPixel: Int,
                    onProgress: @escaping (Double) -> Void) {
             self.view = view
             self.onProgress = onProgress
             DispatchQueue.global(qos: .userInitiated)
                 .async {
                 let film = UIImage.gifFrames(
-                    data: data, maxPixel: 768)
+                    data: data, maxPixel: maxPixel)
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self,
                           !self.cancelled,
@@ -1498,10 +1552,12 @@ struct CentipedeSplashView: View {
     /// How long the splash stays: the GIF's own play length
     /// plus a breath, clamped sane; 3 s for the fallback card.
     private var splashSeconds: Double {
-        guard let data = gifData,
-              let image = UIImage.animatedGIF(data: data)
-        else { return 3.0 }
-        return min(max(image.duration + 0.3, 1.5), 6.0)
+        guard let data = gifData else { return 3.0 }
+        // The length from the frame headers alone —
+        // never a full decode just to tell time.
+        let seconds = UIImage.gifDelays(data).reduce(0, +)
+        guard seconds > 0 else { return 3.0 }
+        return min(max(seconds + 0.3, 1.5), 6.0)
     }
 
     var body: some View {
@@ -1551,6 +1607,49 @@ struct CentipedeSplashView: View {
 struct ShareItem: Identifiable {
     let id = UUID()
     let items: [Any]
+}
+
+// MARK: - The folded explanation
+
+/// What a thing does, folded away until asked:
+/// one quiet row that opens into a terse, exact
+/// explanation — what it does, why, and how it
+/// can be useful. Screens explain themselves on
+/// request instead of lecturing at rest.
+struct ExplainToggle: View {
+    var title: String = "What this does"
+    let text: String
+    @State private var open = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    open.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                    Spacer()
+                    Image(systemName: open
+                          ? "chevron.up" : "chevron.down")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if open {
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false,
+                               vertical: true)
+            }
+        }
+    }
 }
 
 // MARK: - Her browser window
