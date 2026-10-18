@@ -425,8 +425,12 @@ struct BootView: View {
         }
     }
 
-    private func filmPlayer(data: Data) -> some View {
-        BootFilmPlayer(data: data) { value in
+    private func filmPlayer(data: Data,
+                            focusX: CGFloat = 0.5,
+                            focusY: CGFloat = 0.5,
+                            zoom: CGFloat = 1) -> some View {
+        BootFilmPlayer(data: data, focusX: focusX,
+                       focusY: focusY, zoom: zoom) { value in
             if abs(value - filmProgress) > 0.004
                 || value == 1 {
                 filmProgress = value
