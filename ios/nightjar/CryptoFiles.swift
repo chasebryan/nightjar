@@ -403,7 +403,9 @@ enum CryptoFiles {
     private static func writeChunk(_ sealed: Data,
                                    to handle: FileHandle) {
         var length = UInt32(sealed.count).bigEndian
-        withUnsafeBytes(of: &length) { handle.write($0) }
+        let lengthData = withUnsafeBytes(of: &length) {
+            Data($0) }
+        handle.write(lengthData)
         handle.write(sealed)
     }
 
