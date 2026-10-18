@@ -6998,6 +6998,19 @@ struct SkelliView: View {
     @AppStorage("skelli.draft") private var input = ""
     @State private var showOptions = false
     @State private var showScrapbook = false
+    /// Her portrait, pressed: it swells a
+    /// little while the finger rests on it,
+    /// and lifting the finger folds — or
+    /// unfolds — everything under her name
+    /// (the activity line, the deck, the
+    /// Vanish bar), leaving the chat room to
+    /// read. Pressed again, it all returns.
+    /// View state only, and remembered
+    /// across launches: nothing in the house
+    /// changes but the seeing of it.
+    @State private var avatarPressed = false
+    @AppStorage("skelli.minimalChat")
+    private var minimalChat = false
     @State private var showDirectory = false
     @State private var showMemory = false
     @State private var showWeights = false
@@ -7084,9 +7097,14 @@ struct SkelliView: View {
     private var pinnedHeader: some View {
         VStack(spacing: 0) {
             header
-            activityBar
-            intelStrip
-            vanishBar
+            if !minimalChat {
+                Group {
+                    activityBar
+                    intelStrip
+                    vanishBar
+                }
+                .transition(.opacity)
+            }
         }
         .padding(.top, 50)
         .background {
@@ -7496,6 +7514,31 @@ struct SkelliView: View {
                                 >= .bravo)
                     }
             }
+            .scaleEffect(avatarPressed ? 1.13 : 1.0)
+            .animation(.spring(response: 0.30,
+                               dampingFraction: 0.60),
+                       value: avatarPressed)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !avatarPressed {
+                            avatarPressed = true
+                        }
+                    }
+                    .onEnded { _ in
+                        avatarPressed = false
+                        withAnimation(.spring(
+                            response: 0.42,
+                            dampingFraction: 0.86)) {
+                            minimalChat.toggle()
+                        }
+                        Haptics.select()
+                    })
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(
+                "Folds the deck away for room to "
+                + "read, or brings it back.")
             VStack(alignment: .leading, spacing: 3) {
                 Text("Skelli")
                     .font(.title3.weight(.semibold))

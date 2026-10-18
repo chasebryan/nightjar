@@ -383,6 +383,21 @@
   go flat three running,
   she notices that too,
   and names it, once.
+- **Room to read.**
+  Press her portrait —
+  it swells a little
+  under your finger —
+  and letting go folds
+  the whole deck away:
+  the activity line,
+  the panels, the
+  Vanish bar. The
+  conversation takes
+  the screen. Press
+  the portrait again
+  and it all returns.
+  Nothing changes but
+  the seeing.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

@@ -71,6 +71,7 @@ enum SaneDefaults {
         "emconCheckWifi", "emconCheckBluetooth",
         // Colours
         "theme.selected", "theme.customs",
+        "skelli.minimalChat",
         "theme.backdrop.everywhere", "theme.backdrop.listen",
         "theme.backdrop.send", "theme.backdrop.serve",
         "theme.backdrop.sessions", "theme.backdrop.scan",
