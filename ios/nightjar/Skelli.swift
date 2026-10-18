@@ -4450,13 +4450,36 @@ struct SkelliHalo: View {
     @State private var swell: Double = 0
     @State private var idleSince: Date?
 
-    /// The whole spectrum, in order, seamless.
+    /// The whole spectrum, sampled every
+    /// fifteen degrees of hue so the colors
+    /// melt into one another instead of
+    /// standing in bands — light through a
+    /// prism, not paint in stripes.
     private var spectrum: AngularGradient {
         AngularGradient(
-            colors: [.red, .orange, .yellow, .green,
-                     .cyan, .blue, .purple, .pink,
-                     .red],
+            colors: (0...24).map {
+                Color(hue: Double($0) / 24.0,
+                      saturation: 0.82,
+                      brightness: 1.0)
+            },
             center: .center)
+    }
+
+    /// One stratum of the beam: an arc of the
+    /// spectrum ending at the shared head, so
+    /// strata of falling length and rising
+    /// light stack into a comet's fall.
+    private func beamArc(_ len: Double,
+                         _ width: Double,
+                         _ opacity: Double,
+                         _ head: Double) -> some View {
+        Circle()
+            .trim(from: 0, to: len)
+            .stroke(spectrum, style: StrokeStyle(
+                lineWidth: width, lineCap: .round))
+            .rotationEffect(.degrees(
+                head - len * 360))
+            .opacity(opacity)
     }
 
     /// One revolution's seconds at rest, by her
@@ -4542,35 +4565,56 @@ struct SkelliHalo: View {
                     now.timeIntervalSince($0) > 180
                 } ?? false)
             let presence = deepIdle
-                ? 0.35 : (mood == .idle ? 0.55 : 0.8)
+                ? 0.4 : (mood == .idle ? 0.7 : 0.9)
+            let drift = now.timeIntervalSince(epoch)
+                * 9
+            let head = angle(at: now) + 100.8
+            let beam = min(1, presence + 0.3
+                           + swell * 0.3)
             ZStack {
+                // The ring, twice over: a wide,
+                // blurred copy beneath, so the
+                // spectrum reads as light falling
+                // on the dark; the hairline itself
+                // above it.
+                Circle()
+                    .stroke(spectrum, lineWidth: 4.5)
+                    .blur(radius: 3.5)
+                    .rotationEffect(.degrees(drift))
+                    .opacity((presence + swell * 0.3)
+                             * 0.35)
                 Circle()
                     .stroke(spectrum,
                             lineWidth: 1.25)
-                    .rotationEffect(.degrees(
-                        now.timeIntervalSince(epoch)
-                        * 9))
-                    .opacity(presence
-                             + swell * 0.3)
-                Circle()
-                    .trim(from: 0, to: 0.16)
-                    .stroke(spectrum, style:
-                        StrokeStyle(lineWidth: 1.6,
-                                    lineCap: .round))
-                    .rotationEffect(
-                        .degrees(angle(at: now)))
-                    .opacity(min(1, presence + 0.35
+                    .rotationEffect(.degrees(drift))
+                    .opacity(min(1, presence + 0.25
                                  + swell * 0.3))
-                Circle()
-                    .trim(from: 0, to: 0.045)
-                    .stroke(Color.white, style:
-                        StrokeStyle(lineWidth: 1.1,
-                                    lineCap: .round))
-                    .rotationEffect(.degrees(
-                        angle(at: now) + 41.4))
-                    .shadow(color: .white
-                        .opacity(0.5), radius: 3)
-                    .opacity(min(1, presence + 0.4))
+                // The beam: strata of falling
+                // length and rising light, all
+                // ending at one head — a comet,
+                // not a dash — and at the head a
+                // bead of real white light, hot
+                // at the core and falling soft.
+                beamArc(0.28, 2.4, 0.10 * beam, head)
+                beamArc(0.19, 2.2, 0.18 * beam, head)
+                beamArc(0.12, 2.0, 0.34 * beam, head)
+                beamArc(0.06, 1.8, 0.60 * beam, head)
+                ZStack {
+                    Color.clear
+                    Circle()
+                        .fill(RadialGradient(
+                            colors: [.white,
+                                     .white
+                                        .opacity(0.35),
+                                     .clear],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 6.5))
+                        .frame(width: 13, height: 13)
+                        .offset(x: 35)
+                }
+                .rotationEffect(.degrees(head))
+                .opacity(beam)
             }
             .hueRotation(.degrees(hue))
             .saturation(
