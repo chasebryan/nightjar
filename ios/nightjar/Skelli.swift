@@ -7194,10 +7194,6 @@ struct SkelliView: View {
     @State private var avatarPressed = false
     @AppStorage("skelli.minimalChat")
     private var minimalChat = false
-    /// The activity dot's pulse: view state
-    /// only, restarted at a new cadence
-    /// whenever her mood changes.
-    @State private var dotPulse = false
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
     /// Her headline wire, observed for the
@@ -7307,45 +7303,56 @@ struct SkelliView: View {
         .padding(.top, 50)
         .background {
             ZStack {
-                // Glass, not slab (2026-10-18):
-                // this field used to paint black
-                // at 0.92 over the screen's own
-                // backdrop — a drab slab hiding
-                // the dot grid and the breathing
-                // accent glow the chat below it
-                // lives on. Now the material
-                // samples that backdrop directly,
-                // a lighter wash deepens it for
-                // the text, and the accent whispers
-                // from both corners — the portion
-                // reads as glass in the same
-                // scene, and folding it away by
-                // her portrait changes nothing
-                // but its height.
+                // Glass with a visible tint
+                // (2026-10-18, second pass): the
+                // first glass leaned entirely on
+                // the backdrop showing through —
+                // and the backdrop up here is
+                // near-black, so on device there
+                // was no visible change at all.
+                // Now the field carries its own
+                // light: a deep accent-tinted
+                // gradient over black (the theme's
+                // green, felt at the top where
+                // she sits, easing away down the
+                // deck), a real pool of accent
+                // glow behind her portrait, the
+                // material's grain over it, and
+                // the sheen. Still render-only:
+                // folding by her portrait changes
+                // nothing but its height.
+                Rectangle()
+                    .fill(Color.black.opacity(0.90))
+                Rectangle()
+                    .fill(LinearGradient(
+                        colors: [themes.current.accent
+                                     .opacity(0.20),
+                                 themes.current.accent
+                                     .opacity(0.03)],
+                        startPoint: .top,
+                        endPoint: .bottom))
+                Rectangle()
+                    .fill(RadialGradient(
+                        colors: [themes.current.accent
+                                     .opacity(0.26),
+                                 .clear],
+                        center: .topLeading,
+                        startRadius: 8,
+                        endRadius: 280))
                 Rectangle()
                     .fill(.ultraThinMaterial)
-                    .opacity(0.85)
-                Rectangle()
-                    .fill(Color.black.opacity(0.55))
+                    .opacity(0.35)
                 Rectangle()
                     .fill(LinearGradient(
                         colors: [Color.white
-                                     .opacity(0.05),
+                                     .opacity(0.06),
                                  .clear],
                         startPoint: .top,
                         endPoint: .bottom))
                 Rectangle()
                     .fill(RadialGradient(
                         colors: [themes.current.accent
-                                     .opacity(0.16),
-                                 .clear],
-                        center: .topLeading,
-                        startRadius: 8,
-                        endRadius: 240))
-                Rectangle()
-                    .fill(RadialGradient(
-                        colors: [themes.current.accent
-                                     .opacity(0.05),
+                                     .opacity(0.07),
                                  .clear],
                         center: .bottomTrailing,
                         startRadius: 20,
@@ -7645,11 +7652,17 @@ struct SkelliView: View {
     }
 
     /// The activity line, alive (2026-10-18):
-    /// the dot carries her state — the accent,
-    /// quick, while she works; amber when the
-    /// wire wants attention (an unnamed soul,
-    /// a raised EMCON); a slow accent breathe
-    /// at a clear watch. The text: work
+    /// the dot carries her state in COLOR
+    /// only — the accent while she works,
+    /// amber under a raised EMCON, a soft
+    /// accent at a clear watch — and it does
+    /// not move. (It pulsed at first; on
+    /// device the throb beside the scrolling
+    /// text was a distraction, and the dot
+    /// was steady again within the hour. An
+    /// unnamed soul on the wire is ordinary
+    /// weather, not an alarm: it no longer
+    /// colors the dot.) The text: work
     /// narrates itself first, always; at an
     /// idle watch the headline wire scrolls
     /// the world's latest past the line; and
@@ -7661,8 +7674,7 @@ struct SkelliView: View {
     private var activityBar: some View {
         let busy = skelli.mood != .idle
         let attention = !busy
-            && (SkelliVoice.unnamedCount() > 0
-                || emcon.condition >= .bravo)
+            && emcon.condition >= .bravo
         let dotColor: Color = busy
             ? themes.current.accent
             : (attention
@@ -7673,18 +7685,9 @@ struct SkelliView: View {
             Circle()
                 .fill(dotColor)
                 .frame(width: 7, height: 7)
-                .scaleEffect(
-                    dotPulse && !reduceMotion
-                        ? (busy ? 1.35 : 1.18)
-                        : 1.0)
-                .animation(
-                    reduceMotion ? nil
-                        : .easeInOut(
-                            duration: busy
-                                ? 0.8 : 2.0)
-                            .repeatForever(
-                                autoreverses: true),
-                    value: dotPulse)
+                .shadow(color: dotColor
+                            .opacity(0.55),
+                        radius: 3)
             if skelli.activity != "Ready." {
                 Text(skelli.activity)
                     .font(.caption)
@@ -7717,14 +7720,7 @@ struct SkelliView: View {
         .padding(.horizontal)
         .padding(.vertical, 4)
         .onAppear {
-            dotPulse = true
             wire.start()
-        }
-        .onChange(of: skelli.mood) { _ in
-            dotPulse = false
-            DispatchQueue.main.async {
-                dotPulse = true
-            }
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active {

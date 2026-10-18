@@ -509,6 +509,23 @@
   reset restores it on,
   like the web switch
   beside it.
+- **Steady dot, visible
+  glass.** The activity
+  dot no longer pulses
+  — color only (accent
+  at work, amber under
+  a raised EMCON, soft
+  accent at a clear
+  watch), with a faint
+  still halo. And the
+  deck's glass now
+  carries its own
+  light: a deep
+  accent-tinted
+  gradient and a real
+  pool of glow behind
+  her portrait, visible
+  at last.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
