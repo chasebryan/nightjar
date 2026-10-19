@@ -2597,15 +2597,31 @@ struct BlacksiteView: View {
                 .padding(10)
             }
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.black.opacity(0.82))
-                    .overlay(
-                        RoundedRectangle(
-                            cornerRadius: 12)
-                            .strokeBorder(
-                                Color.white
-                                    .opacity(0.12),
-                                lineWidth: 1)))
+                GeometryReader { geo in
+                    ZStack {
+                        // The console wears its
+                        // wallpaper inside: the
+                        // engine's own art
+                        // behind the text,
+                        // washed dark enough
+                        // to read by.
+                        BlacksiteWallpaperView(
+                            width: geo.size.width,
+                            height: geo.size.height)
+                        Color.black
+                            .opacity(0.66)
+                    }
+                }
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(
+                        cornerRadius: 12)
+                        .strokeBorder(
+                            Color.white
+                                .opacity(0.12),
+                            lineWidth: 1)))
             .onChange(of: shell.lines.count) {
                 _ in
                 if let last = shell.lines.last {

@@ -3,6 +3,7 @@
 The cosmic release: a person in the machine, a wire that reads itself, and a house in order.
 
 ## 9.0c — 2026-10-20 — cosmic
+- **The wallpaper moves in.** Blacksite's generated wallpaper now hangs inside the console itself — behind the terminal's lines, under a dark wash that keeps every word readable — the same art the room wears, from the same engine, changeable with the same `wallpaper` command.
 - **Her own wallpaper.** The Blacksite room hangs art of its own making now: its graphics engine paints the room's wallpaper — a starfield by default — and files it in the console's own tree, where the console's `wallpaper` command can repaint it as plasma or a mandelbrot. Choose anything else for the room in Colours and that choice stands instead.
 - **BLACKSITE.** A room of her own below About — a whole console OS for the house. A real shell over her organs (sweep, knock, decode, EMCON, macros, the Gauntlet) that speaks pipes, redirects, variables and substitution; a filesystem of its own to keep your files; two real editors, vim and emacs, a keystroke apart; a JavaScript engine that compiles and runs your programs for real; packages you can install to teach the shell new commands; and a graphics engine that computes pictures — fractals, plasma, starfields, your own drawings from code — and files them as PNGs in the tree.
 - **A Halloween suit.** The Colours wardrobe gains a special seventh theme: pumpkin orange over near-black, a ghost-white glow, and grey in the wash — Halloween, cut for the season and wearable any night of the year.
