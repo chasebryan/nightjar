@@ -60,6 +60,12 @@ final class BlacksiteShell: ObservableObject {
     @Published private(set) var lines: [Line] = []
     @Published private(set) var busy = false
 
+    /// While a python program sits in
+    /// input(), the next line typed is
+    /// handed to the program instead of
+    /// running as a command.
+    private var inputWaiter: ((String) -> Void)?
+
     private let scanner = ScanModel()
     private let recon = Recon()
     private var history: [String] = []
@@ -315,6 +321,15 @@ final class BlacksiteShell: ObservableObject {
     /// One interactive line: echoed,
     /// remembered, executed.
     func run(_ raw: String) {
+        if let waiter = inputWaiter {
+            inputWaiter = nil
+            let typed = raw
+                .trimmingCharacters(
+                    in: .newlines)
+            emit("▸ " + typed, .cmd)
+            waiter(typed)
+            return
+        }
         let command = raw.trimmingCharacters(
             in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return }
@@ -1524,6 +1539,30 @@ final class BlacksiteShell: ObservableObject {
     /// house's small python (BlacksitePy).
     /// Bare, it lists what the subset
     /// carries and what it leaves out.
+    /// The bridge input() parks on:
+    /// the program's thread waits at a
+    /// gate while the console's next
+    /// typed line is routed here.
+    private func makeInputProvider()
+        -> () -> String? {
+        return { [weak self] in
+            guard let self = self else {
+                return nil
+            }
+            let gate = DispatchSemaphore(
+                value: 0)
+            var answer: String? = nil
+            DispatchQueue.main.async {
+                self.inputWaiter = { typed in
+                    answer = typed
+                    gate.signal()
+                }
+            }
+            gate.wait()
+            return answer
+        }
+    }
+
     private func pyCommand(_ args: [String]) {
         guard let typed = args.first else {
             for line in BlacksitePy.helpLines {
@@ -1548,8 +1587,11 @@ final class BlacksiteShell: ObservableObject {
         busy = true
         BlacksitePy.runFile(
             path, args: args,
+            inputProvider:
+                makeInputProvider(),
             emit: emitBlock) { [weak self] in
                 self?.busy = false
+                self?.inputWaiter = nil
             }
     }
 
@@ -1599,9 +1641,12 @@ final class BlacksiteShell: ObservableObject {
                 target, args: [file]
                     + Array(
                         args.dropFirst()),
+                inputProvider:
+                    makeInputProvider(),
                 emit: emitBlock) {
                     [weak self] in
                     self?.busy = false
+                    self?.inputWaiter = nil
                 }
         } else if target.hasSuffix(".sh")
                     || target.hasSuffix(".bsh") {
