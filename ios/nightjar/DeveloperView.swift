@@ -149,6 +149,43 @@ enum DevKit {
             + "(\(downloaded.count) downloaded)")
         lines.append("Skelli is feeling: "
             + "\(SkelliHeart.shared.feeling.word)")
+        let saved = SkelliStore.load()
+        lines.append("Chat: \(saved.lines.count) "
+            + "lines on screen, "
+            + "\(saved.archive.count) archived, "
+            + "\(saved.notes.count) notes kept")
+        let factCount = SubconsciousCenter
+            .shared.facts.count
+        lines.append("Learned facts: "
+            + "\(factCount)")
+        lines.append("Registries: "
+            + "\(CompanyRegistry.names.count) "
+            + "makers, "
+            + "\(MemberRegistry.names.count) "
+            + "members, "
+            + "\(PortRegistry.names.count) "
+            + "named ports")
+        let marks = TomatoMarks.shared.marked
+        lines.append("Tomato marks: "
+            + (marks.isEmpty
+               ? "none"
+               : "\(marks.count) — "
+                 + marks.sorted()
+                     .joined(separator: ", ")))
+        lines.append("Tomato barrage: "
+            + (TomatoBarrage.shared.running
+               ? "running at "
+                 + TomatoBarrage.shared
+                     .targetLabel
+               : "idle"))
+        lines.append("Macro library: "
+            + "\(MacroStore.load().count) saved, "
+            + "\(MacroTemplates.all.count) "
+            + "house presets")
+        let headroomMB = os_proc_available_memory()
+            / 1_048_576
+        lines.append("Weights headroom: ~"
+            + "\(headroomMB) MB free")
         lines.append("Developer options: "
             + "\(enabled ? "on" : "off")")
         lines.append("Crash records: "
@@ -186,11 +223,60 @@ enum DevKit {
             : crumbs.joined(separator: "\n") + "\n"
         out += "\n=== GAUNTLET ===\n"
         out += Gauntlet.lastSummary() + "\n"
+        out += "\n=== CHAT TRANSCRIPT ===\n"
+        out += chatTranscriptText() + "\n"
         if let log = Gauntlet.latestLogText() {
             out += "\n--- latest gauntlet log ---\n"
             out += log + "\n"
         }
         return out
+    }
+
+    /// Every chat she has had — the archive
+    /// the soft clear kept plus the lines on
+    /// screen, in order, one text. The raw
+    /// material for improving her: what was
+    /// actually asked, and what she actually
+    /// answered, in the field.
+    static func chatTranscriptText() -> String {
+        let saved = SkelliStore.load()
+        var seen = Set<UUID>()
+        let all = (saved.archive + saved.lines)
+            .filter { seen.insert($0.id).inserted }
+            .sorted { $0.when < $1.when }
+        let stamp = ISO8601DateFormatter()
+        let clock = DateFormatter()
+        clock.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        var out = "NIGHTJAR CHAT TRANSCRIPT\n"
+        out += "generated: "
+            + stamp.string(from: Date()) + "\n"
+        out += "\(all.count) lines "
+            + "(\(saved.archive.count) archived, "
+            + "\(saved.lines.count) on screen), "
+            + "\(saved.notes.count) notes kept\n\n"
+        for line in all {
+            out += "["
+                + clock.string(from: line.when)
+                + "] "
+                + (line.fromOperator
+                   ? "OPERATOR" : "SKELLI")
+                + "\n"
+            out += line.text + "\n\n"
+        }
+        return out
+    }
+
+    /// The transcript as a file, for the
+    /// share sheet.
+    static func chatExportFileURL() -> URL {
+        let url = FileManager.default
+            .temporaryDirectory
+            .appendingPathComponent(
+                "nightjar-chat-transcript.txt")
+        try? chatTranscriptText().write(
+            to: url, atomically: true,
+            encoding: .utf8)
+        return url
     }
 
     /// The export as a file, for the share sheet.
@@ -608,6 +694,23 @@ struct DeveloperSheet: View {
                             + "anywhere.")
                     } label: {
                         Label("Copy the full log",
+                              systemImage: "doc.on.doc")
+                    }
+                    ShareLink(
+                        item: DevKit
+                            .chatExportFileURL()) {
+                        Label("Share all chats",
+                              systemImage: "text.bubble")
+                    }
+                    Button {
+                        Haptics.tap()
+                        UIPasteboard.general.string =
+                            DevKit.chatTranscriptText()
+                        toasts.show("Every chat is "
+                            + "copied — the archive "
+                            + "and the screen.")
+                    } label: {
+                        Label("Copy all chats",
                               systemImage: "doc.on.doc")
                     }
                 }

@@ -2578,8 +2578,8 @@ final class SkelliCenter: ObservableObject {
             q = String(q.dropFirst(7))
         }
         if q.isEmpty {
-            say("Here. Ask about the house, or give "
-                + "an order.")
+            say("Here. The house is mine to "
+                + "run — name the thing.")
             return
         }
 
@@ -9538,14 +9538,6 @@ struct SkelliView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    if skelli.lines.isEmpty {
-                        Text(L("Ask about the house, or give an order."))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 24)
-                            .frame(maxWidth: .infinity,
-                                   alignment: .center)
-                    }
                     ForEach(skelli.lines) { line in
                         HStack(alignment: .top, spacing: 8) {
                             if line.fromOperator {
@@ -9618,7 +9610,7 @@ struct SkelliView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField(L("Ask, or give an order…"),
+            TextField("",
                       text: $input, axis: .vertical)
                 .lineLimit(1...4)
                 .textFieldStyle(.roundedBorder)

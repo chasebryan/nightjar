@@ -169,7 +169,7 @@ final class Gauntlet: ObservableObject {
 
     // MARK: - Steps
 
-    private struct Step {
+    struct Step {
         let stage: String
         let name: String
         let main: Bool
@@ -1244,6 +1244,11 @@ final class Gauntlet: ObservableObject {
             let footprint = DevKit.footprintMB()
             return "footprint now \(footprint) MB"
         }
+        // The battery: the deep bench — chat
+        // by the thousand, stress by the ten
+        // thousand (GauntletBattery.swift).
+        steps += GauntletBattery.steps(
+            intensity: intensity, rng: &fuzz)
         return steps
     }
 }
