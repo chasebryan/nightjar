@@ -1804,8 +1804,7 @@ final class BlacksiteShell: ObservableObject {
                         separatedBy: "|")
                     .map {
                         $0.trimmingCharacters(
-                            in: CharacterSet(
-                                .whitespacesAndNewlines))
+                            in: .whitespacesAndNewlines)
                         .replacingOccurrences(
                             of: "'", with: "")
                         .replacingOccurrences(
