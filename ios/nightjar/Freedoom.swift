@@ -364,6 +364,7 @@ final class FreedoomSchemeHandler:
                 "Content-Type": mime,
                 "Content-Length":
                     "\(data.count)",
+                "Cache-Control": "no-store",
                 "Access-Control-Allow-Origin":
                     "*",
             ])!
@@ -401,6 +402,7 @@ final class FreedoomSchemeHandler:
                 "Content-Type": mime,
                 "Content-Length":
                     "\(size.intValue)",
+                "Cache-Control": "no-store",
                 "Access-Control-Allow-Origin":
                     "*",
             ])!
@@ -520,8 +522,16 @@ struct FreedoomWebView:
         view.scrollView.bounces = false
         if let page = URL(
             string: FreedoomSchemeHandler
-                .scheme + "://room/doom.html") {
-            view.load(URLRequest(url: page))
+                .scheme + "://room/doom.html"
+                + "?launch="
+                + UUID().uuidString) {
+            // A fresh URL every opening: no
+            // cache anywhere in the stack can
+            // serve the room a stale page.
+            view.load(URLRequest(
+                url: page,
+                cachePolicy:
+                    .reloadIgnoringLocalCacheData))
         }
         return view
     }
