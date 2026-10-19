@@ -752,12 +752,12 @@
   The Macros shelf
   arrives with its
   presets built:
-  Full Net Test —
-  the whole house in
-  one run, posture
-  to war rooms,
-  everything but
-  the Banshee —
+  Atomic Netbomb —
+  the whole house
+  in one run,
+  posture to war
+  rooms, everything
+  but the Banshee —
   First Contact,
   Serve Drill, War
   Footing, Air
@@ -767,5 +767,5 @@
   One initiation
   runs each: a tap,
   or simply "run
-  the full net
-  test."
+  the atomic
+  netbomb."

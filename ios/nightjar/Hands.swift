@@ -191,12 +191,15 @@ extension SkelliCenter {
             // operator's order, 2026-10-18): a
             // run order that names a macro in
             // the library needs no word
-            // "macro" — "run the full net
-            // test" is the whole initiation.
-            // Two of the name's words must
-            // land, so a stray "test" never
-            // fires a playlist, and questions
-            // stay questions.
+            // "macro" — "run the atomic
+            // netbomb" is the whole
+            // initiation. Two of the name's
+            // words must land — or one long
+            // coined word, "netbomb", which
+            // is a name by itself — so a
+            // stray "test" never fires a
+            // playlist, and questions stay
+            // questions.
             if q.contains("when did")
                 || q.contains("when was")
                 || q.hasPrefix("when ")
@@ -209,10 +212,22 @@ extension SkelliCenter {
                 return false
             }
             let macros = MacroStore.load()
-            guard let target = bestMacro(
-                    in: q, from: macros),
-                  warNameScore(target.name, in: q) >= 2
-            else { return false }
+            let named = macros.filter { macro in
+                let hits = macro.name.lowercased()
+                    .split {
+                        !$0.isLetter && !$0.isNumber
+                    }
+                    .map(String.init)
+                    .filter {
+                        $0.count >= 3 && q.contains($0)
+                    }
+                return hits.count >= 2
+                    || hits.contains { $0.count >= 7 }
+            }
+            guard let target = named.max(by: {
+                warNameScore($0.name, in: q)
+                    < warNameScore($1.name, in: q)
+            }) else { return false }
             return runMacroByVoice(target)
         }
         // A question ABOUT a macro is not a

@@ -862,7 +862,7 @@ enum MacroTemplates {
     // any house.
 
     static func fullNetTest() -> Macro {
-        Macro(name: "Full Net Test", icon: "target",
+        Macro(name: "Atomic Netbomb", icon: "target",
               colorHex: "C2451E",
               note: "The whole house in one run: "
                 + "posture, the ear, a wire census, "
@@ -877,26 +877,26 @@ enum MacroTemplates {
                 + "Everything but the Banshee.",
               blocks: [
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — beginning"]),
+                    "text": "atomic netbomb — beginning"]),
                 MacroBlock(kind: "announce", config: [
-                    "text": "Full net test running — "
+                    "text": "Atomic Netbomb running — "
                         + "the house is testing itself."]),
                 MacroBlock(kind: "emconOff"),
                 MacroBlock(kind: "stealth",
                            config: ["on": "on"]),
                 MacroBlock(kind: "listenStart",
-                           config: ["label": "Full net test"]),
+                           config: ["label": "Atomic Netbomb"]),
                 MacroBlock(kind: "waitSighting",
                            config: ["seconds": "30",
                                     "onTimeout": "Continue"]),
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — the wire census"]),
+                    "text": "atomic netbomb — the wire census"]),
                 MacroBlock(kind: "sweep"),
                 MacroBlock(kind: "knock", config: [
                     "host": "gateway",
                     "ports": "22, 80, 443, 8080"]),
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — the rig tests itself"]),
+                    "text": "atomic netbomb — the rig tests itself"]),
                 MacroBlock(kind: "serveStart",
                            config: MacroCatalog.defaults(
                             for: "serveStart")),
@@ -920,17 +920,17 @@ enum MacroTemplates {
                 MacroBlock(kind: "fuzzStop"),
                 MacroBlock(kind: "serveStop"),
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — the air"]),
+                    "text": "atomic netbomb — the air"]),
                 MacroBlock(kind: "costume",
                            config: ["name": "nightjar-test"]),
                 MacroBlock(kind: "beaconStart",
-                           config: ["text": "nightjar — full net test",
+                           config: ["text": "nightjar — atomic netbomb",
                                     "name": "nightjar-test"]),
                 MacroBlock(kind: "wait",
                            config: ["seconds": "6"]),
                 MacroBlock(kind: "beaconStop"),
                 MacroBlock(kind: "gattStart",
-                           config: ["text": "nightjar — full net test",
+                           config: ["text": "nightjar — atomic netbomb",
                                     "name": "nightjar-test"]),
                 MacroBlock(kind: "wait",
                            config: ["seconds": "6"]),
@@ -943,7 +943,7 @@ enum MacroTemplates {
                 MacroBlock(kind: "persona",
                            config: ["mode": "Drop"]),
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — the war rooms"]),
+                    "text": "atomic netbomb — the war rooms"]),
                 MacroBlock(kind: "warDefense",
                            config: ["doors": "9000",
                                     "decoys": "Printer, TV"]),
@@ -964,14 +964,14 @@ enum MacroTemplates {
                 MacroBlock(kind: "assault",
                            config: ["mode": "Disarm"]),
                 MacroBlock(kind: "sigintWatch",
-                           config: ["name": "Full net test",
+                           config: ["name": "Atomic Netbomb",
                                     "scope": "mixed"]),
                 MacroBlock(kind: "note", config: [
-                    "text": "full net test — restore"]),
+                    "text": "atomic netbomb — restore"]),
                 MacroBlock(kind: "listenStop"),
                 MacroBlock(kind: "emconOn"),
                 MacroBlock(kind: "announce", config: [
-                    "text": "Full net test complete. "
+                    "text": "Atomic Netbomb complete. "
                         + "The house stands dark; the "
                         + "log holds every phase."]),
               ])
@@ -1160,7 +1160,7 @@ enum MacroTemplates {
     }
 
     static let all: [(title: String, make: () -> Macro)] = [
-        ("Full Net Test", fullNetTest),
+        ("Atomic Netbomb", fullNetTest),
         ("First Contact", firstContact),
         ("Serve Drill", serveDrill),
         ("War Footing", warFooting),
