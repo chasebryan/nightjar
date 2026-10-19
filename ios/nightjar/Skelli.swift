@@ -7259,9 +7259,11 @@ struct SkelliView: View {
     /// (the activity line, the deck, the
     /// Vanish bar), leaving the chat room to
     /// read. Pressed again, it all returns.
-    /// View state only, and remembered
-    /// across launches: nothing in the house
-    /// changes but the seeing of it.
+    /// The fold itself is the
+    /// center's state, written through
+    /// to the store: nothing in the house
+    /// changes but the seeing of it, and
+    /// the seeing survives.
     @State private var avatarPressed = false
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
