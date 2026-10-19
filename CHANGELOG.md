@@ -691,6 +691,17 @@
   before, the condition
   and its gates quietly
   survived the reset.
+- **The ledger reads its
+  tail.** The night log
+  is no longer read and
+  decoded whole every
+  time anything asks —
+  readers take only the
+  newest lines they
+  asked for, and each
+  new seal is written
+  with one encoding,
+  not two.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

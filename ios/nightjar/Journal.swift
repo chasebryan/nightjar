@@ -58,10 +58,25 @@ enum Journal {
                                    module: module, kind: kind,
                                    text: text)
             event.p = lastHash
-            guard let body = try? encoder.encode(event) else { return }
-            event.h = sha256Hex(body)
-            guard let data = try? encoder.encode(event) else { return }
-            var line = data
+            guard let body = try? encoder.encode(event)
+            else { return }
+            let hash = sha256Hex(body)
+            event.h = hash
+            // One encode per event, not two: the
+            // seal folds into the body's own bytes
+            // ahead of its closing brace, with the
+            // honest double-encode as the fallback
+            // if the body ever isn't a JSON object.
+            var line: Data
+            if body.last == UInt8(ascii: "}") {
+                line = body.dropLast()
+                line.append(contentsOf:
+                    ",\"h\":\"\(hash)\"}"
+                        .utf8)
+            } else if let full = try? encoder
+                .encode(event) {
+                line = full
+            } else { return }
             line.append(contentsOf: [0x0A])
             let url = fileURL
             // The chain commits only once the event is
@@ -103,15 +118,55 @@ enum Journal {
     private static var chainLoaded = false
 
     private static func sha256Hex(_ data: Data) -> String {
-        SHA256.hash(data: data)
-            .map { String(format: "%02x", $0) }.joined()
+        let digits: [Character] =
+            Array("0123456789abcdef")
+        var out = ""
+        out.reserveCapacity(64)
+        for byte in SHA256.hash(data: data) {
+            out.append(digits[Int(byte >> 4)])
+            out.append(digits[Int(byte & 0x0F)])
+        }
+        return out
+    }
+
+    /// The file's tail as text, beginning at a
+    /// line boundary: reads are bounded no
+    /// matter how long the house's history
+    /// grows. (The seal chain's genesis rule
+    /// forbids rotating the file away — a
+    /// rotated head would read as tampering —
+    /// so instead, no reader ever pays for
+    /// more history than it asked for.)
+    private static func tailText(
+        maxBytes: Int) -> String? {
+        guard let handle = try? FileHandle(
+            forReadingFrom: fileURL) else {
+            return nil
+        }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let start = size > UInt64(maxBytes)
+            ? size - UInt64(maxBytes) : 0
+        _ = try? handle.seek(toOffset: start)
+        guard var data = try? handle.readToEnd(),
+              !data.isEmpty else { return nil }
+        if start > 0,
+           let newline = data.firstIndex(of: 0x0A) {
+            // The first line is a fragment of a
+            // longer history; drop it whole.
+            // (0x0A never occurs inside a
+            // multi-byte UTF-8 sequence, so the
+            // cut is always on a character edge.)
+            data = data.subdata(
+                in: (newline + 1)..<data.count)
+        }
+        return String(data: data, encoding: .utf8)
     }
 
     private static func loadChainTail() {
         chainLoaded = true
-        guard let data = try? Data(contentsOf: fileURL),
-              let text = String(data: data, encoding: .utf8)
-        else { return }
+        guard let text = tailText(
+            maxBytes: 256 * 1024) else { return }
         for line in text.split(separator: "\n").reversed() {
             if let event = try? decoder.decode(
                 NightEvent.self, from: Data(line.utf8)),
@@ -162,11 +217,14 @@ enum Journal {
     }
 
     /// Newest first, capped — the view's working set.
+    /// Reads only the tail the limit can need:
+    /// the SIGINT station asks every two seconds
+    /// and must never pay for the whole history.
     static func events(limit: Int = 300) -> [NightEvent] {
-        guard let data = try? Data(contentsOf: fileURL),
-              let text = String(data: data, encoding: .utf8) else {
-            return []
-        }
+        let budget = min(4 * 1024 * 1024,
+                         max(256 * 1024, limit * 1024))
+        guard let text = tailText(maxBytes: budget)
+        else { return [] }
         var parsed: [NightEvent] = []
         for line in text.split(separator: "\n") {
             if let event = try? decoder.decode(
