@@ -189,6 +189,25 @@ final class BlacksiteShell: ObservableObject {
              + "holds here. type 'help'.", .sys)
     }
 
+    /// The machine identifier (iPhone18,2
+    /// and kin), read the way the developer
+    /// room reads it — DevKit's copy is
+    /// file-private, so the shell keeps its
+    /// own.
+    static var deviceModelID: String {
+        var system = utsname()
+        uname(&system)
+        return Mirror(reflecting: system.machine)
+            .children.reduce(into: "") {
+                text, child in
+                if let byte = child.value as? Int8,
+                   byte != 0 {
+                    text.append(Character(
+                        UnicodeScalar(UInt8(byte))))
+                }
+            }
+    }
+
     // MARK: History
 
     /// History, walked from the newest back:
@@ -674,7 +693,7 @@ final class BlacksiteShell: ObservableObject {
             emitBlock(DevKit.houseState(), .sys)
         case "ver", "whoami":
             emit("nightjar-hack \(AppInfo.version) "
-                 + "on \(DevKit.deviceModel) — "
+                 + "on \(Self.deviceModelID) — "
                  + "source "
                  + (SourceStamp.shortCommit
                     ?? "unstamped"), .sys)
@@ -1289,9 +1308,9 @@ final class BlacksiteShell: ObservableObject {
             index += 1
         }
         let found = BlacksiteFS.walk(root)
-            .filter {
+            .filter { path in
                 needle.map { name in
-                    $0.contains(name)
+                    path.contains(name)
                 } ?? true
             }
         if found.isEmpty {
@@ -1970,10 +1989,9 @@ final class BlacksiteShell: ObservableObject {
                         var line = "\(label): "
                             + "\(hit.port)/tcp open"
                             + " — \(hit.service)"
-                        if let banner = hit.banner,
-                           !banner.isEmpty {
+                        if !hit.banner.isEmpty {
                             line += " — \u{201C}"
-                                + banner
+                                + hit.banner
                                     .prefix(48)
                                 + "\u{201D}"
                         }
@@ -2102,7 +2120,8 @@ final class BlacksiteShell: ObservableObject {
                  + " — exposure "
                  + String(format: "%.0f",
                           center.emcon.currentScore(
-                            mouth: center.mouth))
+                            mouth: center.mouth)
+                            .value)
                  + " of 100.", .sys)
             return
         }

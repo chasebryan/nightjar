@@ -1160,15 +1160,14 @@ extension EditorCore {
         let here = cursorOffset()
         var found: Int?
         if forward {
-            if let range = haystack.range(
-                of: needle,
-                range: haystack.index(
-                    haystack.startIndex,
-                    offsetBy: min(here + 1,
-                                  haystack.count))
-                    ..<haystack.endIndex) {
-                found = haystack.distance(
-                    from: haystack.startIndex,
+            let start = min(here + 1,
+                            haystack.count)
+            let tail = String(
+                haystack.dropFirst(start))
+            if let range = tail.range(
+                of: needle) {
+                found = start + tail.distance(
+                    from: tail.startIndex,
                     to: range.lowerBound)
             } else if let range = haystack.range(
                 of: needle) {
