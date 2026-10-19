@@ -448,52 +448,112 @@
         weaponEl.addEventListener("touchstart", weaponTap, { passive: false });
         weaponEl.addEventListener("mousedown", weaponTap);
 
-        // Left stick: arrows to move/turn, far push adds run.
-        var stick = nipplejs.create({
-            zone: document.getElementById("stick"),
-            color: "#7d2300", mode: "static",
-            position: { left: "50%", top: "50%" }
-        });
-        var K = { left: 37, right: 39, down: 40, up: 38, speed: 16 };
-        stick.on("end", function () {
-            sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
-        });
-        stick.on("move", function (evt, data) {
-            if (!data.direction) return;
-            if (data.distance <= 14) {
-                sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
+        // Left stick, proportional. Doom's
+        // keys are switches — full speed or
+        // nothing — so the stick drives them
+        // by duty cycle instead: a 50 Hz
+        // driver pulses each direction key
+        // with a density proportional to
+        // the push on that axis (error
+        // diffusion keeps the pulses evenly
+        // spread), and the game's own
+        // inertia smooths the rest. A
+        // gentle push creeps; turning tops
+        // out below the keys' full rate; a
+        // decisive push walks full speed,
+        // and the last sliver of travel
+        // adds run.
+        var stickActive = false;
+        var stickVector = { x: 0, y: 0 };
+        function mkAxis(key) {
+            return { key: key, acc: 0, on: false };
+        }
+        var axUp = mkAxis(38), axDown = mkAxis(40),
+            axLeft = mkAxis(37), axRight = mkAxis(39),
+            axRun = mkAxis(16);
+        function setAxis(axis, on) {
+            if (axis.on === on) return;
+            axis.on = on;
+            sendkey([axis.key],
+                    on ? "keydown" : "keyup");
+        }
+        function driveAxis(axis, mag, floor, ceil) {
+            if (mag < 0.15) {
+                axis.acc = 0;
+                setAxis(axis, false);
                 return;
             }
-            var angle = data.angle.degree;
-            var press = { left: false, right: false, down: false, up: false };
-            switch (data.direction.angle) {
-                case "left":
-                    press.left = true;
-                    if (angle >= 120 && angle <= 150) press.up = true;
-                    if (angle >= 210 && angle <= 240) press.down = true;
-                    break;
-                case "right":
-                    press.right = true;
-                    if (angle >= 30 && angle <= 60) press.up = true;
-                    if (angle >= 300 && angle <= 330) press.down = true;
-                    break;
-                case "up":
-                    press.up = true;
-                    if (angle >= 120 && angle <= 150) press.left = true;
-                    if (angle >= 30 && angle <= 60) press.right = true;
-                    break;
-                case "down":
-                    press.down = true;
-                    if (angle >= 210 && angle <= 240) press.left = true;
-                    if (angle >= 300 && angle <= 330) press.right = true;
-                    break;
+            var duty = floor + (ceil - floor) *
+                (mag - 0.15) / 0.85;
+            axis.acc += duty;
+            if (axis.acc >= 1) {
+                axis.acc -= 1;
+                setAxis(axis, true);
+            } else {
+                setAxis(axis, false);
             }
-            sendkey([K.left], press.left ? "keydown" : "keyup");
-            sendkey([K.right], press.right ? "keydown" : "keyup");
-            sendkey([K.down], press.down ? "keydown" : "keyup");
-            sendkey([K.up], press.up ? "keydown" : "keyup");
-            sendkey([K.speed], data.distance > 44 ? "keydown" : "keyup");
-        });
+        }
+        setInterval(function () {
+            if (!stickActive) return;
+            var x = stickVector.x;
+            var y = stickVector.y;
+            driveAxis(axUp, Math.max(0, y),
+                      0.35, 1.0);
+            driveAxis(axDown, Math.max(0, -y),
+                      0.35, 1.0);
+            driveAxis(axLeft, Math.max(0, -x),
+                      0.25, 0.75);
+            driveAxis(axRight, Math.max(0, x),
+                      0.25, 0.75);
+            var len = Math.sqrt(x * x + y * y);
+            setAxis(axRun, len > 0.92);
+        }, 20);
+        function stickEnd() {
+            stickActive = false;
+            stickVector = { x: 0, y: 0 };
+            [axUp, axDown, axLeft, axRight, axRun]
+                .forEach(function (axis) {
+                    axis.acc = 0;
+                    setAxis(axis, false);
+                });
+        }
+        try {
+            var stick = nipplejs.create({
+                zone: document
+                    .getElementById("stick"),
+                color: "#7d2300", mode: "static",
+                position: { left: "50%", top: "50%" }
+            });
+            stick.on("start", function () {
+                stickActive = true;
+            });
+            stick.on("move", function (evt, data) {
+                if (data.vector) {
+                    stickVector = data.vector;
+                }
+            });
+            stick.on("end", stickEnd);
+        } catch (e2) {
+            // The stick widget itself failed;
+            // the driver above still stands
+            // (the bench handle below uses it).
+            showErr("Stick failed: " +
+                    e2.message);
+        }
+        // A bench handle: the local harness
+        // drives the stick through this when
+        // no finger is available.
+        window.__deck = {
+            set: function (x, y) {
+                stickVector = { x: x, y: y };
+                stickActive = true;
+            },
+            clear: function () {
+                stickActive = false;
+                stickVector = { x: 0, y: 0 };
+            }
+        };
+
     } catch (e) {
         showErr("Controller failed: " + e.message);
     }
