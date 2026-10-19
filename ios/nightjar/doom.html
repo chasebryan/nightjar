@@ -109,9 +109,9 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 108</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 109</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 108 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
+<script>document.getElementById("buildstamp").textContent = "room build 109 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
 
 <script>
     // Engine bootstrap FIRST, alone in its script: nothing
@@ -128,7 +128,6 @@
     }
     ping("boot script running");
     var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
-                    "-nosound",
                     "-config", "default.cfg", "-servername", "nightjar"];
     var started = false;
     var doomReady = false;
