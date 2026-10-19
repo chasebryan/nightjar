@@ -554,6 +554,7 @@ enum Almanac {
                 let ago = q.contains("ago")
                 guard ago || q.hasPrefix("in ")
                         || q.contains("from now")
+                        || q.contains("from today")
                         || q.contains("what date")
                         || q.contains("what day")
                 else { continue }

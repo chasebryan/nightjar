@@ -1808,7 +1808,31 @@ final class Mouth: NSObject, ObservableObject {
         }
     }
 
+    /// Refresh requests coalesce and apply on
+    /// the next tick, never inside the call
+    /// that asked: the peripheral delegates
+    /// (state, didAdd) call this from inside
+    /// CoreBluetooth's own dispatch, and
+    /// re-entering startAdvertising from
+    /// there is the shape of the 2026-10-18
+    /// crash — a CBUUID met as a string deep
+    /// in CB's forwarding, signal 6, mid-run
+    /// of the Atomic Netbomb. Advertising is
+    /// async by nature; a tick's delay costs
+    /// nothing and breaks the nest.
+    private var advertisingRefreshPending = false
+
     private func refreshAdvertising() {
+        guard !advertisingRefreshPending else { return }
+        advertisingRefreshPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.advertisingRefreshPending = false
+            self.applyAdvertising()
+        }
+    }
+
+    private func applyAdvertising() {
         guard let manager = peripheralManager, manager.state == .poweredOn else { return }
         var advertisement: [String: Any] = [
             CBAdvertisementDataLocalNameKey: beaconName,
@@ -1835,6 +1859,12 @@ final class Mouth: NSObject, ObservableObject {
             manager.stopAdvertising()
             return
         }
+        DevLog.event("ble",
+                     "advertising as "
+                     + (gattHostOn ? "gatt host"
+                        : wantFlare ? "flare"
+                        : "beacon")
+                     + " \"\(beaconName)\"")
         manager.stopAdvertising()
         manager.startAdvertising(advertisement)
     }

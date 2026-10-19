@@ -6,6 +6,8 @@
 
 **9.0c**
 
+**No jailbreak required**
+
 nightjar-hack began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
 its flagship is the iOS app: the listening post, the mouth,

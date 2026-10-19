@@ -735,7 +735,9 @@ final class Gauntlet: ObservableObject {
                         input: source, output: sealed,
                         protection: protection,
                         password: password,
-                        recipient: nil)
+                        recipient: protection == .deadDrop
+                            ? CryptoSuite.identity().publicKey
+                            : nil)
                     let info = try CryptoFiles
                         .inspect(sealed)
                     try Gauntlet.require(
@@ -904,23 +906,26 @@ final class Gauntlet: ObservableObject {
         }
         add("mind", "her manual, whole") {
             var hits = 0
-            for entry in SkelliKnowledge.entries {
+            for entry in SkelliKnowledge.answerable {
                 if SkelliKnowledge.lookup(
                     entry.title) != nil {
                     hits += 1
                 }
             }
             try Gauntlet.require(
-                hits > 100,
-                "only \(hits) manual pages found "
-                + "by their titles")
+                hits == SkelliKnowledge
+                    .answerable.count,
+                "only \(hits) of "
+                + "\(SkelliKnowledge.answerable.count) "
+                + "manual pages found by their titles")
             try Gauntlet.require(
                 SkelliKnowledge.lookup(
                     "zzzznotathing") == nil,
                 "a nonsense lookup answered")
             try Gauntlet.require(
                 SkelliKnowledge.answerable.count
-                    < SkelliKnowledge.entries.count,
+                    < SkelliKnowledge.entries.count
+                    + SkelliKnowledge.batches.count,
                 "the doctrine pages are not "
                 + "being withheld")
             return "\(hits) pages answer"
@@ -1223,15 +1228,19 @@ final class Gauntlet: ObservableObject {
                 .count
             var named = 0
             for raw in 0...65535 {
+                if PortRegistry.name(raw) != nil {
+                    named += 1
+                }
                 if PortRegistry.name(
-                    raw, udp: raw % 2 == 0)
-                    != nil {
+                    raw, udp: true) != nil {
                     named += 1
                 }
             }
             try Gauntlet.require(
-                companies > 4000 && named > 10000,
-                "a registry shrank between stages")
+                companies > 4000 && named > 11000,
+                "a registry reads short: "
+                + "\(companies) makers, "
+                + "\(named) named ports")
             let footprint = DevKit.footprintMB()
             return "footprint now \(footprint) MB"
         }
