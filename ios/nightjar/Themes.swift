@@ -87,10 +87,22 @@ struct AppTheme: Identifiable, Codable, Equatable {
         accentHex: "#E9E2D0", glowHex: "#FFFFFF",
         tintHex: "#0B0B0C", tintStrength: 0.22, dim: 0.12,
         builtIn: true)
+    /// The special one (the operator's order,
+    /// 2026-10-19): pumpkin orange over
+    /// near-black, a ghost-white glow, and
+    /// grey in the wash — Halloween, wearable
+    /// any night of the year.
+    static let halloween = AppTheme(
+        id: "halloween", name: "Halloween",
+        accentHex: "#FF7518", glowHex: "#EDEDED",
+        tintHex: "#0A0A0A", tintStrength: 0.40,
+        dim: 0.22,
+        builtIn: true)
 
     static let builtIns: [AppTheme] = [.phosphor, .bloodwork,
                                        .ultraviolet, .arctic,
-                                       .amber, .bone]
+                                       .amber, .bone,
+                                       .halloween]
 }
 
 // MARK: - Backdrop slots and choices
