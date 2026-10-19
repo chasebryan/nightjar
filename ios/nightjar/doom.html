@@ -109,9 +109,12 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 111</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 112</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 111 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
+<script>document.getElementById("buildstamp").textContent = "room build 112 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
+var hbF = 0;
+function hb() { hbF++; if (hbF % 150 === 0) { try { webkit.messageHandlers.doom.postMessage("alive " + hbF); } catch (e) {} } requestAnimationFrame(hb); }
+requestAnimationFrame(hb);</script>
 
 <script>
     // Engine bootstrap FIRST, alone in its script: nothing
@@ -228,6 +231,11 @@
     // names the stage it died at instead of sitting mute.
     document.getElementById("play").addEventListener("click", function () {
         ping("PLAY tapped, ready=" + doomReady);
+[2000, 6000].forEach(function (ms) { setTimeout(function () {
+  var st = "none";
+  try { var MM = window.Module; if (MM && MM.SDL2 && MM.SDL2.audioContext) { st = MM.SDL2.audioContext.state; } } catch (e) {}
+  ping("audio probe +" + ms + "ms: " + st);
+}, ms); });
         armAudio();
         if (doomReady) { startDoom(); return; }
         playWanted = true;

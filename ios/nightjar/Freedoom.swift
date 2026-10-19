@@ -506,10 +506,12 @@ final class FreedoomTrail:
         DispatchQueue.main.async {
             self.lines.append(
                 stamp + " " + text)
-            if self.lines.count > 60 {
+            if self.lines.count > 300 {
                 self.lines.removeFirst(
-                    self.lines.count - 60)
+                    self.lines.count - 300)
             }
+            DevLog.event("doom",
+                         stamp + " " + text)
         }
     }
 }
@@ -523,7 +525,7 @@ struct FreedoomTrailView: View {
                spacing: 1) {
             ForEach(
                 Array(trail.lines
-                    .suffix(9)
+                    .suffix(14)
                     .enumerated()),
                 id: \.offset) { _, line in
                 Text(line)
