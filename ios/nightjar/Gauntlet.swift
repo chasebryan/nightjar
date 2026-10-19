@@ -434,7 +434,7 @@ final class Gauntlet: ObservableObject {
 
     // MARK: - Building the steps
 
-    private func self.scaled(_ base: Int,
+    private func scaled(_ base: Int,
                         _ intensity: Double) -> Int {
         max(10, Int(Double(base) * intensity))
     }
