@@ -22,7 +22,7 @@ enum SaneDefaults {
     /// to the @AppStorage default declared beside the setting.
     static let keys: [String] = [
         // The app itself
-        "app.language",
+        "app.language", "house.haptics",
         // This post / listening
         "postName", "keepScreenAwake",
         // Send

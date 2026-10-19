@@ -1708,3 +1708,6 @@
 "Soft clear?" = "ソフトクリアしますか？";
 "The screen empties. She keeps the conversation — her memory of it, her notes, and her sense of where you left off all stay. Forgetting is Reset's act, not this one's." = "画面は空になります。彼女は会話を保持します — その記憶も、メモも、どこで止まったかの感覚も残ります。忘れるのはリセットの役目で、これではありません。";
 "Still thinking about %@." = "まだ%@のことを考えている。";
+"Touch" = "タッチ";
+"Haptics" = "触覚";
+"Every buzz the house makes, from one switch. Off silences them all — the beats at your touch, a verdict's beat, the emergency stop, even the Hunt ear's pulse as you close on a signal. The sounds and the toasts carry on without them, and the house reset turns them back on." = "家のあらゆる振動を、一つのスイッチから。オフにするとすべてが止まります — 触れたときの鼓動、判定の鼓動、緊急停止、さらには信号に近づくときのハントの耳の脈動まで。音と通知はそのまま続き、家のリセットで再びオンになります。";

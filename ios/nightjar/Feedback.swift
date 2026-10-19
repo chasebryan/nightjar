@@ -1594,6 +1594,19 @@ struct BootView: View {
 /// and the emergency stop are acts entire
 /// in themselves and always land.
 enum Haptics {
+    /// The house switch (Colours → Touch): off
+    /// means the motor never speaks — no beat
+    /// of any class, the console's tests
+    /// included. On by default; the house
+    /// reset restores it on, like every
+    /// setting. Every beat in this enum flows
+    /// through onMain, and onMain asks here
+    /// first — one gate, total coverage.
+    static var enabled: Bool {
+        UserDefaults.standard.object(
+            forKey: "house.haptics") as? Bool ?? true
+    }
+
     // One retained generator per voice, kept
     // prepared for the next beat. The old way —
     // a fresh generator built and fired in the
@@ -1621,6 +1634,7 @@ enum Haptics {
     /// it does not speak at all.
     private static func onMain(
         _ body: @escaping () -> Void) {
+        guard enabled else { return }
         if Thread.isMainThread { body() }
         else {
             DispatchQueue.main.async(execute: body)

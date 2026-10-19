@@ -242,13 +242,16 @@ struct HuntView: View {
         let bend: Double = trend == "approaching" ? 120
             : (trend == "receding" ? -120 : 0)
         tone.beep(frequency: 550 + strength * 750 + bend)
-        if strength > 0.7 {
+        if strength > 0.7, Haptics.enabled {
             haptics.impactOccurred(intensity: strength)
         }
-        if trend == "receding", strength > 0.5 {
+        if trend == "receding", strength > 0.5,
+           Haptics.enabled {
             DispatchQueue.main.asyncAfter(
                 deadline: .now() + 0.18) { [haptics] in
-                haptics.impactOccurred(intensity: 0.6)
+                if Haptics.enabled {
+                    haptics.impactOccurred(intensity: 0.6)
+                }
             }
         }
         _ = rssi

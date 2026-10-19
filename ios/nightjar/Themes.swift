@@ -1,3 +1,4 @@
+import Photos
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -145,6 +146,113 @@ extension EnvironmentValues {
     var backdropSlot: BackdropSlot {
         get { self[BackdropSlotKey.self] }
         set { self[BackdropSlotKey.self] = newValue }
+    }
+}
+
+// MARK: - The picker door
+
+/// One continuation, resumed once: the photo
+/// library's data handler may call back more
+/// than once, and a continuation resumed twice
+/// is a crash — the very thing this door exists
+/// to keep out of the operator's art.
+private final class ResumeOnce {
+    private let lock = NSLock()
+    private var done = false
+    private let body: (Data?) -> Void
+    init(_ body: @escaping (Data?) -> Void) {
+        self.body = body
+    }
+    func resume(_ data: Data?) {
+        lock.lock()
+        if done { lock.unlock(); return }
+        done = true
+        lock.unlock()
+        body(data)
+    }
+}
+
+/// How a picked picture actually arrives. The
+/// picker's quick representation is not the
+/// file: for a GIF — the operator's whole
+/// point — `loadTransferable(Data.self)` can
+/// hand back nothing at all, or a flattened
+/// still of the first frame, and "adding my
+/// own gif doesn't work" was the report
+/// (2026-10-19). So the door is two-stage:
+/// the quick bytes, accepted only when their
+/// own header says a picture this house can
+/// wear; failing that, the asset's ORIGINAL
+/// bytes from the library itself, which for
+/// a GIF are the GIF.
+enum PickerMedia {
+    static func isImage(_ data: Data) -> Bool {
+        if data.starts(with: [0x47, 0x49, 0x46, 0x38]) {
+            return true
+        }
+        if data.starts(with: [0xFF, 0xD8, 0xFF]) {
+            return true
+        }
+        if data.starts(with: [0x89, 0x50, 0x4E, 0x47,
+                              0x0D, 0x0A, 0x1A, 0x0A]) {
+            return true
+        }
+        if data.count > 12 {
+            let head = [UInt8](data.prefix(12))
+            if head[4] == 0x66, head[5] == 0x74,
+               head[6] == 0x79, head[7] == 0x70 {
+                return true
+            }
+            if head[0] == 0x52, head[1] == 0x49,
+               head[2] == 0x46, head[3] == 0x46,
+               head[8] == 0x57, head[9] == 0x45,
+               head[10] == 0x42, head[11] == 0x50 {
+                return true
+            }
+        }
+        return UIImage(data: data) != nil
+    }
+
+    static func load(
+        _ item: PhotosPickerItem) async -> Data? {
+        if let data = try? await item.loadTransferable(
+            type: Data.self), isImage(data) {
+            return data
+        }
+        return await originalBytes(for: item)
+    }
+
+    private static func originalBytes(
+        for item: PhotosPickerItem) async -> Data? {
+        guard let id = item.itemIdentifier else {
+            return nil
+        }
+        _ = await PHPhotoLibrary.requestAuthorization(
+            for: .readWrite)
+        let assets = PHAsset.fetchAssets(
+            withLocalIdentifiers: [id], options: nil)
+        guard let asset = assets.firstObject else {
+            return nil
+        }
+        let options = PHImageRequestOptions()
+        options.isNetworkAccessAllowed = true
+        options.deliveryMode = .highQualityFormat
+        return await withCheckedContinuation {
+            continuation in
+            let once = ResumeOnce {
+                continuation.resume(returning: $0)
+            }
+            PHImageManager.default()
+                .requestImageDataAndOrientation(
+                    for: asset, options: options) {
+                    data, _, _, _ in
+                    if let data, isImage(data) {
+                        once.resume(data)
+                    } else {
+                        once.resume(nil)
+                    }
+                }
+        }
     }
 }
 
@@ -376,6 +484,10 @@ struct ColoursView: View {
             Section(header: Text(L("Boot screen"))) {
                 BootRow()
             }
+
+            Section(header: Text(L("Touch"))) {
+                TouchRow()
+            }
         }
         .navigationTitle(L("Colours"))
         .sheet(isPresented: $creating) {
@@ -493,14 +605,16 @@ private struct BackdropRow: View {
         .onChange(of: pickerItem) { item in
             guard let item else { return }
             Task {
-                if let data = try? await item.loadTransferable(
-                    type: Data.self),
+                if let data = await PickerMedia.load(item),
                    BackdropMedia.save(data, for: slot) {
                     await MainActor.run {
                         themes.setChoice(.custom, for: slot)
                         notice = nil
                     }
                 } else {
+                    DevLog.event("colours",
+                                 "backdrop pick brought "
+                                 + "no wearable image")
                     await MainActor.run {
                         notice = "That file would not come — "
                             + "try another image or GIF."
@@ -616,6 +730,23 @@ private struct ThemeEditorView: View {
     }
 }
 
+/// The house's motor, switched: every beat
+/// the app makes, from the one control the
+/// operator asked for (2026-10-19) — off means
+/// off everywhere, Hunt ear included.
+private struct TouchRow: View {
+    @AppStorage("house.haptics")
+    private var hapticsOn = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(L("Haptics"), isOn: $hapticsOn)
+            ExplainToggle(
+                text: L("Every buzz the house makes, from one switch. Off silences them all — the beats at your touch, a verdict's beat, the emergency stop, even the Hunt ear's pulse as you close on a signal. The sounds and the toasts carry on without them, and the house reset turns them back on."))
+        }
+    }
+}
+
 /// The boot, tailored: which backdrop plays
 /// behind its log — the provided reel, the
 /// operator's own GIF or image, or plain
@@ -727,14 +858,15 @@ private struct BootRow: View {
         .onChange(of: pickerItem) { item in
             guard let item else { return }
             Task {
-                if let data = try? await item
-                    .loadTransferable(
-                        type: Data.self),
+                if let data = await PickerMedia.load(item),
                    BootMedia.save(data) {
                     await MainActor.run {
                         notice = nil
                     }
                 } else {
+                    DevLog.event("colours",
+                                 "boot pick brought "
+                                 + "no wearable image")
                     await MainActor.run {
                         notice = "That file would "
                             + "not come — try "

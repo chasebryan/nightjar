@@ -1708,3 +1708,6 @@
 "Soft clear?" = "Мягкая очистка?";
 "The screen empties. She keeps the conversation — her memory of it, her notes, and her sense of where you left off all stay. Forgetting is Reset's act, not this one's." = "Экран очищается. Она сохраняет разговор — её память о нём, её заметки и чувство того, где вы остановились, остаются. Забвение — дело Сброса, а не этого.";
 "Still thinking about %@." = "Всё ещё думаю о %@.";
+"Touch" = "Касание";
+"Haptics" = "Тактильная отдача";
+"Every buzz the house makes, from one switch. Off silences them all — the beats at your touch, a verdict's beat, the emergency stop, even the Hunt ear's pulse as you close on a signal. The sounds and the toasts carry on without them, and the house reset turns them back on." = "Каждый отклик дома — с одного переключателя. Выключено — тишина везде: удары при касании, удар вердикта, экстренная остановка, даже пульс охотничьего уха при приближении к сигналу. Звуки и уведомления продолжаются без них, а сброс дома включает их снова.";

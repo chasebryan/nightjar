@@ -1708,3 +1708,6 @@
 "Soft clear?" = "소프트 지우기를 할까요?";
 "The screen empties. She keeps the conversation — her memory of it, her notes, and her sense of where you left off all stay. Forgetting is Reset's act, not this one's." = "화면이 비워집니다. 그녀는 대화를 간직해요 — 그 기억도, 메모도, 어디까지 했는지의 감각도 남아요. 잊는 것은 재설정의 일이지, 이것의 일이 아니에요.";
 "Still thinking about %@." = "아직 %@ 생각을 하고 있어.";
+"Touch" = "터치";
+"Haptics" = "햅틱";
+"Every buzz the house makes, from one switch. Off silences them all — the beats at your touch, a verdict's beat, the emergency stop, even the Hunt ear's pulse as you close on a signal. The sounds and the toasts carry on without them, and the house reset turns them back on." = "집의 모든 진동을 하나의 스위치로. 끄면 전부가 조용해집니다 — 터치할 때의 박동, 판정의 박동, 비상 정지, 신호에 다가갈 때 사냥 귀의 맥박까지. 소리와 알림은 진동 없이 계속되고, 집 초기화 시 다시 켜집니다.";

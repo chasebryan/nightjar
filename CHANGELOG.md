@@ -1,6 +1,7 @@
 # Changelog
 
 ## 9.0c — 2026-10-20 — cosmic
+- **Your art, and your quiet.** Choosing your own GIF or image for a backdrop or the boot could quietly fail — the picker’s quick copy sometimes hands back nothing, or a flattened still of the first frame, instead of the file. The picker now takes the file’s original bytes whenever the quick copy isn’t a wearable picture, so a GIF arrives as a GIF. And haptics have a switch of their own: Colours → Touch turns every buzz in the house off at once — the beats at your touch, a verdict’s, the emergency stop’s, even the Hunt ear’s pulse — while sounds and toasts carry on; the house reset turns them back on.
 
 - **Haptics, everywhere.** A
   full sweep of the house's

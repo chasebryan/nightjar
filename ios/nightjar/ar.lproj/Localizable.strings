@@ -1708,3 +1708,6 @@
 "Soft clear?" = "مسح خفيف؟";
 "The screen empties. She keeps the conversation — her memory of it, her notes, and her sense of where you left off all stay. Forgetting is Reset's act, not this one's." = "تفرغ الشاشة. تحتفظ هي بالمحادثة — ذاكرتها عنها وملاحظاتها وإحساسها بالمكان الذي توقفتم عنده كلها تبقى. النسيان من شأن إعادة التعيين، لا هذا.";
 "Still thinking about %@." = "ما زلت أفكر في %@.";
+"Touch" = "اللمس";
+"Haptics" = "اللمس الاهتزازي";
+"Every buzz the house makes, from one switch. Off silences them all — the beats at your touch, a verdict's beat, the emergency stop, even the Hunt ear's pulse as you close on a signal. The sounds and the toasts carry on without them, and the house reset turns them back on." = "كل اهتزاز في المنزل من مفتاح واحد. الإيقاف يُسكت الجميع — النبضات عند لمسك، ونبضة الحكم، وإيقاف الطوارئ، وحتى نبض أذن الصيد عند اقترابك من إشارة. تستمر الأصوات والتنبيهات بدونها، وإعادة ضبط المنزل تعيد تشغيلها.";
