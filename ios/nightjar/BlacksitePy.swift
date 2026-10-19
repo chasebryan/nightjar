@@ -15,7 +15,7 @@ import Foundation
 // Where CPython would raise, it raises in
 // CPython's voice, with the file and line.
 
-enum PyValue {
+indirect enum PyValue {
     case none
     case bool(Bool)
     case int(Int)
@@ -1041,6 +1041,20 @@ struct PyParser {
         return false
     }
 
+    var atNewline: Bool {
+        if case .newline = current.tok {
+            return true
+        }
+        return false
+    }
+
+    var atDedent: Bool {
+        if case .dedent = current.tok {
+            return true
+        }
+        return false
+    }
+
     func isOp(_ op: String) -> Bool {
         if case .op(let text) = current.tok {
             return text == op
@@ -1229,8 +1243,7 @@ struct PyParser {
             advance()
             return
         }
-        if case .dedent = current.tok
-            || atEOF {
+        if atDedent || atEOF {
             return
         }
         throw PyError(
@@ -1266,9 +1279,8 @@ struct PyParser {
         let line = current.line
         if isName("return") {
             advance()
-            if case .newline = current.tok
-                || isOp(";") || atEOF
-                || isOp(",") {
+            if atNewline || isOp(";") ||
+                atEOF || isOp(",") {
                 return .returnStmt(
                     nil, line: line)
             }
@@ -1294,8 +1306,7 @@ struct PyParser {
         }
         if isName("raise") {
             advance()
-            if case .newline = current.tok
-                || isOp(";") {
+            if atNewline || isOp(";") {
                 return .raiseStmt(
                     nil, line: line)
             }
@@ -1508,8 +1519,8 @@ extension PyParser {
             var parts = [first]
             while isOp(",") {
                 advance()
-                if case .newline = current.tok
-                    || isOp(")") || atEOF {
+                if atNewline || isOp(")") ||
+                    atEOF {
                     break
                 }
                 if case .dedent = current.tok {
