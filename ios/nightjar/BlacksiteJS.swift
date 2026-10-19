@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import JavaScriptCore
 
@@ -581,10 +582,59 @@ function require(spec) {
             .jsGlobalContextRef else {
             return
         }
-        JSContextGroupSetExecutionTimeLimit(
+        Self.setLimitFn?(
             JSContextGetGroup(ref),
             seconds, nil, nil)
     }
+
+    /// The execution-time-limit pair is
+    /// declared only in JavaScriptCore's
+    /// private header, which Swift's
+    /// importer never sees, so the two
+    /// symbols are taken from the loaded
+    /// framework itself (RTLD_DEFAULT is
+    /// the -2 handle). Same functions,
+    /// same behaviour; if a future system
+    /// hides them, the limit simply never
+    /// arms and the kernel's other fences
+    /// still stand.
+    private typealias TerminateProbe =
+        @convention(c) (
+            JSContextRef?,
+            UnsafeMutableRawPointer?) -> Bool
+    private typealias SetLimitFn =
+        @convention(c) (
+            JSContextGroupRef, Double,
+            TerminateProbe?,
+            UnsafeMutableRawPointer?) -> Void
+    private typealias ClearLimitFn =
+        @convention(c) (
+            JSContextGroupRef) -> Void
+
+    private static let setLimitFn:
+        SetLimitFn? = {
+            guard let symbol = dlsym(
+                UnsafeMutableRawPointer(
+                    bitPattern: -2),
+                "JSContextGroupSetExecution"
+                    + "TimeLimit")
+            else { return nil }
+            return unsafeBitCast(
+                symbol, to: SetLimitFn.self)
+        }()
+
+    private static let clearLimitFn:
+        ClearLimitFn? = {
+            guard let symbol = dlsym(
+                UnsafeMutableRawPointer(
+                    bitPattern: -2),
+                "JSContextGroupClearExecution"
+                    + "TimeLimit")
+            else { return nil }
+            return unsafeBitCast(
+                symbol,
+                to: ClearLimitFn.self)
+        }()
 
     private func clearTimeLimit(
         _ context: JSContext) {
@@ -592,7 +642,7 @@ function require(spec) {
             .jsGlobalContextRef else {
             return
         }
-        JSContextGroupClearExecutionTimeLimit(
+        Self.clearLimitFn?(
             JSContextGetGroup(ref))
     }
 
@@ -991,7 +1041,7 @@ function require(spec) {
             cancelTimers(
                 context: context, gen: gen)
             cancelFetches(
-                context, gen: gen)
+                context: context, gen: gen)
             if runGeneration == gen {
                 runGeneration = 0
             }
@@ -1036,7 +1086,7 @@ function require(spec) {
             cancelTimers(
                 context: context, gen: gen)
             cancelFetches(
-                context, gen: gen)
+                context: context, gen: gen)
             if runGeneration == gen {
                 runGeneration = 0
             }
