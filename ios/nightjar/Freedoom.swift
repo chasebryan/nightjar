@@ -649,6 +649,12 @@ struct FreedoomView: View {
                 lobby
             }
         }
+        // A game is played with swipes;
+        // a downward drag on the stick
+        // must play the game, not drag
+        // the room away. Done is the
+        // only way out.
+        .interactiveDismissDisabled(true)
         .onAppear {
             loader.refresh()
             FreedoomTrail.shared.log(

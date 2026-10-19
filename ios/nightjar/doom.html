@@ -37,6 +37,8 @@
     }
     #stick { position: relative; width: 100px; height: 100px; flex: 0 0 auto; }
     #buttons { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    html, body { overscroll-behavior: none; }
+    #screen, #canvas, #deck, #stick { touch-action: none; }
     .row { display: flex; gap: 6px; align-items: center; }
     .btn {
         border: 1px solid #4a1500; background: #1a0d06; color: #e8b48c;
@@ -105,9 +107,7 @@
 <div id="gate">
     <h1>FREEDOOM</h1>
     <p>Freedoom Phase 1 &middot; version 0.13.0<br/>
-    Chocolate Doom, compiled to WebAssembly.<br/>
-    Sound is on &mdash; the tap below unlocks it.</p>
-    <button id="play">&#9654; PLAY</button>
+    Chocolate Doom, compiled to WebAssembly.</p>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
     <div id="buildstamp" style="font-size:11px; color:#555;">room build 121</div>
@@ -239,35 +239,25 @@
         ping("callMain RETURNED");
     }
 
-    // PLAY is wired NOW, at parse time — never inside a
-    // callback the engine may or may not reach. If the
-    // engine is still loading, the tap is remembered and
-    // the button says so; if loading stalls, the page
-    // names the stage it died at instead of sitting mute.
-    document.getElementById("play").addEventListener("click", function () {
-        ping("PLAY tapped, ready=" + doomReady);
-[2000, 6000].forEach(function (ms) { setTimeout(function () {
-  var st = "none";
-  try { var MM = window.Module; if (MM && MM.SDL2 && MM.SDL2.audioContext) { st = MM.SDL2.audioContext.state; } } catch (e) {}
-  ping("audio probe +" + ms + "ms: " + st);
-}, ms); });
+    // No PLAY gate of its own: the lobby's PLAY
+    // brought us here, so the game starts itself
+    // the moment the engine is ready (the ready
+    // callback below calls startDoom). A first
+    // touch anywhere arms the audio inside a
+    // real gesture — iOS only lets a context
+    // start running from one — and nudges the
+    // start if the engine beat the touch to it.
+    document.addEventListener("touchstart", function () {
         armAudio();
-        if (doomReady) { startDoom(); return; }
-        playWanted = true;
-        document.getElementById("play").textContent = "STARTING…";
-        setTimeout(function () {
-            if (!doomReady) {
-                showErr("Engine not ready (stage: " +
-                    stageDetail() + ").");
-            }
-        }, 8000);
-    });
+        unlockAudio();
+        if (doomReady) startDoom();
+    }, true);
     setTimeout(function () {
-        if (!doomReady && !playWanted) {
+        if (!started) {
             showErr("Engine is taking long to start (stage: " +
                 stageDetail() + ").");
         }
-    }, 15000);
+    }, 20000);
 
     // The engine's bytes arrive by plain
     // XMLHttpRequest — never fetch(). WebKit's
@@ -348,7 +338,7 @@
                 window.__doomStage = "ready";
                 doomReady = true;
                 loadNote("");
-                if (playWanted) startDoom();
+                startDoom();
             },
             print: function (text) {
                 console.log(text);
