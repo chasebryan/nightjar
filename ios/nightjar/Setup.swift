@@ -111,6 +111,7 @@ enum HouseSetup {
     /// and refreshes itself.
     static func prepare() {
         MacroStore.seedPresetsIfNeeded()
+        MacroStore.repairSeededFieldsV2()
         restoreIfFresh()
         HouseSetupMirror.shared.start()
         mirror()

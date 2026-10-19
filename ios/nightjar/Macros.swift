@@ -113,6 +113,53 @@ enum MacroStore {
     /// the operator deletes stays deleted, and
     /// one he edits keeps his edits. A later
     /// generation of presets bumps the flag.
+    /// One-time field repair for libraries
+    /// seeded by the first factories, whose
+    /// self-test fields were frozen at
+    /// authoring ("127.0.0.1:9000"): the
+    /// exact old values in house presets are
+    /// rewritten to the discovered forms.
+    /// Anything the operator changed himself
+    /// no longer matches the old strings and
+    /// is left exactly as he left it.
+    static func repairSeededFieldsV2() {
+        let flag = "macros.fieldRepair.v2"
+        guard !UserDefaults.standard.bool(
+            forKey: flag) else { return }
+        UserDefaults.standard.set(true, forKey: flag)
+        let house = Set(MacroTemplates.all.map { $0.0 })
+        var macros = load()
+        var touched = false
+        for i in macros.indices
+        where house.contains(macros[i].name) {
+            for j in macros[i].blocks.indices {
+                var block = macros[i].blocks[j]
+                func fix(_ key: String, _ from: String,
+                         _ to: String) {
+                    if block.value(key) == from {
+                        block.config[key] = to
+                        touched = true
+                    }
+                }
+                switch block.kind {
+                case "sendPayload", "fuzzStart":
+                    fix("target", "127.0.0.1:9000",
+                        "tcp://127.0.0.1:{serve}")
+                case "knock":
+                    if block.value("host") == "127.0.0.1" {
+                        fix("ports", "9000", "{serve}")
+                    }
+                case "warDefense":
+                    fix("doors", "9000", "{serve}")
+                default:
+                    break
+                }
+                macros[i].blocks[j] = block
+            }
+        }
+        if touched { save(macros) }
+    }
+
     static func seedPresetsIfNeeded() {
         let flag = "macros.presetsSeeded.v1"
         guard !UserDefaults.standard.bool(
@@ -768,6 +815,19 @@ enum MacroResolve {
             return String(head)
                 + host(String(rest[..<end]))
                 + String(rest[end...])
+        }
+        // A bare host:port — the form the
+        // editor's placeholder has always
+        // promised — is upgraded to the
+        // scheme the grammar demands, so a
+        // macro stored by an older build
+        // heals at fire time. A MAC stays a
+        // MAC: it parses as a BLE write.
+        if !SendTarget.looksLikeMAC(text),
+           let cut = text.firstIndex(of: ":"),
+           Int(text[text.index(after: cut)...]) != nil {
+            return "tcp://" + host(String(text[..<cut]))
+                + String(text[cut...])
         }
         guard let cut = text.firstIndex(of: ":")
         else { return host(text) }
