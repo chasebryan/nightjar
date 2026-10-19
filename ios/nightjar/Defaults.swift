@@ -125,6 +125,12 @@ enum SaneDefaults {
         // into the next fresh install.
         HouseSetup.forgetMirror()
         emcon.deactivate()
+        // Her room unfolds too: the fold is
+        // center state now, and a reset that
+        // only cleared its key would leave the
+        // live room folded over an open store —
+        // the same trap EMCON taught (F11).
+        SkelliCenter.shared.minimalChat = false
         if mouth.gattHostOn { mouth.stopGattHost() }
         defaults.removeObject(forKey: "gattArm.on")
         if mouth.beaconOn { mouth.stopBeacon() }

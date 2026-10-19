@@ -1549,12 +1549,26 @@ struct BootView: View {
 }
 
 /// One place for every buzz, so the house speaks one
-/// haptic language, felt from any screen: a light touch
-/// for a tap, a lift-off pattern when a process starts,
-/// a resolving pattern when one lands, a warning's
-/// double-tap, and two heavy thuds for the emergency
-/// stop — unmistakable through a pocket. Patterns are
-/// generator sequences; every call is fire-and-forget.
+/// haptic language, felt from any screen — and by the
+/// operator's ruling (2026-10-18) it speaks ONCE per
+/// act: the pattern beats are retired. A process
+/// starting no longer answers its own tap a breath
+/// later, a success no longer lands as tap-delay-tap,
+/// and the notification generator — whose success,
+/// warning, and error are multi-pulse patterns by
+/// system design — is out of the language entirely.
+/// Meaning is carried by WEIGHT alone: light for a
+/// touch, medium for an act taken or landed, rigid
+/// for a warning, heavy for an error and for the
+/// emergency stop. And because many acts are spoken
+/// by two callers at once (a button's tap and the
+/// toast its result raises, a tab's selection and
+/// the view it opens), every beat passes one gate:
+/// a beat asked for within a third of a second of
+/// the last one spoken is folded into it. One act,
+/// one vibe, everywhere. (The boot's per-line
+/// keystroke keeps its own rapid voice — a typed
+/// line is a sequence by nature, not an act.)
 enum Haptics {
     // One retained generator per voice, kept
     // prepared for the next beat. The old way —
@@ -1578,8 +1592,6 @@ enum Haptics {
         UIImpactFeedbackGenerator(style: .heavy)
     private static let softGen =
         UIImpactFeedbackGenerator(style: .soft)
-    private static let notificationGen =
-        UINotificationFeedbackGenerator()
 
     /// Every beat speaks on the main thread, or
     /// it does not speak at all.
@@ -1591,8 +1603,28 @@ enum Haptics {
         }
     }
 
-    static func tap() {
+    /// When the last beat actually spoke.
+    /// Touched only on the main thread, inside
+    /// the gate.
+    private static var lastBeatAt: TimeInterval = 0
+
+    /// The gate every action beat passes:
+    /// one vibe per act, however many callers
+    /// ask at once.
+    private static func beat(
+        _ body: @escaping () -> Void) {
         onMain {
+            let now = Date()
+                .timeIntervalSince1970
+            guard now - lastBeatAt >= 0.35
+            else { return }
+            lastBeatAt = now
+            body()
+        }
+    }
+
+    static func tap() {
+        beat {
             lightGen.impactOccurred()
             lightGen.prepare()
         }
@@ -1611,7 +1643,7 @@ enum Haptics {
     }
 
     static func select() {
-        onMain {
+        beat {
             // A crisp rigid impact stands in for
             // the selection generator, which is
             // retired: on the operator's device
@@ -1645,7 +1677,7 @@ enum Haptics {
 
     /// A deliberate press — a primary action taken.
     static func press() {
-        onMain {
+        beat {
             mediumGen.impactOccurred()
             mediumGen.prepare()
         }
@@ -1653,7 +1685,7 @@ enum Haptics {
 
     /// The heaviest single beat the house owns.
     static func heavy() {
-        onMain {
+        beat {
             heavyGen.impactOccurred()
             heavyGen.prepare()
         }
@@ -1662,62 +1694,57 @@ enum Haptics {
     /// A soft settle — things standing down, closing,
     /// being put away.
     static func pulse() {
-        onMain {
+        beat {
             softGen.impactOccurred(intensity: 0.45)
             softGen.prepare()
         }
     }
 
+    /// Landed well: one medium beat. (The
+    /// notification generator's success was a
+    /// two-pulse pattern — the tap-delay-tap
+    /// the operator ruled out.)
     static func success() {
-        onMain {
-            notificationGen
-                .notificationOccurred(.success)
-            notificationGen.prepare()
+        beat {
+            mediumGen.impactOccurred()
+            mediumGen.prepare()
         }
     }
 
+    /// A warning: one rigid beat at full
+    /// strength — sharper than an act, lighter
+    /// than an error.
     static func warn() {
-        onMain {
-            notificationGen
-                .notificationOccurred(.warning)
-            notificationGen.prepare()
+        beat {
+            rigidGen.impactOccurred(intensity: 1.0)
+            rigidGen.prepare()
         }
     }
 
+    /// An error: one heavy beat.
     static func error() {
-        onMain {
-            notificationGen
-                .notificationOccurred(.error)
-            notificationGen.prepare()
+        beat {
+            heavyGen.impactOccurred()
+            heavyGen.prepare()
         }
     }
 
-    /// A process begins: a medium beat with a light
-    /// confirming beat on its heels — lift-off.
+    /// A process begins: the press, once.
     static func start() {
         press()
-        after(0.09) { tap() }
     }
 
-    /// A process lands well: the success chord with a
-    /// soft settle after it — distinct from a plain
-    /// success, which belongs to single acts.
+    /// A process lands well: the success
+    /// beat, once.
     static func finish() {
         success()
-        after(0.14) { pulse() }
     }
 
-    /// The emergency stop: two heavy thuds.
+    /// The emergency stop: the heaviest
+    /// single beat the house owns, once —
+    /// unmistakable by weight, not by count.
     static func vanish() {
         heavy()
-        after(0.13) { heavy() }
-    }
-
-    private static func after(
-        _ seconds: Double, _ body: @escaping () -> Void
-    ) {
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + seconds, execute: body)
     }
 }
 

@@ -464,6 +464,25 @@ final class SkelliCenter: ObservableObject {
                 forKey: "skelli.webResearch")
         }
     }
+    /// Her room, folded: the minimal-chat
+    /// state, held HERE rather than as view
+    /// state (2026-10-18, the operator's
+    /// ruling: folding the board must carry
+    /// through reboots). Initialized from the
+    /// store at birth and written through on
+    /// every change — the same explicit
+    /// mechanism as the research switch
+    /// above, so the fold is a fact of the
+    /// house, not of a view's lifetime.
+    @Published var minimalChat: Bool =
+        UserDefaults.standard.bool(
+            forKey: "skelli.minimalChat") {
+        didSet {
+            UserDefaults.standard.set(
+                minimalChat,
+                forKey: "skelli.minimalChat")
+        }
+    }
     private(set) var mouth: Mouth?
     private(set) var emcon: Emcon?
     private(set) var post: ListeningPost?
@@ -729,6 +748,7 @@ final class SkelliCenter: ObservableObject {
         pendingAction = nil
         lastDeviceIP = nil
         webResearchEnabled = true
+        minimalChat = false
         HeadlineWire.shared.enabled = true
         mood = .idle
         SkelliStore.wipe()
@@ -7243,8 +7263,6 @@ struct SkelliView: View {
     /// across launches: nothing in the house
     /// changes but the seeing of it.
     @State private var avatarPressed = false
-    @AppStorage("skelli.minimalChat")
-    private var minimalChat = false
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
     /// Her headline wire, observed for the
@@ -7354,7 +7372,7 @@ struct SkelliView: View {
     private var pinnedHeader: some View {
         VStack(spacing: 0) {
             header
-            if !minimalChat {
+            if !skelli.minimalChat {
                 Group {
                     activityBar
                     intelStrip
@@ -7929,7 +7947,7 @@ struct SkelliView: View {
                         withAnimation(.spring(
                             response: 0.42,
                             dampingFraction: 0.86)) {
-                            minimalChat.toggle()
+                            skelli.minimalChat.toggle()
                         }
                         Haptics.select()
                     })
