@@ -109,6 +109,15 @@ final class BlacksiteShell: ObservableObject {
         "date", "vim", "emacs", "edit", "run",
         "js", "node", "sh", "source", "pkg",
         "gfx", "view", "wallpaper", "exit",
+        "ping", "traceroute", "trace",
+        "discover", "portscan", "nmap",
+        "banner", "dig", "nslookup", "host",
+        "whois", "curl", "wget", "nc",
+        "telnet", "ifconfig", "arp",
+        "netstat", "hostname", "subdomains",
+        "revdns", "nbstat", "snmp", "upnp",
+        "bonjour", "cert", "webaudit",
+        "methods", "dirb", "wol",
     ]
 
     // MARK: Output
@@ -723,6 +732,17 @@ final class BlacksiteShell: ObservableObject {
             company(args)
         case "port":
             port(args)
+        case "ping", "traceroute", "trace",
+             "discover", "portscan", "nmap",
+             "banner", "dig", "nslookup",
+             "host", "whois", "curl", "wget",
+             "nc", "telnet", "ifconfig",
+             "arp", "netstat", "hostname",
+             "subdomains", "revdns",
+             "nbstat", "snmp", "upnp",
+             "bonjour", "cert", "webaudit",
+             "methods", "dirb", "wol":
+            netCommand(head, args)
         case "emcon":
             emcon(args)
         case "macro", "macros":
@@ -1777,6 +1797,38 @@ final class BlacksiteShell: ObservableObject {
                 ("open <tab>", "go to a tab"),
                 ("halt", "stop everything, now"),
             ]),
+            ("the wire", [
+                ("ping <host> [-c n]", "ICMP echo, by hand"),
+                ("traceroute <host>", "the road, hop by hop"),
+                ("dig [@server] <name> [type]", "ask DNS directly, wire format"),
+                ("nslookup <name>", "A + AAAA, the short way"),
+                ("host <name|ip>", "resolve — or reverse an address"),
+                ("whois <domain>", "whose name is it"),
+                ("curl [-I] [-H h] [-o f] <url>", "fetch a page, see its papers"),
+                ("wget <url> [file]", "fetch it into the files"),
+                ("nc [-u] [-z] <host> <port> [words]", "a raw conversation"),
+                ("telnet <host> [port]", "the old handshake"),
+                ("ifconfig", "this phone's interfaces"),
+                ("arp", "the neighborhood board — our arp table"),
+                ("netstat", "this house's doors and wires"),
+                ("hostname", "who this phone is on the wire"),
+            ]),
+            ("pentest bench", [
+                ("discover [a.b.c]", "who lives on the /24 — ICMP sweep"),
+                ("portscan <host> [top|a-b|all|list]", "every door, banners too"),
+                ("banner <host> <port>", "make a door introduce itself"),
+                ("subdomains <domain>", "the names under a name"),
+                ("revdns [a.b.c] [server]", "reverse-walk a /24"),
+                ("nbstat <host>", "NetBIOS names and the adapter"),
+                ("snmp <host> [community]", "ask the agent (default public)"),
+                ("upnp", "who runs UPnP on this wire"),
+                ("bonjour", "service announcements, censused"),
+                ("cert <host> [port]", "audit the TLS papers"),
+                ("webaudit <url>", "headers, cookies, posture"),
+                ("methods <url>", "OPTIONS, and the TRACE question"),
+                ("dirb <url>", "the path dictionary"),
+                ("wol <mac>", "wake a sleeping machine"),
+            ]),
             ("files — the console's own tree", [
                 ("pwd · cd <dir>", "where you stand · move"),
                 ("ls [-l] [path]", "list a directory"),
@@ -2048,6 +2100,678 @@ final class BlacksiteShell: ObservableObject {
                 self.emit("census complete.",
                           .sys)
             }
+        }
+    }
+
+    // MARK: The wire + the pentest bench
+
+    /// Every live wire command stands
+    /// behind the same two doors knock
+    /// uses: never piped or captured, and
+    /// the Standard's word on probing.
+    private func netAllowed(_ name: String)
+        -> Bool {
+        if capturing {
+            emit("\(name) runs live — it "
+                 + "cannot be piped or "
+                 + "captured.", .err)
+            return false
+        }
+        if EmconStandard.refused(.probing) {
+            emit("the Standard refuses "
+                 + "probing under "
+                 + EmconCondition.current.name
+                 + ".", .err)
+            return false
+        }
+        return true
+    }
+
+    private static func netEmit(
+        _ shell: BlacksiteShell?)
+        -> BlacksiteEmit {
+        { text, kind in
+            shell?.emit(text, kind)
+        }
+    }
+
+    private func netBusy(
+        _ body: @escaping (
+            @escaping BlacksiteEmit,
+            @escaping () -> Void) -> Void) {
+        busy = true
+        body(Self.netEmit(self)) {
+            [weak self] in
+            DispatchQueue.main.async {
+                self?.busy = false
+            }
+        }
+    }
+
+    private func localPrefix() -> String? {
+        guard let ip = BlacksiteNet
+            .primaryIPv4() else {
+            return nil
+        }
+        let parts = ip.split(separator: ".")
+        guard parts.count == 4 else {
+            return nil
+        }
+        return parts[0..<3].joined(
+            separator: ".")
+    }
+
+    private func netCommand(
+        _ name: String, _ args: [String]) {
+        let out = Self.netEmit(self)
+        switch name {
+        case "ifconfig":
+            BlacksiteNet.ifconfig(emit: out)
+        case "arp":
+            BlacksiteNet.arp(emit: out)
+        case "netstat":
+            BlacksiteNet.netstat(emit: out)
+        case "hostname":
+            BlacksiteNet.hostname(emit: out)
+        case "ping":
+            guard netAllowed(name) else {
+                return
+            }
+            var host: String?
+            var count = 4
+            var index = 0
+            while index < args.count {
+                if args[index] == "-c",
+                   index + 1 < args.count,
+                   let n = Int(
+                    args[index + 1]) {
+                    count = min(20, max(1, n))
+                    index += 2
+                } else if host == nil {
+                    host = args[index]
+                    index += 1
+                } else {
+                    index += 1
+                }
+            }
+            guard let host = host else {
+                emit("ping needs a host.", .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.ping(
+                    host: host, count: count,
+                    emit: emit, done: done)
+            }
+        case "traceroute", "trace":
+            guard netAllowed(name),
+                  let host = args.first else {
+                if args.isEmpty {
+                    emit("traceroute needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.traceroute(
+                    host: host, emit: emit,
+                    done: done)
+            }
+        case "dig":
+            guard netAllowed(name) else {
+                return
+            }
+            var server = "1.1.1.1"
+            var typeName = "A"
+            var target: String?
+            for token in args {
+                if token.hasPrefix("@") {
+                    server = String(
+                        token.dropFirst())
+                } else if BlacksiteDNS
+                    .typeNumber(token) != nil {
+                    typeName = token
+                        .uppercased()
+                } else if target == nil {
+                    target = token
+                }
+            }
+            guard let target = target else {
+                emit("dig needs a name — "
+                     + "'dig example.com', "
+                     + "'dig @192.168.4.1 "
+                     + "x.local AAAA'.",
+                     .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.dig(
+                    name: target,
+                    typeName: typeName,
+                    server: server,
+                    emit: emit, done: done)
+            }
+        case "nslookup":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit("nslookup needs a "
+                         + "name.", .err)
+                }
+                return
+            }
+            let server = args.count > 1
+                ? args[1] : "1.1.1.1"
+            netBusy { emit, done in
+                BlacksiteNet.dig(
+                    name: target,
+                    typeName: "A",
+                    server: server,
+                    emit: emit) {
+                    BlacksiteNet.dig(
+                        name: target,
+                        typeName: "AAAA",
+                        server: server,
+                        emit: emit,
+                        done: done)
+                }
+            }
+        case "host":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit("host needs a name "
+                         + "or an address.",
+                         .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.hostLookup(
+                    target, emit: emit,
+                    done: done)
+            }
+        case "whois":
+            guard netAllowed(name),
+                  let domain = args.first
+            else {
+                if args.isEmpty {
+                    emit("whois needs a "
+                         + "domain.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.whois(
+                    domain: domain,
+                    emit: emit, done: done)
+            }
+        case "curl":
+            guard netAllowed(name) else {
+                return
+            }
+            var headOnly = false
+            var headers: [(String, String)] =
+                []
+            var savePath: String?
+            var url: String?
+            var index = 0
+            while index < args.count {
+                let token = args[index]
+                if token == "-I"
+                    || token == "--head" {
+                    headOnly = true
+                } else if token == "-H",
+                          index + 1
+                            < args.count {
+                    let pair = args[index + 1]
+                    if let colon = pair
+                        .firstIndex(of: ":") {
+                        headers.append((
+                            String(pair[..<colon])
+                                .trimmingCharacters(
+                                    in: .whitespaces),
+                            String(pair[pair
+                                .index(after:
+                                    colon)...])
+                                .trimmingCharacters(
+                                    in: .whitespaces)))
+                    }
+                    index += 1
+                } else if token == "-o",
+                          index + 1
+                            < args.count {
+                    savePath = resolved(
+                        args[index + 1])
+                    index += 1
+                } else if url == nil {
+                    url = token
+                }
+                index += 1
+            }
+            guard let url = url else {
+                emit("curl needs a URL.",
+                     .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteNet.fetch(
+                    urlString: url,
+                    headOnly: headOnly,
+                    headers: headers,
+                    savePath: savePath,
+                    emit: emit, done: done)
+            }
+        case "wget":
+            guard netAllowed(name),
+                  let url = args.first else {
+                if args.isEmpty {
+                    emit("wget needs a URL.",
+                         .err)
+                }
+                return
+            }
+            let file: String
+            if args.count > 1 {
+                file = resolved(args[1])
+            } else {
+                let base = URL(
+                    string: url)?
+                    .lastPathComponent ?? ""
+                file = resolved(base.isEmpty
+                    ? "download.bin" : base)
+            }
+            netBusy { emit, done in
+                BlacksiteNet.fetch(
+                    urlString: url,
+                    headOnly: false,
+                    headers: [],
+                    savePath: file,
+                    emit: emit, done: done)
+            }
+        case "nc":
+            guard netAllowed(name) else {
+                return
+            }
+            var udp = false
+            var scanOnly = false
+            var rest: [String] = []
+            for token in args {
+                if token == "-u" {
+                    udp = true
+                } else if token == "-z" {
+                    scanOnly = true
+                } else {
+                    rest.append(token)
+                }
+            }
+            guard rest.count >= 2,
+                  let port = Int(rest[1])
+            else {
+                emit("nc wants 'nc "
+                     + "[-u] [-z] <host> "
+                     + "<port> [words…]'.",
+                     .err)
+                return
+            }
+            let host = rest[0]
+            let payload = scanOnly
+                ? nil
+                : (rest.count > 2
+                    ? rest[2...].joined(
+                        separator: " ") + "\n"
+                    : nil)
+            netBusy { emit, done in
+                BlacksiteNet.tcpExchange(
+                    host: host, port: port,
+                    udp: udp, payload: payload,
+                    telnet: false,
+                    idleSeconds: scanOnly
+                        ? 2.5 : 6
+                ) { text, problem in
+                    if let problem = problem {
+                        emit("\(host):\(port)"
+                             + " — " + problem,
+                             .err)
+                    } else if scanOnly {
+                        emit("\(host):\(port)"
+                             + " — open.", .ok)
+                    } else if let text = text,
+                              !text.isEmpty {
+                        for row in text.split(
+                            separator: "\n",
+                            omittingEmptySubsequences:
+                                false) {
+                            emit(String(row),
+                                 .out)
+                        }
+                    } else {
+                        emit("\(host):\(port)"
+                             + " — the door "
+                             + "opened; it said "
+                             + "nothing.", .out)
+                    }
+                    done()
+                }
+            }
+        case "telnet":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("telnet needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            let port = args.count > 1
+                ? (Int(args[1]) ?? 23) : 23
+            netBusy { emit, done in
+                BlacksiteNet.tcpExchange(
+                    host: host, port: port,
+                    udp: false, payload: nil,
+                    telnet: true,
+                    idleSeconds: 5
+                ) { text, problem in
+                    if let problem = problem {
+                        emit(problem, .err)
+                    } else if let text = text,
+                              !text.isEmpty {
+                        for row in text.split(
+                            separator: "\n",
+                            omittingEmptySubsequences:
+                                false) {
+                            emit(String(row),
+                                 .out)
+                        }
+                    } else {
+                        emit("the far end "
+                             + "said nothing.",
+                             .out)
+                    }
+                    done()
+                }
+            }
+        case "discover":
+            guard netAllowed(name) else {
+                return
+            }
+            guard let base = args.first
+                ?? localPrefix() else {
+                emit("discover: this "
+                     + "phone has no local "
+                     + "address to sweep "
+                     + "from.", .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.discover(
+                    base: base, emit: emit,
+                    done: done)
+            }
+        case "portscan", "nmap":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("portscan needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            let ports: [Int]
+            let spec = args.count > 1
+                ? args[1].lowercased() : "top"
+            if spec == "all"
+                || spec == "full" {
+                ports = Array(1...65535)
+            } else if spec.contains("-"),
+                      !spec.contains(",") {
+                let ends = spec.split(
+                    separator: "-")
+                if ends.count == 2,
+                   let lo = Int(ends[0]),
+                   let hi = Int(ends[1]),
+                   lo >= 1, hi <= 65535,
+                   lo <= hi {
+                    ports = Array(lo...hi)
+                } else {
+                    ports = []
+                }
+            } else if spec == "top" {
+                ports = ScanModel.topPorts
+                    .map { $0.0 }
+            } else {
+                ports = spec.split(
+                    separator: ",")
+                    .compactMap {
+                        Int($0.trimmingCharacters(
+                            in: .whitespaces)) }
+                    .filter {
+                        $0 >= 1 && $0 <= 65535
+                    }
+            }
+            guard !ports.isEmpty else {
+                emit("portscan: no readable "
+                     + "doors in that — "
+                     + "try 'top', '1-1024', "
+                     + "'all', or a list.",
+                     .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.portscan(
+                    host: host, ports: ports,
+                    emit: emit, done: done)
+            }
+        case "banner":
+            guard netAllowed(name),
+                  args.count >= 2,
+                  let port = Int(args[1])
+            else {
+                if args.count < 2 {
+                    emit("banner wants "
+                         + "'banner <host> "
+                         + "<port>'.", .err)
+                }
+                return
+            }
+            let host = args[0]
+            netBusy { emit, done in
+                BlacksiteNet.tcpExchange(
+                    host: host, port: port,
+                    udp: false,
+                    payload: BlacksitePentest
+                        .probe(for: port,
+                               host: host),
+                    telnet: false,
+                    idleSeconds: 2.2
+                ) { text, problem in
+                    if let problem = problem {
+                        emit(problem, .err)
+                    } else if let text = text,
+                              !text.isEmpty {
+                        for row in text.split(
+                            separator: "\n") {
+                            emit(String(row),
+                                 .out)
+                        }
+                    } else {
+                        emit("\(host):\(port)"
+                             + " — the door "
+                             + "opened and "
+                             + "stayed "
+                             + "silent.", .out)
+                    }
+                    done()
+                }
+            }
+        case "subdomains":
+            guard netAllowed(name),
+                  let domain = args.first
+            else {
+                if args.isEmpty {
+                    emit("subdomains needs "
+                         + "a domain.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.subdomains(
+                    domain: domain,
+                    emit: emit, done: done)
+            }
+        case "revdns":
+            guard netAllowed(name) else {
+                return
+            }
+            guard let base = args.first
+                ?? localPrefix() else {
+                emit("revdns: name a /24 "
+                     + "— 'revdns "
+                     + "192.168.4'.", .err)
+                return
+            }
+            let server = args.count > 1
+                ? args[1] : "1.1.1.1"
+            netBusy { emit, done in
+                BlacksitePentest.revdns(
+                    base: base,
+                    server: server,
+                    emit: emit, done: done)
+            }
+        case "nbstat":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("nbstat needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.nbstat(
+                    host: host, emit: emit,
+                    done: done)
+            }
+        case "snmp":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("snmp needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            let community = args.count > 1
+                ? args[1] : "public"
+            netBusy { emit, done in
+                BlacksitePentest.snmp(
+                    host: host,
+                    community: community,
+                    emit: emit, done: done)
+            }
+        case "upnp":
+            guard netAllowed(name) else {
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.upnp(
+                    emit: emit, done: done)
+            }
+        case "bonjour":
+            guard netAllowed(name) else {
+                return
+            }
+            busy = true
+            BlacksitePentest.bonjour(
+                emit: out) { [weak self] in
+                self?.busy = false
+            }
+        case "cert":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("cert needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            let port = args.count > 1
+                ? (Int(args[1]) ?? 443) : 443
+            netBusy { emit, done in
+                BlacksitePentest.cert(
+                    host: host, port: port,
+                    emit: emit, done: done)
+            }
+        case "webaudit":
+            guard netAllowed(name),
+                  let url = args.first
+            else {
+                if args.isEmpty {
+                    emit("webaudit needs a "
+                         + "URL.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.webaudit(
+                    urlText: url, emit: emit,
+                    done: done)
+            }
+        case "methods":
+            guard netAllowed(name),
+                  let url = args.first
+            else {
+                if args.isEmpty {
+                    emit("methods needs a "
+                         + "URL.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.methods(
+                    urlText: url, emit: emit,
+                    done: done)
+            }
+        case "dirb":
+            guard netAllowed(name),
+                  let url = args.first
+            else {
+                if args.isEmpty {
+                    emit("dirb needs a URL "
+                         + "— 'dirb "
+                         + "http://"
+                         + "192.168.4.1'.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.dirb(
+                    urlText: url, emit: emit,
+                    done: done)
+            }
+        case "wol":
+            guard netAllowed(name),
+                  let mac = args.first else {
+                if args.isEmpty {
+                    emit("wol needs a MAC "
+                         + "address.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.wol(
+                    macText: mac, emit: emit,
+                    done: done)
+            }
+        default:
+            break
         }
     }
 
