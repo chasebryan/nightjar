@@ -668,3 +668,15 @@
   too. "Unknown device"
   is left for the truly
   silent.
+- **Her halo, as light.**
+  The ring and its beam
+  are retired: her halo
+  is now a soft glow
+  behind her portrait,
+  colored by her
+  feeling, widened by
+  her restlessness,
+  folded to an ember
+  when the house goes
+  dark. It announces
+  nothing it means.
