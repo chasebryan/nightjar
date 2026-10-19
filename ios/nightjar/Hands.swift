@@ -178,6 +178,15 @@ extension SkelliCenter {
                 + problems[0])
             return true
         }
+        if NetbombFuse.shared.task != nil {
+            say("The Netbomb is already counting "
+                + "down — say stop, or let it drop.")
+            return true
+        }
+        if target.name == "Atomic Netbomb" {
+            lightNetbombFuse(target)
+            return true
+        }
         runner.run(target, mouth: mouth, post: post,
                    emcon: emcon, book: book)
         say("Running “\(target.name)” — "
@@ -185,7 +194,61 @@ extension SkelliCenter {
         return true
     }
 
+    /// The bomb gets a countdown: when she
+    /// drops the Atomic Netbomb by voice, she
+    /// counts it down step by step before the
+    /// first block fires (the operator's
+    /// order, 2026-10-18). Say stop anywhere
+    /// in the count and it stays in the rack.
+    private func lightNetbombFuse(_ target: Macro) {
+        say("Atomic Netbomb. Counting down — "
+            + "say stop and it stays in the rack.")
+        NetbombFuse.shared.task = Task { @MainActor in
+            for step in stride(from: 5, through: 1,
+                               by: -1) {
+                try? await Task.sleep(
+                    nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                say("\(step)…")
+            }
+            try? await Task.sleep(
+                nanoseconds: 1_000_000_000)
+            if Task.isCancelled { return }
+            NetbombFuse.shared.task = nil
+            let runner = MacroRunner.shared
+            guard !runner.running,
+                  let mouth = mouth, let post = post,
+                  let emcon = emcon else {
+                say("The drop is off — the floor "
+                    + "isn't clear.")
+                return
+            }
+            runner.run(target, mouth: mouth,
+                       post: post, emcon: emcon,
+                       book: PayloadBook())
+            say("Dropping it — “Atomic Netbomb” "
+                + "running, "
+                + "\(target.blocks.count) blocks.")
+        }
+    }
+
     func macroAsk(_ q: String, raw: String) -> Bool {
+        // A lit fuse answers to stop before
+        // anything else in the room: while
+        // she counts the Netbomb down, "stop"
+        // (or abort, cancel, never mind)
+        // calls the drop off.
+        if NetbombFuse.shared.task != nil,
+           q.contains("stop") || q.contains("abort")
+            || q.contains("cancel")
+            || q.contains("halt")
+            || q.contains("never mind") {
+            NetbombFuse.shared.task?.cancel()
+            NetbombFuse.shared.task = nil
+            say("Called off — the Netbomb stays "
+                + "in the rack.")
+            return true
+        }
         if !q.contains("macro") {
             // The named front door (the
             // operator's order, 2026-10-18): a
@@ -203,12 +266,24 @@ extension SkelliCenter {
             if q.contains("when did")
                 || q.contains("when was")
                 || q.hasPrefix("when ")
-                || q.hasPrefix("how ") {
+                || q.hasPrefix("how ")
+                || q.hasPrefix("what ") {
                 return false
             }
-            guard q.contains("run")
-                || q.contains("play")
-                || q.contains("start")
+            // Any initiation verb opens a
+            // stocked macro by name — run,
+            // launch, initiate, engage; the
+            // operator's word for "begin"
+            // is the house's too (his order,
+            // 2026-10-18).
+            let initiations = ["run", "play", "start",
+                               "launch", "initiate",
+                               "engage", "commence",
+                               "deploy", "trigger",
+                               "unleash", "execute",
+                               "begin", "kick off"]
+            guard initiations.contains(
+                where: { q.contains($0) })
             else { return false }
             let macros = MacroStore.load()
             let named = macros.filter { macro in
@@ -333,19 +408,7 @@ extension SkelliCenter {
                         + macroNames(macros) + ".")
                 return true
             }
-            let book = PayloadBook()
-            let problems = MacroValidator.problems(
-                in: target, book: book)
-            guard problems.isEmpty else {
-                say("“\(target.name)” is not ready: "
-                    + problems[0])
-                return true
-            }
-            runner.run(target, mouth: mouth, post: post,
-                       emcon: emcon, book: book)
-            say("Running “\(target.name)” — "
-                + "\(target.blocks.count) blocks.")
-            return true
+            return runMacroByVoice(target)
         }
         return false
     }
@@ -2536,4 +2599,12 @@ extension SkelliCenter {
         }
         return false
     }
+}
+
+/// The Netbomb's lit fuse: while she counts,
+/// the pending drop lives here so a "stop"
+/// from anywhere in chat can call it off.
+final class NetbombFuse {
+    static let shared = NetbombFuse()
+    var task: Task<Void, Never>?
 }

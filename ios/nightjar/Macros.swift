@@ -711,6 +711,71 @@ enum MacroSummary {
 
 // MARK: - Validation
 
+/// Field resolution, shared by the validator
+/// and the runner so a macro is judged on the
+/// values it will actually fire with. Fields
+/// are discovered from the net and the house
+/// at run time, never frozen at authoring
+/// (the operator's order, 2026-10-18):
+/// "gateway" is the door of whatever net the
+/// phone wakes on — off any net, herself at
+/// 127.0.0.1; "self" is the phone's own
+/// address on it; "{serve}" is the TCP door
+/// Serve stands on right now.
+enum MacroResolve {
+    static var servePort: Int {
+        Int(UserDefaults.standard.string(
+            forKey: "serveTcpPort") ?? "9000") ?? 9000
+    }
+
+    static var gateway: String? {
+        guard let ip = Mouth.localIPAddress()
+        else { return nil }
+        var parts = ip.split(separator: ".")
+            .map(String.init)
+        guard parts.count == 4 else { return nil }
+        parts[3] = "1"
+        return parts.joined(separator: ".")
+    }
+
+    static func host(_ host: String) -> String {
+        switch host {
+        case "gateway", "router":
+            return gateway ?? "127.0.0.1"
+        case "self", "me", "this phone":
+            return Mouth.localIPAddress() ?? "127.0.0.1"
+        default:
+            return host
+        }
+    }
+
+    static func field(_ text: String) -> String {
+        text.replacingOccurrences(
+            of: "{serve}", with: String(servePort))
+    }
+
+    static func target(_ target: String) -> String {
+        let text = field(target)
+        // Scheme-aware: the host inside
+        // "tcp://gateway:9000" resolves just
+        // as the bare "gateway:9000" form does.
+        if let mark = text.range(of: "://") {
+            let head = text[..<mark.upperBound]
+            let rest = text[mark.upperBound...]
+            let end = rest.firstIndex {
+                $0 == ":" || $0 == "/"
+            } ?? rest.endIndex
+            return String(head)
+                + host(String(rest[..<end]))
+                + String(rest[end...])
+        }
+        guard let cut = text.firstIndex(of: ":")
+        else { return host(text) }
+        return host(String(text[..<cut]))
+            + String(text[cut...])
+    }
+}
+
 enum MacroValidator {
     /// Every reason this playlist is not ready to
     /// run, in block order. An empty list runs.
@@ -735,7 +800,8 @@ enum MacroValidator {
                      "no payload named “\(name)” is in the book")
                 let target = block.value("target")
                 need(target.hasPrefix("phone:")
-                     || (try? SendTarget.parse(target)) != nil,
+                     || (try? SendTarget.parse(
+                        MacroResolve.target(target))) != nil,
                      "the target “\(target)” does not parse")
             case "beaconStart", "gattStart":
                 let name = block.value("payload")
@@ -778,7 +844,8 @@ enum MacroValidator {
                      "give the knock at least one port")
             case "fuzzStart":
                 need((try? SendTarget.parse(
-                    block.value("target"))) != nil,
+                    MacroResolve.target(
+                        block.value("target")))) != nil,
                     "the target “\(block.value("target"))” does not parse")
             case "warChallenge":
                 need(!block.value("ip").isEmpty,
@@ -902,16 +969,16 @@ enum MacroTemplates {
                             for: "serveStart")),
                 MacroBlock(kind: "knock", config: [
                     "host": "127.0.0.1",
-                    "ports": "9000"]),
+                    "ports": "{serve}"]),
                 MacroBlock(kind: "sendPayload",
                            config: ["payload": "ping",
-                                    "target": "127.0.0.1:9000",
+                                    "target": "tcp://127.0.0.1:{serve}",
                                     "readReply": "on"]),
                 MacroBlock(kind: "waitInbox",
                            config: ["seconds": "20",
                                     "onTimeout": "Continue"]),
                 MacroBlock(kind: "fuzzStart",
-                           config: ["target": "127.0.0.1:9000",
+                           config: ["target": "tcp://127.0.0.1:{serve}",
                                     "count": "25",
                                     "length": "64",
                                     "mutations": "8"]),
@@ -945,7 +1012,7 @@ enum MacroTemplates {
                 MacroBlock(kind: "note", config: [
                     "text": "atomic netbomb — the war rooms"]),
                 MacroBlock(kind: "warDefense",
-                           config: ["doors": "9000",
+                           config: ["doors": "{serve}",
                                     "decoys": "Printer, TV"]),
                 MacroBlock(kind: "warChallenge",
                            config: ["ip": "gateway",
@@ -1022,16 +1089,16 @@ enum MacroTemplates {
                             for: "serveStart")),
                 MacroBlock(kind: "knock", config: [
                     "host": "127.0.0.1",
-                    "ports": "9000"]),
+                    "ports": "{serve}"]),
                 MacroBlock(kind: "sendPayload",
                            config: ["payload": "ping",
-                                    "target": "127.0.0.1:9000",
+                                    "target": "tcp://127.0.0.1:{serve}",
                                     "readReply": "on"]),
                 MacroBlock(kind: "waitInbox",
                            config: ["seconds": "20",
                                     "onTimeout": "Continue"]),
                 MacroBlock(kind: "fuzzStart",
-                           config: ["target": "127.0.0.1:9000",
+                           config: ["target": "tcp://127.0.0.1:{serve}",
                                     "count": "25",
                                     "length": "64",
                                     "mutations": "8"]),
@@ -1061,7 +1128,7 @@ enum MacroTemplates {
                     "text": "war footing — beginning"]),
                 MacroBlock(kind: "emconOff"),
                 MacroBlock(kind: "warDefense",
-                           config: ["doors": "9000",
+                           config: ["doors": "{serve}",
                                     "decoys": "Printer, TV"]),
                 MacroBlock(kind: "warChallenge",
                            config: ["ip": "gateway",
@@ -1710,29 +1777,24 @@ final class MacroRunner: ObservableObject {
     /// rig joins. Anything else passes through
     /// untouched.
     private func resolveHost(_ host: String) -> String {
-        guard host == "gateway" || host == "router",
-              let ip = Mouth.localIPAddress()
-        else { return host }
-        var parts = ip.split(separator: ".")
-            .map(String.init)
-        guard parts.count == 4 else { return host }
-        parts[3] = "1"
-        return parts.joined(separator: ".")
+        MacroResolve.host(host)
     }
 
     private func resolveTarget(_ target: String)
         -> String {
-        guard let cut = target.firstIndex(of: ":")
-        else { return resolveHost(target) }
-        return resolveHost(String(target[..<cut]))
-            + String(target[cut...])
+        MacroResolve.target(target)
     }
 
     @MainActor
     private func knock(_ block: MacroBlock) async throws
         -> String {
         let host = resolveHost(block.value("host"))
-        let ports = block.intList("ports")
+        let ports = MacroResolve.field(
+            block.value("ports"))
+            .split(separator: ",").compactMap {
+                Int($0.trimmingCharacters(
+                    in: .whitespaces))
+            }.filter { (1...65535).contains($0) }
         guard !host.isEmpty, !ports.isEmpty else {
             throw MacroProblem(message: "The knock needs "
                 + "a host and at least one port.")
@@ -1842,7 +1904,8 @@ final class MacroRunner: ObservableObject {
     }
 
     private func warDoors(_ block: MacroBlock) -> [WarDoor] {
-        block.value("doors").split(separator: ",").compactMap {
+        MacroResolve.field(block.value("doors"))
+            .split(separator: ",").compactMap {
             token -> WarDoor? in
             let parts = token.split(separator: "/")
             guard let port = Int(parts[0]

@@ -768,7 +768,25 @@
   runs each: a tap,
   or simply "run
   the atomic
-  netbomb."
+  netbomb" — launch,
+  initiate and
+  engage open them
+  too. Their fields
+  are discovered on
+  the net of the
+  moment, never
+  frozen: the
+  gateway is the
+  door of whatever
+  net she is on,
+  her targets the
+  door Serve stands
+  on. And she
+  counts the
+  Netbomb down,
+  step by step,
+  before she
+  drops it.
 - **Felt in depth.**
   Her feelings now
   carry how strongly
