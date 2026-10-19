@@ -1,3 +1,4 @@
+import CryptoKit
 import GameController
 import SwiftUI
 import UIKit
@@ -111,6 +112,35 @@ final class BlacksiteShell: ObservableObject {
     /// admits it.
     private var stageBackground = false
 
+    /// Shell functions the operator has
+    /// defined, by name: the body text,
+    /// run as a sequence when called.
+    private var functions: [String: String] =
+        [:]
+
+    /// Positional frames for function
+    /// calls: [name, $1, $2, …], the
+    /// innermost call last.
+    private var positionalStack: [[String]] =
+        []
+
+    /// What `local` saved, per frame,
+    /// restored when the call returns.
+    private var localFrames:
+        [[(String, String?)]] = []
+
+    /// Set by `return`: the current
+    /// function's remaining statements
+    /// are skipped, and its caller
+    /// consumes the flag.
+    private var returnFlag = false
+
+    /// An exact status a construct wants
+    /// lastStatus to carry (return N) —
+    /// execPipeline consumes it instead
+    /// of the coarse stageError bit.
+    private var pendingStatus: Int? = nil
+
     /// The editor door: vim/emacs/edit set
     /// this; the room presents the editor.
     @Published var editorSession: EditorSession?
@@ -134,7 +164,15 @@ final class BlacksiteShell: ObservableObject {
         "halt", "pwd", "cd", "ls", "mkdir",
         "touch", "cat", "echo", "cp", "mv",
         "rm", "tree", "head", "tail", "wc",
-        "grep", "find", "stat", "env",
+        "grep", "find", "stat",
+        "sort", "uniq", "cut", "tr", "sed",
+        "rev", "tac", "nl", "diff", "tee",
+        "xargs", "seq", "base64", "md5sum",
+        "sha256sum", "xxd", "sleep", "test",
+        "[", "true", "false", "return",
+        "local", "printf", "du", "file",
+        "strings", "cal", "yes", "figlet",
+        "bigtext", "env",
         "export", "unset", "which", "history",
         "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "python3", "python",
@@ -373,7 +411,10 @@ final class BlacksiteShell: ObservableObject {
         let command = raw.trimmingCharacters(
             in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return }
-        emit("▸ " + command, .cmd)
+        let continuing =
+            constructBuffer() != nil
+        emit((continuing ? "… " : "▸ ")
+             + command, .cmd)
         history.append(command)
         if history.count > 200 {
             history.removeFirst(
@@ -552,11 +593,76 @@ final class BlacksiteShell: ObservableObject {
         return nil
     }
 
+    /// A `<` in a stage: the stage's
+    /// stdin comes from a file instead
+    /// of the pipe.
+    private func findInputRedirect(
+        _ stage: String)
+        -> (stage: String, path: String)? {
+        let chars = Array(stage)
+        var single = false
+        var double = false
+        var depth = 0
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "'", !double {
+                single.toggle()
+            } else if ch == "\"", !single {
+                double.toggle()
+            } else if !single && !double {
+                if ch == "(" { depth += 1 }
+                if ch == ")" {
+                    depth = max(0, depth - 1)
+                }
+                if ch == "<", depth == 0 {
+                    if i + 1 < chars.count,
+                       chars[i + 1] == "<" {
+                        i += 1
+                    } else {
+                        let rest = String(
+                            chars[(i + 1)...])
+                        guard let target =
+                            tokenize(rest).first
+                        else { return nil }
+                        return (String(
+                                    chars[..<i]),
+                                target)
+                    }
+                }
+            }
+            i += 1
+        }
+        return nil
+    }
+
     private func envValue(_ name: String)
         -> String {
         if name == "PWD" { return cwd }
         if name == "?" {
             return String(lastStatus)
+        }
+        if name == "0" {
+            return positionalStack.last?
+                .first ?? "blacksite"
+        }
+        if name == "#" {
+            let frame = positionalStack.last
+                ?? []
+            return String(
+                max(0, frame.count - 1))
+        }
+        if name == "@" || name == "*" {
+            let frame = positionalStack.last
+                ?? []
+            return frame.dropFirst()
+                .joined(separator: " ")
+        }
+        if let n = Int(name), n >= 1 {
+            let frame = positionalStack.last
+                ?? []
+            return n < frame.count
+                ? frame[n] : ""
         }
         return env[name] ?? ""
     }
@@ -620,6 +726,34 @@ final class BlacksiteShell: ObservableObject {
             }
             if ch == "$" {
                 started = true
+                if i + 2 < chars.count,
+                   chars[i + 1] == "(",
+                   chars[i + 2] == "(" {
+                    var depth = 0
+                    var k = i + 1
+                    while k < chars.count {
+                        if chars[k] == "(" {
+                            depth += 1
+                        }
+                        if chars[k] == ")" {
+                            depth -= 1
+                            if depth == 0 {
+                                break
+                            }
+                        }
+                        k += 1
+                    }
+                    if depth == 0,
+                       k > i + 3 {
+                        let inner = String(
+                            chars[(i + 3)..<(
+                                k - 1)])
+                        current += String(
+                            arithEval(inner))
+                        i = k + 1
+                        continue
+                    }
+                }
                 if i + 1 < chars.count,
                    chars[i + 1] == "(" {
                     var depth = 1
@@ -701,6 +835,10 @@ final class BlacksiteShell: ObservableObject {
 
     private func execLine(_ line: String,
                           stdin: String) {
+        if routeConstruct(line,
+                          stdin: stdin) {
+            return
+        }
         for part in splitSequence(line) {
             let text = part.text
                 .trimmingCharacters(
@@ -709,6 +847,7 @@ final class BlacksiteShell: ObservableObject {
             if part.gate == .and,
                lastStatus != 0 { continue }
             execPipeline(text, stdin: stdin)
+            if returnFlag { break }
         }
     }
 
@@ -740,21 +879,55 @@ final class BlacksiteShell: ObservableObject {
             in stages.enumerated() {
             let isLast = index == stages.count - 1
             stageError = false
+            var stageText = stage
+            var stageStdin = input
+            if let inRedir =
+                findInputRedirect(stage) {
+                stageText = inRedir.stage
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if let content = BlacksiteFS
+                    .readText(
+                        resolved(inRedir.path)) {
+                    stageStdin = content
+                } else {
+                    emit("\(inRedir.path): no "
+                         + "such file to "
+                         + "read '<' from.",
+                         .err)
+                    lastStatus = 1
+                    input = ""
+                    continue
+                }
+            }
             if !isLast || redirect != nil {
                 let text = captureOutput {
-                    runStage(stage, stdin: input)
+                    runStage(stageText,
+                             stdin: stageStdin)
                 }
-                lastStatus = stageError ? 1 : 0
+                lastStatus = consumeStatus()
                 if isLast, let redirect = redirect {
                     writeRedirect(text, redirect)
                 } else {
                     input = text
                 }
             } else {
-                runStage(stage, stdin: input)
-                lastStatus = stageError ? 1 : 0
+                runStage(stageText,
+                         stdin: stageStdin)
+                lastStatus = consumeStatus()
             }
         }
+    }
+
+    /// The stage's verdict: an exact
+    /// status when a construct set one
+    /// (return N), else the error bit.
+    private func consumeStatus() -> Int {
+        if let pending = pendingStatus {
+            pendingStatus = nil
+            return pending
+        }
+        return stageError ? 1 : 0
     }
 
     private func captureOutput(
@@ -806,6 +979,1544 @@ final class BlacksiteShell: ObservableObject {
         else { return nil }
         return (name, String(
             token[token.index(after: eq)...]))
+    }
+
+
+
+    // MARK: Constructs — functions,
+    // loops, conditionals, case,
+    // here-docs
+    //
+    // A construct spans lines, so the
+    // shell keeps a per-thread buffer:
+    // a line that opens one (or feeds an
+    // open one) is held until the
+    // construct completes, then the
+    // whole text is parsed from its
+    // sequence parts and executed with
+    // the same statements any line gets.
+
+    private static let constructHeads:
+        Set<String> = ["for", "while",
+                       "until", "if", "case"]
+
+    private static let constructKey =
+        "blacksite.construct.buffer"
+
+    private func constructBuffer()
+        -> String? {
+        Thread.current.threadDictionary[
+            Self.constructKey] as? String
+    }
+
+    private func setConstructBuffer(
+        _ value: String?) {
+        if let value = value {
+            Thread.current.threadDictionary[
+                Self.constructKey] = value
+        } else {
+            Thread.current.threadDictionary
+                .removeObject(
+                    forKey: Self.constructKey)
+        }
+    }
+
+    /// One line's here-doc marker, when
+    /// it carries one: the cleaned line
+    /// and what was found.
+    private func heredocInLine(
+        _ line: String)
+        -> (clean: String, tag: String,
+            quoted: Bool,
+            herestring: String?)? {
+        let chars = Array(line)
+        var single = false
+        var double = false
+        var depth = 0
+        var i = 0
+        while i + 1 < chars.count {
+            let ch = chars[i]
+            if ch == "'", !double {
+                single.toggle()
+            } else if ch == "\"", !single {
+                double.toggle()
+            } else if !single, !double {
+                if ch == "(" { depth += 1 }
+                if ch == ")" {
+                    depth = max(0, depth - 1)
+                }
+                if ch == "<", depth == 0,
+                   chars[i + 1] == "<",
+                   i == 0 || chars[i - 1] != "<" {
+                    var j = i + 2
+                    var isHerestring = false
+                    if j < chars.count,
+                       chars[j] == "<" {
+                        isHerestring = true
+                        j += 1
+                    }
+                    if j < chars.count,
+                       chars[j] == "-",
+                       !isHerestring {
+                        j += 1
+                    }
+                    while j < chars.count,
+                          chars[j] == " "
+                            || chars[j] == "\t" {
+                        j += 1
+                    }
+                    var quoted = false
+                    var tag = ""
+                    if j < chars.count,
+                       chars[j] == "'"
+                        || chars[j] == "\"" {
+                        let q = chars[j]
+                        quoted = true
+                        j += 1
+                        while j < chars.count,
+                              chars[j] != q {
+                            tag.append(chars[j])
+                            j += 1
+                        }
+                        if j < chars.count {
+                            j += 1
+                        }
+                    } else {
+                        while j < chars.count,
+                              chars[j].isLetter
+                                || chars[j]
+                                    .isNumber
+                                || chars[j]
+                                    == "_" {
+                            tag.append(chars[j])
+                            j += 1
+                        }
+                    }
+                    guard !tag.isEmpty else {
+                        return nil
+                    }
+                    let clean = (String(
+                        chars[..<i])
+                        + String(chars[j...]))
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                    if isHerestring {
+                        return (clean, "",
+                                false, tag)
+                    }
+                    return (clean, tag,
+                            quoted, nil)
+                }
+            }
+            i += 1
+        }
+        return nil
+    }
+
+    private func constructStarts(
+        _ line: String) -> Bool {
+        let trimmed = line
+            .trimmingCharacters(
+                in: .whitespaces)
+        if functionDefHead(trimmed) != nil {
+            return true
+        }
+        let first = rawWords(trimmed).first
+            ?? ""
+        if Self.constructHeads
+            .contains(first) {
+            return true
+        }
+        return heredocInLine(trimmed) != nil
+    }
+
+    private func constructComplete(
+        _ text: String) -> Bool {
+        let lines = text.components(
+            separatedBy: "\n")
+        for (index, line) in lines
+            .enumerated() {
+            if let marker = heredocInLine(
+                line) {
+                if marker.herestring != nil {
+                    break
+                }
+                if index + 1 >= lines.count {
+                    return false
+                }
+                let found = lines[
+                    (index + 1)...]
+                    .contains {
+                        $0.trimmingCharacters(
+                            in: .whitespaces)
+                            == marker.tag
+                    }
+                if !found { return false }
+                break
+            }
+        }
+        let words = constructWords(text)
+        func count(_ set: Set<String>)
+            -> Int {
+            words.filter { set.contains($0) }
+                .count
+        }
+        let loops = count(["for", "while",
+                           "until"])
+        let dones = count(["done"])
+        let ifs = count(["if"])
+        let fis = count(["fi"])
+        let cases = count(["case"])
+        let esacs = count(["esac"])
+        guard dones >= loops,
+              fis >= ifs,
+              esacs >= cases
+        else { return false }
+        let firstLine = lines.first?
+            .trimmingCharacters(
+                in: .whitespaces) ?? ""
+        if functionDefHead(firstLine) != nil {
+            return braceBody(text) != nil
+        }
+        return true
+    }
+
+    /// Route a line into the construct
+    /// machinery when it belongs there.
+    /// Returns true when the line was
+    /// consumed (executed or buffered).
+    private func routeConstruct(
+        _ line: String, stdin: String)
+        -> Bool {
+        if let buffered = constructBuffer() {
+            let joined = buffered + "\n"
+                + line
+            if constructComplete(joined) {
+                setConstructBuffer(nil)
+                execConstruct(
+                    joined, stdin: stdin)
+            } else {
+                setConstructBuffer(joined)
+            }
+            return true
+        }
+        guard constructStarts(line) else {
+            return false
+        }
+        if constructComplete(line) {
+            execConstruct(line, stdin: stdin)
+        } else {
+            setConstructBuffer(line)
+        }
+        return true
+    }
+
+    /// $ expansion for here-doc bodies:
+    /// variables and substitutions, no
+    /// word splitting, quotes literal.
+    private func expandText(_ text: String)
+        -> String {
+        var out = ""
+        let chars = Array(text)
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "\\", i + 1 < chars.count,
+               chars[i + 1] == "$"
+                || chars[i + 1] == "\\"
+                || chars[i + 1] == "`" {
+                out.append(chars[i + 1])
+                i += 2
+                continue
+            }
+            if ch == "$",
+               i + 1 < chars.count {
+                if chars[i + 1] == "(",
+                   i + 2 < chars.count,
+                   chars[i + 2] == "(" {
+                    var depth = 0
+                    var k = i + 1
+                    while k < chars.count {
+                        if chars[k] == "(" {
+                            depth += 1
+                        }
+                        if chars[k] == ")" {
+                            depth -= 1
+                            if depth == 0 {
+                                break
+                            }
+                        }
+                        k += 1
+                    }
+                    if depth == 0, k > i + 3 {
+                        let inner = String(
+                            chars[(i + 3)..<(
+                                k - 1)])
+                        out += String(
+                            arithEval(inner))
+                        i = k + 1
+                        continue
+                    }
+                }
+                if chars[i + 1] == "(" {
+                    var depth = 1
+                    var j = i + 2
+                    var inner = ""
+                    while j < chars.count,
+                          depth > 0 {
+                        let c = chars[j]
+                        if c == "(" {
+                            depth += 1
+                        }
+                        if c == ")" {
+                            depth -= 1
+                            if depth == 0 {
+                                break
+                            }
+                        }
+                        inner.append(c)
+                        j += 1
+                    }
+                    let sub = captureOutput {
+                        execLine(inner,
+                                 stdin: "")
+                    }
+                    out += sub
+                        .trimmingCharacters(
+                            in: .newlines)
+                    i = j + 1
+                    continue
+                }
+                if chars[i + 1] == "{" {
+                    var j = i + 2
+                    var name = ""
+                    while j < chars.count,
+                          chars[j] != "}" {
+                        name.append(chars[j])
+                        j += 1
+                    }
+                    out += envValue(name)
+                    i = j + 1
+                    continue
+                }
+                var j = i + 1
+                var name = ""
+                while j < chars.count,
+                      chars[j].isLetter
+                        || chars[j].isNumber
+                        || chars[j] == "_"
+                        || chars[j] == "?" {
+                    name.append(chars[j])
+                    j += 1
+                }
+                if name.isEmpty {
+                    out.append("$")
+                    i += 1
+                } else {
+                    out += envValue(name)
+                    i = j
+                }
+                continue
+            }
+            out.append(ch)
+            i += 1
+        }
+        return out
+    }
+
+    /// Execute a completed construct
+    /// text: pull any here-doc out into
+    /// stdin, then walk the parts.
+    private func execConstruct(
+        _ text: String, stdin: String) {
+        var working = text
+        var stdinToUse = stdin
+        var lines = working.components(
+            separatedBy: "\n")
+        for (index, line) in lines
+            .enumerated() {
+            guard let marker = heredocInLine(
+                line) else { continue }
+            if let word = marker.herestring {
+                lines[index] = marker.clean
+                stdinToUse = word + "\n"
+            } else {
+                var body: [String] = []
+                var end = lines.count
+                var j = index + 1
+                while j < lines.count {
+                    if lines[j]
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                        == marker.tag {
+                        end = j
+                        break
+                    }
+                    body.append(lines[j])
+                    j += 1
+                }
+                if !marker.quoted {
+                    body = body.map {
+                        expandText($0)
+                    }
+                }
+                stdinToUse = body.isEmpty
+                    ? ""
+                    : body.joined(
+                        separator: "\n")
+                        + "\n"
+                lines[index] = marker.clean
+                if end < lines.count {
+                    lines.removeSubrange(
+                        (index + 1)...end)
+                } else if index + 1
+                            < lines.count {
+                    lines.removeSubrange(
+                        (index + 1)...)
+                }
+            }
+            working = lines.joined(
+                separator: "\n")
+            break
+        }
+        if !constructStarts(working) {
+            execLine(working,
+                     stdin: stdinToUse)
+            return
+        }
+        let flat = working
+            .replacingOccurrences(
+                of: "\n", with: "; ")
+        var parts = splitSequence(flat)
+        var redirect: (path: String,
+                        append: Bool)? = nil
+        if let lastPart = parts.last {
+            let headWord = rawWords(
+                lastPart.text
+                    .trimmingCharacters(
+                        in: .whitespaces))
+                .first ?? ""
+            if ["done", "fi", "esac"]
+                .contains(headWord),
+               let found = findRedirect(
+                lastPart.text) {
+                parts[parts.count - 1] = (
+                    text: found.stage,
+                    gate: lastPart.gate)
+                redirect = (found.path,
+                            found.append)
+            }
+        }
+        let cursor = PartCursor(parts)
+        if let redirect = redirect {
+            let captured = captureOutput {
+                _ = self.execParts(
+                    cursor, until: [],
+                    execute: true,
+                    stdin: stdinToUse)
+            }
+            writeRedirect(captured, redirect)
+        } else {
+            _ = execParts(
+                cursor, until: [],
+                execute: true,
+                stdin: stdinToUse)
+        }
+    }
+
+    /// A walk over a construct's
+    /// sequence parts.
+    private final class PartCursor {
+        var parts: [(text: String,
+                     gate: Gate)]
+        var i = 0
+        init(_ parts: [(text: String,
+                         gate: Gate)]) {
+            self.parts = parts
+        }
+        var atEnd: Bool {
+            i >= parts.count
+        }
+        func peek() -> (text: String,
+                        gate: Gate)? {
+            atEnd ? nil : parts[i]
+        }
+        func advance() { i += 1 }
+        func insert(
+            _ part: (text: String,
+                     gate: Gate),
+            at index: Int) {
+            parts.insert(part, at: index)
+        }
+    }
+
+    /// Run statements from the cursor
+    /// until a terminator part (one of
+    /// `until`) or the parts run out.
+    /// With execute false the structure
+    /// is consumed but nothing runs —
+    /// the untaken branch of an if.
+    private func execParts(
+        _ cursor: PartCursor,
+        until: Set<String>,
+        execute: Bool,
+        stdin: String)
+        -> (terminator: String,
+            remainder: String)? {
+        while let part = cursor.peek() {
+            let text = part.text
+                .trimmingCharacters(
+                    in: .whitespaces)
+            if text.isEmpty {
+                cursor.advance()
+                continue
+            }
+            let words = rawWords(text)
+            let head = words.first ?? ""
+            if until.contains(head) {
+                cursor.advance()
+                return (head,
+                        remainderText(text))
+            }
+            if returnFlag { return nil }
+            let gateOK = part.gate == .always
+                || lastStatus == 0
+            if Self.constructHeads
+                .contains(head)
+                || functionDefHead(text)
+                    != nil {
+                execConstructFromCursor(
+                    cursor,
+                    execute: execute
+                        && gateOK,
+                    stdin: stdin)
+                continue
+            }
+            cursor.advance()
+            if head == "then"
+                || head == "do" {
+                let stmt = remainderText(text)
+                if stmt.isEmpty { continue }
+                let stmtHead = rawWords(stmt)
+                    .first ?? ""
+                if Self.constructHeads
+                    .contains(stmtHead)
+                    || functionDefHead(stmt)
+                        != nil {
+                    cursor.insert(
+                        (text: stmt,
+                         gate: .always),
+                        at: cursor.i)
+                    continue
+                }
+                if execute && gateOK {
+                    execLine(stmt,
+                             stdin: stdin)
+                }
+                continue
+            }
+            if execute && gateOK {
+                execLine(text, stdin: stdin)
+            }
+        }
+        return nil
+    }
+
+    /// The cursor stands on a construct's
+    /// opening part; consume it whole.
+    private func execConstructFromCursor(
+        _ cursor: PartCursor,
+        execute: Bool,
+        stdin: String) {
+        guard let part = cursor.peek()
+        else { return }
+        let text = part.text
+            .trimmingCharacters(
+                in: .whitespaces)
+        if functionDefHead(text) != nil {
+            var gathered: [String] = []
+            while let next = cursor.peek() {
+                cursor.advance()
+                gathered.append(next.text)
+                let joined = gathered
+                    .joined(separator: "; ")
+                if braceBody(joined) != nil {
+                    break
+                }
+            }
+            if execute,
+               let def = parseFunctionDef(
+                gathered.joined(
+                    separator: "; ")) {
+                functions[def.name] = def.body
+                lastStatus = 0
+            }
+            return
+        }
+        let head = rawWords(text).first ?? ""
+        cursor.advance()
+        switch head {
+        case "for", "while", "until":
+            execLoop(cursor, kind: head,
+                     keywordPart: text,
+                     execute: execute,
+                     stdin: stdin)
+        case "if":
+            execIf(cursor,
+                   keywordPart: text,
+                   execute: execute,
+                   stdin: stdin)
+        case "case":
+            execCase(cursor,
+                     keywordPart: text,
+                     execute: execute,
+                     stdin: stdin)
+        default:
+            break
+        }
+    }
+
+    /// for / while / until: the cursor
+    /// stands just past the keyword part.
+    /// The body's span is first measured
+    /// (matching `done`, nest-aware) so
+    /// it can run again and again.
+    private func execLoop(
+        _ cursor: PartCursor,
+        kind: String,
+        keywordPart: String,
+        execute: Bool,
+        stdin: String) {
+        var depth = 1
+        var j = cursor.i
+        while j < cursor.parts.count {
+            let head = rawWords(
+                cursor.parts[j].text
+                    .trimmingCharacters(
+                        in: .whitespaces))
+                .first ?? ""
+            if Self.constructHeads
+                .contains(head),
+               head != "if",
+               head != "case" {
+                depth += 1
+            }
+            if head == "done" {
+                depth -= 1
+                if depth == 0 { break }
+            }
+            j += 1
+        }
+        let bodyParts = Array(
+            cursor.parts[cursor.i..<min(
+                j, cursor.parts.count)])
+        cursor.i = min(j + 1,
+                       cursor.parts.count)
+        guard execute else { return }
+        if j >= cursor.parts.count {
+            emit("\(kind): the loop never "
+                 + "meets its 'done'.",
+                 .err)
+            stageError = true
+            return
+        }
+        let cap = 10000
+        if kind == "for" {
+            let tokens = tokenize(
+                keywordPart)
+            guard tokens.count >= 2 else {
+                emit("for: a variable "
+                     + "needs naming.",
+                     .err)
+                stageError = true
+                return
+            }
+            let name = tokens[1]
+            var values: [String] = []
+            if tokens.count >= 3,
+               tokens[2] == "in" {
+                values = tokens.dropFirst(3)
+                    .flatMap {
+                        globExpand($0)
+                    }
+            } else if tokens.count == 2 {
+                let frame = positionalStack
+                    .last ?? []
+                values = Array(
+                    frame.dropFirst())
+            }
+            var ran = 0
+            for value in values {
+                if returnFlag { break }
+                if ran >= cap {
+                    emit("for: the house "
+                         + "caps a loop at "
+                         + "\(cap) turns.",
+                         .err)
+                    stageError = true
+                    break
+                }
+                ran += 1
+                env[name] = value
+                let sub = PartCursor(
+                    bodyParts)
+                _ = execParts(
+                    sub, until: [],
+                    execute: true,
+                    stdin: stdin)
+            }
+            return
+        }
+        let cond = remainderText(
+            keywordPart)
+        guard !cond.isEmpty else {
+            emit("\(kind): no condition "
+                 + "to judge.", .err)
+            stageError = true
+            return
+        }
+        var turns = 0
+        while true {
+            if returnFlag { break }
+            execLine(cond, stdin: stdin)
+            let status = lastStatus
+            let go = kind == "while"
+                ? status == 0
+                : status != 0
+            if !go { break }
+            if turns >= cap {
+                emit("\(kind): the house "
+                     + "caps a loop at "
+                     + "\(cap) turns.",
+                     .err)
+                stageError = true
+                break
+            }
+            turns += 1
+            let sub = PartCursor(bodyParts)
+            _ = execParts(
+                sub, until: [],
+                execute: true, stdin: stdin)
+        }
+    }
+
+    /// if / elif / else / fi: branches
+    /// are walked with execParts, the
+    /// untaken ones in skip mode.
+    private func execIf(
+        _ cursor: PartCursor,
+        keywordPart: String,
+        execute: Bool,
+        stdin: String) {
+        var condText = remainderText(
+            keywordPart)
+        var tookAny = false
+        while true {
+            var take = false
+            if execute && !tookAny,
+               !condText.isEmpty {
+                execLine(condText,
+                         stdin: stdin)
+                take = lastStatus == 0
+            }
+            if take { tookAny = true }
+            guard let hit = execParts(
+                cursor,
+                until: ["elif", "else", "fi"],
+                execute: take,
+                stdin: stdin)
+            else { return }
+            if hit.terminator == "fi" {
+                return
+            }
+            if hit.terminator == "elif" {
+                condText = hit.remainder
+                continue
+            }
+            let elseTake = execute && !tookAny
+            if elseTake,
+               !hit.remainder.isEmpty {
+                execLine(hit.remainder,
+                         stdin: stdin)
+            }
+            _ = execParts(
+                cursor, until: ["fi"],
+                execute: elseTake,
+                stdin: stdin)
+            return
+        }
+    }
+
+    /// case … esac: clauses are matched
+    /// by glob against the word; the
+    /// first match runs to its `;;`.
+    private func execCase(
+        _ cursor: PartCursor,
+        keywordPart: String,
+        execute: Bool,
+        stdin: String) {
+        let tokens = tokenize(keywordPart)
+        guard tokens.count >= 2 else {
+            emit("case: a word needs "
+                 + "judging.", .err)
+            stageError = true
+            return
+        }
+        let word = tokens[1]
+        var matchedSomething = false
+        var inClause = false
+        while let part = cursor.peek() {
+            let text = part.text
+                .trimmingCharacters(
+                    in: .whitespaces)
+            if text.isEmpty {
+                cursor.advance()
+                inClause = false
+                continue
+            }
+            let head = rawWords(text).first
+                ?? ""
+            if head == "esac" {
+                cursor.advance()
+                return
+            }
+            if !inClause {
+                guard let paren = text
+                    .firstIndex(of: ")")
+                else {
+                    cursor.advance()
+                    continue
+                }
+                var patText = String(
+                    text[..<paren])
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if patText.hasPrefix("(") {
+                    patText = String(
+                        patText.dropFirst())
+                }
+                let rest = String(text[
+                    text.index(after: paren)...])
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                let pats = patText
+                    .components(
+                        separatedBy: "|")
+                    .map {
+                        $0.trimmingCharacters(
+                            in: CharacterSet(
+                                whitespacesAndNewlines))
+                        .replacingOccurrences(
+                            of: "'", with: "")
+                        .replacingOccurrences(
+                            of: "\"", with: "")
+                    }
+                cursor.advance()
+                if !matchedSomething,
+                   pats.contains(where: {
+                       wildmatch($0, word)
+                   }) {
+                    matchedSomething = true
+                    inClause = true
+                    var stmt = rest
+                    var ends = false
+                    if stmt.hasSuffix(";;") {
+                        stmt = String(
+                            stmt.dropLast(2))
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                        ends = true
+                    }
+                    if execute,
+                       !stmt.isEmpty {
+                        execLine(stmt,
+                                 stdin: stdin)
+                    }
+                    if ends {
+                        inClause = false
+                    }
+                }
+                continue
+            }
+            var stmt = text
+            var ends = false
+            if stmt == ";;" {
+                ends = true
+                stmt = ""
+            } else if stmt
+                .hasSuffix(";;") {
+                stmt = String(
+                    stmt.dropLast(2))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                ends = true
+            }
+            if execute, !stmt.isEmpty {
+                execLine(stmt, stdin: stdin)
+            }
+            cursor.advance()
+            if ends { inClause = false }
+        }
+    }
+
+    // MARK: The shell language —
+    // helpers
+    //
+    // Constructs (functions, loops,
+    // conditionals, case, here-docs)
+    // arrive line by line and are parsed
+    // from RAW text: nothing expands
+    // until a statement actually runs,
+    // when it goes through execLine and
+    // the ordinary tokenizer like any
+    // other command.
+
+    /// Split raw text into words with
+    /// quotes honoured but NOTHING
+    /// expanded — the construct parser's
+    /// eyes.
+    private func rawWords(_ text: String)
+        -> [String] {
+        var words: [String] = []
+        var current = ""
+        var started = false
+        var single = false
+        var double = false
+        var escaped = false
+        func flush() {
+            if started {
+                words.append(current)
+                current = ""
+                started = false
+            }
+        }
+        for ch in text {
+            if escaped {
+                current.append(ch)
+                started = true
+                escaped = false
+                continue
+            }
+            if ch == "\\", !single {
+                escaped = true
+                continue
+            }
+            if ch == "'", !double {
+                single.toggle()
+                started = true
+                continue
+            }
+            if ch == "\"", !single {
+                double.toggle()
+                started = true
+                continue
+            }
+            if (ch == " " || ch == "\t"
+                || ch == "\n"),
+               !single, !double {
+                flush()
+                continue
+            }
+            current.append(ch)
+            started = true
+        }
+        flush()
+        return words
+    }
+
+    /// Everything after the first word.
+    private func remainderText(_ text: String)
+        -> String {
+        let trimmed = text
+            .trimmingCharacters(
+                in: .whitespaces)
+        guard let idx = trimmed.firstIndex(
+            where: { $0 == " " || $0 == "\t" })
+        else { return "" }
+        return String(trimmed[
+            trimmed.index(after: idx)...])
+            .trimmingCharacters(
+                in: .whitespaces)
+    }
+
+    /// The words of a text with quoted
+    /// spans skipped — keyword counting
+    /// for construct completeness.
+    private func constructWords(
+        _ text: String) -> [String] {
+        var words: [String] = []
+        var current = ""
+        var single = false
+        var double = false
+        var escaped = false
+        func flush() {
+            if !current.isEmpty {
+                words.append(current)
+                current = ""
+            }
+        }
+        for ch in text {
+            if escaped {
+                escaped = false
+                continue
+            }
+            if ch == "\\", !single {
+                escaped = true
+                continue
+            }
+            if ch == "'", !double {
+                single.toggle()
+                continue
+            }
+            if ch == "\"", !single {
+                double.toggle()
+                continue
+            }
+            if single || double { continue }
+            if ch.isLetter || ch.isNumber
+                || ch == "_" {
+                current.append(ch)
+            } else {
+                flush()
+            }
+        }
+        flush()
+        return words
+    }
+
+    /// The name when text opens a
+    /// function definition — `name()` —
+    /// else nil.
+    private func functionDefHead(
+        _ text: String) -> String? {
+        let trimmed = text
+            .trimmingCharacters(
+                in: .whitespaces)
+        var name = ""
+        var idx = trimmed.startIndex
+        while idx < trimmed.endIndex,
+              trimmed[idx].isLetter
+                || trimmed[idx].isNumber
+                || trimmed[idx] == "_" {
+            name.append(trimmed[idx])
+            idx = trimmed.index(after: idx)
+        }
+        guard !name.isEmpty,
+              name.first?.isLetter == true
+                || name.first == "_"
+        else { return nil }
+        let rest = String(trimmed[idx...])
+            .trimmingCharacters(
+                in: .whitespaces)
+        guard rest.hasPrefix("()")
+        else { return nil }
+        return name
+    }
+
+    /// Scan a text for its first brace
+    /// and the matching close, quote-
+    /// aware. Returns the body between
+    /// them, or nil when unbalanced.
+    private func braceBody(_ text: String)
+        -> String? {
+        let chars = Array(text)
+        var single = false
+        var double = false
+        var depth = 0
+        var openAt: Int? = nil
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "'", !double {
+                single.toggle()
+            } else if ch == "\"", !single {
+                double.toggle()
+            } else if !single, !double {
+                if ch == "{" {
+                    if depth == 0 {
+                        openAt = i
+                    }
+                    depth += 1
+                }
+                if ch == "}" {
+                    depth -= 1
+                    if depth == 0,
+                       let open = openAt {
+                        return String(
+                            chars[(open + 1)..<i])
+                    }
+                }
+            }
+            i += 1
+        }
+        return nil
+    }
+
+    private func parseFunctionDef(
+        _ text: String)
+        -> (name: String, body: String)? {
+        guard let name = functionDefHead(text),
+              let body = braceBody(text)
+        else { return nil }
+        return (name, body
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines))
+    }
+
+    /// Glob matching: * ? [set] [!set],
+    /// the shell's own hand.
+    private func wildmatch(_ pattern: String,
+                           _ value: String)
+        -> Bool {
+        let p = Array(pattern)
+        let v = Array(value)
+        func match(_ pi: Int, _ vi: Int)
+            -> Bool {
+            if pi == p.count {
+                return vi == v.count
+            }
+            if p[pi] == "*" {
+                var skip = vi
+                while skip <= v.count {
+                    if match(pi + 1, skip) {
+                        return true
+                    }
+                    skip += 1
+                }
+                return false
+            }
+            guard vi < v.count else {
+                return false
+            }
+            if p[pi] == "?" {
+                return match(pi + 1, vi + 1)
+            }
+            if p[pi] == "[",
+               let close = (pi + 1..<p.count)
+                .first(where: {
+                    p[$0] == "]"
+                }) {
+                var j = pi + 1
+                var negate = false
+                if j < close,
+                   p[j] == "!"
+                    || p[j] == "^" {
+                    negate = true
+                    j += 1
+                }
+                var hit = false
+                while j < close {
+                    if j + 2 < close,
+                       p[j + 1] == "-" {
+                        if p[j] <= v[vi],
+                           v[vi] <= p[j + 2] {
+                            hit = true
+                        }
+                        j += 3
+                    } else {
+                        if p[j] == v[vi] {
+                            hit = true
+                        }
+                        j += 1
+                    }
+                }
+                if hit != negate {
+                    return match(
+                        close + 1, vi + 1)
+                }
+                return false
+            }
+            if p[pi] == v[vi] {
+                return match(pi + 1, vi + 1)
+            }
+            return false
+        }
+        return match(0, 0)
+    }
+
+    /// Expand a glob word against the
+    /// files where it points; no match
+    /// leaves the word as written.
+    private func globExpand(_ word: String)
+        -> [String] {
+        guard word.contains("*")
+                || word.contains("?")
+                || word.contains("[")
+        else { return [word] }
+        let dirPart: String
+        let pattern: String
+        let head: String
+        if let slash = word.lastIndex(
+            of: "/") {
+            dirPart = String(
+                word[..<slash])
+            head = String(
+                word[...slash])
+            pattern = String(word[
+                word.index(after: slash)...])
+        } else {
+            dirPart = cwd
+            head = ""
+            pattern = word
+        }
+        let dir = resolved(
+            dirPart.isEmpty ? "/" : dirPart)
+        guard let entries = BlacksiteFS.list(
+            dir) else { return [word] }
+        let hits = entries
+            .filter {
+                wildmatch(pattern, $0.name)
+            }
+            .map { head + $0.name }
+            .sorted()
+        return hits.isEmpty ? [word] : hits
+    }
+
+    // MARK: Arithmetic — $(( … ))
+
+    /// Integer arithmetic for $(( … )):
+    /// the full operator ladder, names
+    /// read from the environment, and
+    /// overflow that saturates instead
+    /// of trapping — a shell expression
+    /// must never take the house down.
+    private struct ArithParser {
+        let chars: [Character]
+        var i = 0
+        let value: (String) -> Int
+
+        init(text: String,
+             value: @escaping (String)
+                -> Int) {
+            chars = Array(text)
+            self.value = value
+        }
+
+        mutating func parseAll() -> Int {
+            let result = parseExpr()
+            return result
+        }
+
+        private mutating func skipSpaces() {
+            while i < chars.count,
+                  chars[i] == " "
+                    || chars[i] == "\t" {
+                i += 1
+            }
+        }
+
+        private mutating func peekOp(
+            _ op: String) -> Bool {
+            skipSpaces()
+            let want = Array(op)
+            guard i + want.count
+                    <= chars.count
+            else { return false }
+            for (offset, c) in want
+                .enumerated() {
+                if chars[i + offset] != c {
+                    return false
+                }
+            }
+            return true
+        }
+
+        private mutating func eatOp(
+            _ op: String) -> Bool {
+            guard peekOp(op) else {
+                return false
+            }
+            i += op.count
+            return true
+        }
+
+        private func safeAdd(_ a: Int,
+                             _ b: Int) -> Int {
+            let r = a.addingReportingOverflow(b)
+            return r.overflow
+                ? (a >= 0 ? Int.max : Int.min)
+                : r.partialValue
+        }
+
+        private func safeMul(_ a: Int,
+                             _ b: Int) -> Int {
+            let r = a.multipliedReportingOverflow(
+                by: b)
+            return r.overflow
+                ? ((a < 0) != (b < 0)
+                   ? Int.min : Int.max)
+                : r.partialValue
+        }
+
+        mutating func parseExpr() -> Int {
+            let cond = parseOr()
+            if eatOp("?") {
+                let yes = parseExpr()
+                _ = eatOp(":")
+                let no = parseExpr()
+                return cond != 0 ? yes : no
+            }
+            return cond
+        }
+
+        mutating func parseOr() -> Int {
+            var lhs = parseAnd()
+            while eatOp("||") {
+                let rhs = parseAnd()
+                lhs = (lhs != 0 || rhs != 0)
+                    ? 1 : 0
+            }
+            return lhs
+        }
+
+        mutating func parseAnd() -> Int {
+            var lhs = parseBitOr()
+            while eatOp("&&") {
+                let rhs = parseBitOr()
+                lhs = (lhs != 0 && rhs != 0)
+                    ? 1 : 0
+            }
+            return lhs
+        }
+
+        mutating func parseBitOr() -> Int {
+            var lhs = parseBitXor()
+            while peekOp("|"),
+                  !peekOp("||") {
+                i += 1
+                let rhs = parseBitXor()
+                lhs = lhs | rhs
+            }
+            return lhs
+        }
+
+        mutating func parseBitXor() -> Int {
+            var lhs = parseBitAnd()
+            while eatOp("^") {
+                let rhs = parseBitAnd()
+                lhs = lhs ^ rhs
+            }
+            return lhs
+        }
+
+        mutating func parseBitAnd() -> Int {
+            var lhs = parseEquality()
+            while peekOp("&"),
+                  !peekOp("&&") {
+                i += 1
+                let rhs = parseEquality()
+                lhs = lhs & rhs
+            }
+            return lhs
+        }
+
+        mutating func parseEquality() -> Int {
+            var lhs = parseRelational()
+            while true {
+                if eatOp("==") {
+                    lhs = lhs
+                        == parseRelational()
+                        ? 1 : 0
+                } else if eatOp("!=") {
+                    lhs = lhs
+                        != parseRelational()
+                        ? 1 : 0
+                } else { return lhs }
+            }
+        }
+
+        mutating func parseRelational() -> Int {
+            var lhs = parseShift()
+            while true {
+                if eatOp("<=") {
+                    lhs = lhs <= parseShift()
+                        ? 1 : 0
+                } else if eatOp(">=") {
+                    lhs = lhs >= parseShift()
+                        ? 1 : 0
+                } else if eatOp("<") {
+                    lhs = lhs < parseShift()
+                        ? 1 : 0
+                } else if eatOp(">") {
+                    lhs = lhs > parseShift()
+                        ? 1 : 0
+                } else { return lhs }
+            }
+        }
+
+        mutating func parseShift() -> Int {
+            var lhs = parseAdd()
+            while true {
+                if eatOp("<<") {
+                    let n = parseAdd()
+                    lhs = (n < 0 || n > 62)
+                        ? 0 : lhs << n
+                } else if eatOp(">>") {
+                    let n = parseAdd()
+                    lhs = (n < 0 || n > 62)
+                        ? 0 : lhs >> n
+                } else { return lhs }
+            }
+        }
+
+        mutating func parseAdd() -> Int {
+            var lhs = parseMul()
+            while true {
+                if eatOp("+") {
+                    lhs = safeAdd(
+                        lhs, parseMul())
+                } else if peekOp("-"),
+                          !peekOp("--") {
+                    i += 1
+                    let rhs = parseMul()
+                    let r = lhs
+                        .subtractingReportingOverflow(
+                            rhs)
+                    lhs = r.overflow
+                        ? (lhs >= 0
+                           ? Int.max : Int.min)
+                        : r.partialValue
+                } else { return lhs }
+            }
+        }
+
+        mutating func parseMul() -> Int {
+            var lhs = parsePow()
+            while true {
+                if eatOp("*") {
+                    lhs = safeMul(
+                        lhs, parsePow())
+                } else if eatOp("/") {
+                    let rhs = parsePow()
+                    if rhs == 0 {
+                        lhs = 0
+                    } else if lhs == Int.min,
+                              rhs == -1 {
+                        lhs = Int.min
+                    } else {
+                        lhs = lhs / rhs
+                    }
+                } else if eatOp("%") {
+                    let rhs = parsePow()
+                    if rhs == 0 {
+                        lhs = 0
+                    } else if lhs == Int.min,
+                              rhs == -1 {
+                        lhs = 0
+                    } else {
+                        lhs = lhs % rhs
+                    }
+                } else { return lhs }
+            }
+        }
+
+        mutating func parsePow() -> Int {
+            let base = parseUnary()
+            if eatOp("**") {
+                let exp = parsePow()
+                if exp < 0 { return 0 }
+                var result = 1
+                var n = exp
+                var b = base
+                while n > 0 {
+                    if n % 2 == 1 {
+                        result = safeMul(
+                            result, b)
+                    }
+                    n /= 2
+                    if n > 0 {
+                        b = safeMul(b, b)
+                    }
+                }
+                return result
+            }
+            return base
+        }
+
+        mutating func parseUnary() -> Int {
+            if eatOp("-") {
+                return -parseUnary()
+            }
+            if eatOp("+") {
+                return parseUnary()
+            }
+            if eatOp("!") {
+                return parseUnary() == 0
+                    ? 1 : 0
+            }
+            if eatOp("~") {
+                return ~parseUnary()
+            }
+            return parsePrimary()
+        }
+
+        mutating func parsePrimary() -> Int {
+            skipSpaces()
+            guard i < chars.count else {
+                return 0
+            }
+            if chars[i] == "(" {
+                i += 1
+                let inner = parseExpr()
+                if i < chars.count,
+                   chars[i] == ")" {
+                    i += 1
+                }
+                return inner
+            }
+            if chars[i] == "$" {
+                i += 1
+            }
+            if i < chars.count,
+               chars[i].isNumber {
+                var text = ""
+                if chars[i] == "0",
+                   i + 1 < chars.count,
+                   chars[i + 1] == "x"
+                    || chars[i + 1] == "X" {
+                    i += 2
+                    while i < chars.count,
+                          chars[i].isHexDigit {
+                        text.append(chars[i])
+                        i += 1
+                    }
+                    return Int(text, radix: 16)
+                        ?? 0
+                }
+                while i < chars.count,
+                      chars[i].isNumber {
+                    text.append(chars[i])
+                    i += 1
+                }
+                return Int(text) ?? 0
+            }
+            if i < chars.count,
+               chars[i].isLetter
+                || chars[i] == "_"
+                || chars[i] == "?" {
+                var name = ""
+                while i < chars.count,
+                      chars[i].isLetter
+                        || chars[i].isNumber
+                        || chars[i] == "_"
+                        || chars[i] == "?" {
+                    name.append(chars[i])
+                    i += 1
+                }
+                return value(name)
+            }
+            i += 1
+            return 0
+        }
+    }
+
+    private func arithEval(_ text: String)
+        -> Int {
+        var parser = ArithParser(
+            text: text) { name in
+                Int(self.envValue(name)) ?? 0
+            }
+        return parser.parseAll()
     }
 
     // MARK: One stage
@@ -999,8 +2710,43 @@ final class BlacksiteShell: ObservableObject {
             grepCommand(args)
         case "find":
             findCommand(args)
+        case "sort", "uniq", "cut",
+             "tr", "sed", "rev", "tac",
+             "nl", "diff", "tee", "xargs",
+             "seq", "base64", "md5sum",
+             "sha256sum", "xxd", "sleep",
+             "printf", "du", "file",
+             "strings", "cal", "yes",
+             "figlet", "bigtext":
+            textCommand(head, args)
         case "stat":
             statCommand(args)
+        case "test":
+            testCommand(args, bracket: false)
+        case "[":
+            if args.last == "]" {
+                testCommand(
+                    Array(args.dropLast()),
+                    bracket: true)
+            } else {
+                emit("[: the closing ']' "
+                     + "went missing.",
+                     .err)
+                stageError = true
+            }
+        case "true", ":":
+            break
+        case "false":
+            stageError = true
+        case "return":
+            let n = args.first
+                .flatMap(Int.init)
+                ?? lastStatus
+            pendingStatus = n
+            stageError = n != 0
+            returnFlag = true
+        case "local":
+            localCommand(args)
         case "env":
             for key in env.keys.sorted() {
                 emit("\(key)=\(env[key] ?? "")")
@@ -1087,6 +2833,12 @@ final class BlacksiteShell: ObservableObject {
                  + "tab; the console keeps "
                  + "the light on.", .sys)
         default:
+            if let body = functions[head] {
+                callFunction(
+                    head, body: body,
+                    args: args)
+                return
+            }
             if BlacksiteWasm.isApplet(head) {
                 wasmAppletCommand(
                     head, args,
@@ -1102,6 +2854,63 @@ final class BlacksiteShell: ObservableObject {
                      + "house; 'pkg list' lists "
                      + "what can be installed.",
                      .err)
+            }
+        }
+    }
+
+    /// Call a shell function: push its
+    /// positional frame, run its body
+    /// as a sequence, restore what
+    /// `local` saved, and carry its
+    /// exact status out.
+    private func callFunction(
+        _ name: String, body: String,
+        args: [String]) {
+        guard positionalStack.count < 32
+        else {
+            emit("\(name): functions may "
+                 + "nest 32 deep in "
+                 + "this house.", .err)
+            stageError = true
+            return
+        }
+        positionalStack.append([name] + args)
+        localFrames.append([])
+        execLine(body, stdin: stageInput)
+        let frame = localFrames.removeLast()
+        for (key, old) in frame.reversed() {
+            if let old = old {
+                env[key] = old
+            } else {
+                env.removeValue(forKey: key)
+            }
+        }
+        positionalStack.removeLast()
+        returnFlag = false
+        pendingStatus = lastStatus
+        stageError = lastStatus != 0
+    }
+
+    private func localCommand(
+        _ args: [String]) {
+        guard !positionalStack.isEmpty,
+              !localFrames.isEmpty else {
+            emit("local: only a function "
+                 + "has locals.", .err)
+            stageError = true
+            return
+        }
+        let top = localFrames.count - 1
+        for arg in args {
+            if let pair = parseAssignment(
+                arg) {
+                localFrames[top].append(
+                    (pair.0, env[pair.0]))
+                env[pair.0] = pair.1
+            } else {
+                localFrames[top].append(
+                    (arg, env[arg]))
+                env.removeValue(forKey: arg)
             }
         }
     }
@@ -2106,6 +3915,17 @@ final class BlacksiteShell: ObservableObject {
                         .sys)
                     break
                 }
+                if self.constructBuffer()
+                    != nil {
+                    self.execLine(
+                        rawLine, stdin: "")
+                    if self.returnFlag {
+                        self.returnFlag =
+                            false
+                        break
+                    }
+                    continue
+                }
                 let line = rawLine
                     .trimmingCharacters(
                         in: .whitespaces)
@@ -2114,6 +3934,10 @@ final class BlacksiteShell: ObservableObject {
                     continue
                 }
                 self.execLine(line, stdin: "")
+                if self.returnFlag {
+                    self.returnFlag = false
+                    break
+                }
             }
             self.popProcess()
             BlacksiteKernel.shared.finish(
@@ -2484,6 +4308,19 @@ final class BlacksiteShell: ObservableObject {
                 ("grep [-i] <pat> [file]", "lines that match"),
                 ("find [path] [-name x]", "every file below"),
                 ("stat <path>", "what a thing is"),
+                ("sort [-rnuf] · uniq [-cdu]", "order the lines · drop repeated neighbours"),
+                ("cut -d X -f 1,3 · tr A-Z a-z", "take fields apart · translate letters"),
+                ("sed [-n] [-i] 's/a/b/g'", "the stream editor — addresses, d, p, the honest subset"),
+                ("rev · tac · nl", "letters backwards · lines backwards · lines numbered"),
+                ("diff <a> <b>", "what changed, hunk by hunk"),
+                ("tee [-a] <file>", "the stream, copied to a file as it passes"),
+                ("xargs [-n N] [-I {}] <cmd>", "run a command on what arrives"),
+                ("file · strings · du [-h]", "what a thing is · its readable runs · its weight"),
+                ("xxd · base64 · md5sum · sha256sum", "look at the bytes · carry them safely · their sums"),
+                ("printf <fmt> [args] · seq [a [s]] b · yes", "say it precisely · count · say it forever (a thousand times)"),
+                ("cal [month [year]]", "the month, drawn"),
+                ("figlet [-f slim] <words>", "big letters — banner is the wire tool of the same name"),
+                ("sleep <n>", "the room waits (300 seconds at most)"),
             ]),
             ("editors", [
                 ("vim [file]", "the modal church — :help inside"),
@@ -2506,6 +4343,17 @@ final class BlacksiteShell: ObservableObject {
                 ("cmd > file · >>", "write · append output to a file"),
                 ("$(cmd)", "run it, use what it said"),
                 ("a ; b · a && b", "then · then-if-it-worked"),
+                ("cmd < file", "a file becomes the input"),
+                ("cat <<EOF … EOF", "a here-doc — the lines between are the input; <<'EOF' keeps them literal"),
+                ("$((x + 1))", "arithmetic in place — names, the full operator ladder, ?: too"),
+                ("name() { …; }", "a function — call it by name; $1…$9, $#, $@ inside, local keeps its variables its own, return N leaves early"),
+                ("for x in a b *.txt; do …; done", "the loop, spelled out — globs open here"),
+                ("while test …; do …; done", "until runs the other way — the condition is any command, judged by its status"),
+                ("if …; then …; elif …; else …; fi", "the fork in the road"),
+                ("case $x in a|b) …;; *) …;; esac", "pattern by pattern — * ? [set] speak glob"),
+                ("test <expr> · [ <expr> ]", "the judge: -e -f -d -s -z -n, = !=, -eq -ne -lt -le -gt -ge, ! -a -o"),
+                ("require('./mod') — js", "javascript modules from the files beside the script, or a package name from /packages — circular loads come back partial, like node's"),
+                ("setTimeout — js", "timers are the kernel's clock lent out: a run ends when its timers drain, its limit arrives, or the kernel speaks"),
             ]),
             ("packages", [
                 ("pkg list", "installed + the bundled shelf"),
@@ -2762,6 +4610,2328 @@ final class BlacksiteShell: ObservableObject {
             / 1_048_576
     }
 
+
+
+    // MARK: Text commands — the
+    // coreutils batch
+    //
+    // The stream tools: they read files
+    // or the stage's stdin and write
+    // lines, the pipe's whole covenant.
+    // test/[ lives here too.
+
+    private func splitLines(_ text: String)
+        -> [String] {
+        if text.isEmpty { return [] }
+        var rows = text.components(
+            separatedBy: "\n")
+        if rows.last == "" {
+            rows.removeLast()
+        }
+        return rows
+    }
+
+    /// Lines for a text command: its
+    /// files in order, or the stage's
+    /// stdin when it names none.
+    private func textLines(
+        _ files: [String],
+        command: String) -> [String]? {
+        if files.isEmpty {
+            return splitLines(stageInput)
+        }
+        var out: [String] = []
+        for file in files {
+            guard let text = BlacksiteFS
+                .readText(resolved(file))
+            else {
+                emit("\(command): \(file): "
+                     + "no such file.",
+                     .err)
+                stageError = true
+                return nil
+            }
+            out += splitLines(text)
+        }
+        return out
+    }
+
+    private func emitLines(_ rows: [String]) {
+        for row in rows { emit(row) }
+    }
+
+    private func sortCommand(_ args: [String]) {
+        let flags = flagLetters(args)
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard let rows = textLines(
+            files, command: "sort")
+        else { return }
+        let numeric = flags.contains("n")
+        let reverse = flags.contains("r")
+        let fold = flags.contains("f")
+        func key(_ row: String) -> String {
+            fold ? row.lowercased() : row
+        }
+        func num(_ row: String) -> Double {
+            let trimmed = row
+                .trimmingCharacters(
+                    in: .whitespaces)
+            var text = ""
+            var seenDot = false
+            for ch in trimmed {
+                if ch.isNumber {
+                    text.append(ch)
+                } else if ch == ".",
+                          !seenDot {
+                    seenDot = true
+                    text.append(ch)
+                } else if ch == "-",
+                          text.isEmpty {
+                    text.append(ch)
+                } else { break }
+            }
+            return Double(text) ?? 0
+        }
+        var sorted = rows.enumerated()
+            .sorted { a, b in
+                if numeric {
+                    let na = num(a.element)
+                    let nb = num(b.element)
+                    if na != nb {
+                        return reverse
+                            ? na > nb
+                            : na < nb
+                    }
+                }
+                let ka = key(a.element)
+                let kb = key(b.element)
+                if ka != kb {
+                    return reverse
+                        ? ka > kb
+                        : ka < kb
+                }
+                return a.offset < b.offset
+            }
+            .map { $0.element }
+        if flags.contains("u") {
+            var seen = Set<String>()
+            sorted = sorted.filter {
+                seen.insert(key($0)).inserted
+            }
+        }
+        emitLines(sorted)
+    }
+
+    private func uniqCommand(_ args: [String]) {
+        let flags = flagLetters(args)
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard let rows = textLines(
+            files, command: "uniq")
+        else { return }
+        let fold = flags.contains("i")
+        func key(_ row: String) -> String {
+            fold ? row.lowercased() : row
+        }
+        var out: [String] = []
+        var i = 0
+        while i < rows.count {
+            var j = i + 1
+            while j < rows.count,
+                  key(rows[j]) == key(rows[i]) {
+                j += 1
+            }
+            let runCount = j - i
+            let duplicated = runCount > 1
+            let keep = flags.contains("d")
+                ? duplicated
+                : flags.contains("u")
+                    ? !duplicated
+                    : true
+            if keep {
+                out.append(
+                    flags.contains("c")
+                        ? "\(runCount) \(rows[i])"
+                        : rows[i])
+            }
+            i = j
+        }
+        emitLines(out)
+    }
+
+    private func cutCommand(_ args: [String]) {
+        var delim = "\t"
+        var spec: String? = nil
+        var useChars = false
+        var files: [String] = []
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            if arg.hasPrefix("-d") {
+                if arg.count > 2 {
+                    delim = String(
+                        arg.dropFirst(2))
+                } else if i + 1 < args.count {
+                    i += 1
+                    delim = args[i]
+                }
+            } else if arg.hasPrefix("-f") {
+                if arg.count > 2 {
+                    spec = String(
+                        arg.dropFirst(2))
+                } else if i + 1 < args.count {
+                    i += 1
+                    spec = args[i]
+                }
+                useChars = false
+            } else if arg.hasPrefix("-c") {
+                if arg.count > 2 {
+                    spec = String(
+                        arg.dropFirst(2))
+                } else if i + 1 < args.count {
+                    i += 1
+                    spec = args[i]
+                }
+                useChars = true
+            } else if !arg.hasPrefix("-") {
+                files.append(arg)
+            }
+            i += 1
+        }
+        guard let spec = spec else {
+            emit("cut: name the fields "
+                 + "(-f) or the columns "
+                 + "(-c).", .err)
+            stageError = true
+            return
+        }
+        var wanted = Set<Int>()
+        var openEnd: Int? = nil
+        for piece in spec.split(
+            separator: ",") {
+            let part = String(piece)
+            if part.contains("-") {
+                let ends = part.split(
+                    separator: "-",
+                    omittingEmptySubsequences:
+                        false)
+                let lo = ends.first
+                    .flatMap {
+                        Int(String($0))
+                    } ?? 1
+                if ends.count > 1,
+                   let hi = Int(
+                    String(ends[1])) {
+                    for n in lo...hi {
+                        wanted.insert(n)
+                    }
+                } else {
+                    openEnd = lo
+                }
+            } else if let n = Int(part) {
+                wanted.insert(n)
+            }
+        }
+        func picked(_ n: Int) -> Bool {
+            wanted.contains(n)
+                || (openEnd.map {
+                    n >= $0
+                } ?? false)
+        }
+        guard let rows = textLines(
+            files, command: "cut")
+        else { return }
+        for row in rows {
+            if useChars {
+                let chars = Array(row)
+                let out = chars.enumerated()
+                    .filter {
+                        picked($0.offset + 1)
+                    }
+                    .map { String($0.element) }
+                emit(out.joined())
+            } else if row.contains(delim) {
+                let fields = row.components(
+                    separatedBy: delim)
+                let out = fields.enumerated()
+                    .filter {
+                        picked($0.offset + 1)
+                    }
+                    .map { $0.element }
+                emit(out.joined(
+                    separator: delim))
+            } else {
+                emit(row)
+            }
+        }
+    }
+
+    /// Expand a tr set: ranges, escapes,
+    /// and the common classes.
+    private func trSet(_ spec: String)
+        -> [Character] {
+        let chars = Array(spec)
+        var out: [Character] = []
+        var i = 0
+        let classes: [String: String] = [
+            "upper": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "lower": "abcdefghijklmnopqrstuvwxyz",
+            "digit": "0123456789",
+            "alpha": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "space": " \t\n",
+        ]
+        while i < chars.count {
+            if chars[i] == "[",
+               i + 2 < chars.count,
+               chars[i + 1] == ":" {
+                var j = i + 2
+                var name = ""
+                while j + 1 < chars.count,
+                      !(chars[j] == ":"
+                        && chars[j + 1] == "]") {
+                    name.append(chars[j])
+                    j += 1
+                }
+                if let members = classes[name] {
+                    out += Array(members)
+                    i = j + 2
+                    continue
+                }
+            }
+            if chars[i] == "\\",
+               i + 1 < chars.count {
+                let esc = chars[i + 1]
+                let mapped: Character =
+                    esc == "n" ? "\n"
+                    : esc == "t" ? "\t"
+                    : esc == "r" ? "\r"
+                    : esc
+                if i + 3 < chars.count,
+                   chars[i + 2] == "-",
+                   chars[i + 3] != "]" {
+                    let end = chars[i + 3]
+                    if let lo = mapped
+                        .unicodeScalars.first,
+                       let hi = end
+                        .unicodeScalars.first,
+                       lo.value <= hi.value {
+                        for v in lo.value...hi
+                            .value {
+                            if let scalar =
+                                UnicodeScalar(v) {
+                                out.append(
+                                    Character(
+                                        scalar))
+                            }
+                        }
+                        i += 4
+                        continue
+                    }
+                }
+                out.append(mapped)
+                i += 2
+                continue
+            }
+            if i + 2 < chars.count,
+               chars[i + 1] == "-" {
+                let end = chars[i + 2]
+                if let lo = chars[i]
+                    .unicodeScalars.first,
+                   let hi = end
+                    .unicodeScalars.first,
+                   lo.value <= hi.value {
+                    for v in lo.value...hi
+                        .value {
+                        if let scalar =
+                            UnicodeScalar(v) {
+                            out.append(
+                                Character(scalar))
+                        }
+                    }
+                    i += 3
+                    continue
+                }
+            }
+            out.append(chars[i])
+            i += 1
+        }
+        return out
+    }
+
+    private func trCommand(_ args: [String]) {
+        let flags = flagLetters(args)
+        let sets = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard !sets.isEmpty else {
+            emit("tr: name a set.",
+                 .err)
+            stageError = true
+            return
+        }
+        let deleting = flags.contains("d")
+        let squeezing = flags.contains("s")
+        let from = trSet(sets[0])
+        let to: [Character] = sets.count > 1
+            ? trSet(sets[1]) : []
+        let fromSet = Set(from)
+        var out = ""
+        if deleting {
+            for ch in stageInput
+                where !fromSet.contains(ch) {
+                out.append(ch)
+            }
+        } else if !to.isEmpty {
+            var map: [Character: Character] =
+                [:]
+            for (index, ch) in from
+                .enumerated() {
+                map[ch] = to[min(
+                    index, to.count - 1)]
+            }
+            for ch in stageInput {
+                out.append(map[ch] ?? ch)
+            }
+        } else {
+            out = stageInput
+        }
+        if squeezing {
+            let squeezeSet = Set(
+                deleting || to.isEmpty
+                    ? from : to)
+            var squeezed = ""
+            var last: Character? = nil
+            for ch in out {
+                if ch == last,
+                   squeezeSet.contains(ch) {
+                    continue
+                }
+                squeezed.append(ch)
+                last = ch
+            }
+            out = squeezed
+        }
+        emitLines(splitLines(out))
+    }
+
+    private func revCommand(_ args: [String]) {
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard let rows = textLines(
+            files, command: "rev")
+        else { return }
+        for row in rows {
+            emit(String(row.reversed()))
+        }
+    }
+
+    private func tacCommand(_ args: [String]) {
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard let rows = textLines(
+            files, command: "tac")
+        else { return }
+        emitLines(rows.reversed())
+    }
+
+    private func nlCommand(_ args: [String]) {
+        var width = 6
+        let files = args.filter {
+            arg in
+            if arg.hasPrefix("-w"),
+               let n = Int(
+                arg.dropFirst(2)) {
+                width = n
+                return false
+            }
+            return !arg.hasPrefix("-")
+        }
+        guard let rows = textLines(
+            files, command: "nl")
+        else { return }
+        var n = 0
+        for row in rows {
+            if row.isEmpty {
+                emit("")
+            } else {
+                n += 1
+                let num = String(n)
+                let pad = String(repeating: " ",
+                    count: max(0, width
+                        - num.count))
+                emit("\(pad)\(num)\t\(row)")
+            }
+        }
+    }
+
+    // MARK: sed — the stream editor,
+    // the honest subset
+
+    private struct SedEdit {
+        var addressLine: Int? = nil
+        var addressLast = false
+        var addressRegex:
+            NSRegularExpression? = nil
+        var hasAddress = false
+        var negate = false
+        var command: Character = "s"
+        var regex: NSRegularExpression? =
+            nil
+        var replacement = ""
+        var all = false
+        var nth = 1
+        var printToo = false
+    }
+
+    /// Split a sed program into its
+    /// edits on ';', respecting /…/
+    /// addresses and s<d>…<d>…<d> spans.
+    private func sedSplit(_ script: String)
+        -> [String] {
+        let chars = Array(script)
+        var parts: [String] = []
+        var current = ""
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == ";" {
+                parts.append(current)
+                current = ""
+                i += 1
+                continue
+            }
+            if ch == "/" {
+                current.append(ch)
+                i += 1
+                while i < chars.count {
+                    let c = chars[i]
+                    current.append(c)
+                    if c == "\\",
+                       i + 1 < chars.count {
+                        i += 1
+                        current.append(chars[i])
+                    } else if c == "/" {
+                        i += 1
+                        break
+                    }
+                    i += 1
+                }
+                continue
+            }
+            if ch == "s",
+               i + 1 < chars.count,
+               current.isEmpty
+                || current.hasSuffix("!")
+                || current.last?.isNumber
+                    == true
+                || current.hasSuffix("$") {
+                let delim = chars[i + 1]
+                current.append(ch)
+                current.append(delim)
+                i += 2
+                var spans = 0
+                while i < chars.count,
+                      spans < 2 {
+                    let c = chars[i]
+                    current.append(c)
+                    if c == "\\",
+                       i + 1 < chars.count {
+                        i += 1
+                        current.append(chars[i])
+                    } else if c == delim {
+                        spans += 1
+                        i += 1
+                        break
+                    }
+                    i += 1
+                }
+                continue
+            }
+            current.append(ch)
+            i += 1
+        }
+        parts.append(current)
+        return parts.filter {
+            !$0.trimmingCharacters(
+                in: .whitespaces).isEmpty
+        }
+    }
+
+    private func sedTemplate(
+        _ raw: String) -> String {
+        var out = ""
+        let chars = Array(raw)
+        var i = 0
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "\\",
+               i + 1 < chars.count {
+                let next = chars[i + 1]
+                if next.isNumber {
+                    out.append("$")
+                    out.append(next)
+                } else if next == "&" {
+                    out.append("&")
+                } else if next == "\\" {
+                    out.append("\\")
+                } else {
+                    out.append(next)
+                }
+                i += 2
+                continue
+            }
+            if ch == "&" {
+                out += "$0"
+                i += 1
+                continue
+            }
+            if ch == "$" {
+                out += "$$"
+                i += 1
+                continue
+            }
+            out.append(ch)
+            i += 1
+        }
+        return out
+    }
+
+    private func parseSedEdit(
+        _ text: String) -> SedEdit? {
+        var edit = SedEdit()
+        let chars = Array(text)
+        var i = 0
+        func skipSpaces() {
+            while i < chars.count,
+                  chars[i] == " " {
+                i += 1
+            }
+        }
+        skipSpaces()
+        if i < chars.count,
+           chars[i].isNumber {
+            var num = ""
+            while i < chars.count,
+                  chars[i].isNumber {
+                num.append(chars[i])
+                i += 1
+            }
+            edit.addressLine = Int(num)
+            edit.hasAddress = true
+        } else if i < chars.count,
+                  chars[i] == "$" {
+            edit.addressLast = true
+            edit.hasAddress = true
+            i += 1
+        } else if i < chars.count,
+                  chars[i] == "/" {
+            i += 1
+            var pat = ""
+            while i < chars.count {
+                let c = chars[i]
+                if c == "\\",
+                   i + 1 < chars.count {
+                    pat.append(c)
+                    pat.append(chars[i + 1])
+                    i += 2
+                    continue
+                }
+                if c == "/" { break }
+                pat.append(c)
+                i += 1
+            }
+            i += 1
+            edit.addressRegex = try?
+                NSRegularExpression(
+                    pattern: pat)
+            edit.hasAddress = true
+        }
+        skipSpaces()
+        if i < chars.count, chars[i] == "!" {
+            edit.negate = true
+            i += 1
+        }
+        skipSpaces()
+        guard i < chars.count else {
+            return nil
+        }
+        let cmd = chars[i]
+        edit.command = cmd
+        i += 1
+        if cmd == "d" || cmd == "p" {
+            return edit
+        }
+        guard cmd == "s",
+              i < chars.count else {
+            return nil
+        }
+        let delim = chars[i]
+        i += 1
+        var pat = ""
+        while i < chars.count {
+            let c = chars[i]
+            if c == "\\",
+               i + 1 < chars.count {
+                pat.append(c)
+                pat.append(chars[i + 1])
+                i += 2
+                continue
+            }
+            if c == delim { break }
+            pat.append(c)
+            i += 1
+        }
+        i += 1
+        var repl = ""
+        while i < chars.count {
+            let c = chars[i]
+            if c == "\\",
+               i + 1 < chars.count {
+                repl.append(c)
+                repl.append(chars[i + 1])
+                i += 2
+                continue
+            }
+            if c == delim { break }
+            repl.append(c)
+            i += 1
+        }
+        i += 1
+        var flags = ""
+        while i < chars.count {
+            flags.append(chars[i])
+            i += 1
+        }
+        edit.all = flags.contains("g")
+        edit.printToo = flags.contains("p")
+        let ignoreCase = flags.contains("i")
+        if let n = flags.first(where: {
+            $0.isNumber
+        }).flatMap({ Int(String($0)) }) {
+            edit.nth = n
+        }
+        edit.regex = try? NSRegularExpression(
+            pattern: pat,
+            options: ignoreCase
+                ? [.caseInsensitive] : [])
+        edit.replacement = sedTemplate(repl)
+        return edit.regex != nil ? edit : nil
+    }
+
+    private func sedCommand(_ args: [String]) {
+        var suppress = false
+        var inPlace = false
+        var scripts: [String] = []
+        var files: [String] = []
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            if arg == "-n" {
+                suppress = true
+            } else if arg == "-i" {
+                inPlace = true
+            } else if arg == "-e",
+                      i + 1 < args.count {
+                i += 1
+                scripts.append(args[i])
+            } else if arg.hasPrefix("-"),
+                      arg.count > 1,
+                      scripts.isEmpty,
+                      files.isEmpty,
+                      arg.allSatisfy({
+                          "nie".contains($0)
+                              || $0 == "-"
+                      }) {
+                if arg.contains("n") {
+                    suppress = true
+                }
+                if arg.contains("i") {
+                    inPlace = true
+                }
+            } else if scripts.isEmpty {
+                scripts.append(arg)
+            } else {
+                files.append(arg)
+            }
+            i += 1
+        }
+        guard !scripts.isEmpty else {
+            emit("sed: a script is the "
+                 + "whole job.", .err)
+            stageError = true
+            return
+        }
+        var edits: [SedEdit] = []
+        for script in scripts {
+            for piece in sedSplit(script) {
+                guard let edit = parseSedEdit(
+                    piece) else {
+                    emit("sed: cannot parse "
+                         + "'\(piece)'.",
+                         .err)
+                    stageError = true
+                    return
+                }
+                edits.append(edit)
+            }
+        }
+        var sources: [(name: String?,
+                       rows: [String])] = []
+        if files.isEmpty {
+            sources.append(
+                (nil, splitLines(stageInput)))
+        } else {
+            for file in files {
+                guard let text = BlacksiteFS
+                    .readText(resolved(file))
+                else {
+                    emit("sed: \(file): no "
+                         + "such file.", .err)
+                    stageError = true
+                    return
+                }
+                sources.append(
+                    (file, splitLines(text)))
+            }
+        }
+        if inPlace, files.isEmpty {
+            emit("sed: -i needs files.",
+                 .err)
+            stageError = true
+            return
+        }
+        for source in sources {
+            var out: [String] = []
+            for (index, original)
+                in source.rows.enumerated() {
+                var line = original
+                var deleted = false
+                var prints: [String] = []
+                for edit in edits {
+                    var addressed = true
+                    if edit.hasAddress {
+                        if let n = edit
+                            .addressLine {
+                            addressed =
+                                index + 1 == n
+                        } else if edit
+                            .addressLast {
+                            addressed =
+                                index == source
+                                    .rows.count - 1
+                        } else if let regex =
+                            edit.addressRegex {
+                            addressed = regex
+                                .firstMatch(
+                                    in: line,
+                                    range:
+                                        NSRange(
+                                            location:
+                                                0,
+                                            length:
+                                                line
+                                                .utf16
+                                                .count))
+                                != nil
+                        }
+                        if edit.negate {
+                            addressed =
+                                !addressed
+                        }
+                    }
+                    if !addressed { continue }
+                    switch edit.command {
+                    case "d":
+                        deleted = true
+                    case "p":
+                        prints.append(line)
+                    case "s":
+                        guard let regex = edit
+                            .regex else {
+                            continue
+                        }
+                        let range = NSRange(
+                            location: 0,
+                            length: line
+                                .utf16.count)
+                        if edit.all {
+                            line = regex
+                                .stringByReplacingMatches(
+                                    in: line,
+                                    range: range,
+                                    withTemplate:
+                                        edit
+                                        .replacement)
+                        } else {
+                            let matches = regex
+                                .matches(
+                                    in: line,
+                                    range: range)
+                            if matches.count
+                                >= edit.nth {
+                                let match =
+                                    matches[
+                                        edit.nth
+                                        - 1]
+                                let replaced =
+                                    regex
+                                    .replacementString(
+                                        for: match,
+                                        in: line,
+                                        offset: 0,
+                                        template:
+                                            edit
+                                            .replacement)
+                                if let r =
+                                    Range(
+                                        match
+                                            .range,
+                                        in: line) {
+                                    line
+                                        .replaceSubrange(
+                                            r,
+                                            with:
+                                                replaced)
+                                }
+                            }
+                        }
+                        if edit.printToo {
+                            prints.append(line)
+                        }
+                    default:
+                        break
+                    }
+                    if deleted { break }
+                }
+                if !deleted {
+                    if !suppress {
+                        out.append(line)
+                    }
+                    out += prints
+                }
+            }
+            if inPlace,
+               let name = source.name {
+                let body = out.isEmpty
+                    ? ""
+                    : out.joined(
+                        separator: "\n") + "\n"
+                _ = BlacksiteFS.writeText(
+                    resolved(name), text: body)
+            } else {
+                emitLines(out)
+            }
+        }
+    }
+
+    // MARK: test — [ … ] and test
+
+    private struct TestParser {
+        let tokens: [String]
+        let cwd: String
+        var i = 0
+
+        mutating func parseOr() -> Bool {
+            var result = parseAnd()
+            while peek() == "-o" {
+                i += 1
+                let rhs = parseAnd()
+                result = result || rhs
+            }
+            return result
+        }
+
+        mutating func parseAnd() -> Bool {
+            var result = parseUnary()
+            while peek() == "-a" {
+                i += 1
+                let rhs = parseUnary()
+                result = result && rhs
+            }
+            return result
+        }
+
+        mutating func parseUnary() -> Bool {
+            if peek() == "!" {
+                i += 1
+                return !parseUnary()
+            }
+            if peek() == "(" {
+                i += 1
+                let inner = parseOr()
+                if peek() == ")" { i += 1 }
+                return inner
+            }
+            return parsePrimary()
+        }
+
+        private func peek() -> String? {
+            i < tokens.count ? tokens[i] : nil
+        }
+
+        private func path(_ raw: String)
+            -> String {
+            BlacksiteFS.normalize(
+                raw, cwd: cwd)
+        }
+
+        mutating func parsePrimary() -> Bool {
+            guard let head = peek() else {
+                return false
+            }
+            let unaryFile: Set<String> = [
+                "-e", "-f", "-d", "-s",
+                "-r", "-w", "-x",
+            ]
+            if unaryFile.contains(head),
+               i + 1 < tokens.count {
+                let target = path(tokens[i + 1])
+                i += 2
+                switch head {
+                case "-e", "-r", "-w", "-x":
+                    return BlacksiteFS
+                        .exists(target)
+                case "-f":
+                    return BlacksiteFS
+                        .exists(target)
+                        && !BlacksiteFS
+                            .isDirectory(target)
+                case "-d":
+                    return BlacksiteFS
+                        .isDirectory(target)
+                case "-s":
+                    return (BlacksiteFS
+                        .fileSize(target)
+                        ?? 0) > 0
+                default:
+                    return false
+                }
+            }
+            if head == "-z"
+                || head == "-n",
+               i + 1 < tokens.count {
+                let value = tokens[i + 1]
+                i += 2
+                return head == "-z"
+                    ? value.isEmpty
+                    : !value.isEmpty
+            }
+            if i + 2 < tokens.count {
+                let op = tokens[i + 1]
+                let lhs = tokens[i]
+                let rhs = tokens[i + 2]
+                let intOps: Set<String> = [
+                    "-eq", "-ne", "-lt",
+                    "-le", "-gt", "-ge",
+                ]
+                if op == "=" || op == "=="
+                    || op == "!=" {
+                    i += 3
+                    return op == "!="
+                        ? lhs != rhs
+                        : lhs == rhs
+                }
+                if intOps.contains(op) {
+                    let a = Int(lhs) ?? 0
+                    let b = Int(rhs) ?? 0
+                    i += 3
+                    switch op {
+                    case "-eq": return a == b
+                    case "-ne": return a != b
+                    case "-lt": return a < b
+                    case "-le": return a <= b
+                    case "-gt": return a > b
+                    default: return a >= b
+                    }
+                }
+            }
+            i += 1
+            return !head.isEmpty
+        }
+    }
+
+    private func testCommand(
+        _ args: [String], bracket: Bool) {
+        if args.isEmpty {
+            stageError = true
+            return
+        }
+        var parser = TestParser(
+            tokens: args, cwd: cwd)
+        let result = parser.parseOr()
+        stageError = !result
+    }
+
+    // MARK: More utilities — diff,
+    // tee, xargs, seq, encodings, sums,
+    // dumps, printf, sizes, types,
+    // strings, the calendar, yes,
+    // and big letters
+
+    private func textCommand(
+        _ head: String, _ args: [String]) {
+        switch head {
+        case "sort": sortCommand(args)
+        case "uniq": uniqCommand(args)
+        case "cut": cutCommand(args)
+        case "tr": trCommand(args)
+        case "sed": sedCommand(args)
+        case "rev": revCommand(args)
+        case "tac": tacCommand(args)
+        case "nl": nlCommand(args)
+        case "diff": diffCommand(args)
+        case "tee": teeCommand(args)
+        case "xargs": xargsCommand(args)
+        case "seq": seqCommand(args)
+        case "base64": base64Command(args)
+        case "md5sum", "sha256sum":
+            hashCommand(head, args)
+        case "xxd": xxdCommand(args)
+        case "sleep": sleepCommand(args)
+        case "printf": printfCommand(args)
+        case "du": duCommand(args)
+        case "file": fileCommand(args)
+        case "strings":
+            stringsCommand(args)
+        case "cal": calCommand(args)
+        case "yes": yesCommand(args)
+        case "figlet", "bigtext":
+            figletCommand(args)
+        default: break
+        }
+    }
+
+    private func diffCommand(_ args: [String]) {
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        let a: [String]
+        let b: [String]
+        let aName: String
+        let bName: String
+        if files.count >= 2 {
+            guard let ta = BlacksiteFS
+                    .readText(
+                        resolved(files[0])),
+                  let tb = BlacksiteFS
+                    .readText(
+                        resolved(files[1]))
+            else {
+                emit("diff: a file named "
+                     + "cannot be read.",
+                     .err)
+                stageError = true
+                return
+            }
+            a = splitLines(ta)
+            b = splitLines(tb)
+            aName = files[0]
+            bName = files[1]
+        } else if files.count == 1 {
+            guard let ta = BlacksiteFS
+                .readText(resolved(files[0]))
+            else {
+                emit("diff: \(files[0]): "
+                     + "no such file.",
+                     .err)
+                stageError = true
+                return
+            }
+            a = splitLines(ta)
+            b = splitLines(stageInput)
+            aName = files[0]
+            bName = "stdin"
+        } else {
+            emit("diff: name two texts, "
+                 + "or one and a pipe.",
+                 .err)
+            stageError = true
+            return
+        }
+        if a == b { return }
+        guard (a.count + 1) * (b.count + 1)
+                <= 9_000_000 else {
+            emit("diff: too large for "
+                 + "this room.", .err)
+            stageError = true
+            return
+        }
+        var table = [[Int]](
+            repeating: [Int](
+                repeating: 0,
+                count: b.count + 1),
+            count: a.count + 1)
+        if !a.isEmpty, !b.isEmpty {
+            for i in stride(
+                from: a.count - 1,
+                through: 0, by: -1) {
+                for j in stride(
+                    from: b.count - 1,
+                    through: 0, by: -1) {
+                    table[i][j] = a[i] == b[j]
+                        ? table[i + 1][j + 1]
+                            + 1
+                        : max(
+                            table[i + 1][j],
+                            table[i][j + 1])
+                }
+            }
+        }
+        enum Op {
+            case same(String)
+            case del(String)
+            case add(String)
+        }
+        var ops: [Op] = []
+        var i = 0
+        var j = 0
+        while i < a.count, j < b.count {
+            if a[i] == b[j] {
+                ops.append(.same(a[i]))
+                i += 1
+                j += 1
+            } else if table[i + 1][j]
+                        >= table[i][j + 1] {
+                ops.append(.del(a[i]))
+                i += 1
+            } else {
+                ops.append(.add(b[j]))
+                j += 1
+            }
+        }
+        while i < a.count {
+            ops.append(.del(a[i]))
+            i += 1
+        }
+        while j < b.count {
+            ops.append(.add(b[j]))
+            j += 1
+        }
+        var changeAt = Set<Int>()
+        for (index, op) in ops.enumerated() {
+            if case .same = op { continue }
+            changeAt.insert(index)
+        }
+        var hunks: [(Int, Int)] = []
+        for index in changeAt.sorted() {
+            let lo = max(0, index - 3)
+            let hi = min(ops.count - 1,
+                         index + 3)
+            if let last = hunks.last,
+               lo <= last.1 + 1 {
+                hunks[hunks.count - 1] =
+                    (last.0, max(last.1, hi))
+            } else {
+                hunks.append((lo, hi))
+            }
+        }
+        emit("--- \(aName)")
+        emit("+++ \(bName)")
+        for (lo, hi) in hunks {
+            var aBefore = 0
+            var bBefore = 0
+            for k in 0..<lo {
+                switch ops[k] {
+                case .same: 
+                    aBefore += 1
+                    bBefore += 1
+                case .del: aBefore += 1
+                case .add: bBefore += 1
+                }
+            }
+            var aCount = 0
+            var bCount = 0
+            for k in lo...hi {
+                switch ops[k] {
+                case .same:
+                    aCount += 1
+                    bCount += 1
+                case .del: aCount += 1
+                case .add: bCount += 1
+                }
+            }
+            emit("@@ -\(aBefore + 1),"
+                 + "\(aCount) "
+                 + "+\(bBefore + 1),"
+                 + "\(bCount) @@")
+            for k in lo...hi {
+                switch ops[k] {
+                case .same(let line):
+                    emit(" " + line)
+                case .del(let line):
+                    emit("-" + line)
+                case .add(let line):
+                    emit("+" + line)
+                }
+            }
+        }
+        stageError = true
+    }
+
+    private func teeCommand(_ args: [String]) {
+        let append = flagLetters(args)
+            .contains("a")
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        var body = stageInput
+        if !body.isEmpty,
+           !body.hasSuffix("\n") {
+            body += "\n"
+        }
+        for file in files {
+            if !BlacksiteFS.writeText(
+                resolved(file), text: body,
+                append: append) {
+                emit("tee: \(file): cannot "
+                     + "write there.", .err)
+                stageError = true
+            }
+        }
+        emitLines(splitLines(stageInput))
+    }
+
+    private func shellQuote(_ token: String)
+        -> String {
+        let safe = token.allSatisfy {
+            $0.isLetter || $0.isNumber
+                || "_./:=+-".contains($0)
+        }
+        if safe, !token.isEmpty {
+            return token
+        }
+        return "'" + token
+            .replacingOccurrences(
+                of: "'", with: "'\\''") + "'"
+    }
+
+    private func xargsCommand(_ args: [String]) {
+        var batch = Int.max
+        var replace: String? = nil
+        var base: [String] = []
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            if arg == "-n",
+               i + 1 < args.count {
+                i += 1
+                batch = Int(args[i]) ?? 1
+            } else if arg.hasPrefix("-n"),
+                      arg.count > 2 {
+                batch = Int(
+                    arg.dropFirst(2)) ?? 1
+            } else if arg == "-I",
+                      i + 1 < args.count {
+                i += 1
+                replace = args[i]
+            } else if arg.hasPrefix("-I"),
+                      arg.count > 2 {
+                replace = String(
+                    arg.dropFirst(2))
+            } else if arg.hasPrefix("-"),
+                      base.isEmpty {
+                // other flags pass quietly
+            } else {
+                base = Array(args[i...])
+                break
+            }
+            i += 1
+        }
+        if base.isEmpty { base = ["echo"] }
+        let items = stageInput
+            .split(whereSeparator: {
+                $0 == " " || $0 == "\t"
+                    || $0 == "\n"
+            })
+            .map(String.init)
+        guard !items.isEmpty else { return }
+        var runs = 0
+        if let mark = replace {
+            for item in items {
+                if runs >= 1000 { break }
+                runs += 1
+                var tokens = base.map {
+                    $0.replacingOccurrences(
+                        of: mark, with: item)
+                }
+                if !base.contains(where: {
+                    $0.contains(mark)
+                }) {
+                    tokens.append(item)
+                }
+                execLine(
+                    tokens.map(shellQuote)
+                        .joined(separator: " "),
+                    stdin: "")
+                if returnFlag { break }
+            }
+            return
+        }
+        var index = 0
+        while index < items.count {
+            if runs >= 1000 { break }
+            runs += 1
+            let slice = items[
+                index..<min(
+                    index + max(1, batch),
+                    items.count)]
+            let tokens = base
+                + Array(slice)
+            execLine(
+                tokens.map(shellQuote)
+                    .joined(separator: " "),
+                stdin: "")
+            if returnFlag { break }
+            index += slice.count
+        }
+    }
+
+    private func seqCommand(_ args: [String]) {
+        let nums = args.compactMap(Double.init)
+        guard !nums.isEmpty else {
+            emit("seq: numbers are the "
+                 + "whole job.", .err)
+            stageError = true
+            return
+        }
+        let first: Double
+        let step: Double
+        let last: Double
+        if nums.count == 1 {
+            first = 1
+            step = 1
+            last = nums[0]
+        } else if nums.count == 2 {
+            first = nums[0]
+            step = 1
+            last = nums[1]
+        } else {
+            first = nums[0]
+            step = nums[1]
+            last = nums[2]
+        }
+        guard step != 0 else {
+            emit("seq: a step of zero "
+                 + "goes nowhere.", .err)
+            stageError = true
+            return
+        }
+        let integral = first == first
+            .rounded()
+            && step == step.rounded()
+            && last == last.rounded()
+        var value = first
+        var count = 0
+        while step > 0
+                ? value <= last
+                : value >= last {
+            if count >= 100000 { break }
+            count += 1
+            emit(integral
+                 ? String(Int(value))
+                 : String(format: "%g",
+                          value))
+            value += step
+        }
+    }
+
+    private func base64Command(
+        _ args: [String]) {
+        let decode = flagLetters(args)
+            .contains("d")
+            || args.contains("-D")
+            || args.contains("--decode")
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        let text: String
+        if let file = files.first {
+            guard let read = BlacksiteFS
+                .readText(resolved(file))
+            else {
+                emit("base64: \(file): no "
+                     + "such file.", .err)
+                stageError = true
+                return
+            }
+            text = read
+        } else {
+            text = stageInput
+        }
+        if decode {
+            let cleaned = text
+                .components(separatedBy:
+                    .whitespacesAndNewlines)
+                .joined()
+            guard let data = Data(
+                base64Encoded: cleaned),
+                  let plain = String(
+                    data: data,
+                    encoding: .utf8)
+            else {
+                emit("base64: that is not "
+                     + "base64, or not text "
+                     + "once decoded.",
+                     .err)
+                stageError = true
+                return
+            }
+            emitLines(splitLines(plain))
+        } else {
+            let encoded = Data(text.utf8)
+                .base64EncodedString()
+            var index = encoded.startIndex
+            while index < encoded.endIndex {
+                let end = encoded.index(
+                    index, offsetBy: 76,
+                    limitedBy:
+                        encoded.endIndex)
+                    ?? encoded.endIndex
+                emit(String(
+                    encoded[index..<end]))
+                index = end
+            }
+        }
+    }
+
+    private func hashCommand(
+        _ head: String, _ args: [String]) {
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        func digest(_ data: Data) -> String {
+            if head == "md5sum" {
+                return Insecure.MD5
+                    .hash(data: data)
+                    .map {
+                        String(format: "%02x",
+                               $0)
+                    }
+                    .joined()
+            }
+            return SHA256.hash(data: data)
+                .map {
+                    String(format: "%02x", $0)
+                }
+                .joined()
+        }
+        if files.isEmpty {
+            emit("\(digest(Data(stageInput.utf8)))"
+                 + "  -")
+            return
+        }
+        for file in files {
+            guard let data = BlacksiteFS
+                .readData(resolved(file))
+            else {
+                emit("\(head): \(file): no "
+                     + "such file.", .err)
+                stageError = true
+                continue
+            }
+            emit("\(digest(data))  \(file)")
+        }
+    }
+
+    private func xxdCommand(_ args: [String]) {
+        let files = args.filter {
+            !$0.hasPrefix("-")
+        }
+        let data: Data
+        if let file = files.first {
+            guard let read = BlacksiteFS
+                .readData(resolved(file))
+            else {
+                emit("xxd: \(file): no "
+                     + "such file.", .err)
+                stageError = true
+                return
+            }
+            data = read
+        } else {
+            data = Data(stageInput.utf8)
+        }
+        let bytes = [UInt8](data)
+        var offset = 0
+        while offset < bytes.count {
+            let row = Array(bytes[
+                offset..<min(offset + 16,
+                             bytes.count)])
+            var hexParts: [String] = []
+            for pair in stride(
+                from: 0, to: 16, by: 2) {
+                var piece = ""
+                for k in 0..<2 {
+                    let at = pair + k
+                    piece += at < row.count
+                        ? String(format: "%02x",
+                                 row[at])
+                        : "  "
+                }
+                hexParts.append(piece)
+            }
+            let gutter = row.map {
+                byte -> String in
+                (byte >= 32 && byte < 127)
+                    ? String(Character(
+                        UnicodeScalar(byte)))
+                    : "."
+            }.joined()
+            let hex = hexParts.joined(
+                separator: " ")
+            let padded = hex.padding(
+                toLength: 39,
+                withPad: " ",
+                startingAt: 0)
+            emit(String(
+                format: "%08x: %@  |%@|",
+                offset, padded, gutter))
+            offset += 16
+        }
+    }
+
+    private func sleepCommand(_ args: [String]) {
+        guard let seconds = args.first
+                .flatMap(Double.init)
+        else {
+            emit("sleep: name the "
+                 + "seconds.", .err)
+            stageError = true
+            return
+        }
+        Thread.sleep(forTimeInterval:
+            min(max(0, seconds), 300))
+    }
+
+    private func printfCommand(
+        _ args: [String]) {
+        guard let format = args.first
+        else {
+            emit("printf: a format is "
+                 + "the whole job.", .err)
+            stageError = true
+            return
+        }
+        let values = Array(args.dropFirst())
+        var out = ""
+        var valueIndex = 0
+        var firstPass = true
+        while firstPass
+                || valueIndex < values.count {
+            firstPass = false
+            var consumed = false
+            let chars = Array(format)
+            var i = 0
+            while i < chars.count {
+                let ch = chars[i]
+                if ch == "\\",
+                   i + 1 < chars.count {
+                    let esc = chars[i + 1]
+                    switch esc {
+                    case "n": out.append("\n")
+                    case "t": out.append("\t")
+                    case "r": out.append("\r")
+                    case "\\": out.append("\\")
+                    case "0": out.append("\u{0}")
+                    default: out.append(esc)
+                    }
+                    i += 2
+                    continue
+                }
+                if ch == "%",
+                   i + 1 < chars.count {
+                    var j = i + 1
+                    var flags = ""
+                    while j < chars.count,
+                          "-+ #0".contains(
+                            chars[j]) {
+                        flags.append(chars[j])
+                        j += 1
+                    }
+                    var widthText = ""
+                    while j < chars.count,
+                          chars[j].isNumber {
+                        widthText.append(
+                            chars[j])
+                        j += 1
+                    }
+                    var precision: Int? = nil
+                    if j < chars.count,
+                       chars[j] == "." {
+                        j += 1
+                        var p = ""
+                        while j < chars.count,
+                              chars[j].isNumber {
+                            p.append(chars[j])
+                            j += 1
+                        }
+                        precision = Int(p) ?? 0
+                    }
+                    guard j < chars.count
+                    else { break }
+                    let conv = chars[j]
+                    let value = valueIndex
+                        < values.count
+                        ? values[valueIndex]
+                        : ""
+                    if conv != "%" {
+                        valueIndex += 1
+                        consumed = true
+                    }
+                    out += printfValue(
+                        conv: conv, value: value,
+                        flags: flags,
+                        width: Int(widthText)
+                            ?? 0,
+                        precision: precision)
+                    i = j + 1
+                    continue
+                }
+                out.append(ch)
+                i += 1
+            }
+            if !consumed { break }
+        }
+        emitLines(splitLines(out))
+    }
+
+    private func printfValue(
+        conv: Character, value: String,
+        flags: String, width: Int,
+        precision: Int?) -> String {
+        func pad(_ body: String,
+                 zeroOK: Bool = false)
+            -> String {
+            if body.count >= width {
+                return body
+            }
+            let fill = zeroOK
+                && flags.contains("0")
+                && !flags.contains("-")
+                ? "0" : " "
+            let padding = String(
+                repeating: fill,
+                count: width - body.count)
+            if flags.contains("-") {
+                return body + padding
+            }
+            if fill == "0",
+               body.hasPrefix("-") {
+                return "-" + padding
+                    + String(body.dropFirst())
+            }
+            return padding + body
+        }
+        switch conv {
+        case "%":
+            return "%"
+        case "s":
+            var body = value
+            if let p = precision,
+               body.count > p {
+                body = String(
+                    body.prefix(p))
+            }
+            return pad(body)
+        case "d", "i":
+            let n = Int(value) ?? 0
+            var body = String(abs(n))
+            if let p = precision {
+                body = String(
+                    repeating: "0",
+                    count: max(0, p
+                        - body.count)) + body
+            }
+            if n < 0 {
+                body = "-" + body
+            } else if flags.contains("+") {
+                body = "+" + body
+            } else if flags.contains(" ") {
+                body = " " + body
+            }
+            return precision == nil
+                ? pad(body, zeroOK: true)
+                : pad(body)
+        case "u":
+            let n = Int(value) ?? 0
+            let body = n < 0
+                ? String(UInt64(
+                    bitPattern: Int64(n)))
+                : String(n)
+            return pad(body, zeroOK: true)
+        case "x", "X", "o":
+            let n = Int(value) ?? 0
+            let u = n < 0
+                ? UInt64(bitPattern:
+                    Int64(n))
+                : UInt64(n)
+            var body = String(
+                u, radix: conv == "o"
+                    ? 8 : 16)
+            if conv == "X" {
+                body = body.uppercased()
+            }
+            if flags.contains("#"),
+               u != 0, conv != "o" {
+                body = (conv == "X"
+                        ? "0X" : "0x") + body
+            }
+            return pad(body, zeroOK: true)
+        case "c":
+            return pad(String(
+                value.prefix(1)))
+        case "f", "F":
+            let d = Double(value) ?? 0
+            return pad(String(
+                format: "%.\(precision ?? 6)f",
+                d), zeroOK: true)
+        case "e", "E", "g", "G":
+            let d = Double(value) ?? 0
+            let body = String(
+                format: "%\(conv)",
+                d)
+            return pad(body, zeroOK: true)
+        default:
+            return "%" + String(conv)
+        }
+    }
+
+    private func duCommand(_ args: [String]) {
+        let flags = flagLetters(args)
+        let human = flags.contains("h")
+        let summary = flags.contains("s")
+        let targets = args.filter {
+            !$0.hasPrefix("-")
+        }
+        func sizeText(_ bytes: Int)
+            -> String {
+            if !human {
+                return String((bytes + 1023)
+                    / 1024)
+            }
+            let units = ["B", "K", "M", "G"]
+            var value = Double(bytes)
+            var unit = 0
+            while value >= 1024,
+                  unit < units.count - 1 {
+                value /= 1024
+                unit += 1
+            }
+            if unit == 0 {
+                return "\(bytes)B"
+            }
+            return value < 10
+                ? String(format: "%.1f",
+                         value) + units[unit]
+                : "\(Int(value.rounded()))"
+                    + units[unit]
+        }
+        for target in (targets.isEmpty
+                       ? [cwd] : targets) {
+            let path = resolved(target)
+            guard BlacksiteFS.exists(path)
+            else {
+                emit("du: \(target): no "
+                     + "such place.", .err)
+                stageError = true
+                continue
+            }
+            if !BlacksiteFS.isDirectory(path) {
+                emit("\(sizeText(BlacksiteFS.fileSize(path) ?? 0))\t\(target)")
+                continue
+            }
+            let all = BlacksiteFS.walk(path)
+            var dirTotals: [(String, Int)] =
+                []
+            var total = 0
+            for entry in [path] + all
+                where BlacksiteFS
+                    .isDirectory(entry) {
+                var sum = 0
+                for member in all
+                    where member.hasPrefix(
+                        entry + "/")
+                        && !BlacksiteFS
+                            .isDirectory(
+                                member) {
+                    sum += BlacksiteFS
+                        .fileSize(member)
+                        ?? 0
+                }
+                dirTotals.append((entry, sum))
+                if entry == path {
+                    total = sum
+                }
+            }
+            if !summary {
+                for (dir, sum) in dirTotals
+                    .sorted(by: {
+                        $0.0.count > $1.0.count
+                    })
+                    where dir != path {
+                    emit("\(sizeText(sum))"
+                         + "\t\(dir)")
+                }
+            }
+            emit("\(sizeText(total))"
+                 + "\t\(target)")
+        }
+    }
+
+    private func fileCommand(_ args: [String]) {
+        let targets = args.filter {
+            !$0.hasPrefix("-")
+        }
+        guard !targets.isEmpty else {
+            emit("file: name something "
+                 + "to identify.", .err)
+            stageError = true
+            return
+        }
+        for target in targets {
+            let path = resolved(target)
+            let what: String
+            if path.hasPrefix("/bin/") {
+                what = "a house built-in "
+                    + "(a virtual file)"
+            } else if !BlacksiteFS
+                .exists(path) {
+                emit("file: \(target): "
+                     + "cannot open — no "
+                     + "such file.", .err)
+                stageError = true
+                continue
+            } else if BlacksiteFS
+                .isDirectory(path) {
+                what = "directory"
+            } else {
+                let data = BlacksiteFS
+                    .readData(path)
+                    ?? Data()
+                let bytes = [UInt8](
+                    data.prefix(600))
+                func hasPrefixBytes(
+                    _ magic: [UInt8]) -> Bool {
+                    guard bytes.count
+                            >= magic.count
+                    else { return false }
+                    let head = Array(
+                        bytes.prefix(
+                            magic.count))
+                    return head == magic
+                }
+                let lower = target
+                    .lowercased()
+                if hasPrefixBytes(
+                    [0x00, 0x61, 0x73, 0x6d]) {
+                    what = "WebAssembly "
+                        + "binary"
+                } else if hasPrefixBytes(
+                    [0x89, 0x50, 0x4e, 0x47]) {
+                    what = "PNG image"
+                } else if hasPrefixBytes(
+                    [0xff, 0xd8, 0xff]) {
+                    what = "JPEG image"
+                } else if hasPrefixBytes(
+                    Array("GIF8".utf8)) {
+                    what = "GIF image"
+                } else if hasPrefixBytes(
+                    Array("%PDF".utf8)) {
+                    what = "PDF document"
+                } else if hasPrefixBytes(
+                    [0x50, 0x4b, 0x03, 0x04]) {
+                    what = "zip archive"
+                } else if hasPrefixBytes(
+                    [0x1f, 0x8b]) {
+                    what = "gzip data"
+                } else if hasPrefixBytes(
+                    Array("SQLite format 3"
+                        .utf8)) {
+                    what = "SQLite database"
+                } else if lower
+                    .hasSuffix(".py") {
+                    what = "Python script"
+                } else if lower
+                    .hasSuffix(".js") {
+                    what = "JavaScript source"
+                } else if lower
+                    .hasSuffix(".swift") {
+                    what = "Swift source"
+                } else if lower
+                    .hasSuffix(".sh") {
+                    what = "shell script"
+                } else if lower
+                    .hasSuffix(".json") {
+                    what = "JSON text"
+                } else if lower
+                    .hasSuffix(".md") {
+                    what = "Markdown text"
+                } else if lower
+                    .hasSuffix(".html") {
+                    what = "HTML text"
+                } else if lower
+                    .hasSuffix(".c")
+                    || lower.hasSuffix(".h") {
+                    what = "C source"
+                } else if !bytes.isEmpty,
+                          bytes.allSatisfy({
+                              $0 == 9 || $0 == 10
+                                  || $0 == 13
+                                  || ($0 >= 32
+                                      && $0 < 127)
+                          }) {
+                    what = "text"
+                } else if bytes.isEmpty {
+                    what = "empty"
+                } else {
+                    what = "data"
+                }
+            }
+            emit("\(target): \(what)")
+        }
+    }
+
+    private func stringsCommand(
+        _ args: [String]) {
+        var minimum = 4
+        var files: [String] = []
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            if arg == "-n",
+               i + 1 < args.count {
+                i += 1
+                minimum = Int(args[i]) ?? 4
+            } else if arg.hasPrefix("-n"),
+                      arg.count > 2 {
+                minimum = Int(
+                    arg.dropFirst(2)) ?? 4
+            } else if !arg.hasPrefix("-") {
+                files.append(arg)
+            }
+            i += 1
+        }
+        let data: Data
+        if let file = files.first {
+            guard let read = BlacksiteFS
+                .readData(resolved(file))
+            else {
+                emit("strings: \(file): no "
+                     + "such file.", .err)
+                stageError = true
+                return
+            }
+            data = read
+        } else {
+            data = Data(stageInput.utf8)
+        }
+        var run = ""
+        func flushRun() {
+            if run.count >= minimum {
+                emit(run)
+            }
+            run = ""
+        }
+        for byte in data {
+            if byte >= 32, byte < 127 {
+                run.append(Character(
+                    UnicodeScalar(byte)))
+            } else {
+                flushRun()
+            }
+        }
+        flushRun()
+    }
+
+    private func calCommand(_ args: [String]) {
+        let calendar = Calendar(
+            identifier: .gregorian)
+        let now = Date()
+        var month = calendar.component(
+            .month, from: now)
+        var year = calendar.component(
+            .year, from: now)
+        let monthNames = [
+            "january", "february", "march",
+            "april", "may", "june", "july",
+            "august", "september",
+            "october", "november",
+            "december",
+        ]
+        let nums = args.compactMap(Int.init)
+        let nameArg = args.first { arg in
+            Int(arg) == nil
+                && monthNames.contains {
+                    $0.hasPrefix(
+                        arg.lowercased())
+                }
+        }
+        if let nameArg = nameArg,
+           let index = monthNames
+            .firstIndex(where: {
+                $0.hasPrefix(
+                    nameArg.lowercased())
+            }) {
+            month = index + 1
+            if let y = nums.first {
+                year = y
+            }
+        } else if nums.count == 1 {
+            month = nums[0]
+        } else if nums.count >= 2 {
+            month = nums[0]
+            year = nums[1]
+        }
+        guard (1...12).contains(month) else {
+            emit("cal: months run 1 "
+                 + "through 12.", .err)
+            stageError = true
+            return
+        }
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = month
+        comps.day = 1
+        guard let first = calendar.date(
+                from: comps),
+              let range = calendar.range(
+                of: .day, in: .month,
+                for: first)
+        else { return }
+        let title = monthNames[month - 1]
+            .capitalized + " \(year)"
+        emit(String(repeating: " ",
+                    count: max(0, (20
+                        - title.count) / 2))
+             + title)
+        let weekdayNames = [
+            "Su", "Mo", "Tu", "We",
+            "Th", "Fr", "Sa",
+        ]
+        let start = calendar.firstWeekday
+            - 1
+        let header = (0..<7).map {
+            weekdayNames[($0 + start) % 7]
+        }
+        emit(header.joined(separator: " "))
+        let firstWeekday = calendar
+            .component(.weekday, from: first)
+        var lead = (firstWeekday - 1
+            - start + 7) % 7
+        var cells: [String] = []
+        while lead > 0 {
+            cells.append("  ")
+            lead -= 1
+        }
+        for day in range {
+            cells.append(day < 10
+                ? " \(day)" : "\(day)")
+        }
+        var row: [String] = []
+        for cell in cells {
+            row.append(cell)
+            if row.count == 7 {
+                emit(row.joined(
+                    separator: " "))
+                row = []
+            }
+        }
+        if !row.isEmpty {
+            emit(row.joined(separator: " "))
+        }
+    }
+
+    private func yesCommand(_ args: [String]) {
+        let text = args.isEmpty
+            ? "y" : args.joined(
+                separator: " ")
+        for _ in 0..<1000 {
+            emit(text)
+        }
+    }
+
+    // MARK: figlet — big letters from
+    // a five-row hand
+
+    private static let figletGlyphs:
+        [Character: [String]] = [
+        "A": [" ### ", "#   #", "#####",
+              "#   #", "#   #"],
+        "B": ["#### ", "#   #", "#### ",
+              "#   #", "#### "],
+        "C": [" ####", "#    ", "#    ",
+              "#    ", " ####"],
+        "D": ["#### ", "#   #", "#   #",
+              "#   #", "#### "],
+        "E": ["#####", "#    ", "#### ",
+              "#    ", "#####"],
+        "F": ["#####", "#    ", "#### ",
+              "#    ", "#    "],
+        "G": [" ####", "#    ", "#  ##",
+              "#   #", " ####"],
+        "H": ["#   #", "#   #", "#####",
+              "#   #", "#   #"],
+        "I": ["#####", "  #  ", "  #  ",
+              "  #  ", "#####"],
+        "J": ["#####", "    #", "    #",
+              "#   #", " ### "],
+        "K": ["#   #", "#  # ", "###  ",
+              "#  # ", "#   #"],
+        "L": ["#    ", "#    ", "#    ",
+              "#    ", "#####"],
+        "M": ["#   #", "## ##", "# # #",
+              "#   #", "#   #"],
+        "N": ["#   #", "##  #", "# # #",
+              "#  ##", "#   #"],
+        "O": [" ### ", "#   #", "#   #",
+              "#   #", " ### "],
+        "P": ["#### ", "#   #", "#### ",
+              "#    ", "#    "],
+        "Q": [" ### ", "#   #", "#   #",
+              "#  # ", " ## #"],
+        "R": ["#### ", "#   #", "#### ",
+              "#  # ", "#   #"],
+        "S": [" ####", "#    ", " ### ",
+              "    #", "#### "],
+        "T": ["#####", "  #  ", "  #  ",
+              "  #  ", "  #  "],
+        "U": ["#   #", "#   #", "#   #",
+              "#   #", " ### "],
+        "V": ["#   #", "#   #", "#   #",
+              " # # ", "  #  "],
+        "W": ["#   #", "#   #", "# # #",
+              "## ##", "#   #"],
+        "X": ["#   #", " # # ", "  #  ",
+              " # # ", "#   #"],
+        "Y": ["#   #", " # # ", "  #  ",
+              "  #  ", "  #  "],
+        "Z": ["#####", "   # ", "  #  ",
+              " #   ", "#####"],
+        "0": [" ### ", "#  ##", "# # #",
+              "##  #", " ### "],
+        "1": ["  #  ", " ##  ", "  #  ",
+              "  #  ", "#####"],
+        "2": [" ### ", "#   #", "  ## ",
+              " #   ", "#####"],
+        "3": ["#### ", "    #", " ### ",
+              "    #", "#### "],
+        "4": ["#   #", "#   #", "#####",
+              "    #", "    #"],
+        "5": ["#####", "#    ", "#### ",
+              "    #", "#### "],
+        "6": [" ### ", "#    ", "#### ",
+              "#   #", " ### "],
+        "7": ["#####", "    #", "   # ",
+              "  #  ", "  #  "],
+        "8": [" ### ", "#   #", " ### ",
+              "#   #", " ### "],
+        "9": [" ### ", "#   #", " ####",
+              "    #", " ### "],
+        " ": ["   ", "   ", "   ",
+              "   ", "   "],
+        ".": [" ", " ", " ", " ", "#"],
+        ",": ["  ", "  ", "  ", " #",
+              "# "],
+        "!": ["#", "#", "#", " ", "#"],
+        "?": [" ## ", "#  #", "  # ",
+              "    ", "  # "],
+        "'": ["#", "#", " ", " ", " "],
+        "-": ["    ", "    ", "####",
+              "    ", "    "],
+        "+": ["     ", "  #  ", "#####",
+              "  #  ", "     "],
+        "=": ["     ", "#####", "     ",
+              "#####", "     "],
+        "/": ["    #", "   # ", "  #  ",
+              " #   ", "#    "],
+        "\\": ["#    ", " #   ", "  #  ",
+               "   # ", "    #"],
+        ":": [" ", "#", " ", "#", " "],
+        ";": ["  ", " #", "  ", " #",
+              "# "],
+        "(": ["  #", " # ", "#  ",
+              " # ", "  #"],
+        ")": ["#  ", " # ", "  #",
+              " # ", "#  "],
+        "*": ["     ", "# # #", " ### ",
+              "# # #", "     "],
+        "#": [" # # ", "#####", " # # ",
+              "#####", " # # "],
+        "@": [" ### ", "# # #", "# ###",
+              "#    ", " ### "],
+        "_": ["     ", "     ", "     ",
+              "     ", "#####"],
+        "<": ["   #", "  # ", " #  ",
+              "  # ", "   #"],
+        ">": ["#   ", " #  ", "  # ",
+              " #  ", "#   "],
+        "%": ["##  #", "## # ", "  #  ",
+              " # ##", "#  ##"],
+        "&": [" ## ", "#  #", " ## ",
+              "#  #", " ## "],
+        "$": [" ####", "# #  ", " ### ",
+              "  # #", "#### "],
+    ]
+
+    private func figletCommand(
+        _ args: [String]) {
+        var slim = false
+        var words: [String] = []
+        var i = 0
+        while i < args.count {
+            let arg = args[i]
+            if arg == "-f",
+               i + 1 < args.count {
+                i += 1
+                slim = args[i] == "slim"
+                    || args[i] == "small"
+            } else if arg.hasPrefix("-") {
+                slim = arg.contains("s")
+                    && arg.count <= 3
+            } else {
+                words.append(arg)
+            }
+            i += 1
+        }
+        let text = words.joined(
+            separator: " ").uppercased()
+        guard !text.isEmpty else {
+            emit("figlet: give me words "
+                 + "and I'll make them "
+                 + "big.", .err)
+            stageError = true
+            return
+        }
+        let question = Self.figletGlyphs["?"]
+            ?? ["#####", "#####", "#####",
+                "#####", "#####"]
+        for rowIndex in 0..<5 {
+            var line = ""
+            for ch in text {
+                let glyph = Self
+                    .figletGlyphs[ch]
+                    ?? question
+                let pixels = glyph[rowIndex]
+                for pixel in pixels {
+                    if slim {
+                        line += pixel == "#"
+                            ? "█" : " "
+                    } else {
+                        line += pixel == "#"
+                            ? "██" : "  "
+                    }
+                }
+                line += slim ? " " : "  "
+            }
+            emit(line.trimmingCharacters(
+                in: .whitespaces))
+        }
+    }
 
     // MARK: Diagnose — the house puts
     // itself through its paces.

@@ -31,6 +31,41 @@ final class BlacksiteJS {
     private let queue = DispatchQueue(
         label: "blacksite.js")
     private var commandContext: JSContext?
+
+    /// Timers the guests have asked the
+    /// host to keep: the kernel's clock,
+    /// lent out. A timer belongs to the
+    /// context that set it and carries
+    /// the generation of the run that
+    /// was live when it was set, so a
+    /// run drains (and, if it must,
+    /// cancels) only its own.
+    private final class TimerBox {
+        let id: Int
+        let context: JSContext
+        let fn: JSValue
+        let delay: Double
+        let repeats: Bool
+        let gen: Int
+        var work: DispatchWorkItem?
+        init(id: Int, context: JSContext,
+             fn: JSValue, delay: Double,
+             repeats: Bool, gen: Int) {
+            self.id = id
+            self.context = context
+            self.fn = fn
+            self.delay = delay
+            self.repeats = repeats
+            self.gen = gen
+        }
+    }
+
+    private var timerBoxes: [Int: TimerBox] =
+        [:]
+    private var timerSeq = 0
+    private var runGeneration = 0
+    private var drainForced =
+        Set<ObjectIdentifier>()
     private var registered: [String: JSValue] = [:]
     private var loadedPackages: [String] = []
     private var bridgeReady = false
@@ -160,6 +195,27 @@ final class BlacksiteJS {
             registerBlock,
             forKeyedSubscript: "__register"
                 as NSString)
+        let setTimerBlock: @convention(block)
+            (JSValue, Double, Bool) -> Int = {
+                [weak self] fn, ms, repeats in
+                self?.scheduleTimer(
+                    fn, ms: ms,
+                    repeats: repeats) ?? 0
+            }
+        context.setObject(
+            setTimerBlock,
+            forKeyedSubscript: "__setTimer"
+                as NSString)
+        let clearTimerBlock:
+            @convention(block)
+            (Int) -> Void = {
+                [weak self] id in
+                self?.cancelTimer(id)
+            }
+        context.setObject(
+            clearTimerBlock,
+            forKeyedSubscript: "__clearTimer"
+                as NSString)
         BlacksiteGFX.installBridge(
             into: context, owner: self)
         context.evaluateScript(Self.shim)
@@ -190,6 +246,102 @@ var house = {
 };
 function registerCommand(name, fn) {
     __register(String(name), fn);
+}
+function setTimeout(fn, ms) {
+    var rest = Array.prototype.slice.call(
+        arguments, 2);
+    return __setTimer(function() {
+        fn.apply(null, rest);
+    }, ms || 0, false);
+}
+function setInterval(fn, ms) {
+    var rest = Array.prototype.slice.call(
+        arguments, 2);
+    return __setTimer(function() {
+        fn.apply(null, rest);
+    }, ms || 0, true);
+}
+function clearTimeout(id) {
+    __clearTimer(id);
+}
+function clearInterval(id) {
+    __clearTimer(id);
+}
+var __moduleCache = {};
+var __dirStack = ["/home"];
+function __dirnameOf(path) {
+    var cut = path.lastIndexOf("/");
+    return cut <= 0 ? "/" : path.substring(
+        0, cut);
+}
+function __joinDir(dir, spec) {
+    var parts = dir.split("/");
+    var segs = spec.split("/");
+    for (var n = 0; n < segs.length; n++) {
+        var seg = segs[n];
+        if (seg === "" || seg === ".") {
+            continue;
+        }
+        if (seg === "..") {
+            if (parts.length > 1) {
+                parts.pop();
+            }
+            continue;
+        }
+        parts.push(seg);
+    }
+    var joined = parts.join("/");
+    return joined === "" ? "/" : joined;
+}
+function require(spec) {
+    var dir = __dirStack[
+        __dirStack.length - 1];
+    var base;
+    if (spec.charAt(0) === "/") {
+        base = spec;
+    } else if (spec.indexOf("./") === 0
+               || spec.indexOf("../") === 0
+               || spec === "."
+               || spec === "..") {
+        base = __joinDir(dir, spec);
+    } else {
+        base = "/packages/" + spec;
+    }
+    var candidates = [base, base + ".js",
+        base + "/main.js",
+        base + "/index.js"];
+    var path = null;
+    for (var n = 0; n < candidates.length;
+         n++) {
+        if (__exists(candidates[n])) {
+            path = candidates[n];
+            break;
+        }
+    }
+    if (path === null) {
+        throw new Error(
+            "cannot find module '"
+            + spec + "'");
+    }
+    if (__moduleCache[path]) {
+        return __moduleCache[path].exports;
+    }
+    var module = { exports: {} };
+    __moduleCache[path] = module;
+    var src = __read(path);
+    var wrapped = new Function(
+        "exports", "require", "module",
+        "__filename", "__dirname", src);
+    var home = __dirnameOf(path);
+    __dirStack.push(home);
+    try {
+        wrapped.call(module.exports,
+            module.exports, require, module,
+            path, home);
+    } finally {
+        __dirStack.pop();
+    }
+    return module.exports;
 }
 """
 
@@ -302,6 +454,9 @@ function registerCommand(name, fn) {
                 state.error = v?.toString()
                     ?? "unknown error"
             }
+            runGeneration += 1
+            let gen = runGeneration
+            let started = Date()
             armTimeLimit(context, 30)
             let value = context.evaluateScript(
                 source)
@@ -311,10 +466,13 @@ function registerCommand(name, fn) {
                !value.isUndefined {
                 result = value.toString()
             }
-            let error = state.error
-            DispatchQueue.main.async {
-                completion(result, error)
-            }
+            drainEval(
+                context, gen: gen,
+                deadline: started
+                    .addingTimeInterval(30),
+                result: result,
+                error: { state.error },
+                completion: completion)
         }
     }
 
@@ -347,6 +505,9 @@ function registerCommand(name, fn) {
                 }
                 return
             }
+            runGeneration += 1
+            let gen = runGeneration
+            let started = Date()
             let state = RunState()
             self.installBridge(into: context,
                                state: state)
@@ -354,24 +515,222 @@ function registerCommand(name, fn) {
                 let path = "/packages/\(name)/main.js"
                 if let pkg = BlacksiteFS
                     .readText(path) {
+                    let dir = "/packages/\(name)"
+                    _ = context.evaluateScript(
+                        "__dirStack.push("
+                        + self.jsLiteral(dir)
+                        + ");")
                     _ = context.evaluateScript(pkg)
+                    _ = context.evaluateScript(
+                        "__dirStack.pop();")
                 }
             }
             context.setObject(
                 args,
                 forKeyedSubscript: "argv" as NSString)
+            let scriptDir = BlacksiteFS
+                .parent(of: virtualPath)
+            _ = context.evaluateScript(
+                "__dirStack.push("
+                + self.jsLiteral(scriptDir)
+                + ");")
             armTimeLimit(context, timeLimit)
             killSwitch?.install { [weak self] in
                 self?.armTimeLimit(
                     context, 0.05)
+                self?.forceDrain(context)
             }
             _ = context.evaluateScript(source)
+            _ = context.evaluateScript(
+                "__dirStack.pop();")
             clearTimeLimit(context)
-            let error = state.error
-            DispatchQueue.main.async {
-                completion(error)
+            drainRunFile(
+                context, gen: gen,
+                deadline: started
+                    .addingTimeInterval(
+                        timeLimit),
+                error: { state.error },
+                completion: completion)
+        }
+    }
+
+    // MARK: Timers — the kernel's clock,
+    // lent to guests
+    //
+    // setTimeout/setInterval ask the
+    // host to call back later; the host
+    // grants it under the run's own
+    // fences: a run is not finished
+    // while its timers are pending —
+    // they drain, the deadline arrives,
+    // or the kernel speaks, and what is
+    // left is cancelled.
+
+    private func scheduleTimer(
+        _ fn: JSValue, ms: Double,
+        repeats: Bool) -> Int {
+        guard let context = fn.context
+        else { return 0 }
+        timerSeq += 1
+        let box = TimerBox(
+            id: timerSeq, context: context,
+            fn: fn,
+            delay: min(max(0, ms),
+                       3_600_000) / 1000,
+            repeats: repeats,
+            gen: runGeneration)
+        timerBoxes[box.id] = box
+        armTimer(box)
+        return box.id
+    }
+
+    private func armTimer(_ box: TimerBox) {
+        let item = DispatchWorkItem {
+            [weak self] in
+            self?.queue.async {
+                [weak self] in
+                self?.fireTimer(box.id)
             }
         }
+        box.work = item
+        DispatchQueue.global().asyncAfter(
+            deadline: .now() + box.delay,
+            execute: item)
+    }
+
+    private func fireTimer(_ id: Int) {
+        guard let box = timerBoxes[id]
+        else { return }
+        if !box.repeats {
+            timerBoxes[id] = nil
+        }
+        box.fn.call(withArguments: [])
+        if box.repeats,
+           timerBoxes[id] != nil {
+            armTimer(box)
+        }
+    }
+
+    private func cancelTimer(_ id: Int) {
+        timerBoxes[id]?.work?.cancel()
+        timerBoxes[id] = nil
+    }
+
+    private func timersPending(
+        context: JSContext, gen: Int)
+        -> Bool {
+        timerBoxes.values.contains {
+            $0.context === context
+                && $0.gen == gen
+        }
+    }
+
+    private func cancelTimers(
+        context: JSContext, gen: Int) {
+        for (id, box) in timerBoxes
+            where box.context === context
+                && box.gen == gen {
+            box.work?.cancel()
+            timerBoxes[id] = nil
+        }
+    }
+
+    private func forceDrain(
+        _ context: JSContext) {
+        drainForced.insert(
+            ObjectIdentifier(context))
+    }
+
+    private func drainRunFile(
+        _ context: JSContext, gen: Int,
+        deadline: Date,
+        error: @escaping () -> String?,
+        completion: @escaping
+            (String?) -> Void) {
+        let key = ObjectIdentifier(context)
+        let forced = drainForced.contains(
+            key)
+        if forced
+            || !timersPending(
+                context: context, gen: gen)
+            || Date() >= deadline {
+            drainForced.remove(key)
+            cancelTimers(
+                context: context, gen: gen)
+            if runGeneration == gen {
+                runGeneration = 0
+            }
+            let text = error()
+            DispatchQueue.main.async {
+                completion(text)
+            }
+            return
+        }
+        DispatchQueue.global().asyncAfter(
+            deadline: .now() + 0.1) {
+                [weak self] in
+                self?.queue.async {
+                    [weak self] in
+                    self?.drainRunFile(
+                        context, gen: gen,
+                        deadline: deadline,
+                        error: error,
+                        completion: completion)
+                }
+            }
+    }
+
+    private func drainEval(
+        _ context: JSContext, gen: Int,
+        deadline: Date,
+        result: String?,
+        error: @escaping () -> String?,
+        completion: @escaping
+            (String?, String?) -> Void) {
+        let key = ObjectIdentifier(context)
+        let forced = drainForced.contains(
+            key)
+        if forced
+            || !timersPending(
+                context: context, gen: gen)
+            || Date() >= deadline {
+            drainForced.remove(key)
+            cancelTimers(
+                context: context, gen: gen)
+            if runGeneration == gen {
+                runGeneration = 0
+            }
+            let text = error()
+            DispatchQueue.main.async {
+                completion(result, text)
+            }
+            return
+        }
+        DispatchQueue.global().asyncAfter(
+            deadline: .now() + 0.1) {
+                [weak self] in
+                self?.queue.async {
+                    [weak self] in
+                    self?.drainEval(
+                        context, gen: gen,
+                        deadline: deadline,
+                        result: result,
+                        error: error,
+                        completion: completion)
+                }
+            }
+    }
+
+    /// A path as a single-quoted JS
+    /// string literal.
+    private func jsLiteral(_ text: String)
+        -> String {
+        var out = text
+        out = out.replacingOccurrences(
+            of: "\u{5c}", with: "\u{5c}\u{5c}")
+        out = out.replacingOccurrences(
+            of: "'", with: "\u{5c}'")
+        return "'" + out + "'"
     }
 
     // MARK: Packages
@@ -388,7 +747,13 @@ function registerCommand(name, fn) {
         let path = "/packages/\(name)/main.js"
         guard let source = BlacksiteFS
             .readText(path) else { return }
+        let dir = "/packages/\(name)"
+        _ = context.evaluateScript(
+            "__dirStack.push("
+            + jsLiteral(dir) + ");")
         _ = context.evaluateScript(source)
+        _ = context.evaluateScript(
+            "__dirStack.pop();")
         loadedPackages.append(name)
     }
 
