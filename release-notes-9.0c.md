@@ -892,3 +892,40 @@
   own. The Standard
   gates it all, as
   ever.
+
+- **She keeps her
+  facts straight.**
+  Her picture of
+  the house is now
+  the whole state —
+  the EMCON
+  condition by name
+  and what it
+  forbids, the
+  marked, the
+  runners, what she
+  has learned — and
+  her grounding
+  holds her to it:
+  if the state
+  doesn't show a
+  change, none
+  happened. Ask
+  "how's the house"
+  for the readout.
+  Refusals now
+  leave their
+  reason stamped:
+  a bare "why"
+  gets it, verbatim.
+  She follows the
+  conversation's
+  subject — "what
+  about the
+  router?" replays
+  the last device
+  ask on the new
+  device — and the
+  almanac dates the
+  coming weekday by
+  name.

@@ -542,6 +542,32 @@ enum Almanac {
                 ? L("1 day ago.")
                 : String(format: L("%lld days ago."), -days)
         }
+        // "next friday" / "what day is
+        // friday" / "this friday": the coming
+        // (or standing) weekday, named.
+        let weekdayNames: [(String, Int)] = [
+            ("sunday", 1), ("monday", 2),
+            ("tuesday", 3), ("wednesday", 4),
+            ("thursday", 5), ("friday", 6),
+            ("saturday", 7)]
+        if let hit = weekdayNames.first(where: {
+                q.contains($0.0) }),
+           q.contains("next") || q.contains("this")
+            || q.contains("what day")
+            || q.contains("when")
+            || q.hasPrefix(hit.0) {
+            let todayWeekday = cal.component(
+                .weekday, from: today)
+            var delta = (hit.1 - todayWeekday + 7) % 7
+            if delta == 0, q.contains("next") {
+                delta = 7
+            }
+            let target = cal.date(
+                byAdding: .day, value: delta,
+                to: today)!
+            return spell(target) + " — "
+                + countPhrase(dayDiff(target))
+        }
         // "in 30 days" / "30 days from now" /
         // "30 days ago": a count and a direction.
         if q.contains("days") {

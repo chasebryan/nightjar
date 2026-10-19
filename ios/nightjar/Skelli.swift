@@ -492,6 +492,23 @@ final class SkelliCenter: ObservableObject {
     /// own, so a voice interrogation never fights
     /// the Assault's or the Recon tab's knock.
     private let offenseRecon = Recon()
+    /// The last refusal she handed down, with
+    /// its reason — a bare "why" is answered
+    /// from it while it is fresh.
+    private var lastRefusal: (reason: String,
+                              at: Date)?
+    func noteRefusal(_ reason: String) {
+        lastRefusal = (reason, Date())
+    }
+    /// The last device-scoped ask and its
+    /// subject — "what about the router?"
+    /// replays the ask on the new device.
+    private var lastDeviceAsk: (text: String,
+                                subject: Neighbor)?
+    func noteDeviceAsk(_ q: String,
+                       _ n: Neighbor) {
+        lastDeviceAsk = (q, n)
+    }
     private var offenseWatch: AnyCancellable?
     private var idleWork: DispatchWorkItem?
     /// The conversation's short-term memory: the device
@@ -2824,6 +2841,55 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
+        // The house, asked after directly.
+        let bareShape = q.trimmingCharacters(
+            in: CharacterSet(
+                charactersIn: " ?!.,"))
+        if q.contains("sitrep") || bareShape
+                == "status"
+            || q.contains("house status")
+            || q.contains("how's the house")
+            || q.contains("how is the house")
+            || q.contains("status report")
+            || q.contains("what's running")
+            || q.contains("what is running") {
+            say(sitrep())
+            return
+        }
+
+        // A bare "why" asks after the last
+        // refusal — and gets its reason, from
+        // the stamp the refusal left, not a
+        // fresh invention.
+        if ["why", "why not", "why is that",
+            "how come", "why though",
+            "why's that"].contains(bareShape),
+           let refusal = lastRefusal,
+           Date().timeIntervalSince(refusal.at)
+               < 600 {
+            say(refusal.reason)
+            return
+        }
+
+        // Say it again: her last word, repeated
+        // on request — the record, not a rewrite.
+        if ["what did you say", "come again",
+            "what was that"].contains(bareShape) {
+            if let last = lines.last(where: {
+                !$0.fromOperator }) {
+                say(last.text)
+            } else {
+                say("I haven't said anything yet.")
+            }
+            return
+        }
+
+        // "What about the router?" — the last
+        // device ask, on a new subject.
+        if swapAsk(q) {
+            return
+        }
+
         if q.contains("holiday")
             || q.contains("birthday")
             || Almanac.matchNamedDay(in: q) != nil,
@@ -3862,6 +3928,26 @@ final class SkelliCenter: ObservableObject {
             facts.append(line)
             facts.append(emcon.active
                 ? "EMCON dark" : "EMCON open")
+            if emcon.active {
+                let forbids: String
+                switch emcon.condition {
+                case .charlie:
+                    forbids = "campaigns, Net-Assault, "
+                        + "advertising, update checks"
+                case .bravo:
+                    forbids = "receive only — Serve "
+                        + "down, the relay stopped, "
+                        + "campaigns and probing dark"
+                case .alpha:
+                    forbids = "total silence — even "
+                        + "the sweeps refuse"
+                case .open:
+                    forbids = "nothing"
+                }
+                facts.append("EMCON condition "
+                    + emcon.condition.declared
+                    + " — forbids: " + forbids)
+            }
             if emcon.tripwireOn {
                 facts.append("tripwire armed")
             }
@@ -3911,6 +3997,41 @@ final class SkelliCenter: ObservableObject {
                     + "\(post.deviceCount) BLE "
                     + "devices"
                 : "the ear is down")
+        }
+        // The marked, the runners, and what
+        // she has learned — the state a generated
+        // answer most often has to speak about.
+        let tomato = TomatoMarks.shared
+        if !tomato.marked.isEmpty {
+            facts.append("\(tomato.marked.count) "
+                + "device(s) wear a tomato: "
+                + tomato.listing(
+                    store: NeighborhoodStore.shared))
+        }
+        if TomatoBarrage.shared.running {
+            facts.append("a tomato barrage is "
+                + "flying at "
+                + TomatoBarrage.shared.targetLabel)
+        }
+        let runner = MacroRunner.shared
+        if runner.running {
+            facts.append("macro "
+                + runner.currentMacroName
+                + " running: " + runner.currentStep)
+        } else if !runner.lastSummary.isEmpty {
+            facts.append("last macro run: "
+                + runner.lastSummary)
+        }
+        if AssaultCenter.shared.running {
+            facts.append("Net-Assault running: "
+                + AssaultCenter.shared.phase)
+        }
+        let learned = SubconsciousCenter.shared
+            .facts
+        if !learned.isEmpty {
+            facts.append("learned: "
+                + learned.prefix(3).map { $0.text }
+                    .joined(separator: "; "))
         }
         let recent = Journal.events(limit: 3)
             .map { $0.text }
@@ -4063,7 +4184,13 @@ final class SkelliCenter: ObservableObject {
             + "before you are consulted; you "
             + "answer open conversation, guidance, "
             + "and general knowledge. Never invent "
-            + "facts about this house. If an "
+            + "facts about this house. The state "
+            + "above is the whole truth of the "
+            + "house: if it does not show a "
+            + "change, no change happened — never "
+            + "report an act as done, a condition "
+            + "as lifted, or a device as found "
+            + "that the state does not show. If an "
             + "answer needs current facts from "
             + "outside this phone — news, prices, "
             + "today's anything — or you are not "
@@ -5431,6 +5558,52 @@ final class SkelliCenter: ObservableObject {
         }
     }
 
+    /// "What about the router?" — the last
+    /// device-scoped ask, replayed whole on the
+    /// new subject: her short-term memory for
+    /// what the conversation is about. Fenced to
+    /// short follow-ups, so a sentence that
+    /// merely mentions another device in passing
+    /// is never mistaken for one.
+    private func swapAsk(_ q: String) -> Bool {
+        guard let last = lastDeviceAsk else {
+            return false
+        }
+        let leadIns = ["what about ",
+                       "how about ",
+                       "and what about ",
+                       "and the ", "and "]
+        guard let lead = leadIns.first(where: {
+            q.hasPrefix($0) }) else { return false }
+        let rest = String(q.dropFirst(lead.count))
+        let wordCap = lead.hasPrefix("and ")
+            && !lead.contains("about") ? 3 : 5
+        guard rest.split(separator: " ").count
+                <= wordCap,
+              let next = mentionedNeighbor(in: rest),
+              next.ip != last.subject.ip
+        else { return false }
+        let old = last.subject
+        var rebuilt = last.text
+        let pairs: [(String, String)] = [
+            (old.ip, next.ip),
+            (old.displayName.lowercased(),
+             next.displayName.lowercased()),
+            (old.name?.lowercased() ?? "",
+             next.name?.lowercased() ?? "")]
+        for (before, after) in pairs
+        where !before.isEmpty && before != after {
+            rebuilt = rebuilt.replacingOccurrences(
+                of: before, with: after)
+        }
+        guard rebuilt != last.text else {
+            return false
+        }
+        respond(to: rebuilt, raw: rebuilt,
+                again: false)
+        return true
+    }
+
     /// Her offensive kit by voice: interrogate a
     /// device until its services introduce
     /// themselves, prod its known doors with
@@ -5503,6 +5676,11 @@ final class SkelliCenter: ObservableObject {
                 return true
             }
             if EmconStandard.refused(.netAssault) {
+                noteRefusal(EmconCondition.current
+                    .declared + " forbids "
+                    + "campaigns — a barrage is "
+                    + "one. Lift the condition and "
+                    + "the tomatoes fly.")
                 say("The barrage stays holstered: "
                     + EmconCondition.current.declared
                     + " forbids campaigns. Lift the "
@@ -5539,6 +5717,11 @@ final class SkelliCenter: ObservableObject {
                 return true
             }
             if EmconStandard.refused(.probing) {
+                noteRefusal(EmconCondition.current
+                    .declared + " holds probing "
+                    + "dark — interrogations and "
+                    + "prods wait for a lighter "
+                    + "condition.")
                 say("No interrogations under "
                     + EmconCondition.current.declared
                     + " — probing is dark. Lift the "
@@ -5546,6 +5729,7 @@ final class SkelliCenter: ObservableObject {
                     + "talk.")
                 return true
             }
+            noteDeviceAsk(q, n)
             if offenseRecon.knocking {
                 say("An interrogation is already "
                     + "running — one witness at a "
@@ -5618,6 +5802,11 @@ final class SkelliCenter: ObservableObject {
                 return true
             }
             if EmconStandard.refused(.probing) {
+                noteRefusal(EmconCondition.current
+                    .declared + " holds probing "
+                    + "dark — interrogations and "
+                    + "prods wait for a lighter "
+                    + "condition.")
                 say("No prodding under "
                     + EmconCondition.current.declared
                     + " — probing is dark.")
@@ -5630,6 +5819,7 @@ final class SkelliCenter: ObservableObject {
                     + "prod what answers.")
                 return true
             }
+            noteDeviceAsk(q, n)
             mood = .working
             activity = "Prodding \(n.displayName)…"
             ProdSession(ip: n.ip, ports: n.ports) {
@@ -5724,6 +5914,7 @@ final class SkelliCenter: ObservableObject {
             || q.contains("hit") || q.contains("mark")
             || q.hasPrefix("tomato") {
             if let n = resolve() {
+                noteDeviceAsk(q, n)
                 let already = marks.isMarked(n.ip)
                 marks.mark(n.ip)
                 Journal.log("tomato", "mark",
@@ -5829,6 +6020,14 @@ final class SkelliCenter: ObservableObject {
             || q.contains("launch") || q.contains("loose")
         if !runIntent {
             if EmconStandard.refused(.netAssault) {
+                noteRefusal(EmconCondition.current
+                    .declared + " forbids "
+                    + "Net-Assault — the Standard "
+                    + "holds every campaign dark "
+                    + "while a condition stands. "
+                    + "Lifting the condition is the "
+                    + "only key, and that word is "
+                    + "yours alone.")
                 say("Holstered — and held dark: "
                     + EmconCondition.current.declared
                     + " forbids it. The Standard keeps "
@@ -5841,6 +6040,13 @@ final class SkelliCenter: ObservableObject {
             return true
         }
         if EmconStandard.refused(.netAssault) {
+            noteRefusal(EmconCondition.current
+                .declared + " forbids Net-Assault "
+                + "— the Standard holds every "
+                + "campaign dark while a "
+                + "condition stands. Lifting the "
+                + "condition is the only key, and "
+                + "that word is yours alone.")
             say("It stays dark: "
                 + EmconCondition.current.declared
                 + " forbids Net-Assault — the Standard "
@@ -6128,6 +6334,13 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if EmconStandard.refused(.netAssault) {
+            noteRefusal(EmconCondition.current
+                .declared + " forbids Net-Assault "
+                + "— the Standard holds every "
+                + "campaign dark while a "
+                + "condition stands. Lifting the "
+                + "condition is the only key, and "
+                + "that word is yours alone.")
             say("It stays dark: "
                 + EmconCondition.current.declared
                 + " forbids Net-Assault. Lift the "
