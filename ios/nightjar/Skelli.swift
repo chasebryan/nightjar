@@ -1,5 +1,6 @@
 import AVFoundation
 import Combine
+import GameController
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -8310,7 +8311,15 @@ struct SkelliView: View {
         NavigationStack {
             screen
         }
-        .onAppear { SkelliMind.warm() }
+        .onAppear {
+            SkelliMind.warm()
+            // A hardware keyboard means
+            // business: put the cursor
+            // in the composer.
+            if GCKeyboard.coalesced != nil {
+                inputFocused = true
+            }
+        }
         .sheet(isPresented: $showOptions) {
             optionsSheet
         }

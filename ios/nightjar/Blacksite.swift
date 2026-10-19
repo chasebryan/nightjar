@@ -1,3 +1,4 @@
+import GameController
 import SwiftUI
 import UIKit
 
@@ -3355,6 +3356,13 @@ struct BlacksiteView: View {
             .onAppear {
                 rootSize = geo.size
                 shell.bootIfNeeded()
+                // A hardware keyboard
+                // means business: put the
+                // cursor in the line.
+                if GCKeyboard.coalesced
+                    != nil {
+                    inputFocused = true
+                }
             }
             .onChange(of: geo.size) {
                 _, newSize in

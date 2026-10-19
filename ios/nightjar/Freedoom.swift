@@ -527,6 +527,121 @@ final class FreedoomTrail:
 
 // MARK: - The web view
 
+/// A web view that hears a hardware
+/// keyboard itself. Focusing the canvas
+/// inside the page is not enough for
+/// WebKit to hand a game page real key
+/// presses — the UIKit first responder
+/// chain is the door — so the view takes
+/// first responder and translates each
+/// press into the page's own deck call
+/// (window.sendkey, the exact path the
+/// touch deck proves), HID usage codes
+/// in, DOM key codes out. Mapped presses
+/// are consumed here and never passed
+/// on, so a key can never land twice.
+final class FreedoomKeyWebView: WKWebView {
+
+    override var canBecomeFirstResponder:
+        Bool { true }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            becomeFirstResponder()
+        }
+    }
+
+    override func pressesBegan(
+        _ presses: Set<UIPress>,
+        with event: UIPressesEvent?) {
+        forward(presses, down: true) {
+            super.pressesBegan(
+                $0, with: event)
+        }
+    }
+
+    override func pressesEnded(
+        _ presses: Set<UIPress>,
+        with event: UIPressesEvent?) {
+        forward(presses, down: false) {
+            super.pressesEnded(
+                $0, with: event)
+        }
+    }
+
+    override func pressesCancelled(
+        _ presses: Set<UIPress>,
+        with event: UIPressesEvent?) {
+        forward(presses, down: false) {
+            super.pressesCancelled(
+                $0, with: event)
+        }
+    }
+
+    private func forward(
+        _ presses: Set<UIPress>,
+        down: Bool,
+        unhandled: (Set<UIPress>) -> Void) {
+        var rest: Set<UIPress> = []
+        for press in presses {
+            if let code = Self.domCode(
+                for: press) {
+                let type = down
+                    ? "keydown" : "keyup"
+                evaluateJavaScript(
+                    "window.sendkey && "
+                    + "window.sendkey(["
+                    + String(code) + "], \""
+                    + type + "\")",
+                    completionHandler: nil)
+            } else {
+                rest.insert(press)
+            }
+        }
+        if !rest.isEmpty {
+            unhandled(rest)
+        }
+    }
+
+    static func domCode(
+        for press: UIPress) -> Int? {
+        guard let key = press.key
+        else { return nil }
+        switch key.keyCode {
+        case .keyboardUpArrow: return 38
+        case .keyboardDownArrow: return 40
+        case .keyboardLeftArrow: return 37
+        case .keyboardRightArrow: return 39
+        case .keyboardEscape: return 27
+        case .keyboardTab: return 9
+        case .keyboardReturnOrEnter:
+            return 13
+        case .keyboardSpacebar: return 32
+        case .keyboardLeftShift,
+             .keyboardRightShift: return 16
+        case .keyboardLeftControl,
+             .keyboardRightControl: return 17
+        case .keyboardLeftAlt,
+             .keyboardRightAlt: return 18
+        default:
+            // Letters and digits ride the
+            // character the key reports
+            // with modifiers ignored; its
+            // uppercase scalar IS the DOM
+            // key code.
+            guard let ch = key
+                .charactersIgnoringModifiers
+                .first,
+                  ch.isLetter || ch.isNumber,
+                  let scalar = ch.uppercased()
+                    .unicodeScalars.first
+            else { return nil }
+            return Int(scalar.value)
+        }
+    }
+}
+
 struct FreedoomWebView:
     UIViewRepresentable {
 
@@ -585,7 +700,8 @@ struct FreedoomWebView:
     }
 
     func makeUIView(
-        context: Context) -> WKWebView {
+        context: Context)
+        -> FreedoomKeyWebView {
         let config = WKWebViewConfiguration()
         config.setURLSchemeHandler(
             FreedoomSchemeHandler(),
@@ -598,7 +714,7 @@ struct FreedoomWebView:
             .nonPersistent()
         config.allowsInlineMediaPlayback =
             true
-        let view = WKWebView(
+        let view = FreedoomKeyWebView(
             frame: .zero,
             configuration: config)
         view.navigationDelegate =
@@ -625,7 +741,7 @@ struct FreedoomWebView:
     }
 
     func updateUIView(
-        _ uiView: WKWebView,
+        _ uiView: FreedoomKeyWebView,
         context: Context) {}
 }
 
