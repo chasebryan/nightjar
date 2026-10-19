@@ -109,15 +109,24 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 106</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 107</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 106 \u00b7 js alive";</script>
+<script>document.getElementById("buildstamp").textContent = "room build 107 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
 
 <script>
     // Engine bootstrap FIRST, alone in its script: nothing
     // that can throw (a controller library, a DOM quirk)
     // is allowed to stand between this page and its Module.
     window.__doomStage = "page";
+    function ping(m) {
+        try {
+            if (window.webkit && webkit.messageHandlers &&
+                webkit.messageHandlers.doom) {
+                webkit.messageHandlers.doom.postMessage(m);
+            }
+        } catch (e) {}
+    }
+    ping("boot script running");
     var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
                     "-config", "default.cfg", "-servername", "nightjar"];
     var started = false;
@@ -169,6 +178,7 @@
     function startDoom() {
         if (started) return;
         started = true;
+        ping("startDoom — calling main");
         unlockAudio();
         document.getElementById("gate").style.display = "none";
         callMain(doomArgs);
@@ -180,6 +190,7 @@
     // the button says so; if loading stalls, the page
     // names the stage it died at instead of sitting mute.
     document.getElementById("play").addEventListener("click", function () {
+        ping("PLAY tapped, ready=" + doomReady);
         if (doomReady) { startDoom(); return; }
         playWanted = true;
         document.getElementById("play").textContent = "STARTING…";
@@ -223,11 +234,13 @@
     }
 
     function payloadFailed(name, status) {
+        ping("FAILED " + name + " (" + status + ")");
         showErr("Could not load " + name +
                 " (status " + status + ").");
     }
 
     function payloadArrived(name, buffer) {
+        ping("got " + name);
         payloads[name] = buffer;
         payloadCount += 1;
         loadNote("loaded " + payloadCount +
@@ -251,10 +264,12 @@
         xhr.onerror = function () {
             payloadFailed(name, xhr.status || "network");
         };
+        ping("xhr " + name);
         xhr.send(null);
     }
 
     function buildModule() {
+        ping("all payloads in — building module");
         window.__doomStage = "module";
         Module = {
             noInitialRun: true,
@@ -268,6 +283,7 @@
                     new Uint8Array(payloads["default.cfg"]));
             },
             onRuntimeInitialized: function () {
+                ping("runtime ready");
                 window.__doomStage = "ready";
                 doomReady = true;
                 loadNote("");
@@ -297,18 +313,22 @@
         var glue = document.createElement("script");
         glue.src = "websockets-doom.js";
         glue.onload = function () {
+            ping("glue loaded");
             window.__doomStage = "glue";
         };
         glue.onerror = function () {
+            ping("glue FAILED");
             showErr("The engine script failed to load.");
         };
         document.body.appendChild(glue);
     }
 
     loadNote("loading engine and game data…");
+    ping("loader armed");
     payloadNames.forEach(fetchPayload);
 
     window.onerror = function (msg) {
+        ping("page error: " + msg);
         showErr("Engine error: " + msg);
     };
 

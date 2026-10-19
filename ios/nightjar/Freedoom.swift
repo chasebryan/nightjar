@@ -298,6 +298,8 @@ final class FreedoomSchemeHandler:
             return
         }
         let name = url.lastPathComponent
+        FreedoomTrail.shared.log(
+            "GET " + name)
         if name == "doom1.wad" {
             serveFile(
                 FreedoomStore.wadURL,
@@ -371,6 +373,9 @@ final class FreedoomSchemeHandler:
         task.didReceive(response)
         task.didReceive(data)
         task.didFinish()
+        FreedoomTrail.shared.log(
+            "SENT " + name + " "
+            + "\(data.count)")
     }
 
     private func serveFile(
@@ -414,6 +419,9 @@ final class FreedoomSchemeHandler:
             task.didReceive(chunk)
         }
         task.didFinish()
+        FreedoomTrail.shared.log(
+            "SENT " + name + " "
+            + "\(size.intValue)")
     }
 }
 
@@ -434,6 +442,10 @@ enum FreedoomEngineBytes {
 
     static func wasm() -> Data? {
         if let cached { return cached }
+        let decodeStart =
+            CFAbsoluteTimeGetCurrent()
+        FreedoomTrail.shared.log(
+            "engine decode begin")
         var encoded = ""
         let letters = "abcdefghijklmnopqrstuvwxyz"
         for letter in letters {
@@ -454,9 +466,79 @@ enum FreedoomEngineBytes {
                 base64Encoded: encoded),
               let plain = try? FreedoomZip
                 .gunzip(packed)
-        else { return nil }
+        else {
+            FreedoomTrail.shared.log(
+                "engine decode FAILED")
+            return nil
+        }
         cached = plain
+        FreedoomTrail.shared.log(
+            "engine decode done "
+            + String(format: "%.1fs",
+                     CFAbsoluteTimeGetCurrent()
+                        - decodeStart))
         return plain
+    }
+}
+
+// MARK: - The room's flight recorder
+
+/// Every step the room takes lands
+/// here: requests the scheme handler
+/// serves, the engine decode's timing,
+/// and milestones the page itself posts
+/// over the script bridge. Painted
+/// under the room, so a room that dies
+/// says where it died.
+final class FreedoomTrail:
+    ObservableObject {
+    static let shared = FreedoomTrail()
+    @Published private(set) var lines:
+        [String] = []
+    private let born =
+        CFAbsoluteTimeGetCurrent()
+
+    func log(_ text: String) {
+        let stamp = String(
+            format: "%.1f",
+            CFAbsoluteTimeGetCurrent()
+                - born)
+        DispatchQueue.main.async {
+            self.lines.append(
+                stamp + " " + text)
+            if self.lines.count > 60 {
+                self.lines.removeFirst(
+                    self.lines.count - 60)
+            }
+        }
+    }
+}
+
+struct FreedoomTrailView: View {
+    @ObservedObject private var trail =
+        FreedoomTrail.shared
+
+    var body: some View {
+        VStack(alignment: .leading,
+               spacing: 1) {
+            ForEach(
+                Array(trail.lines
+                    .suffix(9)
+                    .enumerated()),
+                id: \.offset) { _, line in
+                Text(line)
+                    .font(.system(
+                        size: 9,
+                        design: .monospaced))
+                    .foregroundStyle(.green)
+            }
+        }
+        .frame(maxWidth: .infinity,
+               alignment: .leading)
+        .padding(6)
+        .background(
+            Color.black.opacity(0.75))
+        .allowsHitTesting(false)
     }
 }
 
@@ -466,7 +548,27 @@ struct FreedoomWebView:
     UIViewRepresentable {
 
     final class Coordinator: NSObject,
-        WKNavigationDelegate {
+        WKNavigationDelegate,
+        WKScriptMessageHandler {
+
+        func userContentController(
+            _ userContentController:
+                WKUserContentController,
+            didReceive message:
+                WKScriptMessage) {
+            FreedoomTrail.shared.log(
+                "page: "
+                + (message.body as? String
+                    ?? "?"))
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFinish navigation:
+                WKNavigation!) {
+            FreedoomTrail.shared.log(
+                "nav finished")
+        }
         func webView(
             _ webView: WKWebView,
             webContentProcessDidTerminate
@@ -506,6 +608,9 @@ struct FreedoomWebView:
             FreedoomSchemeHandler(),
             forURLScheme:
                 FreedoomSchemeHandler.scheme)
+        config.userContentController.add(
+            context.coordinator,
+            name: "doom")
         config.websiteDataStore =
             .nonPersistent()
         config.allowsInlineMediaPlayback =
@@ -557,7 +662,14 @@ struct FreedoomView: View {
                 lobby
             }
         }
-        .onAppear { loader.refresh() }
+        .onAppear {
+            loader.refresh()
+            FreedoomTrail.shared.log(
+                "room opened")
+        }
+        .overlay(alignment: .bottom) {
+            FreedoomTrailView()
+        }
     }
 
     private var lobby: some View {
