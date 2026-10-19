@@ -111,24 +111,16 @@
     <div id="err"></div>
     <div id="buildstamp" style="font-size:11px; color:#555;">room build 121</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 121 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
-var hbF = 0;
-function hb() { hbF++; if (hbF % 150 === 0) { try { webkit.messageHandlers.doom.postMessage("alive " + hbF); } catch (e) {} } requestAnimationFrame(hb); }
-requestAnimationFrame(hb);</script>
+<script>document.getElementById("buildstamp").textContent = "";
+
+</script>
 
 <script>
     // Engine bootstrap FIRST, alone in its script: nothing
     // that can throw (a controller library, a DOM quirk)
     // is allowed to stand between this page and its Module.
     window.__doomStage = "page";
-    function ping(m) {
-        try {
-            if (window.webkit && webkit.messageHandlers &&
-                webkit.messageHandlers.doom) {
-                webkit.messageHandlers.doom.postMessage(m);
-            }
-        } catch (e) {}
-    }
+    function ping(m) {}
     ping("boot script running");
     var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
                     "-config", "default.cfg", "-servername", "nightjar"];
@@ -379,7 +371,7 @@ requestAnimationFrame(hb);</script>
     payloadNames.forEach(fetchPayload);
 
     window.onerror = function (msg) {
-        ping("page error: " + msg + " lx=" + (window.__lx || "?"));
+        ping("page error: " + msg);
         showErr("Engine error: " + msg);
         document.getElementById("gate").style.display = "flex";
     };

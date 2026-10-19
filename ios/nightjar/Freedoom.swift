@@ -52,13 +52,22 @@ enum FreedoomStore {
         else { return false }
         return size.intValue == wadBytes
     }
+
+    /// The lobby's uninstall: the whole
+    /// cache folder goes — the WAD and
+    /// anything the room filed with it.
+    /// The engine stays in the app.
+    static func uninstall() {
+        try? FileManager.default.removeItem(
+            at: cacheDirectory)
+    }
 }
 
 @MainActor
 final class FreedoomLoader:
     NSObject, ObservableObject {
 
-    enum Phase {
+    enum Phase: Equatable {
         case checking
         case needsDownload
         case refusedByStandard
@@ -516,34 +525,6 @@ final class FreedoomTrail:
     }
 }
 
-struct FreedoomTrailView: View {
-    @ObservedObject private var trail =
-        FreedoomTrail.shared
-
-    var body: some View {
-        VStack(alignment: .leading,
-               spacing: 1) {
-            ForEach(
-                Array(trail.lines
-                    .suffix(14)
-                    .enumerated()),
-                id: \.offset) { _, line in
-                Text(line)
-                    .font(.system(
-                        size: 9,
-                        design: .monospaced))
-                    .foregroundStyle(.green)
-            }
-        }
-        .frame(maxWidth: .infinity,
-               alignment: .leading)
-        .padding(6)
-        .background(
-            Color.black.opacity(0.75))
-        .allowsHitTesting(false)
-    }
-}
-
 // MARK: - The web view
 
 struct FreedoomWebView:
@@ -653,14 +634,18 @@ struct FreedoomWebView:
 struct FreedoomView: View {
     @StateObject private var loader =
         FreedoomLoader()
+    @State private var inGame = false
+    @State private var gameSession = UUID()
+    @State private var confirmUninstall =
+        false
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            switch loader.phase {
-            case .ready:
+            if inGame {
                 FreedoomWebView()
-            default:
+                    .id(gameSession)
+            } else {
                 lobby
             }
         }
@@ -668,9 +653,61 @@ struct FreedoomView: View {
             loader.refresh()
             FreedoomTrail.shared.log(
                 "room opened")
+            if loader.phase == .ready {
+                inGame = true
+            }
         }
-        .overlay(alignment: .bottom) {
-            FreedoomTrailView()
+        .onChange(of: loader.phase) {
+            _, phase in
+            if phase == .ready && !inGame {
+                inGame = true
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if inGame {
+                Button {
+                    Haptics.tap()
+                    // The guaranteed stop:
+                    // the web view leaves
+                    // the hierarchy and
+                    // WebKit tears its
+                    // engine down with it.
+                    inGame = false
+                } label: {
+                    Text("■ STOP")
+                        .font(.system(
+                            size: 12,
+                            design: .monospaced)
+                            .weight(.bold))
+                        .foregroundStyle(.red)
+                        .padding(
+                            .horizontal, 10)
+                        .padding(
+                            .vertical, 6)
+                        .background(
+                            Color.black
+                                .opacity(0.55))
+                }
+                .padding(10)
+            }
+        }
+        .confirmationDialog(
+            "Remove the game data?",
+            isPresented: $confirmUninstall) {
+            Button("UNINSTALL",
+                   role: .destructive) {
+                FreedoomStore.uninstall()
+                loader.refresh()
+            }
+            Button("KEEP IT",
+                   role: .cancel) {}
+        } message: {
+            Text("The 28 MB WAD goes. "
+                 + "The engine stays in "
+                 + "the app — you can "
+                 + "download the data "
+                 + "again whenever the "
+                 + "Standard allows.")
         }
     }
 
@@ -816,7 +853,42 @@ struct FreedoomView: View {
                     design: .monospaced))
             }
         case .ready:
-            EmptyView()
+            VStack(spacing: 12) {
+                Text("the game data is "
+                     + "in — 28 MB, "
+                     + "CRC-checked, yours "
+                     + "offline under any "
+                     + "condition.")
+                    .font(.system(
+                        .caption,
+                        design: .monospaced))
+                    .foregroundStyle(
+                        .secondary)
+                    .multilineTextAlignment(
+                        .center)
+                Button {
+                    Haptics.tap()
+                    gameSession = UUID()
+                    inGame = true
+                } label: {
+                    Text("PLAY")
+                        .font(.system(
+                            .body,
+                            design: .monospaced)
+                            .weight(.bold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                Button("UNINSTALL") {
+                    confirmUninstall = true
+                }
+                .font(.system(
+                    .caption,
+                    design: .monospaced))
+                .foregroundStyle(.secondary)
+            }
         }
     }
 }
