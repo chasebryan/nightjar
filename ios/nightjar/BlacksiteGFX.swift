@@ -329,7 +329,8 @@ final class BlacksiteGFX {
                 }
             }
             return (bright, bright,
-                    min(255, Int(bright) + 18))
+                    UInt8(min(255,
+                              Int(bright) + 18)))
         }
         if let image = image {
             lastImage = image
