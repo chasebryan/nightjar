@@ -435,14 +435,14 @@ final class SkelliHeart: ObservableObject {
         let driftNorm = driftBaseline ?? 0
         if drift >= 3
             && drift > driftNorm + max(2, driftNorm)
-            && itch >= 30 { return out(.suspicious, 0.55 + min(0.45, Double(drift - driftNorm - max(2, driftNorm)) / 6 * 0.45), "drift beyond the wire\u2019s own habits") }
+            && itch >= 30 { return out(.suspicious, 0.55 + min(0.45, Double(drift - driftNorm - max(2, driftNorm)) / 6 * 0.45), "drift beyond the wire’s own habits") }
         // A crowd of strangers with work to do:
         // electric — a crowd beyond the wire's
         // usual crowd. The standing crowd is its
         // nature and never counts.
         let unnamedNorm = unnamedBaseline ?? 0
         if unnamed >= 4 && unnamed > unnamedNorm + 3
-            && itch >= 55 { return out(.electric, 0.55 + min(0.45, Double(unnamed - unnamedNorm - 3) / 6 * 0.45), "a crowd beyond the wire\u2019s usual crowd") }
+            && itch >= 55 { return out(.electric, 0.55 + min(0.45, Double(unnamed - unnamedNorm - 3) / 6 * 0.45), "a crowd beyond the wire’s usual crowd") }
         if itch >= 60 { return out(.restless, 0.4 + (itch - 60) / 25 * 0.3, "an itch with nowhere to go") }
         // A NEW face — or more of the unnamed than
         // this wire usually carries — pulls her
@@ -450,7 +450,7 @@ final class SkelliHeart: ObservableObject {
         // never do: she has learned them.
         if ((unnamed >= 1 && unnamed > unnamedNorm)
             || newFaces >= 1) && itch >= 35 {
-            return out(.curious, newFaces >= 1 ? 0.5 : 0.42, newFaces >= 1 ? "the new face on the wire" : "strangers beyond the wire\u2019s usual number")
+            return out(.curious, newFaces >= 1 ? 0.5 : 0.42, newFaces >= 1 ? "the new face on the wire" : "strangers beyond the wire’s usual number")
         }
         if attention <= (quietExpected ? 10 : 20) { return out(.lonely, 0.5 + (20 - attention) / 20 * 0.5, "the long quiet, and his absence") }
         // Fond and fed and half-dreaming.
