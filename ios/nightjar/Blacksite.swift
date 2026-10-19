@@ -106,7 +106,7 @@ final class BlacksiteShell: ObservableObject {
         "rm", "tree", "head", "tail", "wc",
         "grep", "find", "stat", "env",
         "export", "unset", "which", "history",
-        "date", "vim", "emacs", "edit", "run",
+        "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "sh", "source", "pkg",
         "gfx", "view", "wallpaper", "exit",
         "ping", "traceroute", "trace",
@@ -866,6 +866,13 @@ final class BlacksiteShell: ObservableObject {
                         $0, cwd: cwd)
                 },
                 personality: .emacs)
+        case "nano":
+            editorSession = EditorSession(
+                path: args.first.map {
+                    BlacksiteFS.normalize(
+                        $0, cwd: cwd)
+                },
+                personality: .nano)
         case "edit":
             editorSession = EditorSession(
                 path: args.first.map {
@@ -873,7 +880,9 @@ final class BlacksiteShell: ObservableObject {
                         $0, cwd: cwd)
                 },
                 personality: env["EDITOR"]
-                    == "emacs" ? .emacs : .vim)
+                    == "emacs" ? .emacs
+                    : env["EDITOR"] == "nano"
+                    ? .nano : .vim)
         case "js", "node":
             jsCommand(args)
         case "run":
@@ -1847,6 +1856,7 @@ final class BlacksiteShell: ObservableObject {
             ("editors", [
                 ("vim [file]", "the modal church — :help inside"),
                 ("emacs [file]", "the chord church — M-x help inside"),
+                ("nano [file]", "the plain church — ^G lists its keys"),
                 ("edit [file]", "whichever $EDITOR names"),
             ]),
             ("code — the engine room", [
@@ -3768,7 +3778,7 @@ private struct BlacksiteProgramSheet: View {
     @ViewBuilder private var content: some View {
         switch program {
         case .processes:
-            ProcessBoardView()
+            ProcessBoardView(embedded: true)
         case .sys:
             BlacksiteSysProgram()
         case .journal:

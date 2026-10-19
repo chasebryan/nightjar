@@ -24,7 +24,7 @@ import UIKit
 /// do, so every chord is reachable.
 
 enum EditorPersonality: String {
-    case vim, emacs
+    case vim, emacs, nano
 }
 
 enum EditorKey {
@@ -122,6 +122,13 @@ final class EditorCore: ObservableObject {
     var row: Int { buffer.row }
     var col: Int { buffer.col }
 
+    /// Whether the current buffer holds
+    /// unwritten work — the view's close
+    /// button asks before discarding it.
+    var bufferDirty: Bool {
+        !buffers.isEmpty && buffer.dirty
+    }
+
     var statusLeft: String {
         let dirtyMark = buffer.dirty ? " ●" : ""
         return buffer.name + dirtyMark
@@ -142,6 +149,8 @@ final class EditorCore: ObservableObject {
             if ctrlXPending { flags += " C-x-" }
             if markActive { flags += " [mark]" }
             return "\(flags)  \(row + 1):\(col + 1)"
+        case .nano:
+            return "Nano  \(row + 1):\(col + 1)"
         }
     }
 
@@ -415,6 +424,7 @@ final class EditorCore: ObservableObject {
         switch personality {
         case .vim: vimKey(key)
         case .emacs: emacsKey(key)
+        case .nano: nanoKey(key)
         }
     }
 
@@ -427,6 +437,7 @@ final class EditorCore: ObservableObject {
         switch personality {
         case .vim: return vimMode == .insert
         case .emacs: return true
+        case .nano: return true
         }
     }
 
@@ -1267,6 +1278,11 @@ extension EditorCore {
             message = "emacs, then. C-x C-s "
                 + "saves · C-x C-c leaves · "
                 + "M-x vim comes back"
+        case "nano":
+            personality = .nano
+            message = "nano, then. ^O "
+                + "saves · ^X leaves · "
+                + "^G lists the keys"
         default:
             if head.hasPrefix("%s/")
                 || head.hasPrefix("s/") {
@@ -1866,6 +1882,10 @@ extension EditorCore {
             vimMode = .normal
             message = "vim, then. the modes "
                 + "are home here"
+        case "nano":
+            personality = .nano
+            message = "nano, then. ^O "
+                + "saves · ^X leaves"
         case "help":
             openTextBuffer(name: "*help*",
                            text: Self.helpText)
@@ -1881,10 +1901,141 @@ extension EditorCore {
 
 // MARK: - The editor room
 
+// MARK: - NANO
+
+extension EditorCore {
+    /// The third church: no modes at all.
+    /// You type, it types. The control
+    /// chords do the rest, like the little
+    /// editor every server already has.
+    func nanoKey(_ key: EditorKey) {
+        switch key {
+        case .char(let ch):
+            pushUndo(coalesce: true)
+            insertAtOffset(String(ch),
+                           offset: cursorOffset())
+            lastKill = false
+        case .enter:
+            pushUndo()
+            insertAtOffset("\n",
+                           offset: cursorOffset())
+            lastKill = false
+        case .backspace:
+            let end = cursorOffset()
+            if end > 0 {
+                pushUndo(coalesce: true)
+                deleteOffsets(end - 1, end)
+            }
+            lastKill = false
+        case .tab:
+            pushUndo(coalesce: true)
+            insertAtOffset("    ",
+                           offset: cursorOffset())
+            lastKill = false
+        case .arrow(let dir):
+            moveArrow(dir)
+            return
+        case .escape:
+            message = ""
+        case .ctrl(let ch):
+            nanoCtrl(ch)
+            return
+        case .alt:
+            break
+        }
+        renderTick += 1
+    }
+
+    private func nanoCtrl(_ ch: Character) {
+        switch ch {
+        case "o":
+            saveBuffer()
+        case "x":
+            nanoExit()
+            return
+        case "k":
+            pushUndo()
+            killLine()
+            lastKill = true
+        case "u":
+            if let top = killRing.first {
+                pushUndo()
+                insertAtOffset(top.0,
+                               offset: cursorOffset())
+            }
+            lastKill = false
+        case "w":
+            miniAsk(prompt: "Search: ") {
+                [weak self] pat in
+                self?.runSearch(pat,
+                                forward: true)
+            }
+            return
+        case "g":
+            message = "^O write out · ^X "
+                + "exit · ^K cut line · "
+                + "^U paste · ^W find · "
+                + "^C where am I"
+        case "c":
+            message = "line \(row + 1) of "
+                + "\(buffer.lines.count), "
+                + "column \(col + 1)"
+        case "a":
+            buffer.col = 0
+        case "e":
+            buffer.col = buffer.lines[row]
+                .count
+        case "y":
+            buffer.row = max(0, row - 10)
+            clampCursor()
+        case "v":
+            buffer.row = min(
+                buffer.lines.count - 1,
+                row + 10)
+            clampCursor()
+        case "_", "/":
+            undo()
+        default:
+            message = "^\(ch) is undefined "
+                + "— ^G lists the keys"
+        }
+        renderTick += 1
+    }
+
+    private func nanoExit() {
+        guard buffer.dirty else {
+            onExit?()
+            return
+        }
+        guard buffer.path != nil else {
+            message = "unsaved — ^O names "
+                + "and writes it first"
+            return
+        }
+        miniAsk(prompt: "Save before "
+                + "exit? (y/n) ") {
+            [weak self] answer in
+            guard let self = self else {
+                return
+            }
+            let reply = answer.lowercased()
+            if reply.hasPrefix("y") {
+                if self.saveBuffer() {
+                    self.onExit?()
+                }
+            } else if reply
+                .hasPrefix("n") {
+                self.onExit?()
+            }
+        }
+    }
+}
+
 struct BlacksiteEditorView: View {
     @StateObject private var core: EditorCore
     private let path: String?
     private let onClose: () -> Void
+    @State private var confirmClose = false
     @ObservedObject private var themes =
         ThemeCenter.shared
 
@@ -1911,12 +2062,33 @@ struct BlacksiteEditorView: View {
             core.open(path: path,
                       personality: nil)
         }
+        .confirmationDialog(
+            "Unsaved changes",
+            isPresented: $confirmClose,
+            titleVisibility: .visible) {
+            Button("Save and close") {
+                if core.saveBuffer() {
+                    onClose()
+                }
+            }
+            Button("Discard changes",
+                   role: .destructive) {
+                onClose()
+            }
+            Button("Keep editing",
+                   role: .cancel) {}
+        } message: {
+            Text("This buffer holds work "
+                 + "that is not written yet.")
+        }
     }
 
     private var statusBar: some View {
         HStack(spacing: 8) {
             Text(core.personality == .vim
-                 ? "VIM" : "EMACS")
+                 ? "VIM"
+                 : core.personality == .emacs
+                 ? "EMACS" : "NANO")
                 .font(.system(.caption,
                               design: .monospaced)
                     .weight(.bold))
@@ -1937,9 +2109,27 @@ struct BlacksiteEditorView: View {
                 .font(.system(.caption,
                               design: .monospaced))
                 .foregroundStyle(.secondary)
+            if core.bufferDirty {
+                Button {
+                    Haptics.tap()
+                    _ = core.saveBuffer()
+                } label: {
+                    Text("SAVE")
+                        .font(.system(
+                            .caption,
+                            design: .monospaced)
+                            .weight(.bold))
+                        .foregroundStyle(
+                            themes.current.accent)
+                }
+            }
             Button {
                 Haptics.tap()
-                onClose()
+                if core.bufferDirty {
+                    confirmClose = true
+                } else {
+                    onClose()
+                }
             } label: {
                 Image(systemName: "xmark.circle")
                     .foregroundStyle(.secondary)
@@ -2043,6 +2233,10 @@ private struct EditorTextView:
             if core.miniPrompt != nil {
                 if text.isEmpty {
                     core.backspaceAsKey()
+                } else if text == "\n" {
+                    core.handle(.enter)
+                } else if text == "\t" {
+                    core.handle(.tab)
                 } else {
                     core.typeAsKey(text)
                 }

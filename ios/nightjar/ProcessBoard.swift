@@ -213,12 +213,36 @@ struct ProcessStripView: View {
 /// for anything stoppable) and what has lately
 /// finished, and how it landed.
 struct ProcessBoardView: View {
+    /// True when a host (the Blacksite
+    /// program sheet) already brings the
+    /// stack and the Done — then this view
+    /// brings only its list, so the bar
+    /// never grows two Dones.
+    var embedded = false
     @ObservedObject private var board = ProcessBoard.shared
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            List {
+        if embedded {
+            boardList
+        } else {
+            NavigationStack {
+                boardList
+                    .toolbar {
+                        ToolbarItem(
+                            placement:
+                                .confirmationAction) {
+                            Button(L("Done")) {
+                                dismiss()
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var boardList: some View {
+        List {
                 if !board.active.isEmpty {
                     Section(L("Running")) {
                         ForEach(board.active) { entry in
@@ -302,13 +326,7 @@ struct ProcessBoardView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(L("On the board"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L("Done")) { dismiss() }
-                }
-            }
-        }
+        .navigationTitle(L("On the board"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
