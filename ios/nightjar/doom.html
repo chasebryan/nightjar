@@ -109,9 +109,9 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 119</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 120</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 119 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
+<script>document.getElementById("buildstamp").textContent = "room build 120 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
 var hbF = 0;
 function hb() { hbF++; if (hbF % 150 === 0) { try { webkit.messageHandlers.doom.postMessage("alive " + hbF); } catch (e) {} } requestAnimationFrame(hb); }
 requestAnimationFrame(hb);</script>
@@ -343,9 +343,15 @@ requestAnimationFrame(hb);</script>
                 console.error(text);
                 ping("err: " + String(text).slice(0, 90));
                 if (String(text).indexOf("doom:") !== 0) {
-                    showErr(String(text));
-                    if (started) {
-                        document.getElementById("gate").style.display = "flex";
+                    // Benign stderr while the game runs must NOT resurrect
+                    // the gate over the canvas (it did — the game played
+                    // blind behind the lobby). Only death re-shows it.
+                    var benign = /Error loading midi|Unable to set up sound|Failed to load the shader|ERROR: 0:/.test(String(text));
+                    if (!started || !benign) {
+                        showErr(String(text));
+                        if (started) {
+                            document.getElementById("gate").style.display = "flex";
+                        }
                     }
                 }
             },
