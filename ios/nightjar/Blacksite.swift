@@ -125,7 +125,7 @@ final class BlacksiteShell: ObservableObject {
     static let builtinNames: [String] = [
         "help", "clear", "sys", "ver", "ps",
         "jobs", "kill", "fastfetch",
-        "neofetch",
+        "neofetch", "diagnose",
         "scan", "knock", "census", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
@@ -862,6 +862,8 @@ final class BlacksiteShell: ObservableObject {
             jobsCommand()
         case "kill":
             killCommand(args)
+        case "diagnose":
+            diagnoseCommand()
         case "fastfetch":
             fetchCommand(neofetch: false)
         case "neofetch":
@@ -2410,6 +2412,8 @@ final class BlacksiteShell: ObservableObject {
                 ("ps", "processes, live and recent"),
                 ("fastfetch",
                  "the machine's calling card"),
+                ("diagnose",
+                 "put the whole house through its paces — engines, kernel, containment drills"),
                 ("neofetch",
                  "the same card, under a crescent moon"),
                 ("jobs", "the kernel's live programs"),
@@ -2756,6 +2760,805 @@ final class BlacksiteShell: ObservableObject {
         }
         return Double(info.phys_footprint)
             / 1_048_576
+    }
+
+
+    // MARK: Diagnose — the house puts
+    // itself through its paces.
+    //
+    // A battery, run in the open: the
+    // filesystem, the shell's own words,
+    // colour, both interpreters and their
+    // libraries, and then the drills —
+    // a python that never stops, a flood,
+    // a javascript loop, a fork bomb, a
+    // wasm loop and a wasm that reaches
+    // past its own memory. Each must be
+    // CONTAINED, and the battery says so
+    // per drill, with the numbers.
+
+    private var diagnoseRunning = false
+
+    private typealias ProbeDone =
+        (Bool, String) -> Void
+
+    /// A probe's completion, fired once:
+    /// a probe that never answers fails
+    /// by its watchdog instead of
+    /// hanging the battery.
+    private final class ProbeGate {
+        private let lock = NSLock()
+        private var fired = false
+        private let done: ProbeDone
+        init(seconds: Double,
+             done: @escaping ProbeDone) {
+            self.done = done
+            DispatchQueue.global()
+                .asyncAfter(
+                    deadline: .now()
+                        + seconds) {
+                    [weak self] in
+                    self?.fire(
+                        false,
+                        "timed out after "
+                        + "\(Int(seconds))s")
+                }
+        }
+        func fire(_ ok: Bool,
+                  _ detail: String = "") {
+            lock.lock()
+            if fired {
+                lock.unlock()
+                return
+            }
+            fired = true
+            lock.unlock()
+            done(ok, detail)
+        }
+    }
+
+    private func diagnoseCommand() {
+        guard !diagnoseRunning else {
+            emit("diagnose: the battery "
+                 + "is already running.",
+                 .err)
+            return
+        }
+        diagnoseRunning = true
+        emit("diagnose — the house "
+             + "through its paces: "
+             + "engines, libraries, and "
+             + "the containment drills.",
+             .sys)
+        if BlacksiteKernel.shared
+            .liveCount > 0 {
+            emit("other programs are "
+                 + "live; the drills share "
+                 + "the table with them.",
+                 .sys)
+        }
+        let probes = diagnoseProbes()
+        runDiagnoseProbe(0, probes,
+                         passed: 0)
+    }
+
+    private func runDiagnoseProbe(
+        _ index: Int,
+        _ probes: [(String, Double,
+                     (@escaping ProbeDone)
+                        -> Void)],
+        passed: Int) {
+        if index == probes.count {
+            let all = passed == probes.count
+            emit("diagnose: \(passed)/"
+                 + "\(probes.count) — "
+                 + (all
+                    ? "the house holds."
+                    : "the ✗ lines above "
+                      + "name the faults."),
+                 all ? .ok : .err)
+            if !all { stageError = true }
+            diagnoseRunning = false
+            return
+        }
+        let (name, timeout, body) =
+            probes[index]
+        let gate = ProbeGate(
+            seconds: timeout) {
+                [weak self] ok, detail in
+                guard let self = self
+                else { return }
+                self.emit(
+                    "  \(ok ? "✓" : "✗") "
+                    + name
+                    + (detail.isEmpty
+                       ? "" : " — " + detail),
+                    ok ? .out : .err)
+                self.runDiagnoseProbe(
+                    index + 1, probes,
+                    passed: passed
+                        + (ok ? 1 : 0))
+            }
+        body { ok, detail in
+            gate.fire(ok, detail)
+        }
+    }
+
+    /// Run a python snippet off the main
+    /// thread with a collecting sink.
+    private func diagnosePyRun(
+        _ source: String, path: String,
+        cancel: KernelCancel?,
+        emit: @escaping BlacksiteEmit,
+        done: @escaping () -> Void) {
+        DispatchQueue.global(
+            qos: .userInitiated).async {
+            BlacksitePy.run(
+                source: source, path: path,
+                args: [path],
+                inputProvider: nil,
+                cancel: cancel, emit: emit)
+            done()
+        }
+    }
+
+    private func diagnoseCollector()
+        -> (BlacksiteEmit, () -> [String]) {
+        var lines: [String] = []
+        let lock = NSLock()
+        let emit: BlacksiteEmit = {
+            text, _ in
+            lock.lock()
+            lines.append(text)
+            lock.unlock()
+        }
+        return (emit, {
+            lock.lock()
+            defer { lock.unlock() }
+            return lines
+        })
+    }
+
+    private func diagnoseWasmRun(
+        data: Data, argv: [String],
+        name: String,
+        done: @escaping (Int, [String])
+            -> Void) {
+        let kernel = BlacksiteKernel.shared
+        let (proc, refusal) = kernel.admit(
+            name: name, kind: .wasm,
+            parent: 0, background: false)
+        guard let proc = proc else {
+            done(-1, [refusal ?? "refused"])
+            return
+        }
+        let (emit, collected) =
+            diagnoseCollector()
+        let machine = BlacksiteWasm(
+            proc: proc, emit: emit) {
+                [weak self] code in
+                kernel.finish(
+                    proc, note: "diagnose")
+                self?.wasmMachines[
+                    proc.pid] = nil
+                done(code, collected())
+            }
+        wasmMachines[proc.pid] = machine
+        var guestEnv = env
+        guestEnv["PWD"] = cwd
+        if guestEnv["HOME"] == nil {
+            guestEnv["HOME"] = "/home"
+        }
+        machine.launch(
+            data: data, argv: argv,
+            env: guestEnv, cwd: cwd,
+            stdin: "")
+    }
+
+    private func diagnoseProbes()
+        -> [(String, Double,
+             (@escaping ProbeDone) -> Void)] {
+        let kernel = BlacksiteKernel.shared
+        var probes: [(String, Double,
+            (@escaping ProbeDone) -> Void)] =
+            []
+
+        probes.append((
+            "filesystem roundtrip", 5, {
+                done in
+                let path =
+                    "/tmp/diag-probe.txt"
+                let wrote = BlacksiteFS
+                    .writeText(
+                        path, text: "roundtrip")
+                let read = BlacksiteFS
+                    .readText(path)
+                let listed = (BlacksiteFS
+                    .list("/tmp") ?? [])
+                    .contains {
+                        $0.name
+                            == "diag-probe.txt"
+                    }
+                _ = BlacksiteFS.remove(path)
+                let gone = !BlacksiteFS
+                    .exists(path)
+                done(wrote
+                     && read == "roundtrip"
+                     && listed && gone, "")
+            }))
+
+        probes.append((
+            "the shell's words", 5, {
+                done in
+                let tokens = self.tokenize(
+                    "echo \"a b\" 'c'")
+                let parts = self
+                    .splitSequence(
+                        "a; b && c")
+                done(tokens == ["echo",
+                                "a b", "c"]
+                     && parts.count == 3,
+                     "tokenizer + "
+                     + "sequencer")
+            }))
+
+        probes.append((
+            "colour strips and renders", 5, {
+                done in
+                let sample = "a\u{1B}[31mb"
+                    + "\u{1B}[0mc"
+                let stripped = ANSITerm
+                    .strip(sample)
+                let rendered = ANSITerm
+                    .attributed(
+                        sample,
+                        baseFont: .system(
+                            .caption,
+                            design: .monospaced),
+                        baseColor: .primary)
+                done(stripped == "abc"
+                     && String(rendered
+                        .characters) == "abc",
+                     "")
+            }))
+
+        probes.append((
+            "python — the language", 10, {
+                done in
+                let source = [
+                    "class Animal:",
+                    "    def __init__(",
+                    "        self, name):",
+                    "        self.name = name",
+                    "    def speak(self):",
+                    "        return \"...\"",
+                    "class Dog(Animal):",
+                    "    def speak(self):",
+                    "        return \"woof \""
+                        + " + self.name",
+                    "d = Dog(\"rex\")",
+                    "squares = (x * x"
+                        + " for x in range(5))",
+                    "def counter():",
+                    "    n = 0",
+                    "    while True:",
+                    "        yield n",
+                    "        n += 1",
+                    "c = counter()",
+                    "first = [next(c)"
+                        + " for _ in range(3)]",
+                    "print(\"PYLANG\","
+                        + " d.speak(),"
+                        + " sum(squares),"
+                        + " first)",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diaglang.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains("PYLANG")
+                         && out.contains(
+                            "woof rex")
+                         && out.contains("30")
+                         && out.contains(
+                            "[0, 1, 2]"),
+                         "classes, super's "
+                         + "house, generators, "
+                         + "comprehensions")
+                }
+            }))
+
+        probes.append((
+            "python — the library", 10, {
+                done in
+                let source = [
+                    "import json, re,"
+                        + " hashlib",
+                    "from collections import"
+                        + " Counter",
+                    "import itertools",
+                    "data = json.loads("
+                        + "'{\"a\": [1, 2, 3]}')",
+                    "m = re.search("
+                        + "r'(\\d+)-(\\d+)',"
+                        + " 'id 12-34')",
+                    "c = Counter('aabbbc')",
+                    "pairs = list("
+                        + "itertools"
+                        + ".combinations("
+                        + "[1, 2, 3], 2))",
+                    "h = hashlib.sha256()",
+                    "h.update('abc')",
+                    "print(\"PYLIB\","
+                        + " data['a'],"
+                        + " m.group(2),"
+                        + " c['b'], pairs,"
+                        + " h.hexdigest()[:16])",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diaglib.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains("PYLIB")
+                         && out.contains("34")
+                         && out.contains("(1, 2)")
+                         && out.contains(
+                            "ba7816bf8f01cfea"),
+                         "json, re, Counter, "
+                         + "itertools, sha256 "
+                         + "of \"abc\"")
+                }
+            }))
+
+        probes.append((
+            "python — your own modules", 10, {
+                done in
+                _ = BlacksiteFS.writeText(
+                    "/tmp/diaghelper.py",
+                    text: "def triple(n):\n"
+                        + "    return n * 3\n")
+                let source = [
+                    "import diaghelper",
+                    "print(\"PYMOD\","
+                        + " diaghelper"
+                        + ".triple(14))",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diagmain.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains(
+                            "PYMOD 42"), "")
+                }
+            }))
+
+        probes.append((
+            "python — input() with "
+            + "nobody there", 10, {
+                done in
+                let source = [
+                    "try:",
+                    "    input(\"name? \")",
+                    "    print(\"PYEOF-MISS\")",
+                    "except EOFError:",
+                    "    print(\"PYEOF-OK\")",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diageof.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains(
+                            "PYEOF-OK")
+                         && !out.contains(
+                            "PYEOF-MISS"), "")
+                }
+            }))
+
+        probes.append((
+            "drill: a python that "
+            + "never stops", 15, {
+                done in
+                let (proc, refusal) =
+                    kernel.admit(
+                        name: "diagnose loop",
+                        kind: .python,
+                        parent: 0,
+                        background: false)
+                guard let proc = proc else {
+                    done(false,
+                         refusal ?? "refused")
+                    return
+                }
+                var byKernel = false
+                let flagLock = NSLock()
+                DispatchQueue.global()
+                    .asyncAfter(
+                        deadline: .now() + 2.5) {
+                        if proc.isLive {
+                            flagLock.lock()
+                            byKernel = true
+                            flagLock.unlock()
+                            kernel.kill(
+                                proc,
+                                reason: "the "
+                                    + "diagnose "
+                                    + "drill")
+                        }
+                    }
+                let started = Date()
+                self.diagnosePyRun(
+                    "while True:\n    pass",
+                    path: "/tmp/diagloop.py",
+                    cancel: proc.cancel,
+                    emit: { _, _ in }) {
+                    let elapsed = Date()
+                        .timeIntervalSince(
+                            started)
+                    kernel.finish(
+                        proc, note: "diagnose")
+                    flagLock.lock()
+                    let killed = byKernel
+                    flagLock.unlock()
+                    done(elapsed < 12,
+                         killed
+                         ? "the kernel's word "
+                           + "stopped it"
+                         : "its step fuel "
+                           + "stopped it")
+                }
+            }))
+
+        probes.append((
+            "drill: a python flood", 20, {
+                done in
+                let (proc, refusal) =
+                    kernel.admit(
+                        name: "diagnose flood",
+                        kind: .python,
+                        parent: 0,
+                        background: false)
+                guard let proc = proc else {
+                    done(false,
+                         refusal ?? "refused")
+                    return
+                }
+                let counting: BlacksiteEmit =
+                    { _, _ in
+                        _ = kernel
+                            .accountOutput(proc)
+                    }
+                let source = [
+                    "n = 0",
+                    "while True:",
+                    "    print(\"flood\", n)",
+                    "    n += 1",
+                ].joined(separator: "\n")
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diagflood.py",
+                    cancel: proc.cancel,
+                    emit: counting) {
+                    let note = proc.exitNote
+                    let counted = proc
+                        .outputLines
+                    kernel.finish(
+                        proc, note: "diagnose")
+                    done(note.contains(
+                            "output quota")
+                         && counted
+                            >= BlacksiteKernel
+                                .outputQuota,
+                         "\(counted) lines "
+                         + "counted, then "
+                         + "the gate: \(note)")
+                }
+            }))
+
+        probes.append((
+            "javascript — the engine", 8, {
+                done in
+                BlacksiteJS.shared.eval(
+                    "21 * 2") {
+                    result, error in
+                    done(error == nil
+                         && (result ?? "")
+                            .contains("42"),
+                         result ?? "")
+                }
+            }))
+
+        probes.append((
+            "drill: a javascript loop, "
+            + "killed", 10, {
+                done in
+                _ = BlacksiteFS.writeText(
+                    "/tmp/diagloop.js",
+                    text: "for (;;) {\n}\n")
+                let (proc, refusal) =
+                    kernel.admit(
+                        name: "diagnose js loop",
+                        kind: .javascript,
+                        parent: 0,
+                        background: false)
+                guard let proc = proc else {
+                    done(false,
+                         refusal ?? "refused")
+                    return
+                }
+                let oldSink = BlacksiteJS
+                    .shared.printSink
+                BlacksiteJS.shared.printSink =
+                    { _ in }
+                BlacksiteJS.shared.runFile(
+                    "/tmp/diagloop.js",
+                    args: [],
+                    killSwitch: proc
+                        .killSwitch) { _ in
+                    BlacksiteJS.shared
+                        .printSink = oldSink
+                    kernel.finish(
+                        proc, note: "diagnose")
+                    done(true,
+                         "the engine's limit "
+                         + "fired once the "
+                         + "kernel spoke")
+                }
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.8) {
+                    kernel.kill(
+                        proc,
+                        reason: "the diagnose "
+                            + "drill")
+                }
+            }))
+
+        probes.append((
+            "drill: fork bomb", 25, {
+                done in
+                _ = BlacksiteFS.writeText(
+                    "/tmp/diagbomb.sh",
+                    text: "sh /tmp/diagbomb.sh"
+                        + " &\n"
+                        + "sh /tmp/diagbomb.sh"
+                        + " &\n")
+                let before = kernel
+                    .totalSpawned
+                self.runScript(
+                    "/tmp/diagbomb.sh")
+                var maxLive = 0
+                var settled = 0
+                func poll() {
+                    let live = kernel.liveCount
+                    maxLive = max(maxLive,
+                                  live)
+                    settled = live == 0
+                        ? settled + 1 : 0
+                    if settled >= 3 {
+                        let spawned = kernel
+                            .totalSpawned
+                            - before
+                        done(maxLive <= 32,
+                             "peak \(maxLive) "
+                             + "live, "
+                             + "\(spawned) "
+                             + "spawned, all "
+                             + "reaped")
+                        return
+                    }
+                    DispatchQueue.main
+                        .asyncAfter(
+                            deadline: .now()
+                                + 0.25) {
+                            poll()
+                        }
+                }
+                poll()
+            }))
+
+        probes.append((
+            "kernel — the caps hold", 12, {
+                done in
+                var admitted: [KernelProcess] =
+                    []
+                var refusal: String? = nil
+                func wave() {
+                    while admitted.count
+                            < 40 {
+                        let (p, r) = kernel
+                            .admit(
+                                name: "diagnose"
+                                    + " cap",
+                                kind: .shell,
+                                parent: 0,
+                                background: true)
+                        if let p = p {
+                            admitted.append(p)
+                        } else {
+                            refusal = r
+                            break
+                        }
+                    }
+                }
+                func finishCaps() {
+                    let ok = admitted.count
+                        <= 32
+                        && refusal != nil
+                    let detail =
+                        "\(admitted.count) "
+                        + "admitted, "
+                        + "then the gate: "
+                        + (refusal ?? "none")
+                    for p in admitted {
+                        kernel.kill(
+                            p,
+                            reason: "diagnose")
+                    }
+                    done(ok, detail)
+                }
+                wave()
+                if refusal != nil {
+                    finishCaps()
+                } else {
+                    DispatchQueue.main
+                        .asyncAfter(
+                            deadline: .now()
+                                + 2.3) {
+                            wave()
+                            finishCaps()
+                        }
+                }
+            }))
+
+        probes.append((
+            "wasm — the userspace "
+            + "answers", 15, {
+                done in
+                guard let data =
+                        BlacksiteWasm
+                            .linuxboxData
+                else {
+                    done(false,
+                         "userspace missing")
+                    return
+                }
+                self.diagnoseWasmRun(
+                    data: data,
+                    argv: ["echo", "WASM-OK"],
+                    name: "diagnose echo") {
+                    code, lines in
+                    done(code == 0
+                         && lines.contains {
+                            $0.contains(
+                                "WASM-OK")
+                         }, "exit \(code)")
+                }
+            }))
+
+        probes.append((
+            "wasm — exit codes are "
+            + "exit codes", 15, {
+                done in
+                guard let data =
+                        BlacksiteWasm
+                            .linuxboxData
+                else {
+                    done(false,
+                         "userspace missing")
+                    return
+                }
+                self.diagnoseWasmRun(
+                    data: data,
+                    argv: ["false"],
+                    name: "diagnose false") {
+                    code, _ in
+                    done(code == 1,
+                         "false came back "
+                         + "\(code)")
+                }
+            }))
+
+        probes.append((
+            "drill: a wasm that traps", 20, {
+                done in
+                guard let data =
+                        BlacksiteWasm
+                            .fixtureData("hog")
+                else {
+                    done(false,
+                         "fixture missing")
+                    return
+                }
+                self.diagnoseWasmRun(
+                    data: data, argv: ["hog"],
+                    name: "diagnose hog") {
+                    code, lines in
+                    done(code != 0
+                         || lines.joined()
+                            .contains("trapped"),
+                         "it reached past its "
+                         + "memory; exit "
+                         + "\(code), and the "
+                         + "house is still "
+                         + "standing")
+                }
+            }))
+
+        probes.append((
+            "drill: a wasm loop, killed",
+            12, {
+                done in
+                guard let data =
+                        BlacksiteWasm
+                            .fixtureData(
+                                "looper")
+                else {
+                    done(false,
+                         "fixture missing")
+                    return
+                }
+                let (proc, refusal) =
+                    kernel.admit(
+                        name: "diagnose "
+                            + "looper",
+                        kind: .wasm,
+                        parent: 0,
+                        background: false)
+                guard let proc = proc else {
+                    done(false,
+                         refusal ?? "refused")
+                    return
+                }
+                let (emit, _) =
+                    self.diagnoseCollector()
+                let machine = BlacksiteWasm(
+                    proc: proc, emit: emit) {
+                        [weak self] code in
+                        kernel.finish(
+                            proc,
+                            note: "diagnose")
+                        self?.wasmMachines[
+                            proc.pid] = nil
+                        done(true,
+                             "terminated at "
+                             + "the kernel's "
+                             + "word, exit "
+                             + "\(code)")
+                    }
+                self.wasmMachines[proc.pid] =
+                    machine
+                var guestEnv = self.env
+                guestEnv["PWD"] = self.cwd
+                machine.launch(
+                    data: data,
+                    argv: ["looper"],
+                    env: guestEnv,
+                    cwd: self.cwd, stdin: "")
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 1.0) {
+                    kernel.kill(
+                        proc,
+                        reason: "the diagnose "
+                            + "drill")
+                }
+            }))
+
+        return probes
     }
 
     private func jobsCommand() {

@@ -51,7 +51,10 @@
       + ' startGuest(d.config,'
       + ' new Uint8Array(d.buf),'
       + ' { post: function (o) {'
-      + ' postMessage(o); } });'
+      + ' postMessage(o); } })'
+      + ' .then(function (code) {'
+      + ' postMessage({ t: \'exit\','
+      + ' code: code }); });'
       + ' };\n';
     try {
       var blob = new Blob(
@@ -82,7 +85,10 @@
       script.textContent = shimText;
       document.head.appendChild(script);
       startGuest(config,
-        new Uint8Array(buf), { post: post });
+        new Uint8Array(buf), { post: post })
+        .then(function (code) {
+          post({ t: 'exit', code: code });
+        });
     } catch (e) { fail('' + e); }
   }
   window.__killGuest = window.__killGuest

@@ -55,6 +55,26 @@ final class BlacksiteWasm: NSObject {
             || name == "linuxbox"
     }
 
+    /// A bundled fixture guest (the
+    /// diagnose battery's looper and
+    /// hog), decoded from its base64
+    /// beside the userspace.
+    static func fixtureData(
+        _ base: String) -> Data? {
+        guard let url = Bundle.main.url(
+                forResource: base,
+                withExtension: "wasm.b64"),
+              let text = try? String(
+                contentsOf: url,
+                encoding: .utf8)
+        else { return nil }
+        return Data(
+            base64Encoded: text,
+            options: [
+                .ignoreUnknownCharacters
+            ])
+    }
+
     private static var cachedLinuxbox: Data?
 
     /// The bundled linux userspace,
