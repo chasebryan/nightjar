@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import GameController
 
 // Freedoom — the big demo. Chocolate Doom
 // compiled to WebAssembly (cloudflare/
@@ -555,6 +556,8 @@ final class FreedoomKeyWebView: WKWebView {
     override func pressesBegan(
         _ presses: Set<UIPress>,
         with event: UIPressesEvent?) {
+        if FreedoomKeyboardRouter.shared
+            .active { return }
         forward(presses, down: true) {
             super.pressesBegan(
                 $0, with: event)
@@ -564,6 +567,8 @@ final class FreedoomKeyWebView: WKWebView {
     override func pressesEnded(
         _ presses: Set<UIPress>,
         with event: UIPressesEvent?) {
+        if FreedoomKeyboardRouter.shared
+            .active { return }
         forward(presses, down: false) {
             super.pressesEnded(
                 $0, with: event)
@@ -573,6 +578,8 @@ final class FreedoomKeyWebView: WKWebView {
     override func pressesCancelled(
         _ presses: Set<UIPress>,
         with event: UIPressesEvent?) {
+        if FreedoomKeyboardRouter.shared
+            .active { return }
         forward(presses, down: false) {
             super.pressesCancelled(
                 $0, with: event)
@@ -638,6 +645,37 @@ final class FreedoomKeyWebView: WKWebView {
                     .unicodeScalars.first
             else { return nil }
             return Int(scalar.value)
+        }
+    }
+
+    /// HID usage code in, DOM key code
+    /// out — the GameController router's
+    /// half of the map. GCKeyCode raw
+    /// values are HID usage codes, so
+    /// one table serves both paths.
+    static func domCode(
+        forHID hid: Int) -> Int? {
+        switch hid {
+        case 82: return 38   // up
+        case 81: return 40   // down
+        case 80: return 37   // left
+        case 79: return 39   // right
+        case 41: return 27   // esc
+        case 43: return 9    // tab
+        case 40: return 13   // enter
+        case 44: return 32   // space
+        case 42: return 8    // backspace
+        case 225, 229: return 16  // shift
+        case 224, 228: return 17  // ctrl
+        case 226, 230: return 18  // alt
+        case 4...29:
+            // a-z -> A-Z
+            return hid - 4 + 65
+        case 30...38:
+            // 1-9
+            return hid - 30 + 49
+        case 39: return 48   // 0
+        default: return nil
         }
     }
 }
@@ -737,12 +775,128 @@ struct FreedoomWebView:
                 cachePolicy:
                     .reloadIgnoringLocalCacheData))
         }
+        FreedoomKeyboardRouter.shared
+            .attach(webView: view)
         return view
+    }
+
+    static func dismantleUIView(
+        _ uiView: FreedoomKeyWebView,
+        coordinator: Coordinator) {
+        FreedoomKeyboardRouter.shared
+            .detach()
     }
 
     func updateUIView(
         _ uiView: FreedoomKeyWebView,
         context: Context) {}
+}
+
+/// Hardware keys at the app level.
+/// GameController reports every press
+/// of a connected keyboard — wired or
+/// Bluetooth — with no first responder,
+/// no focus and no WebKit cooperation,
+/// which is everything the responder
+/// chain cannot promise a game page.
+/// While a game is up the router
+/// forwards each press into the page
+/// as a deck key (window.sendkey, the
+/// proven path); the responder path in
+/// FreedoomKeyWebView stands down
+/// whenever the router is live, so a
+/// key can never land twice. It binds
+/// on attach and rebinds if a keyboard
+/// connects mid-game.
+final class FreedoomKeyboardRouter {
+    static let shared =
+        FreedoomKeyboardRouter()
+    private(set) var active = false
+    private weak var webView: WKWebView?
+    private var input: GCKeyboardInput?
+    private var observers:
+        [NSObjectProtocol] = []
+
+    func attach(webView: WKWebView) {
+        self.webView = webView
+        if observers.isEmpty {
+            let center =
+                NotificationCenter.default
+            observers.append(center
+                .addObserver(
+                    forName:
+                        .GCKeyboardDidConnect,
+                    object: nil,
+                    queue: .main) {
+                [weak self] _ in
+                self?.bind()
+            })
+            observers.append(center
+                .addObserver(
+                    forName:
+                        .GCKeyboardDidDisconnect,
+                    object: nil,
+                    queue: .main) {
+                [weak self] _ in
+                self?.unbindIfGone()
+            })
+        }
+        bind()
+    }
+
+    private func bind() {
+        guard let input = GCKeyboard
+            .coalesced?.keyboardInput
+        else { return }
+        self.input = input
+        active = true
+        input.keyChangedHandler = {
+            [weak self] _, _, code,
+            pressed in
+            self?.forward(
+                code: code, pressed: pressed)
+        }
+    }
+
+    private func unbindIfGone() {
+        guard GCKeyboard.coalesced == nil
+        else { return }
+        input?.keyChangedHandler = nil
+        input = nil
+        active = false
+    }
+
+    func detach() {
+        input?.keyChangedHandler = nil
+        input = nil
+        active = false
+        webView = nil
+        for observer in observers {
+            NotificationCenter.default
+                .removeObserver(observer)
+        }
+        observers = []
+    }
+
+    private func forward(
+        code: GCKeyCode, pressed: Bool) {
+        guard let dom = FreedoomKeyWebView
+            .domCode(forHID: code.rawValue)
+        else { return }
+        let type = pressed
+            ? "keydown" : "keyup"
+        let js = "window.sendkey && "
+            + "window.sendkey(["
+            + String(dom) + "], '"
+            + type + "')"
+        DispatchQueue.main.async {
+            [weak self] in
+            self?.webView?
+                .evaluateJavaScript(
+                    js,
+                    completionHandler: nil)
+        }
+    }
 }
 
 // MARK: - The room
