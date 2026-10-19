@@ -700,3 +700,13 @@
   new seal is written
   with one encoding,
   not two.
+- **The ear has its own
+  queue.** Listening no
+  longer decodes every
+  advertisement on the
+  main thread — the
+  whole pipeline works
+  on a dedicated queue
+  and only the finished
+  list crosses over,
+  once a second.

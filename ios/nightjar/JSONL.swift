@@ -50,7 +50,18 @@ enum JSONL {
     }
 
     static func hex(_ bytes: [UInt8]) -> String {
-        return bytes.map { String(format: "%02x", $0) }.joined()
+        // Table-driven: this runs per
+        // advertisement, and String(format:)
+        // per byte was real money at rate.
+        let digits: [Character] =
+            Array("0123456789abcdef")
+        var out = ""
+        out.reserveCapacity(bytes.count * 2)
+        for byte in bytes {
+            out.append(digits[Int(byte >> 4)])
+            out.append(digits[Int(byte & 0x0F)])
+        }
+        return out
     }
 
     /// `{"a": 1, "b": "x"}` from ordered (key, already-encoded value) pairs.

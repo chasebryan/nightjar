@@ -49,6 +49,26 @@ final class ListeningPost: NSObject, ObservableObject {
     ]
 
     private var central: CBCentralManager!
+    /// The ear's own serial queue: every
+    /// advertisement is received, decoded, and
+    /// filed HERE, never on the main queue —
+    /// in a busy room the pipeline runs at
+    /// advertisement rate, and the interface
+    /// must never pay for it (the sweep's
+    /// finding P1, 2026-10-18). `devices`,
+    /// `sightingsSeen`, `dirty`, `sessionActive`,
+    /// and `backgroundMode` are confined to
+    /// this queue; the published face (rows,
+    /// counts, state) hops to main.
+    private let bleQueue = DispatchQueue(
+        label: "nightjar.listen.ble")
+    private let bleKey = DispatchSpecificKey<
+        Void>()
+    /// Queue-confined mirrors of the published
+    /// session state, so delegate callbacks
+    /// never read main-owned state.
+    private var sessionActive = false
+    private var backgroundMode = false
     private var devices: [String: DeviceRow] = [:]
     private var rankOrder: [String] = []
     private var lastRankAt: TimeInterval = 0
@@ -60,13 +80,27 @@ final class ListeningPost: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        central = CBCentralManager(delegate: self, queue: nil, options: [
+        bleQueue.setSpecific(key: bleKey, value: ())
+        central = CBCentralManager(delegate: self, queue: bleQueue, options: [
             CBCentralManagerOptionShowPowerAlertKey: true,
             CBCentralManagerOptionRestoreIdentifierKey: ListeningPost.restoreIdentifier,
         ])
     }
 
     var isListening: Bool { return session != nil }
+
+    /// Run work on the BLE queue, inline when
+    /// already there (a delegate callback
+    /// stopping the session must not deadlock
+    /// on its own queue).
+    private func onBle(_ work: () -> Void) {
+        if DispatchQueue.getSpecific(key: bleKey)
+            != nil {
+            work()
+        } else {
+            bleQueue.sync(execute: work)
+        }
+    }
 
     /// This post's name, for the log header — which ear heard it. The user
     /// sets it on the About tab (so the Mac's fusion can tell the phone
@@ -121,34 +155,57 @@ final class ListeningPost: NSObject, ObservableObject {
                     "listening started"
                     + (label.map { " — \($0)" } ?? ""))
         remember(active)
-        devices = [:]
+        onBle {
+            devices = [:]
+            sightingsSeen = 0
+            sessionActive = true
+            backgroundMode = inBackground
+        }
         rows = []
-        sightingsSeen = 0
         sightingCount = 0
         deviceCount = 0
         lastError = nil
         startTicker()
         applyIdleTimer()
-        scan()
+        bleQueue.async { [weak self] in
+            self?.scan()
+        }
     }
 
     func stop() {
+        // The radio's death calls this from the
+        // BLE queue; the session's face lives on
+        // main. Silence the confined side on the
+        // spot, then settle the rest on main.
+        if DispatchQueue.getSpecific(key: bleKey)
+            != nil {
+            onBle { sessionActive = false }
+            central.stopScan()
+            DispatchQueue.main.async {
+                [weak self] in self?.stop() }
+            return
+        }
         guard let active = session else { return }
         Haptics.finish()
+        onBle { sessionActive = false }
         central.stopScan()
         if let writer = writer {
+            var heard = 0
+            onBle { heard = sightingsSeen }
             writer.append(JSONL.object([
                 ("type", JSONL.string("session_end")),
                 ("session_id", JSONL.string(active.id)),
                 ("ended_at", JSONL.seconds(Date().timeIntervalSince1970)),
-                ("sightings", String(sightingsSeen)),
+                ("sightings", String(heard)),
             ]))
             writer.close()
         }
         writer = nil
         session = nil
+        var heardNow = 0
+        onBle { heardNow = sightingsSeen }
         Journal.log("listen", "session",
-                    "listening stopped — \(sightingsSeen) sightings")
+                    "listening stopped — \(heardNow) sightings")
         forgetActiveSession()
         stopTicker()
         applyIdleTimer()
@@ -157,10 +214,12 @@ final class ListeningPost: NSObject, ObservableObject {
 
     // MARK: - Scanning
 
+    /// Queue-confined: call only on bleQueue.
     private func scan() {
-        guard session != nil, central.state == .poweredOn else { return }
+        guard sessionActive,
+              central.state == .poweredOn else { return }
         central.stopScan()
-        if inBackground {
+        if backgroundMode {
             central.scanForPeripherals(withServices: ListeningPost.backgroundServices, options: nil)
         } else {
             // Repeated advertisements are the point: RSSI movement is data.
@@ -174,34 +233,64 @@ final class ListeningPost: NSObject, ObservableObject {
         guard background != inBackground else { return }
         inBackground = background
         writer?.flush()
-        if session != nil {
-            scan()
+        bleQueue.async { [weak self] in
+            guard let self else { return }
+            backgroundMode = background
+            if sessionActive { scan() }
         }
     }
 
     // MARK: - Bookkeeping
 
     private func startTicker() {
-        stopTicker()
-        ticker = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tick()
+        // Timers live on the main run loop,
+        // whichever queue asked.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            ticker?.invalidate()
+            ticker = Timer.scheduledTimer(
+                withTimeInterval: 1.0,
+                repeats: true) { [weak self] _ in
+                self?.tick()
+            }
         }
     }
 
     private func stopTicker() {
-        ticker?.invalidate()
-        ticker = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.ticker?.invalidate()
+            self?.ticker = nil
+        }
     }
 
     private func tick() {
         writer?.flush()
-        if dirty {
-            publishRows()
+        bleQueue.async { [weak self] in
+            guard let self, dirty else { return }
+            publishRowsOnQueue()
         }
     }
 
     private func publishRows() {
+        bleQueue.async { [weak self] in
+            guard let self else { return }
+            publishRowsOnQueue()
+        }
+    }
+
+    private func publishRowsOnQueue() {
         let now = Date().timeIntervalSince1970
+        // The registry is not a hoard either
+        // (finding F9): past 150 devices, rows
+        // unheard for ten minutes are evicted —
+        // pinned shapes (trackers, flares) are
+        // exempt; they are the point of the post.
+        if devices.count > 150 {
+            devices = devices.filter { _, row in
+                now - row.lastSeen <= 600
+                    || row.trackerShaped || row.flare
+            }
+        }
         // Contents (ages, signal, counts) refresh every tick,
         // but the ORDER is re-ranked on a slow cadence, and
         // even then a device climbs only by clearing the one
@@ -241,10 +330,15 @@ final class ListeningPost: NSObject, ObservableObject {
                 closestRSSI: row.rssiClosest,
                 smoothedRSSI: row.rssiSmooth)
         })
-        rows = ordered
-        deviceCount = devices.count
-        sightingCount = sightingsSeen
+        let totalDevices = devices.count
+        let totalSightings = sightingsSeen
         dirty = false
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            rows = ordered
+            deviceCount = totalDevices
+            sightingCount = totalSightings
+        }
     }
 
     /// The settled order: keep the previous one, let
@@ -307,7 +401,12 @@ final class ListeningPost: NSObject, ObservableObject {
     }
 
     private func applyIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = keepScreenAwake && session != nil
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            UIApplication.shared
+                .isIdleTimerDisabled =
+                keepScreenAwake && session != nil
+        }
     }
 
     private func remember(_ active: ActiveSession) {
@@ -354,12 +453,26 @@ final class ListeningPost: NSObject, ObservableObject {
         }
         let label = record["label"] as? String
         self.writer = writer
-        session = ActiveSession(id: id, label: (label?.isEmpty ?? true) ? nil : label,
-                                startedAt: startedAt, url: url)
-        sightingsSeen = SessionStore.countSightings(in: url)
-        sightingCount = sightingsSeen
-        startTicker()
-        applyIdleTimer()
+        let resumed = ActiveSession(
+            id: id,
+            label: (label?.isEmpty ?? true)
+                ? nil : label,
+            startedAt: startedAt, url: url)
+        let heard = SessionStore.countSightings(
+            in: url)
+        // On the delegate queue here: set the
+        // confined state directly, and publish
+        // the session's face on main.
+        sightingsSeen = heard
+        sessionActive = true
+        backgroundMode = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            session = resumed
+            sightingCount = heard
+            startTicker()
+            applyIdleTimer()
+        }
         scan()
     }
 }
@@ -368,11 +481,14 @@ final class ListeningPost: NSObject, ObservableObject {
 
 extension ListeningPost: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        bluetoothState = central.state
+        let state = central.state
+        DispatchQueue.main.async { [weak self] in
+            self?.bluetoothState = state
+        }
         if central.state == .poweredOn {
             resumeInterruptedSessionIfAny()
             scan()
-        } else if session != nil {
+        } else if sessionActive {
             // The radio left .poweredOn mid-session: the scan is
             // gone, so finalize the log through the normal end
             // path (footer, close, Forget) instead of leaving a
@@ -385,12 +501,15 @@ extension ListeningPost: CBCentralManagerDelegate {
         // iOS relaunched the app because a scan was in progress. The
         // session itself is restored once the radio reports powered on.
         restoring = true
-        inBackground = true
+        backgroundMode = true
+        DispatchQueue.main.async { [weak self] in
+            self?.inBackground = true
+        }
     }
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
-        guard session != nil else { return }
+        guard sessionActive else { return }
         let sighting = Sighting(peripheral: peripheral, advertisementData: advertisementData,
                                 rssi: RSSI)
         writer?.append(sighting.jsonLine)
