@@ -1569,6 +1569,23 @@ struct BootView: View {
 /// one vibe, everywhere. (The boot's per-line
 /// keystroke keeps its own rapid voice — a typed
 /// line is a sequence by nature, not an act.)
+///
+/// And one act speaks ONCE — at its start. The
+/// old shape beat at a process's beginning and
+/// again at its landing, which the operator
+/// heard, everywhere, as tap — delay — tap, and
+/// ruled out (2026-10-19). So beats now come in
+/// three classes: an INITIATION (a touch, a
+/// press, a process starting) speaks and stamps
+/// the act; an ECHO (a landing, a verdict, a
+/// settle) speaks only when no initiation is
+/// fresh — a completion arriving on its own,
+/// long after his hand left it, is news and may
+/// speak; one arriving as the second half of
+/// his own act folds into it, silent. An
+/// ABSOLUTE beat (the heaviest voice, the
+/// emergency stop) is an act entire in itself
+/// and always lands.
 enum Haptics {
     // One retained generator per voice, kept
     // prepared for the next beat. The old way —
@@ -1603,15 +1620,45 @@ enum Haptics {
         }
     }
 
-    /// When the last beat actually spoke.
+    /// When the last beat actually spoke, and
+    /// when the operator's last act began.
     /// Touched only on the main thread, inside
-    /// the gate.
+    /// the gates.
     private static var lastBeatAt: TimeInterval = 0
+    private static var lastInitiationAt:
+        TimeInterval = 0
 
-    /// The gate every action beat passes:
-    /// one vibe per act, however many callers
-    /// ask at once.
-    private static func beat(
+    /// An initiation: the act's one beat.
+    private static func initiation(
+        _ body: @escaping () -> Void) {
+        onMain {
+            let now = Date()
+                .timeIntervalSince1970
+            guard now - lastBeatAt >= 0.35
+            else { return }
+            lastBeatAt = now
+            lastInitiationAt = now
+            body()
+        }
+    }
+
+    /// An echo: a landing or verdict belonging
+    /// to an act already felt is folded into it.
+    private static func echo(
+        _ body: @escaping () -> Void) {
+        onMain {
+            let now = Date()
+                .timeIntervalSince1970
+            guard now - lastInitiationAt >= 1.6,
+                  now - lastBeatAt >= 0.35
+            else { return }
+            lastBeatAt = now
+            body()
+        }
+    }
+
+    /// An absolute beat: always lands.
+    private static func absolute(
         _ body: @escaping () -> Void) {
         onMain {
             let now = Date()
@@ -1624,7 +1671,7 @@ enum Haptics {
     }
 
     static func tap() {
-        beat {
+        initiation {
             lightGen.impactOccurred()
             lightGen.prepare()
         }
@@ -1643,7 +1690,7 @@ enum Haptics {
     }
 
     static func select() {
-        beat {
+        initiation {
             // A crisp rigid impact stands in for
             // the selection generator, which is
             // retired: on the operator's device
@@ -1677,7 +1724,7 @@ enum Haptics {
 
     /// A deliberate press — a primary action taken.
     static func press() {
-        beat {
+        initiation {
             mediumGen.impactOccurred()
             mediumGen.prepare()
         }
@@ -1685,7 +1732,7 @@ enum Haptics {
 
     /// The heaviest single beat the house owns.
     static func heavy() {
-        beat {
+        absolute {
             heavyGen.impactOccurred()
             heavyGen.prepare()
         }
@@ -1694,18 +1741,20 @@ enum Haptics {
     /// A soft settle — things standing down, closing,
     /// being put away.
     static func pulse() {
-        beat {
+        echo {
             softGen.impactOccurred(intensity: 0.45)
             softGen.prepare()
         }
     }
 
-    /// Landed well: one medium beat. (The
-    /// notification generator's success was a
-    /// two-pulse pattern — the tap-delay-tap
-    /// the operator ruled out.)
+    /// Landed well: one medium beat — spoken
+    /// only when the landing is news of its own;
+    /// as the echo of the act that launched it,
+    /// it folds. (The notification generator's
+    /// success was a two-pulse pattern — the
+    /// tap-delay-tap the operator ruled out.)
     static func success() {
-        beat {
+        echo {
             mediumGen.impactOccurred()
             mediumGen.prepare()
         }
@@ -1713,17 +1762,20 @@ enum Haptics {
 
     /// A warning: one rigid beat at full
     /// strength — sharper than an act, lighter
-    /// than an error.
+    /// than an error. An echo: a warning his own
+    /// tap just earned arrives in the toast's
+    /// words, not a second buzz.
     static func warn() {
-        beat {
+        echo {
             rigidGen.impactOccurred(intensity: 1.0)
             rigidGen.prepare()
         }
     }
 
-    /// An error: one heavy beat.
+    /// An error: one heavy beat, on the same
+    /// echo terms as the warning.
     static func error() {
-        beat {
+        echo {
             heavyGen.impactOccurred()
             heavyGen.prepare()
         }
