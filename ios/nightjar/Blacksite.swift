@@ -94,7 +94,12 @@ final class BlacksiteShell: ObservableObject {
     private var captureStack: [[String]] = []
     private var stageError = false
     private(set) var lastStatus = 0
-    private var scriptDepth = 0
+
+    /// True while the stage being run
+    /// ends in '&': the program goes to
+    /// the background when the kernel
+    /// admits it.
+    private var stageBackground = false
 
     /// The editor door: vim/emacs/edit set
     /// this; the room presents the editor.
@@ -109,6 +114,7 @@ final class BlacksiteShell: ObservableObject {
 
     static let builtinNames: [String] = [
         "help", "clear", "sys", "ver", "ps",
+        "jobs", "kill",
         "scan", "knock", "census", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
@@ -193,6 +199,19 @@ final class BlacksiteShell: ObservableObject {
     func bootIfNeeded() {
         guard !booted else { return }
         booted = true
+        BlacksiteKernel.shared.onProcessEnd =
+            { [weak self] proc in
+                guard let self = self
+                else { return }
+                if proc.background {
+                    self.emit(
+                        "kernel: [\(proc.pid)] "
+                            + "\(proc.name) — "
+                            + proc.exitNote,
+                        .sys)
+                }
+                self.updateBusy()
+            }
         BlacksiteFS.binNames =
             BlacksiteShell.builtinNames
         _ = BlacksiteFS.rootURL()
@@ -773,6 +792,7 @@ final class BlacksiteShell: ObservableObject {
     private func runStage(_ stage: String,
                           stdin: String) {
         stageInput = stdin
+        stageBackground = false
         var tokens = tokenize(stage)
         while let first = tokens.first,
               let assignment = parseAssignment(
@@ -784,7 +804,16 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         let head = headRaw.lowercased()
-        let args = Array(tokens.dropFirst())
+        var args = Array(tokens.dropFirst())
+        let programHeads: Set<String> = [
+            "run", "python3", "python",
+            "js", "node", "sh", "source", ".",
+        ]
+        if args.last == "&",
+           programHeads.contains(head) {
+            args.removeLast()
+            stageBackground = true
+        }
         switch head {
         case "help", "?":
             help()
@@ -808,6 +837,10 @@ final class BlacksiteShell: ObservableObject {
                  .sys)
         case "ps":
             processes()
+        case "jobs":
+            jobsCommand()
+        case "kill":
+            killCommand(args)
         case "scan":
             scan(args)
         case "knock":
@@ -886,6 +919,9 @@ final class BlacksiteShell: ObservableObject {
         case "open":
             open(args)
         case "halt", "standdown":
+            BlacksiteKernel.shared.killAll(
+                reason: "halted by the "
+                    + "operator")
             SkelliCenter.shared.haltAndVanish()
             emit("everything halted; the house "
                  + "stands down.", .ok)
@@ -1518,20 +1554,25 @@ final class BlacksiteShell: ObservableObject {
                  + "cannot be piped.", .err)
             return
         }
-        busy = true
+        guard let proc = admitOrSay(
+            "js " + String(source.prefix(40)),
+            .javascript,
+            background: stageBackground)
+        else { return }
+        let out = kernelEmit(for: proc)
         BlacksiteJS.shared.printSink =
-            { [weak self] line in
-                self?.emit(line)
-            }
+            { line in out(line, .out) }
         BlacksiteJS.shared.eval(source) {
             [weak self] result, error in
             guard let self = self else { return }
-            self.busy = false
+            BlacksiteKernel.shared.finish(
+                proc, note: "done")
             if let error = error {
                 self.emit("js: \(error)", .err)
             } else if let result = result {
                 self.emit(result, .out)
             }
+            self.updateBusy()
         }
     }
 
@@ -1539,16 +1580,101 @@ final class BlacksiteShell: ObservableObject {
     /// house's small python (BlacksitePy).
     /// Bare, it lists what the subset
     /// carries and what it leaves out.
+    /// The pid a program spawned right
+    /// now answers to: the innermost
+    /// script running on this thread, or
+    /// 0 — the shell itself.
+    private func currentParentPID() -> Int {
+        let stack = Thread.current
+            .threadDictionary[
+                "blacksite.kernel.stack"]
+            as? [Int]
+        return stack?.last ?? 0
+    }
+
+    private func pushProcess(_ pid: Int) {
+        var stack = Thread.current
+            .threadDictionary[
+                "blacksite.kernel.stack"]
+                as? [Int] ?? []
+        stack.append(pid)
+        Thread.current.threadDictionary[
+            "blacksite.kernel.stack"] = stack
+    }
+
+    private func popProcess() {
+        var stack = Thread.current
+            .threadDictionary[
+                "blacksite.kernel.stack"]
+                as? [Int] ?? []
+        if !stack.isEmpty {
+            stack.removeLast()
+        }
+        Thread.current.threadDictionary[
+            "blacksite.kernel.stack"] = stack
+    }
+
+    /// Admit a program to the kernel, or
+    /// say out loud why it was refused.
+    private func admitOrSay(
+        _ name: String, _ kind: KernelKind,
+        background: Bool) -> KernelProcess? {
+        let (proc, refusal) = BlacksiteKernel
+            .shared.admit(
+                name: name, kind: kind,
+                parent: currentParentPID(),
+                background: background)
+        if let refusal = refusal {
+            emit("kernel: \(refusal)", .err)
+            return nil
+        }
+        if background, let proc = proc {
+            emit("kernel: [\(proc.pid)] "
+                + "\(name) — background",
+                .sys)
+        }
+        updateBusy()
+        return proc
+    }
+
+    private func updateBusy() {
+        busy = BlacksiteKernel.shared
+            .hasForegroundLive
+    }
+
+    /// A process's own output door: the
+    /// kernel counts every line, and past
+    /// the quota the door closes.
+    private func kernelEmit(
+        for proc: KernelProcess)
+        -> BlacksiteEmit {
+        return { [weak self] text, kind in
+            guard let self = self
+            else { return }
+            if BlacksiteKernel.shared
+                .accountOutput(proc) {
+                self.emit(text, kind)
+            }
+        }
+    }
+
     /// The bridge input() parks on:
     /// the program's thread waits at a
     /// gate while the console's next
-    /// typed line is routed here.
-    private func makeInputProvider()
+    /// typed line is routed here. While
+    /// it waits, the kernel marks the
+    /// process parked — exempt from the
+    /// wall clock, since it waits on the
+    /// operator, not on time.
+    private func makeInputProvider(
+        for proc: KernelProcess)
         -> () -> String? {
+        let kernel = BlacksiteKernel.shared
         return { [weak self] in
             guard let self = self else {
                 return nil
             }
+            kernel.markWaiting(proc, true)
             let gate = DispatchSemaphore(
                 value: 0)
             var answer: String? = nil
@@ -1559,6 +1685,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             gate.wait()
+            kernel.markWaiting(proc, false)
             return answer
         }
     }
@@ -1584,14 +1711,26 @@ final class BlacksiteShell: ObservableObject {
                  + typed, .err)
             return
         }
-        busy = true
+        let background = stageBackground
+        guard let proc = admitOrSay(
+            "python3 " + args.joined(
+                separator: " "),
+            .python, background: background)
+        else { return }
         BlacksitePy.runFile(
             path, args: args,
-            inputProvider:
-                makeInputProvider(),
-            emit: emitBlock) { [weak self] in
-                self?.busy = false
-                self?.inputWaiter = nil
+            inputProvider: background
+                ? nil : makeInputProvider(
+                    for: proc),
+            cancel: proc.cancel,
+            emit: kernelEmit(for: proc)) {
+                [weak self] in
+                BlacksiteKernel.shared.finish(
+                    proc, note: "done")
+                if !background {
+                    self?.inputWaiter = nil
+                }
+                self?.updateBusy()
             }
     }
 
@@ -1613,22 +1752,33 @@ final class BlacksiteShell: ObservableObject {
                      + "cannot be piped.", .err)
                 return
             }
-            busy = true
+            let background = stageBackground
+            guard let proc = admitOrSay(
+                "run " + args.joined(
+                    separator: " "),
+                .javascript,
+                background: background)
+            else { return }
+            let out = kernelEmit(for: proc)
             BlacksiteJS.shared.printSink =
-                { [weak self] line in
-                    self?.emit(line)
-                }
+                { line in out(line, .out) }
             BlacksiteJS.shared.runFile(
                 target,
-                args: Array(args.dropFirst())
+                args: Array(args.dropFirst()),
+                killSwitch: proc.killSwitch
             ) { [weak self] error in
                 guard let self = self
                 else { return }
-                self.busy = false
+                BlacksiteKernel.shared.finish(
+                    proc,
+                    note: error.map {
+                        "done — \($0)"
+                    } ?? "done")
                 if let error = error {
                     self.emit("run: \(error)",
                               .err)
                 }
+                self.updateBusy()
             }
         } else if target.hasSuffix(".py") {
             guard !capturing else {
@@ -1636,17 +1786,31 @@ final class BlacksiteShell: ObservableObject {
                      + "cannot be piped.", .err)
                 return
             }
-            busy = true
+            let background = stageBackground
+            guard let proc = admitOrSay(
+                "run " + args.joined(
+                    separator: " "),
+                .python,
+                background: background)
+            else { return }
             BlacksitePy.runFile(
                 target, args: [file]
                     + Array(
                         args.dropFirst()),
-                inputProvider:
-                    makeInputProvider(),
-                emit: emitBlock) {
+                inputProvider: background
+                    ? nil : makeInputProvider(
+                        for: proc),
+                cancel: proc.cancel,
+                emit: kernelEmit(
+                    for: proc)) {
                     [weak self] in
-                    self?.busy = false
-                    self?.inputWaiter = nil
+                    BlacksiteKernel.shared
+                        .finish(proc,
+                                note: "done")
+                    if !background {
+                        self?.inputWaiter = nil
+                    }
+                    self?.updateBusy()
                 }
         } else if target.hasSuffix(".sh")
                     || target.hasSuffix(".bsh") {
@@ -1674,30 +1838,52 @@ final class BlacksiteShell: ObservableObject {
     }
 
     private func runScript(_ target: String) {
-        guard scriptDepth < 8 else {
-            emit("scripts nest too deep — "
-                 + "eight is the house limit.",
-                 .err)
-            return
-        }
         guard let text = BlacksiteFS.readText(
             target) else {
             emit("cannot read \(target).",
                  .err)
             return
         }
-        scriptDepth += 1
-        for rawLine in text.components(
-            separatedBy: "\n") {
-            let line = rawLine.trimmingCharacters(
-                in: .whitespaces)
-            if line.isEmpty
-                || line.hasPrefix("#") {
-                continue
+        let background = stageBackground
+        guard let proc = admitOrSay(
+            "sh " + target, .shell,
+            background: background)
+        else { return }
+        let body = { [weak self] in
+            guard let self = self
+            else { return }
+            self.pushProcess(proc.pid)
+            for rawLine in text.components(
+                separatedBy: "\n") {
+                if proc.cancel.isCancelled {
+                    self.emit(
+                        "kernel: [\(proc.pid)] "
+                            + "\(proc.name) — "
+                            + "stopped.",
+                        .sys)
+                    break
+                }
+                let line = rawLine
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if line.isEmpty
+                    || line.hasPrefix("#") {
+                    continue
+                }
+                self.execLine(line, stdin: "")
             }
-            execLine(line, stdin: "")
+            self.popProcess()
+            BlacksiteKernel.shared.finish(
+                proc, note: "done")
+            self.updateBusy()
         }
-        scriptDepth -= 1
+        if background {
+            DispatchQueue.global(
+                qos: .userInitiated).async(
+                    execute: body)
+        } else {
+            body()
+        }
     }
 
     private func jsInvoke(_ name: String,
@@ -1708,16 +1894,19 @@ final class BlacksiteShell: ObservableObject {
                  + "piped.", .err)
             return
         }
-        busy = true
+        guard let proc = admitOrSay(
+            name, .javascript,
+            background: stageBackground)
+        else { return }
+        let out = kernelEmit(for: proc)
         BlacksiteJS.shared.printSink =
-            { [weak self] line in
-                self?.emit(line)
-            }
+            { line in out(line, .out) }
         BlacksiteJS.shared.callCommand(
             name, args: args
         ) { [weak self] text, error in
             guard let self = self else { return }
-            self.busy = false
+            BlacksiteKernel.shared.finish(
+                proc, note: "done")
             if let error = error {
                 self.emit("\(name): \(error)",
                           .err)
@@ -1725,6 +1914,7 @@ final class BlacksiteShell: ObservableObject {
                       !text.isEmpty {
                 self.emit(text, .out)
             }
+            self.updateBusy()
         }
     }
 
@@ -1977,6 +2167,9 @@ final class BlacksiteShell: ObservableObject {
             ("the house", [
                 ("sys", "the whole house state"),
                 ("ps", "processes, live and recent"),
+                ("jobs", "the kernel's live programs"),
+                ("kill <pid>", "stop a program — the kernel reclaims it"),
+                ("run x.py &", "a trailing & backgrounds a program"),
                 ("scan [port]", "sweep the /24 on a port (default 80)"),
                 ("knock <host> [ports]", "knock a host (default: the top doors)"),
                 ("census", "knock every device on the neighborhood board"),
@@ -2103,7 +2296,10 @@ final class BlacksiteShell: ObservableObject {
 
     private func processes() {
         let board = ProcessBoard.shared
-        if board.active.isEmpty {
+        let procs = BlacksiteKernel.shared
+            .snapshot()
+        if board.active.isEmpty,
+           procs.isEmpty {
             emit("no processes running.", .sys)
         }
         for entry in board.active {
@@ -2113,6 +2309,57 @@ final class BlacksiteShell: ObservableObject {
         for done in board.recent.prefix(6) {
             emit("○ \(done.label) — "
                  + done.summary, .sys)
+        }
+        for proc in procs where proc.isLive {
+            emit("● pid \(proc.pid) · "
+                 + "\(proc.name) — "
+                 + proc.state.rawValue
+                 + " · \(Int(proc.elapsed))s",
+                 .out)
+        }
+        for proc in procs.filter({
+            !$0.isLive }).suffix(4) {
+            emit("○ pid \(proc.pid) · "
+                 + "\(proc.name) — "
+                 + proc.exitNote, .sys)
+        }
+    }
+
+    private func jobsCommand() {
+        let live = BlacksiteKernel.shared
+            .snapshot().filter { $0.isLive }
+        if live.isEmpty {
+            emit("no jobs — nothing runs "
+                 + "under the kernel.", .sys)
+            return
+        }
+        for proc in live {
+            emit("[\(proc.pid)] "
+                 + (proc.background
+                    ? "bg " : "fg ")
+                 + "\(proc.name) — "
+                 + proc.state.rawValue, .out)
+        }
+    }
+
+    private func killCommand(
+        _ args: [String]) {
+        guard let first = args.first,
+              let pid = Int(first) else {
+            emit("kill <pid> — 'ps' lists "
+                 + "the kernel's table.", .err)
+            return
+        }
+        if let proc = BlacksiteKernel.shared
+            .kill(pid: pid,
+                  reason: "killed by the "
+                    + "operator") {
+            emit("kernel: [\(pid)] "
+                 + "\(proc.name) — killed.",
+                 .sys)
+        } else {
+            emit("kill: no live process "
+                 + "\(pid).", .err)
         }
     }
 

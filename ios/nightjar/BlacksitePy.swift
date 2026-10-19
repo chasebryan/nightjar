@@ -2777,6 +2777,12 @@ final class PyInterp {
     /// run with no console attached —
     /// and input() meets EOF at once.
     var inputProvider: (() -> String?)?
+    /// The kernel's hand on this run:
+    /// when the token is cancelled — a
+    /// kill, a quota, the watchdog — the
+    /// step gate raises KeyboardInterrupt
+    /// and the program stops.
+    var cancelToken: KernelCancel?
     let stepLimit = 400_000
 
     static let builtinNames: Set<String> = [
@@ -2807,6 +2813,7 @@ final class PyInterp {
         "IndentationError",
         "StopIteration", "RecursionError",
         "EOFError", "KeyError",
+        "KeyboardInterrupt",
         "FileExistsError", "OSError",
         "NotADirectoryError",
         "IsADirectoryError",
@@ -2823,6 +2830,16 @@ final class PyInterp {
 
     func tick() throws {
         steps += 1
+        if steps % 64 == 0,
+           let token = cancelToken,
+           token.isCancelled {
+            throw PyError(
+                "KeyboardInterrupt",
+                "the kernel stopped this "
+                    + "program",
+                line: frames.last?.line
+                    ?? 0)
+        }
         if steps > stepLimit {
             throw PyError(
                 "RuntimeError",
@@ -2881,6 +2898,8 @@ final class PyInterp {
     var classBases: [String: [String]] = [
         "ModuleNotFoundError":
             ["ImportError"],
+        "KeyboardInterrupt":
+            ["Exception"],
         "JSONDecodeError": ["ValueError"],
         "FileExistsError": ["OSError"],
         "FileNotFoundError": ["OSError"],
@@ -12230,6 +12249,7 @@ enum BlacksitePy {
         args: [String],
         inputProvider: (() -> String?)?
             = nil,
+        cancel: KernelCancel? = nil,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         DispatchQueue.global(
@@ -12245,6 +12265,7 @@ enum BlacksitePy {
                 path: virtualPath,
                 args: args,
                 inputProvider: inputProvider,
+                cancel: cancel,
                 emit: emit)
             done()
         }
@@ -12255,12 +12276,14 @@ enum BlacksitePy {
                     args: [String],
                     inputProvider:
                         (() -> String?)? = nil,
+                    cancel: KernelCancel? = nil,
                     emit: @escaping
                     BlacksiteEmit) {
         let interp = PyInterp(
             emit: emit, path: path)
         interp.inputProvider =
             inputProvider
+        interp.cancelToken = cancel
         do {
             var lexer = PyLexer(source)
             let tokens = try lexer

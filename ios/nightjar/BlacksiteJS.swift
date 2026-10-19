@@ -252,6 +252,33 @@ function registerCommand(name, fn) {
     /// the command context (package helpers
     /// are in scope). Completion on main:
     /// (printed result, error).
+    /// Put a context's group on the
+    /// kernel's clock: past the limit the
+    /// VM itself stops the script — a
+    /// preemptive timeslice enforced by
+    /// the engine, not by politeness.
+    private func armTimeLimit(
+        _ context: JSContext,
+        _ seconds: Double) {
+        guard let ref = context
+            .jsGlobalContextRef else {
+            return
+        }
+        JSContextGroupSetExecutionTimeLimit(
+            JSContextGetGroup(ref),
+            seconds, nil, nil)
+    }
+
+    private func clearTimeLimit(
+        _ context: JSContext) {
+        guard let ref = context
+            .jsGlobalContextRef else {
+            return
+        }
+        JSContextGroupClearExecutionTimeLimit(
+            JSContextGetGroup(ref))
+    }
+
     func eval(_ source: String,
               completion: @escaping
                 (String?, String?) -> Void) {
@@ -275,8 +302,10 @@ function registerCommand(name, fn) {
                 state.error = v?.toString()
                     ?? "unknown error"
             }
+            armTimeLimit(context, 30)
             let value = context.evaluateScript(
                 source)
+            clearTimeLimit(context)
             var result: String?
             if let value = value,
                !value.isUndefined {
@@ -295,6 +324,9 @@ function registerCommand(name, fn) {
     /// then the script, with argv set.
     func runFile(_ virtualPath: String,
                  args: [String],
+                 timeLimit: Double = 120,
+                 killSwitch: KernelKillSwitch?
+                    = nil,
                  completion: @escaping
                     (String?) -> Void) {
         queue.async { [weak self] in
@@ -328,7 +360,13 @@ function registerCommand(name, fn) {
             context.setObject(
                 args,
                 forKeyedSubscript: "argv" as NSString)
+            armTimeLimit(context, timeLimit)
+            killSwitch?.install { [weak self] in
+                self?.armTimeLimit(
+                    context, 0.05)
+            }
             _ = context.evaluateScript(source)
+            clearTimeLimit(context)
             let error = state.error
             DispatchQueue.main.async {
                 completion(error)
