@@ -1582,7 +1582,8 @@ extension BlacksiteNet {
         let neighbors = NeighborhoodStore
             .shared.neighbors.sorted {
                 ipSortKey($0.ip)
-                    < ipSortKey($1.ip)
+                    .lexicographicallyPrecedes(
+                        ipSortKey($1.ip))
             }
         if neighbors.isEmpty {
             emit("the board is empty — "
@@ -1631,7 +1632,7 @@ extension BlacksiteNet {
             forKey: "serveHttpPort")
             ?? "8080"
         let running = SkelliCenter.shared
-            .mouth.serveRunning
+            .mouth?.serveRunning ?? false
         let state = running
             ? "standing" : "dark"
         emit("tcp \(tcp) — serve door, "
