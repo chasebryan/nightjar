@@ -950,7 +950,16 @@ final class SkelliCenter: ObservableObject {
         // Thinking is always on — a human beat,
         // shaped by what was asked and how she feels
         mood = .thinking
+        // A transposed acronym is still the
+        // word he meant: "emscon" for EMCON
+        // once slipped past every gate and
+        // the bench answered as if the
+        // condition had changed when it had
+        // not (2026-10-18). Normalize it here,
+        // where the ask is first read.
         let q = text.lowercased()
+            .replacingOccurrences(of: "emscon",
+                                  with: "emcon")
         let delay = thinkDelay(for: q)
         DispatchQueue.main.asyncAfter(
             deadline: .now() + delay) { [weak self] in
@@ -2726,8 +2735,24 @@ final class SkelliCenter: ObservableObject {
                 + "do'.")
             return
         }
+        // The word alone is not the question:
+        // "use any capability you have
+        // available to run a full contingency
+        // test" is an ORDER wearing the word,
+        // and it once earned the tour instead
+        // of the work (2026-10-18). The tour
+        // is for asks shaped like a question
+        // about her abilities.
+        let capabilityQuestion = q.contains(
+            "capabilit")
+            && (q.contains("what")
+                || q.contains("which")
+                || q.contains("list")
+                || q.contains("your")
+                || q.hasPrefix("capabilit"))
+            && !q.hasPrefix("use ")
         if q.contains("what can you do")
-            || q == "help" || q.contains("capabilit")
+            || q == "help" || capabilityQuestion
             || q.contains("what do you do")
             || q.contains("your job")
             || q.contains("your purpose")
@@ -2743,6 +2768,25 @@ final class SkelliCenter: ObservableObject {
         // about in prose, never estimated.
         if let sum = MathEngine.answer(q) {
             say(sum)
+            return
+        }
+        // A calculation asked for with no
+        // sum in it ("perform an advanced
+        // calculation") is hers to prompt
+        // for, in her own voice: the bench
+        // once refused it with an invented
+        // reason — the operator had "halted
+        // all operations" — when arithmetic
+        // is local, exact, and never gated
+        // (2026-10-18).
+        if q.contains("calculat")
+            && !q.contains("how do")
+            && !q.contains("how to")
+            && !q.hasPrefix("how") {
+            say("Give me the calculation "
+                + "itself — the numbers and "
+                + "the signs — and I'll work "
+                + "it exactly.")
             return
         }
 
@@ -3720,7 +3764,23 @@ final class SkelliCenter: ObservableObject {
                 // answered at all — the parrot
                 // is refused, and a brief true
                 // word stands in its place.
-                if self.isParrot(text) {
+                // UNLESS the operator asked
+                // something new and the truth
+                // is the same state read again
+                // — a run standing at the same
+                // step, a condition unchanged:
+                // then the repeated words ARE
+                // the answer, and the swap
+                // reads as evasion (2026-10-18,
+                // the second Netbomb question).
+                let operatorAsks = self.lines
+                    .filter { $0.fromOperator }
+                    .map { $0.text.lowercased() }
+                let previousAsk = operatorAsks
+                    .dropLast().last
+                let freshAsk = previousAsk == nil
+                    || previousAsk != q
+                if self.isParrot(text), !freshAsk {
                     self.say(self.unrepeated(text))
                 } else {
                     self.say(text)
@@ -5430,7 +5490,8 @@ final class SkelliCenter: ObservableObject {
         let hackPhrases = ["break into",
                            "get into", "crack into"]
         let scanVerbs = ["scan", "sweep", "sniff",
-                         "survey", "scope", "recon"]
+                         "survey", "scope", "recon",
+                         "analyze", "analyse"]
         let huntVerbs = ["hunt", "track", "stalk",
                          "follow"]
         let guardVerbs = ["guard", "protect",

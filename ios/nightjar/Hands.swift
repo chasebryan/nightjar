@@ -308,6 +308,8 @@ extension SkelliCenter {
             return true
         }
         if let report = runReport(q) {
+            DevLog.event("skelli",
+                         "run report answered")
             say(report)
             return true
         }
