@@ -78,7 +78,7 @@ final class UpdateChecker: ObservableObject {
     /// string; a malformed one must degrade to
     /// the house's own page, never trap (the
     /// sweep's theoretical T1, 2026-10-18).
-    static func githubURL(_ string: String) -> URL {
+    nonisolated static func githubURL(_ string: String) -> URL {
         URL(string: string)
             ?? URL(string: "https://github.com/"
                    + "chasebryan/nightjar-hack")!
