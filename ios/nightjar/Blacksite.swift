@@ -107,7 +107,8 @@ final class BlacksiteShell: ObservableObject {
         "grep", "find", "stat", "env",
         "export", "unset", "which", "history",
         "date", "vim", "emacs", "nano", "edit", "run",
-        "js", "node", "sh", "source", "pkg",
+        "js", "node", "python3", "python",
+        "sh", "source", "pkg",
         "gfx", "view", "wallpaper", "exit",
         "ping", "traceroute", "trace",
         "discover", "portscan", "nmap",
@@ -885,6 +886,8 @@ final class BlacksiteShell: ObservableObject {
                     ? .nano : .vim)
         case "js", "node":
             jsCommand(args)
+        case "python3", "python":
+            pyCommand(args)
         case "run":
             runFileCommand(args)
         case "sh", "source", ".":
@@ -1425,10 +1428,43 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    /// `python3 [file.py [args…]]` — the
+    /// house's small python (BlacksitePy).
+    /// Bare, it lists what the subset
+    /// carries and what it leaves out.
+    private func pyCommand(_ args: [String]) {
+        guard let typed = args.first else {
+            for line in BlacksitePy.helpLines {
+                emit(line)
+            }
+            return
+        }
+        guard !capturing else {
+            emit("programs run live — they "
+                 + "cannot be piped.", .err)
+            return
+        }
+        let path = BlacksiteFS.normalize(
+            typed, cwd: cwd)
+        guard BlacksiteFS.exists(path),
+              !BlacksiteFS.isDirectory(path)
+        else {
+            emit("python3: no such file — "
+                 + typed, .err)
+            return
+        }
+        busy = true
+        BlacksitePy.runFile(
+            path, args: args,
+            emit: emitBlock) { [weak self] in
+                self?.busy = false
+            }
+    }
+
     private func runFileCommand(_ args: [String]) {
         guard let file = args.first else {
-            emit("run <file.js | file.sh>",
-                 .err)
+            emit("run <file.js | file.py | "
+                 + "file.sh>", .err)
             return
         }
         let target = resolved(file)
@@ -1460,11 +1496,27 @@ final class BlacksiteShell: ObservableObject {
                               .err)
                 }
             }
+        } else if target.hasSuffix(".py") {
+            guard !capturing else {
+                emit("programs run live — they "
+                     + "cannot be piped.", .err)
+                return
+            }
+            busy = true
+            BlacksitePy.runFile(
+                target, args: [file]
+                    + Array(
+                        args.dropFirst()),
+                emit: emitBlock) {
+                    [weak self] in
+                    self?.busy = false
+                }
         } else if target.hasSuffix(".sh")
                     || target.hasSuffix(".bsh") {
             runScript(target)
         } else {
-            emit("run takes a .js or .sh "
+            emit("run takes a .js, .py or "
+                 + ".sh "
                  + "file — '\(file)' is "
                  + "neither.", .err)
         }
@@ -1863,6 +1915,8 @@ final class BlacksiteShell: ObservableObject {
                 ("js <code>", "JavaScript, compiled + run (node works too)"),
                 ("run <file.js>", "run a program from the files"),
                 ("run <file.sh> · sh", "run a shell script"),
+                ("python3 <file.py>", "the house's small python — python3 alone lists its edges"),
+                ("run <file.py>", "run a python program"),
                 ("NAME=value · export", "shell variables — $NAME ${NAME} $?"),
                 ("a | b", "pipe one command through another"),
                 ("cmd > file · >>", "write · append output to a file"),
