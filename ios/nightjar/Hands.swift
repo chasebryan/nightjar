@@ -208,9 +208,8 @@ extension SkelliCenter {
             }
             guard q.contains("run")
                 || q.contains("play")
-                || q.contains("start") {
-                return false
-            }
+                || q.contains("start")
+            else { return false }
             let macros = MacroStore.load()
             let named = macros.filter { macro in
                 let hits = macro.name.lowercased()
