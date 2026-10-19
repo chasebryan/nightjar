@@ -251,7 +251,8 @@ enum GauntletBattery {
             let book = PayloadBook()
             var cases = 0
             var judged = 0
-            for template in MacroTemplates.all {
+            for factory in MacroTemplates.all {
+                let template = factory.make()
                 let problems = MacroValidator
                     .problems(in: template, book: book)
                 cases += 1
