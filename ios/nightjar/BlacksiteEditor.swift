@@ -2412,7 +2412,7 @@ private final class EditorCanvas: UITextView {
                 input: input, modifierFlags: [],
                 action: action))
         }
-        for letter in "abcdefgknpsuwxy_/" {
+        for letter in "abcdefghijklmnopqrstuvwxyz_/" {
             commands.append(UIKeyCommand(
                 input: String(letter),
                 modifierFlags: .control,

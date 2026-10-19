@@ -39,6 +39,7 @@
     #buttons { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
     html, body { overscroll-behavior: none; }
     #screen, #canvas, #deck, #stick { touch-action: none; }
+    #canvas { cursor: none; }
     .row { display: flex; gap: 6px; align-items: center; }
     .btn {
         border: 1px solid #4a1500; background: #1a0d06; color: #e8b48c;
@@ -235,6 +236,7 @@
         armAudio();
         unlockAudio();
         document.getElementById("gate").style.display = "none";
+        focusCanvas();
         callMain(doomArgs);
         ping("callMain RETURNED");
     }
@@ -250,8 +252,28 @@
     document.addEventListener("touchstart", function () {
         armAudio();
         unlockAudio();
+        focusCanvas();
         if (doomReady) startDoom();
     }, true);
+    document.addEventListener("mousedown", function () {
+        focusCanvas();
+    }, true);
+
+    // A hardware keyboard talks to the page's
+    // focused element; keep the canvas focused
+    // so its keys reach SDL (they land as DOM
+    // keydown and bubble to SDL's listeners,
+    // the same path the deck's synthetic
+    // events take). A mouse aims through SDL's
+    // own mouse handling — click fires — and
+    // the cursor stays hidden over the game.
+    function focusCanvas() {
+        try {
+            if (window.Module && Module.canvas) {
+                Module.canvas.focus();
+            }
+        } catch (e) {}
+    }
     setTimeout(function () {
         if (!started) {
             showErr("Engine is taking long to start (stage: " +

@@ -9616,6 +9616,25 @@ struct SkelliView: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($inputFocused)
                 .onSubmit(send)
+                // A hardware keyboard talks
+                // like a chat: Return sends,
+                // Shift+Return makes a new
+                // line, Esc clears the draft.
+                .onKeyPress { press in
+                    if press.key == .return {
+                        if press.modifiers
+                            .contains(.shift) {
+                            return .ignored
+                        }
+                        send()
+                        return .handled
+                    }
+                    if press.key == .escape {
+                        input = ""
+                        return .handled
+                    }
+                    return .ignored
+                }
             Button {
                 Haptics.tap()
                 send()
@@ -9636,7 +9655,10 @@ struct SkelliView: View {
     private func send() {
         let text = input
         input = ""
-        inputFocused = false
+        // Focus stays in the field: with a
+        // hardware keyboard (or the glass
+        // one still up) the next line can
+        // start at once.
         skelli.ask(text)
     }
 }

@@ -235,6 +235,80 @@ final class BlacksiteShell: ObservableObject {
     }
     var historyCount: Int { history.count }
 
+    // MARK: Completion
+
+    /// Tab completion for the input line:
+    /// completes the last word — a command
+    /// name in first position, a file name
+    /// after one — to the longest common
+    /// prefix of everything it could be.
+    /// nil when nothing completes.
+    func completed(_ draft: String) -> String? {
+        let endsWithSpace = draft.hasSuffix(" ")
+        let words = draft.split(
+            separator: " ",
+            omittingEmptySubsequences: true)
+        let token: String
+        let head: String
+        if endsWithSpace || words.isEmpty {
+            token = ""
+            head = draft
+        } else {
+            token = String(words.last!)
+            head = String(
+                draft.dropLast(token.count))
+        }
+        let isFirst = head.trimmingCharacters(
+            in: .whitespaces).isEmpty
+        var candidates: [String] = []
+        if isFirst {
+            candidates = Self.builtinNames.filter {
+                $0.hasPrefix(token)
+            }
+        } else if let slash = token.lastIndex(
+            of: "/") {
+            let dirPart = String(token[...slash])
+            let base = String(token[
+                token.index(after: slash)...])
+            let rawDir = String(
+                dirPart.dropLast())
+            let dir = rawDir.hasPrefix("/")
+                ? rawDir : cwd + "/" + rawDir
+            candidates = (BlacksiteFS.list(dir)
+                ?? []).filter {
+                    $0.name.hasPrefix(base)
+                }.map {
+                    dirPart + $0.name
+                        + ($0.isDir ? "/" : "")
+                }
+        } else {
+            candidates = (BlacksiteFS.list(cwd)
+                ?? []).filter {
+                    $0.name.hasPrefix(token)
+                }.map {
+                    $0.name + ($0.isDir ? "/" : "")
+                }
+        }
+        guard !candidates.isEmpty else {
+            return nil
+        }
+        var prefix = candidates[0]
+        for other in candidates.dropFirst() {
+            let common = zip(prefix, other)
+                .prefix { $0 == $1 }
+            prefix = String(common.map { $0.0 })
+            if prefix.isEmpty { break }
+        }
+        if prefix.count > token.count {
+            return head + prefix
+        }
+        if candidates.count == 1,
+           candidates[0] != token {
+            return head + candidates[0]
+        }
+        return nil
+    }
+
     // MARK: The door
 
     /// One interactive line: echoed,
@@ -3691,6 +3765,13 @@ struct BlacksiteView: View {
                                     .foregroundStyle(
                                         color(
                                             for: line.kind))
+                                    // A pointer can
+                                    // select and copy
+                                    // console output;
+                                    // on glass it
+                                    // changes nothing.
+                                    .textSelection(
+                                        .enabled)
                             }
                         }
                         .frame(maxWidth: .infinity,
@@ -3773,18 +3854,62 @@ struct BlacksiteView: View {
                 .textInputAutocapitalization(.never)
                 .focused($inputFocused)
                 .onSubmit(send)
+                // A hardware keyboard drives
+                // the shell like a shell: the
+                // arrows walk history, Tab
+                // completes, Esc kills the
+                // line, Ctrl+L clears and
+                // Ctrl+U kills the line.
+                .onKeyPress(.upArrow) {
+                    stepHistory(1)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) {
+                    stepHistory(-1)
+                    return .handled
+                }
+                .onKeyPress(.escape) {
+                    draft = ""
+                    historyBack = -1
+                    return .handled
+                }
+                .onKeyPress(.tab) {
+                    if let full = shell
+                        .completed(draft) {
+                        draft = full
+                    }
+                    return .handled
+                }
+                .onKeyPress { press in
+                    guard press.modifiers
+                        .contains(.control)
+                    else { return .ignored }
+                    switch press.key.character {
+                    case "l":
+                        shell.run("clear")
+                        return .handled
+                    case "u":
+                        draft = ""
+                        historyBack = -1
+                        return .handled
+                    default:
+                        return .ignored
+                    }
+                }
             Button {
                 stepHistory(1)
             } label: {
                 Image(systemName: "chevron.up")
             }
             .disabled(shell.historyCount == 0)
+            .hoverEffect(.highlight)
             Button {
                 stepHistory(-1)
             } label: {
                 Image(systemName: "chevron.down")
             }
             .disabled(historyBack < 0)
+            .hoverEffect(.highlight)
             Button {
                 Haptics.tap()
                 send()
@@ -3802,6 +3927,7 @@ struct BlacksiteView: View {
                                 .accent))
                     .foregroundStyle(.black)
             }
+            .hoverEffect(.highlight)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
