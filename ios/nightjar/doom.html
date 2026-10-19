@@ -109,9 +109,9 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 116</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 117</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 116 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
+<script>document.getElementById("buildstamp").textContent = "room build 117 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
 var hbF = 0;
 function hb() { hbF++; if (hbF % 150 === 0) { try { webkit.messageHandlers.doom.postMessage("alive " + hbF); } catch (e) {} } requestAnimationFrame(hb); }
 requestAnimationFrame(hb);</script>
@@ -131,7 +131,7 @@ requestAnimationFrame(hb);</script>
     }
     ping("boot script running");
     var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
-                    "-config", "default.cfg", "-servername", "nightjar", "-nosound"];
+                    "-config", "default.cfg", "-servername", "nightjar"];
     var started = false;
     var doomReady = false;
     var playWanted = false;
