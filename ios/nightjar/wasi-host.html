@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head><body>
+<script>
+// The wasm guest's room. Swift stages
+// stage.json (argv, env, the whole
+// filesystem as the kernel grants it)
+// and guest.wasm beside this page and
+// serves them under blacksite-wasm://.
+// The guest runs in a Worker when the
+// engine allows — a worker can be
+// terminated mid-loop, which is what
+// makes the kernel's kill real — and
+// falls back to running on this page
+// when it cannot. Either way its
+// syscalls are the shim's, and the
+// shim's only door out is the message
+// handler named wasi.
+(function () {
+  function post(o) {
+    window.webkit.messageHandlers.wasi
+      .postMessage(o);
+  }
+  function fail(msg) {
+    post({ t: 'out', fd: 2,
+           s: 'wasm host: ' + msg + '\n' });
+    post({ t: 'exit', code: 127 });
+  }
+  function xhr(url, type) {
+    return new Promise(function (res, rej) {
+      var x = new XMLHttpRequest();
+      x.open('GET', url, true);
+      x.responseType = type;
+      x.onload = function () { res(x.response); };
+      x.onerror = function () {
+        rej(new Error('cannot load ' + url));
+      };
+      x.send();
+    });
+  }
+  var base = 'blacksite-wasm://guest/';
+  Promise.all([
+    xhr(base + 'stage.json', 'text'),
+    xhr(base + 'guest.wasm', 'arraybuffer'),
+    xhr(base + 'wasi-shim.js', 'text')
+  ]).then(function (parts) {
+    var config = JSON.parse(parts[0]);
+    var buf = parts[1];
+    var shimText = parts[2];
+    var glue = '\nonmessage = function (e) {'
+      + ' var d = e.data;'
+      + ' startGuest(d.config,'
+      + ' new Uint8Array(d.buf),'
+      + ' { post: function (o) {'
+      + ' postMessage(o); } });'
+      + ' };\n';
+    try {
+      var blob = new Blob(
+        [shimText, glue],
+        { type: 'text/javascript' });
+      var worker = new Worker(
+        URL.createObjectURL(blob));
+      worker.onmessage = function (e) {
+        post(e.data);
+      };
+      worker.onerror = function () {
+        runInline(config, buf, shimText);
+      };
+      window.__killGuest = function () {
+        worker.terminate();
+      };
+      worker.postMessage(
+        { config: config, buf: buf }, [buf]);
+    } catch (e) {
+      runInline(config, buf, shimText);
+    }
+  }).catch(function (e) { fail('' + e); });
+
+  function runInline(config, buf, shimText) {
+    try {
+      var script = document
+        .createElement('script');
+      script.textContent = shimText;
+      document.head.appendChild(script);
+      startGuest(config,
+        new Uint8Array(buf), { post: post });
+    } catch (e) { fail('' + e); }
+  }
+  window.__killGuest = window.__killGuest
+    || function () {};
+})();
+</script>
+</body></html>

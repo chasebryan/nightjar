@@ -88,6 +88,7 @@ enum KernelKind: String {
     case python
     case javascript
     case shell
+    case wasm
 }
 
 enum KernelState: String {

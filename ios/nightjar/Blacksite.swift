@@ -76,6 +76,11 @@ final class BlacksiteShell: ObservableObject {
     /// here.
     private let born = Date()
 
+    /// Live wasm machines, held by pid
+    /// until their guest exits.
+    private var wasmMachines:
+        [Int: BlacksiteWasm] = [:]
+
     /// The working directory, a virtual
     /// path in the console's own file
     /// system.
@@ -228,6 +233,8 @@ final class BlacksiteShell: ObservableObject {
             }
         BlacksiteFS.binNames =
             BlacksiteShell.builtinNames
+            + BlacksiteWasm.applets
+            + ["linuxbox", "linuxbox.wasm"]
         _ = BlacksiteFS.rootURL()
         BlacksiteGFX.shared.onShow =
             { [weak self] image, path in
@@ -1078,6 +1085,12 @@ final class BlacksiteShell: ObservableObject {
                  + "tab; the console keeps "
                  + "the light on.", .sys)
         default:
+            if BlacksiteWasm.isApplet(head) {
+                wasmAppletCommand(
+                    head, args,
+                    stdin: stageInput)
+                return
+            }
             if BlacksiteJS.shared.hasCommand(
                 head) {
                 jsInvoke(head, args)
@@ -1863,7 +1876,8 @@ final class BlacksiteShell: ObservableObject {
     private func runFileCommand(_ args: [String]) {
         guard let file = args.first else {
             emit("run <file.js | file.py | "
-                 + "file.sh>", .err)
+                 + "file.sh | file.wasm>",
+                 .err)
             return
         }
         let target = resolved(file)
@@ -1938,15 +1952,116 @@ final class BlacksiteShell: ObservableObject {
                     }
                     self?.updateBusy()
                 }
+        } else if target
+                    .hasSuffix(".wasm") {
+            guard !capturing else {
+                emit("programs run live — they "
+                     + "cannot be piped.", .err)
+                return
+            }
+            let data: Data?
+            if target == "/bin/linuxbox.wasm" {
+                data = BlacksiteWasm
+                    .linuxboxData()
+            } else {
+                data = BlacksiteFS.readData(
+                    target)
+            }
+            guard let data = data else {
+                emit("run: cannot read "
+                     + "\(target).", .err)
+                return
+            }
+            wasmRun(
+                data: data,
+                displayName: "run " + args
+                    .joined(separator: " "),
+                argv: [file]
+                    + Array(args.dropFirst()),
+                stdin: stageInput)
         } else if target.hasSuffix(".sh")
                     || target.hasSuffix(".bsh") {
             runScript(target)
         } else {
-            emit("run takes a .js, .py or "
-                 + ".sh "
+            emit("run takes a .js, .py, .sh "
+                 + "or .wasm "
                  + "file — '\(file)' is "
-                 + "neither.", .err)
+                 + "none of them.", .err)
         }
+    }
+
+    /// A linux applet by name — ls, cat,
+    /// grep and their kin, resolved to
+    /// the bundled userspace binary and
+    /// run as a kernel process whose
+    /// argv[0] is the applet's name, the
+    /// multicall way.
+    private func wasmAppletCommand(
+        _ head: String, _ args: [String],
+        stdin: String) {
+        guard !capturing else {
+            emit("programs run live — they "
+                 + "cannot be piped.", .err)
+            return
+        }
+        guard let data = BlacksiteWasm
+            .linuxboxData() else {
+            emit("the linux userspace is "
+                 + "missing — its bundled "
+                 + "binary did not decode.",
+                 .err)
+            stageError = true
+            return
+        }
+        wasmRun(
+            data: data,
+            displayName: ([head] + args)
+                .joined(separator: " "),
+            argv: [head] + args,
+            stdin: stdin)
+    }
+
+    /// Admit a wasm guest to the kernel
+    /// and hand it to its machine: the
+    /// kernel owns the process, the
+    /// machine owns the engine, the
+    /// guest owns nothing but its own
+    /// memory.
+    private func wasmRun(
+        data: Data, displayName: String,
+        argv: [String], stdin: String) {
+        let background = stageBackground
+        guard let proc = admitOrSay(
+            displayName, .wasm,
+            background: background)
+        else { return }
+        var guestEnv = env
+        guestEnv["PWD"] = cwd
+        if guestEnv["HOME"] == nil {
+            guestEnv["HOME"] = "/home"
+        }
+        let machine = BlacksiteWasm(
+            proc: proc,
+            emit: kernelEmit(for: proc)) {
+                [weak self] code in
+                guard let self = self
+                else { return }
+                self.wasmMachines[
+                    proc.pid] = nil
+                BlacksiteKernel.shared
+                    .finish(
+                        proc,
+                        note: "exited \(code)")
+                if code != 0 {
+                    self.stageError = true
+                }
+                self.updateBusy()
+            }
+        wasmMachines[proc.pid] = machine
+        machine.launch(
+            data: data, argv: argv,
+            env: guestEnv, cwd: cwd,
+            stdin: stdin)
     }
 
     private func scriptCommand(_ args: [String]) {
@@ -2374,6 +2489,10 @@ final class BlacksiteShell: ObservableObject {
             ]),
             ("code — the engine room", [
                 ("js <code>", "JavaScript, compiled + run (node works too)"),
+                ("linuxbox <applet>",
+                 "a real linux userspace in wasm: ls cat echo pwd wc head tail cp mv rm mkdir touch env uname grep sleep"),
+                ("run <file.wasm>",
+                 "compiled webassembly, run as a kernel process — its syscalls are mediated, its memory is its own"),
                 ("run <file.js>", "run a program from the files"),
                 ("run <file.sh> · sh", "run a shell script"),
                 ("python3 <file.py>", "the house's small python — python3 alone lists its edges"),
