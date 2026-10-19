@@ -107,6 +107,7 @@
     Chocolate Doom, compiled to WebAssembly.<br/>
     Sound is on &mdash; the tap below unlocks it.</p>
     <button id="play">&#9654; PLAY</button>
+    <div id="loadstat" style="font-size:11px; color:#666;"></div>
     <div id="err"></div>
 </div>
 
@@ -127,6 +128,15 @@
         el.textContent = text;
     }
 
+    function stageDetail() {
+        var missing = payloadNames.filter(function (n) {
+            return !payloads[n];
+        });
+        return window.__doomStage + (missing.length
+            ? " (waiting: " + missing.join(", ") + ")"
+            : "");
+    }
+
     // iOS silences WebAudio until a gesture resumes the
     // context; keep a standing listener so SDL's context
     // is revived whenever it suspends.
@@ -145,6 +155,7 @@
     document.addEventListener("mousedown", unlockAudio, true);
 
     function sendkey(keys, type) {
+        if (!window.Module || !Module.canvas) return;
         keys.forEach(function (key) {
             var ce = new Event(type, { bubbles: true });
             ce.keyCode = key;
@@ -173,46 +184,122 @@
         setTimeout(function () {
             if (!doomReady) {
                 showErr("Engine not ready (stage: " +
-                    window.__doomStage +
-                    "). The wasm or the game-data preload stalled.");
+                    stageDetail() + ").");
             }
         }, 8000);
     });
     setTimeout(function () {
         if (!doomReady && !playWanted) {
             showErr("Engine is taking long to start (stage: " +
-                window.__doomStage + ").");
+                stageDetail() + ").");
         }
     }, 15000);
 
-    var Module = {
-        noInitialRun: true,
-        preRun: function () {
-            Module.FS.createPreloadedFile("", "doom1.wad", "doom1.wad", true, true);
-            Module.FS.createPreloadedFile("", "default.cfg", "default.cfg", true, true);
-        },
-        onRuntimeInitialized: function () {
-            window.__doomStage = "ready";
-            doomReady = true;
-            if (playWanted) startDoom();
-        },
-        print: function (text) { console.log(text); },
-        printErr: function (text) {
-            console.error(text);
-            if (String(text).indexOf("doom:") !== 0) showErr(String(text));
-        },
-        setStatus: function (text) { console.log(text); },
-        canvas: (function () {
-            var canvas = document.getElementById("canvas");
-            canvas.addEventListener("webglcontextlost", function (e) {
-                e.preventDefault();
-                showErr("Graphics context lost. Close and reopen the room.");
-                document.getElementById("gate").style.display = "flex";
-            }, false);
-            return canvas;
-        })()
-    };
-    window.__doomStage = "module";
+    // The engine's bytes arrive by plain
+    // XMLHttpRequest — never fetch(). WebKit's
+    // fetch through a custom scheme can stall
+    // without ever answering: the runtime is
+    // then never born, nothing errors, and the
+    // gate sits mute (convicted on device,
+    // 2026-10-19; the same page boots in a
+    // harness the moment fetch exists). So the
+    // page loads all three payloads itself,
+    // hands the wasm to the engine directly as
+    // wasmBinary, writes the game data into
+    // its filesystem in preRun, and only then
+    // loads the engine script. No engine-side
+    // network remains to stall.
+    var Module = null;
+    var payloads = {};
+    var payloadNames = ["websockets-doom.wasm",
+                        "doom1.wad", "default.cfg"];
+    var payloadCount = 0;
+
+    function loadNote(text) {
+        var el = document.getElementById("loadstat");
+        if (el) el.textContent = text;
+    }
+
+    function payloadFailed(name, status) {
+        showErr("Could not load " + name +
+                " (status " + status + ").");
+    }
+
+    function payloadArrived(name, buffer) {
+        payloads[name] = buffer;
+        payloadCount += 1;
+        loadNote("loaded " + payloadCount +
+                 " of " + payloadNames.length + "…");
+        if (payloadCount == payloadNames.length) {
+            buildModule();
+        }
+    }
+
+    function fetchPayload(name) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", name, true);
+        xhr.responseType = "arraybuffer";
+        xhr.onload = function () {
+            if (xhr.status == 200 || xhr.status == 0) {
+                payloadArrived(name, xhr.response);
+            } else {
+                payloadFailed(name, xhr.status);
+            }
+        };
+        xhr.onerror = function () {
+            payloadFailed(name, xhr.status || "network");
+        };
+        xhr.send(null);
+    }
+
+    function buildModule() {
+        window.__doomStage = "module";
+        Module = {
+            noInitialRun: true,
+            wasmBinary: payloads["websockets-doom.wasm"],
+            preRun: function () {
+                Module.FS.writeFile(
+                    "doom1.wad",
+                    new Uint8Array(payloads["doom1.wad"]));
+                Module.FS.writeFile(
+                    "default.cfg",
+                    new Uint8Array(payloads["default.cfg"]));
+            },
+            onRuntimeInitialized: function () {
+                window.__doomStage = "ready";
+                doomReady = true;
+                loadNote("");
+                if (playWanted) startDoom();
+            },
+            print: function (text) { console.log(text); },
+            printErr: function (text) {
+                console.error(text);
+                if (String(text).indexOf("doom:") !== 0) showErr(String(text));
+            },
+            setStatus: function (text) { console.log(text); },
+            canvas: (function () {
+                var canvas = document.getElementById("canvas");
+                canvas.addEventListener("webglcontextlost", function (e) {
+                    e.preventDefault();
+                    showErr("Graphics context lost. Close and reopen the room.");
+                    document.getElementById("gate").style.display = "flex";
+                }, false);
+                return canvas;
+            })()
+        };
+        var glue = document.createElement("script");
+        glue.src = "websockets-doom.js";
+        glue.onload = function () {
+            window.__doomStage = "glue";
+        };
+        glue.onerror = function () {
+            showErr("The engine script failed to load.");
+        };
+        document.body.appendChild(glue);
+    }
+
+    loadNote("loading engine and game data…");
+    payloadNames.forEach(fetchPayload);
 
     window.onerror = function (msg) {
         showErr("Engine error: " + msg);
@@ -305,7 +392,5 @@
         showErr("Controller failed: " + e.message);
     }
 </script>
-<script type="text/javascript" src="websockets-doom.js"></script>
-<script>window.__doomStage = "glue";</script>
 </body>
 </html>
