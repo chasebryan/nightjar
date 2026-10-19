@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Freedoom</title>
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: #000; color: #cfcfcf;
+        font-family: ui-monospace, Menlo, monospace;
+        overflow: hidden; touch-action: none;
+        -webkit-user-select: none; user-select: none;
+    }
+    #stage {
+        display: flex; flex-direction: column;
+        height: 100%; width: 100%;
+    }
+    #screen {
+        flex: 1 1 auto; min-height: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: #000;
+    }
+    canvas {
+        background: #000;
+        width: min(100vw, 177.78vh);
+        max-height: 100%;
+        aspect-ratio: 4 / 3;
+        image-rendering: pixelated;
+    }
+    #deck {
+        flex: 0 0 auto;
+        display: flex; justify-content: space-between; align-items: flex-end;
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+        background: #050505;
+    }
+    #stick { position: relative; width: 100px; height: 100px; flex: 0 0 auto; }
+    #buttons { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+    .row { display: flex; gap: 6px; align-items: center; }
+    .btn {
+        border: 1px solid #4a1500; background: #1a0d06; color: #e8b48c;
+        border-radius: 10px; font: inherit; font-size: 13px;
+        padding: 10px 0; width: 54px; text-align: center;
+        touch-action: none;
+    }
+    .btn:active { background: #7d2300; color: #fff; }
+    .btn.big {
+        width: 80px; padding: 20px 0; font-size: 16px;
+        border-color: #7d2300; background: #2a1005;
+    }
+    .btn.small { width: 44px; padding: 7px 0; font-size: 9px; color: #9a9a9a; border-color: #333; background: #101010; }
+    #gate {
+        position: fixed; inset: 0; z-index: 10;
+        background: #000;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 18px;
+        text-align: center; padding: 24px;
+    }
+    #gate h1 {
+        margin: 0; font-size: 34px; letter-spacing: 6px;
+        color: #c33; font-weight: 700;
+    }
+    #gate p { margin: 0; font-size: 13px; color: #8a8a8a; line-height: 1.7; }
+    #play {
+        margin-top: 10px;
+        font: inherit; font-size: 18px; letter-spacing: 2px;
+        color: #fff; background: #7d2300;
+        border: 1px solid #c33; border-radius: 12px;
+        padding: 16px 44px;
+    }
+    #play:active { background: #a52e00; }
+    #err {
+        display: none; color: #f66; font-size: 12px;
+        white-space: pre-wrap; word-break: break-word;
+        max-width: 92vw;
+    }
+</style>
+</head>
+<body>
+<div id="stage">
+    <div id="screen">
+        <canvas id="canvas" width="800" height="600" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+    <div id="deck">
+        <div id="stick"></div>
+        <div id="buttons">
+            <div class="row">
+                <div class="btn small" data-key="27">MENU</div>
+                <div class="btn small" data-key="9">MAP</div>
+                <div class="btn small" data-key="65">&#9664;&#9641;</div>
+                <div class="btn small" data-key="68">&#9641;&#9654;</div>
+                <div class="btn small" id="weapon">WPN 2</div>
+            </div>
+            <div class="row">
+                <div class="btn" data-key="16">RUN</div>
+                <div class="btn" data-key="69">USE</div>
+                <div class="btn big" data-key="32">FIRE</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="gate">
+    <h1>FREEDOOM</h1>
+    <p>Freedoom Phase 1 &middot; version 0.13.0<br/>
+    Chocolate Doom, compiled to WebAssembly.<br/>
+    Sound is on &mdash; the tap below unlocks it.</p>
+    <button id="play">&#9654; PLAY</button>
+    <div id="err"></div>
+</div>
+
+<script type="text/javascript" src="nipplejs.min.js"></script>
+<script>
+    var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
+                    "-config", "default.cfg", "-servername", "nightjar"];
+
+    function showErr(text) {
+        var el = document.getElementById("err");
+        el.style.display = "block";
+        el.textContent = text;
+    }
+
+    // iOS silences WebAudio until a gesture resumes the
+    // context; keep a standing listener so SDL's context
+    // is revived whenever it suspends.
+    function unlockAudio() {
+        try {
+            if (navigator.audioSession) navigator.audioSession.type = "playback";
+        } catch (e) {}
+        try {
+            if (window.Module && Module.SDL && Module.SDL.audioContext &&
+                Module.SDL.audioContext.state === "suspended") {
+                Module.SDL.audioContext.resume();
+            }
+        } catch (e) {}
+    }
+    document.addEventListener("touchend", unlockAudio, true);
+    document.addEventListener("mousedown", unlockAudio, true);
+
+    function sendkey(keys, type) {
+        keys.forEach(function (key) {
+            var ce = new Event(type, { bubbles: true });
+            ce.keyCode = key;
+            ce.which = key;
+            Module.canvas.dispatchEvent(ce);
+        });
+    }
+
+    // Touch buttons: keydown on press, keyup on release.
+    Array.from(document.querySelectorAll(".btn")).forEach(function (el) {
+        if (!el.dataset.key) return;
+        var key = parseInt(el.dataset.key, 10);
+        var down = function (e) { e.preventDefault(); sendkey([key], "keydown"); };
+        var up = function (e) { e.preventDefault(); sendkey([key], "keyup"); };
+        el.addEventListener("touchstart", down, { passive: false });
+        el.addEventListener("touchend", up, { passive: false });
+        el.addEventListener("touchcancel", up, { passive: false });
+        el.addEventListener("mousedown", down);
+        el.addEventListener("mouseup", up);
+    });
+
+    // Weapon key: tap cycles the number keys
+    // 1-7 (fist/chainsaw share slot 1) and
+    // shows the slot it just asked for.
+    var weaponSlot = 2;
+    var weaponEl = document.getElementById("weapon");
+    var weaponTap = function (e) {
+        e.preventDefault();
+        weaponSlot = weaponSlot % 7 + 1;
+        var code = 48 + weaponSlot; // '1'..'7'
+        sendkey([code], "keydown");
+        setTimeout(function () { sendkey([code], "keyup"); }, 60);
+        weaponEl.textContent = "WPN " + weaponSlot;
+    };
+    weaponEl.addEventListener("touchstart", weaponTap, { passive: false });
+    weaponEl.addEventListener("mousedown", weaponTap);
+
+    // Left stick: arrows to move/turn, far push adds run.
+    var stick = nipplejs.create({
+        zone: document.getElementById("stick"),
+        color: "#7d2300", mode: "static",
+        position: { left: "50%", top: "50%" }
+    });
+    var K = { left: 37, right: 39, down: 40, up: 38, speed: 16 };
+    stick.on("end", function () {
+        sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
+    });
+    stick.on("move", function (evt, data) {
+        if (!data.direction) return;
+        if (data.distance <= 14) {
+            sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
+            return;
+        }
+        var angle = data.angle.degree;
+        var press = { left: false, right: false, down: false, up: false };
+        switch (data.direction.angle) {
+            case "left":
+                press.left = true;
+                if (angle >= 120 && angle <= 150) press.up = true;
+                if (angle >= 210 && angle <= 240) press.down = true;
+                break;
+            case "right":
+                press.right = true;
+                if (angle >= 30 && angle <= 60) press.up = true;
+                if (angle >= 300 && angle <= 330) press.down = true;
+                break;
+            case "up":
+                press.up = true;
+                if (angle >= 120 && angle <= 150) press.left = true;
+                if (angle >= 30 && angle <= 60) press.right = true;
+                break;
+            case "down":
+                press.down = true;
+                if (angle >= 210 && angle <= 240) press.left = true;
+                if (angle >= 300 && angle <= 330) press.right = true;
+                break;
+        }
+        sendkey([K.left], press.left ? "keydown" : "keyup");
+        sendkey([K.right], press.right ? "keydown" : "keyup");
+        sendkey([K.down], press.down ? "keydown" : "keyup");
+        sendkey([K.up], press.up ? "keydown" : "keyup");
+        sendkey([K.speed], data.distance > 44 ? "keydown" : "keyup");
+    });
+
+    var started = false;
+    var Module = {
+        noInitialRun: true,
+        preRun: function () {
+            Module.FS.createPreloadedFile("", "doom1.wad", "doom1.wad", true, true);
+            Module.FS.createPreloadedFile("", "default.cfg", "default.cfg", true, true);
+        },
+        onRuntimeInitialized: function () {
+            document.getElementById("play").addEventListener("click", function () {
+                if (started) return;
+                started = true;
+                unlockAudio();
+                document.getElementById("gate").style.display = "none";
+                callMain(doomArgs);
+            });
+        },
+        print: function (text) { console.log(text); },
+        printErr: function (text) {
+            console.error(text);
+            if (String(text).indexOf("doom:") !== 0) showErr(String(text));
+        },
+        setStatus: function (text) { console.log(text); },
+        canvas: (function () {
+            var canvas = document.getElementById("canvas");
+            canvas.addEventListener("webglcontextlost", function (e) {
+                e.preventDefault();
+                showErr("Graphics context lost. Close and reopen the room.");
+                document.getElementById("gate").style.display = "flex";
+            }, false);
+            return canvas;
+        })()
+    };
+
+    window.onerror = function (msg) {
+        showErr("Engine error: " + msg);
+    };
+
+    document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+</script>
+<script type="text/javascript" src="websockets-doom.js"></script>
+</body>
+</html>

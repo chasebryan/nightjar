@@ -93,6 +93,11 @@ final class BlacksiteShell: ObservableObject {
     /// this; the room presents the editor.
     @Published var editorSession: EditorSession?
 
+    /// The program door: a command sets
+    /// this; the room raises the sheet.
+    @Published var programRequest:
+        BlacksiteView.Program?
+
     var capturing: Bool { !captureStack.isEmpty }
 
     static let builtinNames: [String] = [
@@ -100,6 +105,7 @@ final class BlacksiteShell: ObservableObject {
         "scan", "knock", "census", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
+        "freedoom", "doom",
         "theme", "haptics", "skelli", "open",
         "halt", "pwd", "cd", "ls", "mkdir",
         "touch", "cat", "echo", "cp", "mv",
@@ -748,6 +754,17 @@ final class BlacksiteShell: ObservableObject {
             emcon(args)
         case "macro", "macros":
             macro(args)
+        case "freedoom", "doom":
+            if capturing {
+                emit("freedoom plays live — "
+                     + "it cannot be piped.",
+                     .err)
+            } else {
+                programRequest = .freedoom
+                emit("the room opens. "
+                     + "rip and tear.",
+                     .ok)
+            }
         case "gauntlet":
             if capturing {
                 emit("the gauntlet runs live — "
@@ -1849,6 +1866,7 @@ final class BlacksiteShell: ObservableObject {
                 ("emcon [open|charlie|bravo|alpha|off]", "read or set the condition"),
                 ("macro list | run <name>", "the macro library, run from here"),
                 ("gauntlet", "run the gauntlet"),
+                ("freedoom", "play freedoom — the big one"),
                 ("journal [n]", "the house journal"),
                 ("log [n]", "the flight recorder"),
                 ("tomato list|throw|wipe", "the standing marks"),
@@ -3213,7 +3231,7 @@ struct BlacksiteView: View {
 
     enum Program: String, Identifiable {
         case processes, sys, journal, gauntlet,
-             macros, decode, files
+             macros, decode, files, freedoom
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -3224,6 +3242,7 @@ struct BlacksiteView: View {
             case .macros: return "MACROS"
             case .decode: return "DECODER BENCH"
             case .files: return "FILES"
+            case .freedoom: return "FREEDOOM"
             }
         }
         var icon: String {
@@ -3235,6 +3254,8 @@ struct BlacksiteView: View {
             case .macros: return "puzzlepiece.extension.fill"
             case .decode: return "waveform.path.ecg"
             case .files: return "folder"
+            case .freedoom:
+                return "gamecontroller.fill"
             }
         }
     }
@@ -3268,6 +3289,13 @@ struct BlacksiteView: View {
         }
         .sheet(item: $program) { program in
             BlacksiteProgramSheet(program: program)
+        }
+        .onChange(of: shell.programRequest) {
+            _, requested in
+            if let requested {
+                program = requested
+                shell.programRequest = nil
+            }
         }
         .fullScreenCover(
             item: $shell.editorSession
@@ -3845,6 +3873,8 @@ private struct BlacksiteProgramSheet: View {
             BlacksiteDecodeProgram()
         case .files:
             BlacksiteFilesProgram()
+        case .freedoom:
+            FreedoomView()
         }
     }
 }
