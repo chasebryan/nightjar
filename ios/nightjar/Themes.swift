@@ -110,7 +110,7 @@ struct AppTheme: Identifiable, Codable, Equatable {
 enum BackdropSlot: String, CaseIterable, Identifiable {
     case everywhere, listen, send, serve, sessions, scan,
          recon, emcon, knocktalk, about, skelli, macros,
-         vault
+         vault, blacksite
 
     var id: String { rawValue }
 
@@ -129,6 +129,7 @@ enum BackdropSlot: String, CaseIterable, Identifiable {
         case .skelli: return "Skelli"
         case .macros: return "Macros"
         case .vault: return "Vault"
+        case .blacksite: return "Blacksite"
         }
     }
 }

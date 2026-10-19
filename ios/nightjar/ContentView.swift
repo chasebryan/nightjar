@@ -241,7 +241,7 @@ struct ContentView: View {
         // reopened on Listen instead of where the
         // operator had been working.
         let knownTabs: Set<Int> =
-            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10, 11]
+            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10, 11, 12]
         _tab = State(initialValue:
             stored.flatMap {
                 knownTabs.contains($0) ? $0 : nil
@@ -288,6 +288,13 @@ struct ContentView: View {
                 .tag(5)
                 .onAppear { TabBeat.appeared(5) }
                 .onDisappear { TabBeat.vanished(5) }
+            BlacksiteView()
+                .appThemed(.blacksite)
+                .tabItem { Label(L("Blacksite"),
+                                 systemImage: "terminal.fill") }
+                .tag(12)
+                .onAppear { TabBeat.appeared(12) }
+                .onDisappear { TabBeat.vanished(12) }
             SessionsView()
                 .appThemed(.sessions)
                 .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
@@ -343,6 +350,15 @@ struct ContentView: View {
                 .onDisappear { TabBeat.vanished(11) }
         }
         .tint(themes.current.accent)
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: Blacksite.openTabNotification)
+        ) { note in
+            if let tag = note.userInfo?["tag"]
+                as? Int {
+                tab = tag
+            }
+        }
         .onAppear {
             // The specialist gets the house's real
             // organs, so its hands work the real
