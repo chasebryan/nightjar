@@ -48,6 +48,7 @@ struct Sighting {
         self.txPower = txPower
         self.serviceData = serviceData
         self.isConnectable = isConnectable
+        self.solicitedUUIDs = solicitedUUIDs
     }
 
     /// Build a sighting from what CoreBluetooth hands the delegate.
