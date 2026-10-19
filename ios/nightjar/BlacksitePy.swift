@@ -7771,11 +7771,11 @@ extension PyInterp {
                    let close = template[
                     open...].firstIndex(
                         of: ">") {
+                    let keyStart = template
+                        .index(after: open)
                     let key = String(
-                        template[template
-                            .index(
-                                after: open)
-                            ..<close])
+                        template[
+                            keyStart..<close])
                     if let n = Int(key) {
                         out += groupText(n)
                     } else {
@@ -8554,8 +8554,8 @@ extension PyInterp {
         -> Int {
         switch kind {
         case "deque":
-            return nativeItems(obj)?.count
-                ?? 0
+            return nativeItems(obj)?.items
+                .count ?? 0
         case "Counter", "defaultdict":
             return nativeStore(obj)?.count
                 ?? 0
@@ -8708,9 +8708,9 @@ extension PyInterp {
         }
         guard case .list(let spans)? =
             obj.attrs["__spans__"],
-              at >= 0, at < spans.count,
+              at >= 0, at < spans.items.count,
               case .tuple(let pair) =
-                spans[at],
+                spans.items[at],
               pair.count == 2,
               let lo = asInt(pair[0]),
               let hi = asInt(pair[1])
