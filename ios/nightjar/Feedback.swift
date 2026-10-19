@@ -1649,16 +1649,36 @@ enum Haptics {
     private static var lastInitiationAt:
         TimeInterval = 0
 
+    /// The haptics trail in the flight
+    /// recorder: every beat that fires, every
+    /// beat that folds, every call the law
+    /// silences — so a complaint about the
+    /// motor can be convicted from the log
+    /// instead of argued from feel (the
+    /// operator's third word on haptics,
+    /// 2026-10-19). Recorded only while
+    /// developer options are on, like every
+    /// flight-recorder line.
+    private static func trace(_ line: String) {
+        DevLog.event("haptics", line)
+    }
+
     /// An initiation: the act's one beat.
     private static func initiation(
+        _ label: String,
         _ body: @escaping () -> Void) {
         onMain {
             let now = Date()
                 .timeIntervalSince1970
             guard now - lastBeatAt >= 0.35
-            else { return }
+            else {
+                trace("\(label) folded "
+                      + "(a beat just spoke)")
+                return
+            }
             lastBeatAt = now
             lastInitiationAt = now
+            trace("\(label) fired")
             body()
         }
     }
@@ -1668,33 +1688,45 @@ enum Haptics {
     /// into it; a verdict from background work,
     /// with no fresh act under it, speaks.
     private static func echo(
+        _ label: String,
         _ body: @escaping () -> Void) {
         onMain {
             let now = Date()
                 .timeIntervalSince1970
             guard now - lastInitiationAt >= 1.6,
                   now - lastBeatAt >= 0.35
-            else { return }
+            else {
+                trace("\(label) folded "
+                      + "(it rides a fresh act)")
+                return
+            }
             lastBeatAt = now
+            trace("\(label) fired")
             body()
         }
     }
 
     /// An absolute beat: always lands.
     private static func absolute(
+        _ label: String,
         _ body: @escaping () -> Void) {
         onMain {
             let now = Date()
                 .timeIntervalSince1970
             guard now - lastBeatAt >= 0.35
-            else { return }
+            else {
+                trace("\(label) folded "
+                      + "(a beat just spoke)")
+                return
+            }
             lastBeatAt = now
+            trace("\(label) fired")
             body()
         }
     }
 
     static func tap() {
-        initiation {
+        initiation("tap") {
             lightGen.impactOccurred()
             lightGen.prepare()
         }
@@ -1706,6 +1738,7 @@ enum Haptics {
     /// operator's threshold — every other beat
     /// in the kit was felt, that one never.
     static func tick() {
+        trace("tick fired")
         onMain {
             rigidGen.impactOccurred(intensity: 0.6)
             rigidGen.prepare()
@@ -1713,7 +1746,7 @@ enum Haptics {
     }
 
     static func select() {
-        initiation {
+        initiation("select") {
             // A crisp rigid impact stands in for
             // the selection generator, which is
             // retired: on the operator's device
@@ -1739,6 +1772,7 @@ enum Haptics {
         UISelectionFeedbackGenerator()
 
     static func rawSelection() {
+        trace("rawSelection fired")
         onMain {
             rawSelectionGen.selectionChanged()
             rawSelectionGen.prepare()
@@ -1747,7 +1781,7 @@ enum Haptics {
 
     /// A deliberate press — a primary action taken.
     static func press() {
-        initiation {
+        initiation("press") {
             mediumGen.impactOccurred()
             mediumGen.prepare()
         }
@@ -1755,7 +1789,7 @@ enum Haptics {
 
     /// The heaviest single beat the house owns.
     static func heavy() {
-        absolute {
+        absolute("heavy") {
             heavyGen.impactOccurred()
             heavyGen.prepare()
         }
@@ -1765,6 +1799,7 @@ enum Haptics {
     /// closing, being put away. Silent by the
     /// law above: a settle is a landing.
     static func pulse() {
+        trace("pulse called — silent by law")
     }
 
     /// Landed well. Silent by the law above:
@@ -1775,6 +1810,7 @@ enum Haptics {
     /// success was a two-pulse pattern — the
     /// tap-delay-tap the operator ruled out.)
     static func success() {
+        trace("success called — silent by law")
     }
 
     /// Diagnosis only: the success beat, fired
@@ -1782,6 +1818,7 @@ enum Haptics {
     /// test, so the voice itself can still be
     /// measured on a device.
     static func testSuccess() {
+        trace("testSuccess fired")
         onMain {
             mediumGen.impactOccurred()
             mediumGen.prepare()
@@ -1791,6 +1828,7 @@ enum Haptics {
     /// Diagnosis only: the error beat, raw,
     /// for the same console test.
     static func testError() {
+        trace("testError fired")
         onMain {
             heavyGen.impactOccurred()
             heavyGen.prepare()
@@ -1803,7 +1841,7 @@ enum Haptics {
     /// tap just earned arrives in the toast's
     /// words, not a second buzz.
     static func warn() {
-        echo {
+        echo("warn") {
             rigidGen.impactOccurred(intensity: 1.0)
             rigidGen.prepare()
         }
@@ -1812,7 +1850,7 @@ enum Haptics {
     /// An error: one heavy beat, on the same
     /// echo terms as the warning.
     static func error() {
-        echo {
+        echo("error") {
             heavyGen.impactOccurred()
             heavyGen.prepare()
         }
@@ -1823,18 +1861,23 @@ enum Haptics {
     /// her spoken word, for an order) already
     /// carried the beat.
     static func start() {
+        trace("start called — silent by law")
     }
 
     /// A process lands well: silent — see
     /// success().
     static func finish() {
+        trace("finish called — silent by law")
     }
 
     /// The emergency stop: the heaviest
     /// single beat the house owns, once —
     /// unmistakable by weight, not by count.
     static func vanish() {
-        heavy()
+        absolute("vanish") {
+            heavyGen.impactOccurred()
+            heavyGen.prepare()
+        }
     }
 }
 

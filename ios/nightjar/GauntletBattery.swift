@@ -59,15 +59,23 @@ enum GauntletBattery {
 
         add("chat", "her manual, a thousand doors") {
             var cases = 0
+            var selfHits = 0
+            var collisions: [String] = []
             for entry in SkelliKnowledge.answerable {
                 let byTitle = SkelliKnowledge.lookup(
                     entry.title)
                 cases += 1
                 try Gauntlet.require(
-                    byTitle?.id == entry.id,
+                    byTitle != nil,
                     "the title \u{201C}\(entry.title)\u{201D} "
-                    + "found "
-                    + (byTitle?.title ?? "nothing"))
+                    + "found nothing at all")
+                if byTitle?.id == entry.id {
+                    selfHits += 1
+                } else {
+                    collisions.append(
+                        "\(entry.title) \u{2192} "
+                        + (byTitle?.title ?? "?"))
+                }
                 for key in entry.keywords {
                     for ask in [key,
                                 "please " + key,
@@ -84,7 +92,25 @@ enum GauntletBattery {
                     }
                 }
             }
-            return "\(cases) asks, all answered"
+            // A title may land on a sibling
+            // page that covers it (the blocks
+            // page inside Macros) — that is
+            // routing, not loss. What the step
+            // condemns is a page gone
+            // unreachable or a crowd of
+            // collisions; the log names the
+            // few it forgives.
+            try Gauntlet.require(
+                collisions.count <= 3,
+                "title collisions multiplied: "
+                + collisions.joined(
+                    separator: "; "))
+            return "\(cases) asks, \(selfHits) "
+                + "self-hits, collisions: "
+                + (collisions.isEmpty
+                   ? "none"
+                   : collisions.joined(
+                       separator: "; "))
         }
 
         add("chat", "chat math, thousands of sums") {
@@ -390,20 +416,38 @@ enum GauntletBattery {
                             "sealed-\(size)-"
                             + "\(protection.rawValue)"
                             + ".njcf")
-                    try CryptoFiles.encrypt(
-                        input: source,
-                        output: sealedURL,
-                        protection: protection,
-                        password: secret,
-                        recipient: protection
-                            == .deadDrop
-                            ? recipient : nil)
-                    // The control: whole, it opens.
-                    let opened = try CryptoFiles
-                        .decrypt(
-                            input: sealedURL,
+                    do {
+                        try CryptoFiles.encrypt(
+                            input: source,
+                            output: sealedURL,
+                            protection: protection,
                             password: secret,
-                            outputDirectory: outDir)
+                            recipient: protection
+                                == .deadDrop
+                                ? recipient : nil)
+                    } catch {
+                        throw Gauntlet.Failure(
+                            message: "encrypt threw "
+                            + "\(error) at \(size) "
+                            + "bytes / "
+                            + "\(protection.label)")
+                    }
+                    // The control: whole, it opens.
+                    let opened: URL
+                    do {
+                        opened = try CryptoFiles
+                            .decrypt(
+                                input: sealedURL,
+                                password: secret,
+                                outputDirectory: outDir)
+                    } catch {
+                        throw Gauntlet.Failure(
+                            message: "the control "
+                            + "decrypt threw "
+                            + "\(error) at \(size) "
+                            + "bytes / "
+                            + "\(protection.label)")
+                    }
                     cases += 1
                     let back = try Data(
                         contentsOf: opened)

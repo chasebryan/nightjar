@@ -753,10 +753,21 @@ final class Gauntlet: ObservableObject {
                         at: outDir,
                         withIntermediateDirectories:
                             true)
-                    let restored = try CryptoFiles
-                        .decrypt(input: sealed,
-                                  password: password,
-                                  outputDirectory: outDir)
+                    let restored: URL
+                    do {
+                        restored = try CryptoFiles
+                            .decrypt(
+                                input: sealed,
+                                password: password,
+                                outputDirectory: outDir)
+                    } catch {
+                        throw Failure(
+                            message: "decrypt threw "
+                            + "\(error) at \(size) "
+                            + "bytes / "
+                            + "\(protection) after "
+                            + "\(opened) good seals")
+                    }
                     let back = try Data(
                         contentsOf: restored)
                     try Gauntlet.require(
