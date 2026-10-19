@@ -511,7 +511,7 @@ function require(spec) {
             self.drainCommand(
                 context, gen: gen,
                 deadline: Date()
-                    .addingTimeInterval(300),
+                    .addingTimeInterval(960),
                 state: state,
                 result: text,
                 completion: completion)
@@ -521,9 +521,13 @@ function require(spec) {
     /// A package command ends when its
     /// work does: timers it set and
     /// fetches it started drain under a
-    /// five-minute roof, whatever is left
-    /// is cancelled, and the handler's
-    /// error (early or late) is the word.
+    /// sixteen-minute roof (a device
+    /// sign-in may legitimately wait out
+    /// a ten-minute code), whatever is
+    /// left at the roof is cancelled —
+    /// and a cut with work still pending
+    /// SAYS SO through the completion's
+    /// error instead of ending silently.
     private func drainCommand(
         _ context: JSContext, gen: Int,
         deadline: Date, state: RunState,
@@ -540,12 +544,26 @@ function require(spec) {
                     context: context,
                     gen: gen))
             || Date() >= deadline {
+            let stillWorking =
+                timersPending(
+                    context: context,
+                    gen: gen)
+                || fetchesPending(
+                    context: context,
+                    gen: gen)
             drainForced.remove(key)
             cancelTimers(
                 context: context, gen: gen)
             cancelFetches(
                 context: context, gen: gen)
             let error = state.error
+                ?? (stillWorking
+                    ? "cut off at the house "
+                        + "limit while still "
+                        + "working — whatever "
+                        + "it was waiting for "
+                        + "will not arrive now"
+                    : nil)
             DispatchQueue.main.async {
                 completion(result, error)
             }
