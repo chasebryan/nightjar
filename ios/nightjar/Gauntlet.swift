@@ -76,7 +76,32 @@ final class Gauntlet: ObservableObject {
 
     /// The step a previous run died inside, if
     /// the current log never reached its footer.
+    /// The Developer room reads this while it
+    /// renders, so the answer is cached against
+    /// the log's stamp (modification + size):
+    /// a render costs a stat, not a file read.
+    private static var interruptedCache:
+        (stamp: String, step: String?)?
     static func interruptedStep() -> String? {
+        let attrs = try? FileManager.default
+            .attributesOfItem(
+                atPath: currentLogURL.path)
+        let mod = (attrs?[.modificationDate]
+            as? Date)?.timeIntervalSince1970 ?? 0
+        let size = (attrs?[.size]
+            as? NSNumber)?.intValue ?? 0
+        let stamp = "\(mod)-\(size)"
+        if let cache = interruptedCache,
+           cache.stamp == stamp {
+            return cache.step
+        }
+        let step = computeInterruptedStep()
+        interruptedCache = (stamp, step)
+        return step
+    }
+
+    private static func computeInterruptedStep()
+        -> String? {
         guard let text = try? String(
                 contentsOf: currentLogURL,
                 encoding: .utf8),
@@ -370,6 +395,36 @@ final class Gauntlet: ObservableObject {
                 + ".log")
         try? fm.copyItem(at: Gauntlet.currentLogURL,
                          to: dated)
+        // Dated copies are an archive, not a
+        // hoard: keep the newest five.
+        let archive = (try? fm.contentsOfDirectory(
+            at: DevKit.directory,
+            includingPropertiesForKeys: [
+                .contentModificationDateKey]))?
+            .filter {
+                $0.lastPathComponent.hasPrefix(
+                    "gauntlet-")
+                    && $0.lastPathComponent
+                        .hasSuffix(".log")
+                    && $0.lastPathComponent
+                        != "gauntlet-latest.log"
+                    && $0.lastPathComponent
+                        != "gauntlet-current.log"
+            }
+            .sorted {
+                ((try? $0.resourceValues(forKeys: [
+                    .contentModificationDateKey]))?
+                    .contentModificationDate
+                    ?? .distantPast)
+                    > ((try? $1.resourceValues(
+                        forKeys: [
+                            .contentModificationDateKey]))?
+                        .contentModificationDate
+                        ?? .distantPast)
+            } ?? []
+        for stale in archive.dropFirst(5) {
+            try? fm.removeItem(at: stale)
+        }
         try? fm.removeItem(
             at: Gauntlet.currentLogURL)
         DevLog.event("developer",

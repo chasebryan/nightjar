@@ -74,8 +74,19 @@ final class UpdateChecker: ObservableObject {
         self.lastChecked = stored
     }
 
+    /// GitHub URLs are built from the repo
+    /// string; a malformed one must degrade to
+    /// the house's own page, never trap (the
+    /// sweep's theoretical T1, 2026-10-18).
+    static func githubURL(_ string: String) -> URL {
+        URL(string: string)
+            ?? URL(string: "https://github.com/"
+                   + "chasebryan/nightjar-hack")!
+    }
+
     var releasesURL: URL {
-        URL(string: "https://github.com/\(repo)/releases")!
+        Self.githubURL("https://github.com/"
+                       + "\(repo)/releases")
     }
 
     /// The update the operator hasn't waved off. The banner
@@ -127,7 +138,9 @@ final class UpdateChecker: ObservableObject {
         else { return }
         checking = true
         defer { checking = false }
-        let endpoint = URL(string: "https://api.github.com/repos/\(repo)/releases/latest")!
+        let endpoint = Self.githubURL(
+            "https://api.github.com/repos/"
+            + "\(repo)/releases/latest")
         var request = URLRequest(url: endpoint)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("nightjar-ios", forHTTPHeaderField: "User-Agent")
@@ -303,8 +316,8 @@ final class UpdateChecker: ObservableObject {
 
     /// Where a release's OTA manifest would live, if it has one.
     nonisolated static func manifestURL(repo: String) -> URL {
-        URL(string: "https://github.com/\(repo)"
-            + "/releases/latest/download/manifest.plist")!
+        githubURL("https://github.com/\(repo)"
+            + "/releases/latest/download/manifest.plist")
     }
 
     /// The install address, when the latest release carries an

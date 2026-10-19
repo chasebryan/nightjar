@@ -680,3 +680,12 @@
   when the house goes
   dark. It announces
   nothing it means.
+- **The reset keeps its
+  word.** Resetting to
+  sane defaults now
+  stands EMCON down on
+  the spot, as its own
+  dialog promises —
+  before, the condition
+  and its gates quietly
+  survived the reset.

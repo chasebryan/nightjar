@@ -229,8 +229,8 @@ final class AssaultCenter: ObservableObject {
         note("Armed. The wire will hear this phone coming.")
         startPass()
         timer = Timer.scheduledTimer(withTimeInterval: 1,
-                                     repeats: true) { _ in
-            self.tick()
+                                     repeats: true) { [weak self] _ in
+            self?.tick()
         }
     }
 

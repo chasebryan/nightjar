@@ -213,7 +213,11 @@ struct EmconView: View {
     // MARK: - status + score
 
     private var statusSection: some View {
-        Section {
+        // One audit per render: the section's
+        // dozen reads all draw on this single
+        // score (the sweep's finding P3).
+        let live = score
+        return Section {
             HStack(spacing: 14) {
                 Image(systemName: emcon.active
                       ? "checkmark.shield.fill" : "shield")
@@ -232,37 +236,37 @@ struct EmconView: View {
                 }
                 Spacer()
                 VStack(spacing: 0) {
-                    Text(Emcon.fmt(score.value))
+                    Text(Emcon.fmt(live.value))
                         .font(.title.weight(.bold))
-                        .foregroundStyle(scoreColor)
-                    Text(score.band)
+                        .foregroundStyle(scoreColor(live.value))
+                    Text(live.band)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(scoreColor)
+                        .foregroundStyle(scoreColor(live.value))
                 }
             }
             Text(L("Exposure, to the decimal — the Standard's inventory: presence first, then each standing emission at its fixed weight, then the evidence, folded by its formula. Nothing is capped; a fully lit house sums to exactly 100.0."))
                 .font(.caption).foregroundStyle(.secondary)
             if emcon.active,
                let before = emcon.scoreBeforeDark,
-               before.value > score.value {
+               before.value > live.value {
                 Text("Going dark took you from "
                      + "\(Emcon.fmt(before.value)) "
                      + "\(before.band) to "
-                     + "\(Emcon.fmt(score.value)) "
-                     + "\(score.band).")
+                     + "\(Emcon.fmt(live.value)) "
+                     + "\(live.band).")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
             }
-            if !score.parts.isEmpty {
-                Text(String(format: L("Why %@:"), score.band))
+            if !live.parts.isEmpty {
+                Text(String(format: L("Why %@:"), live.band))
                     .font(.caption.weight(.semibold))
-                ForEach(score.parts) { part in
+                ForEach(live.parts) { part in
                     HStack {
                         Text(part.label).font(.caption)
                         Spacer()
                         Text("+" + Emcon.fmt(part.points))
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(scoreColor)
+                            .foregroundStyle(scoreColor(live.value))
                     }
                 }
             }
@@ -281,7 +285,7 @@ struct EmconView: View {
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(row.violation
                                               ? .red
-                                              : scoreColor)
+                                              : scoreColor(live.value))
                     } else {
                         Text("dark")
                             .font(.caption)
@@ -402,8 +406,8 @@ struct EmconView: View {
         toasts.show(L("EMCON active — emissions silenced, tripwire armed."))
     }
 
-    private var scoreColor: Color {
-        switch score.value {
+    private func scoreColor(_ value: Double) -> Color {
+        switch value {
         case 0: return .green
         case ..<10: return .mint
         case ..<30: return .yellow

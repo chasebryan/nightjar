@@ -1182,6 +1182,7 @@ struct AboutView: View {
     @State private var showSupport = false
 #endif
     @EnvironmentObject private var mouth: Mouth
+    @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var toasts: ToastCenter
     @ObservedObject private var languageCenter =
         LanguageCenter.shared
@@ -1550,7 +1551,8 @@ struct AboutView: View {
                                 isPresented: $confirmReset) {
                 Button(L("Reset to sane defaults"), role: .destructive) {
                     Haptics.error()
-                    SaneDefaults.reset(mouth: mouth)
+                    SaneDefaults.reset(mouth: mouth,
+                                       emcon: emcon)
                     toasts.show("Settings reset — sane defaults restored")
                 }
                 Button(L("Cancel"), role: .cancel) {}

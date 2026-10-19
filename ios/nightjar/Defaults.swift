@@ -56,7 +56,7 @@ enum SaneDefaults {
         "sectionOpen.snatch", "sectionOpen.timing",
         "sectionOpen.trace",
         // EMCON
-        "emconActive", "emconHomeSubnet", "emconVaultCombo",
+        "emconActive", "emcon.condition", "emconHomeSubnet", "emconVaultCombo",
         "emconVaultAction", "emconEscalation",
         "deadHand.on", "deadHand.hours", "deadHand.last",
         "deadHand.firedAt",
@@ -95,6 +95,10 @@ enum SaneDefaults {
     "heart.lastAnnoyance", "heart.annoyanceText",
     "heart.annoyanceGreeted",
         "listen.bthomeV1",
+        "gattArm.name", "gattArm.payload",
+        "headlines.enabled",
+        "skelli.weightsModel",
+        "skelli.weightsDownloaded",
     ]
 
     /// Restore every setting to its sane default and reconcile the
@@ -106,16 +110,21 @@ enum SaneDefaults {
     ///  - stealth returns to its default through setStealth, which
     ///    also restarts a running Serve so its announcement (or
     ///    lack of one) matches the restored default,
-    ///  - EMCON's persisted flag is cleared here; the live EMCON
-    ///    model reconciles against it the next time its tab
-    ///    appears, standing the tripwire down if it was up.
-    static func reset(mouth: Mouth) {
+    ///  - EMCON stands down on the spot: the live model is
+    ///    deactivated (condition stored OPEN, tripwire down,
+    ///    relay poll refreshed), so the dialog's promise and
+    ///    the house agree before the sheet closes — a reset
+    ///    that only cleared storage left the condition, the
+    ///    tripwire, and every gate standing (the sweep's
+    ///    finding F11, 2026-10-18).
+    static func reset(mouth: Mouth, emcon: Emcon) {
         let defaults = UserDefaults.standard
         for key in keys { defaults.removeObject(forKey: key) }
         // The setup mirror forgets too, or the
         // old configuration would restore itself
         // into the next fresh install.
         HouseSetup.forgetMirror()
+        emcon.deactivate()
         if mouth.gattHostOn { mouth.stopGattHost() }
         defaults.removeObject(forKey: "gattArm.on")
         if mouth.beaconOn { mouth.stopBeacon() }
