@@ -1415,6 +1415,15 @@ struct BootView: View {
                 _ = WeightsCenter.shared
                 _ = SkelliStore.load()
                 _ = CryptoSuite.identity()
+                // The registries parse once, on
+                // first touch — warm them here,
+                // off every thread that matters,
+                // so the first Listen session and
+                // the first port lookup never pay
+                // the parse (finding P7).
+                _ = CompanyRegistry.names
+                _ = ServiceRegistry.names
+                _ = PortRegistry.names
             }
             let blink = Task {
                 while !Task.isCancelled {

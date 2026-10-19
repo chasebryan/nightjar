@@ -633,6 +633,28 @@ final class Mouth: NSObject, ObservableObject {
             } else {
                 try? line.write(to: url, atomically: true, encoding: .utf8)
             }
+            // The exchange history rotates like
+            // the developer log (the sweep's
+            // finding F7): past a megabyte only
+            // the newest thousand exchanges
+            // stay — the file is a record, not
+            // a hoard, and it never fills a disk.
+            let size = (try? FileManager.default
+                .attributesOfItem(
+                    atPath: url.path))?[.size]
+                as? Int ?? 0
+            if size > 1_048_576,
+               let text = try? String(
+                   contentsOf: url, encoding: .utf8) {
+                let tail = text.split(
+                    separator: "\n",
+                    omittingEmptySubsequences: true)
+                    .suffix(1000)
+                try? (tail.joined(separator: "\n")
+                    + "\n").write(
+                        to: url, atomically: true,
+                        encoding: .utf8)
+            }
         }
     }
 

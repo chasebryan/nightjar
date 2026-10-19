@@ -625,6 +625,22 @@ final class SkelliCenter: ObservableObject {
     }
 
     private func persist() {
+        // The live transcript carries the same
+        // caps the saved copy does (the sweep's
+        // finding F8): an endless session once
+        // grew this array — and the transcript
+        // the view renders — without bound,
+        // while the store quietly kept only
+        // 300, so a relaunch silently changed
+        // what existed. Now the room and the
+        // record agree, always.
+        if lines.count > 300 {
+            lines.removeFirst(lines.count - 300)
+        }
+        if archive.count > 300 {
+            archive.removeFirst(
+                archive.count - 300)
+        }
         SkelliStore.save(SkelliStore.Saved(
             lines: Array(lines.suffix(300)),
             notes: notes,

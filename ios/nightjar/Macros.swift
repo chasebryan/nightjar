@@ -110,14 +110,23 @@ enum MacroStore {
     static func decodeImport(_ data: Data) -> [Macro]? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        // Imports are files from the world:
+        // generous caps, far past any human
+        // library, keep a hostile file from
+        // costing the house its memory (the
+        // crash audit's one uncapped importer).
+        let macroCap = 500
+        let blockCap = 1000
         if let envelope = try? decoder.decode(
             MacroExport.self, from: data),
            envelope.schema
             == "net.nosuchmachine.nightjar.macros" {
-            return envelope.macros.map { macro in
+            return envelope.macros.prefix(macroCap)
+                .map { macro in
                 var copy = macro
                 copy.id = UUID()
-                copy.blocks = macro.blocks.map { block in
+                copy.blocks = macro.blocks
+                    .prefix(blockCap).map { block in
                     var blockCopy = block
                     blockCopy.id = UUID()
                     return blockCopy
@@ -127,7 +136,7 @@ enum MacroStore {
         }
         if let bare = try? decoder.decode(
             [Macro].self, from: data) {
-            return bare
+            return Array(bare.prefix(macroCap))
         }
         return nil
     }

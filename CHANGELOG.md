@@ -723,6 +723,17 @@
   no longer miss the
   generation it meant
   to cancel.
+- **The long tail, capped
+  and warmed.** Serve's
+  exchange file and
+  her transcript carry
+  the same limits as
+  their records; macro
+  imports are capped;
+  the registries warm
+  during the boot film
+  instead of taxing
+  first use.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps
