@@ -1570,22 +1570,29 @@ struct BootView: View {
 /// keystroke keeps its own rapid voice — a typed
 /// line is a sequence by nature, not an act.)
 ///
-/// And one act speaks ONCE — at its start. The
-/// old shape beat at a process's beginning and
-/// again at its landing, which the operator
-/// heard, everywhere, as tap — delay — tap, and
-/// ruled out (2026-10-19). So beats now come in
-/// three classes: an INITIATION (a touch, a
-/// press, a process starting) speaks and stamps
-/// the act; an ECHO (a landing, a verdict, a
-/// settle) speaks only when no initiation is
-/// fresh — a completion arriving on its own,
-/// long after his hand left it, is news and may
-/// speak; one arriving as the second half of
-/// his own act folds into it, silent. An
-/// ABSOLUTE beat (the heaviest voice, the
-/// emergency stop) is an act entire in itself
-/// and always lands.
+/// And one act speaks ONCE — at the touch.
+/// The old shape beat at a process's beginning
+/// and again at its landing, which the
+/// operator heard, everywhere, as tap — delay
+/// — tap, and ruled out (2026-10-19). The
+/// first repair folded a landing only when it
+/// arrived within a breath of the touch; on
+/// the device nothing changed, because real
+/// landings arrive seconds later, outside any
+/// honest fold, and spoke as a second act.
+/// So the law's second pass is plainer:
+/// LANDINGS DO NOT SPEAK. Beginnings and
+/// completions keep their function names at
+/// every call site and are silent. Beats
+/// belong to the operator's own hand — a
+/// touch, a press, a selection — and to
+/// verdicts that arrive unattached to a
+/// fresh act: a warning or an error raised
+/// by background work speaks; one raised by
+/// the act his hand just took folds into
+/// that act's own beat. The heaviest voice
+/// and the emergency stop are acts entire
+/// in themselves and always land.
 enum Haptics {
     // One retained generator per voice, kept
     // prepared for the next beat. The old way —
@@ -1642,8 +1649,10 @@ enum Haptics {
         }
     }
 
-    /// An echo: a landing or verdict belonging
-    /// to an act already felt is folded into it.
+    /// A verdict: a warning or error belonging
+    /// to the act his hand just took is folded
+    /// into it; a verdict from background work,
+    /// with no fresh act under it, speaks.
     private static func echo(
         _ body: @escaping () -> Void) {
         onMain {
@@ -1738,25 +1747,39 @@ enum Haptics {
         }
     }
 
-    /// A soft settle — things standing down, closing,
-    /// being put away.
+    /// A soft settle — things standing down,
+    /// closing, being put away. Silent by the
+    /// law above: a settle is a landing.
     static func pulse() {
-        echo {
-            softGen.impactOccurred(intensity: 0.45)
-            softGen.prepare()
-        }
     }
 
-    /// Landed well: one medium beat — spoken
-    /// only when the landing is news of its own;
-    /// as the echo of the act that launched it,
-    /// it folds. (The notification generator's
+    /// Landed well. Silent by the law above:
+    /// the touch that launched the act carried
+    /// its beat, and the landing is spoken by
+    /// the toast and the board, not the motor.
+    /// (The notification generator's old
     /// success was a two-pulse pattern — the
     /// tap-delay-tap the operator ruled out.)
     static func success() {
-        echo {
+    }
+
+    /// Diagnosis only: the success beat, fired
+    /// raw from the developer console's haptics
+    /// test, so the voice itself can still be
+    /// measured on a device.
+    static func testSuccess() {
+        onMain {
             mediumGen.impactOccurred()
             mediumGen.prepare()
+        }
+    }
+
+    /// Diagnosis only: the error beat, raw,
+    /// for the same console test.
+    static func testError() {
+        onMain {
+            heavyGen.impactOccurred()
+            heavyGen.prepare()
         }
     }
 
@@ -1781,15 +1804,16 @@ enum Haptics {
         }
     }
 
-    /// A process begins: the press, once.
+    /// A process begins: silent by the law
+    /// above — the touch that launched it (or
+    /// her spoken word, for an order) already
+    /// carried the beat.
     static func start() {
-        press()
     }
 
-    /// A process lands well: the success
-    /// beat, once.
+    /// A process lands well: silent — see
+    /// success().
     static func finish() {
-        success()
     }
 
     /// The emergency stop: the heaviest

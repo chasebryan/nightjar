@@ -711,11 +711,13 @@ struct DeveloperSheet: View {
                     Button("Heavy — heavy impact") {
                         Haptics.heavy()
                     }
-                    Button("Success — notification") {
-                        Haptics.success()
+                    Button("Success — notification "
+                           + "(raw test)") {
+                        Haptics.testSuccess()
                     }
-                    Button("Error — notification") {
-                        Haptics.error()
+                    Button("Error — notification "
+                           + "(raw test)") {
+                        Haptics.testError()
                     }
                     Button("Raw selection — retired "
                            + "generator") {
