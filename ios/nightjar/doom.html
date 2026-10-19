@@ -109,9 +109,9 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 112</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 113</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 112 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
+<script>document.getElementById("buildstamp").textContent = "room build 113 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}
 var hbF = 0;
 function hb() { hbF++; if (hbF % 150 === 0) { try { webkit.messageHandlers.doom.postMessage("alive " + hbF); } catch (e) {} } requestAnimationFrame(hb); }
 requestAnimationFrame(hb);</script>
