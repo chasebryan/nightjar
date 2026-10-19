@@ -5843,8 +5843,34 @@ import Tokenizers
 /// cache, kept resident once woken.
 @available(iOS 17.0, *)
 enum SkelliWeights {
-    private static var container: ModelContainer?
-    private static var containerKey: String?
+    /// The bench's mutable state, behind one
+    /// lock (the sweep's finding F1): asks land
+    /// on the cooperative pool from several
+    /// callers at once, memory pressure lands
+    /// on the main thread, and the cascade
+    /// reads from both — as bare statics, two
+    /// concurrent asks overwrote each other's
+    /// in-flight registration, and a memory
+    /// warning could then cancel only one of
+    /// them while the other kept allocating:
+    /// the jetsam scenario in full. The
+    /// LoadGate actor serializes LOADS; this
+    /// lock serializes the STATE.
+    private final class BenchState {
+        var container: ModelContainer?
+        var containerKey: String?
+        var inFlightAsk: Task<String?, Never>?
+        var inFlightToken: UUID?
+        private let lock = NSLock()
+        func with<T>(_ body: (BenchState) -> T)
+            -> T {
+            lock.lock()
+            defer { lock.unlock() }
+            return body(self)
+        }
+    }
+
+    private static let state = BenchState()
 
     /// The model chosen in her Weights sheet.
     static var selectedID: String? {
@@ -5870,7 +5896,7 @@ enum SkelliWeights {
     }
 
     static var canSpeak: Bool {
-        container != nil
+        state.with { $0.container != nil }
             || downloadedSelection != nil
             || folderURL != nil
     }
@@ -5885,9 +5911,6 @@ enum SkelliWeights {
     /// Cancelling unwinds the perform, the last
     /// references fall, and the model actually
     /// leaves memory.
-    private static var inFlightAsk:
-        Task<String?, Never>?
-    private static var inFlightToken: UUID?
 
     static func ask(instructions: String,
                     prompt: String) async -> String? {
@@ -5987,12 +6010,16 @@ enum SkelliWeights {
                 return nil
             }
         }
-        inFlightAsk = work
-        inFlightToken = token
+        state.with {
+            $0.inFlightAsk = work
+            $0.inFlightToken = token
+        }
         let result = await work.value
-        if inFlightToken == token {
-            inFlightAsk = nil
-            inFlightToken = nil
+        state.with {
+            if $0.inFlightToken == token {
+                $0.inFlightAsk = nil
+                $0.inFlightToken = nil
+            }
         }
         return result
     }
@@ -6035,9 +6062,10 @@ enum SkelliWeights {
     private static func loadedContainer()
         async throws -> ModelContainer {
         let key = downloadedSelection ?? "folder"
-        if let container = container,
-           containerKey == key {
-            return container
+        if let resident = state.with({
+            $0.containerKey == key
+                ? $0.container : nil }) {
+            return resident
         }
         // A different bench was chosen: release
         // the resident model BEFORE the new one
@@ -6046,9 +6074,9 @@ enum SkelliWeights {
         // the new one streaming in — is how a
         // model switch dies by jetsam mid-load,
         // and the operator reads it as a crash.
-        if container != nil {
-            container = nil
-            containerKey = nil
+        state.with {
+            $0.container = nil
+            $0.containerKey = nil
         }
         // The headroom rule, learned from a
         // developer log: the Qwen3-4B bench
@@ -6086,8 +6114,10 @@ enum SkelliWeights {
         }
         do {
             let box = try await task.value
-            container = box
-            containerKey = key
+            state.with {
+                $0.container = box
+                $0.containerKey = key
+            }
             DevLog.event("weights",
                          "bench loaded (\(key))")
             return box
@@ -6158,11 +6188,21 @@ enum SkelliWeights {
     /// shows the app dying five seconds after
     /// the drop, mid-generation.)
     static func dropResident() {
-        inFlightAsk?.cancel()
-        inFlightAsk = nil
-        inFlightToken = nil
-        container = nil
-        containerKey = nil
+        // The whole set-down is one locked
+        // move, and whichever ask is registered
+        // NOW is the one cancelled — never a
+        // registration a concurrent ask wrote
+        // over and orphaned.
+        let flight = state.with { s -> Task<
+            String?, Never>? in
+            let current = s.inFlightAsk
+            s.inFlightAsk = nil
+            s.inFlightToken = nil
+            s.container = nil
+            s.containerKey = nil
+            return current
+        }
+        flight?.cancel()
         MLX.Memory.clearCache()
         DevLog.event(
             "weights",

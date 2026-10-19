@@ -638,6 +638,8 @@ final class Mouth: NSObject, ObservableObject {
 
     override init() {
         super.init()
+        queue.setSpecific(key: Self.serveQueueKey,
+                          value: ())
         Mouth.shared = self
         UNUserNotificationCenter.current().delegate = self
         if UserDefaults.standard.bool(forKey: "gattArm.on") {
@@ -663,6 +665,29 @@ final class Mouth: NSObject, ObservableObject {
     }
 
     private let queue = DispatchQueue(label: "net.nosuchmachine.nightjarhack.mouth")
+    private static let serveQueueKey =
+        DispatchSpecificKey<Void>()
+
+    /// Serve bookkeeping — the generation
+    /// stamp and the in-flight connection
+    /// list — lives on the serial queue:
+    /// connection handlers work there, while
+    /// startServe/stopServe are called from
+    /// the operator's thread. As bare state
+    /// the two sides raced (an Array mutated
+    /// on one thread while iterated on
+    /// another — the sweep's finding F2).
+    /// Every access goes through here: inline
+    /// when already on the queue, a sync hop
+    /// otherwise.
+    private func serveSync<T>(_ work: () -> T)
+        -> T {
+        if DispatchQueue.getSpecific(
+            key: Self.serveQueueKey) != nil {
+            return work()
+        }
+        return queue.sync(execute: work)
+    }
     private var peripheralManager: CBPeripheralManager?
     private var wantBeacon = false  // intent, survives radio state changes
     // Flare: a beacon mode whose payload is the keyed rotating
@@ -2151,8 +2176,10 @@ extension Mouth {
         let cleanTCP = tcpPort.map { min(65535, max(1, $0)) }
         let cleanUDP = udpPort.map { min(65535, max(1, $0)) }
         let cleanHTTP = httpPort.map { min(65535, max(1, $0)) }
-        serveGeneration += 1
-        let generation = serveGeneration
+        let generation = serveSync {
+            serveGeneration += 1
+            return serveGeneration
+        }
         lastServeParams = (cleanTCP, cleanUDP, cleanHTTP, reply, framing, echo)
         // Reply text/mode/framing are a SNAPSHOT from this moment:
         // the arrival sink answers with these, never with whatever
@@ -2222,22 +2249,39 @@ extension Mouth {
     func stopServe() {
         let wasRunning = serveRunning
         if wasRunning { Haptics.pulse() }
-        serveGeneration += 1
+        // Snapshot and clear under the queue's
+        // discipline, then cancel outside it:
+        // the sweep of stranded connections
+        // must name the serve that is ending,
+        // never a successor's.
+        let stranded = serveSync {
+            serveGeneration += 1
+            let taken = serveConnections
+            serveConnections = []
+            return taken
+        }
         for listener in listeners { listener.cancel() }
         listeners = []
-        for connection in serveConnections { connection.cancel() }
-        serveConnections = []
+        for connection in stranded {
+            connection.cancel()
+        }
         DispatchQueue.main.async { self.serveRunning = false }
         if wasRunning { ui("Stopped serving") }
     }
 
     private func trackServeConnection(_ connection: NWConnection) {
-        serveConnections.append(connection)
+        serveSync {
+            serveConnections.append(connection)
+        }
     }
 
     private func untrackServeConnection(_ connection: NWConnection) {
         let id = ObjectIdentifier(connection)
-        serveConnections.removeAll { ObjectIdentifier($0) == id }
+        serveSync {
+            serveConnections.removeAll {
+                ObjectIdentifier($0) == id
+            }
+        }
     }
 
     private func makeListener(port: Int, params: NWParameters, bonjour: Bool = false,
@@ -2259,7 +2303,9 @@ extension Mouth {
                     // A stale listener's failure must not clear the
                     // state of the serve that replaced it.
                     guard let self = self,
-                          self.serveGeneration == generation else { return }
+                          self.serveSync({
+                              self.serveGeneration
+                          }) == generation else { return }
                     self.serveError = "nightjar: listener failed: \(error.localizedDescription)"
                     self.serveRunning = false
                 }
@@ -2297,7 +2343,8 @@ extension Mouth {
             }
             // Arrivals from a stale generation (a peer accepted before
             // Stop, landing late) are dropped, never inboxed.
-            guard generation == serveGeneration else {
+            guard generation == serveSync({
+                serveGeneration }) else {
                 sunk = true
                 connection.cancel()
                 return
@@ -2398,7 +2445,8 @@ extension Mouth {
                     return
                 }
                 if let data = data, !data.isEmpty,
-                   generation == self.serveGeneration {
+                   generation == self.serveSync({
+                       self.serveGeneration }) {
                     let unframed = PayloadKit.unframe(data, framing: snapFraming)
                     self.receive(transport: "udp", peer: "\(connection.endpoint)", data: unframed)
                     let answer = snapEcho ? unframed : snapReply

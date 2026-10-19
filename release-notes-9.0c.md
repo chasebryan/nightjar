@@ -710,3 +710,14 @@
   and only the finished
   list crosses over,
   once a second.
+- **Two races, closed.**
+  The weights bench's
+  shared state and
+  Serve's connection
+  bookkeeping each live
+  behind one lock and
+  one queue now — a
+  memory warning can
+  no longer miss the
+  generation it meant
+  to cancel.

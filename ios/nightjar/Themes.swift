@@ -152,6 +152,31 @@ extension EnvironmentValues {
 
 enum BackdropMedia {
     private static var cache: [String: (Date, UIImage)] = [:]
+    /// The cache's lock: its readers are
+    /// view-side today, but the type never
+    /// promised a thread — now it doesn't
+    /// have to (the sweep's finding F4).
+    private static let cacheLock = NSLock()
+
+    private static func cached(
+        _ key: String) -> (Date, UIImage)? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return cache[key]
+    }
+
+    private static func store(
+        _ value: (Date, UIImage), for key: String) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        cache[key] = value
+    }
+
+    private static func evict(_ key: String) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        cache.removeValue(forKey: key)
+    }
 
     private static func fileURL(for slot: BackdropSlot) -> URL {
         let dir = FileManager.default.urls(
@@ -172,7 +197,7 @@ enum BackdropMedia {
         let url = fileURL(for: slot)
         do {
             try data.write(to: url, options: .atomic)
-            cache.removeValue(forKey: slot.rawValue)
+            evict(slot.rawValue)
             return true
         } catch {
             return false
@@ -182,7 +207,7 @@ enum BackdropMedia {
     static func remove(for slot: BackdropSlot) {
         try? FileManager.default.removeItem(
             at: fileURL(for: slot))
-        cache.removeValue(forKey: slot.rawValue)
+        evict(slot.rawValue)
     }
 
     /// The slot's custom art, decoded once per file version:
@@ -195,12 +220,15 @@ enum BackdropMedia {
               let data = try? Data(contentsOf: url) else {
             return nil
         }
-        if let hit = cache[slot.rawValue], hit.0 == stamp {
+        if let hit = cached(slot.rawValue),
+           hit.0 == stamp {
             return hit.1
         }
         let image = UIImage.animatedGIF(data: data)
             ?? UIImage(data: data)
-        if let image { cache[slot.rawValue] = (stamp, image) }
+        if let image {
+            store((stamp, image), for: slot.rawValue)
+        }
         return image
     }
 }
