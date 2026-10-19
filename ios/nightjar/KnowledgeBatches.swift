@@ -299,6 +299,16 @@ extension SkelliKnowledge {
                        "saved configuration", "template",
                        "apply vs run", "snapshot"],
             body: "Three different things get called 'saved' here and they are not interchangeable. A War Chest is a posture: the whole rig's settings captured, applied in one act — and applying is not arming. A preset is one organ's configuration, kept for that organ. A macro is a playlist: steps in order, verbs not settings — it does things over time rather than setting a state. A template is a macro that hasn't been named yet. When the operator says 'the usual', she asks which kind — the answer changes what happens next."),
+        SkelliEntry(
+            id: "macropresets",
+            title: "The house presets",
+            home: "the Macros tab",
+            keywords: ["full net test", "first contact macro",
+                       "serve drill", "war footing",
+                       "air census", "silent post",
+                       "macro presets", "preset macros",
+                       "net test"],
+            body: "The library stocks itself on first launch with presets that run from a single initiation — 'run the full net test' is the whole order, no word 'macro' needed. Full Net Test is the flagship: posture and stealth, the ear, a wire census with a knock on the gateway, the rig testing its own Serve (a knock, a ping, a short fuzz), the air (costume, beacon, GATT, a persona worn and dropped), then the war rooms — defense set, a challenge out, the unified run, the assault, a SIGINT watch opened. It stands EMCON down to run and leaves the house dark at the standing condition; the watch stays open and the defense stays set; everything else it starts, it stops. Everything but the Banshee. First Contact censuses a network the rig has never met. Serve Drill tests the rig's own doors. War Footing works the war rooms and goes dark. Air Census reads the air and wears the rig's shapes briefly. Silent Post is a post, not a test — dark, stealthed, listening, and it ends standing that way. Quiet Post, Wire Sweep and Loud Arrival are the older templates, stocked alongside. Every preset validates clean in any house: blocks needing a state the operator builds himself — a Helm remote, a War Chest — are in none of them."),
 
         // MARK: Batch four — operations, whole
 

@@ -104,6 +104,31 @@ enum MacroStore {
         }
     }
 
+    /// The house presets, seeded once (the
+    /// operator's order, 2026-10-18): the library
+    /// stocks itself from the templates on first
+    /// launch, so every preset can be run — by
+    /// hand or by her voice — with no building
+    /// first. Seeding is by name, once: a preset
+    /// the operator deletes stays deleted, and
+    /// one he edits keeps his edits. A later
+    /// generation of presets bumps the flag.
+    static func seedPresetsIfNeeded() {
+        let flag = "macros.presetsSeeded.v1"
+        guard !UserDefaults.standard.bool(
+            forKey: flag) else { return }
+        UserDefaults.standard.set(true, forKey: flag)
+        var macros = load()
+        let existing = Set(macros.map { $0.name })
+        for (_, make) in MacroTemplates.all {
+            let preset = make()
+            if !existing.contains(preset.name) {
+                macros.append(preset)
+            }
+        }
+        save(macros)
+    }
+
     /// Imported macros arrive as copies — fresh ids,
     /// so an import never silently overwrites the
     /// library it lands in.
@@ -380,7 +405,7 @@ enum MacroCatalog {
             blurb: "Knock a host's doors and wait for the answers.",
             fields: [
                 MacroField("host", "Host", .text,
-                           placeholder: "192.168.4.31"),
+                           placeholder: "192.168.4.31 or gateway"),
                 MacroField("ports", "Ports", .text,
                            placeholder: "22, 80, 443"),
                 MacroField("udp", "UDP too", .toggle),
@@ -824,7 +849,323 @@ enum MacroTemplates {
               ])
     }
 
+    // MARK: The house presets (the operator's
+    // order, 2026-10-18): a stocked library from
+    // first launch — each one runs from a single
+    // initiation, by hand or by her voice, and
+    // the flagship uses nearly everything in
+    // the house. The Banshee is in none of
+    // them. Blocks that need a state the
+    // operator must build first (a Helm remote,
+    // a War Chest) are left out of the presets
+    // so every one of them validates clean in
+    // any house.
+
+    static func fullNetTest() -> Macro {
+        Macro(name: "Full Net Test", icon: "target",
+              colorHex: "C2451E",
+              note: "The whole house in one run: "
+                + "posture, the ear, a wire census, "
+                + "the rig testing its own Serve, "
+                + "the air, the war rooms. It "
+                + "stands EMCON down to run and "
+                + "leaves the house dark at your "
+                + "standing condition; the SIGINT "
+                + "watch stays open and the war "
+                + "defense stays set. Everything "
+                + "else it starts, it stops. "
+                + "Everything but the Banshee.",
+              blocks: [
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — beginning"]),
+                MacroBlock(kind: "announce", config: [
+                    "text": "Full net test running — "
+                        + "the house is testing itself."]),
+                MacroBlock(kind: "emconOff"),
+                MacroBlock(kind: "stealth",
+                           config: ["on": "on"]),
+                MacroBlock(kind: "listenStart",
+                           config: ["label": "Full net test"]),
+                MacroBlock(kind: "waitSighting",
+                           config: ["seconds": "30",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — the wire census"]),
+                MacroBlock(kind: "sweep"),
+                MacroBlock(kind: "knock", config: [
+                    "host": "gateway",
+                    "ports": "22, 80, 443, 8080"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — the rig tests itself"]),
+                MacroBlock(kind: "serveStart",
+                           config: MacroCatalog.defaults(
+                            for: "serveStart")),
+                MacroBlock(kind: "knock", config: [
+                    "host": "127.0.0.1",
+                    "ports": "9000"]),
+                MacroBlock(kind: "sendPayload",
+                           config: ["payload": "ping",
+                                    "target": "127.0.0.1:9000",
+                                    "readReply": "on"]),
+                MacroBlock(kind: "waitInbox",
+                           config: ["seconds": "20",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "fuzzStart",
+                           config: ["target": "127.0.0.1:9000",
+                                    "count": "25",
+                                    "length": "64",
+                                    "mutations": "8"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "8"]),
+                MacroBlock(kind: "fuzzStop"),
+                MacroBlock(kind: "serveStop"),
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — the air"]),
+                MacroBlock(kind: "costume",
+                           config: ["name": "nightjar-test"]),
+                MacroBlock(kind: "beaconStart",
+                           config: ["text": "nightjar — full net test",
+                                    "name": "nightjar-test"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "6"]),
+                MacroBlock(kind: "beaconStop"),
+                MacroBlock(kind: "gattStart",
+                           config: ["text": "nightjar — full net test",
+                                    "name": "nightjar-test"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "6"]),
+                MacroBlock(kind: "gattStop"),
+                MacroBlock(kind: "persona",
+                           config: ["mode": "Don",
+                                    "name": "Office printer"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "4"]),
+                MacroBlock(kind: "persona",
+                           config: ["mode": "Drop"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — the war rooms"]),
+                MacroBlock(kind: "warDefense",
+                           config: ["doors": "9000",
+                                    "decoys": "Printer, TV"]),
+                MacroBlock(kind: "warChallenge",
+                           config: ["ip": "gateway",
+                                    "port": "9000",
+                                    "control": "9000"]),
+                MacroBlock(kind: "warRoom",
+                           config: ["mode": "Start"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "20"]),
+                MacroBlock(kind: "warRoom",
+                           config: ["mode": "Stop"]),
+                MacroBlock(kind: "assault",
+                           config: ["mode": "Arm"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "30"]),
+                MacroBlock(kind: "assault",
+                           config: ["mode": "Disarm"]),
+                MacroBlock(kind: "sigintWatch",
+                           config: ["name": "Full net test",
+                                    "scope": "mixed"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "full net test — restore"]),
+                MacroBlock(kind: "listenStop"),
+                MacroBlock(kind: "emconOn"),
+                MacroBlock(kind: "announce", config: [
+                    "text": "Full net test complete. "
+                        + "The house stands dark; the "
+                        + "log holds every phase."]),
+              ])
+    }
+
+    static func firstContact() -> Macro {
+        Macro(name: "First Contact", icon: "globe",
+              colorHex: "1E6FC2",
+              note: "For a network the rig has "
+                + "never met: the ear, a census "
+                + "trace, a knock on the "
+                + "gateway's doors, and a watch "
+                + "for new faces — then the word.",
+              blocks: [
+                MacroBlock(kind: "note", config: [
+                    "text": "first contact — census beginning"]),
+                MacroBlock(kind: "listenStart",
+                           config: ["label": "First contact"]),
+                MacroBlock(kind: "sweep"),
+                MacroBlock(kind: "knock", config: [
+                    "host": "gateway",
+                    "ports": "22, 80, 443, 8080, 9100"]),
+                MacroBlock(kind: "waitSighting",
+                           config: ["seconds": "45",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "listenStop"),
+                MacroBlock(kind: "note", config: [
+                    "text": "first contact — census complete"]),
+                MacroBlock(kind: "announce", config: [
+                    "text": "First contact census "
+                        + "complete — the log holds it."]),
+              ])
+    }
+
+    static func serveDrill() -> Macro {
+        Macro(name: "Serve Drill",
+              icon: "list.bullet",
+              colorHex: "C9962E",
+              note: "The rig tests its own "
+                + "doors: Serve up, a knock, a "
+                + "payload at itself, a short "
+                + "fuzz — then everything down.",
+              blocks: [
+                MacroBlock(kind: "note", config: [
+                    "text": "serve drill — beginning"]),
+                MacroBlock(kind: "serveStart",
+                           config: MacroCatalog.defaults(
+                            for: "serveStart")),
+                MacroBlock(kind: "knock", config: [
+                    "host": "127.0.0.1",
+                    "ports": "9000"]),
+                MacroBlock(kind: "sendPayload",
+                           config: ["payload": "ping",
+                                    "target": "127.0.0.1:9000",
+                                    "readReply": "on"]),
+                MacroBlock(kind: "waitInbox",
+                           config: ["seconds": "20",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "fuzzStart",
+                           config: ["target": "127.0.0.1:9000",
+                                    "count": "25",
+                                    "length": "64",
+                                    "mutations": "8"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "8"]),
+                MacroBlock(kind: "fuzzStop"),
+                MacroBlock(kind: "serveStop"),
+                MacroBlock(kind: "note", config: [
+                    "text": "serve drill — complete"]),
+                MacroBlock(kind: "announce", config: [
+                    "text": "Serve drill complete."]),
+              ])
+    }
+
+    static func warFooting() -> Macro {
+        Macro(name: "War Footing",
+              icon: "shield.fill",
+              colorHex: "8E1F1F",
+              note: "The war rooms in one "
+                + "breath: defense set, a "
+                + "challenge out, the unified "
+                + "run and the assault worked, "
+                + "a watch opened — then the "
+                + "house goes dark.",
+              blocks: [
+                MacroBlock(kind: "note", config: [
+                    "text": "war footing — beginning"]),
+                MacroBlock(kind: "emconOff"),
+                MacroBlock(kind: "warDefense",
+                           config: ["doors": "9000",
+                                    "decoys": "Printer, TV"]),
+                MacroBlock(kind: "warChallenge",
+                           config: ["ip": "gateway",
+                                    "port": "9000",
+                                    "control": "9000"]),
+                MacroBlock(kind: "warRoom",
+                           config: ["mode": "Start"]),
+                MacroBlock(kind: "assault",
+                           config: ["mode": "Arm"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "45"]),
+                MacroBlock(kind: "assault",
+                           config: ["mode": "Disarm"]),
+                MacroBlock(kind: "warRoom",
+                           config: ["mode": "Stop"]),
+                MacroBlock(kind: "sigintWatch",
+                           config: ["name": "War footing",
+                                    "scope": "mixed"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "war footing — complete; going dark"]),
+                MacroBlock(kind: "emconOn"),
+                MacroBlock(kind: "announce", config: [
+                    "text": "War footing worked. "
+                        + "The house stands dark."]),
+              ])
+    }
+
+    static func airCensus() -> Macro {
+        Macro(name: "Air Census",
+              icon: "antenna.radiowaves.left.and.right",
+              colorHex: "6C3BD4",
+              note: "What the air says, and "
+                + "what the rig looks like on "
+                + "it: the ear open, the "
+                + "beacon and the GATT host "
+                + "worn and struck, a persona "
+                + "worn and dropped. The "
+                + "costume name stays set.",
+              blocks: [
+                MacroBlock(kind: "listenStart",
+                           config: ["label": "Air census"]),
+                MacroBlock(kind: "costume",
+                           config: ["name": "nightjar"]),
+                MacroBlock(kind: "beaconStart",
+                           config: ["text": "nightjar — air census",
+                                    "name": "nightjar"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "6"]),
+                MacroBlock(kind: "beaconStop"),
+                MacroBlock(kind: "gattStart",
+                           config: ["text": "nightjar — air census",
+                                    "name": "nightjar"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "6"]),
+                MacroBlock(kind: "gattStop"),
+                MacroBlock(kind: "persona",
+                           config: ["mode": "Don",
+                                    "name": "Office printer"]),
+                MacroBlock(kind: "wait",
+                           config: ["seconds": "4"]),
+                MacroBlock(kind: "persona",
+                           config: ["mode": "Drop"]),
+                MacroBlock(kind: "waitSighting",
+                           config: ["seconds": "30",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "listenStop"),
+                MacroBlock(kind: "announce", config: [
+                    "text": "Air census complete."]),
+              ])
+    }
+
+    static func silentPost() -> Macro {
+        Macro(name: "Silent Post",
+              icon: "moon.stars.fill",
+              colorHex: "5A6B7A",
+              note: "A post, not a test: the "
+                + "house dark, stealth on, "
+                + "the ear open — and it ends "
+                + "standing exactly that way, "
+                + "by design.",
+              blocks: [
+                MacroBlock(kind: "emconOn"),
+                MacroBlock(kind: "stealth",
+                           config: ["on": "on"]),
+                MacroBlock(kind: "listenStart",
+                           config: ["label": "Silent post"]),
+                MacroBlock(kind: "waitSighting",
+                           config: ["seconds": "120",
+                                    "onTimeout": "Continue"]),
+                MacroBlock(kind: "note", config: [
+                    "text": "silent post standing — dark, listening"]),
+                MacroBlock(kind: "announce", config: [
+                    "text": "Silent post stands — "
+                        + "dark, and listening."]),
+              ])
+    }
+
     static let all: [(title: String, make: () -> Macro)] = [
+        ("Full Net Test", fullNetTest),
+        ("First Contact", firstContact),
+        ("Serve Drill", serveDrill),
+        ("War Footing", warFooting),
+        ("Air Census", airCensus),
+        ("Silent Post", silentPost),
         ("Quiet Post", quietPost),
         ("Wire Sweep", wireSweep),
         ("Loud Arrival", loudArrival),
@@ -1093,7 +1434,8 @@ final class MacroRunner: ObservableObject {
             return .done(try await knock(block))
         case "fuzzStart":
             bench.startFuzz(
-                target: block.value("target"), seed: nil,
+                target: resolveTarget(
+                    block.value("target")), seed: nil,
                 count: Int(block.number("count", 50)),
                 length: Int(block.number("length", 64)),
                 mutations: Int(block.number("mutations", 8)),
@@ -1138,7 +1480,8 @@ final class MacroRunner: ObservableObject {
             let games = WarGamesCenter.shared
             games.attachForHands(mouth: mouth, post: post)
             games.challenge(
-                defenderIP: block.value("ip"),
+                defenderIP: resolveHost(
+                    block.value("ip")),
                 port: Int(block.number("port", 9000)),
                 myControlPort: Int(block.number("control", 9000)),
                 myLabel: Mouth.wireHostName().isEmpty
@@ -1217,7 +1560,8 @@ final class MacroRunner: ObservableObject {
                              mouth: Mouth,
                              book: PayloadBook) throws -> String {
         let name = block.value("payload")
-        let targetText = block.value("target")
+        let targetText = resolveTarget(
+            block.value("target"))
         let data = try buildPayload(named: name,
                                     targetText: targetText,
                                     book: book)
@@ -1359,10 +1703,35 @@ final class MacroRunner: ObservableObject {
         }
     }
 
+    /// "gateway" (or "router"), by the house
+    /// convention the forge keeps: this phone's
+    /// /24, door .1 — so a preset written once
+    /// knocks the right door on any network the
+    /// rig joins. Anything else passes through
+    /// untouched.
+    private func resolveHost(_ host: String) -> String {
+        guard host == "gateway" || host == "router",
+              let ip = Mouth.localIPAddress()
+        else { return host }
+        var parts = ip.split(separator: ".")
+            .map(String.init)
+        guard parts.count == 4 else { return host }
+        parts[3] = "1"
+        return parts.joined(separator: ".")
+    }
+
+    private func resolveTarget(_ target: String)
+        -> String {
+        guard let cut = target.firstIndex(of: ":")
+        else { return resolveHost(target) }
+        return resolveHost(String(target[..<cut]))
+            + String(target[cut...])
+    }
+
     @MainActor
     private func knock(_ block: MacroBlock) async throws
         -> String {
-        let host = block.value("host")
+        let host = resolveHost(block.value("host"))
         let ports = block.intList("ports")
         guard !host.isEmpty, !ports.isEmpty else {
             throw MacroProblem(message: "The knock needs "

@@ -732,3 +732,40 @@
   during the boot film
   instead of taxing
   first use.
+- **Orders in plain
+  words.** "Hack
+  something." "Scan
+  the area." "Lock
+  it down." "Stop
+  everything." She
+  hears a loose
+  command the way a
+  person does — in
+  its thousand
+  shapes — and does
+  the thing with the
+  hands she has.
+  Questions stay
+  lessons; statements
+  stay conversation.
+- **A stocked library.**
+  The Macros shelf
+  arrives with its
+  presets built:
+  Full Net Test —
+  the whole house in
+  one run, posture
+  to war rooms,
+  everything but
+  the Banshee —
+  First Contact,
+  Serve Drill, War
+  Footing, Air
+  Census, Silent
+  Post, and the
+  three classics.
+  One initiation
+  runs each: a tap,
+  or simply "run
+  the full net
+  test."

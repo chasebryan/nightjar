@@ -155,8 +155,66 @@ extension SkelliCenter {
     /// steps. The same MacroStore and MacroRunner the
     /// Macros tab drives; nothing here is a second
     /// system.
+    /// The voice run, shared by both of
+    /// macroAsk's doors: readiness spoken
+    /// plainly, then the runner takes it —
+    /// one initiation, and the playlist
+    /// runs itself out.
+    private func runMacroByVoice(_ target: Macro)
+        -> Bool {
+        let runner = MacroRunner.shared
+        if runner.running {
+            say("“\(runner.currentMacroName)” is "
+                + "already running — stop it first.")
+            return true
+        }
+        guard let mouth = mouth, let post = post,
+              let emcon = emcon else { return false }
+        let book = PayloadBook()
+        let problems = MacroValidator.problems(
+            in: target, book: book)
+        guard problems.isEmpty else {
+            say("“\(target.name)” is not ready: "
+                + problems[0])
+            return true
+        }
+        runner.run(target, mouth: mouth, post: post,
+                   emcon: emcon, book: book)
+        say("Running “\(target.name)” — "
+            + "\(target.blocks.count) blocks.")
+        return true
+    }
+
     func macroAsk(_ q: String, raw: String) -> Bool {
-        guard q.contains("macro") else { return false }
+        if !q.contains("macro") {
+            // The named front door (the
+            // operator's order, 2026-10-18): a
+            // run order that names a macro in
+            // the library needs no word
+            // "macro" — "run the full net
+            // test" is the whole initiation.
+            // Two of the name's words must
+            // land, so a stray "test" never
+            // fires a playlist, and questions
+            // stay questions.
+            if q.contains("when did")
+                || q.contains("when was")
+                || q.hasPrefix("when ")
+                || q.hasPrefix("how ") {
+                return false
+            }
+            guard q.contains("run")
+                || q.contains("play")
+                || q.contains("start") {
+                return false
+            }
+            let macros = MacroStore.load()
+            guard let target = bestMacro(
+                    in: q, from: macros),
+                  warNameScore(target.name, in: q) >= 2
+            else { return false }
+            return runMacroByVoice(target)
+        }
         // A question ABOUT a macro is not a
         // macro command: "when did a macro last
         // run" must never reach the run branch

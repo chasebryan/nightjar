@@ -110,6 +110,7 @@ enum HouseSetup {
     /// the mirror begins watching for changes
     /// and refreshes itself.
     static func prepare() {
+        MacroStore.seedPresetsIfNeeded()
         restoreIfFresh()
         HouseSetupMirror.shared.start()
         mirror()
