@@ -29,6 +29,16 @@ extension SkelliKnowledge {
                        "how to pentest"],
             body: "A penetration test is an authorized, scoped rehearsal of an attack, run to find what an adversary would find — before one does. The craft moves in phases: reconnaissance (what exists, who owns it, what it says about itself), enumeration (services, versions, the exact shape of every door), vulnerability analysis (known flaws, misconfigurations, weak trust), exploitation (proving a flaw is real, with the smallest demonstration that proves it), post-exploitation (what the foothold actually reaches — the blast radius is the finding), and reporting, which is the deliverable the whole test exists for: each finding with its evidence, its impact in plain language, and its fix. The frameworks agree beneath their names — PTES, NIST SP 800-115, the OWASP testing guides for web and firmware, MITRE ATT&CK for mapping technique to adversary behavior. Tooling serves the phases, never the reverse: a scanner's output is a lead, not a result. She knows this ground the way she knows the wire: ask her any of it, at any depth."),
         SkelliEntry(
+            id: "offensivekit",
+            title: "Her offensive kit — interrogate, prod, barrage",
+            home: "the fun pack, with teeth",
+            keywords: ["interrogate", "the barrage",
+                       "prod", "postcard",
+                       "make it talk",
+                       "offensive kit"],
+            body: "Her hands do more than watch. INTERROGATE a device — 'interrogate the printer' — and she knocks its doors (the ones the board knows, or the full census) and reads back what its services say for themselves: banners are confessions, and every Net-Assault finding now quotes them. The PROD sends one nonsense line — 'knock knock. 🍅' — to each known door and records how it answers; services confess versions to strangers who knock strangely. A BARRAGE is the tomato with weather: name a marked device (barraging one throws its tomato first) and it gets a postcard on its door, then a small knock every few seconds, twenty-four deliveries at most, then it stops itself and reports; 'cease fire' ends it sooner, and standing Net-Assault down or vanishing the house stops it cold. During Net-Assault itself, a marked device's first open door also receives one postcard per run — the tomato, made literal. The gates are the Standard's: the barrage is a campaign, dark under any EMCON condition; the prod and the interrogation are probing, dark where probing is dark. All of it works the operator's own wire only — pressure, presence, and a memory for who answered rudely."),
+
+        SkelliEntry(
             id: "tomato",
             title: "The tomato — a standing target",
             home: "an insult she administers on order",

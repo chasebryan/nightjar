@@ -197,6 +197,8 @@ final class AssaultCenter: ObservableObject {
     }
 
     func arm() {
+        // A new run, a clean postcard ledger.
+        postcardedThisRun = []
         guard !running else { return }
         if EmconStandard.refused(.netAssault) {
             note("Net-Assault stays dark — "
@@ -242,6 +244,9 @@ final class AssaultCenter: ObservableObject {
         model.stopDiscovery()
         model.stopSweep()
         recon.cancelKnock()
+        // The house going quiet quiets the
+        // pestering too.
+        TomatoBarrage.shared.stop()
         knockingNow = nil
         stage = .idle
         phase = "Stood down"
@@ -473,14 +478,47 @@ final class AssaultCenter: ObservableObject {
     /// The bench finished with a host: its answers are a
     /// finding — what it speaks, or that it has gone
     /// silent on doors it used to answer.
+    /// This run's postcard ledger: the tomato
+    /// arrives once per device per run — once is
+    /// an insult, twice is pestering, and
+    /// pestering is the barrage's job.
+    private var postcardedThisRun: Set<String> = []
+
     private func harvestKnock(_ neighbor: Neighbor) {
         let opens = recon.hits.filter { $0.isOpen }
         if !opens.isEmpty {
             let doors = opens.map {
-                "\($0.port) \($0.service)"
+                let said = $0.banner
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                return "\($0.port) \($0.service)"
+                    + (said.isEmpty
+                        ? ""
+                        : " says '\(said.prefix(64))'")
             }.joined(separator: " · ")
             addFinding("\(neighbor.displayName) answers: "
                        + doors)
+            // The tomato, made literal: one
+            // postcard per marked device per run,
+            // on its first open door.
+            if TomatoMarks.shared
+                .isMarked(neighbor.ip),
+               !postcardedThisRun
+                .contains(neighbor.ip),
+               let first = opens.first {
+                postcardedThisRun
+                    .insert(neighbor.ip)
+                Postcard.deliver(
+                    ip: neighbor.ip,
+                    port: first.port,
+                    bytes: Postcard.tomatoBytes)
+                addFinding("🍅 The tomato, made "
+                           + "literal: a postcard "
+                           + "left on "
+                           + "\(neighbor.displayName)'s "
+                           + "door at port "
+                           + "\(first.port).")
+            }
             // News is news: the governor's rest snaps
             // back when the knock stage finds something,
             // exactly as it does for the sweep stage.

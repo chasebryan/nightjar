@@ -488,6 +488,11 @@ final class SkelliCenter: ObservableObject {
     private(set) var post: ListeningPost?
     private let scanner = ScanModel()
     private var sweepWatch: AnyCancellable?
+    /// Her interrogation bench — a Recon of her
+    /// own, so a voice interrogation never fights
+    /// the Assault's or the Recon tab's knock.
+    private let offenseRecon = Recon()
+    private var offenseWatch: AnyCancellable?
     private var idleWork: DispatchWorkItem?
     /// The conversation's short-term memory: the device
     private var lastDeviceIP: String?
@@ -3112,6 +3117,9 @@ final class SkelliCenter: ObservableObject {
         if tomatoAsk(q) {
             return
         }
+        if offenseAsk(q) {
+            return
+        }
         if assaultAsk(q) {
             return
         }
@@ -4675,6 +4683,7 @@ final class SkelliCenter: ObservableObject {
             forKey: "heart.lastVanish")
         scanner.stopSweep()
         scanner.stopWatch()
+        TomatoBarrage.shared.stop()
         MacroRunner.shared.stop()
         MacroRunner.shared.haltBenches()
         WarRun.shared.stop()
@@ -5403,6 +5412,246 @@ final class SkelliCenter: ObservableObject {
     /// What she will not do is lift EMCON herself:
     /// a condition that holds it dark is named,
     /// plainly, as the blocker.
+    /// A device named in the words — the wire's
+    /// cast, matched by address, by the board's
+    /// name for it, or by its own announced name.
+    private func mentionedNeighbor(
+        in text: String) -> Neighbor? {
+        NeighborhoodStore.shared.neighbors.first {
+            n in
+            text.contains(n.ip)
+                || (n.displayName.count >= 3
+                    && text.contains(
+                        n.displayName.lowercased()))
+                || (n.name.map {
+                    $0.count >= 3
+                        && text.contains(
+                            $0.lowercased())
+                } ?? false)
+        }
+    }
+
+    /// Her offensive kit by voice: interrogate a
+    /// device until its services introduce
+    /// themselves, prod its known doors with
+    /// nonsense and record the answers, and rain
+    /// tomatoes on the marked. The barrage is a
+    /// campaign — refused where Net-Assault is
+    /// refused. The prod and the interrogation
+    /// are probing, refused where probing is.
+    private func offenseAsk(_ q: String) -> Bool {
+        TomatoBarrage.shared.onFinished = {
+            [weak self] line in self?.say(line)
+        }
+        let store = NeighborhoodStore.shared
+        // Cease fire.
+        if q.contains("cease fire")
+            || (q.contains("barrage")
+                && (q.contains("stop")
+                    || q.contains("halt")
+                    || q.contains("down")))
+            || q.contains("stop pestering") {
+            say(TomatoBarrage.shared.cease())
+            return true
+        }
+        // Rain tomatoes.
+        let rainShape = q.contains("barrage")
+            || q.contains("pester")
+            || (q.contains("tomato")
+                && (q.contains("rain")
+                    || q.contains("fly")
+                    || q.contains("storm")))
+        if rainShape {
+            if TomatoBarrage.shared.running {
+                say("A barrage is already flying — "
+                    + TomatoBarrage.shared.targetLabel
+                    + " is being pestered. "
+                    + "'Cease fire' ends it.")
+                return true
+            }
+            var targets: [(ip: String, name: String,
+                            ports: [Int])] = []
+            var threwToo = false
+            if let n = mentionedNeighbor(in: q) {
+                if !TomatoMarks.shared.isMarked(n.ip) {
+                    TomatoMarks.shared.mark(n.ip)
+                    Journal.log("tomato", "mark",
+                                "\(n.displayName) "
+                                + "(\(n.ip)) — for a "
+                                + "barrage")
+                    threwToo = true
+                }
+                targets = [(n.ip, n.displayName,
+                            n.ports)]
+            } else {
+                targets = TomatoMarks.shared.marked
+                    .sorted().compactMap { ip in
+                        store.neighbors.first {
+                            $0.ip == ip
+                        }.map {
+                            ($0.ip, $0.displayName,
+                             $0.ports)
+                        }
+                    }
+            }
+            guard !targets.isEmpty else {
+                say("Nobody to rain on — no device "
+                    + "named, and no tomatoes out. "
+                    + "Throw a tomato first, or name "
+                    + "the victim: 'barrage the "
+                    + "printer'.")
+                return true
+            }
+            if EmconStandard.refused(.netAssault) {
+                say("The barrage stays holstered: "
+                    + EmconCondition.current.declared
+                    + " forbids campaigns. Lift the "
+                    + "condition and the tomatoes "
+                    + "fly.")
+                return true
+            }
+            mood = .working
+            activity = "Raining tomatoes…"
+            _ = TomatoBarrage.shared.start(
+                targets: targets)
+            let names = targets.map { $0.name }
+                .joined(separator: ", ")
+            say((threwToo
+                    ? "🍅 on \(names), and now "
+                      + "the weather: "
+                    : "🍅 The barrage opens on ")
+                + names + " — a postcard on the "
+                + "door, then a knock every few "
+                + "seconds, twenty-four at most. "
+                + "It stops itself; 'cease fire' "
+                + "stops it sooner.")
+            return true
+        }
+        // Interrogate.
+        if q.contains("interrogate")
+            || q.contains("make it talk")
+            || q.contains("make them talk") {
+            guard let n = mentionedNeighbor(in: q)
+            else {
+                say("Interrogate whom? Name a "
+                    + "device on the wire — "
+                    + "'interrogate the printer'.")
+                return true
+            }
+            if EmconStandard.refused(.probing) {
+                say("No interrogations under "
+                    + EmconCondition.current.declared
+                    + " — probing is dark. Lift the "
+                    + "condition and I'll make it "
+                    + "talk.")
+                return true
+            }
+            if offenseRecon.knocking {
+                say("An interrogation is already "
+                    + "running — one witness at a "
+                    + "time.")
+                return true
+            }
+            if offenseRecon.mouth == nil {
+                offenseRecon.mouth = mouth
+            }
+            let ports = n.ports.isEmpty
+                ? ScanModel.topPorts.map { $0.0 }
+                : n.ports
+            mood = .working
+            activity = "Interrogating "
+                + "\(n.displayName)…"
+            offenseRecon.knock(host: n.ip,
+                               ports: ports,
+                               udp: false, speak: false)
+            offenseWatch = offenseRecon.$knocking
+                .dropFirst()
+                .filter { !$0 }
+                .first()
+                .sink { [weak self] _ in
+                    guard let self = self else { return }
+                    self.mood = .idle
+                    let open = self.offenseRecon.hits
+                        .filter { $0.isOpen }
+                    guard !open.isEmpty else {
+                        self.say("\(n.displayName) "
+                            + "wouldn't talk — none "
+                            + "of the \(ports.count) "
+                            + "doors I knocked "
+                            + "answered.")
+                        return
+                    }
+                    var parts: [String] = []
+                    for hit in open.prefix(6) {
+                        let said = hit.banner
+                            .trimmingCharacters(
+                                in: .whitespacesAndNewlines)
+                        parts.append(
+                            "\(hit.port) "
+                            + "\(hit.service)"
+                            + (said.isEmpty
+                                ? " (silent)"
+                                : " says "
+                                  + "'\(said.prefix(56))"
+                                  + "'"))
+                    }
+                    self.say("\(n.displayName), "
+                        + "interrogated: "
+                        + parts.joined(
+                            separator: "; ")
+                        + (open.count > 6
+                            ? "; and \(open.count - 6) "
+                              + "more door(s) on the "
+                              + "Recon bench."
+                            : "."))
+                }
+            return true
+        }
+        // The prod.
+        if q.contains("prod ") || q.hasPrefix("prod")
+            || q.contains("give it a prod")
+            || q.hasPrefix("poke ") {
+            guard let n = mentionedNeighbor(in: q)
+            else {
+                say("Prod whom? Name a device — "
+                    + "'prod the printer'.")
+                return true
+            }
+            if EmconStandard.refused(.probing) {
+                say("No prodding under "
+                    + EmconCondition.current.declared
+                    + " — probing is dark.")
+                return true
+            }
+            guard !n.ports.isEmpty else {
+                say("I don't know "
+                    + "\(n.displayName)'s doors yet "
+                    + "— interrogate it first, then "
+                    + "prod what answers.")
+                return true
+            }
+            mood = .working
+            activity = "Prodding \(n.displayName)…"
+            ProdSession(ip: n.ip, ports: n.ports) {
+                [weak self] lines in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    self.mood = .idle
+                    Journal.log("prod", "answers",
+                                "\(n.displayName): "
+                                + lines.joined(
+                                    separator: "; "))
+                    self.say("The prod, answered — "
+                        + "\(n.displayName): "
+                        + lines.joined(
+                            separator: "; ") + ".")
+                }
+            }.start()
+            return true
+        }
+        return false
+    }
+
     /// The tomato: a device the operator has
     /// marked for insult is picked on in every
     /// test the house runs — knocked first in

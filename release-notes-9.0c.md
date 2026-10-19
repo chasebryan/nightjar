@@ -860,3 +860,35 @@
   stands. Wipe it
   off whenever the
   point is made.
+
+- **The fun pack.**
+  Her kit grows
+  teeth. Services
+  knocked on a pass
+  now introduce
+  themselves —
+  banners quoted in
+  every finding.
+  Ask her to
+  interrogate a
+  device and she
+  reads its doors
+  back to you; the
+  prod asks one
+  nonsense question
+  per door and
+  files the answers.
+  And the tomato
+  gets weather: a
+  barrage leaves a
+  postcard, then a
+  knock every few
+  seconds, twenty-
+  four at most —
+  while a marked
+  door answered on
+  a pass gets one
+  postcard of its
+  own. The Standard
+  gates it all, as
+  ever.
