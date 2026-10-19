@@ -132,6 +132,82 @@ final class DecoderTests: XCTestCase {
         XCTAssertFalse(Classification.classify(exposure).trackerShaped)
     }
 
+    func testTheLastFloorNamesWhatNothingElseClaims() {
+        // A custom 128-bit service and nothing
+        // else: distinguishable, not "unknown".
+        let custom = Sighting(
+            seenAt: 1, address: "E", name: nil,
+            rssi: -60,
+            serviceUUIDs: [
+                "12345678-1234-1234-1234-1234567890ab"])
+        let hit = Classification.classify(custom)
+        XCTAssertEqual(hit.kind,
+                       "BLE device — custom service")
+        XCTAssertEqual(hit.rank,
+                       Classification.rankFloor)
+        XCTAssertTrue(hit.details.contains(
+            "advertises custom service "
+            + "12345678-1234-1234-1234-1234567890ab"))
+
+        // An unregistered 16-bit service
+        // (0xFFF3: absent from the SIG list
+        // and the curated table alike).
+        let unnamed = Sighting(
+            seenAt: 1, address: "F", name: nil,
+            rssi: -60,
+            serviceUUIDs: [
+                "0000fff3-0000-1000-8000-00805f9b34fb"])
+        XCTAssertEqual(
+            Classification.classify(unnamed).kind,
+            "BLE device — service 0xFFF3")
+
+        // An unassigned maker code (0xBEEF).
+        let maker = Sighting(
+            seenAt: 1, address: "G", name: nil,
+            rssi: -60,
+            manufacturerData: [0xBEEF: [0x01, 0x02]])
+        XCTAssertEqual(
+            Classification.classify(maker).kind,
+            "BLE device — maker code 0xBEEF")
+
+        // The floor never outranks a real
+        // reading standing beside it.
+        let tile = Sighting(
+            seenAt: 1, address: "H", name: nil,
+            rssi: -60,
+            serviceUUIDs: [
+                "0000feed-0000-1000-8000-00805f9b34fb",
+                "12345678-1234-1234-1234-1234567890ab"])
+        XCTAssertEqual(
+            Classification.classify(tile).kind,
+            "Tile tracker")
+
+        // A named device keeps its name as
+        // the label; the floor names the kind.
+        let named = Sighting(
+            seenAt: 1, address: "I",
+            name: "Porch sensor", rssi: -60,
+            serviceUUIDs: [
+                "12345678-1234-1234-1234-1234567890ab"])
+        let row = DeviceRow(sighting: named)
+        XCTAssertEqual(row.label, "Porch sensor")
+        XCTAssertEqual(row.kind,
+                       "BLE device — custom service")
+
+        // A seeking-only broadcast: what it
+        // wants names what it is.
+        let seeking = Sighting(
+            seenAt: 1, address: "J", name: nil,
+            rssi: -60,
+            solicitedUUIDs: [
+                "0000180d-0000-1000-8000-00805f9b34fb"])
+        let sought = Classification.classify(seeking)
+        XCTAssertEqual(sought.kind,
+                       "BLE device — seeking a service")
+        XCTAssertTrue(sought.details.contains(
+            "seeking service Heart Rate"))
+    }
+
     func testFMDNSeparatedStateIsNamed() {
         // Round 3: the frame byte is a state.
         // 0x41 is the tag away from its owner —

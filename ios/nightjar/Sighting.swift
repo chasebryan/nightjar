@@ -23,6 +23,11 @@ struct Sighting {
     let serviceUUIDs: [String]
     let txPower: Int?
     let serviceData: [String: [UInt8]]
+    /// Services this device is SEEKING — the
+    /// solicited list. It names the role the
+    /// device hopes to find, which is evidence
+    /// about the device itself.
+    let solicitedUUIDs: [String]
     /// Whether the advertiser accepts connections —
     /// CoreBluetooth reports it with the advertisement,
     /// and it separates beacons (listen-only by design)
@@ -32,7 +37,8 @@ struct Sighting {
     init(seenAt: TimeInterval, address: String, name: String?, rssi: Int?,
          manufacturerData: [UInt16: [UInt8]] = [:], serviceUUIDs: [String] = [],
          txPower: Int? = nil, serviceData: [String: [UInt8]] = [:],
-         isConnectable: Bool? = nil) {
+         isConnectable: Bool? = nil,
+         solicitedUUIDs: [String] = []) {
         self.seenAt = seenAt
         self.address = address
         self.name = name
@@ -94,6 +100,16 @@ struct Sighting {
             self.isConnectable = nil
         }
 
+        if let solicited = advertisementData[
+            CBAdvertisementDataSolicitedServiceUUIDsKey]
+            as? [CBUUID] {
+            self.solicitedUUIDs = solicited.map {
+                $0.nightjarString
+            }
+        } else {
+            self.solicitedUUIDs = []
+        }
+
         var serviceData: [String: [UInt8]] = [:]
         if let table = advertisementData[CBAdvertisementDataServiceDataKey] as? [CBUUID: Data] {
             for (uuid, data) in table {
@@ -101,6 +117,7 @@ struct Sighting {
             }
         }
         self.serviceData = serviceData
+        self.solicitedUUIDs = solicitedUUIDs
     }
 
     /// The log record: field order and spelling match the Python side.

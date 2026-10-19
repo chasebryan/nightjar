@@ -654,3 +654,17 @@
   conditions shows its
   effect even in a
   quiet house.
+- **The last floor.**
+  Broadcasts that name
+  nothing now still say
+  what they carry — an
+  unregistered service,
+  a custom service
+  quoted in full, a
+  maker code the SIG
+  never assigned — and
+  the services a device
+  is seeking are read
+  too. "Unknown device"
+  is left for the truly
+  silent.

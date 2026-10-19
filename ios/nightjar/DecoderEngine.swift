@@ -206,6 +206,24 @@ enum DecoderEngine {
                 + "connections")
         }
         out.shape = payloadShape(sighting)
+        // And the radio's own facts, when no
+        // format claimed the broadcast at all:
+        // whether it takes connections, and
+        // how loud it speaks. (Not-connectable
+        // is already evidence above.)
+        if sighting.manufacturerData.isEmpty,
+           sighting.serviceData.isEmpty,
+           sighting.serviceUUIDs.isEmpty {
+            if sighting.isConnectable == true {
+                out.shape.append(
+                    "connectable — it accepts "
+                    + "connections")
+            }
+            if let tx = sighting.txPower {
+                out.shape.append(
+                    "transmits at \(tx) dBm")
+            }
+        }
         return out
     }
 

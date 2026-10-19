@@ -6,6 +6,9 @@ import Foundation
 /// makers' manufacturer data, then the bare name.
 struct Classification {
     static let rankUnknown = 0
+    /// The last floor's rung: above silence and
+    /// the bare name, below every real reading.
+    static let rankFloor = 5
     static let rankFamily = 10
     static let rankFamilyHint = 15
     static let rankSubfamily = 20
@@ -116,6 +119,20 @@ struct Classification {
                                   preferredLabel: late.preferredLabel))
         }
 
+        // The last floor: a broadcast that
+        // names nothing still SAID things —
+        // the services it advertises (claimed
+        // or not), the maker code it carries
+        // (assigned or not), the services it
+        // seeks. Ranked below every real
+        // reading, so it can only ever beat
+        // silence: two such rows are
+        // distinguishable, and no row with
+        // evidence left reads "Unknown device".
+        if let floor = Self.advertisingFloor(sighting) {
+            candidates.append(floor)
+        }
+
         if sighting.name != nil {
             candidates.append(Classification(kind: "Named device"))
         }
@@ -148,6 +165,70 @@ struct Classification {
                 .compactMap { $0.preferredLabel }.first
         }
         return result
+    }
+
+    /// What a broadcast states about itself
+    /// when no decoder claims it. Every line
+    /// is the broadcast's own fact, checked
+    /// against the registries — nothing is
+    /// guessed: an unnamed service is called
+    /// unnamed, a custom service is quoted in
+    /// full, an unassigned maker code is
+    /// called unassigned.
+    private static func advertisingFloor(
+        _ sighting: Sighting) -> Classification? {
+        var details: [String] = []
+        var kind: String? = nil
+        var advertised: [String] = []
+        for uuid in sighting.serviceUUIDs
+            + Array(sighting.serviceData.keys)
+        where !advertised.contains(uuid) {
+            advertised.append(uuid)
+        }
+        // The first advertised service no
+        // registry names decides the kind; a
+        // service the SIG names belongs to the
+        // Services channel's own floor.
+        if let first = advertised.first(where: {
+            Services.name($0) == nil }) {
+            if let short = Services.short(first) {
+                let hex = String(format: "0x%04X",
+                                 short)
+                kind = "BLE device — service "
+                    + hex
+                details.append("advertises service "
+                    + hex + " — unnamed in the "
+                    + "SIG registry")
+            } else {
+                kind = "BLE device — custom service"
+                details.append("advertises custom "
+                    + "service " + first)
+            }
+            if advertised.count > 1 {
+                details.append("+\(advertised.count - 1) "
+                    + "more advertised")
+            }
+        }
+        if kind == nil,
+           let company = sighting.manufacturerData
+               .keys.sorted().first {
+            let hex = String(format: "0x%04X", company)
+            kind = "BLE device — maker code " + hex
+            details.append("company code " + hex
+                + " — not in the SIG registry")
+        }
+        for uuid in sighting.solicitedUUIDs {
+            details.append("seeking service "
+                + (Services.name(uuid) ?? uuid))
+        }
+        if kind == nil,
+           !sighting.solicitedUUIDs.isEmpty {
+            kind = "BLE device — seeking a service"
+        }
+        guard let kind else { return nil }
+        return Classification(kind: kind,
+                              details: details,
+                              rank: rankFloor)
     }
 }
 
