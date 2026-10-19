@@ -25,6 +25,61 @@ final class EmconTests: XCTestCase {
         XCTAssertFalse(ghost.capped)
     }
 
+    // MARK: - the standing board
+
+    func testBoardStatesTheHouseAtCharlie() {
+        var s = EmconSnapshot()
+        s.serveRunning = true
+        s.stealth = true
+        s.gattHostOn = true
+        let rows = EmconStandard.board(s,
+                                       condition: .charlie)
+        XCTAssertEqual(rows.count, 10)
+        let serve = rows.first { $0.label == "Serve" }
+        XCTAssertEqual(serve?.standing, true)
+        XCTAssertEqual(serve?.ruling, "Permitted")
+        XCTAssertEqual(serve?.weight ?? -1, 4.0,
+                       accuracy: 0.001)
+        let gatt = rows.first { $0.label == "GATT host" }
+        XCTAssertEqual(gatt?.ruling, "Forbidden")
+        XCTAssertEqual(gatt?.violation, true)
+        let dark = rows.first { $0.label == "Persona" }
+        XCTAssertEqual(dark?.standing, false)
+        XCTAssertEqual(dark?.violation, false)
+    }
+
+    func testBoardServeRulingsFollowTheCondition() {
+        let dark = EmconSnapshot()
+        let charlie = EmconStandard.board(
+            dark, condition: .charlie)
+        XCTAssertEqual(charlie.first {
+            $0.label == "Serve" }?.ruling, "Stealth only")
+        let bravo = EmconStandard.board(
+            dark, condition: .bravo)
+        XCTAssertEqual(bravo.first {
+            $0.label == "Serve" }?.ruling, "Forbidden")
+        let open = EmconStandard.board(
+            dark, condition: .open)
+        XCTAssertTrue(open.allSatisfy {
+            $0.ruling == "Permitted" })
+    }
+
+    func testRefusedLabelsNameTheChange() {
+        let charlie = EmconStandard.refusedLabels(
+            for: .charlie)
+        XCTAssertTrue(charlie.contains("a listed Serve"))
+        XCTAssertFalse(charlie.contains("the relay poll"))
+        XCTAssertFalse(charlie.contains("an active sweep"))
+        let bravo = EmconStandard.refusedLabels(
+            for: .bravo)
+        XCTAssertTrue(bravo.contains("Serve"))
+        XCTAssertTrue(bravo.contains("the relay poll"))
+        XCTAssertTrue(EmconStandard.refusedLabels(
+            for: .alpha).contains("an active sweep"))
+        XCTAssertTrue(EmconStandard.refusedLabels(
+            for: .open).isEmpty)
+    }
+
     func testInventorySumsToExactlyOneHundred() {
         // The scale's construction contract: a fully lit
         // house is 100.0, not a cap's artifact.

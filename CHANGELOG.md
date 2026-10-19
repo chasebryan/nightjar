@@ -644,6 +644,18 @@
   itself teaches —
   no longer answered
   from the armory.
+- **The standing board.**
+  EMCON now shows every
+  governed organ at a
+  glance — standing or
+  dark, what it costs,
+  and the condition's
+  ruling on it — and
+  names what the gates
+  refuse, so switching
+  conditions shows its
+  effect even in a
+  quiet house.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

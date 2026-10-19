@@ -266,7 +266,52 @@ struct EmconView: View {
                     }
                 }
             }
+            // The standing board: every governed organ, its
+            // live state, and this condition's ruling on it.
+            // A switch redraws it even in a quiet house.
+            Text("The standing board")
+                .font(.caption.weight(.semibold))
+            ForEach(emcon.board(mouth: mouth)) { row in
+                HStack {
+                    Text(row.label).font(.caption)
+                    Spacer()
+                    if row.standing {
+                        Text("standing · +"
+                             + Emcon.fmt(row.weight))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(row.violation
+                                              ? .red
+                                              : scoreColor)
+                    } else {
+                        Text("dark")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(row.ruling)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(
+                            row.ruling == "Forbidden"
+                                ? .red : .secondary)
+                        .frame(width: 78,
+                               alignment: .trailing)
+                }
+            }
             if emcon.active {
+                if emcon.lastSilenced.isEmpty {
+                    Text("Nothing was standing — nothing "
+                         + "had to be silenced.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                let refused = EmconStandard.refusedLabels(
+                    for: emcon.condition)
+                if !refused.isEmpty {
+                    Text("The gates now refuse: "
+                         + refused.joined(separator: ", ")
+                         + ".")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 if !emcon.lastSilenced.isEmpty {
                     Text("Silenced on engage: "
                          + emcon.lastSilenced.joined(

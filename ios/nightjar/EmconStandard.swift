@@ -204,6 +204,24 @@ struct EmconSnapshot {
     var announcerCount = 0
 }
 
+/// One line of the standing board: a governed
+/// organ, whether it stands, what it costs
+/// while it stands, and the condition's
+/// ruling on it.
+struct EmconBoardRow: Identifiable {
+    let organ: EmconOrgan
+    let label: String
+    let standing: Bool
+    let weight: Double
+    let ruling: String
+    var id: String { organ.rawValue + "|" + label }
+    /// Standing where the condition forbids:
+    /// named, never assumed away.
+    var violation: Bool {
+        standing && ruling == "Forbidden"
+    }
+}
+
 enum EmconStandard {
 
     // MARK: - the inventory (weights, exact)
@@ -320,6 +338,111 @@ enum EmconStandard {
         default: band = "BEACONING"
         }
         return Emcon.Score(value: value, band: band, parts: parts)
+    }
+
+    // MARK: - the standing board
+
+    /// The board: every governed organ, its
+    /// live state, its exact weight while it
+    /// stands, and the condition's ruling on
+    /// it. The score says what the house costs;
+    /// the board says WHY, organ by organ, and
+    /// what a condition would do about each —
+    /// so a switch is legible even in a quiet
+    /// house, where nothing had to fall.
+    static func board(_ s: EmconSnapshot,
+                      condition: EmconCondition)
+        -> [EmconBoardRow] {
+        func ruling(for organ: EmconOrgan) -> String {
+            condition.permits(organ)
+                ? "Permitted" : "Forbidden"
+        }
+        var rows: [EmconBoardRow] = []
+        // Serve is one row; its form follows
+        // its state, and its ruling when dark
+        // is the condition's shape for it.
+        let serveOrgan: EmconOrgan = s.serveRunning
+            ? (s.stealth ? .serveStealth : .serveListed)
+            : .serveListed
+        let serveRuling: String
+        if s.serveRunning {
+            serveRuling = ruling(for: serveOrgan)
+        } else if condition.permits(.serveListed) {
+            serveRuling = "Permitted"
+        } else if condition.permits(.serveStealth) {
+            serveRuling = "Stealth only"
+        } else {
+            serveRuling = "Forbidden"
+        }
+        let extra = min(3, max(0, s.serveListeners - 1))
+        let serveWeight = s.stealth
+            ? wServeStealth
+                + Double(extra) * wServeStealthExtra
+            : wServeListed
+                + Double(extra) * wServeListedExtra
+        rows.append(EmconBoardRow(
+            organ: serveOrgan, label: "Serve",
+            standing: s.serveRunning,
+            weight: serveWeight, ruling: serveRuling))
+        func row(_ organ: EmconOrgan, _ label: String,
+                 _ standing: Bool, _ weight: Double) {
+            rows.append(EmconBoardRow(
+                organ: organ, label: label,
+                standing: standing, weight: weight,
+                ruling: ruling(for: organ)))
+        }
+        row(.gattHost, "GATT host",
+            s.gattHostOn, wGattHost)
+        row(.beacon, "BLE beacon",
+            s.beaconOn || s.flareOn, wBeacon)
+        row(.persona, "Persona",
+            s.personaOn, wPersona)
+        row(.netAssault, "Net-Assault",
+            s.assaultOn, wAssault)
+        row(.probing, "Active probing",
+            s.probingOn, wProbing)
+        row(.warRun, "War Room run",
+            s.warKnocking || s.warTracing,
+            s.warKnocking ? wWarKnocking : wWarTracing)
+        row(.banshee, "The Banshee",
+            s.bansheeOn, wBanshee)
+        row(.relayPoll, "Relay poll",
+            s.relayPolling, wRelayPoll)
+        row(.sweep, "BLE write scan",
+            s.writeScanning, wWriteScan)
+        return rows
+    }
+
+    /// What this condition's gates refuse,
+    /// named in the Standard's own words. On a
+    /// quiet house nothing falls when a
+    /// condition engages — the refusals ARE
+    /// the change, and the room states them.
+    static func refusedLabels(
+        for condition: EmconCondition) -> [String] {
+        let organs: [EmconOrgan] = [
+            .serveListed, .serveStealth, .gattHost,
+            .beacon, .persona, .netAssault, .probing,
+            .warRun, .banshee, .relayPoll,
+            .updateCheck, .sweep]
+        var labels: [String] = []
+        var serveNamed = false
+        for organ in organs {
+            guard !condition.permits(organ) else {
+                continue
+            }
+            if organ == .serveListed
+                || organ == .serveStealth {
+                if serveNamed { continue }
+                serveNamed = true
+                labels.append(
+                    condition.permits(.serveStealth)
+                        ? "a listed Serve" : "Serve")
+                continue
+            }
+            labels.append(organ.label)
+        }
+        return labels
     }
 
     // MARK: - the gate

@@ -290,6 +290,20 @@ final class Emcon: ObservableObject {
     /// reads this one function, so the house has exactly one
     /// exposure, stated once.
     func currentScore(mouth: Mouth) -> Score {
+        EmconStandard.score(snapshot(mouth: mouth))
+    }
+
+    /// The standing board for this room and
+    /// her pinned deck: the audit's reads, the
+    /// Standard's rulings.
+    func board(mouth: Mouth) -> [EmconBoardRow] {
+        EmconStandard.board(snapshot(mouth: mouth),
+                            condition: condition)
+    }
+
+    /// Everything the audit reads, gathered
+    /// once from the live organs themselves.
+    func snapshot(mouth: Mouth) -> EmconSnapshot {
         var snapshot = EmconSnapshot()
         snapshot.onLan = ownIP != nil
         snapshot.deviceName = deviceName
@@ -313,7 +327,7 @@ final class Emcon: ObservableObject {
         snapshot.writeScanning = mouth.writeScanning
         snapshot.exposureCount = exposures.count
         snapshot.announcerCount = announcers.count
-        return EmconStandard.score(snapshot)
+        return snapshot
     }
 
     // MARK: - home turf

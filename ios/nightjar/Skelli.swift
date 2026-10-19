@@ -8259,8 +8259,10 @@ struct SkelliView: View {
                     .foregroundStyle(.secondary)
             }
             meter(Double(score.value) / 100)
-            panelSub(loudest
-                ?? "nothing announcing")
+            panelSub((loudest ?? "nothing announcing")
+                + (emcon.active
+                    ? " · " + emcon.condition.declared
+                    : ""))
         }
     }
 
