@@ -4,16 +4,22 @@ import Foundation
 //
 // The console's operator writes python, so
 // the console learned to run it: a real
-// interpreter for a teaching-sized subset
+// interpreter for a teaching-sized dialect
 // of the language — numbers, strings,
-// lists, dicts, functions, loops,
-// try/except, f-strings, and the math,
-// random and house modules. It is honest
-// about its edges (the `python3` help says
-// them out loud): no classes yet, no
-// input(), no imports past those three.
-// Where CPython would raise, it raises in
-// CPython's voice, with the file and line.
+// lists, dicts, sets, functions, classes
+// with inheritance, generators,
+// comprehensions, try/except/finally,
+// f-strings, and the math, random, sys
+// and house modules. It is honest about
+// its edges (the `python3` help says them
+// out loud): input() still waits on the
+// console line, imports reach only the
+// house's own modules, and there are no
+// threads — a generator's body walks on
+// one of its own, but user code cannot
+// start another. Where CPython would
+// raise, it raises in CPython's voice,
+// with the file and line.
 
 indirect enum PyValue {
     case none
@@ -30,6 +36,12 @@ indirect enum PyValue {
     case bound(PyValue, String)
     case module(String)
     case file(PyFile)
+    case set(PySet)
+    case cls(PyClass)
+    case instance(PyInstance)
+    case generator(PyGenerator)
+    case seqIter(PySeqIter)
+    case superProxy(PyInstance, PyClass)
 }
 
 final class PyList {
@@ -71,6 +83,10 @@ final class PyDict {
 
 final class PyFunction {
     let name: String
+    /// Set when the body yields: calling
+    /// such a function builds a generator
+    /// instead of running it.
+    var isGenerator = false
     let params: [String]
     let defaults: [String: PyValue]
     let body: [PyStmt]
@@ -98,9 +114,107 @@ final class PyFile {
     }
 }
 
+final class PySet {
+    // Insertion-ordered, deduped through
+    // the same stable hash keys the dict
+    // uses, so a set and a dict agree on
+    // what "the same value" means.
+    var keys: [String] = []
+    var values: [String: PyValue] = [:]
+    var display: [String: PyValue] = [:]
+
+    func add(_ value: PyValue) {
+        let h = PyFormat.hashKey(value)
+        if values[h] == nil {
+            keys.append(h)
+            display[h] = value
+        }
+        values[h] = value
+    }
+
+    func contains(_ value: PyValue) -> Bool {
+        values[PyFormat.hashKey(value)] != nil
+    }
+
+    func remove(_ value: PyValue) {
+        let h = PyFormat.hashKey(value)
+        values[h] = nil
+        display[h] = nil
+        keys.removeAll { $0 == h }
+    }
+
+    var items: [PyValue] {
+        keys.map { display[$0] ?? .none }
+    }
+
+    var count: Int { keys.count }
+}
+
+final class PyClass {
+    let name: String
+    var bases: [PyClass] = []
+    var attrs: [String: PyValue] = [:]
+    init(name: String) { self.name = name }
+
+    /// The method resolution order: self
+    /// first, then bases depth-first,
+    /// each class once — python's order
+    /// for the single-inheritance chains
+    /// this house mostly grows.
+    func mro() -> [PyClass] {
+        var out: [PyClass] = []
+        func walk(_ cls: PyClass) {
+            if out.contains(where: {
+                $0 === cls }) { return }
+            out.append(cls)
+            for base in cls.bases {
+                walk(base)
+            }
+        }
+        walk(self)
+        return out
+    }
+
+    /// The first value a name resolves to
+    /// down the mro, with the class that
+    /// holds it (super() needs the holder).
+    func lookupEntry(_ field: String)
+        -> (PyValue, PyClass)? {
+        for cls in mro() {
+            if let value = cls.attrs[field] {
+                return (value, cls)
+            }
+        }
+        return nil
+    }
+
+    func lookup(_ field: String)
+        -> PyValue? {
+        lookupEntry(field)?.0
+    }
+}
+
+final class PyInstance {
+    let cls: PyClass
+    var attrs: [String: PyValue] = [:]
+    init(cls: PyClass) { self.cls = cls }
+}
+
+/// A plain iterator over a snapshot of
+/// values — what iter() hands back for
+/// the house's sequences.
+final class PySeqIter {
+    let items: [PyValue]
+    var index = 0
+    init(_ items: [PyValue]) {
+        self.items = items
+    }
+}
+
 final class PyEnv {
     var vars: [String: PyValue] = [:]
     var globals: Set<String> = []
+    var nonlocals: Set<String> = []
     let parent: PyEnv?
     init(parent: PyEnv? = nil) {
         self.parent = parent
@@ -122,6 +236,24 @@ final class PyEnv {
     func assign(_ name: String,
                 _ value: PyValue) {
         if parent != nil,
+           nonlocals.contains(name) {
+            // The nearest enclosing scope
+            // that already holds the name
+            // takes it; failing that, the
+            // immediate parent does.
+            var scope = parent
+            while let env = scope {
+                if env.parent != nil,
+                   env.vars[name] != nil {
+                    env.vars[name] = value
+                    return
+                }
+                scope = env.parent
+            }
+            parent?.vars[name] = value
+            return
+        }
+        if parent != nil,
            !globals.contains(name) {
             vars[name] = value
         } else {
@@ -140,6 +272,125 @@ final class PyEnv {
             return true
         }
         return parent?.remove(name) ?? false
+    }
+}
+
+/// A generator: the function body runs
+/// on its own thread, parked at each
+/// yield on a pair of semaphores the
+/// consumer works like a hand-crank.
+/// Exactly one side runs at a time, so
+/// the interpreter's shared state (its
+/// frames, its step count) is only ever
+/// touched by the side awake. A body
+/// abandoned mid-yield keeps its thread
+/// parked; the house accepts that cost.
+final class PyGenerator {
+    let id: Int
+    let fn: PyFunction
+    let args: [PyValue]
+    let kwargs: [(String, PyValue)]
+    weak var interp: PyInterp?
+    private let wakeBody =
+        DispatchSemaphore(value: 0)
+    private let wakeCaller =
+        DispatchSemaphore(value: 0)
+    private var yielded: PyValue = .none
+    private var sentIn: PyValue = .none
+    private var failure: PyError?
+    private(set) var finished = false
+    private var started = false
+
+    init(fn: PyFunction, args: [PyValue],
+         kwargs: [(String, PyValue)],
+         interp: PyInterp) {
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.interp = interp
+        self.id = interp.mintGeneratorID()
+        interp.generatorRegistry[id] = self
+    }
+
+    /// close(): the consumer walks away.
+    /// A body parked at a yield stays
+    /// parked — its thread is the cost —
+    /// and the generator reads finished.
+    func forceFinish() {
+        finished = true
+    }
+
+    /// Called once by the interpreter when
+    /// the generator is first advanced:
+    /// the body thread starts and parks
+    /// until that first crank.
+    func startIfNeeded() {
+        guard !started else { return }
+        started = true
+        let thread = Thread { [weak self] in
+            self?.runBody()
+        }
+        thread.stackSize = 8 * 1024 * 1024
+        thread.name = "py-generator"
+        thread.start()
+    }
+
+    private func runBody() {
+        wakeBody.wait()
+        guard let interp = interp else {
+            finished = true
+            wakeCaller.signal()
+            return
+        }
+        do {
+            try interp
+                .runGeneratorBody(self)
+        } catch let error as PyError {
+            failure = error
+        } catch {
+            failure = PyError(
+                "RuntimeError",
+                "the generator stumbled",
+                line: 0)
+        }
+        finished = true
+        wakeCaller.signal()
+    }
+
+    /// The body's side of a yield: hand
+    /// the value over, park, and wake with
+    /// whatever was sent back in.
+    func suspend(_ value: PyValue)
+        -> PyValue {
+        yielded = value
+        wakeCaller.signal()
+        wakeBody.wait()
+        return sentIn
+    }
+
+    /// The consumer's crank: resume the
+    /// body and take the next yielded
+    /// value, or nil when it has run out
+    /// (its errors ride along).
+    func advance(sent: PyValue) throws
+        -> PyValue? {
+        if finished {
+            if let failure = failure {
+                throw failure
+            }
+            return nil
+        }
+        startIfNeeded()
+        sentIn = sent
+        wakeBody.signal()
+        wakeCaller.wait()
+        if finished {
+            if let failure = failure {
+                throw failure
+            }
+            return nil
+        }
+        return yielded
     }
 }
 
@@ -183,6 +434,13 @@ enum PyFormat {
             return "builtin_function_or_method"
         case .module: return "module"
         case .file: return "TextIOWrapper"
+        case .set: return "set"
+        case .cls: return "type"
+        case .instance(let obj):
+            return obj.cls.name
+        case .generator: return "generator"
+        case .seqIter: return "iterator"
+        case .superProxy: return "super"
         }
     }
 
@@ -197,6 +455,7 @@ enum PyFormat {
         case .list(let l): return !l.items.isEmpty
         case .dict(let d): return d.count > 0
         case .tuple(let t): return !t.isEmpty
+        case .set(let s): return s.count > 0
         case .range(let a, let b, let s):
             if s > 0 { return a < b }
             if s < 0 { return a > b }
@@ -216,6 +475,18 @@ enum PyFormat {
         case .tuple(let t):
             return "t:" + t.map { hashKey($0) }
                 .joined(separator: ",")
+        case .instance(let obj):
+            return "obj:"
+                + "\(ObjectIdentifier(obj))"
+        case .cls(let cls):
+            return "cls:"
+                + "\(ObjectIdentifier(cls))"
+        case .generator(let gen):
+            return "gen:"
+                + "\(ObjectIdentifier(gen))"
+        case .seqIter(let iter):
+            return "itr:"
+                + "\(ObjectIdentifier(iter))"
         default:
             return "o:\(typeName(value))"
         }
@@ -286,6 +557,26 @@ enum PyFormat {
             return "<module '\(name)'>"
         case .file(let f):
             return "<file \(f.path)>"
+        case .set(let set):
+            if set.count == 0 {
+                return "set()"
+            }
+            let inner = set.items.map {
+                repr($0)
+            }.joined(separator: ", ")
+            return "{" + inner + "}"
+        case .cls(let cls):
+            return "<class '\(cls.name)'>"
+        case .instance(let obj):
+            return "<\(obj.cls.name) object>"
+        case .generator(let gen):
+            return "<generator \(gen.fn.name)>"
+        case .seqIter:
+            return "<iterator>"
+        case .superProxy(_, let after):
+            return "<super: <class '"
+                + "\(after.name)'>"
+                + ", <object>>"
         }
     }
 
@@ -342,6 +633,17 @@ enum PyFormat {
             return x === y
         case (.dict(let x), .dict(let y)):
             return x === y
+        case (.instance(let x),
+              .instance(let y)):
+            return x === y
+        case (.cls(let x), .cls(let y)):
+            return x === y
+        case (.set(let x), .set(let y)):
+            guard x.count == y.count
+            else { return false }
+            return x.items.allSatisfy {
+                y.contains($0)
+            }
         default: return false
         }
     }
@@ -989,6 +1291,20 @@ indirect enum PyExpr {
                PyExpr?)
     case attr(PyExpr, String)
     case ternary(PyExpr, PyExpr, PyExpr)
+    case setOf([PyExpr])
+    case lambda([String], [(String, PyExpr)],
+                PyExpr)
+    case yieldExpr(PyExpr?)
+    /// Comprehension clauses everywhere
+    /// below: (target, iterable, filters).
+    case listComp(PyExpr,
+                  [(PyExpr, PyExpr, [PyExpr])])
+    case setComp(PyExpr,
+                 [(PyExpr, PyExpr, [PyExpr])])
+    case dictComp(PyExpr, PyExpr,
+                  [(PyExpr, PyExpr, [PyExpr])])
+    case genExp(PyExpr,
+                [(PyExpr, PyExpr, [PyExpr])])
 }
 
 indirect enum PyStmt {
@@ -1014,7 +1330,9 @@ indirect enum PyStmt {
                     line: Int)
     case tryExcept([PyStmt],
                    [(String?, String?,
-                     [PyStmt])], line: Int)
+                     [PyStmt])],
+                   [PyStmt], [PyStmt],
+                   line: Int)
     case withStmt(PyExpr, PyExpr?, [PyStmt],
                   line: Int)
     case raiseStmt(PyExpr?, line: Int)
@@ -1022,6 +1340,9 @@ indirect enum PyStmt {
                     line: Int)
     case globalStmt([String], line: Int)
     case delStmt([PyExpr], line: Int)
+    case classDef(String, [PyExpr],
+                  [PyStmt], line: Int)
+    case nonlocalStmt([String], line: Int)
 }
 
 // MARK: - The parser
@@ -1148,6 +1469,9 @@ struct PyParser {
         }
         if isName("def") {
             return [try parseDef()]
+        }
+        if isName("class") {
+            return [try parseClass()]
         }
         if isName("try") {
             return [try parseTry()]
@@ -1335,6 +1659,16 @@ struct PyParser {
             return .globalStmt(
                 names, line: line)
         }
+        if isName("nonlocal") {
+            advance()
+            var names = [try expectName()]
+            while isOp(",") {
+                advance()
+                names.append(try expectName())
+            }
+            return .nonlocalStmt(
+                names, line: line)
+        }
         if isName("del") {
             advance()
             var targets = [try parseTarget()]
@@ -1438,6 +1772,34 @@ extension PyParser {
                     body, line: line)
     }
 
+    mutating func parseClass() throws
+        -> PyStmt {
+        let line = current.line
+        advance()
+        let name = try expectName()
+        var bases: [PyExpr] = []
+        if isOp("(") {
+            advance()
+            if !isOp(")") {
+                while true {
+                    bases.append(
+                        try parseExpr())
+                    if isOp(",") {
+                        advance()
+                        if isOp(")") { break }
+                        continue
+                    }
+                    break
+                }
+            }
+            try expectOp(")")
+        }
+        try expectOp(":")
+        let body = try parseSuite()
+        return .classDef(name, bases, body,
+                         line: line)
+    }
+
     mutating func parseTry() throws -> PyStmt {
         let line = current.line
         advance()
@@ -1460,14 +1822,64 @@ extension PyParser {
             let arm = try parseSuite()
             handlers.append((kind, alias, arm))
         }
-        guard !handlers.isEmpty else {
+        var elseBody: [PyStmt] = []
+        if isName("else") {
+            advance()
+            try expectOp(":")
+            elseBody = try parseSuite()
+        }
+        var finallyBody: [PyStmt] = []
+        if isName("finally") {
+            advance()
+            try expectOp(":")
+            finallyBody = try parseSuite()
+        }
+        guard !handlers.isEmpty
+            || !finallyBody.isEmpty else {
             throw PyError(
                 "SyntaxError",
-                "try needs an except",
+                "try needs an except "
+                    + "or a finally",
                 line: current.line)
         }
         return .tryExcept(body, handlers,
+                          elseBody,
+                          finallyBody,
                           line: line)
+    }
+
+    /// The tail of a comprehension:
+    /// for <target> in <expr> [if <expr>]…,
+    /// repeated per clause. Entered with
+    /// 'for' as the current word. Iterable
+    /// and filters parse at or-level: a
+    /// comprehension's 'if' is a filter,
+    /// never a conditional expression.
+    mutating func parseCompClauses() throws
+        -> [(PyExpr, PyExpr, [PyExpr])] {
+        var clauses: [(PyExpr, PyExpr,
+                       [PyExpr])] = []
+        while isName("for") {
+            advance()
+            let target =
+                try parseTargetList()
+            guard isName("in") else {
+                throw PyError(
+                    "SyntaxError",
+                    "expected 'in'",
+                    line: current.line)
+            }
+            advance()
+            let iterable = try parseOr()
+            var conds: [PyExpr] = []
+            while isName("if") {
+                advance()
+                conds.append(try parseOr())
+            }
+            clauses.append(
+                (target, iterable, conds))
+        }
+        return clauses
     }
 
     /// An assignment target: a name, an
@@ -1535,6 +1947,27 @@ extension PyParser {
 
     mutating func parseExpr() throws
         -> PyExpr {
+        if isName("lambda") {
+            return try parseLambda()
+        }
+        if isName("yield") {
+            advance()
+            if atNewline || atEOF || atDedent
+                || isOp(")") || isOp("]")
+                || isOp("}") || isOp(",")
+                || isOp(":") || isOp(";") {
+                return .yieldExpr(nil)
+            }
+            if case .name(let word) =
+                current.tok,
+               ["from", "else", "elif",
+                "except", "finally", "in",
+                "is", "as"].contains(word) {
+                return .yieldExpr(nil)
+            }
+            return .yieldExpr(
+                try parseExpr())
+        }
         let first = try parseOr()
         if isName("if") {
             advance()
@@ -1551,6 +1984,37 @@ extension PyParser {
             return .ternary(first, cond, other)
         }
         return first
+    }
+
+    /// lambda a, b=2: <expr> — the params
+    /// ride the same rails as def's, minus
+    /// the parentheses.
+    mutating func parseLambda() throws
+        -> PyExpr {
+        advance()
+        var params: [String] = []
+        var defaults: [(String, PyExpr)] = []
+        if !isOp(":") {
+            while true {
+                let param = try expectName()
+                params.append(param)
+                if isOp("=") {
+                    advance()
+                    let fallback =
+                        try parseExpr()
+                    defaults.append(
+                        (param, fallback))
+                }
+                if isOp(",") {
+                    advance()
+                    continue
+                }
+                break
+            }
+        }
+        try expectOp(":")
+        let body = try parseExpr()
+        return .lambda(params, defaults, body)
     }
 
     mutating func parseOr() throws -> PyExpr {
@@ -1874,6 +2338,19 @@ extension PyParser {
                 advance()
                 return .tupleOf([])
             }
+            // A generator expression is one
+            // element wearing clauses; spot
+            // its 'for' before the commas of
+            // a tuple can claim the text.
+            let save = pos
+            let first = try parseExpr()
+            if isName("for") {
+                let clauses =
+                    try parseCompClauses()
+                try expectOp(")")
+                return .genExp(first, clauses)
+            }
+            pos = save
             let inner = try parseExprList()
             try expectOp(")")
             return inner
@@ -1881,38 +2358,73 @@ extension PyParser {
             advance()
             var items: [PyExpr] = []
             if !isOp("]") {
-                while true {
+                let first = try parseExpr()
+                if isName("for") {
+                    let clauses =
+                        try parseCompClauses()
+                    try expectOp("]")
+                    return .listComp(
+                        first, clauses)
+                }
+                items.append(first)
+                while isOp(",") {
+                    advance()
+                    if isOp("]") { break }
                     items.append(
                         try parseExpr())
-                    if isOp(",") {
-                        advance()
-                        if isOp("]") { break }
-                        continue
-                    }
-                    break
                 }
             }
             try expectOp("]")
             return .listOf(items)
         case .op("{"):
             advance()
-            var pairs: [(PyExpr, PyExpr)] = []
-            if !isOp("}") {
-                while true {
+            if isOp("}") {
+                advance()
+                return .dictOf([])
+            }
+            // One opening expression decides
+            // the shape: a colon makes it a
+            // dict, a 'for' makes it a
+            // comprehension, anything else
+            // leaves a set on the table.
+            let first = try parseExpr()
+            if isOp(":") {
+                advance()
+                let value = try parseExpr()
+                if isName("for") {
+                    let clauses =
+                        try parseCompClauses()
+                    try expectOp("}")
+                    return .dictComp(
+                        first, value, clauses)
+                }
+                var pairs = [(first, value)]
+                while isOp(",") {
+                    advance()
+                    if isOp("}") { break }
                     let key = try parseExpr()
                     try expectOp(":")
-                    let value = try parseExpr()
-                    pairs.append((key, value))
-                    if isOp(",") {
-                        advance()
-                        if isOp("}") { break }
-                        continue
-                    }
-                    break
+                    let next = try parseExpr()
+                    pairs.append((key, next))
                 }
+                try expectOp("}")
+                return .dictOf(pairs)
+            }
+            if isName("for") {
+                let clauses =
+                    try parseCompClauses()
+                try expectOp("}")
+                return .setComp(first, clauses)
+            }
+            var elements = [first]
+            while isOp(",") {
+                advance()
+                if isOp("}") { break }
+                elements.append(
+                    try parseExpr())
             }
             try expectOp("}")
-            return .dictOf(pairs)
+            return .setOf(elements)
         default:
             throw PyError(
                 "SyntaxError",
@@ -1942,7 +2454,13 @@ final class PyInterp {
         "max", "sum", "sorted", "reversed",
         "enumerate", "zip", "type", "repr",
         "round", "ord", "chr", "open",
-        "input",
+        "input", "set", "frozenset",
+        "isinstance", "issubclass",
+        "getattr", "setattr", "hasattr",
+        "callable", "iter", "next",
+        "any", "all", "divmod", "pow",
+        "hex", "oct", "bin", "hash",
+        "id", "vars", "dir", "super",
     ]
 
     static let exceptionKinds: Set<String> = [
@@ -1955,6 +2473,10 @@ final class PyInterp {
         "ModuleNotFoundError",
         "AttributeError", "SyntaxError",
         "IndentationError",
+        "StopIteration", "RecursionError",
+        "LookupError", "ArithmeticError",
+        "OverflowError",
+        "NotImplementedError",
     ]
 
     init(emit: @escaping BlacksiteEmit,
@@ -1993,6 +2515,92 @@ final class PyInterp {
     }
 
     var scriptArgs: [String] = []
+
+    /// The (instance, class that defined
+    /// the method) of the method now
+    /// running — super()'s footing.
+    var methodContext: [(PyInstance,
+                         PyClass)] = []
+    /// Live generators by id; a body
+    /// thread finds its own generator
+    /// through its thread dictionary.
+    var generatorRegistry:
+        [Int: PyGenerator] = [:]
+    var nextGenID = 0
+    /// Class name to base names, walked
+    /// by the except matcher so a user
+    /// exception hierarchy behaves like
+    /// one. Unlisted kinds hang from
+    /// Exception directly.
+    var classBases: [String: [String]] = [
+        "ModuleNotFoundError":
+            ["ImportError"],
+    ]
+
+    func mintGeneratorID() -> Int {
+        nextGenID += 1
+        return nextGenID
+    }
+
+    /// A generator's body, run on its own
+    /// thread: this thread is where its
+    /// yields live.
+    func runGeneratorBody(
+        _ gen: PyGenerator) throws {
+        Thread.current.threadDictionary[
+            "pygen"] = NSNumber(
+                value: gen.id)
+        defer {
+            generatorRegistry[gen.id] = nil
+        }
+        _ = try callFunction(
+            gen.fn, gen.args, gen.kwargs, 0)
+    }
+
+    /// Does a handler name catch an error
+    /// kind? By equality, by the universal
+    /// Exception, or by walking the
+    /// error's registered bases.
+    func errorMatches(_ handler: String?,
+                      _ kind: String) -> Bool {
+        guard let handler = handler
+        else { return true }
+        var seen: Set<String> = []
+        var queue = [kind]
+        while let current = queue.popLast() {
+            if current == handler {
+                return true
+            }
+            if !seen.insert(current)
+                .inserted { continue }
+            if let bases =
+                classBases[current] {
+                queue += bases
+            } else if current != "Exception" {
+                queue.append("Exception")
+            }
+        }
+        return false
+    }
+
+    /// One pass through a loop body:
+    /// true when a break ended it.
+    func execLoopBody(_ body: [PyStmt],
+                      _ env: PyEnv) throws
+        -> Bool {
+        do {
+            try execBlock(body, env)
+            return false
+        } catch let signal as PySignal {
+            if case .broke = signal {
+                return true
+            }
+            if case .continued = signal {
+                return false
+            }
+            throw signal
+        }
+    }
 
     func runProgram(_ body: [PyStmt],
                     args: [String]) {
@@ -2106,7 +2714,8 @@ final class PyInterp {
         case .importStmt(_, let l): line = l
         case .fromImport(_, _, let l):
             line = l
-        case .tryExcept(_, _, let l): line = l
+        case .tryExcept(_, _, _, _, let l):
+            line = l
         case .withStmt(_, _, _, let l):
             line = l
         case .raiseStmt(_, let l): line = l
@@ -2114,6 +2723,10 @@ final class PyInterp {
             line = l
         case .globalStmt(_, let l): line = l
         case .delStmt(_, let l): line = l
+        case .classDef(_, _, _, let l):
+            line = l
+        case .nonlocalStmt(_, let l):
+            line = l
         }
         if let top = frames.last {
             frames[frames.count - 1] =
@@ -2145,8 +2758,9 @@ final class PyInterp {
                      _):
             var done = false
             for (cond, body) in arms {
-                if PyFormat.truthy(
-                    try eval(cond, env)) {
+                if try isTruthy(
+                    try eval(cond, env),
+                    line) {
                     try execBlock(body, env)
                     done = true
                     break
@@ -2157,44 +2771,46 @@ final class PyInterp {
             }
         case .whileLoop(let cond,
                         let body, _):
-            while PyFormat.truthy(
-                try eval(cond, env)) {
+            while try isTruthy(
+                try eval(cond, env), line) {
                 try tick()
-                do {
-                    try execBlock(body, env)
-                } catch let signal
-                    as PySignal {
-                    if case .broke = signal {
-                        break
-                    }
-                    if case .continued =
-                        signal {
-                        continue
-                    }
-                    throw signal
+                if try execLoopBody(
+                    body, env) {
+                    break
                 }
             }
         case .forLoop(let target,
                       let iterableExpr,
                       let body, _):
-            let items = try iterate(
-                try eval(iterableExpr, env))
-            for item in items {
-                try tick()
-                try assignTarget(
-                    target, item, env)
-                do {
-                    try execBlock(body, env)
-                } catch let signal
-                    as PySignal {
-                    if case .broke = signal {
+            let iterable = try eval(
+                iterableExpr, env)
+            if case .generator(let gen) =
+                iterable {
+                // A generator is walked one
+                // crank at a time, so a
+                // break leaves the rest of
+                // it unrun.
+                while let item = try gen
+                    .advance(sent: .none) {
+                    try tick()
+                    try assignTarget(
+                        target, item, env)
+                    if try execLoopBody(
+                        body, env) {
                         break
                     }
-                    if case .continued =
-                        signal {
-                        continue
+                }
+            } else {
+                let items = try iterate(
+                    iterable)
+                for item in items {
+                    try tick()
+                    try assignTarget(
+                        target, item, env)
+                    if try execLoopBody(
+                        body, env) {
+                        break
                     }
-                    throw signal
                 }
             }
         case .def(let name, let params,
@@ -2206,12 +2822,54 @@ final class PyInterp {
                 defaults[param] = try eval(
                     expr, env)
             }
-            env.assign(name, .function(
-                PyFunction(
-                    name: name,
-                    params: params,
-                    defaults: defaults,
-                    body: body, env: env)))
+            let fn = PyFunction(
+                name: name,
+                params: params,
+                defaults: defaults,
+                body: body, env: env)
+            fn.isGenerator =
+                Self.bodyContainsYield(body)
+            env.assign(
+                name, .function(fn))
+        case .classDef(let name,
+                       let baseExprs,
+                       let body, _):
+            var bases: [PyClass] = []
+            for baseExpr in baseExprs {
+                let value = try eval(
+                    baseExpr, env)
+                guard case .cls(let base) =
+                    value else {
+                    throw PyError(
+                        "TypeError",
+                        "a base must be a "
+                            + "class, not '"
+                            + PyFormat
+                                .typeName(value)
+                            + "'",
+                        line: line)
+                }
+                bases.append(base)
+            }
+            let cls = PyClass(name: name)
+            cls.bases = bases
+            // The body runs in its own
+            // scope; what it leaves there
+            // becomes the class's attrs —
+            // methods included.
+            let classEnv = PyEnv(
+                parent: env)
+            try execBlock(body, classEnv)
+            for (key, value)
+                in classEnv.vars {
+                cls.attrs[key] = value
+            }
+            classBases[name] = bases.map {
+                $0.name
+            }
+            env.assign(name, .cls(cls))
+        case .nonlocalStmt(let names, _):
+            env.nonlocals.formUnion(names)
         case .returnStmt(let expr, _):
             if let expr = expr {
                 throw PySignal.returned(
@@ -2257,51 +2915,124 @@ final class PyInterp {
                 env.assignLocal(name, value)
             }
         case .tryExcept(let body,
-                        let handlers, _):
+                        let handlers,
+                        let elseBody,
+                        let finallyBody, _):
+            var failure: Error? = nil
+            var bodyOK = false
             do {
                 try execBlock(body, env)
-            } catch let error as PyError {
-                var handled = false
+                bodyOK = true
+            } catch {
+                failure = error
+            }
+            if let pyError = failure
+                as? PyError {
                 for (kind, alias, arm)
                     in handlers {
-                    if kind == nil
-                        || kind == error.kind
-                        || kind == "Exception" {
+                    if errorMatches(
+                        kind, pyError.kind) {
                         if let alias = alias {
                             env.assignLocal(
                                 alias,
-                                .str(
-                                    error.message))
+                                .str(pyError
+                                    .message))
                         }
-                        try execBlock(arm, env)
-                        handled = true
+                        do {
+                            try execBlock(
+                                arm, env)
+                            failure = nil
+                        } catch {
+                            failure = error
+                        }
                         break
                     }
                 }
-                if !handled { throw error }
+            }
+            if bodyOK, failure == nil,
+               !elseBody.isEmpty {
+                do {
+                    try execBlock(
+                        elseBody, env)
+                } catch {
+                    failure = error
+                }
+            }
+            // Finally runs on every road
+            // out — fall, catch, return,
+            // break — and its own fall
+            // replaces whatever was flying.
+            if !finallyBody.isEmpty {
+                do {
+                    try execBlock(
+                        finallyBody, env)
+                } catch {
+                    failure = error
+                }
+            }
+            if let failure = failure {
+                throw failure
             }
         case .withStmt(let itemExpr,
                        let target,
                        let body, _):
-            let value = try eval(itemExpr, env)
+            let raw = try eval(itemExpr, env)
+            var value = raw
+            if case .instance(let obj) =
+                raw,
+               obj.cls.lookup("__enter__")
+                != nil {
+                value = try callMethod(
+                    raw, "__enter__", [], [],
+                    line)
+            }
             if let target = target {
                 try assignTarget(
                     target, value, env)
             }
-            defer {
-                if case .file(let file) =
-                    value {
-                    closeFile(file)
+            var thrown: Error? = nil
+            do {
+                try execBlock(body, env)
+            } catch {
+                thrown = error
+            }
+            if case .file(let file) = raw {
+                closeFile(file)
+            }
+            if case .instance(let obj) =
+                raw,
+               obj.cls.lookup("__exit__")
+                != nil {
+                var exitArgs: [PyValue] =
+                    [.none, .none, .none]
+                if let pyError = thrown
+                    as? PyError {
+                    exitArgs = [
+                        .str(pyError.kind),
+                        .str(pyError
+                            .message),
+                        .none]
+                }
+                let verdict = try callMethod(
+                    raw, "__exit__",
+                    exitArgs, [], line)
+                // A truthy __exit__ swallows
+                // the error it was shown.
+                if thrown != nil,
+                   PyFormat.truthy(verdict) {
+                    thrown = nil
                 }
             }
-            try execBlock(body, env)
+            if let thrown = thrown {
+                throw thrown
+            }
         case .raiseStmt(let expr, _):
             throw try raiseError(
                 expr, env, line)
         case .assertStmt(let test,
                          let messageExpr, _):
-            if !PyFormat.truthy(
-                try eval(test, env)) {
+            if try !isTruthy(
+                try eval(test, env), line) {
                 var text = ""
                 if let messageExpr =
                     messageExpr {
@@ -2358,7 +3089,29 @@ final class PyInterp {
             return PyError(kind, "",
                            line: line)
         }
+        // A user's own exception class
+        // raises under its own name, and
+        // an instance of one under its
+        // class's.
+        if case .call(let callee,
+                      let args, _) = expr,
+           case .name(let word) = callee,
+           case .cls(let cls)? =
+            env.lookup(word) {
+            var text = ""
+            if let first = args.first {
+                text = textOf(
+                    try eval(first, env))
+            }
+            return PyError(cls.name, text,
+                           line: line)
+        }
         let value = try eval(expr, env)
+        if case .instance(let obj) = value {
+            return PyError(
+                obj.cls.name, textOf(value),
+                line: line)
+        }
         return PyError(
             "Exception", PyFormat.str(value),
             line: line)
@@ -2395,6 +3148,10 @@ final class PyInterp {
             let index = try eval(
                 indexExpr, env)
             try setItem(base, index, value)
+        case .attr(let baseExpr,
+                   let field):
+            let base = try eval(baseExpr, env)
+            try setAttr(base, field, value)
         default:
             throw PyError(
                 "TypeError",
@@ -2402,6 +3159,26 @@ final class PyInterp {
                     + "value in the house's "
                     + "python",
                 line: frames.last?.line ?? 0)
+        }
+    }
+
+    func setAttr(_ base: PyValue,
+                 _ field: String,
+                 _ value: PyValue) throws {
+        let line = frames.last?.line ?? 0
+        switch base {
+        case .instance(let obj):
+            obj.attrs[field] = value
+        case .cls(let cls):
+            cls.attrs[field] = value
+        default:
+            throw PyError(
+                "TypeError",
+                "'\(PyFormat.typeName(base))' "
+                    + "object has no "
+                    + "settable attribute "
+                    + "'\(field)'",
+                line: line)
         }
     }
 
@@ -2415,6 +3192,41 @@ final class PyInterp {
                     "NameError",
                     "name '\(name)' is not "
                         + "defined",
+                    line: line)
+            }
+        case .attr(let baseExpr,
+                   let field):
+            let base = try eval(baseExpr, env)
+            switch base {
+            case .instance(let obj):
+                guard obj.attrs[field] != nil
+                else {
+                    throw PyError(
+                        "AttributeError",
+                        "'\(obj.cls.name)' "
+                            + "object has no "
+                            + "attribute "
+                            + "'\(field)'",
+                        line: line)
+                }
+                obj.attrs[field] = nil
+            case .cls(let cls):
+                guard cls.attrs[field] != nil
+                else {
+                    throw PyError(
+                        "AttributeError",
+                        "type object "
+                            + "'\(cls.name)' "
+                            + "has no attribute "
+                            + "'\(field)'",
+                        line: line)
+                }
+                cls.attrs[field] = nil
+            default:
+                throw PyError(
+                    "TypeError",
+                    "cannot delete that "
+                        + "attribute",
                     line: line)
             }
         case .index(let baseExpr,
@@ -2470,6 +3282,63 @@ final class PyInterp {
             return dict.keys.map {
                 dict.display[$0] ?? .none
             }
+        case .set(let set):
+            return set.items
+        case .generator(let gen):
+            var out: [PyValue] = []
+            while let item = try gen
+                .advance(sent: .none) {
+                out.append(item)
+            }
+            return out
+        case .seqIter(let iter):
+            var out: [PyValue] = []
+            while iter.index < iter.items
+                .count {
+                out.append(
+                    iter.items[iter.index])
+                iter.index += 1
+            }
+            return out
+        case .instance(let obj):
+            if obj.cls.lookup("__iter__")
+                != nil {
+                let result = try callMethod(
+                    .instance(obj), "__iter__",
+                    [], [],
+                    frames.last?.line ?? 0)
+                return try iterate(result)
+            }
+            if obj.cls.lookup("__getitem__")
+                != nil {
+                // The old protocol: walk
+                // indices until IndexError.
+                var out: [PyValue] = []
+                var at = 0
+                while at <= 1_000_000 {
+                    do {
+                        out.append(
+                            try callMethod(
+                                .instance(obj),
+                                "__getitem__",
+                                [.int(at)], [],
+                                frames.last?
+                                    .line ?? 0))
+                    } catch let error
+                        as PyError
+                    where error.kind
+                        == "IndexError" {
+                        break
+                    }
+                    at += 1
+                }
+                return out
+            }
+            throw PyError(
+                "TypeError",
+                "'\(obj.cls.name)' object "
+                    + "is not iterable",
+                line: frames.last?.line ?? 0)
         case .range(let start, let stop,
                     let step):
             guard step != 0 else {
@@ -2532,6 +3401,20 @@ final class PyInterp {
                  _ value: PyValue) throws {
         let line = frames.last?.line ?? 0
         switch base {
+        case .instance(let obj):
+            guard obj.cls.lookup(
+                "__setitem__") != nil else {
+                throw PyError(
+                    "TypeError",
+                    "'\(obj.cls.name)' "
+                        + "object does not "
+                        + "support item "
+                        + "assignment",
+                    line: line)
+            }
+            _ = try callMethod(
+                .instance(obj), "__setitem__",
+                [index, value], [], line)
         case .list(let list):
             let at = try listIndex(
                 index, list.items.count,
@@ -2587,7 +3470,7 @@ extension PyInterp {
                 case .expr(let source):
                     let value = try evalFragment(
                         source, env, line)
-                    out += PyFormat.str(value)
+                    out += textOf(value)
                 }
             }
             return .str(out)
@@ -2641,7 +3524,8 @@ extension PyInterp {
             let value = try eval(inner, env)
             if op == "not" {
                 return .bool(
-                    !PyFormat.truthy(value))
+                    try !isTruthy(
+                        value, line))
             }
             return try evalUnaryNum(
                 op, value, line)
@@ -2649,14 +3533,15 @@ extension PyInterp {
                      let rhs):
             if op == "and" {
                 let left = try eval(lhs, env)
-                if !PyFormat.truthy(left) {
+                if try isTruthy(left, line)
+                    == false {
                     return left
                 }
                 return try eval(rhs, env)
             }
             if op == "or" {
                 let left = try eval(lhs, env)
-                if PyFormat.truthy(left) {
+                if try isTruthy(left, line) {
                     return left
                 }
                 return try eval(rhs, env)
@@ -2723,10 +3608,115 @@ extension PyInterp {
             let base = try eval(baseExpr, env)
             return try getAttr(
                 base, field, line)
+        case .setOf(let items):
+            let set = PySet()
+            for item in items {
+                set.add(try eval(item, env))
+            }
+            return .set(set)
+        case .lambda(let params,
+                     let defaultExprs,
+                     let bodyExpr):
+            var defaults: [String: PyValue]
+                = [:]
+            for (param, expr)
+                in defaultExprs {
+                defaults[param] = try eval(
+                    expr, env)
+            }
+            let fn = PyFunction(
+                name: "<lambda>",
+                params: params,
+                defaults: defaults,
+                body: [.returnStmt(
+                    bodyExpr, line: line)],
+                env: env)
+            fn.isGenerator =
+                Self.bodyContainsYield(fn.body)
+            return .function(fn)
+        case .yieldExpr(let inner):
+            guard let marker = Thread
+                .current.threadDictionary[
+                    "pygen"] as? NSNumber,
+                  let gen = generatorRegistry[
+                    marker.intValue] else {
+                throw PyError(
+                    "SyntaxError",
+                    "'yield' outside a "
+                        + "generator",
+                    line: line)
+            }
+            var value = PyValue.none
+            if let inner = inner {
+                value = try eval(inner, env)
+            }
+            return gen.suspend(value)
+        case .listComp(let elem,
+                       let clauses):
+            let list = PyList()
+            try runCompClauses(
+                clauses, env) { scope in
+                list.items.append(
+                    try self.eval(elem, scope))
+            }
+            return .list(list)
+        case .setComp(let elem,
+                      let clauses):
+            let set = PySet()
+            try runCompClauses(
+                clauses, env) { scope in
+                set.add(try self.eval(
+                    elem, scope))
+            }
+            return .set(set)
+        case .dictComp(let keyExpr,
+                       let valueExpr,
+                       let clauses):
+            let dict = PyDict()
+            try runCompClauses(
+                clauses, env) { scope in
+                let key = try self.eval(
+                    keyExpr, scope)
+                let value = try self.eval(
+                    valueExpr, scope)
+                dict.set(key, value)
+            }
+            return .dict(dict)
+        case .genExp(let elem,
+                     let clauses):
+            // A generator expression is a
+            // little generator function the
+            // clauses fold into: fors
+            // outside-in, filters wrapped
+            // around the yield.
+            var body: [PyStmt] = [
+                .expr(.yieldExpr(elem),
+                      line: line)]
+            for (target, iterable, conds)
+                in clauses.reversed() {
+                var inner = body
+                for cond in conds.reversed() {
+                    inner = [.ifElse(
+                        [(cond, inner)], [],
+                        line: line)]
+                }
+                body = [.forLoop(
+                    target, iterable, inner,
+                    line: line)]
+            }
+            let fn = PyFunction(
+                name: "<genexpr>",
+                params: [],
+                defaults: [:],
+                body: body, env: env)
+            fn.isGenerator = true
+            return .generator(PyGenerator(
+                fn: fn, args: [],
+                kwargs: [], interp: self))
         case .ternary(let value, let cond,
                       let other):
-            if PyFormat.truthy(
-                try eval(cond, env)) {
+            if try isTruthy(
+                try eval(cond, env), line) {
                 return try eval(value, env)
             }
             return try eval(other, env)
@@ -2814,6 +3804,25 @@ extension PyInterp {
                     _ right: PyValue) throws
         -> PyValue {
         let line = frames.last?.line ?? 0
+        // An instance holding the dunder
+        // speaks first; its mirror on the
+        // right speaks second.
+        if let names = dunderNames(op) {
+            if case .instance(let obj) =
+                left,
+               let result = try dunder(
+                   obj, names.0, [right],
+                   line) {
+                return result
+            }
+            if case .instance(let obj) =
+                right,
+               let result = try dunder(
+                   obj, names.1, [left],
+                   line) {
+                return result
+            }
+        }
         // String and list shapes first.
         switch (op, left, right) {
         case ("+", .str(let a),
@@ -2844,6 +3853,44 @@ extension PyInterp {
                 items += a.items
             }
             return .list(PyList(items))
+        case ("|", .set(let a),
+              .set(let b)):
+            let out = PySet()
+            for item in a.items {
+                out.add(item)
+            }
+            for item in b.items {
+                out.add(item)
+            }
+            return .set(out)
+        case ("&", .set(let a),
+              .set(let b)):
+            let out = PySet()
+            for item in a.items
+                where b.contains(item) {
+                out.add(item)
+            }
+            return .set(out)
+        case ("-", .set(let a),
+              .set(let b)):
+            let out = PySet()
+            for item in a.items
+                where !b.contains(item) {
+                out.add(item)
+            }
+            return .set(out)
+        case ("^", .set(let a),
+              .set(let b)):
+            let out = PySet()
+            for item in a.items
+                where !b.contains(item) {
+                out.add(item)
+            }
+            for item in b.items
+                where !a.contains(item) {
+                out.add(item)
+            }
+            return .set(out)
         case ("%", .str(let format), _):
             return .str(try formatString(
                 format, right, line))
@@ -3097,9 +4144,17 @@ extension PyInterp {
         -> Bool {
         switch op {
         case "==":
+            if let verdict = try eqDunder(
+                left, right, line) {
+                return verdict
+            }
             return PyFormat.equals(
                 left, right)
         case "!=":
+            if let verdict = try eqDunder(
+                left, right, line) {
+                return !verdict
+            }
             return !PyFormat.equals(
                 left, right)
         case "is", "is not":
@@ -3116,6 +4171,15 @@ extension PyInterp {
             case (.dict(let a),
                   .dict(let b)):
                 same = a === b
+            case (.instance(let a),
+                  .instance(let b)):
+                same = a === b
+            case (.cls(let a),
+                  .cls(let b)):
+                same = a === b
+            case (.set(let a),
+                  .set(let b)):
+                same = a === b
             default:
                 same = PyFormat.equals(
                     left, right)
@@ -3127,6 +4191,10 @@ extension PyInterp {
             return op == "in" ? found
                 : !found
         default:
+            if let verdict = try orderDunder(
+                op, left, right, line) {
+                return verdict
+            }
             guard let order = ordering(
                 left, right) else {
                 throw PyError(
@@ -3176,6 +4244,22 @@ extension PyInterp {
             }
         case .dict(let dict):
             return dict.get(needle) != nil
+        case .set(let set):
+            return set.contains(needle)
+        case .instance(let obj):
+            if obj.cls.lookup("__contains__")
+                != nil {
+                let verdict = try callMethod(
+                    container, "__contains__",
+                    [needle], [], line)
+                return PyFormat.truthy(
+                    verdict)
+            }
+            // No __contains__: walk it.
+            return try iterate(container)
+                .contains {
+                    PyFormat.equals($0, needle)
+                }
         case .range(let start, let stop,
                     let step):
             guard let n = asInt(needle)
@@ -3205,6 +4289,19 @@ extension PyInterp {
                  _ line: Int) throws
         -> PyValue {
         switch base {
+        case .instance(let obj):
+            guard obj.cls.lookup(
+                "__getitem__") != nil else {
+                throw PyError(
+                    "TypeError",
+                    "'\(obj.cls.name)' "
+                        + "object is not "
+                        + "subscriptable",
+                    line: line)
+            }
+            return try callMethod(
+                base, "__getitem__",
+                [index], [], line)
         case .list(let list):
             let at = try listIndexOf(
                 index, list.items.count,
@@ -3365,8 +4462,69 @@ extension PyInterp {
         case .module(let name):
             return try moduleAttr(
                 name, field, line)
-        case .str, .list, .dict, .file:
+        case .str, .list, .dict, .file,
+             .set, .generator, .seqIter:
             return .bound(base, field)
+        case .instance(let obj):
+            if let value = obj.attrs[field] {
+                return value
+            }
+            if let (value, _) = obj.cls
+                .lookupEntry(field) {
+                // A function found on the
+                // class binds; a plain class
+                // attribute reads as itself.
+                if case .function = value {
+                    return .bound(base, field)
+                }
+                return value
+            }
+            if obj.cls.lookup("__getattr__")
+                != nil {
+                return try callMethod(
+                    base, "__getattr__",
+                    [.str(field)], [], line)
+            }
+            throw PyError(
+                "AttributeError",
+                "'\(obj.cls.name)' object "
+                    + "has no attribute "
+                    + "'\(field)'",
+                line: line)
+        case .cls(let cls):
+            if let value = cls.lookup(
+                field) {
+                return value
+            }
+            throw PyError(
+                "AttributeError",
+                "type object '\(cls.name)' "
+                    + "has no attribute "
+                    + "'\(field)'",
+                line: line)
+        case .superProxy(let obj,
+                         let after):
+            let mro = obj.cls.mro()
+            if let at = mro.firstIndex(
+                where: { $0 === after }) {
+                for cls in mro.dropFirst(
+                    at + 1) {
+                    if let value = cls.attrs[
+                        field] {
+                        if case .function =
+                            value {
+                            return .bound(
+                                base, field)
+                        }
+                        return value
+                    }
+                }
+            }
+            throw PyError(
+                "AttributeError",
+                "'super' object has no "
+                    + "attribute '\(field)'",
+                line: line)
         default:
             throw PyError(
                 "AttributeError",
@@ -3374,6 +4532,437 @@ extension PyInterp {
                     + "object has no "
                     + "attribute '\(field)'",
                 line: line)
+        }
+    }
+}
+
+// MARK: - Instances at work
+
+extension PyInterp {
+    /// Truth, python's way: an instance
+    /// answers through __bool__, then
+    /// __len__; everything else reads
+    /// the plain table.
+    func isTruthy(_ value: PyValue,
+                  _ line: Int) throws -> Bool {
+        if case .instance(let obj) = value {
+            if let verdict = try dunder(
+                obj, "__bool__", [], line) {
+                return PyFormat.truthy(
+                    verdict)
+            }
+            if let length = try dunder(
+                obj, "__len__", [], line),
+               let n = asInt(length) {
+                return n != 0
+            }
+        }
+        return PyFormat.truthy(value)
+    }
+
+    /// Runs a dunder on an instance when
+    /// its class defines one; nil when
+    /// the class stays silent.
+    func dunder(_ obj: PyInstance,
+                _ name: String,
+                _ args: [PyValue],
+                _ line: Int) throws
+        -> PyValue? {
+        guard obj.cls.lookup(name) != nil
+        else { return nil }
+        return try callMethod(
+            .instance(obj), name, args, [],
+            line)
+    }
+
+    /// How a value reads aloud: an
+    /// instance with __str__ (else
+    /// __repr__) speaks for itself.
+    func textOf(_ value: PyValue)
+        -> String {
+        if case .instance(let obj) = value {
+            if let said = try? dunderText(
+                obj, "__str__") {
+                return said
+            }
+            if let said = try? dunderText(
+                obj, "__repr__") {
+                return said
+            }
+        }
+        return PyFormat.str(value)
+    }
+
+    /// How a value reads in a listing:
+    /// __repr__ first, then __str__.
+    func reprOf(_ value: PyValue)
+        -> String {
+        if case .instance(let obj) = value {
+            if let said = try? dunderText(
+                obj, "__repr__") {
+                return said
+            }
+            if let said = try? dunderText(
+                obj, "__str__") {
+                return said
+            }
+        }
+        return PyFormat.repr(value)
+    }
+
+    private func dunderText(
+        _ obj: PyInstance, _ name: String)
+        throws -> String? {
+        guard let result = try dunder(
+            obj, name, [],
+            frames.last?.line ?? 0)
+        else { return nil }
+        guard case .str(let text) = result
+        else { return nil }
+        return text
+    }
+
+    /// The (forward, reflected) dunder
+    /// names for a binary operator.
+    func dunderNames(_ op: String)
+        -> (String, String)? {
+        switch op {
+        case "+":
+            return ("__add__", "__radd__")
+        case "-":
+            return ("__sub__", "__rsub__")
+        case "*":
+            return ("__mul__", "__rmul__")
+        case "/":
+            return ("__truediv__",
+                    "__rtruediv__")
+        case "//":
+            return ("__floordiv__",
+                    "__rfloordiv__")
+        case "%":
+            return ("__mod__", "__rmod__")
+        case "**":
+            return ("__pow__", "__rpow__")
+        case "&":
+            return ("__and__", "__rand__")
+        case "|":
+            return ("__or__", "__ror__")
+        case "^":
+            return ("__xor__", "__rxor__")
+        case "<<":
+            return ("__lshift__",
+                    "__rlshift__")
+        case ">>":
+            return ("__rshift__",
+                    "__rrshift__")
+        default: return nil
+        }
+    }
+
+    /// __eq__ when a class offers one.
+    func eqDunder(_ left: PyValue,
+                  _ right: PyValue,
+                  _ line: Int) throws
+        -> Bool? {
+        if case .instance(let obj) = left,
+           let verdict = try dunder(
+               obj, "__eq__", [right],
+               line) {
+            return try isTruthy(
+                verdict, line)
+        }
+        if case .instance(let obj) = right,
+           let verdict = try dunder(
+               obj, "__eq__", [left],
+               line) {
+            return try isTruthy(
+                verdict, line)
+        }
+        return nil
+    }
+
+    /// The ordering dunders, mirrored.
+    func orderDunder(_ op: String,
+                     _ left: PyValue,
+                     _ right: PyValue,
+                     _ line: Int) throws
+        -> Bool? {
+        let names: [String: String] = [
+            "<": "__lt__", "<=": "__le__",
+            ">": "__gt__", ">=": "__ge__",
+        ]
+        let mirrors: [String: String] = [
+            "<": "__gt__", "<=": "__ge__",
+            ">": "__lt__", ">=": "__le__",
+        ]
+        if case .instance(let obj) = left,
+           let name = names[op],
+           let verdict = try dunder(
+               obj, name, [right], line) {
+            return try isTruthy(
+                verdict, line)
+        }
+        if case .instance(let obj) = right,
+           let name = mirrors[op],
+           let verdict = try dunder(
+               obj, name, [left], line) {
+            return try isTruthy(
+                verdict, line)
+        }
+        return nil
+    }
+
+    /// Walks a comprehension's clauses in
+    /// one fresh scope hanging off the
+    /// enclosing one — loop variables
+    /// live and die inside it, like
+    /// python's own.
+    func runCompClauses(
+        _ clauses: [(PyExpr, PyExpr,
+                     [PyExpr])],
+        _ env: PyEnv,
+        _ emit: (PyEnv) throws -> Void)
+        throws {
+        let scope = PyEnv(parent: env)
+        try walkCompClause(
+            clauses, 0, env, scope, emit)
+    }
+
+    private func walkCompClause(
+        _ clauses: [(PyExpr, PyExpr,
+                     [PyExpr])],
+        _ index: Int,
+        _ outer: PyEnv,
+        _ scope: PyEnv,
+        _ emit: (PyEnv) throws -> Void)
+        throws {
+        if index == clauses.count {
+            try emit(scope)
+            return
+        }
+        let (target, iterableExpr, conds) =
+            clauses[index]
+        let source = try eval(
+            iterableExpr,
+            index == 0 ? outer : scope)
+        func step(_ item: PyValue) throws {
+            try assignTarget(
+                target, item, scope)
+            for cond in conds {
+                let pass = try isTruthy(
+                    try eval(cond, scope),
+                    frames.last?.line ?? 0)
+                if !pass { return }
+            }
+            try walkCompClause(
+                clauses, index + 1, outer,
+                scope, emit)
+        }
+        if case .generator(let gen) =
+            source {
+            while let item = try gen
+                .advance(sent: .none) {
+                try step(item)
+            }
+        } else {
+            for item in try iterate(
+                source) {
+                try step(item)
+            }
+        }
+    }
+
+    /// Whether a body yields anywhere of
+    /// its own — a nested function's
+    /// yields are that function's affair.
+    static func bodyContainsYield(
+        _ body: [PyStmt]) -> Bool {
+        for stmt in body {
+            switch stmt {
+            case .def, .classDef:
+                continue
+            case .expr(let expr, _):
+                if exprContainsYield(expr) {
+                    return true
+                }
+            case .assign(_, let value, _):
+                if exprContainsYield(value) {
+                    return true
+                }
+            case .augAssign(_, _, let v, _):
+                if exprContainsYield(v) {
+                    return true
+                }
+            case .ifElse(let arms,
+                         let fallback, _):
+                for (cond, arm) in arms {
+                    if exprContainsYield(cond)
+                        || bodyContainsYield(
+                            arm) {
+                        return true
+                    }
+                }
+                if bodyContainsYield(
+                    fallback) {
+                    return true
+                }
+            case .whileLoop(let cond,
+                            let inner, _):
+                if exprContainsYield(cond)
+                    || bodyContainsYield(
+                        inner) {
+                    return true
+                }
+            case .forLoop(let target,
+                          let iterable,
+                          let inner, _):
+                if exprContainsYield(target)
+                    || exprContainsYield(
+                        iterable)
+                    || bodyContainsYield(
+                        inner) {
+                    return true
+                }
+            case .returnStmt(let expr, _):
+                if let expr = expr,
+                   exprContainsYield(expr) {
+                    return true
+                }
+            case .tryExcept(let inner,
+                            let handlers,
+                            let elseBody,
+                            let finallyBody,
+                            _):
+                if bodyContainsYield(inner)
+                    || bodyContainsYield(
+                        elseBody)
+                    || bodyContainsYield(
+                        finallyBody) {
+                    return true
+                }
+                for (_, _, arm) in handlers
+                where bodyContainsYield(arm) {
+                    return true
+                }
+            case .withStmt(let item, _,
+                           let inner, _):
+                if exprContainsYield(item)
+                    || bodyContainsYield(
+                        inner) {
+                    return true
+                }
+            case .raiseStmt(let expr, _):
+                if let expr = expr,
+                   exprContainsYield(expr) {
+                    return true
+                }
+            case .assertStmt(let test,
+                             let message, _):
+                if exprContainsYield(test) {
+                    return true
+                }
+                if let message = message,
+                   exprContainsYield(
+                    message) {
+                    return true
+                }
+            default:
+                continue
+            }
+        }
+        return false
+    }
+
+    static func exprContainsYield(
+        _ expr: PyExpr) -> Bool {
+        switch expr {
+        case .yieldExpr:
+            return true
+        case .lambda:
+            return false
+        case .binary(_, let a, let b):
+            return exprContainsYield(a)
+                || exprContainsYield(b)
+        case .unary(_, let a):
+            return exprContainsYield(a)
+        case .compare(let first,
+                      let chain):
+            if exprContainsYield(first) {
+                return true
+            }
+            return chain.contains {
+                exprContainsYield($0.1)
+            }
+        case .call(let callee, let args,
+                   let kwargs):
+            if exprContainsYield(callee) {
+                return true
+            }
+            if args.contains(
+                where: exprContainsYield) {
+                return true
+            }
+            return kwargs.contains {
+                exprContainsYield($0.1)
+            }
+        case .index(let base, let idx):
+            return exprContainsYield(base)
+                || exprContainsYield(idx)
+        case .slice(let base, let a,
+                    let b, let c):
+            if exprContainsYield(base) {
+                return true
+            }
+            for part in [a, b, c] {
+                if let part = part,
+                   exprContainsYield(part) {
+                    return true
+                }
+            }
+            return false
+        case .attr(let base, _):
+            return exprContainsYield(base)
+        case .ternary(let v, let c, let o):
+            return exprContainsYield(v)
+                || exprContainsYield(c)
+                || exprContainsYield(o)
+        case .listOf(let items),
+             .setOf(let items),
+             .tupleOf(let items):
+            return items.contains(
+                where: exprContainsYield)
+        case .dictOf(let pairs):
+            return pairs.contains {
+                exprContainsYield($0.0)
+                    || exprContainsYield($0.1)
+            }
+        case .listComp(let elem,
+                       let clauses),
+             .setComp(let elem,
+                       let clauses),
+             .genExp(let elem,
+                     let clauses):
+            if exprContainsYield(elem) {
+                return true
+            }
+            return clauses.contains {
+                exprContainsYield($0.1)
+                    || $0.2.contains(
+                        where: exprContainsYield)
+            }
+        case .dictComp(let key, let value,
+                       let clauses):
+            if exprContainsYield(key)
+                || exprContainsYield(value) {
+                return true
+            }
+            return clauses.contains {
+                exprContainsYield($0.1)
+                    || $0.2.contains(
+                        where: exprContainsYield)
+            }
+        default:
+            return false
         }
     }
 }
@@ -3388,8 +4977,30 @@ extension PyInterp {
         -> PyValue {
         switch callee {
         case .function(let fn):
+            if fn.isGenerator {
+                return .generator(
+                    PyGenerator(
+                        fn: fn, args: args,
+                        kwargs: kwargs,
+                        interp: self))
+            }
             return try callFunction(
                 fn, args, kwargs, line)
+        case .cls(let cls):
+            return try instantiate(
+                cls, args, kwargs, line)
+        case .instance(let obj):
+            if obj.cls.lookup("__call__")
+                != nil {
+                return try callMethod(
+                    callee, "__call__",
+                    args, kwargs, line)
+            }
+            throw PyError(
+                "TypeError",
+                "'\(obj.cls.name)' object "
+                    + "is not callable",
+                line: line)
         case .builtin(let name):
             return try callBuiltin(
                 name, args, kwargs, line)
@@ -3530,7 +5141,7 @@ extension PyInterp {
                 end = text
             }
             let text = args.map {
-                PyFormat.str($0)
+                textOf($0)
             }.joined(separator: sep)
             printText(text + end)
             return .none
@@ -3573,11 +5184,10 @@ extension PyInterp {
                 return .str("")
             }
             try needArgs(name, args, 1, line)
-            return .str(PyFormat.str(args[0]))
+            return .str(textOf(args[0]))
         case "repr":
             try needArgs(name, args, 1, line)
-            return .str(PyFormat.repr(
-                args[0]))
+            return .str(reprOf(args[0]))
         case "int":
             return try toInt(args, line)
         case "float":
@@ -3604,15 +5214,47 @@ extension PyInterp {
             return .tuple(
                 try iterate(args[0]))
         case "dict":
-            if args.isEmpty {
+            if args.isEmpty,
+               kwargs.isEmpty {
                 return .dict(PyDict())
             }
-            throw PyError(
-                "TypeError",
-                "dict() from values is not "
-                    + "in the house's python "
-                    + "yet — write {k: v}",
-                line: line)
+            try needArgs(name, args,
+                         args.isEmpty ? 0 : 1,
+                         line)
+            let dict = PyDict()
+            if let source = args.first {
+                if case .dict(let other) =
+                    source {
+                    for h in other.keys {
+                        dict.set(
+                            other.display[h]
+                                ?? .none,
+                            other.values[h]
+                                ?? .none)
+                    }
+                } else {
+                    for pair in try iterate(
+                        source) {
+                        let parts = try iterate(
+                            pair)
+                        guard parts.count == 2
+                        else {
+                            throw PyError(
+                                "ValueError",
+                                "dict() needs "
+                                    + "pairs of "
+                                    + "two",
+                                line: line)
+                        }
+                        dict.set(parts[0],
+                                 parts[1])
+                    }
+                }
+            }
+            for (key, value) in kwargs {
+                dict.set(.str(key), value)
+            }
+            return .dict(dict)
         case "abs":
             try needArgs(name, args, 1, line)
             if let n = asInt(args[0]) {
@@ -3701,6 +5343,14 @@ extension PyInterp {
             return .list(PyList(out))
         case "type":
             try needArgs(name, args, 1, line)
+            if case .instance(let obj) =
+                args[0] {
+                return .cls(obj.cls)
+            }
+            if case .cls = args[0] {
+                return .str(
+                    "<class 'type'>")
+            }
             return .str(
                 "<class '\(PyFormat.typeName(args[0]))'>")
         case "round":
@@ -3746,6 +5396,374 @@ extension PyInterp {
             }
             return .str(
                 String(Character(scalar)))
+        case "set", "frozenset":
+            if args.isEmpty {
+                return .set(PySet())
+            }
+            try needArgs(name, args, 1, line)
+            let set = PySet()
+            for item in try iterate(
+                args[0]) {
+                set.add(item)
+            }
+            return .set(set)
+        case "isinstance":
+            try needArgs(name, args, 2, line)
+            return .bool(try isInstance(
+                args[0], of: args[1], line))
+        case "issubclass":
+            try needArgs(name, args, 2, line)
+            guard case .cls(let sub) =
+                args[0] else {
+                throw PyError(
+                    "TypeError",
+                    "issubclass() arg 1 "
+                        + "must be a class",
+                    line: line)
+            }
+            return .bool(try isSubclass(
+                sub, of: args[1], line))
+        case "getattr":
+            guard (args.count == 2
+                || args.count == 3),
+                  case .str(let field) =
+                    args[1] else {
+                throw PyError(
+                    "TypeError",
+                    "getattr() takes an "
+                        + "object and an "
+                        + "attribute name",
+                    line: line)
+            }
+            do {
+                return try getAttr(
+                    args[0], field, line)
+            } catch let error as PyError
+                where error.kind
+                    == "AttributeError" {
+                if args.count == 3 {
+                    return args[2]
+                }
+                throw error
+            }
+        case "setattr":
+            try needArgs(name, args, 3, line)
+            guard case .str(let field) =
+                args[1] else {
+                throw PyError(
+                    "TypeError",
+                    "setattr() needs an "
+                        + "attribute name",
+                    line: line)
+            }
+            try setAttr(args[0], field,
+                        args[2])
+            return .none
+        case "hasattr":
+            try needArgs(name, args, 2, line)
+            guard case .str(let field) =
+                args[1] else {
+                throw PyError(
+                    "TypeError",
+                    "hasattr() needs an "
+                        + "attribute name",
+                    line: line)
+            }
+            do {
+                _ = try getAttr(
+                    args[0], field, line)
+                return .bool(true)
+            } catch let error as PyError
+                where error.kind
+                    == "AttributeError" {
+                return .bool(false)
+            }
+        case "callable":
+            try needArgs(name, args, 1, line)
+            switch args[0] {
+            case .function, .builtin,
+                 .bound, .cls:
+                return .bool(true)
+            case .instance(let obj):
+                return .bool(
+                    obj.cls.lookup("__call__")
+                        != nil)
+            default:
+                return .bool(false)
+            }
+        case "iter":
+            try needArgs(name, args, 1, line)
+            switch args[0] {
+            case .generator, .seqIter:
+                return args[0]
+            default:
+                return .seqIter(PySeqIter(
+                    try iterate(args[0])))
+            }
+        case "next":
+            guard args.count == 1
+                || args.count == 2 else {
+                throw PyError(
+                    "TypeError",
+                    "next() takes 1 or 2 "
+                        + "arguments",
+                    line: line)
+            }
+            let fallback: PyValue? =
+                args.count == 2 ? args[1]
+                    : nil
+            switch args[0] {
+            case .generator(let gen):
+                if let item = try gen
+                    .advance(sent: .none) {
+                    return item
+                }
+            case .seqIter(let iter):
+                if iter.index < iter.items
+                    .count {
+                    let item = iter.items[
+                        iter.index]
+                    iter.index += 1
+                    return item
+                }
+            case .instance(let obj):
+                guard obj.cls.lookup(
+                    "__next__") != nil else {
+                    throw PyError(
+                        "TypeError",
+                        "'\(obj.cls.name)' "
+                            + "object is "
+                            + "not an "
+                            + "iterator",
+                        line: line)
+                }
+                do {
+                    return try callMethod(
+                        args[0], "__next__",
+                        [], [], line)
+                } catch let error as PyError
+                    where error.kind
+                        == "StopIteration" {
+                    if let fallback =
+                        fallback {
+                        return fallback
+                    }
+                    throw error
+                }
+            default:
+                throw PyError(
+                    "TypeError",
+                    "'\(PyFormat.typeName(args[0]))' "
+                        + "object is not "
+                        + "an iterator",
+                    line: line)
+            }
+            if let fallback = fallback {
+                return fallback
+            }
+            throw PyError(
+                "StopIteration", "",
+                line: line)
+        case "any":
+            try needArgs(name, args, 1, line)
+            for item in try iterate(
+                args[0]) {
+                if try isTruthy(item, line) {
+                    return .bool(true)
+                }
+            }
+            return .bool(false)
+        case "all":
+            try needArgs(name, args, 1, line)
+            for item in try iterate(
+                args[0]) {
+                if try isTruthy(item, line)
+                    == false {
+                    return .bool(false)
+                }
+            }
+            return .bool(true)
+        case "divmod":
+            try needArgs(name, args, 2, line)
+            if let a = asInt(args[0]),
+               let b = asInt(args[1]) {
+                guard b != 0 else {
+                    throw PyError(
+                        "ZeroDivisionError",
+                        "divmod() by zero",
+                        line: line)
+                }
+                let q = floorDiv(a, b)
+                return .tuple(
+                    [.int(q),
+                     .int(a - q * b)])
+            }
+            if let a = asDouble(args[0]),
+               let b = asDouble(args[1]) {
+                guard b != 0 else {
+                    throw PyError(
+                        "ZeroDivisionError",
+                        "divmod() by zero",
+                        line: line)
+                }
+                let q = (a / b).rounded(
+                    .down)
+                return .tuple(
+                    [.float(q),
+                     .float(a - q * b)])
+            }
+            throw PyError(
+                "TypeError",
+                "divmod() needs numbers",
+                line: line)
+        case "pow":
+            guard args.count == 2
+                || args.count == 3 else {
+                throw PyError(
+                    "TypeError",
+                    "pow() takes 2 or 3 "
+                        + "arguments",
+                    line: line)
+            }
+            if args.count == 2 {
+                return try evalBinary(
+                    "**", args[0], args[1])
+            }
+            guard let base = asInt(args[0]),
+                  let exp = asInt(args[1]),
+                  let mod = asInt(args[2]),
+                  mod != 0, exp >= 0 else {
+                throw PyError(
+                    "ValueError",
+                    "pow() with a modulus "
+                        + "needs integers, "
+                        + "a non-zero "
+                        + "modulus and a "
+                        + "non-negative "
+                        + "exponent here",
+                    line: line)
+            }
+            var result = 1 % mod
+            var b = ((base % mod) + mod) % mod
+            var e = exp
+            while e > 0 {
+                if e & 1 == 1 {
+                    result = (result * b) % mod
+                }
+                b = (b * b) % mod
+                e >>= 1
+            }
+            if mod < 0, result > 0 {
+                result += mod
+            }
+            return .int(result)
+        case "hex", "oct", "bin":
+            try needArgs(name, args, 1, line)
+            guard let n = asInt(args[0])
+            else {
+                throw PyError(
+                    "TypeError",
+                    "\(name)() needs an "
+                        + "integer",
+                    line: line)
+            }
+            let radix = name == "hex"
+                ? 16 : name == "oct" ? 8 : 2
+            let prefix = name == "hex"
+                ? "0x" : name == "oct"
+                ? "0o" : "0b"
+            return .str(
+                (n < 0 ? "-" : "")
+                    + prefix
+                    + String(abs(n),
+                             radix: radix))
+        case "hash":
+            try needArgs(name, args, 1, line)
+            return .int(hashOf(args[0]))
+        case "id":
+            try needArgs(name, args, 1, line)
+            switch args[0] {
+            case .list(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            case .dict(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            case .set(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            case .instance(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            case .cls(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            case .function(let box):
+                return .int(ObjectIdentifier(
+                    box).hashValue)
+            default:
+                return .int(hashOf(args[0]))
+            }
+        case "vars":
+            guard args.count == 1 else {
+                throw PyError(
+                    "TypeError",
+                    "vars() takes one "
+                        + "object in the "
+                        + "house's python",
+                    line: line)
+            }
+            let dict = PyDict()
+            switch args[0] {
+            case .instance(let obj):
+                for (key, value)
+                    in obj.attrs {
+                    dict.set(.str(key),
+                             value)
+                }
+            case .cls(let cls):
+                for (key, value)
+                    in cls.attrs {
+                    dict.set(.str(key),
+                             value)
+                }
+            default:
+                throw PyError(
+                    "TypeError",
+                    "vars() argument must "
+                        + "have a __dict__",
+                    line: line)
+            }
+            return .dict(dict)
+        case "dir":
+            try needArgs(name, args, 1, line)
+            var names: Set<String> = []
+            switch args[0] {
+            case .instance(let obj):
+                names.formUnion(
+                    obj.attrs.keys)
+                for cls in obj.cls.mro() {
+                    names.formUnion(
+                        cls.attrs.keys)
+                }
+            case .cls(let cls):
+                for base in cls.mro() {
+                    names.formUnion(
+                        base.attrs.keys)
+                }
+            case .module(let module):
+                names.formUnion(
+                    moduleMembers(module))
+            default:
+                break
+            }
+            return .list(PyList(
+                names.sorted().map {
+                    PyValue.str($0)
+                }))
+        case "super":
+            return try superBuiltin(
+                args, line)
         case "open":
             return try openFile(
                 args, kwargs, line)
@@ -3775,6 +5793,19 @@ extension PyInterp {
             return l.items.count
         case .dict(let d): return d.count
         case .tuple(let t): return t.count
+        case .set(let s): return s.count
+        case .instance(let obj):
+            if let length = try dunder(
+                obj, "__len__", [], line),
+               let n = asInt(length) {
+                return n
+            }
+            throw PyError(
+                "TypeError",
+                "object of type "
+                    + "'\(obj.cls.name)' "
+                    + "has no len()",
+                line: line)
         case .range:
             return try iterate(value).count
         default:
@@ -4018,6 +6049,60 @@ extension PyInterp {
         case .file(let file):
             return try fileMethod(
                 file, method, args, line)
+        case .instance(let obj):
+            return try instanceMethod(
+                obj, method, args, kwargs,
+                line)
+        case .set(let set):
+            return try setMethod(
+                set, method, args, line)
+        case .generator(let gen):
+            switch method {
+            case "send":
+                if let item = try gen
+                    .advance(
+                        sent: args.first
+                            ?? .none) {
+                    return item
+                }
+                throw PyError(
+                    "StopIteration", "",
+                    line: line)
+            case "__next__":
+                if let item = try gen
+                    .advance(sent: .none) {
+                    return item
+                }
+                throw PyError(
+                    "StopIteration", "",
+                    line: line)
+            case "close":
+                gen.forceFinish()
+                return .none
+            default:
+                throw attrError(
+                    "generator", method, line)
+            }
+        case .seqIter(let iter):
+            if method == "__next__" {
+                guard iter.index < iter
+                    .items.count else {
+                    throw PyError(
+                        "StopIteration", "",
+                        line: line)
+                }
+                let item = iter.items[
+                    iter.index]
+                iter.index += 1
+                return item
+            }
+            throw attrError(
+                "iterator", method, line)
+        case .superProxy(let obj,
+                         let after):
+            return try superMethod(
+                obj, after, method, args,
+                kwargs, line)
         default:
             throw PyError(
                 "AttributeError",
@@ -4026,6 +6111,492 @@ extension PyInterp {
                     + "attribute '\(method)'",
                 line: line)
         }
+    }
+
+    /// A method call on an instance: the
+    /// function is found down the mro and
+    /// run with the instance bound as its
+    /// first argument.
+    func instanceMethod(
+        _ obj: PyInstance, _ method: String,
+        _ args: [PyValue],
+        _ kwargs: [(String, PyValue)],
+        _ line: Int) throws -> PyValue {
+        guard let (value, owner) = obj.cls
+            .lookupEntry(method) else {
+            throw attrError(
+                obj.cls.name, method, line)
+        }
+        guard case .function(let fn) =
+            value else {
+            throw PyError(
+                "TypeError",
+                "'\(PyFormat.typeName(value))' "
+                    + "object is not "
+                    + "callable",
+                line: line)
+        }
+        methodContext.append((obj, owner))
+        defer {
+            methodContext.removeLast()
+        }
+        return try callFunction(
+            fn, [.instance(obj)] + args,
+            kwargs, line)
+    }
+
+    /// A method call through super: the
+    /// search starts after the given
+    /// class in the instance's mro, but
+    /// the instance stays itself.
+    func superMethod(
+        _ obj: PyInstance, _ after: PyClass,
+        _ method: String,
+        _ args: [PyValue],
+        _ kwargs: [(String, PyValue)],
+        _ line: Int) throws -> PyValue {
+        let mro = obj.cls.mro()
+        guard let at = mro.firstIndex(
+            where: { $0 === after }) else {
+            throw attrError(
+                "super", method, line)
+        }
+        for cls in mro.dropFirst(at + 1) {
+            if let value = cls.attrs[
+                method] {
+                guard case .function(
+                    let fn) = value else {
+                    throw PyError(
+                        "TypeError",
+                        "'\(PyFormat.typeName(value))' "
+                            + "object is not "
+                            + "callable",
+                        line: line)
+                }
+                methodContext.append(
+                    (obj, cls))
+                defer {
+                    methodContext
+                        .removeLast()
+                }
+                return try callFunction(
+                    fn, [.instance(obj)]
+                        + args,
+                    kwargs, line)
+            }
+        }
+        throw attrError(
+            "super", method, line)
+    }
+
+    /// Calling a class: a fresh instance,
+    /// then __init__ with it bound, when
+    /// the class defines one.
+    func instantiate(
+        _ cls: PyClass, _ args: [PyValue],
+        _ kwargs: [(String, PyValue)],
+        _ line: Int) throws -> PyValue {
+        let obj = PyInstance(cls: cls)
+        let value = PyValue.instance(obj)
+        if cls.lookup("__init__") != nil {
+            _ = try callMethod(
+                value, "__init__", args,
+                kwargs, line)
+        } else if !args.isEmpty
+            || !kwargs.isEmpty {
+            throw PyError(
+                "TypeError",
+                "\(cls.name)() takes no "
+                    + "arguments",
+                line: line)
+        }
+        return value
+    }
+
+    func setMethod(_ set: PySet,
+                   _ method: String,
+                   _ args: [PyValue],
+                   _ line: Int) throws
+        -> PyValue {
+        switch method {
+        case "add":
+            try needArgs("add", args, 1,
+                         line)
+            set.add(args[0])
+            return .none
+        case "remove":
+            try needArgs("remove", args, 1,
+                         line)
+            guard set.contains(args[0])
+            else {
+                throw PyError(
+                    "KeyError",
+                    PyFormat.repr(args[0]),
+                    line: line)
+            }
+            set.remove(args[0])
+            return .none
+        case "discard":
+            try needArgs("discard", args,
+                         1, line)
+            set.remove(args[0])
+            return .none
+        case "pop":
+            guard let first = set.items
+                .first else {
+                throw PyError(
+                    "KeyError",
+                    "pop from an empty set",
+                    line: line)
+            }
+            set.remove(first)
+            return first
+        case "clear":
+            set.keys = []
+            set.values = [:]
+            set.display = [:]
+            return .none
+        case "copy":
+            let out = PySet()
+            for item in set.items {
+                out.add(item)
+            }
+            return .set(out)
+        case "update":
+            for arg in args {
+                for item in try iterate(
+                    arg) {
+                    set.add(item)
+                }
+            }
+            return .none
+        case "union":
+            let out = PySet()
+            for item in set.items {
+                out.add(item)
+            }
+            for arg in args {
+                for item in try iterate(
+                    arg) {
+                    out.add(item)
+                }
+            }
+            return .set(out)
+        case "intersection":
+            let out = PySet()
+            for item in set.items {
+                var everywhere = true
+                for arg in args {
+                    if try !iterate(arg)
+                        .contains(where: {
+                            PyFormat.equals(
+                                $0, item)
+                        }) {
+                        everywhere = false
+                    }
+                }
+                if everywhere {
+                    out.add(item)
+                }
+            }
+            return .set(out)
+        case "difference":
+            let out = PySet()
+            for item in set.items {
+                var gone = false
+                for arg in args {
+                    if try iterate(arg)
+                        .contains(where: {
+                            PyFormat.equals(
+                                $0, item)
+                        }) {
+                        gone = true
+                    }
+                }
+                if !gone {
+                    out.add(item)
+                }
+            }
+            return .set(out)
+        case "symmetric_difference":
+            try needArgs(
+                "symmetric_difference",
+                args, 1, line)
+            let other = try iterate(
+                args[0])
+            let out = PySet()
+            for item in set.items
+            where !other.contains(where: {
+                PyFormat.equals($0, item)
+            }) {
+                out.add(item)
+            }
+            for item in other
+            where !set.contains(item) {
+                out.add(item)
+            }
+            return .set(out)
+        case "issubset":
+            try needArgs("issubset", args,
+                         1, line)
+            let other = try iterate(
+                args[0])
+            return .bool(set.items
+                .allSatisfy { item in
+                    other.contains {
+                        PyFormat.equals(
+                            $0, item)
+                    }
+                })
+        case "issuperset":
+            try needArgs("issuperset",
+                         args, 1, line)
+            let other = try iterate(
+                args[0])
+            return .bool(other.allSatisfy {
+                set.contains($0)
+            })
+        case "isdisjoint":
+            try needArgs("isdisjoint",
+                         args, 1, line)
+            let other = try iterate(
+                args[0])
+            return .bool(!other.contains {
+                set.contains($0)
+            })
+        case "__contains__":
+            try needArgs("__contains__",
+                         args, 1, line)
+            return .bool(
+                set.contains(args[0]))
+        case "__len__":
+            return .int(set.count)
+        case "__iter__":
+            return .seqIter(
+                PySeqIter(set.items))
+        default:
+            throw attrError(
+                "set", method, line)
+        }
+    }
+
+    /// A stable integer for a value:
+    /// FNV-1a over its hash key, the same
+    /// string the house's dicts key on.
+    func hashOf(_ value: PyValue) -> Int {
+        var hash: UInt64 =
+            0xcbf29ce484222325
+        for byte in PyFormat.hashKey(value)
+            .utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 0x100000001b3
+        }
+        return Int(hash & 0x3fff_ffff_ffff_ffff)
+    }
+
+    /// The member names of the house's
+    /// modules, for dir().
+    func moduleMembers(_ module: String)
+        -> [String] {
+        switch module {
+        case "math":
+            return ["sqrt", "floor",
+                    "ceil", "fabs", "sin",
+                    "cos", "tan", "asin",
+                    "acos", "atan", "log",
+                    "log2", "log10", "pow",
+                    "factorial", "gcd",
+                    "degrees", "radians",
+                    "hypot", "pi", "e",
+                    "tau", "inf", "nan"]
+        case "random":
+            return ["random", "randint",
+                    "randrange", "choice",
+                    "shuffle", "uniform",
+                    "seed"]
+        case "house":
+            return ["read", "write",
+                    "ls", "exists",
+                    "state", "emcon"]
+        case "sys":
+            return ["argv"]
+        default:
+            return []
+        }
+    }
+
+    /// Does a builtin type name match a
+    /// value? (Bools are ints in python,
+    /// as an isinstance(True, int) shows.)
+    func kindMatches(_ value: PyValue,
+                     _ kind: String) -> Bool {
+        switch kind {
+        case "object":
+            return true
+        case "int":
+            if case .int = value {
+                return true
+            }
+            if case .bool = value {
+                return true
+            }
+            return false
+        case "bool":
+            if case .bool = value {
+                return true
+            }
+            return false
+        case "float":
+            if case .float = value {
+                return true
+            }
+            return false
+        case "str":
+            if case .str = value {
+                return true
+            }
+            return false
+        case "list":
+            if case .list = value {
+                return true
+            }
+            return false
+        case "dict":
+            if case .dict = value {
+                return true
+            }
+            return false
+        case "tuple":
+            if case .tuple = value {
+                return true
+            }
+            return false
+        case "set", "frozenset":
+            if case .set = value {
+                return true
+            }
+            return false
+        case "function":
+            switch value {
+            case .function, .builtin,
+                 .bound:
+                return true
+            default:
+                return false
+            }
+        case "type":
+            if case .cls = value {
+                return true
+            }
+            return false
+        default:
+            return false
+        }
+    }
+
+    func isInstance(_ value: PyValue,
+                    of spec: PyValue,
+                    _ line: Int) throws
+        -> Bool {
+        switch spec {
+        case .tuple(let specs):
+            for sub in specs {
+                if try isInstance(
+                    value, of: sub, line) {
+                    return true
+                }
+            }
+            return false
+        case .cls(let cls):
+            guard case .instance(
+                let obj) = value else {
+                return false
+            }
+            return obj.cls.mro().contains {
+                $0 === cls
+            }
+        case .builtin(let kind):
+            return kindMatches(value, kind)
+        default:
+            throw PyError(
+                "TypeError",
+                "isinstance() argument 2 "
+                    + "must be a type",
+                line: line)
+        }
+    }
+
+    func isSubclass(_ sub: PyClass,
+                    of spec: PyValue,
+                    _ line: Int) throws
+        -> Bool {
+        switch spec {
+        case .tuple(let specs):
+            for part in specs {
+                if try isSubclass(
+                    sub, of: part, line) {
+                    return true
+                }
+            }
+            return false
+        case .cls(let cls):
+            return sub.mro().contains {
+                $0 === cls
+            }
+        case .builtin(let kind):
+            return kind == "object"
+        default:
+            throw PyError(
+                "TypeError",
+                "issubclass() argument 2 "
+                    + "must be a class",
+                line: line)
+        }
+    }
+
+    /// super(): with no arguments it
+    /// reads the method frame the call
+    /// layer keeps; with two, it checks
+    /// the pair the way python does.
+    func superBuiltin(_ args: [PyValue],
+                      _ line: Int) throws
+        -> PyValue {
+        if args.isEmpty {
+            guard let (obj, owner) =
+                methodContext.last else {
+                throw PyError(
+                    "RuntimeError",
+                    "super() with no "
+                        + "arguments needs a "
+                        + "method running on "
+                        + "an instance — or "
+                        + "pass both: "
+                        + "super(Base, self)",
+                    line: line)
+            }
+            return .superProxy(obj, owner)
+        }
+        guard args.count == 2,
+              case .cls(let cls) = args[0],
+              case .instance(let obj) =
+                args[1] else {
+            throw PyError(
+                "TypeError",
+                "super() takes the class "
+                    + "and the instance: "
+                    + "super(Base, self)",
+                line: line)
+        }
+        guard obj.cls.mro().contains(
+            where: { $0 === cls }) else {
+            throw PyError(
+                "TypeError",
+                "super(): the instance "
+                    + "is not of the "
+                    + "given class",
+                line: line)
+        }
+        return .superProxy(obj, cls)
     }
 
     func attrError(_ type: String,
@@ -4217,6 +6788,159 @@ extension PyInterp {
                 && text.contains {
                     $0.isLetter
                 })
+        case "splitlines":
+            if text.isEmpty {
+                return .list(PyList())
+            }
+            var parts = text.components(
+                separatedBy: "\n")
+            if text.hasSuffix("\n") {
+                parts.removeLast()
+            }
+            return .list(PyList(parts.map {
+                part in
+                PyValue.str(part.hasSuffix(
+                    "\r")
+                    ? String(part.dropLast())
+                    : part)
+            }))
+        case "removeprefix":
+            let bit = try argStr(0)
+            return .str(text.hasPrefix(bit)
+                ? String(text.dropFirst(
+                    bit.count)) : text)
+        case "removesuffix":
+            let bit = try argStr(0)
+            return .str(text.hasSuffix(bit)
+                ? String(text.dropLast(
+                    bit.count)) : text)
+        case "zfill":
+            guard let width = args.first
+                .flatMap({ asInt($0) })
+            else {
+                throw PyError(
+                    "TypeError",
+                    "zfill() needs a width",
+                    line: line)
+            }
+            if text.count >= width {
+                return .str(text)
+            }
+            let pad = String(
+                repeating: "0",
+                count: width - text.count)
+            if text.hasPrefix("-")
+                || text.hasPrefix("+") {
+                return .str(
+                    String(text.prefix(1))
+                        + pad
+                        + String(text
+                            .dropFirst()))
+            }
+            return .str(pad + text)
+        case "center", "ljust", "rjust":
+            guard let width = args.first
+                .flatMap({ asInt($0) })
+            else {
+                throw PyError(
+                    "TypeError",
+                    "\(method)() needs a "
+                        + "width",
+                    line: line)
+            }
+            var fill = " "
+            if args.count > 1,
+               case .str(let f) = args[1],
+               let ch = f.first {
+                fill = String(ch)
+            }
+            if text.count >= width {
+                return .str(text)
+            }
+            let total = width - text.count
+            let padding = String(
+                repeating: fill,
+                count: total)
+            switch method {
+            case "ljust":
+                return .str(text + padding)
+            case "rjust":
+                return .str(padding + text)
+            default:
+                let leftCount = total
+                    - total / 2
+                return .str(
+                    String(repeating: fill,
+                           count: leftCount)
+                        + text
+                        + String(
+                            repeating: fill,
+                            count: total
+                                - leftCount))
+            }
+        case "partition", "rpartition":
+            let bit = try argStr(0)
+            guard !bit.isEmpty else {
+                throw PyError(
+                    "ValueError",
+                    "empty separator",
+                    line: line)
+            }
+            let range = method
+                == "partition"
+                ? text.range(of: bit)
+                : text.range(
+                    of: bit,
+                    options: .backwards)
+            guard let range = range else {
+                return method == "partition"
+                    ? .tuple([.str(text),
+                              .str(""),
+                              .str("")])
+                    : .tuple([.str(""),
+                              .str(""),
+                              .str(text)])
+            }
+            return .tuple([
+                .str(String(
+                    text[..<range.lowerBound])),
+                .str(bit),
+                .str(String(
+                    text[range.upperBound...])),
+            ])
+        case "casefold":
+            return .str(text.lowercased())
+        case "istitle":
+            let words = text.split(
+                whereSeparator: {
+                    !$0.isLetter
+                })
+            return .bool(!words.isEmpty
+                && words.allSatisfy { word in
+                    guard let first = word
+                        .first else {
+                        return true
+                    }
+                    return first.isUppercase
+                        && word.dropFirst()
+                            .allSatisfy {
+                                !$0.isUppercase
+                            }
+                })
+        case "isdecimal", "isnumeric":
+            return .bool(!text.isEmpty
+                && text.allSatisfy {
+                    $0.isNumber
+                })
+        case "expandtabs":
+            let size = args.first
+                .flatMap({ asInt($0) }) ?? 8
+            return .str(text
+                .replacingOccurrences(
+                    of: "\t",
+                    with: String(
+                        repeating: " ",
+                        count: size)))
         default:
             throw attrError(
                 "str", method, line)
@@ -4863,17 +7587,21 @@ extension PyInterp {
 
 enum BlacksitePy {
     static let helpLines = [
-        "house python 1.0 — a small, "
+        "house python 2.0 — a small, "
             + "real python",
         "  numbers, strings, lists, "
-            + "dicts, tuples, functions",
-        "  if / for / while, try/except, "
-            + "f-strings, slices",
+            + "dicts, tuples, sets",
+        "  classes + inheritance, "
+            + "super(), dunders, lambda",
+        "  generators (yield) and "
+            + "comprehensions, nonlocal",
+        "  if / for / while, try/except/"
+            + "else/finally, f-strings",
         "  modules: math, random, sys "
             + "(argv), house (read/write/"
             + "ls/exists/state/emcon)",
-        "  not yet: classes, input(), "
-            + "imports past those three",
+        "  not yet: input(), imports "
+            + "past those four, threads",
         "run one: python3 hello.py · "
             + "or: run hello.py",
     ]
