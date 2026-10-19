@@ -4422,6 +4422,8 @@ final class BlacksiteShell: ObservableObject {
                 ("pkg remove <name>", "uninstall"),
                 ("pkg commands", "the commands packages gave the shell"),
                 ("pkg install grok · grok login · grok <words>", "ask xAI's grok from here — the house's own client (not the Rust CLI): SuperGrok sign-in via X, then questions with file + shell tools"),
+                ("pkg install git · git clone <url> · git commit · git push", "real git in the console (isomorphic-git over the house's files and wire): clone a repo here, edit it with the house editors, commit it, push it back"),
+                ("pkg install gh · gh auth login <token> · gh repo view", "github from here — the house's own client over the REST api: sign-in, repos, issues, pull requests"),
             ]),
             ("graphics", [
                 ("gfx demo", "the engine draws the house card"),
