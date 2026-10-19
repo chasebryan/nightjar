@@ -1805,7 +1805,7 @@ final class BlacksiteShell: ObservableObject {
                     .map {
                         $0.trimmingCharacters(
                             in: CharacterSet(
-                                whitespacesAndNewlines))
+                                .whitespacesAndNewlines))
                         .replacingOccurrences(
                             of: "'", with: "")
                         .replacingOccurrences(
@@ -4000,7 +4000,7 @@ final class BlacksiteShell: ObservableObject {
                         let out =
                             self.captureOutput {
                                 self.execLine(
-                                    line)
+                                    line, stdin: "")
                             }
                         self.execBridgeLock
                             .unlock()
@@ -4512,10 +4512,16 @@ final class BlacksiteShell: ObservableObject {
             cyan + name + off + ": " + value
         }
         let center = SkelliCenter.shared
-        let exposure = String(
-            format: "%.0f",
-            center.emcon.currentScore(
-                mouth: center.mouth).value)
+        let exposure: String
+        if let emcon = center.emcon,
+           let mouth = center.mouth {
+            exposure = String(
+                format: "%.0f",
+                emcon.currentScore(
+                    mouth: mouth).value)
+        } else {
+            exposure = "not wired"
+        }
         var info: [String] = []
         info.append(bold + title + off)
         info.append(String(
@@ -7663,7 +7669,7 @@ final class BlacksiteShell: ObservableObject {
                 done in
                 guard let data =
                         BlacksiteWasm
-                            .linuxboxData
+                            .linuxboxData()
                 else {
                     done(false,
                          "userspace missing")
@@ -7688,7 +7694,7 @@ final class BlacksiteShell: ObservableObject {
                 done in
                 guard let data =
                         BlacksiteWasm
-                            .linuxboxData
+                            .linuxboxData()
                 else {
                     done(false,
                          "userspace missing")
