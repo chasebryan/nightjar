@@ -18,6 +18,7 @@ extension SkelliCenter {
     /// taught. Questions never reach it as orders:
     /// the cascade's question lanes run earlier.
     func handsGate(_ q: String, raw: String) -> Bool {
+        if shapeDropAsk(q) { return true }
         if deleteAsk(q) { return true }
         // Macros are NOT gated here: macroAsk runs in
         // respond() ahead of the single-action intents,
@@ -1248,6 +1249,39 @@ extension SkelliCenter {
     func lateGate(_ q: String, raw: String) -> Bool {
         if handsGate(q, raw: raw) { return true }
         return secondReading(q, raw: raw)
+    }
+
+    /// The shape comes off by voice, in the
+    /// words the house itself teaches ("until
+    /// you drop the shape"). It runs AHEAD of
+    /// deleteAsk in the gate: "drop" is one of
+    /// the delete hand's verbs, so the phrase
+    /// was answered from the armory — "Nothing
+    /// in the armory matches that." — and could
+    /// even strike an armory piece whose name
+    /// shared a word with it. The idiom is
+    /// fenced both ways: it must name a worn
+    /// thing, and it must NOT name an armory
+    /// subject — asks carrying payload, pattern,
+    /// or armory belong to the delete hand
+    /// still. (Chase's ruling, 2026-10-18.)
+    func shapeDropAsk(_ q: String) -> Bool {
+        guard q.contains("drop") else {
+            return false
+        }
+        guard !q.contains("payload")
+                && !q.contains("pattern")
+                && !q.contains("armory")
+        else { return false }
+        let markers = ["shape", "costume", "persona",
+                       "spoofy", "mimic", "disguise"]
+        guard markers.contains(where: {
+            q.contains($0) }) else { return false }
+        guard let mouth = mouth else {
+            return false
+        }
+        say(MimicCenter.shared.drop(mouth: mouth))
+        return true
     }
 
     /// "Delete the DNS packet you forged" — what

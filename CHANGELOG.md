@@ -635,6 +635,15 @@
   write-ahead log that
   names the step a
   crash died in.
+- **The shape comes
+  off by voice.** Asking
+  her to drop the shape
+  now reaches her
+  mimicry hand, in the
+  words the house
+  itself teaches —
+  no longer answered
+  from the armory.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

@@ -633,3 +633,12 @@
   write-ahead log that
   names the step a
   crash died in.
+- **The shape comes
+  off by voice.** Asking
+  her to drop the shape
+  now reaches her
+  mimicry hand, in the
+  words the house
+  itself teaches —
+  no longer answered
+  from the armory.
