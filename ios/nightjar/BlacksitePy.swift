@@ -793,9 +793,9 @@ extension PyLexer {
                     }
                     if hex.count == 2,
                        let byte = UInt8(
-                        hex, radix: 16),
-                       let scalar =
-                        UnicodeScalar(byte) {
+                        hex, radix: 16) {
+                        let scalar =
+                            UnicodeScalar(byte)
                         text.append(
                             Character(scalar))
                         i += 4
