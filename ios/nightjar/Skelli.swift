@@ -7703,7 +7703,30 @@ final class SkelliFilmView: UIView {
     /// hidden; when ready, the layers trade
     /// places over half a second.
     func play(_ name: String) {
-        guard name != current else { return }
+        if name == current {
+            // The same film, asked again: this
+            // call is the heartbeat. iOS pauses
+            // players on its own — backgrounding,
+            // an interruption, a layer detach —
+            // and never resumes a muted player
+            // afterwards, and nothing else in
+            // this view ever restarts one. Since
+            // updateUIView calls here on every
+            // render, a player the system has
+            // stilled is started again at once
+            // instead of freezing her in place
+            // until her mood changes clips.
+            let onScreen = activeIsA
+                ? playerA : playerB
+            if let onScreen,
+               onScreen.timeControlStatus
+                   != .playing,
+               onScreen.currentItem?.status
+                   == .readyToPlay {
+                onScreen.play()
+            }
+            return
+        }
         current = name
         // A fade that never landed is superseded:
         // retire its player before the new one
