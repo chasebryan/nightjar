@@ -284,6 +284,15 @@ final class BlacksiteKernel {
         snapshot().filter { $0.isLive }.count
     }
 
+    /// Every process the kernel has ever
+    /// admitted — fastfetch's spawned
+    /// count reads it.
+    var totalSpawned: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return nextPID - 1
+    }
+
     var hasForegroundLive: Bool {
         snapshot().contains {
             $0.isLive && !$0.background

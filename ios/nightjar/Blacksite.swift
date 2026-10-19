@@ -71,6 +71,11 @@ final class BlacksiteShell: ObservableObject {
     private var history: [String] = []
     private var booted = false
 
+    /// The console's own birth —
+    /// fastfetch's uptime counts from
+    /// here.
+    private let born = Date()
+
     /// The working directory, a virtual
     /// path in the console's own file
     /// system.
@@ -114,7 +119,8 @@ final class BlacksiteShell: ObservableObject {
 
     static let builtinNames: [String] = [
         "help", "clear", "sys", "ver", "ps",
-        "jobs", "kill",
+        "jobs", "kill", "fastfetch",
+        "neofetch",
         "scan", "knock", "census", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
@@ -144,16 +150,24 @@ final class BlacksiteShell: ObservableObject {
 
     func emit(_ text: String,
               _ kind: Line.Kind = .out) {
+        // Colour is for the screen alone:
+        // anything captured — a pipe, a
+        // file, a $() — gets plain text,
+        // and NO_COLOR in the environment
+        // silences it at the source.
+        let shown = (capturing
+                     || env["NO_COLOR"] != nil)
+            ? ANSITerm.strip(text) : text
         if capturing {
             if kind == .err { stageError = true }
             captureStack[captureStack.count - 1]
-                .append(text)
+                .append(shown)
             return
         }
         let append = { [weak self] in
             guard let self = self else { return }
             self.lines.append(
-                Line(text: text, kind: kind,
+                Line(text: shown, kind: kind,
                      image: nil))
             if self.lines.count > 400 {
                 self.lines.removeFirst(
@@ -841,6 +855,10 @@ final class BlacksiteShell: ObservableObject {
             jobsCommand()
         case "kill":
             killCommand(args)
+        case "fastfetch":
+            fetchCommand(neofetch: false)
+        case "neofetch":
+            fetchCommand(neofetch: true)
         case "scan":
             scan(args)
         case "knock":
@@ -939,10 +957,21 @@ final class BlacksiteShell: ObservableObject {
             catCommand(args)
         case "echo":
             var words = args
-            if words.first == "-n" {
+            var escapes = false
+            while let first = words.first,
+                  ["-n", "-e", "-ne", "-en"]
+                    .contains(first) {
+                if first.contains("e") {
+                    escapes = true
+                }
                 words.removeFirst()
             }
-            emit(words.joined(separator: " "))
+            var body = words.joined(
+                separator: " ")
+            if escapes {
+                body = ANSITerm.unescape(body)
+            }
+            emit(body)
         case "cp":
             cpCommand(args)
         case "mv":
@@ -1129,7 +1158,11 @@ final class BlacksiteShell: ObservableObject {
         for entry in entries {
             if long {
                 if entry.isDir {
-                    emit(pad(entry.name + "/", 26)
+                    emit(dressed(
+                            pad(entry.name + "/",
+                                26),
+                            name: entry.name,
+                            isDir: true)
                          + "dir", .out)
                 } else {
                     let child = target == "/"
@@ -1137,12 +1170,19 @@ final class BlacksiteShell: ObservableObject {
                         : target + "/" + entry.name
                     let size = BlacksiteFS
                         .fileSize(child) ?? 0
-                    emit(pad(entry.name, 26)
+                    emit(dressed(
+                            pad(entry.name, 26),
+                            name: entry.name,
+                            isDir: false)
                          + "\(size)", .out)
                 }
             } else {
-                emit(entry.name
-                     + (entry.isDir ? "/" : ""),
+                emit(dressed(
+                        entry.name
+                            + (entry.isDir
+                               ? "/" : ""),
+                        name: entry.name,
+                        isDir: entry.isDir),
                      .out)
             }
         }
@@ -1436,6 +1476,89 @@ final class BlacksiteShell: ObservableObject {
              .out)
     }
 
+    /// A name dressed for the screen the
+    /// way ls has always dressed them:
+    /// folders bold blue, the house's own
+    /// runnable files green, pictures
+    /// magenta. The codes vanish the
+    /// moment output is captured.
+    private func dressed(
+        _ shown: String, name: String,
+        isDir: Bool) -> String {
+        let code: String?
+        if isDir {
+            code = "1;34"
+        } else {
+            let lower = name.lowercased()
+            if lower.hasSuffix(".py")
+                || lower.hasSuffix(".js")
+                || lower.hasSuffix(".sh")
+                || lower.hasSuffix(".wasm") {
+                code = "1;32"
+            } else if lower.hasSuffix(".png")
+                || lower.hasSuffix(".jpg")
+                || lower.hasSuffix(".gif") {
+                code = "35"
+            } else {
+                code = nil
+            }
+        }
+        guard let code else { return shown }
+        return "\u{1B}[" + code + "m" + shown
+            + "\u{1B}[0m"
+    }
+
+    /// A grep row with its matches lit —
+    /// bold orange, the way a find should
+    /// look. Matches are found in the
+    /// searched text (lowercased under
+    /// -i) and mapped back onto the row.
+    private func highlighted(
+        _ row: String, needle: String,
+        insensitive: Bool) -> String {
+        guard !needle.isEmpty else {
+            return row
+        }
+        let hay = insensitive
+            ? row.lowercased() : row
+        let rowChars = Array(row)
+        let hayChars = Array(hay)
+        guard rowChars.count == hayChars.count
+        else { return row }
+        let needleChars = Array(needle)
+        var spans: [(Int, Int)] = []
+        var at = 0
+        while at + needleChars.count
+                <= hayChars.count {
+            let slice = Array(
+                hayChars[at..<at
+                         + needleChars.count])
+            if slice == needleChars {
+                spans.append(
+                    (at, at + needleChars.count))
+                at += needleChars.count
+            } else {
+                at += 1
+            }
+        }
+        guard !spans.isEmpty else {
+            return row
+        }
+        var out = ""
+        var cursor = 0
+        for span in spans {
+            out += String(
+                rowChars[cursor..<span.0])
+            out += "\u{1B}[1;38;5;208m"
+            out += String(
+                rowChars[span.0..<span.1])
+            out += "\u{1B}[0m"
+            cursor = span.1
+        }
+        out += String(rowChars[cursor...])
+        return out
+    }
+
     private func grepCommand(_ args: [String]) {
         var rest = args
         var insensitive = false
@@ -1457,7 +1580,10 @@ final class BlacksiteShell: ObservableObject {
             let hay = insensitive
                 ? row.lowercased() : row
             if hay.contains(needle) {
-                emit(row, .out)
+                emit(highlighted(
+                        row, needle: needle,
+                        insensitive: insensitive),
+                     .out)
                 hits += 1
             }
         }
@@ -2167,6 +2293,10 @@ final class BlacksiteShell: ObservableObject {
             ("the house", [
                 ("sys", "the whole house state"),
                 ("ps", "processes, live and recent"),
+                ("fastfetch",
+                 "the machine's calling card"),
+                ("neofetch",
+                 "the same card, under a crescent moon"),
                 ("jobs", "the kernel's live programs"),
                 ("kill <pid>", "stop a program — the kernel reclaims it"),
                 ("run x.py &", "a trailing & backgrounds a program"),
@@ -2313,7 +2443,7 @@ final class BlacksiteShell: ObservableObject {
         for proc in procs where proc.isLive {
             emit("● pid \(proc.pid) · "
                  + "\(proc.name) — "
-                 + proc.state.rawValue
+                 + kernelState(proc)
                  + " · \(Int(proc.elapsed))s",
                  .out)
         }
@@ -2323,6 +2453,190 @@ final class BlacksiteShell: ObservableObject {
                  + "\(proc.name) — "
                  + proc.exitNote, .sys)
         }
+    }
+
+    /// fastfetch and neofetch — the
+    /// machine's calling card, drawn
+    /// from live readings every time:
+    /// the kernel's table, the theme on
+    /// the walls, EMCON's exposure, the
+    /// app's own footprint. Nothing here
+    /// is remembered; all of it is read.
+    private func fetchCommand(
+        neofetch: Bool) {
+        let kernel = BlacksiteKernel.shared
+        let version = Bundle.main
+            .infoDictionary?[
+                "CFBundleShortVersionString"]
+            as? String ?? "9.0c"
+        let user = env["USER"] ?? "operator"
+        let title = "\(user)@nightjar"
+        let bold = "\u{1B}[1m"
+        let cyan = "\u{1B}[1;36m"
+        let off = "\u{1B}[0m"
+        func field(_ name: String,
+                   _ value: String) -> String {
+            cyan + name + off + ": " + value
+        }
+        let center = SkelliCenter.shared
+        let exposure = String(
+            format: "%.0f",
+            center.emcon.currentScore(
+                mouth: center.mouth).value)
+        var info: [String] = []
+        info.append(bold + title + off)
+        info.append(String(
+            repeating: "─",
+            count: title.count))
+        info.append(field(
+            "OS", "Blacksite \(version)"
+            + " · the house kernel"))
+        info.append(field(
+            "Host", machineName()
+            + " · iOS "
+            + UIDevice.current.systemVersion))
+        info.append(field(
+            "Kernel", "blacksite · "
+            + "\(kernel.liveCount) live · "
+            + "\(kernel.totalSpawned) spawned"))
+        info.append(field(
+            "Uptime", uptimeText()))
+        info.append(field(
+            "Shell", "blacksite, the house shell"))
+        info.append(field(
+            "Theme",
+            ThemeCenter.shared.current.name))
+        info.append(field(
+            "EMCON",
+            EmconCondition.current.name
+            + " · exposure " + exposure
+            + " of 100"))
+        info.append(field(
+            "Packages",
+            "\(BlacksiteJS.shared.installedPackages().count)"
+            + " in /packages"))
+        info.append(field(
+            "Files",
+            "\(BlacksiteFS.walk("/").count)"
+            + " in the tree"))
+        if let mb = footprintMB() {
+            let totalGB = Double(
+                ProcessInfo.processInfo
+                    .physicalMemory)
+                / 1_073_741_824
+            info.append(field(
+                "Memory",
+                String(format: "%.0f MB "
+                       + "resident of %.0f GB",
+                       mb, totalGB)))
+        }
+        info.append(field(
+            "CPU", machineName() + " · "
+            + "\(ProcessInfo.processInfo.processorCount)"
+            + " cores"))
+        var normal = ""
+        var bright = ""
+        for i in 0..<8 {
+            normal += "\u{1B}[\(40 + i)m   "
+                + off
+            bright += "\u{1B}[\(100 + i)m   "
+                + off
+        }
+        info.append(normal)
+        info.append(bright)
+
+        let owl = [
+            "  /\\_____/\\",
+            " (  o   o  )",
+            " ( ==  ^  == )",
+            "  )        (",
+            " (          )",
+            " ( (  ) (  ) )",
+            "  (__( )__( )__)",
+        ]
+        let crescent = [
+            "     _____",
+            "   /  ___)",
+            "  (  (",
+            "  (  (",
+            "   \\  \\___)",
+            "     \\_____)",
+        ]
+        let logo = neofetch ? crescent : owl
+        let width = logo.map { $0.count }
+            .max() ?? 0
+        let rows = max(logo.count, info.count)
+        for r in 0..<rows {
+            let art = r < logo.count
+                ? logo[r] : ""
+            let padded = art + String(
+                repeating: " ",
+                count: width - art.count)
+            let dressed = "\u{1B}[1;35m"
+                + padded + off
+            if r < info.count {
+                emit(dressed + "  " + info[r])
+            } else {
+                emit(dressed)
+            }
+        }
+    }
+
+    /// The console's age, told the way
+    /// uptime tells it.
+    private func uptimeText() -> String {
+        let secs = Int(Date()
+            .timeIntervalSince(born))
+        let h = secs / 3600
+        let m = (secs % 3600) / 60
+        let s = secs % 60
+        if h > 0 { return "\(h)h \(m)m" }
+        if m > 0 { return "\(m)m \(s)s" }
+        return "\(s)s"
+    }
+
+    /// The hardware's own name for
+    /// itself, read from uname.
+    private func machineName() -> String {
+        var sys = utsname()
+        uname(&sys)
+        let bytes = Mirror(
+            reflecting: sys.machine)
+            .children.map { child in
+                (child.value as? Int8) ?? 0
+            }
+            .prefix { $0 != 0 }
+            .map { UInt8(bitPattern: $0) }
+        return String(decoding: bytes,
+                      as: UTF8.self)
+    }
+
+    /// The app's resident footprint in
+    /// megabytes, from the task itself —
+    /// the memory line tells the truth
+    /// or stays off the card.
+    private func footprintMB() -> Double? {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<task_vm_info_data_t>
+                .size
+                / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(
+            to: &info) { ptr in
+            ptr.withMemoryRebound(
+                to: integer_t.self,
+                capacity: Int(count)) {
+                task_info(mach_task_self_,
+                          task_flavor_t(
+                            TASK_VM_INFO),
+                          $0, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else {
+            return nil
+        }
+        return Double(info.phys_footprint)
+            / 1_048_576
     }
 
     private func jobsCommand() {
@@ -2338,7 +2652,27 @@ final class BlacksiteShell: ObservableObject {
                  + (proc.background
                     ? "bg " : "fg ")
                  + "\(proc.name) — "
-                 + proc.state.rawValue, .out)
+                 + kernelState(proc), .out)
+        }
+    }
+
+    /// A kernel state, dressed: running
+    /// in green, waiting on input in
+    /// amber — a process board you can
+    /// read at a glance.
+    private func kernelState(
+        _ proc: KernelProcess) -> String {
+        switch proc.state {
+        case .running:
+            return "\u{1B}[1;32m"
+                + proc.state.rawValue
+                + "\u{1B}[0m"
+        case .waiting:
+            return "\u{1B}[33m"
+                + proc.state.rawValue
+                + "\u{1B}[0m"
+        default:
+            return proc.state.rawValue
         }
     }
 
@@ -4058,13 +4392,7 @@ struct BlacksiteView: View {
                                             .secondary)
                                 }
                             } else {
-                                Text(line.text)
-                                    .font(.system(
-                                        .caption,
-                                        design: .monospaced))
-                                    .foregroundStyle(
-                                        color(
-                                            for: line.kind))
+                                lineText(line)
                                     // A pointer can
                                     // select and copy
                                     // console output;
@@ -4125,6 +4453,27 @@ struct BlacksiteView: View {
                 }
             }
         }
+    }
+
+    /// One transcript line, dressed: a
+    /// line carrying ANSI colour codes
+    /// renders through the SGR reader in
+    /// its own colours; any other line
+    /// takes the kind's colour, as it
+    /// always has.
+    private func lineText(
+        _ line: BlacksiteShell.Line) -> Text {
+        let base = Font.system(.caption,
+                               design: .monospaced)
+        if line.text.contains("\u{1B}[") {
+            return Text(ANSITerm.attributed(
+                line.text, baseFont: base,
+                baseColor: color(for: line.kind)))
+        }
+        return Text(line.text)
+            .font(base)
+            .foregroundColor(
+                color(for: line.kind))
     }
 
     private func color(
