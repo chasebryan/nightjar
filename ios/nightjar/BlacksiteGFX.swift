@@ -543,6 +543,23 @@ final class BlacksiteWallpaper:
     static let kinds = ["stars", "plasma",
                         "mandelbrot"]
 
+    /// The pixel size this phone's own
+    /// screen wants the wallpaper painted
+    /// at — native art on any handset,
+    /// never a picture stretched from
+    /// another phone's shape. Capped so
+    /// the render stays quick.
+    static func wallpaperTargetPixels()
+        -> (Int, Int) {
+        let screen = UIScreen.main
+        let w = Int(screen.bounds.width
+                    * screen.scale)
+        let h = Int(screen.bounds.height
+                    * screen.scale)
+        return (min(max(w, 640), 1320),
+                min(max(h, 1136), 2868))
+    }
+
     var kind: String {
         let stored = BlacksiteFS.readText(
             "/etc/wallpaper-kind")?
@@ -569,7 +586,21 @@ final class BlacksiteWallpaper:
         if let data = BlacksiteFS.readData(
             file(for: current)),
            let filed = UIImage(data: data) {
+            // A picture painted for a
+            // different phone's screen gets
+            // repainted at this one's size —
+            // the old art hangs meanwhile.
+            let target =
+                Self.wallpaperTargetPixels()
+            let pw = Int(filed.size.width
+                         * filed.scale)
+            let ph = Int(filed.size.height
+                         * filed.scale)
             image = filed
+            if abs(pw - target.0) > 4
+                || abs(ph - target.1) > 4 {
+                regenerate(kind: current)
+            }
             return
         }
         regenerate(kind: current)
@@ -582,12 +613,15 @@ final class BlacksiteWallpaper:
             "/etc/wallpaper-kind", text: valid)
         guard !generating else { return }
         generating = true
+        let target =
+            Self.wallpaperTargetPixels()
         DispatchQueue.global(
             qos: .userInitiated).async {
             [weak self] in
             let picture = BlacksiteGFX.shared
-                .renderNamed(valid, width: 620,
-                             height: 1340)
+                .renderNamed(valid,
+                             width: target.0,
+                             height: target.1)
             if let picture = picture,
                let png = picture.pngData() {
                 BlacksiteFS.writeData(

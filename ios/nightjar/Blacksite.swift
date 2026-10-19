@@ -2415,6 +2415,13 @@ struct BlacksiteView: View {
     @State private var historyBack = -1
     @State private var program: Program?
     @FocusState private var inputFocused: Bool
+    @State private var rootSize = CGSize.zero
+    @State private var wheelOpen = false
+    @State private var wheelTapMode = false
+    @State private var wheelRotation = 0.0
+    @State private var wheelAngle: Double?
+    @State private var wheelSelected = 0
+    @State private var wheelCancel = false
 
     enum Program: String, Identifiable {
         case processes, sys, journal, gauntlet,
@@ -2445,18 +2452,32 @@ struct BlacksiteView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.30)
-                .ignoresSafeArea()
-            VStack(spacing: 10) {
-                statusStrip
-                programRail
-                terminal
-                inputBar
+        GeometryReader { geo in
+            ZStack {
+                Color.black.opacity(0.30)
+                    .ignoresSafeArea()
+                VStack(spacing: 10) {
+                    statusStrip
+                    wheelBar
+                    terminal
+                    inputBar
+                }
+                .padding(12)
+                if wheelOpen {
+                    wheelOverlay(size: geo.size)
+                }
             }
-            .padding(12)
+            .coordinateSpace(
+                name: "blacksiteRoot")
+            .onAppear {
+                rootSize = geo.size
+                shell.bootIfNeeded()
+            }
+            .onChange(of: geo.size) {
+                _, newSize in
+                rootSize = newSize
+            }
         }
-        .onAppear { shell.bootIfNeeded() }
         .sheet(item: $program) { program in
             BlacksiteProgramSheet(program: program)
         }
@@ -2488,6 +2509,8 @@ struct BlacksiteView: View {
                     .font(.system(.caption,
                                   design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 Spacer()
                 Text(EmconCondition.current.name)
                     .font(.system(.caption,
@@ -2498,14 +2521,20 @@ struct BlacksiteView: View {
                             == .open
                         ? Color.secondary
                         : Color.orange)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 Text("\(DevKit.footprintMB()) MB")
                     .font(.system(.caption,
                                   design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 Text(context.date, style: .time)
                     .font(.system(.caption,
                                   design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -2522,44 +2551,291 @@ struct BlacksiteView: View {
         }
     }
 
-    private var programRail: some View {
-        ScrollView(.horizontal,
-                   showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(Program.allCases,
-                        id: \.self) { item in
-                    Button {
-                        Haptics.tap()
-                        program = item
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName:
-                                    item.icon)
-                                .font(.body)
-                            Text(item.title)
-                                .font(.system(
-                                    .caption2,
-                                    design: .monospaced)
-                                    .weight(.semibold))
-                        }
-                        .frame(width: 86, height: 58)
-                        .background(
-                            RoundedRectangle(
-                                cornerRadius: 10)
-                                .fill(Color.white
-                                    .opacity(0.05))
-                                .overlay(
-                                    RoundedRectangle(
-                                        cornerRadius: 10)
-                                        .strokeBorder(
-                                            Color.white
-                                                .opacity(0.14),
-                                            lineWidth: 1)))
-                        .foregroundStyle(.primary)
+    // MARK: The program wheel
+
+    /// The tiled rail is gone — the
+    /// programs ride a rotary wheel. Hold
+    /// the bar and the wheel blooms in the
+    /// middle of the room; drag to spin it;
+    /// let go and whatever sits under the
+    /// marker at the top opens. Drag into
+    /// the hub to call it off. A plain tap
+    /// opens the wheel for tapping instead.
+    private var wheelBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "steeringwheel")
+            Text("PROGRAMS")
+                .font(.system(.caption,
+                              design: .monospaced)
+                    .weight(.semibold))
+            Spacer()
+            Text("hold + spin")
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    RoundedRectangle(
+                        cornerRadius: 10)
+                        .strokeBorder(
+                            Color.white
+                                .opacity(0.14),
+                            lineWidth: 1)))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            wheelTapMode = true
+            openWheel()
+        }
+        .gesture(wheelGesture)
+    }
+
+    private var wheelGesture: some Gesture {
+        LongPressGesture(minimumDuration: 0.22)
+            .sequenced(
+                before: DragGesture(
+                    minimumDistance: 0,
+                    coordinateSpace:
+                        .named("blacksiteRoot")))
+            .onChanged { value in
+                switch value {
+                case .first:
+                    if !wheelOpen { openWheel() }
+                case .second(_, let drag):
+                    if let drag = drag {
+                        spinWheel(
+                            to: drag.location)
                     }
-                    .buttonStyle(.plain)
                 }
             }
+            .onEnded { value in
+                if case .second(_, let drag)
+                    = value, let drag = drag {
+                    finishWheel(
+                        at: drag.location)
+                } else if wheelOpen {
+                    wheelTapMode = true
+                }
+            }
+    }
+
+    private func openWheel() {
+        wheelOpen = true
+        wheelSelected = selectedIndex()
+        Haptics.press()
+    }
+
+    private func closeWheel() {
+        wheelOpen = false
+        wheelTapMode = false
+        wheelAngle = nil
+        wheelCancel = false
+    }
+
+    private var wheelStep: Double {
+        360.0 / Double(Program.allCases.count)
+    }
+
+    /// Degrees folded into -180...180.
+    private func wrapDegrees(_ value: Double)
+        -> Double {
+        var folded = value.truncatingRemainder(
+            dividingBy: 360)
+        if folded > 180 { folded -= 360 }
+        if folded < -180 { folded += 360 }
+        return folded
+    }
+
+    /// The program nearest the top marker.
+    private func selectedIndex() -> Int {
+        var best = 0
+        var bestGap =
+            Double.greatestFiniteMagnitude
+        for index in
+            Program.allCases.indices {
+            let heading = wheelRotation
+                + Double(index) * wheelStep
+            let gap = abs(wrapDegrees(heading))
+            if gap < bestGap {
+                bestGap = gap
+                best = index
+            }
+        }
+        return best
+    }
+
+    private func spinWheel(to point: CGPoint) {
+        let center = CGPoint(
+            x: rootSize.width / 2,
+            y: rootSize.height / 2)
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        wheelCancel = (dx * dx + dy * dy)
+            < 52 * 52
+        let angle = atan2(dy, dx) * 180 / .pi
+        if let last = wheelAngle {
+            wheelRotation += wrapDegrees(
+                angle - last)
+        }
+        wheelAngle = angle
+        let picked = selectedIndex()
+        if picked != wheelSelected {
+            wheelSelected = picked
+            Haptics.select()
+        }
+    }
+
+    private func finishWheel(at point: CGPoint) {
+        spinWheel(to: point)
+        wheelAngle = nil
+        if wheelCancel {
+            closeWheel()
+            return
+        }
+        let picked = selectedIndex()
+        let gap = wrapDegrees(
+            wheelRotation
+            + Double(picked) * wheelStep)
+        withAnimation(
+            .spring(response: 0.3,
+                    dampingFraction: 0.8)) {
+            wheelRotation -= gap
+        }
+        let item = Program.allCases[picked]
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.24) {
+            program = item
+            closeWheel()
+        }
+    }
+
+    private func wheelOverlay(size: CGSize)
+        -> some View {
+        let diameter = max(
+            250, min(340,
+                     min(size.width,
+                         size.height) - 40))
+        let radius = diameter / 2 - 42
+        let center = CGPoint(x: size.width / 2,
+                             y: size.height / 2)
+        return ZStack {
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    if wheelTapMode {
+                        closeWheel()
+                    }
+                }
+            Circle()
+                .strokeBorder(
+                    Color.white.opacity(0.16),
+                    lineWidth: 1)
+                .frame(width: diameter,
+                       height: diameter)
+                .position(center)
+            Image(systemName:
+                    "arrowtriangle.down.fill")
+                .font(.caption)
+                .foregroundStyle(
+                    themes.current.accent)
+                .position(
+                    x: center.x,
+                    y: center.y
+                        - diameter / 2 - 12)
+            ForEach(
+                Array(Program.allCases
+                    .enumerated()),
+                id: \.offset
+            ) { index, item in
+                let radians = (wheelRotation
+                    + Double(index) * wheelStep
+                    - 90) * .pi / 180
+                wheelSegment(
+                    item,
+                    selected:
+                        index == wheelSelected)
+                    .position(
+                        x: center.x + radius
+                            * cos(radians),
+                        y: center.y + radius
+                            * sin(radians))
+            }
+            wheelHub
+                .position(center)
+        }
+        .frame(width: size.width,
+               height: size.height)
+    }
+
+    private func wheelSegment(
+        _ item: Program, selected: Bool
+    ) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: item.icon)
+                .font(.body)
+            Text(item.title)
+                .font(.system(
+                    size: 8,
+                    design: .monospaced)
+                    .weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(width: 72, height: 72)
+        .background(
+            Circle()
+                .fill(Color.white.opacity(
+                    selected ? 0.16 : 0.07))
+                .overlay(
+                    Circle().strokeBorder(
+                        selected
+                        ? themes.current.accent
+                        : Color.white
+                            .opacity(0.18),
+                        lineWidth:
+                            selected ? 2 : 1)))
+        .foregroundStyle(.primary)
+        .scaleEffect(selected ? 1.12 : 1.0)
+        .onTapGesture {
+            if wheelTapMode {
+                program = item
+                closeWheel()
+            }
+        }
+    }
+
+    private var wheelHub: some View {
+        ZStack {
+            Circle()
+                .fill(Color.black.opacity(0.65))
+                .overlay(
+                    Circle().strokeBorder(
+                        wheelCancel
+                        ? Color.red
+                            .opacity(0.8)
+                        : Color.white
+                            .opacity(0.2),
+                        lineWidth: 1))
+            Text(wheelCancel
+                 ? "LET GO\nTO CANCEL"
+                 : "SPIN")
+                .font(.system(.caption2,
+                              design: .monospaced)
+                    .weight(.bold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(
+                    wheelCancel
+                    ? AnyShapeStyle(Color.red)
+                    : AnyShapeStyle(
+                        Color.secondary))
+        }
+        .frame(width: 84, height: 84)
+        .onTapGesture {
+            if wheelTapMode { closeWheel() }
         }
     }
 
