@@ -653,43 +653,6 @@ struct FreedoomView: View {
             loader.refresh()
             FreedoomTrail.shared.log(
                 "room opened")
-            if loader.phase == .ready {
-                inGame = true
-            }
-        }
-        .onChange(of: loader.phase) {
-            _, phase in
-            if phase == .ready && !inGame {
-                inGame = true
-            }
-        }
-        .overlay(alignment: .topLeading) {
-            if inGame {
-                Button {
-                    Haptics.tap()
-                    // The guaranteed stop:
-                    // the web view leaves
-                    // the hierarchy and
-                    // WebKit tears its
-                    // engine down with it.
-                    inGame = false
-                } label: {
-                    Text("■ STOP")
-                        .font(.system(
-                            size: 12,
-                            design: .monospaced)
-                            .weight(.bold))
-                        .foregroundStyle(.red)
-                        .padding(
-                            .horizontal, 10)
-                        .padding(
-                            .vertical, 6)
-                        .background(
-                            Color.black
-                                .opacity(0.55))
-                }
-                .padding(10)
-            }
         }
         .confirmationDialog(
             "Remove the game data?",

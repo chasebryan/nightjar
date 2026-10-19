@@ -195,12 +195,34 @@
         } catch (e) {}
     }
 
+    // The deck speaks in DOM keyCodes; the engine hears
+    // SDL scancodes, which Emscripten derives from the
+    // event's code/key strings. A plain Event with
+    // keyCode expandos never reaches SDL at all (proven
+    // on the bench) — only real KeyboardEvents land.
+    var KEYINFO = {
+        9: ["Tab", "Tab"], 13: ["Enter", "Enter"],
+        16: ["Shift", "ShiftLeft"], 17: ["Control", "ControlLeft"],
+        18: ["Alt", "AltLeft"], 27: ["Escape", "Escape"],
+        32: [" ", "Space"],
+        37: ["ArrowLeft", "ArrowLeft"], 38: ["ArrowUp", "ArrowUp"],
+        39: ["ArrowRight", "ArrowRight"], 40: ["ArrowDown", "ArrowDown"],
+        49: ["1", "Digit1"], 50: ["2", "Digit2"], 51: ["3", "Digit3"],
+        52: ["4", "Digit4"], 53: ["5", "Digit5"], 54: ["6", "Digit6"],
+        55: ["7", "Digit7"],
+        65: ["a", "KeyA"], 68: ["d", "KeyD"], 69: ["e", "KeyE"]
+    };
     function sendkey(keys, type) {
         if (!window.Module || !Module.canvas) return;
         keys.forEach(function (key) {
-            var ce = new Event(type, { bubbles: true });
-            ce.keyCode = key;
-            ce.which = key;
+            var info = KEYINFO[key] || ["", ""];
+            var ce = new KeyboardEvent(type, {
+                bubbles: true, cancelable: true,
+                key: info[0], code: info[1],
+                keyCode: key, which: key, charCode: 0
+            });
+            try { Object.defineProperty(ce, "keyCode", { value: key }); } catch (e) {}
+            try { Object.defineProperty(ce, "which", { value: key }); } catch (e) {}
             Module.canvas.dispatchEvent(ce);
         });
     }
