@@ -3321,6 +3321,9 @@ final class SkelliCenter: ObservableObject {
             consultCode(q)
             return
         }
+        // Simple orders, loosely spoken — the
+        // thousand shapes of "hack something".
+        if simpleCommandAsk(q) { return }
 
         // An insult was already filed by ask(); all
         // that is left is to be cold about it,
@@ -5386,6 +5389,326 @@ final class SkelliCenter: ObservableObject {
                 + "shows its state.")
         }
         return true
+    }
+
+    // MARK: simple orders, loosely spoken
+
+    /// The loose imperative (the operator's
+    /// order, 2026-10-18): simple commands in
+    /// their thousand shapes — "hack something",
+    /// "scan the area", "lock it down", "stop
+    /// everything". The named lanes take their
+    /// precise asks first; this gate takes what
+    /// is left: one of her verbs, spoken loosely,
+    /// the target named, implied, or absent —
+    /// and she does the thing with the hands
+    /// she has. Questions are never orders (a
+    /// how/what/why shape falls through to the
+    /// lessons), and a verb must stand where
+    /// verbs stand — at the head of the ask,
+    /// past the fillers — so "a neat hack" and
+    /// other noun shapes never fire her hands.
+    private func simpleCommandAsk(_ q: String)
+        -> Bool {
+        let hackVerbs = ["hack", "pwn", "breach",
+                         "infiltrate", "compromise",
+                         "attack"]
+        let hackPhrases = ["break into",
+                           "get into", "crack into"]
+        let scanVerbs = ["scan", "sweep", "sniff",
+                         "survey", "scope", "recon"]
+        let huntVerbs = ["hunt", "track", "stalk",
+                         "follow"]
+        let guardVerbs = ["guard", "protect",
+                          "defend"]
+        let fillers = ["skelli", "hey", "please",
+                       "can", "could", "will",
+                       "would", "you", "just", "now",
+                       "ok", "okay", "a", "the",
+                       "do", "go", "lets", "let",
+                       "me", "to", "i", "my",
+                       "this", "that"]
+        let questionHeads = ["how", "what", "why",
+                             "when", "where", "which",
+                             "who", "should"]
+        let tokens = q.split(whereSeparator: {
+            !$0.isLetter && !$0.isNumber
+                && $0 != "."
+        }).map {
+            String($0).trimmingCharacters(
+                in: CharacterSet(charactersIn: "."))
+        }.filter { !$0.isEmpty }
+        guard tokens.count <= 9,
+              let head = tokens.first,
+              !questionHeads.contains(head)
+        else { return false }
+        if q.contains(" how to ")
+            || q.contains("explain")
+            || q.contains("tutorial")
+            || q.contains("meaning of") {
+            return false
+        }
+        // Statements are not orders: a past or
+        // a state ("the scan took forever",
+        // "the wire is quiet") falls through
+        // to conversation.
+        let statementMarks = ["took", "was",
+                              "were", "is",
+                              "finished", "yesterday",
+                              "ago", "earlier"]
+        if statementMarks.contains(where: {
+            tokens.contains($0) }) {
+            return false
+        }
+        let content = tokens.filter {
+            !fillers.contains($0)
+        }
+        func inflected(_ word: String,
+                       _ stem: String) -> Bool {
+            if word == stem { return true }
+            let doubled = stem
+                + String(stem.last ?? " ")
+            return word == stem + "ing"
+                || word == stem + "ed"
+                || word == stem + "es"
+                || word == stem + "s"
+                || word == doubled + "ing"
+                || word == doubled + "ed"
+        }
+        /// The verb stands at the head of the
+        /// ask (first or second real word), or
+        /// the ask carries an order frame
+        /// ("i want you to …") that lifts it.
+        func verbLeads(_ stems: [String]) -> Bool {
+            if q.contains("want you to")
+                || q.contains("need you to") {
+                return content.contains { w in
+                    stems.contains {
+                        inflected(w, $0) }
+                }
+            }
+            return content.prefix(2).contains { w in
+                stems.contains { inflected(w, $0) }
+            }
+        }
+        func hasWord(_ word: String) -> Bool {
+            tokens.contains(word)
+        }
+
+        // Stand everything down.
+        if q.contains("stop everything")
+            || q.contains("shut it all down")
+            || q.contains("shut everything down")
+            || q.contains("kill everything")
+            || q.contains("stand down") {
+            var stood: [String] = []
+            if AssaultCenter.shared.running {
+                AssaultCenter.shared.disarm()
+                stood.append("Net-Assault holstered")
+            }
+            if post?.session != nil {
+                post?.stop()
+                stood.append("the ear closed")
+            }
+            if mouth?.serveRunning == true {
+                mouth?.stopServe()
+                stood.append("Serve stopped")
+            }
+            say(stood.isEmpty
+                ? "Nothing is running — the house "
+                  + "is already still."
+                : "Stood down: "
+                  + stood.joined(separator: ", ")
+                  + ".")
+            return true
+        }
+
+        // Hack: the wire is hers to run.
+        let hackNoun = q.contains("a hack")
+            || q.contains("life hack")
+            || q.contains("hack job")
+            || q.contains("panic attack")
+            || q.contains("heart attack")
+        if !hackNoun,
+           hackPhrases.contains(where: {
+               q.contains($0) })
+            || verbLeads(hackVerbs) {
+            var target: String? = nil
+            if let ip = tokens.first(where: { tok in
+                let parts = tok.split(
+                    separator: ".")
+                return parts.count == 4
+                    && parts.allSatisfy { part in
+                        Int(part) != nil
+                            && (Int(part) ?? 999)
+                                <= 255
+                    }
+            }) {
+                target = ip
+            } else if let named = NeighborhoodStore
+                .shared.neighbors.first(where: { n in
+                    q.contains(n.ip)
+                        || (n.name.map {
+                            $0.count >= 3
+                                && q.contains(
+                                    $0.lowercased())
+                        } ?? false)
+                }) {
+                target = named.name ?? named.ip
+            }
+            looseAssault(target: target)
+            return true
+        }
+
+        // Listen: open the ear.
+        if q.contains("eavesdrop")
+            || q.contains("overhear")
+            || q.contains("keep an ear")
+            || (verbLeads(["listen"])
+                && !q.contains("listen to")) {
+            startListening()
+            return true
+        }
+
+        // Scan / sweep: the air or the wire,
+        // by the object named.
+        if verbLeads(scanVerbs) {
+            let airWords = ["bluetooth", "ble",
+                            "air", "airwaves",
+                            "around", "room",
+                            "area", "ether",
+                            "signals"]
+            if verbLeads(["sniff"])
+                || airWords.contains(where: {
+                    hasWord($0) }) {
+                startListening()
+            } else {
+                runSweep()
+            }
+            return true
+        }
+
+        // Hunt / track: the loudest thing she
+        // knows, reported — or the ear opened.
+        if verbLeads(huntVerbs)
+            || (verbLeads(["find"])
+                && ["signal", "device", "it",
+                    "something", "anything",
+                    "that"].contains(where: {
+                        hasWord($0) })) {
+            signalReport()
+            return true
+        }
+
+        // Guard: raise the condition, plainly.
+        let lockdown = q.contains("lock down")
+            || q.contains("lock it down")
+            || q.contains("go dark")
+            || q.contains("button up")
+        if lockdown || verbLeads(guardVerbs)
+            || q.contains("watch over") {
+            let target: EmconCondition = lockdown
+                ? ((q.contains("total")
+                    || q.contains("full")
+                    || q.contains("complete")
+                    || q.contains("silence")
+                    || q.contains("silent"))
+                   ? .alpha : .bravo)
+                : .charlie
+            guard let emcon, let mouth else {
+                say("The EMCON room holds that "
+                    + "switch — it's on the tabs.")
+                return true
+            }
+            if emcon.condition >= target {
+                say("Already "
+                    + emcon.condition.declared
+                    + " — the house stands at "
+                    + "least that guarded.")
+            } else {
+                emcon.activate(mouth: mouth,
+                               condition: target)
+                let refused = EmconStandard
+                    .refusedLabels(for: target)
+                say(target.declared + " stands."
+                    + (refused.isEmpty
+                       ? ""
+                       : " Dark now: "
+                         + refused.joined(
+                            separator: ", ") + "."))
+            }
+            return true
+        }
+        return false
+    }
+
+    /// Net-Assault, armed by a loose order: the
+    /// refusal spoken in the Standard's words,
+    /// the field named when a target was.
+    private func looseAssault(target: String?) {
+        let center = AssaultCenter.shared
+        if center.running {
+            say("Already loose — Net-Assault is "
+                + "working the wire: "
+                + center.phase + ".")
+            return
+        }
+        if EmconStandard.refused(.netAssault) {
+            say("It stays dark: "
+                + EmconCondition.current.declared
+                + " forbids Net-Assault. Lift the "
+                + "condition and the wire is mine "
+                + "to run.")
+            return
+        }
+        center.arm()
+        if center.running {
+            if let target {
+                say("Loose. Net-Assault is on "
+                    + "the wire — it sweeps the "
+                    + "whole LAN, and " + target
+                    + " is in its field. It's "
+                    + "loud by design.")
+            } else {
+                say("No target named, so the "
+                    + "wire is the target. "
+                    + "Net-Assault is loose — "
+                    + "sweep, browse, knock, "
+                    + "pass after pass.")
+            }
+        } else {
+            say("It won't arm — the EMCON "
+                + "section shows its state.")
+        }
+    }
+
+    /// The hunt, in words: the strongest signal
+    /// the ear holds, or the ear opened so the
+    /// next ask can be answered.
+    private func signalReport() {
+        guard let post else {
+            say("The ear hasn't reached me yet "
+                + "— open the Listen tab once "
+                + "and ask again.")
+            return
+        }
+        if let top = post.rows.first {
+            let strength = top.rssiSmooth.map {
+                "\(Int($0)) dBm"
+            } ?? "unmeasured"
+            say("The loudest thing on the air: "
+                + top.label + " — " + top.kind
+                + ", " + strength + ", heard "
+                + "\(top.sightings)×.")
+            return
+        }
+        if post.session == nil {
+            post.start(label: "Skelli")
+        }
+        say("The ear was closed — it's open "
+            + "now. Give it a breath, then ask "
+            + "again and I'll name the loudest "
+            + "thing on the air.")
     }
 
     // MARK: the clears — hers to strike, on his word
