@@ -3509,6 +3509,7 @@ final class BlacksiteShell: ObservableObject {
             .javascript,
             background: stageBackground)
         else { return }
+        installExecBridge()
         let out = kernelEmit(for: proc)
         BlacksiteJS.shared.printSink =
             { line in out(line, .out) }
@@ -3953,6 +3954,61 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    /// Serializes bridge executions:
+    /// captures share one stack, so two
+    /// package-run commands never overlap.
+    private let execBridgeLock = NSLock()
+
+    /// Give the JS engine its road back
+    /// into the shell: a script runs a
+    /// line and reads what it printed.
+    /// Nested script engines are refused
+    /// — a package cannot summon js, node
+    /// or grok itself through the bridge.
+    private func installExecBridge() {
+        BlacksiteJS.execProvider =
+            { [weak self] line, done in
+                guard let self = self else {
+                    done("(the shell is gone)")
+                    return
+                }
+                let head = self.tokenize(line)
+                    .first?.lowercased() ?? ""
+                if ["js", "node", "grok"]
+                    .contains(head) {
+                    done("(refused: " + head
+                         + " cannot run "
+                         + "inside a package)")
+                    return
+                }
+                DispatchQueue.global(
+                    qos: .userInitiated)
+                    .async { [weak self] in
+                        guard let self = self
+                        else {
+                            done("(the shell "
+                                 + "is gone)")
+                            return
+                        }
+                        Thread.current
+                            .threadDictionary
+                            .removeObject(
+                                forKey:
+                                "blacksite.construct.buffer")
+                        self.execBridgeLock
+                            .lock()
+                        let out =
+                            self.captureOutput {
+                                self.execLine(
+                                    line)
+                            }
+                        self.execBridgeLock
+                            .unlock()
+                        done(out)
+                    }
+            }
+    }
+
     private func jsInvoke(_ name: String,
                           _ args: [String]) {
         guard !capturing else {
@@ -3965,13 +4021,18 @@ final class BlacksiteShell: ObservableObject {
             name, .javascript,
             background: stageBackground)
         else { return }
+        installExecBridge()
         let out = kernelEmit(for: proc)
         BlacksiteJS.shared.printSink =
             { line in out(line, .out) }
+        BlacksiteKernel.shared.markWaiting(
+            proc, true)
         BlacksiteJS.shared.callCommand(
             name, args: args
         ) { [weak self] text, error in
             guard let self = self else { return }
+            BlacksiteKernel.shared.markWaiting(
+                proc, false)
             BlacksiteKernel.shared.finish(
                 proc, note: "done")
             if let error = error {
@@ -4361,6 +4422,7 @@ final class BlacksiteShell: ObservableObject {
                 ("pkg install <url>", "install a package from the wire"),
                 ("pkg remove <name>", "uninstall"),
                 ("pkg commands", "the commands packages gave the shell"),
+                ("pkg install grok · grok login · grok <words>", "ask xAI's grok from here — the house's own client (not the Rust CLI): SuperGrok sign-in via X, then questions with file + shell tools"),
             ]),
             ("graphics", [
                 ("gfx demo", "the engine draws the house card"),

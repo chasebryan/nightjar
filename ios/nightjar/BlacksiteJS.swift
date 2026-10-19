@@ -66,6 +66,37 @@ final class BlacksiteJS {
     private var runGeneration = 0
     private var drainForced =
         Set<ObjectIdentifier>()
+    private var commandGeneration = 0
+
+    /// A fetch in flight for a context:
+    /// the kernel's drains wait on these
+    /// the same way they wait on timers.
+    private final class FetchBox {
+        let context: JSContext
+        let gen: Int
+        let callback: JSValue
+        var task: URLSessionDataTask?
+        init(context: JSContext, gen: Int,
+             callback: JSValue) {
+            self.context = context
+            self.gen = gen
+            self.callback = callback
+        }
+    }
+
+    private var fetchBoxes:
+        [Int: FetchBox] = [:]
+    private var fetchSeq = 0
+    private var execInFlight = 0
+
+    /// The shell installs this so a script
+    /// can run a console line and read
+    /// what it printed. The grok client's
+    /// run_command tool rides it.
+    static var execProvider:
+        ((String,
+          @escaping (String) -> Void)
+            -> Void)?
     private var registered: [String: JSValue] = [:]
     private var loadedPackages: [String] = []
     private var bridgeReady = false
@@ -216,6 +247,31 @@ final class BlacksiteJS {
             clearTimerBlock,
             forKeyedSubscript: "__clearTimer"
                 as NSString)
+        let fetchBlock: @convention(block)
+            (String, String, JSValue) -> Int = {
+                [weak self] url, options,
+                callback in
+                self?.startFetch(
+                    url: url,
+                    optionsJSON: options,
+                    callback: callback) ?? 0
+            }
+        context.setObject(
+            fetchBlock,
+            forKeyedSubscript: "__fetch"
+                as NSString)
+        let execBlock: @convention(block)
+            (String, JSValue) -> Bool = {
+                [weak self] line, callback in
+                self?.startExec(
+                    line: line,
+                    callback: callback)
+                    ?? false
+            }
+        context.setObject(
+            execBlock,
+            forKeyedSubscript: "__exec"
+                as NSString)
         BlacksiteGFX.installBridge(
             into: context, owner: self)
         context.evaluateScript(Self.shim)
@@ -266,6 +322,62 @@ function clearTimeout(id) {
 }
 function clearInterval(id) {
     __clearTimer(id);
+}
+function fetch(url, opts) {
+    opts = opts || {};
+    return new Promise(function(resolve,
+                               reject) {
+        var started = __fetch(
+            String(url),
+            JSON.stringify({
+                method: opts.method || "GET",
+                headers: opts.headers || {},
+                body: (opts.body === undefined
+                       || opts.body === null)
+                    ? null : String(opts.body)
+            }),
+            function(payload) {
+                var r;
+                try {
+                    r = JSON.parse(payload);
+                } catch (e) {
+                    reject(new Error(
+                        "fetch: bad reply"));
+                    return;
+                }
+                if (r.error) {
+                    reject(new Error(r.error));
+                    return;
+                }
+                resolve({
+                    status: r.status,
+                    headers: r.headers,
+                    body: r.body,
+                    text: function() {
+                        return Promise.resolve(
+                            r.body);
+                    },
+                    json: function() {
+                        return Promise.resolve(
+                            JSON.parse(r.body));
+                    }
+                });
+            });
+        if (!started) {
+            reject(new Error(
+                "fetch: unavailable"));
+        }
+    });
+}
+function execCb(line, done) {
+    var ok = __exec(String(line),
+        function(out) { done(out); });
+    if (!ok) { done("(exec unavailable)"); }
+}
+function exec(line) {
+    return new Promise(function(resolve) {
+        execCb(line, resolve);
+    });
 }
 var __moduleCache = {};
 var __dirStack = ["/home"];
@@ -384,6 +496,8 @@ function require(spec) {
                 }
                 return
             }
+            self.commandGeneration += 1
+            let gen = self.commandGeneration
             let state = RunState()
             context.exceptionHandler = { _, v in
                 state.error = v?.toString()
@@ -393,11 +507,62 @@ function require(spec) {
                 withArguments: [args])
             let text = result?.isString == true
                 ? result?.toString() : nil
+            self.drainCommand(
+                context, gen: gen,
+                deadline: Date()
+                    .addingTimeInterval(300),
+                state: state,
+                result: text,
+                completion: completion)
+        }
+    }
+
+    /// A package command ends when its
+    /// work does: timers it set and
+    /// fetches it started drain under a
+    /// five-minute roof, whatever is left
+    /// is cancelled, and the handler's
+    /// error (early or late) is the word.
+    private func drainCommand(
+        _ context: JSContext, gen: Int,
+        deadline: Date, state: RunState,
+        result: String?,
+        completion: @escaping
+            (String?, String?) -> Void) {
+        let key = ObjectIdentifier(context)
+        let forced = drainForced.contains(
+            key)
+        if forced
+            || (!timersPending(
+                context: context, gen: gen)
+                && !fetchesPending(
+                    context: context,
+                    gen: gen))
+            || Date() >= deadline {
+            drainForced.remove(key)
+            cancelTimers(
+                context: context, gen: gen)
+            cancelFetches(
+                context: context, gen: gen)
             let error = state.error
             DispatchQueue.main.async {
-                completion(text, error)
+                completion(result, error)
             }
+            return
         }
+        DispatchQueue.global().asyncAfter(
+            deadline: .now() + 0.1) {
+                [weak self] in
+                self?.queue.async {
+                    [weak self] in
+                    self?.drainCommand(
+                        context, gen: gen,
+                        deadline: deadline,
+                        state: state,
+                        result: result,
+                        completion: completion)
+                }
+            }
     }
 
     /// Evaluate an expression or snippet in
@@ -578,7 +743,9 @@ function require(spec) {
             delay: min(max(0, ms),
                        3_600_000) / 1000,
             repeats: repeats,
-            gen: runGeneration)
+            gen: context === commandContext
+                ? commandGeneration
+                : runGeneration)
         timerBoxes[box.id] = box
         armTimer(box)
         return box.id
@@ -639,6 +806,169 @@ function require(spec) {
         _ context: JSContext) {
         drainForced.insert(
             ObjectIdentifier(context))
+        cancelFetches(context)
+    }
+
+    /// The context's generation for
+    /// fetches: packages drain under the
+    /// command generation, everything
+    /// else under the run generation.
+    private func fetchGen(
+        _ context: JSContext) -> Int {
+        context === commandContext
+            ? commandGeneration
+            : runGeneration
+    }
+
+    private func startFetch(
+        url: String, optionsJSON: String,
+        callback: JSValue) -> Int {
+        guard let context = callback.context
+        else { return 0 }
+        fetchSeq += 1
+        let id = fetchSeq
+        let box = FetchBox(
+            context: context,
+            gen: fetchGen(context),
+            callback: callback)
+        fetchBoxes[id] = box
+        let parsed =
+            (try? JSONSerialization
+                .jsonObject(
+                    with: Data(
+                        optionsJSON.utf8))
+            as? [String: Any]) ?? [:]
+        guard let link = URL(string: url)
+        else {
+            deliverFetch(id,
+                         ["error": "fetch: bad url"])
+            return id
+        }
+        var request = URLRequest(url: link)
+        request.httpMethod =
+            (parsed["method"] as? String)
+            ?? "GET"
+        if let headers = parsed["headers"]
+            as? [String: String] {
+            for (name, value) in headers {
+                request.setValue(
+                    value,
+                    forHTTPHeaderField: name)
+            }
+        }
+        if let body = parsed["body"]
+            as? String {
+            request.httpBody =
+                Data(body.utf8)
+        }
+        request.timeoutInterval = 120
+        let task = URLSession.shared
+            .dataTask(with: request) {
+                [weak self] data, response,
+                error in
+                guard let self = self
+                else { return }
+                var out: [String: Any] = [:]
+                if let error = error {
+                    out["error"] = "fetch: "
+                        + error
+                        .localizedDescription
+                } else {
+                    let http = response
+                        as? HTTPURLResponse
+                    out["status"] =
+                        http?.statusCode ?? 0
+                    var fields:
+                        [String: String] = [:]
+                    for (name, value) in
+                        http?.allHeaderFields
+                        ?? [:] {
+                        fields[String(
+                            describing: name)] =
+                            String(
+                                describing: value)
+                    }
+                    out["headers"] = fields
+                    out["body"] = data
+                        .flatMap {
+                            String(
+                                data: $0,
+                                encoding: .utf8)
+                        } ?? ""
+                }
+                self.queue.async {
+                    self.deliverFetch(id, out)
+                }
+            }
+        box.task = task
+        task.resume()
+        return id
+    }
+
+    private func deliverFetch(
+        _ id: Int,
+        _ payload: [String: Any]) {
+        guard let box = fetchBoxes
+            .removeValue(forKey: id)
+        else { return }
+        let json =
+            (try? JSONSerialization.data(
+                withJSONObject: payload))
+            .flatMap {
+                String(data: $0,
+                       encoding: .utf8)
+            } ?? "{\"error\":\"fetch: "
+            + "encode\"}"
+        box.callback.call(
+            withArguments: [json])
+    }
+
+    private func fetchesPending(
+        context: JSContext, gen: Int)
+        -> Bool {
+        fetchBoxes.values.contains {
+            $0.context === context
+                && $0.gen == gen
+        }
+    }
+
+    private func cancelFetches(
+        context: JSContext, gen: Int) {
+        for (id, box) in fetchBoxes
+            where box.context === context
+                && box.gen == gen {
+            box.task?.cancel()
+            fetchBoxes[id] = nil
+        }
+    }
+
+    private func cancelFetches(
+        _ context: JSContext) {
+        for (id, box) in fetchBoxes
+            where box.context === context {
+            box.task?.cancel()
+            fetchBoxes[id] = nil
+        }
+    }
+
+    private func startExec(
+        line: String, callback: JSValue)
+        -> Bool {
+        guard let provider =
+            BlacksiteJS.execProvider,
+            execInFlight < 3
+        else { return false }
+        execInFlight += 1
+        provider(line) { [weak self] out in
+            guard let self = self
+            else { return }
+            self.queue.async {
+                self.execInFlight -= 1
+                callback.call(
+                    withArguments: [out])
+            }
+        }
+        return true
     }
 
     private func drainRunFile(
@@ -651,12 +981,17 @@ function require(spec) {
         let forced = drainForced.contains(
             key)
         if forced
-            || !timersPending(
+            || (!timersPending(
                 context: context, gen: gen)
+                && !fetchesPending(
+                    context: context,
+                    gen: gen))
             || Date() >= deadline {
             drainForced.remove(key)
             cancelTimers(
                 context: context, gen: gen)
+            cancelFetches(
+                context, gen: gen)
             if runGeneration == gen {
                 runGeneration = 0
             }
@@ -691,12 +1026,17 @@ function require(spec) {
         let forced = drainForced.contains(
             key)
         if forced
-            || !timersPending(
+            || (!timersPending(
                 context: context, gen: gen)
+                && !fetchesPending(
+                    context: context,
+                    gen: gen))
             || Date() >= deadline {
             drainForced.remove(key)
             cancelTimers(
                 context: context, gen: gen)
+            cancelFetches(
+                context, gen: gen)
             if runGeneration == gen {
                 runGeneration = 0
             }
@@ -854,7 +1194,547 @@ function require(spec) {
         "dice": (
             blurb: "roll NdM · flip · pick",
             source: diceSource),
+        "grok": (
+            blurb: "grok — ask xAI's grok "
+                + "from here; the house's "
+                + "own client (SuperGrok "
+                + "sign-in via X), tools "
+                + "over your files",
+            source: grokSource),
     ]
+
+    private static let grokSource = """
+// grok — the console's own client for
+// xAI's grok. It is a compatible client,
+// not the Rust CLI: same sign-in, same
+// API, tools over these files.
+//   grok login            SuperGrok
+//                         sign-in via X
+//                         (device flow)
+//   grok status           who is signed in
+//   grok logout           forget the token
+//   grok <words>          ask — with file
+//                         + shell tools
+// An XAI_API_KEY in the environment
+// works instead of signing in.
+var GROK_CLIENT_ID =
+    "b1a00492-073a-47ea-816f-4c329264a828";
+var GROK_ISSUER = "https://auth.x.ai";
+var GROK_API = "https://api.x.ai/v1";
+var GROK_AUTH_FILE = "/home/.grok-auth.json";
+var GROK_SCOPES =
+    "openid profile email "
+    + "offline_access api:access";
+
+function grokForm(fields) {
+    var parts = [];
+    for (var key in fields) {
+        parts.push(encodeURIComponent(key)
+            + "="
+            + encodeURIComponent(fields[key]));
+    }
+    return parts.join("&");
+}
+
+function grokLoadAuth() {
+    var text = read(GROK_AUTH_FILE);
+    if (!text) { return null; }
+    try { return JSON.parse(text); }
+    catch (e) { return null; }
+}
+
+function grokSaveAuth(auth) {
+    write(GROK_AUTH_FILE,
+          JSON.stringify(auth));
+}
+
+function grokEnv(done) {
+    execCb("env", function(out) {
+        var env = {};
+        out.split("\\n").forEach(function(line) {
+            var cut = line.indexOf("=");
+            if (cut > 0) {
+                env[line.substring(0, cut)] =
+                    line.substring(cut + 1);
+            }
+        });
+        done(env);
+    });
+}
+
+// Hand back a bearer token, refreshing
+// the signed-in one when it has lapsed.
+function grokBearer(done) {
+    var auth = grokLoadAuth();
+    if (auth && auth.access_token) {
+        var now = Math.floor(
+            new Date().getTime() / 1000);
+        if (!auth.expires_at
+            || auth.expires_at > now + 60) {
+            done(auth.access_token);
+            return;
+        }
+        if (auth.refresh_token) {
+            fetch(GROK_ISSUER + "/oauth2/token", {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded"
+                },
+                body: grokForm({
+                    grant_type: "refresh_token",
+                    refresh_token:
+                        auth.refresh_token,
+                    client_id: GROK_CLIENT_ID
+                })
+            }).then(function(r) {
+                var parsed = null;
+                try {
+                    parsed = JSON.parse(r.body);
+                } catch (e) { /* handled below */ }
+                if (r.status === 200 && parsed
+                    && parsed.access_token) {
+                    auth.access_token =
+                        parsed.access_token;
+                    if (parsed.refresh_token) {
+                        auth.refresh_token =
+                            parsed.refresh_token;
+                    }
+                    auth.expires_at = now
+                        + (parsed.expires_in
+                           || 3600);
+                    grokSaveAuth(auth);
+                    done(auth.access_token);
+                } else {
+                    print("grok: the saved "
+                        + "sign-in has lapsed — "
+                        + "'grok login' again.");
+                    done(null);
+                }
+            }).catch(function(e) {
+                print("grok: refresh failed — "
+                    + e.message);
+                done(null);
+            });
+            return;
+        }
+        done(auth.access_token);
+        return;
+    }
+    grokEnv(function(env) {
+        done(env.XAI_API_KEY || null);
+    });
+}
+
+function grokLogin() {
+    print("grok: asking x.ai for a "
+        + "device code…");
+    fetch(GROK_ISSUER + "/oauth2/device/code", {
+        method: "POST",
+        headers: {
+            "Content-Type":
+                "application/x-www-form-urlencoded",
+            "x-grok-client-surface": "cli"
+        },
+        body: grokForm({
+            client_id: GROK_CLIENT_ID,
+            scope: GROK_SCOPES
+        })
+    }).then(function(r) {
+        var body = null;
+        try { body = JSON.parse(r.body); }
+        catch (e) { /* handled below */ }
+        if (r.status !== 200 || !body
+            || !body.device_code) {
+            print("grok: x.ai refused the "
+                + "device code (HTTP "
+                + r.status + ") — "
+                + (body && body.error
+                   ? body.error
+                   : "no details"));
+            return;
+        }
+        print("");
+        print("  sign in with your X "
+            + "account (SuperGrok):");
+        print("  "
+            + (body.verification_uri_complete
+               || body.verification_uri));
+        print("  code: " + body.user_code);
+        print("");
+        print("grok: waiting for you to "
+            + "approve it — this window "
+            + "stays open a few minutes…");
+        var interval = Math.max(
+            2, body.interval || 5);
+        var deadline = new Date().getTime()
+            + (body.expires_in || 600) * 1000;
+        var poll = function() {
+            if (new Date().getTime()
+                > deadline) {
+                print("grok: the code "
+                    + "expired — 'grok "
+                    + "login' for a fresh "
+                    + "one.");
+                return;
+            }
+            fetch(GROK_ISSUER
+                + "/oauth2/token", {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded"
+                },
+                body: grokForm({
+                    grant_type:
+                        "urn:ietf:params:oauth:grant-type:device_code",
+                    device_code:
+                        body.device_code,
+                    client_id: GROK_CLIENT_ID
+                })
+            }).then(function(tr) {
+                var tb = null;
+                try {
+                    tb = JSON.parse(tr.body);
+                } catch (e) { /* below */ }
+                if (tr.status === 200 && tb
+                    && tb.access_token) {
+                    var now = Math.floor(
+                        new Date().getTime()
+                        / 1000);
+                    grokSaveAuth({
+                        access_token:
+                            tb.access_token,
+                        refresh_token:
+                            tb.refresh_token
+                            || null,
+                        expires_at: now
+                            + (tb.expires_in
+                               || 3600)
+                    });
+                    print("grok: signed in. "
+                        + "The token lives "
+                        + "in " + GROK_AUTH_FILE
+                        + " — 'grok logout' "
+                        + "forgets it.");
+                    return;
+                }
+                var err = tb && tb.error;
+                if (err
+                    === "authorization_pending") {
+                    setTimeout(poll,
+                               interval * 1000);
+                } else if (err
+                    === "slow_down") {
+                    interval += 5;
+                    setTimeout(poll,
+                               interval * 1000);
+                } else {
+                    print("grok: sign-in ended "
+                        + "— " + (err
+                        || ("HTTP " + tr.status)));
+                }
+            }).catch(function(e) {
+                print("grok: poll failed — "
+                    + e.message);
+            });
+        };
+        setTimeout(poll, interval * 1000);
+    }).catch(function(e) {
+        print("grok: " + e.message);
+    });
+}
+
+function grokTools() {
+    return [
+        { type: "function",
+          function: {
+              name: "read_file",
+              description: "Read a file from the console's files.",
+              parameters: {
+                  type: "object",
+                  properties: {
+                      path: { type: "string" }
+                  },
+                  required: ["path"]
+              } } },
+        { type: "function",
+          function: {
+              name: "write_file",
+              description: "Write a whole file (creates or replaces).",
+              parameters: {
+                  type: "object",
+                  properties: {
+                      path: { type: "string" },
+                      content: { type: "string" }
+                  },
+                  required: ["path", "content"]
+              } } },
+        { type: "function",
+          function: {
+              name: "edit_file",
+              description: "Replace one exact passage in a file.",
+              parameters: {
+                  type: "object",
+                  properties: {
+                      path: { type: "string" },
+                      old: { type: "string" },
+                      new: { type: "string" }
+                  },
+                  required: ["path", "old", "new"]
+              } } },
+        { type: "function",
+          function: {
+              name: "list_dir",
+              description: "List a directory in the console's files.",
+              parameters: {
+                  type: "object",
+                  properties: {
+                      path: { type: "string" }
+                  },
+                  required: ["path"]
+              } } },
+        { type: "function",
+          function: {
+              name: "run_command",
+              description: "Run a line in the console's shell and read what it prints.",
+              parameters: {
+                  type: "object",
+                  properties: {
+                      command: { type: "string" }
+                  },
+                  required: ["command"]
+              } } }
+    ];
+}
+
+function grokResolve(cwd, path) {
+    if (!path) { return cwd; }
+    if (path.charAt(0) === "/") { return path; }
+    return (cwd === "/" ? "" : cwd)
+        + "/" + path;
+}
+
+function grokRunTool(cwd, call, done) {
+    var name = call.function.name;
+    var args = {};
+    try {
+        args = JSON.parse(
+            call.function.arguments || "{}");
+    } catch (e) { /* empty args */ }
+    print("  ▸ " + name + " "
+        + (args.path || args.command || ""));
+    if (name === "read_file") {
+        var text = read(grokResolve(
+            cwd, args.path));
+        done(text === null
+            ? "(no such file: " + args.path + ")"
+            : text.substring(0, 30000));
+    } else if (name === "write_file") {
+        done(write(grokResolve(cwd, args.path),
+                   args.content || "")
+            ? "written."
+            : "(write refused)");
+    } else if (name === "edit_file") {
+        var path = grokResolve(cwd, args.path);
+        var before = read(path);
+        if (before === null) {
+            done("(no such file: "
+                 + args.path + ")");
+            return;
+        }
+        var first = before.indexOf(args.old);
+        if (first < 0) {
+            done("(passage not found)");
+            return;
+        }
+        if (before.indexOf(args.old,
+                           first + 1) >= 0) {
+            done("(passage is not unique — "
+                 + "widen it)");
+            return;
+        }
+        done(write(path, before.substring(0, first)
+                   + args.new
+                   + before.substring(
+                       first + args.old.length))
+            ? "edited."
+            : "(write refused)");
+    } else if (name === "list_dir") {
+        var names = ls(grokResolve(
+            cwd, args.path));
+        done(names.length
+            ? names.join("\\n")
+            : "(empty)");
+    } else if (name === "run_command") {
+        execCb(args.command || "",
+            function(out) {
+                done(out.substring(0, 30000)
+                    || "(no output)");
+            });
+    } else {
+        done("(unknown tool)");
+    }
+}
+
+function grokRound(bearer, model, cwd,
+                     messages, rounds) {
+    fetch(GROK_API + "/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type":
+                "application/json",
+            "Authorization":
+                "Bearer " + bearer
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            tools: grokTools()
+        })
+    }).then(function(r) {
+        var body = null;
+        try { body = JSON.parse(r.body); }
+        catch (e) { /* below */ }
+        if (r.status !== 200 || !body
+            || !body.choices
+            || !body.choices.length) {
+            print("grok: the API answered "
+                + "HTTP " + r.status + " — "
+                + (body && body.error
+                   ? (body.error.message
+                      || JSON.stringify(
+                          body.error))
+                   : r.body.substring(0, 300)));
+            return;
+        }
+        var message = body.choices[0].message;
+        messages.push(message);
+        var calls = message.tool_calls || [];
+        if (!calls.length) {
+            if (message.content) {
+                print(message.content);
+            }
+            return;
+        }
+        if (rounds >= 12) {
+            print("grok: twelve tool rounds "
+                + "in — stopping here.");
+            if (message.content) {
+                print(message.content);
+            }
+            return;
+        }
+        var step = function(index) {
+            if (index >= calls.length) {
+                grokRound(bearer, model, cwd,
+                          messages, rounds + 1);
+                return;
+            }
+            grokRunTool(cwd, calls[index],
+                function(result) {
+                    messages.push({
+                        role: "tool",
+                        tool_call_id:
+                            calls[index].id,
+                        content: result
+                    });
+                    step(index + 1);
+                });
+        };
+        step(0);
+    }).catch(function(e) {
+        print("grok: " + e.message);
+    });
+}
+
+function grokAsk(prompt) {
+    grokBearer(function(bearer) {
+        if (!bearer) {
+            print("grok: not signed in — "
+                + "'grok login' (SuperGrok "
+                + "via X), or set "
+                + "XAI_API_KEY.");
+            return;
+        }
+        grokEnv(function(env) {
+            var model = env.GROK_MODEL
+                || "grok-4.5";
+            execCb("pwd", function(cwd) {
+                cwd = (cwd || "/home")
+                    .split("\\n")[0];
+                var messages = [
+                    { role: "system",
+                      content: "You are grok, "
+                        + "working inside the "
+                        + "Blacksite console on "
+                        + "the operator's phone. "
+                        + "Your tools read and "
+                        + "write the console's "
+                        + "own files and run its "
+                        + "shell. The working "
+                        + "directory is "
+                        + cwd + ". Be direct; "
+                        + "do the work with "
+                        + "tools when the answer "
+                        + "needs the files, and "
+                        + "show your results "
+                        + "plainly." },
+                    { role: "user",
+                      content: prompt }
+                ];
+                grokRound(bearer, model, cwd,
+                          messages, 0);
+            });
+        });
+    });
+}
+
+registerCommand("grok", function(args) {
+    var sub = (args[0] || "").toLowerCase();
+    if (sub === "login") {
+        grokLogin();
+        return "grok: sign-in started.";
+    }
+    if (sub === "logout") {
+        execCb("rm -f " + GROK_AUTH_FILE,
+            function() {
+                print("grok: signed out — "
+                    + "the saved token is "
+                    + "gone.");
+            });
+        return undefined;
+    }
+    if (sub === "status") {
+        var auth = grokLoadAuth();
+        if (auth && auth.access_token) {
+            var when = auth.expires_at
+                ? new Date(
+                    auth.expires_at * 1000)
+                    .toISOString()
+                : "unknown";
+            print("grok: signed in "
+                + "(SuperGrok via X); the "
+                + "token rests until "
+                + when + ".");
+        } else {
+            print("grok: not signed in — "
+                + "'grok login', or set "
+                + "XAI_API_KEY.");
+        }
+        return undefined;
+    }
+    if (!args.length || sub === "help") {
+        return "grok login | grok status | "
+            + "grok logout | grok <words> "
+            + "— the console's client for "
+            + "xAI's grok";
+    }
+    grokAsk(args.join(" "));
+    return undefined;
+});
+
+"""
 
     private static let codecSource = """
 // codec — encodings, in pure JS.
