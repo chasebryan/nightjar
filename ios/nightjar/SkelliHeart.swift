@@ -1271,7 +1271,25 @@ final class SkelliHeart: ObservableObject {
     func greeting() -> String? {
         guard enabled else { return nil }
         if madFresh { return nil }
+        if feeling != .afraid {
+            // The episode is over; the next
+            // fright greets fresh.
+            defaults.set(false,
+                         forKey: "heart.afraidGreeted")
+        }
         if feeling == .afraid {
+            // Afraid greets ONCE per episode,
+            // like annoyed does: the greeting
+            // is the statement. Unchecked it
+            // repeated before every answer for
+            // a whole frightened stretch
+            // (2026-10-18, the Netbomb run).
+            if defaults.bool(
+                forKey: "heart.afraidGreeted") {
+                return nil
+            }
+            defaults.set(true,
+                         forKey: "heart.afraidGreeted")
             return L("There you are. Doors are checked. Stay where I can see you.")
         }
         if feeling == .annoyed {

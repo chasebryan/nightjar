@@ -1890,15 +1890,22 @@ final class MacroRunner: ObservableObject {
     private func waitInbox(_ block: MacroBlock,
                            mouth: Mouth) async throws
         -> MacroStepOutcome {
-        let baseline = mouth.inbox.count
+        // Arrivals land at the FRONT of the
+        // inbox and the box caps at 200 by
+        // dropping the oldest — a count can
+        // stand still at the cap while the
+        // wire delivers, and .last is the
+        // OLDEST resident, not the arrival.
+        // Watch the front door's name instead.
+        let baseline = mouth.inbox.first?.id
         let deadline = Date().addingTimeInterval(
             block.number("seconds", 60))
         while Date() < deadline {
             if Task.isCancelled {
                 return .done("The wait ended early.")
             }
-            if mouth.inbox.count > baseline {
-                let item = mouth.inbox.last
+            if mouth.inbox.first?.id != baseline {
+                let item = mouth.inbox.first
                 return .done("An arrival landed — "
                     + "\(item?.transport ?? "") from "
                     + "\(item?.peer ?? "the wire").")

@@ -2946,6 +2946,9 @@ enum SkelliWeb {
         if !blocks.isEmpty {
             var out = blocks.joined(
                 separator: "\n\n")
+            if out.count > 1800 {
+                out = excerpt(out, maxChars: 1800)
+            }
             if walls > 0 {
                 out += "\n\n(" + "\(walls) behind a "
                     + "wall — walked past.)"
@@ -2995,7 +2998,14 @@ enum SkelliWeb {
 
     private static func block(_ finding: Finding)
         -> String {
-        "— " + finding.source + ": " + finding.text
+        // A finding is an excerpt, never the
+        // page: the renderer once carried a
+        // multi-kilobyte dump into the chat
+        // whole (2026-10-18, the atomic-bomb
+        // essay). 560 characters of the best
+        // sentences is the finding's voice.
+        "— " + finding.source + ": "
+            + excerpt(finding.text, maxChars: 560)
             + "\nSource: " + finding.url
     }
 

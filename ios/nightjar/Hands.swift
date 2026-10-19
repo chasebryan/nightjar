@@ -232,6 +232,64 @@ extension SkelliCenter {
         }
     }
 
+    /// The run's own report: "what did we
+    /// discover with the atomic netbomb" is a
+    /// question about a run, not a research
+    /// prompt — asked mid-run in the field
+    /// (2026-10-18) it fell through to web
+    /// research and came back as a history
+    /// essay about the actual bomb. The lane
+    /// answers from the runner: still running
+    /// (with the live step) or the last run's
+    /// own summary. A name must match by the
+    /// front door's rule, and a summary is
+    /// only quoted for the macro it names —
+    /// anything else falls through untouched.
+    private func runReport(_ q: String) -> String? {
+        let strong = ["what did", "what have",
+                      "discover", "findings",
+                      "results", "what happened"]
+        let runner = MacroRunner.shared
+        let asksReport = strong.contains {
+            q.contains($0)
+        }
+        let asksStatus = q.contains("how is")
+            || q.contains("how did")
+        guard asksReport
+                || (runner.running && asksStatus)
+        else { return nil }
+        let named = MacroStore.load().filter { macro in
+            let hits = macro.name.lowercased()
+                .split {
+                    !$0.isLetter && !$0.isNumber
+                }
+                .map(String.init)
+                .filter {
+                    $0.count >= 3 && q.contains($0)
+                }
+            return hits.count >= 2
+                || hits.contains { $0.count >= 7 }
+        }.max(by: {
+            warNameScore($0.name, in: q)
+                < warNameScore($1.name, in: q)
+        })
+        if runner.running {
+            guard named == nil
+                    || named?.name
+                        == runner.currentMacroName
+            else { return nil }
+            return "Still running — "
+                + "\(runner.currentMacroName): "
+                + "\(runner.currentStep)."
+        }
+        if let named,
+           runner.lastSummary.hasPrefix(named.name) {
+            return "Last run — "
+                + runner.lastSummary
+        }
+        return nil
+    }
+
     func macroAsk(_ q: String, raw: String) -> Bool {
         // A lit fuse answers to stop before
         // anything else in the room: while
@@ -247,6 +305,10 @@ extension SkelliCenter {
             NetbombFuse.shared.task = nil
             say("Called off — the Netbomb stays "
                 + "in the rack.")
+            return true
+        }
+        if let report = runReport(q) {
+            say(report)
             return true
         }
         if !q.contains("macro") {
