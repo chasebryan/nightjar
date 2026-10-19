@@ -2076,7 +2076,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         let hex = String(format: "0x%04X", id)
-        if let curated = Vendors.companyName(id) {
+        if let curated = Vendors.companyNames[id] {
             emit("\(hex) — \(curated) "
                  + "(the house's curated name)",
                  .ok)
