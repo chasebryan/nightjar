@@ -751,6 +751,7 @@ final class SkelliCenter: ObservableObject {
         minimalChat = false
         HeadlineWire.shared.enabled = true
         mood = .idle
+        TomatoMarks.shared.forgetAll()
         SkelliStore.wipe()
     }
 
@@ -3108,6 +3109,9 @@ final class SkelliCenter: ObservableObject {
             && nameDevice(q) {
             return
         }
+        if tomatoAsk(q) {
+            return
+        }
         if assaultAsk(q) {
             return
         }
@@ -4609,6 +4613,9 @@ final class SkelliCenter: ObservableObject {
             .sink { [weak self] _ in
                 guard let self = self else { return }
                 let hosts = self.scanner.sweepHosts
+                let markedHit = hosts.first {
+                    TomatoMarks.shared.isMarked($0.ip)
+                }
                 self.say(hosts.isEmpty
                     ? "The sweep finished: nobody "
                       + "answered on port 80."
@@ -4621,7 +4628,12 @@ final class SkelliCenter: ObservableObject {
                       + (hosts.count > 5 ? "…" : "")
                       + ". They're in the Neighborhood, "
                       + "and the Map has them in its "
-                      + "tray.")
+                      + "tray."
+                      + (markedHit == nil
+                        ? ""
+                        : " \(markedHit!.ip) answered "
+                          + "wearing its tomato — "
+                          + "picked on, as ordered."))
             }
     }
 
@@ -5391,6 +5403,144 @@ final class SkelliCenter: ObservableObject {
     /// What she will not do is lift EMCON herself:
     /// a condition that holds it dark is named,
     /// plainly, as the blocker.
+    /// The tomato: a device the operator has
+    /// marked for insult is picked on in every
+    /// test the house runs — knocked first in
+    /// every Net-Assault pass, never skipped as
+    /// unchanged, its tomato worn on the board
+    /// and noted in sweep reports. Marks live in
+    /// TomatoMarks; this lane throws, wipes,
+    /// and lists them.
+    private func tomatoAsk(_ q: String) -> Bool {
+        guard q.contains("tomato") else { return false }
+        let store = NeighborhoodStore.shared
+        let marks = TomatoMarks.shared
+        func resolve() -> Neighbor? {
+            store.neighbors.first { n in
+                q.contains(n.ip)
+                    || (n.displayName.count >= 3
+                        && q.contains(
+                            n.displayName.lowercased()))
+                    || (n.name.map {
+                        $0.count >= 3
+                            && q.contains($0.lowercased())
+                    } ?? false)
+            }
+        }
+        // Wipe it off.
+        if q.contains("wipe") || q.contains("remove")
+            || q.contains("pardon")
+            || q.contains("unmark")
+            || q.contains("stop picking on") {
+            if q.contains("all") || q.contains("every") {
+                marks.clear()
+                Journal.log("tomato", "clear",
+                            "all tomatoes wiped")
+                say("All tomatoes wiped. Nobody's "
+                    + "marked — the wire is, for once, "
+                    + "unpicked-on.")
+                return true
+            }
+            if let n = resolve() {
+                marks.unmark(n.ip)
+                Journal.log("tomato", "unmark",
+                            "\(n.displayName) (\(n.ip))")
+                say("Wiped clean — \(n.displayName) "
+                    + "breathes again. The lumps it "
+                    + "took stay in the journal.")
+                return true
+            }
+            say("Nobody by that name is wearing "
+                + "one. Marked now: "
+                + (marks.marked.isEmpty
+                    ? "nobody."
+                    : marks.listing(store: store) + "."))
+            return true
+        }
+        // Who wears one.
+        if q.contains("who") || q.contains("list")
+            || q.contains("wearing")
+            || q.contains("marked") {
+            say(marks.marked.isEmpty
+                ? "No tomatoes out. Throw one: "
+                  + "'throw a tomato at the printer'."
+                : "Wearing tomatoes: "
+                  + marks.listing(store: store)
+                  + ". Picked on in every test, "
+                  + "first in every pass.")
+            return true
+        }
+        // Throw it.
+        if q.contains("throw") || q.contains("splat")
+            || q.contains("hit") || q.contains("mark")
+            || q.hasPrefix("tomato") {
+            if let n = resolve() {
+                let already = marks.isMarked(n.ip)
+                marks.mark(n.ip)
+                Journal.log("tomato", "mark",
+                            "\(n.displayName) (\(n.ip))")
+                say(already
+                    ? "\(n.displayName) is already "
+                      + "wearing one — it stays "
+                      + "picked on."
+                    : "🍅 Splat — \(n.displayName) "
+                      + "(\(n.ip)) is marked. From "
+                      + "here out it's picked on in "
+                      + "every test: knocked first in "
+                      + "every assault pass, never "
+                      + "skipped as unchanged, and "
+                      + "reported wearing it. 'Wipe "
+                      + "the tomato off "
+                      + "\(n.displayName.lowercased())' "
+                      + "ends it.")
+                return true
+            }
+            // An address with no board entry yet:
+            // the mark waits for its face.
+            let tokens = q.split(
+                whereSeparator: {
+                    !$0.isNumber && $0 != "."
+                }).map(String.init)
+            if let ip = tokens.first(where: { tok in
+                let parts = tok.split(separator: ".")
+                return parts.count == 4
+                    && parts.allSatisfy {
+                        !$0.isEmpty
+                            && $0.allSatisfy {
+                                $0.isNumber
+                            }
+                    }
+            }) {
+                let octets = ip.split(separator: ".")
+                    .compactMap { Int($0) }
+                let homeNet = octets.count == 4
+                    && (octets[0] == 10
+                        || octets[0] == 192
+                            && octets[1] == 168
+                        || octets[0] == 172
+                            && (16...31).contains(octets[1]))
+                guard homeNet else {
+                    say("Tomatoes are for the home "
+                        + "wire — \(ip) isn't on it.")
+                    return true
+                }
+                marks.mark(ip)
+                Journal.log("tomato", "mark",
+                            "\(ip) (unseen)")
+                say("🍅 Marked \(ip). It isn't on "
+                    + "the board yet — the moment it "
+                    + "shows its face on this wire, "
+                    + "it becomes the standing target.")
+                return true
+            }
+            say("Who gets it? Name a device from "
+                + "the Neighborhood — 'throw a "
+                + "tomato at the printer'.")
+            return true
+        }
+        return false
+    }
+
     private func assaultAsk(_ q: String) -> Bool {
         let mentioned = q.contains("assault")
             || (q.contains("analy") && q.contains("wire"))

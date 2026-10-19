@@ -841,6 +841,28 @@
   one-byte battery
   broadcast is a
   battery again.
+- **A standing
+  target.** Throw a
+  tomato at any
+  device — say it,
+  or pick it from
+  the Neighborhood
+  board — and it is
+  marked for it:
+  knocked first in
+  every Net-Assault
+  pass and never
+  skipped, a sweep's
+  report notes it
+  answering in its
+  tomato, and it
+  wears its 🍅 on
+  the board for as
+  long as the mark
+  stands. Wipe it
+  off whenever the
+  point is made.
+
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

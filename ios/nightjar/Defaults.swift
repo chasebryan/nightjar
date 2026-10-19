@@ -94,6 +94,7 @@ enum SaneDefaults {
         "skelli.birthday", "skelli.birthdayGreeted",
     "heart.lastAnnoyance", "heart.annoyanceText",
     "heart.annoyanceGreeted", "heart.afraidGreeted",
+    "tomato.marks",
     "heart.rhythm", "heart.cause",
     "heart.intensity", "heart.episodes",
         "listen.bthomeV1",

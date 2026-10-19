@@ -333,6 +333,8 @@ final class NeighborhoodStore: ObservableObject {
 /// each opening into its full dossier.
 struct NeighborhoodSectionView: View {
     @ObservedObject var store: NeighborhoodStore
+    @ObservedObject private var tomato =
+        TomatoMarks.shared
     @Binding var editing: Neighbor?
     @Binding var dossier: DossierPresentation?
     @Binding var clearRequest: Bool
@@ -371,6 +373,9 @@ struct NeighborhoodSectionView: View {
                         wireName: neighbor.name)
                 } label: {
                     HStack(spacing: 8) {
+                        if tomato.isMarked(neighbor.ip) {
+                            Text("🍅").font(.callout)
+                        }
                         if let mark = neighbor.customMark {
                             Image(systemName: mark)
                                 .foregroundStyle(.secondary)
@@ -393,6 +398,29 @@ struct NeighborhoodSectionView: View {
                     } label: {
                         Label("Name this device\u{2026}",
                               systemImage: "pencil")
+                    }
+                    Button {
+                        if tomato.isMarked(neighbor.ip) {
+                            tomato.unmark(neighbor.ip)
+                            Journal.log(
+                                "tomato", "unmark",
+                                "\(neighbor.displayName) "
+                                    + "(\(neighbor.ip))")
+                        } else {
+                            tomato.mark(neighbor.ip)
+                            Journal.log(
+                                "tomato", "mark",
+                                "\(neighbor.displayName) "
+                                    + "(\(neighbor.ip))")
+                        }
+                    } label: {
+                        Label(tomato.isMarked(neighbor.ip)
+                                ? "Wipe the tomato off"
+                                : "Throw a tomato",
+                              systemImage: tomato
+                                .isMarked(neighbor.ip)
+                                ? "arrow.uturn.backward"
+                                : "target")
                     }
                 }
             }

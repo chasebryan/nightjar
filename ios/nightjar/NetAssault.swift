@@ -550,10 +550,24 @@ final class AssaultCenter: ObservableObject {
             else { return false }
             return cycle - record.cycle < 3
         }
-        knockQueue = Array(NeighborhoodStore.shared.neighbors
-            .filter { !unchanged($0) }
+        // The tomato outranks significance: a
+        // marked device is knocked first in
+        // every pass and is never skipped as
+        // unchanged — picked on amongst whoever
+        // else the pass chooses, by the
+        // operator's standing order.
+        let cast = NeighborhoodStore.shared.neighbors
+        let markedFirst = cast.filter {
+            TomatoMarks.shared.isMarked($0.ip)
+        }
+        let theRest = cast
+            .filter {
+                !TomatoMarks.shared.isMarked($0.ip)
+                    && !unchanged($0)
+            }
             .sorted { significance($0) > significance($1) }
-            .prefix(12))
+        knockQueue = Array(
+            (markedFirst + theRest).prefix(12))
         if knockQueue.isEmpty {
             rest()
             return
@@ -561,7 +575,10 @@ final class AssaultCenter: ObservableObject {
         stage = .knocking
         phase = "Knocking the cast — "
             + "\(knockQueue.count) device(s) this pass, "
-            + "in order of significance"
+            + (markedFirst.isEmpty
+                ? "in order of significance"
+                : "the marked first, then "
+                  + "by significance")
     }
 
     /// The governor: rest is the operator's setting,

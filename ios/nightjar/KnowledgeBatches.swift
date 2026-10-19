@@ -29,6 +29,18 @@ extension SkelliKnowledge {
                        "how to pentest"],
             body: "A penetration test is an authorized, scoped rehearsal of an attack, run to find what an adversary would find — before one does. The craft moves in phases: reconnaissance (what exists, who owns it, what it says about itself), enumeration (services, versions, the exact shape of every door), vulnerability analysis (known flaws, misconfigurations, weak trust), exploitation (proving a flaw is real, with the smallest demonstration that proves it), post-exploitation (what the foothold actually reaches — the blast radius is the finding), and reporting, which is the deliverable the whole test exists for: each finding with its evidence, its impact in plain language, and its fix. The frameworks agree beneath their names — PTES, NIST SP 800-115, the OWASP testing guides for web and firmware, MITRE ATT&CK for mapping technique to adversary behavior. Tooling serves the phases, never the reverse: a scanner's output is a lead, not a result. She knows this ground the way she knows the wire: ask her any of it, at any depth."),
         SkelliEntry(
+            id: "tomato",
+            title: "The tomato — a standing target",
+            home: "an insult she administers on order",
+            keywords: ["throw a tomato",
+                       "throw tomato", "marked device",
+                       "picked on", "standing target",
+                       "tomato off",
+                       "wearing a tomato",
+                       "the tomato"],
+            body: "Throw a tomato at any device — 'throw a tomato at the printer', by address, or from its row on the Neighborhood board — and it is marked for good; the marks persist across launches. A marked device is picked on in every test the house runs: Net-Assault knocks it first in every pass and never skips it as unchanged, a sweep's report notes it answering in its tomato, and it wears a 🍅 wherever the board lists it. It is a target amongst any others you choose — the mark adds it to the front of every crowd, it never runs a test by itself. The tomato is an insult, not ordnance: it changes who gets attention, never what a test is allowed to do, and every gate that held before still holds. 'Wipe the tomato off the printer' ends its sentence; 'who is wearing a tomato' reads the list; the journal keeps the record of every throw."),
+
+        SkelliEntry(
             id: "pentestlaw",
             title: "The law of the test — authorization is everything",
             home: "her standing line — ask her before any test, and she will answer plainly",
