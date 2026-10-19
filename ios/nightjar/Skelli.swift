@@ -984,6 +984,20 @@ final class SkelliCenter: ObservableObject {
         if let emcon, emcon.active {
             declared = emcon.condition.declared
         }
+        let seed = Int(
+            Date().timeIntervalSince1970 / 25)
+        // Strong weather stays with her: while
+        // a deep feeling's episode is fresh, it
+        // is sometimes still on her mind.
+        if let episode = SkelliHeart.shared
+            .recentEpisodes.first,
+           Date().timeIntervalSince(episode.at)
+            < 6 * 3600,
+           seed % 3 == 0 {
+            return String(format:
+                L("Still thinking about %@."),
+                episode.cause)
+        }
         return SkelliHeart.thought(
             feeling: SkelliHeart.shared.feeling,
             neighbors: neighbors.count,
@@ -991,7 +1005,7 @@ final class SkelliCenter: ObservableObject {
             knocks: emcon?.events.count ?? 0,
             emconDeclared: declared,
             hour: hour,
-            seed: Int(Date().timeIntervalSince1970 / 25))
+            seed: seed)
     }
 
     private func navigate(to tab: Int) {
@@ -7323,6 +7337,7 @@ struct SkelliBackdrop: View {
 struct SkelliHalo: View {
     let mood: SkelliMood
     let feeling: SkelliFeeling
+    let intensity: Double
     let itch: Double
     let unnamed: Int
     let darkHouse: Bool
@@ -7449,6 +7464,7 @@ struct SkelliHalo: View {
                                   wander: wander)
             let strength = min(1, presence
                 + swell * 0.35) * (dark ? 0.7 : 1)
+                * (0.78 + 0.4 * intensity)
             ZStack {
                 // The bloom: a wide, soft fall
                 // of her color into the dark.
@@ -8248,6 +8264,8 @@ struct SkelliView: View {
                         SkelliHalo(
                             mood: skelli.mood,
                             feeling: heart.feeling,
+                            intensity: heart
+                                .currentIntensity,
                             itch: heart.itch,
                             unnamed: SkelliVoice
                                 .unnamedCount(),

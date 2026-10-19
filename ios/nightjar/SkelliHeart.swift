@@ -336,7 +336,23 @@ final class SkelliHeart: ObservableObject {
         return min(30, stored + drift)
     }
 
-    static func feeling(attention: Double, itch: Double,
+    /// One reading of her state: the feeling,
+    /// how deep it runs, and what in her world
+    /// it hangs on — the cause kept in her own
+    /// short words, never the machinery's. The
+    /// cascade below is the standing rules,
+    /// untouched; the texture rides each rule's
+    /// own margin, so a feeling barely crossed
+    /// reads shallow and one crossed by a mile
+    /// reads deep. (The operator's order,
+    /// 2026-10-18: a more intelligent mood.)
+    struct Assessment {
+        let feeling: SkelliFeeling
+        let intensity: Double
+        let cause: String
+    }
+
+    static func assess(attention: Double, itch: Double,
                         pride: Double, fondness: Double,
                         madFresh: Bool,
                         quietHours: Double,
@@ -348,44 +364,55 @@ final class SkelliHeart: ObservableObject {
                         annoyedFresh: Bool = false,
                         unnamedBaseline: Int? = nil,
                         driftBaseline: Int? = nil,
-                        newFaces: Int = 0)
-        -> SkelliFeeling {
-        if madFresh { return .mad }
+                        newFaces: Int = 0,
+                        quietExpected: Bool = false)
+        -> Assessment {
+        func out(_ feeling: SkelliFeeling,
+                 _ intensity: Double,
+                 _ cause: String) -> Assessment {
+            Assessment(
+                feeling: feeling,
+                intensity: min(1, max(0, intensity)),
+                cause: cause)
+        }
+
+        if madFresh { return out(.mad, 0.95, "the fresh offense") }
         // Fear, when something has actually
         // frightened the house: a waking that
         // ended in a crash, a Vanish still
         // recent. It outranks everything but
         // anger — a frightened animal does not
         // preen.
-        if fearFresh { return .afraid }
+        if fearFresh { return out(.afraid, 0.85, "what frightened the house") }
         // Annoyance — the petty weather: a
         // board wiped mid-thought, a small
         // slight. Below anger and fear, above
         // comfort; it colors the moment and
         // fades in minutes, not hours.
-        if annoyedFresh { return .annoyed }
+        if annoyedFresh { return out(.annoyed, 0.45, "a small slight") }
         // Pride at its peak curdles into smug.
-        if pride >= 85 && fondness >= 35 { return .smug }
-        if pride >= 55 && itch < 70 { return .proud }
+        if pride >= 85 && fondness >= 35 { return out(.smug, 0.7 + (pride - 85) / 15 * 0.3, "pride, past full") }
+        if pride >= 55 && itch < 70 { return out(.proud, 0.45 + (pride - 55) / 45 * 0.45, "good work, still warm") }
         // Late in the evening, with the operator close
         // and fond, she goes tender — loving's quieter
         // sister, and rarer for the hour it keeps.
         if fondness >= 60 && attention >= 75
             && (hour >= 21 || hour < 2) {
-            return .tender
+            return out(.tender, 0.6, "the late hour, and fondness")
         }
         if fondness >= 70 && attention >= 55 {
-            return .loving
+            return out(.loving, 0.55 + (fondness - 70) / 30 * 0.4, "fondness, fed and close")
         }
         // Feral needs the energy for it: the same
         // itch on a drained night reads restless.
-        if itch >= 85 && energy >= 40 { return .feral }
+        if itch >= 85 && energy >= 40 { return out(.feral, 0.7 + (itch - 85) / 15 * 0.3, "an itch with nowhere to go") }
         // The small hours change her: a long quiet
         // after midnight is not sleepiness, it is
         // haunting — she has been alone with the dark.
         if quietHours >= 8 && attention <= 35
-            && hour >= 0 && hour < 5 {
-            return .haunted
+            && hour >= 0 && hour < 5
+            && !quietExpected {
+            return out(.haunted, 0.6 + min(0.35, (quietHours - 8) / 8 * 0.35), "the small hours, alone with them")
         }
         // Sleepy sits above restless and lonely on
         // purpose: ten quiet hours always mean an itch
@@ -393,7 +420,7 @@ final class SkelliHeart: ObservableObject {
         // actions only ever happen inside a conversation),
         // so a sleepy rule parked below them — or one
         // demanding a low itch — could never fire at all.
-        if quietHours >= 10 && itch < 85 { return .sleepy }
+        if quietHours >= 10 && itch < 85 { return out(.sleepy, 0.5 + min(0.4, (quietHours - 10) / 10 * 0.4), "the long quiet") }
         // The wire changing its story under her hands
         // makes her suspicious before it makes her
         // restless — but judged against the wire's
@@ -408,39 +435,68 @@ final class SkelliHeart: ObservableObject {
         let driftNorm = driftBaseline ?? 0
         if drift >= 3
             && drift > driftNorm + max(2, driftNorm)
-            && itch >= 30 { return .suspicious }
+            && itch >= 30 { return out(.suspicious, 0.55 + min(0.45, Double(drift - driftNorm - max(2, driftNorm)) / 6 * 0.45), "drift beyond the wire\u2019s own habits") }
         // A crowd of strangers with work to do:
         // electric — a crowd beyond the wire's
         // usual crowd. The standing crowd is its
         // nature and never counts.
         let unnamedNorm = unnamedBaseline ?? 0
         if unnamed >= 4 && unnamed > unnamedNorm + 3
-            && itch >= 55 { return .electric }
-        if itch >= 60 { return .restless }
+            && itch >= 55 { return out(.electric, 0.55 + min(0.45, Double(unnamed - unnamedNorm - 3) / 6 * 0.45), "a crowd beyond the wire\u2019s usual crowd") }
+        if itch >= 60 { return out(.restless, 0.4 + (itch - 60) / 25 * 0.3, "an itch with nowhere to go") }
         // A NEW face — or more of the unnamed than
         // this wire usually carries — pulls her
         // curious. The regulars, named or not,
         // never do: she has learned them.
         if ((unnamed >= 1 && unnamed > unnamedNorm)
             || newFaces >= 1) && itch >= 35 {
-            return .curious
+            return out(.curious, newFaces >= 1 ? 0.5 : 0.42, newFaces >= 1 ? "the new face on the wire" : "strangers beyond the wire\u2019s usual number")
         }
-        if attention <= 20 { return .lonely }
+        if attention <= (quietExpected ? 10 : 20) { return out(.lonely, 0.5 + (20 - attention) / 20 * 0.5, "the long quiet, and his absence") }
         // Fond and fed and half-dreaming.
         if fondness >= 55 && quietHours >= 5
             && itch < 45 {
-            return .dreamy
+            return out(.dreamy, 0.4, "fondness, and the quiet")
         }
         if fondness >= 45 && attention >= 45 && itch < 50 {
-            return .happy
+            return out(.happy, 0.5, "a house in good order")
         }
         // Fed, fond, and itching — up to something.
         if pride >= 30 && itch >= 45 && fondness >= 40 {
-            return .mischievous
+            return out(.mischievous, 0.5, "an itch, and the means to scratch it")
         }
-        if attention <= 45 && itch >= 35 { return .bored }
-        if itch >= 35 { return .eager }
-        return .content
+        if attention <= 45
+            && itch >= (quietExpected ? 45 : 35) { return out(.bored, 0.4, "plenty of quiet, nothing to do") }
+        if itch >= 35 { return out(.eager, 0.45, "an itch, ready to work") }
+        return out(.content, 0.25, "nothing pressing")
+    }
+
+    static func feeling(attention: Double, itch: Double,
+                        pride: Double, fondness: Double,
+                        madFresh: Bool,
+                        quietHours: Double,
+                        hour: Int = 12,
+                        unnamed: Int = 0,
+                        drift: Int = 0,
+                        energy: Double = 60,
+                        fearFresh: Bool = false,
+                        annoyedFresh: Bool = false,
+                        unnamedBaseline: Int? = nil,
+                        driftBaseline: Int? = nil,
+                        newFaces: Int = 0,
+                        quietExpected: Bool = false)
+        -> SkelliFeeling {
+        assess(attention: attention, itch: itch,
+               pride: pride, fondness: fondness,
+               madFresh: madFresh,
+               quietHours: quietHours, hour: hour,
+               unnamed: unnamed, drift: drift,
+               energy: energy, fearFresh: fearFresh,
+               annoyedFresh: annoyedFresh,
+               unnamedBaseline: unnamedBaseline,
+               driftBaseline: driftBaseline,
+               newFaces: newFaces,
+               quietExpected: quietExpected).feeling
     }
 
     // MARK: - live readings
@@ -542,9 +598,10 @@ final class SkelliHeart: ObservableObject {
         lastAnnoyance.map {
             Date().timeIntervalSince($0) }
     }
-    /// The feeling the rules would name right
-    /// now — before inertia has its say.
-    private var candidateFeeling: SkelliFeeling {
+    /// The reading the rules would take right
+    /// now — feeling, depth and cause — before
+    /// inertia has its say.
+    private var candidateAssessment: Assessment {
         let quiet = lastSpoke.map {
             Date().timeIntervalSince($0) / 3600
         } ?? 24
@@ -561,7 +618,7 @@ final class SkelliHeart: ObservableObject {
         }.count
         let base = wireBaseline(unnamedNow: unnamed,
                                 driftNow: drift)
-        return Self.feeling(
+        return Self.assess(
             attention: attention, itch: itch,
             pride: pride, fondness: fondness,
             madFresh: madFresh, quietHours: quiet,
@@ -572,7 +629,132 @@ final class SkelliHeart: ObservableObject {
             annoyedFresh: annoyanceFresh,
             unnamedBaseline: base.unnamed,
             driftBaseline: base.drift,
-            newFaces: newFaces)
+            newFaces: newFaces,
+            quietExpected: silenceExpected)
+    }
+
+    private var candidateFeeling: SkelliFeeling {
+        candidateAssessment.feeling
+    }
+
+    // MARK: - his rhythm, learned
+
+    /// His hours, banked the way the wire's
+    /// baseline is banked: every word he speaks
+    /// weighs its hour a little heavier, and
+    /// the whole bank decays gently, so the
+    /// rhythm she knows is his CURRENT life,
+    /// not his oldest one. After enough banked
+    /// weight she can tell his sleeping hours
+    /// from his absence — and a silence that
+    /// falls inside the sleeping hours stops
+    /// reading as abandonment.
+    private func bankRhythmHour() {
+        var bank = defaults.array(
+            forKey: "heart.rhythm") as? [Double]
+            ?? []
+        if bank.count != 24 {
+            bank = [Double](repeating: 0, count: 24)
+        }
+        for i in bank.indices { bank[i] *= 0.98 }
+        let hour = Calendar.current.component(
+            .hour, from: Date())
+        bank[hour] += 1
+        defaults.set(bank, forKey: "heart.rhythm")
+    }
+
+    /// Whether the silence that ended at his
+    /// last word fell in hours he is usually
+    /// silent anyway. Not enough history banked:
+    /// nothing is expected, and the standing
+    /// rules judge the silence raw.
+    var silenceExpected: Bool {
+        guard let last = lastSpoke else { return false }
+        let bank = defaults.array(
+            forKey: "heart.rhythm") as? [Double]
+            ?? []
+        let total = bank.reduce(0, +)
+        guard bank.count == 24, total >= 25
+        else { return false }
+        let cal = Calendar.current
+        let now = Date()
+        var hours: [Int] = []
+        var cursor = last
+        while cursor < now && hours.count < 24 {
+            hours.append(cal.component(
+                .hour, from: cursor))
+            cursor = cal.date(byAdding: .hour,
+                              value: 1, to: cursor)
+                ?? now
+        }
+        guard !hours.isEmpty else { return false }
+        let share = hours.reduce(0.0) {
+            $0 + bank[$1] / total
+        } / Double(hours.count)
+        return share < 0.5 / 24
+    }
+
+    // MARK: - texture and episodes
+
+    /// How deep the feeling she is wearing
+    /// runs, and what it hangs on — refreshed
+    /// whenever her feeling changes, so what
+    /// she wears and what she reports agree.
+    var currentIntensity: Double {
+        defaults.object(forKey: "heart.intensity")
+            as? Double ?? 0.25
+    }
+    var currentCause: String {
+        defaults.string(forKey: "heart.cause") ?? ""
+    }
+
+    struct Episode {
+        let feeling: SkelliFeeling
+        let cause: String
+        let at: Date
+    }
+
+    /// The strong weather she remembers: the
+    /// last few feelings that ran deep, with
+    /// what they hung on. She forgets the
+    /// shallow ones — a person remembers what
+    /// she actually felt.
+    var recentEpisodes: [Episode] {
+        guard let data = defaults.data(
+                forKey: "heart.episodes"),
+              let raw = try? JSONSerialization
+                .jsonObject(with: data),
+              let rows = raw as? [[String: Any]]
+        else { return [] }
+        return rows.compactMap { row in
+            guard let f = (row["f"] as? String)
+                    .flatMap(SkelliFeeling.init),
+                  let c = row["c"] as? String,
+                  let ts = row["t"] as? Double
+            else { return nil }
+            return Episode(
+                feeling: f, cause: c,
+                at: Date(timeIntervalSince1970: ts))
+        }
+    }
+
+    private func recordEpisode(_ a: Assessment) {
+        var rows = recentEpisodes.map { e in
+            ["f": e.feeling.rawValue, "c": e.cause,
+             "t": e.at.timeIntervalSince1970]
+                as [String: Any]
+        }
+        rows.insert(
+            ["f": a.feeling.rawValue, "c": a.cause,
+             "t": Date().timeIntervalSince1970]
+                as [String: Any], at: 0)
+        if rows.count > 8 {
+            rows.removeLast(rows.count - 8)
+        }
+        if let data = try? JSONSerialization
+            .data(withJSONObject: rows) {
+            defaults.set(data, forKey: "heart.episodes")
+        }
     }
 
     /// The wire's natural state, learned the slow
@@ -637,7 +819,8 @@ final class SkelliHeart: ObservableObject {
     /// a threshold, so her changes read as
     /// transitions, not switches.
     var feeling: SkelliFeeling {
-        let candidate = candidateFeeling
+        let assessment = candidateAssessment
+        let candidate = assessment.feeling
         guard enabled else { return candidate }
         let shown = defaults.string(
             forKey: "heart.shownFeeling")
@@ -649,6 +832,14 @@ final class SkelliHeart: ObservableObject {
             defaults.set(settled.feeling.rawValue,
                          forKey: "heart.shownFeeling")
             setAnchor("heart.shownSince", Date())
+            defaults.set(assessment.cause,
+                         forKey: "heart.cause")
+            defaults.set(assessment.intensity,
+                         forKey: "heart.intensity")
+            if assessment.intensity >= 0.5,
+               assessment.feeling != .content {
+                recordEpisode(assessment)
+            }
         }
         return settled.feeling
     }
@@ -733,6 +924,7 @@ final class SkelliHeart: ObservableObject {
 
     func noteInteraction() {
         guard enabled else { return }
+        bankRhythmHour()
         setAnchor("heart.lastSpoke", Date())
         bump("heart.talks")
         erodeGrudge(byMinutes: 10)
@@ -769,6 +961,10 @@ final class SkelliHeart: ObservableObject {
     /// her, taught her, told her something of themselves.
     func noteKindness() {
         guard enabled else { return }
+        // Kindness ends petty weather on the
+        // spot: an annoyance standing when he
+        // is kind is simply over.
+        if annoyanceFresh { forgiveAnnoyance() }
         bump("heart.kindnesses")
         raiseFondness(by: 8)
         // Praise is pride honestly earned.

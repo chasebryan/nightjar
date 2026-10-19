@@ -769,3 +769,25 @@
   or simply "run
   the atomic
   netbomb."
+- **Felt in depth.**
+  Her feelings now
+  carry how strongly
+  they run and what
+  they hang on. She
+  learns his hours
+  the way she
+  learned the
+  wire's — a
+  silence inside
+  his sleeping
+  hours no longer
+  reads as absence.
+  Strong weather
+  stays with her:
+  still on her mind
+  hours later, and
+  her glow burns
+  deeper with it.
+  Kindness ends
+  petty weather on
+  the spot.

@@ -94,6 +94,8 @@ enum SaneDefaults {
         "skelli.birthday", "skelli.birthdayGreeted",
     "heart.lastAnnoyance", "heart.annoyanceText",
     "heart.annoyanceGreeted",
+    "heart.rhythm", "heart.cause",
+    "heart.intensity", "heart.episodes",
         "listen.bthomeV1",
         "gattArm.name", "gattArm.payload",
         "headlines.enabled",
