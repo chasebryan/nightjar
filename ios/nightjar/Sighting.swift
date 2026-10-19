@@ -117,7 +117,6 @@ struct Sighting {
             }
         }
         self.serviceData = serviceData
-        self.solicitedUUIDs = solicitedUUIDs
     }
 
     /// The log record: field order and spelling match the Python side.
