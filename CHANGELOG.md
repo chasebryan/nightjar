@@ -793,6 +793,36 @@
   Kindness ends
   petty weather on
   the spot.
+- **Almost nothing**
+  **unknown.**
+  The SIG's member
+  registry joins
+  the house — seven
+  hundred member
+  services now name
+  their owners —
+  and the company
+  registry is
+  refreshed from
+  the SIG direct.
+  Service
+  combinations read
+  as the devices
+  they define:
+  heart-rate
+  monitors, fitness
+  machines, scales.
+  Five new formats
+  decode — Govee's
+  direct frame, the
+  Tilt hydrometer,
+  Victron, Mopeka
+  tank sensors,
+  TPMS wheel
+  sensors — and a
+  one-byte battery
+  broadcast is a
+  battery again.
 ## 9.0b — 2026-10-20 — gamma
 
 - **No crashes.** Two full sweeps

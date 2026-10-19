@@ -6,9 +6,10 @@ import Foundation
 /// carries a company id can be NAMED even
 /// when no deeper decoder knows the
 /// format. Generated 2026-10-18 from the
-/// SIG assignments as mirrored by Nordic
-/// Semiconductor's bluetooth-numbers-
-/// database (4,021 entries; the reserved
+/// SIG's own assigned-numbers repository
+/// (company_identifiers.yaml, 4,049
+/// entries — the SIG direct, which runs
+/// ahead of every mirror; the reserved
 /// 0xFFFF default stays the house table's
 /// to name). Do not hand-edit — regenerate
 /// from the source list. The house's
@@ -25,7 +26,7 @@ enum CompanyRegistry {
 
     static let names: [UInt16: String] = {
         var out: [UInt16: String] = [:]
-        out.reserveCapacity(4100)
+        out.reserveCapacity(4149)
         for chunk in chunks {
             for line in chunk.split(
                     separator: "\n") {
@@ -43,7 +44,6 @@ enum CompanyRegistry {
     }()
 
     private static let chunks: [String] = [
-
 """
 0000	Ericsson AB
 0001	Nokia Mobile Phones
@@ -295,6 +295,8 @@ enum CompanyRegistry {
 0101	Fugoo, Inc.
 0102	Keiser Corporation
 0103	Bang & Olufsen A/S
+""",
+"""
 0104	PLUS Location Systems Pty Ltd
 0105	Ubiquitous Computing Technology Corporation
 0106	Innovative Yachtter Solutions
@@ -545,6 +547,8 @@ enum CompanyRegistry {
 0211	Telink Semiconductor Co. Ltd
 0212	Interplan Co., Ltd
 0213	Wyler AG
+""",
+"""
 0214	IK Multimedia Production srl
 0215	Lukoton Experience Oy
 0216	MTI Ltd
@@ -745,8 +749,6 @@ enum CompanyRegistry {
 02E8	American Music Environments
 02E9	Sensogram Technologies, Inc.
 02EA	Fujitsu Limited
-""",
-"""
 02EB	Ardic Technology
 02ED	HTC Corporation
 02EE	Citizen Holdings Co., Ltd.
@@ -797,6 +799,8 @@ enum CompanyRegistry {
 031F	MetaSystem S.p.A.
 0320	SONO ELECTRONICS. CO., LTD
 0323	Rotor Bike Components
+""",
+"""
 0324	Astro, Inc.
 0326	Healthwear Technologies (Changzhou)Ltd
 0327	Essex Electronics
@@ -945,7 +949,7 @@ enum CompanyRegistry {
 03C2	Snapchat Inc
 03C3	Casambi Technologies Oy
 03C4	Pico Technology Inc.
-03C5	St. Jude Medical, Inc.
+03C5	Abbott Medical
 03C6	Intricon
 03C7	Structural Health Systems, Inc.
 03C8	Avvel International
@@ -1047,6 +1051,8 @@ enum CompanyRegistry {
 0431	Alticor Inc.
 0432	Silk Labs, Inc.
 0433	Pillsy Inc.
+""",
+"""
 0434	Hatch Baby, Inc.
 0435	Blocks Wearables Ltd.
 0436	Drayson Technologies (Europe) Limited
@@ -1297,6 +1303,8 @@ enum CompanyRegistry {
 0541	Sharknet srl
 0542	Mist Systems, Inc.
 0543	MIWA LOCK CO.,Ltd
+""",
+"""
 0544	OrthoSensor, Inc.
 0546	Apexar Technologies S.A.
 0547	LOGICDATA Electronic & Software Entwicklungs GmbH
@@ -1447,8 +1455,6 @@ enum CompanyRegistry {
 05DF	VIRTUALCLINIC.DIRECT LIMITED
 05E0	Viper Design LLC
 05E1	Human, Incorporated
-""",
-"""
 05E2	stAPPtronics GmbH
 05E3	Elemental Machines, Inc.
 05E4	Taiyo Yuden Co., Ltd
@@ -1549,6 +1555,8 @@ enum CompanyRegistry {
 0648	Ultune Technologies
 0649	Ryeex Technology Co.,Ltd.
 064A	Open Research Institute, Inc.
+""",
+"""
 064B	Scale-Tec, Ltd
 064C	Zumtobel Group AG
 064D	iLOQ Oy
@@ -1799,6 +1807,8 @@ enum CompanyRegistry {
 0756	Lumens For Less, Inc
 0757	ELA Innovation
 0758	umanSense AB
+""",
+"""
 0759	Shanghai InGeek Cyber Security Co., Ltd.
 075A	HARMAN CO.,LTD.
 075B	Smart Sensor Devices AB
@@ -2049,6 +2059,8 @@ enum CompanyRegistry {
 085E	Krog Systems LLC
 0860	Alflex Products B.V.
 0861	SmartSensor Labs Ltd
+""",
+"""
 0862	SmartDrive
 0863	Yo-tronics Technology Co., Ltd.
 0864	Rafaelmicro
@@ -2149,8 +2161,6 @@ enum CompanyRegistry {
 08CA	Nubia Technology Co.,Ltd.
 08CB	JT INNOVATIONS LIMITED
 08CC	TGM TECHNOLOGY CO., LTD.
-""",
-"""
 08CD	ifly
 08CE	ZIMI CORPORATION
 08CF	betternotstealmybike UG (with limited liability)
@@ -2301,6 +2311,8 @@ enum CompanyRegistry {
 0969	Woan Technology (Shenzhen) Co., Ltd.
 096A	dricos, Inc.
 096B	Guide ID B.V.
+""",
+"""
 096D	Gunwerks, LLC
 096E	Band Industries, inc.
 0970	IBA Dosimetry GmbH
@@ -2551,6 +2563,8 @@ enum CompanyRegistry {
 0A7B	UniqAir Oy
 0A7C	WAFERLOCK
 0A7D	Freedman Electronics Pty Ltd
+""",
+"""
 0A7E	KEBA Handover Automation GmbH
 0A7F	Intuity Medical
 0A80	Cleer Limited
@@ -2801,6 +2815,8 @@ enum CompanyRegistry {
 0B8A	Seiko Instruments Inc.
 0B8B	American Technology Components, Incorporated
 0B8C	MOTREX
+""",
+"""
 0B8D	Pertech Industries Inc
 0B8E	Gentle Energy Corp.
 0B8F	Senscomm Semiconductor Co., Ltd.
@@ -2851,8 +2867,6 @@ enum CompanyRegistry {
 0BC1	Miele & Cie. KG
 0BC2	EntWick Co.
 0BC3	MCOT INC.
-""",
-"""
 0BC4	TECHTICS ENGINEERING B.V.
 0BC5	Aperia Technologies, Inc.
 0BC6	TCL COMMUNICATION EQUIPMENT CO.,LTD.
@@ -3053,6 +3067,8 @@ enum CompanyRegistry {
 0C96	H+B Hightech GmbH
 0C97	Deako
 0C99	Vire Health Oy
+""",
+"""
 0C9A	ALF Inc.
 0C9B	NTT sonority, Inc.
 0C9C	Sunstone-RTLS Ipari Szolgaltato Korlatolt Felelossegu Tarsasag
@@ -3303,6 +3319,8 @@ enum CompanyRegistry {
 0DA1	Fen Systems Ltd.
 0DA2	KIWI.KI GmbH
 0DA3	Airgraft Inc.
+""",
+"""
 0DA4	HP Tuners
 0DA5	PIXELA CORPORATION
 0DA6	Generac Corporation
@@ -3805,6 +3823,8 @@ enum CompanyRegistry {
 0FA5	Avanos Medical, Inc.
 0FA6	Ugreen Group Limited
 0FA7	spheretek japan
+""",
+"""
 0FA8	Senti Technologies Private Limited
 0FA9	Ranch Systems, Inc.
 0FAA	Suzhou Fanxi Technology Co., Ltd.
@@ -4055,6 +4075,8 @@ enum CompanyRegistry {
 10FF	Sonus Faber spa
 1100	miThings
 1101	Nearfaces UG (haftungsbeschränkt)
+""",
+"""
 1102	Temple Private Limited
 1103	BRISANT SECURE LTD
 1104	Daiichi Elektronik Sanayi ve Ticaret. A.S.
@@ -4076,6 +4098,34 @@ enum CompanyRegistry {
 1114	Metabowerke GmbH
 1115	Thermia Aktiebolag
 1116	ALLRA LIMITED
-"""
+1117	Tive, Inc.
+1118	Villeroy & Boch AG
+1119	TSUKURUBAI, LIMITED LIABILITY COMPANY
+111A	BOKE Drivers Co., Ltd.
+111B	DIGITANIMAL S.L.
+111C	Techavtomatica
+111D	Commodore International Corporation
+111E	DS TAGS Group B.V.
+111F	iAppliance Inc.
+1120	PI-CRYSTAL INC.
+1121	ennos ag
+1122	FUSE BLUEJAY LIMITED
+1123	Hudl, Inc.
+1124	DOLLAR JUDGE INC
+1125	Wavarts Technologies, Co., Ltd
+1126	Hakemann GmbH & Co. KG
+1127	Permobil AB
+1128	NIC IMPEX
+1129	I.T.O. Vaarwegmarkering B.V.
+112A	Flowil International Lighting (Holding) B.V.
+112B	IXI Eyewear Oy
+112C	mees audio technology., co.ltd.
+112D	Aktiia SA
+112E	Oticon Medical AB
+112F	SECANDA Systems AG
+1130	Pi Variables, Inc.
+1131	Chirp Innovation, LLC
+1132	Nicrew Technology Co., Limited
+""",
     ]
 }

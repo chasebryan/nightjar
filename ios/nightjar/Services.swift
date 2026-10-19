@@ -111,9 +111,12 @@ enum Services {
     static func name(_ uuid: String) -> String? {
         guard let value = short(uuid) else { return nil }
         // The house's curated names first, then
-        // the SIG's whole registry.
+        // the SIG's adopted registry, then its
+        // member registry — a member service
+        // names its owner.
         return serviceNames[value]
             ?? ServiceRegistry.names[value]
+            ?? MemberRegistry.names[value]
     }
 
     // MARK: - Eddystone (and Google's Find My Device network)
@@ -350,10 +353,42 @@ enum Services {
         let named = Set(shorts.keys.compactMap {
             serviceNames[$0] ?? ServiceRegistry.names[$0]
         }).sorted()
+        // Member services (the SIG's member
+        // registry): a UUID allocated to a
+        // member company names its owner even
+        // when nothing else is known — the
+        // Eddystone/Tile/Fast Pair range and
+        // seven hundred more.
+        let memberNamed = shorts.keys
+            .compactMap { value -> (UInt16, String)? in
+                guard serviceNames[value] == nil,
+                      ServiceRegistry.names[value]
+                        == nil,
+                      let owner = MemberRegistry
+                        .names[value]
+                else { return nil }
+                return (value, owner)
+            }
+            .sorted { $0.0 < $1.0 }
+        let memberDetails = memberNamed.map {
+            String(format: "member service 0x%04X "
+                   + "— registered to %@",
+                   $0.0, $0.1)
+        }
         if !named.isEmpty {
             return Identification(kind: "Device advertising " + named.joined(separator: ", "),
-                                  details: [], trackerShaped: false, rotatingPhone: false,
+                                  details: memberDetails, trackerShaped: false, rotatingPhone: false,
                                   specificity: 1)
+        }
+        if !memberNamed.isEmpty {
+            return Identification(
+                kind: "Device advertising member "
+                    + (memberNamed.count > 1
+                       ? "services" : "service"),
+                details: memberDetails,
+                trackerShaped: false,
+                rotatingPhone: false,
+                specificity: 1)
         }
         return nil
     }
