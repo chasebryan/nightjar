@@ -72,6 +72,15 @@ enum ExpansionDecoders {
         if let candidate = basBroadcast(sighting) {
             return candidate
         }
+        if let candidate = victron(sighting) {
+            return candidate
+        }
+        if let candidate = mopeka(sighting) {
+            return candidate
+        }
+        if let candidate = tpmsClone(sighting) {
+            return candidate
+        }
         if let candidate = inkbird(sighting) {
             return candidate
         }
@@ -390,6 +399,19 @@ enum ExpansionDecoders {
     static func basBroadcastReading(
         _ payload: [UInt8]
     ) -> (percent: Int?, state: String?)? {
+        // The level-only form (the audit,
+        // 2026-10-18): a single byte that IS
+        // the level — the shape a large share
+        // of battery beacons actually send,
+        // which the strict flags form below
+        // never sees. A byte over 100 is not
+        // a level, and the gate stays shut.
+        if payload.count == 1 {
+            return payload[0] <= 100
+                ? (percent: Int(payload[0]),
+                   state: nil)
+                : nil
+        }
         guard payload.count >= 3 else { return nil }
         let flags = payload[0]
         let hasID = (flags & 0x01) != 0
@@ -422,6 +444,141 @@ enum ExpansionDecoders {
         }
         if percent == nil && state == nil { return nil }
         return (percent, state)
+    }
+
+    // MARK: Victron Energy — identity by design
+
+    /// Victron's product advertisement (record
+    /// 0x10, the vendor's published layout):
+    /// model id, readout type, device class —
+    /// and readings AES-encrypted under the
+    /// device's own key, so the honest decode
+    /// is identity: the device, its model and
+    /// its class, never invented numbers.
+    private static func victron(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting
+                .manufacturerData[0x02E1],
+              payload.count >= 8,
+              payload[0] == 0x10
+        else { return nil }
+        let model = Int(payload[1])
+            | Int(payload[2]) << 8
+        let deviceClass = payload[4]
+        let kind = deviceClass == 0x01
+            ? "Victron solar charger"
+            : "Victron Energy device"
+        var details = [String(
+            format: "model 0x%04X, device class "
+                + "0x%02X", model, deviceClass)]
+        details.append("readings are encrypted "
+            + "under the device's own key — "
+            + "identity only")
+        return Identification(kind: kind,
+                              details: details,
+                              specificity: 2)
+    }
+
+    // MARK: Mopeka — the tank sensors (OEM guide)
+
+    /// Mopeka Pro tank sensors transmit under
+    /// Nordic's company id (the OEM's own
+    /// integration guide says so) — the gate
+    /// is therefore triple: company 0x0059,
+    /// the guide's exact length, and a
+    /// hardware id in the documented set.
+    /// Level height converts only for the
+    /// bottom-up types, with the guide's
+    /// per-medium coefficients; top-down
+    /// types report the raw time-of-flight,
+    /// since a height would need the tank.
+    private static func mopeka(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting
+                .manufacturerData[0x0059],
+              payload.count == 10
+        else { return nil }
+        let hw = payload[0]
+        let sensorType = hw & 0x7F
+        let levelExtended = (hw & 0x80) != 0
+        let names: [UInt8: String] = [
+            0x03: "Mopeka tank sensor (propane)",
+            0x04: "Mopeka tank sensor (top-down)",
+            0x05: "Mopeka tank sensor (water)",
+            0x08: "Mopeka Pro+ tank sensor",
+            0x09: "Mopeka Pro+ tank sensor",
+            0x0A: "Mopeka TD-40 tank sensor",
+            0x0B: "Mopeka TD-40 tank sensor",
+        ]
+        guard let kind = names[sensorType]
+        else { return nil }
+        let volts = Double(payload[1] & 0x7F) / 32
+        let battery = max(0, min(100, Int(
+            (volts - 2.2) / 0.65 * 100)))
+        let tempRaw = Int(payload[2] & 0x7F)
+        let tempC = tempRaw - 40
+        let levelField = Int(payload[3])
+            | Int(payload[4]) << 8
+        var levelUS = levelField & 0x3FFF
+        if levelExtended { levelUS |= 0x4000 }
+        let quality = (levelField >> 14) & 0x3
+        var details: [String] = []
+        let coeffs: [UInt8: (Double, Double, Double)] = [
+            0x03: (0.573045, -0.002822, -0.00000535),
+            0x08: (0.573045, -0.002822, -0.00000535),
+            0x09: (0.573045, -0.002822, -0.00000535),
+            0x05: (0.600592, -0.003124, -0.00001368),
+        ]
+        if let c = coeffs[sensorType] {
+            let tt = Double(tempRaw)
+            let mm = Double(levelUS)
+                * (c.0 + c.1 * tt + c.2 * tt * tt)
+            details.append(String(
+                format: "tank level ≈ %.0f mm", mm))
+        } else {
+            details.append("level \(levelUS) µs "
+                + "(top-down)")
+        }
+        details.append(String(
+            format: "battery %.2f V (%d%%), "
+                + "%d °C, reading quality %d of 3",
+            volts, battery, tempC, quality))
+        return Identification(kind: kind,
+                              details: details,
+                              specificity: 3)
+    }
+
+    // MARK: TPMS — the clone wheel sensors
+
+    /// The TPMS clone family squats on company
+    /// 0x0001 with a fixed signature (EA CA at
+    /// [1..2], a wheel byte 0x80–0x83, exact
+    /// length). Identification, wheel, battery
+    /// and the alarm flag are doubly
+    /// documented; the pressure scaling is
+    /// single-sourced, so pressures are NOT
+    /// printed — a guessed number on a tire
+    /// is worse than none.
+    private static func tpmsClone(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting
+                .manufacturerData[0x0001],
+              payload.count == 16,
+              payload[0] >= 0x80, payload[0] <= 0x83,
+              payload[1] == 0xEA, payload[2] == 0xCA
+        else { return nil }
+        let wheel = Int(payload[0]) - 0x80 + 1
+        var details = ["wheel \(wheel) sensor",
+                       "battery \(payload[14])%"]
+        if payload[15] == 1 {
+            details.append("alarm: no pressure")
+        }
+        return Identification(
+            kind: "TPMS wheel sensor",
+            details: details, specificity: 2)
     }
 
     private static func basBroadcast(

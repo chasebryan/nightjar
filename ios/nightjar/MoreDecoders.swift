@@ -285,6 +285,37 @@ enum MoreDecoders {
     /// seven bits are the percentage. The length/flag/trailer gate
     /// plus the range check keep lookalike frames out.
     static func decodeGovee(_ payload: [UInt8]) -> Services.Identification? {
+        // The direct frame (H5074 / H5051 and
+        // family, decoder expansion 2026-10-18):
+        // plain little-endian values, verified
+        // against captured packets — temp and
+        // humidity as LE16 hundredths, battery
+        // a plain percent. Gate on the two
+        // documented lengths only.
+        if (payload.count == 7 || payload.count == 9)
+            && payload[0] == 0x00 {
+            let tempRaw = Int16(bitPattern:
+                UInt16(payload[1])
+                | UInt16(payload[2]) << 8)
+            let humRaw = UInt16(payload[3])
+                | UInt16(payload[4]) << 8
+            let temp = Double(tempRaw) / 100
+            let hum = Double(humRaw) / 100
+            let battery = Int(payload[5])
+            if temp >= -40, temp <= 85,
+               hum <= 100, battery <= 100 {
+                return Services.Identification(
+                    kind: "Govee thermometer",
+                    details: [String(
+                        format: "%.2f °C, %.2f%% RH, "
+                            + "battery %d%%",
+                        temp, hum, battery)],
+                    trackerShaped: false,
+                    rotatingPhone: false,
+                    specificity: 3)
+            }
+            return nil
+        }
         guard payload.count == 6, payload[0] == 0x00, payload[5] == 0x00
         else { return nil }
         let packed = Int(payload[1]) << 16 | Int(payload[2]) << 8 | Int(payload[3])

@@ -177,6 +177,39 @@ enum Continuity {
         }
     }
 
+    /// The Tilt hydrometer rides the iBeacon
+    /// frame (decoder expansion, 2026-10-18):
+    /// its eight colour UUIDs are the family
+    /// A495BB{10..80}-C5B1-4B44-B512-1370F02D74DE,
+    /// the major is the beer's temperature in
+    /// °F and the minor its specific gravity
+    /// (×1000, or ×10000 on the Pro — a minor
+    /// past 2000 can only be the Pro's scale).
+    static let tiltColors: [String: String] = [
+        "10": "Red", "20": "Green", "30": "Black",
+        "40": "Purple", "50": "Orange", "60": "Blue",
+        "70": "Yellow", "80": "Pink",
+    ]
+
+    static func tiltReading(_ beacon: IBeaconState)
+        -> (color: String, describe: String)? {
+        let uuid = beacon.proximityUUID
+        guard uuid.hasPrefix("a495bb"),
+              uuid.hasSuffix(
+                "-c5b1-4b44-b512-1370f02d74de")
+        else { return nil }
+        let code = String(uuid.dropFirst(6).prefix(2))
+        guard let color = tiltColors[code]
+        else { return nil }
+        let pro = beacon.minor > 2000
+        let gravity = Double(beacon.minor)
+            / (pro ? 10000 : 1000)
+        return (color,
+                String(format: "beer %d °F, gravity "
+                       + "%.3f", beacon.major, gravity)
+                + (pro ? " (Tilt Pro)" : ""))
+    }
+
     static func decodeIBeacon(_ message: Message) -> IBeaconState? {
         let v = message.value
         guard message.type == 0x02, v.count >= 20 else { return nil }
@@ -359,9 +392,16 @@ enum Continuity {
                 }
             case 0x02:
                 if let beacon = decodeIBeacon(message) {
-                    kind = "iBeacon"
-                    specificity = 3
-                    details.append(beacon.describe)
+                    if let tilt = tiltReading(beacon) {
+                        kind = "Tilt hydrometer ("
+                            + tilt.color + ")"
+                        specificity = 3
+                        details.append(tilt.describe)
+                    } else {
+                        kind = "iBeacon"
+                        specificity = 3
+                        details.append(beacon.describe)
+                    }
                 }
             case 0x10:
                 if let nearby = decodeNearbyInfo(message) {

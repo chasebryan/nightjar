@@ -199,6 +199,16 @@ struct Classification {
                 details.append("advertises service "
                     + hex + " — unnamed in the "
                     + "SIG registry")
+            } else if let wide = Services
+                .short32(first) {
+                let hex = String(format: "0x%08X",
+                                 wide)
+                kind = "BLE device — service "
+                    + hex
+                details.append("advertises service "
+                    + hex + " — a 32-bit SIG-base "
+                    + "UUID, unnamed in the SIG "
+                    + "registry")
             } else {
                 kind = "BLE device — custom service"
                 details.append("advertises custom "

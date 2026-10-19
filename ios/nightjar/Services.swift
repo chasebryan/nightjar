@@ -93,6 +93,21 @@ enum Services {
         return UInt16(text[start..<end], radix: 16)
     }
 
+    /// The 32-bit value of a SIG-base UUID
+    /// whose first field is not the 16-bit
+    /// form (XXXXXXX-0000-1000-…), else nil.
+    static func short32(_ uuid: String) -> UInt32? {
+        let text = normalize(uuid)
+        guard text.count == 36,
+              text.hasSuffix(sigBaseSuffix),
+              !text.hasPrefix("0000") else {
+            return nil
+        }
+        let end = text.index(text.startIndex,
+                             offsetBy: 8)
+        return UInt32(text[..<end], radix: 16)
+    }
+
     static func name(_ uuid: String) -> String? {
         guard let value = short(uuid) else { return nil }
         // The house's curated names first, then
@@ -316,6 +331,22 @@ enum Services {
                 trackerShaped: true, rotatingPhone: false,
                 specificity: 3)
         }
+        // Device classes read off the service
+        // COMBINATION (the classification audit,
+        // 2026-10-18): the SIG's profiles are
+        // combinations — a broadcast carrying
+        // Heart Rate + Battery is a heart-rate
+        // device by the profile's own
+        // definition, not two words in a list.
+        if let cls = serviceClass(
+            shorts: Set(shorts.keys)) {
+            return Identification(
+                kind: cls.kind,
+                details: [cls.detail],
+                trackerShaped: false,
+                rotatingPhone: false,
+                specificity: 2)
+        }
         let named = Set(shorts.keys.compactMap {
             serviceNames[$0] ?? ServiceRegistry.names[$0]
         }).sorted()
@@ -323,6 +354,83 @@ enum Services {
             return Identification(kind: "Device advertising " + named.joined(separator: ", "),
                                   details: [], trackerShaped: false, rotatingPhone: false,
                                   specificity: 1)
+        }
+        return nil
+    }
+
+    /// The device classes the standard
+    /// services announce in combination.
+    /// Conservative by construction: a class
+    /// is claimed only where the SIG's own
+    /// profile makes the service definitional
+    /// (Heart Rate exists on heart-rate
+    /// devices; Fitness Machine on gym
+    /// equipment), or where a companion
+    /// service completes the shape (HID +
+    /// Battery is the peripheral form).
+    private static func serviceClass(
+        shorts: Set<UInt16>)
+        -> (kind: String, detail: String)? {
+        func has(_ v: UInt16) -> Bool {
+            shorts.contains(v)
+        }
+        if has(0x180D) {
+            return ("Heart-rate monitor",
+                    "Heart Rate service"
+                    + (has(0x180F) ? " + Battery"
+                       : "")
+                    + " — the standard heart-rate "
+                    + "profile.")
+        }
+        if has(0x1826) {
+            return ("Fitness machine",
+                    "Fitness Machine service — "
+                    + "gym equipment class.")
+        }
+        if has(0x181D) {
+            return ("Weight scale",
+                    "Weight Scale service "
+                    + "advertised.")
+        }
+        if has(0x1810) {
+            return ("Blood pressure monitor",
+                    "Blood Pressure service "
+                    + "advertised.")
+        }
+        if has(0x1808) {
+            return ("Glucose monitor",
+                    "Glucose service advertised.")
+        }
+        if has(0x1809) {
+            return ("Health thermometer",
+                    "Health Thermometer service "
+                    + "advertised.")
+        }
+        if has(0x1822) {
+            return ("Pulse oximeter",
+                    "Pulse Oximeter service "
+                    + "advertised.")
+        }
+        if has(0x1818) {
+            return ("Cycling power meter",
+                    "Cycling Power service "
+                    + "advertised.")
+        }
+        if has(0x1816) {
+            return ("Cycling speed/cadence sensor",
+                    "Cycling Speed and Cadence "
+                    + "service advertised.")
+        }
+        if has(0x1814) {
+            return ("Running speed/cadence sensor",
+                    "Running Speed and Cadence "
+                    + "service advertised.")
+        }
+        if has(0x1812) && has(0x180F) {
+            return ("HID peripheral",
+                    "Human Interface Device + "
+                    + "Battery — the keyboard, "
+                    + "mouse and remote class.")
         }
         return nil
     }
