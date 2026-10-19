@@ -110,10 +110,16 @@
     <div id="err"></div>
 </div>
 
-<script type="text/javascript" src="nipplejs.min.js"></script>
 <script>
+    // Engine bootstrap FIRST, alone in its script: nothing
+    // that can throw (a controller library, a DOM quirk)
+    // is allowed to stand between this page and its Module.
+    window.__doomStage = "page";
     var doomArgs = ["-iwad", "doom1.wad", "-window", "-nogui",
                     "-config", "default.cfg", "-servername", "nightjar"];
+    var started = false;
+    var doomReady = false;
+    var playWanted = false;
 
     function showErr(text) {
         var el = document.getElementById("err");
@@ -147,83 +153,38 @@
         });
     }
 
-    // Touch buttons: keydown on press, keyup on release.
-    Array.from(document.querySelectorAll(".btn")).forEach(function (el) {
-        if (!el.dataset.key) return;
-        var key = parseInt(el.dataset.key, 10);
-        var down = function (e) { e.preventDefault(); sendkey([key], "keydown"); };
-        var up = function (e) { e.preventDefault(); sendkey([key], "keyup"); };
-        el.addEventListener("touchstart", down, { passive: false });
-        el.addEventListener("touchend", up, { passive: false });
-        el.addEventListener("touchcancel", up, { passive: false });
-        el.addEventListener("mousedown", down);
-        el.addEventListener("mouseup", up);
-    });
+    function startDoom() {
+        if (started) return;
+        started = true;
+        unlockAudio();
+        document.getElementById("gate").style.display = "none";
+        callMain(doomArgs);
+    }
 
-    // Weapon key: tap cycles the number keys
-    // 1-7 (fist/chainsaw share slot 1) and
-    // shows the slot it just asked for.
-    var weaponSlot = 2;
-    var weaponEl = document.getElementById("weapon");
-    var weaponTap = function (e) {
-        e.preventDefault();
-        weaponSlot = weaponSlot % 7 + 1;
-        var code = 48 + weaponSlot; // '1'..'7'
-        sendkey([code], "keydown");
-        setTimeout(function () { sendkey([code], "keyup"); }, 60);
-        weaponEl.textContent = "WPN " + weaponSlot;
-    };
-    weaponEl.addEventListener("touchstart", weaponTap, { passive: false });
-    weaponEl.addEventListener("mousedown", weaponTap);
-
-    // Left stick: arrows to move/turn, far push adds run.
-    var stick = nipplejs.create({
-        zone: document.getElementById("stick"),
-        color: "#7d2300", mode: "static",
-        position: { left: "50%", top: "50%" }
+    // PLAY is wired NOW, at parse time — never inside a
+    // callback the engine may or may not reach. If the
+    // engine is still loading, the tap is remembered and
+    // the button says so; if loading stalls, the page
+    // names the stage it died at instead of sitting mute.
+    document.getElementById("play").addEventListener("click", function () {
+        if (doomReady) { startDoom(); return; }
+        playWanted = true;
+        document.getElementById("play").textContent = "STARTING…";
+        setTimeout(function () {
+            if (!doomReady) {
+                showErr("Engine not ready (stage: " +
+                    window.__doomStage +
+                    "). The wasm or the game-data preload stalled.");
+            }
+        }, 8000);
     });
-    var K = { left: 37, right: 39, down: 40, up: 38, speed: 16 };
-    stick.on("end", function () {
-        sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
-    });
-    stick.on("move", function (evt, data) {
-        if (!data.direction) return;
-        if (data.distance <= 14) {
-            sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
-            return;
+    setTimeout(function () {
+        if (!doomReady && !playWanted) {
+            showErr("Engine is taking long to start (stage: " +
+                window.__doomStage + ").");
         }
-        var angle = data.angle.degree;
-        var press = { left: false, right: false, down: false, up: false };
-        switch (data.direction.angle) {
-            case "left":
-                press.left = true;
-                if (angle >= 120 && angle <= 150) press.up = true;
-                if (angle >= 210 && angle <= 240) press.down = true;
-                break;
-            case "right":
-                press.right = true;
-                if (angle >= 30 && angle <= 60) press.up = true;
-                if (angle >= 300 && angle <= 330) press.down = true;
-                break;
-            case "up":
-                press.up = true;
-                if (angle >= 120 && angle <= 150) press.left = true;
-                if (angle >= 30 && angle <= 60) press.right = true;
-                break;
-            case "down":
-                press.down = true;
-                if (angle >= 210 && angle <= 240) press.left = true;
-                if (angle >= 300 && angle <= 330) press.right = true;
-                break;
-        }
-        sendkey([K.left], press.left ? "keydown" : "keyup");
-        sendkey([K.right], press.right ? "keydown" : "keyup");
-        sendkey([K.down], press.down ? "keydown" : "keyup");
-        sendkey([K.up], press.up ? "keydown" : "keyup");
-        sendkey([K.speed], data.distance > 44 ? "keydown" : "keyup");
-    });
+    }, 15000);
 
-    var started = false;
     var Module = {
         noInitialRun: true,
         preRun: function () {
@@ -231,13 +192,9 @@
             Module.FS.createPreloadedFile("", "default.cfg", "default.cfg", true, true);
         },
         onRuntimeInitialized: function () {
-            document.getElementById("play").addEventListener("click", function () {
-                if (started) return;
-                started = true;
-                unlockAudio();
-                document.getElementById("gate").style.display = "none";
-                callMain(doomArgs);
-            });
+            window.__doomStage = "ready";
+            doomReady = true;
+            if (playWanted) startDoom();
         },
         print: function (text) { console.log(text); },
         printErr: function (text) {
@@ -255,6 +212,7 @@
             return canvas;
         })()
     };
+    window.__doomStage = "module";
 
     window.onerror = function (msg) {
         showErr("Engine error: " + msg);
@@ -262,6 +220,92 @@
 
     document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
 </script>
+<script type="text/javascript" src="nipplejs.min.js"></script>
+<script>
+    // The controller deck, in its own script: if any of
+    // this fails, the failure is reported and the game
+    // above stays startable regardless.
+    try {
+        // Touch buttons: keydown on press, keyup on release.
+        Array.from(document.querySelectorAll(".btn")).forEach(function (el) {
+            if (!el.dataset.key) return;
+            var key = parseInt(el.dataset.key, 10);
+            var down = function (e) { e.preventDefault(); sendkey([key], "keydown"); };
+            var up = function (e) { e.preventDefault(); sendkey([key], "keyup"); };
+            el.addEventListener("touchstart", down, { passive: false });
+            el.addEventListener("touchend", up, { passive: false });
+            el.addEventListener("touchcancel", up, { passive: false });
+            el.addEventListener("mousedown", down);
+            el.addEventListener("mouseup", up);
+        });
+
+        // Weapon key: tap cycles the number keys
+        // 1-7 (fist/chainsaw share slot 1) and
+        // shows the slot it just asked for.
+        var weaponSlot = 2;
+        var weaponEl = document.getElementById("weapon");
+        var weaponTap = function (e) {
+            e.preventDefault();
+            weaponSlot = weaponSlot % 7 + 1;
+            var code = 48 + weaponSlot; // '1'..'7'
+            sendkey([code], "keydown");
+            setTimeout(function () { sendkey([code], "keyup"); }, 60);
+            weaponEl.textContent = "WPN " + weaponSlot;
+        };
+        weaponEl.addEventListener("touchstart", weaponTap, { passive: false });
+        weaponEl.addEventListener("mousedown", weaponTap);
+
+        // Left stick: arrows to move/turn, far push adds run.
+        var stick = nipplejs.create({
+            zone: document.getElementById("stick"),
+            color: "#7d2300", mode: "static",
+            position: { left: "50%", top: "50%" }
+        });
+        var K = { left: 37, right: 39, down: 40, up: 38, speed: 16 };
+        stick.on("end", function () {
+            sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
+        });
+        stick.on("move", function (evt, data) {
+            if (!data.direction) return;
+            if (data.distance <= 14) {
+                sendkey([K.left, K.right, K.down, K.up, K.speed], "keyup");
+                return;
+            }
+            var angle = data.angle.degree;
+            var press = { left: false, right: false, down: false, up: false };
+            switch (data.direction.angle) {
+                case "left":
+                    press.left = true;
+                    if (angle >= 120 && angle <= 150) press.up = true;
+                    if (angle >= 210 && angle <= 240) press.down = true;
+                    break;
+                case "right":
+                    press.right = true;
+                    if (angle >= 30 && angle <= 60) press.up = true;
+                    if (angle >= 300 && angle <= 330) press.down = true;
+                    break;
+                case "up":
+                    press.up = true;
+                    if (angle >= 120 && angle <= 150) press.left = true;
+                    if (angle >= 30 && angle <= 60) press.right = true;
+                    break;
+                case "down":
+                    press.down = true;
+                    if (angle >= 210 && angle <= 240) press.left = true;
+                    if (angle >= 300 && angle <= 330) press.right = true;
+                    break;
+            }
+            sendkey([K.left], press.left ? "keydown" : "keyup");
+            sendkey([K.right], press.right ? "keydown" : "keyup");
+            sendkey([K.down], press.down ? "keydown" : "keyup");
+            sendkey([K.up], press.up ? "keydown" : "keyup");
+            sendkey([K.speed], data.distance > 44 ? "keydown" : "keyup");
+        });
+    } catch (e) {
+        showErr("Controller failed: " + e.message);
+    }
+</script>
 <script type="text/javascript" src="websockets-doom.js"></script>
+<script>window.__doomStage = "glue";</script>
 </body>
 </html>
