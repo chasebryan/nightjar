@@ -136,7 +136,8 @@ enum BackdropSlot: String, CaseIterable, Identifiable {
 
 enum BackdropChoice: String, Codable, CaseIterable,
                      Identifiable {
-    case inherit, living, skull, plain, custom
+    case inherit, living, skull, plain, custom,
+         console
 
     var id: String { rawValue }
 
@@ -147,6 +148,7 @@ enum BackdropChoice: String, Codable, CaseIterable,
         case .skull: return "Jolly Roger"
         case .plain: return "Plain theme colour"
         case .custom: return "My image or GIF"
+        case .console: return "Generated art (Blacksite)"
         }
     }
 }
@@ -433,6 +435,14 @@ final class ThemeCenter: ObservableObject {
     func effectiveChoice(for slot: BackdropSlot) -> BackdropChoice {
         let mine = choice(for: slot)
         if mine != .inherit { return mine }
+        // The Blacksite room wears its own
+        // wallpaper — art its graphics engine
+        // generates — until the operator
+        // picks something else for the room
+        // in Colours (Chase's order,
+        // 2026-10-19: "give it its own
+        // wallpaper").
+        if slot == .blacksite { return .console }
         return choice(for: .everywhere)
     }
 

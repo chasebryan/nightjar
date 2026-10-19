@@ -301,6 +301,10 @@ struct AppBackdrop: View {
             LinearGradient(
                 colors: [theme.tint, Color.black],
                 startPoint: .top, endPoint: .bottom)
+        case .console:
+            BlacksiteWallpaperView(
+                width: geo.size.width,
+                height: geo.size.height)
         }
     }
 

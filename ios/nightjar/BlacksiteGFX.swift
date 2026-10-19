@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SwiftUI
 import JavaScriptCore
 
 /// BLACKSITE GFX — the console's graphics
@@ -299,28 +300,36 @@ final class BlacksiteGFX {
                    seed: UInt64) -> UIImage? {
         var rng = LCG(state: seed == 0
                       ? 88172645463325252 : seed)
-        var stars: [(Int, Int, UInt8)] = []
         let w = max(16, min(1600, width))
         let h = max(16, min(1600, height))
+        // Star cores on a map, so a pixel
+        // asks only its own neighbourhood —
+        // wallpaper-sized fields stay fast.
+        var cores: [Int: UInt8] = [:]
         for _ in 0..<420 {
-            stars.append((
-                Int(rng.next() * Double(w)),
-                Int(rng.next() * Double(h)),
-                UInt8(90 + rng.next() * 165)))
+            let sx = Int(rng.next() * Double(w))
+            let sy = Int(rng.next() * Double(h))
+            cores[sy * w + sx] =
+                UInt8(90 + rng.next() * 165)
         }
         let image = pixelImage(
             width: width, height: height
         ) { x, y in
             var bright: UInt8 = 6
-            for star in stars
-                where abs(star.0 - x) <= 1
-                    && abs(star.1 - y) <= 1 {
-                let core = star.0 == x && star.1 == y
-                let v = core ? star.2 : star.2 / 3
-                if v > bright { bright = v }
+            for dy in -1...1 {
+                for dx in -1...1 {
+                    guard let v = cores[
+                        (y + dy) * w + (x + dx)]
+                    else { continue }
+                    let cand = (dx == 0 && dy == 0)
+                        ? v : v / 3
+                    if cand > bright {
+                        bright = cand
+                    }
+                }
             }
             return (bright, bright,
-                    min(255, bright + 18))
+                    min(255, Int(bright) + 18))
         }
         if let image = image {
             lastImage = image
@@ -504,5 +513,126 @@ var gfx = {
         return __gfxShow(path || ""); }
 };
 """)
+    }
+}
+
+/// BLACKSITE WALLPAPER — the room's own
+/// wallpaper (Chase's order, 2026-10-19:
+/// "give it its own wallpaper").
+///
+/// The console's graphics engine paints it:
+/// a starfield by default, plasma or a
+/// mandelbrot on request. The kind is kept
+/// in the console's own papers
+/// (/etc/wallpaper-kind) and the picture
+/// itself in its tree (/var/wallpaper-<kind
+/// >.png), so the room's wallpaper is a
+/// file the operator owns — 'view
+/// /var/wallpaper-stars.png' shows it, the
+/// console's 'wallpaper' command changes
+/// it. Rendered once per kind, off the
+/// main thread, at portrait size.
+final class BlacksiteWallpaper:
+    ObservableObject {
+    static let shared = BlacksiteWallpaper()
+
+    @Published private(set) var image: UIImage?
+    private var generating = false
+
+    static let kinds = ["stars", "plasma",
+                        "mandelbrot"]
+
+    var kind: String {
+        let stored = BlacksiteFS.readText(
+            "/etc/wallpaper-kind")?
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+            .lowercased()
+        return Self.kinds.contains(stored ?? "")
+            ? (stored ?? "stars") : "stars"
+    }
+
+    private func file(for kind: String)
+        -> String {
+        "/var/wallpaper-" + kind + ".png"
+    }
+
+    /// Paint if there is nothing hanging:
+    /// the filed copy first (it survives
+    /// relaunch), a fresh render behind it.
+    func ensure() {
+        guard image == nil, !generating else {
+            return
+        }
+        let current = kind
+        if let data = BlacksiteFS.readData(
+            file(for: current)),
+           let filed = UIImage(data: data) {
+            image = filed
+            return
+        }
+        regenerate(kind: current)
+    }
+
+    func regenerate(kind newKind: String) {
+        let valid = Self.kinds.contains(newKind)
+            ? newKind : "stars"
+        BlacksiteFS.writeText(
+            "/etc/wallpaper-kind", text: valid)
+        guard !generating else { return }
+        generating = true
+        DispatchQueue.global(
+            qos: .userInitiated).async {
+            [weak self] in
+            let picture = BlacksiteGFX.shared
+                .renderNamed(valid, width: 620,
+                             height: 1340)
+            if let picture = picture,
+               let png = picture.pngData() {
+                BlacksiteFS.writeData(
+                    "/var/wallpaper-" + valid
+                    + ".png", data: png)
+            }
+            DispatchQueue.main.async {
+                guard let self = self
+                else { return }
+                self.generating = false
+                if self.kind == valid {
+                    self.image = picture
+                }
+            }
+        }
+    }
+}
+
+/// The wallpaper as a backdrop: full-bleed,
+/// generated art, with a plain dark fall
+/// while the engine is still painting.
+struct BlacksiteWallpaperView: View {
+    @ObservedObject private var wallpaper =
+        BlacksiteWallpaper.shared
+    let width: CGFloat
+    let height: CGFloat
+
+    var body: some View {
+        Group {
+            if let image = wallpaper.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: width,
+                           height: height)
+                    .clipped()
+            } else {
+                LinearGradient(
+                    colors: [Color(white: 0.05),
+                             Color.black],
+                    startPoint: .top,
+                    endPoint: .bottom)
+                    .frame(width: width,
+                           height: height)
+            }
+        }
+        .onAppear { wallpaper.ensure() }
     }
 }

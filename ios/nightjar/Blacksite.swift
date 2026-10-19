@@ -108,7 +108,7 @@ final class BlacksiteShell: ObservableObject {
         "export", "unset", "which", "history",
         "date", "vim", "emacs", "edit", "run",
         "js", "node", "sh", "source", "pkg",
-        "gfx", "view", "exit",
+        "gfx", "view", "wallpaper", "exit",
     ]
 
     // MARK: Output
@@ -845,6 +845,8 @@ final class BlacksiteShell: ObservableObject {
             pkgCommand(args)
         case "gfx":
             gfxCommand(args)
+        case "wallpaper":
+            wallpaperCommand(args)
         case "view":
             viewCommand(args)
         case "exit", "quit", "logout":
@@ -1588,6 +1590,36 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    // MARK: The room's wallpaper
+
+    private func wallpaperCommand(
+        _ args: [String]) {
+        let keeper = BlacksiteWallpaper.shared
+        guard let wanted = args.first?
+            .lowercased() else {
+            emit("the room wears: "
+                 + keeper.kind + " — filed at "
+                 + "/var/wallpaper-"
+                 + keeper.kind + ".png. "
+                 + "'wallpaper stars|plasma|"
+                 + "mandelbrot' repaints it.",
+                 .sys)
+            return
+        }
+        guard BlacksiteWallpaper.kinds
+            .contains(wanted) else {
+            emit("wallpaper kinds: stars, "
+                 + "plasma, mandelbrot.",
+                 .err)
+            return
+        }
+        keeper.regenerate(kind: wanted)
+        emit("repainting the room: "
+             + wanted + " — the engine "
+             + "works; the wall changes "
+             + "when it is done.", .ok)
+    }
+
     // MARK: Graphics
 
     private func gfxCommand(_ args: [String]) {
@@ -1768,6 +1800,7 @@ final class BlacksiteShell: ObservableObject {
                 ("gfx mandelbrot · plasma · stars", "computed pictures, filed as PNG"),
                 ("gfx show <png>", "put a picture in the terminal"),
                 ("view <file>", "pictures shown, text read"),
+                ("wallpaper [stars|plasma|mandelbrot]", "the room's own wallpaper — generated, changeable"),
             ]),
             ("the room", [
                 ("history", "what you have run"),
@@ -2394,7 +2427,7 @@ struct BlacksiteView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55)
+            Color.black.opacity(0.30)
                 .ignoresSafeArea()
             VStack(spacing: 10) {
                 statusStrip
