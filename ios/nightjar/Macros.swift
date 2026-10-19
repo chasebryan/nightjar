@@ -900,7 +900,17 @@ enum MacroValidator {
             case "knock":
                 need(!block.value("host").isEmpty,
                      "give the knock a host")
-                need(!block.intList("ports").isEmpty,
+                // Judged resolved, as the
+                // runner fires: "{serve}" is
+                // a port the moment either
+                // of them looks at it.
+                let ports = MacroResolve.field(
+                    block.value("ports"))
+                    .split(separator: ",").compactMap {
+                        Int($0.trimmingCharacters(
+                            in: .whitespaces))
+                    }.filter { (1...65535).contains($0) }
+                need(!ports.isEmpty,
                      "give the knock at least one port")
             case "fuzzStart":
                 need((try? SendTarget.parse(
