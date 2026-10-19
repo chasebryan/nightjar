@@ -109,9 +109,9 @@
     <button id="play">&#9654; PLAY</button>
     <div id="loadstat" style="font-size:13px; color:#aaa; min-height:16px;"></div>
     <div id="err"></div>
-    <div id="buildstamp" style="font-size:11px; color:#555;">room build 109</div>
+    <div id="buildstamp" style="font-size:11px; color:#555;">room build 110</div>
 </div>
-<script>document.getElementById("buildstamp").textContent = "room build 109 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
+<script>document.getElementById("buildstamp").textContent = "room build 110 \u00b7 js alive"; try { webkit.messageHandlers.doom.postMessage("breadcrumb"); } catch (e) {}</script>
 
 <script>
     // Engine bootstrap FIRST, alone in its script: nothing
@@ -156,14 +156,49 @@
             if (navigator.audioSession) navigator.audioSession.type = "playback";
         } catch (e) {}
         try {
-            if (window.Module && Module.SDL && Module.SDL.audioContext &&
-                Module.SDL.audioContext.state === "suspended") {
-                Module.SDL.audioContext.resume();
+            if (window.Module && Module.SDL2 &&
+                Module.SDL2.audioContext &&
+                Module.SDL2.audioContext.state ===
+                    "suspended") {
+                Module.SDL2.audioContext.resume();
             }
         } catch (e) {}
     }
     document.addEventListener("touchend", unlockAudio, true);
     document.addEventListener("mousedown", unlockAudio, true);
+
+    // SDL opens its audio device during
+    // startup and waits on its context: a
+    // context created cold on iOS starts
+    // suspended and never wakes, and the
+    // boot dies between I_Init and
+    // NET_Init (convicted on device,
+    // build 109). So the context is
+    // provisioned inside the tap, where
+    // iOS lets it run; SDL finds it at
+    // Module.SDL2.audioContext — its own
+    // seam — and adopts it instead of
+    // minting a suspended one.
+    function armAudio() {
+        try {
+            if (!window.Module) return;
+            Module.SDL2 = Module.SDL2 || {};
+            var AC = window.AudioContext ||
+                window.webkitAudioContext;
+            if (!Module.SDL2.audioContext && AC) {
+                Module.SDL2.audioContext =
+                    new AC();
+            }
+            var ctx = Module.SDL2.audioContext;
+            if (ctx) {
+                if (ctx.state === "suspended") {
+                    ctx.resume();
+                }
+                ping("audio armed (" +
+                     ctx.state + ")");
+            }
+        } catch (e) {}
+    }
 
     function sendkey(keys, type) {
         if (!window.Module || !Module.canvas) return;
@@ -179,6 +214,7 @@
         if (started) return;
         started = true;
         ping("startDoom — calling main");
+        armAudio();
         unlockAudio();
         document.getElementById("gate").style.display = "none";
         callMain(doomArgs);
@@ -192,6 +228,7 @@
     // names the stage it died at instead of sitting mute.
     document.getElementById("play").addEventListener("click", function () {
         ping("PLAY tapped, ready=" + doomReady);
+        armAudio();
         if (doomReady) { startDoom(); return; }
         playWanted = true;
         document.getElementById("play").textContent = "STARTING…";
