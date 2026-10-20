@@ -4634,7 +4634,7 @@ final class BlacksiteShell: ObservableObject {
                 ("revdns [a.b.c] [server]", "reverse-walk a /24"),
                 ("nbstat <host>", "NetBIOS names and the adapter"),
                 ("snmp <host> [community]", "ask the agent (default public)"),
-                ("snmpaudit <host>", "the NSA's five SNMP mitigations, graded from the wire"),
+                ("snmpaudit <host>", "the NSA's six SNMP mitigations (2026 CSI), graded from the wire"),
                 ("router", "which neighbor is the router — crowned by the default route, ranked by signs"),
                 ("mndp [seconds]", "hear MikroTik introduce itself (UDP 5678)"),
                 ("cred set <host>", "keep a credential for your own gear — typed in secret, held in the Keychain"),
