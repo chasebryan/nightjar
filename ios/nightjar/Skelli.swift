@@ -5414,16 +5414,17 @@ final class SkelliCenter: ObservableObject {
         if q.contains("holiday") {
             if q.contains("today") {
                 if let day = Almanac.holidayToday() {
-                    return day.name + " — "
-                        + Almanac.spell(Date()) + "."
+                    return String(format: L("%@ — %@."),
+                                  L(day.name),
+                                  Almanac.spell(Date()))
                 }
                 return L("No named day today — an ordinary day, unnamed and unclaimed.")
             }
             if let next = Almanac.nextHoliday() {
-                return next.day.name + " — "
-                    + Almanac.spellShort(next.date)
-                    + ": "
-                    + Almanac.whenPhrase(next.date)
+                return String(format: L("%@ — %@: %@"),
+                              L(next.day.name),
+                              Almanac.spellShort(next.date),
+                              Almanac.whenPhrase(next.date))
                     + (next.approx
                        ? L(" The moon has the final say on the exact day — around then.")
                        : ".")
@@ -5443,10 +5444,10 @@ final class SkelliCenter: ObservableObject {
             || q.contains("days")
             || q.hasPrefix("is ") {
             if let hit = Almanac.next(day) {
-                return day.name + " — "
-                    + Almanac.spellShort(hit.date)
-                    + ": "
-                    + Almanac.whenPhrase(hit.date)
+                return String(format: L("%@ — %@: %@"),
+                              L(day.name),
+                              Almanac.spellShort(hit.date),
+                              Almanac.whenPhrase(hit.date))
                     + (hit.approx
                        ? L(" The moon has the final say on the exact day — around then.")
                        : ".")

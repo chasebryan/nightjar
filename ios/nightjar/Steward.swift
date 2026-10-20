@@ -80,7 +80,7 @@ final class Steward: ObservableObject {
     }
 
     @Published private(set) var assessment =
-        "The steward has not taken a shift yet."
+        L("The steward has not taken a shift yet.")
     @Published private(set) var mirrorLine = ""
     @Published private(set) var proposals: [Proposal] = []
     /// The one collection the section edits in place
@@ -233,39 +233,39 @@ final class Steward: ObservableObject {
         var parts: [String] = []
         parts.append(emcon.active
             ? (emcon.isAway
-                ? "EMCON is up, away from home turf."
-                : "EMCON is up on home turf.")
-            : "EMCON is standing down.")
+                ? L("EMCON is up, away from home turf.")
+                : L("EMCON is up on home turf."))
+            : L("EMCON is standing down."))
         if emcon.senseActive {
-            parts.append("The second sense is raised.")
+            parts.append(L("The second sense is raised."))
         }
         if let until = companyUntil, until > Date() {
-            parts.append("Company: a paired operator's flare "
-                + "was in range recently.")
+            parts.append(L("Company: a paired operator's flare was in range recently."))
         }
         if emcon.hometurfReady {
             let n = emcon.hometurfNotes.count
             parts.append(n == 0
-                ? "The home pattern holds — nothing off it."
-                : "\(n) deviation(s) off the home pattern "
-                  + "tonight.")
+                ? L("The home pattern holds — nothing off it.")
+                : String(format: L("%lld deviation(s) off the home pattern tonight."),
+                         n))
         } else if emcon.homeSubnet != nil {
-            parts.append("The home pattern is still learning "
-                + "(\(emcon.hometurf.nights) of 3 nights).")
+            parts.append(String(format: L("The home pattern is still learning (%lld of 3 nights)."),
+                                emcon.hometurf.nights))
         }
         let changed = files(emcon: emcon)
             .filter { ProberFiles.changed($0) }.count
         if changed > 0 {
-            parts.append("\(changed) prober file(s) have "
-                + "unreviewed changes.")
+            parts.append(String(format: L("%lld prober file(s) have unreviewed changes."),
+                                changed))
         }
         let openCases = cases.filter { $0.open }.count
         if openCases > 0 {
-            parts.append("\(openCases) case file(s) open.")
+            parts.append(String(format: L("%lld case file(s) open."),
+                                openCases))
         }
         if proposals.count > 0 {
-            parts.append("\(proposals.count) proposal(s) await "
-                + "your judgment.")
+            parts.append(String(format: L("%lld proposal(s) await your judgment."),
+                                proposals.count))
         }
         assessment = parts.joined(separator: " ")
         mirrorLine = Self.composeMirror(emcon: emcon)
@@ -277,23 +277,23 @@ final class Steward: ObservableObject {
     private static func composeMirror(emcon: Emcon) -> String {
         var parts: [String] = []
         parts.append(emcon.active
-            ? "EMCON is up and the tripwire is listening"
-            : "EMCON is down")
+            ? L("EMCON is up and the tripwire is listening")
+            : L("EMCON is down"))
         let doors = Set(emcon.events.map { $0.port }).count
         if doors > 0 {
-            parts.append("\(doors) door(s) have been tried "
-                + "from the wire")
+            parts.append(String(format: L("%lld door(s) have been tried from the wire"),
+                                doors))
         }
         if let top = CanaryLessons.all().first {
-            parts.append("probers ask your doors for "
-                + "\(top.value) most")
+            parts.append(String(format: L("probers ask your doors for %@ most"),
+                                top.value))
         }
         if let persona = emcon.mouth?.canary.runningPersona {
-            parts.append("the canary is answering as "
-                + persona.uppercased())
+            parts.append(String(format: L("the canary is answering as %@"),
+                                persona.uppercased()))
         }
-        return "From the wire: " + parts.joined(separator: "; ")
-            + "."
+        return String(format: L("From the wire: %@."),
+                      parts.joined(separator: "; "))
     }
 
     // MARK: - judgment
@@ -311,31 +311,30 @@ final class Steward: ObservableObject {
         var factors: [String] = []
         if nightjarGrade {
             points += 40
-            factors.append("a nightjar-grade first word")
+            factors.append(L("a nightjar-grade first word"))
         }
         if let file = file, file.drops > 0 {
             points += 35
-            factors.append("has taken \(file.drops) "
-                + "honeydrop(s) before")
+            factors.append(String(format: L("has taken %lld honeydrop(s) before"),
+                                  file.drops))
         }
         if newSource {
             points += 15
-            factors.append("no file history")
+            factors.append(L("no file history"))
         }
         if offPattern {
             points += 15
-            factors.append("off the learned pattern")
+            factors.append(L("off the learned pattern"))
         }
         if let file = file,
            file.ports.values.reduce(0, +) >= 5 {
             points += 10
-            factors.append("a repeat visitor "
-                + "(\(file.ports.values.reduce(0, +)) knocks "
-                + "on file)")
+            factors.append(String(format: L("a repeat visitor (%lld knocks on file)"),
+                                  file.ports.values.reduce(0, +)))
         }
         if emcon.senseActive {
             points += 10
-            factors.append("the sense is already up")
+            factors.append(L("the sense is already up"))
         }
         // Its own graded past bends the price — the
         // track record, read back at last.
@@ -344,13 +343,13 @@ final class Steward: ObservableObject {
         let quiet = track["quiet"] ?? 0
         if proved > 0 {
             points += min(15, 5 * proved)
-            factors.append("plans against it proved "
-                + "out ×\(proved)")
+            factors.append(String(format: L("plans against it proved out ×%lld"),
+                                  proved))
         }
         if quiet >= 2 {
             points -= min(15, 5 * quiet)
-            factors.append("plans against it graded "
-                + "quiet ×\(quiet) — cried wolf here")
+            factors.append(String(format: L("plans against it graded quiet ×%lld — cried wolf here"),
+                                  quiet))
         }
         points = max(0, points)
         let band = points >= 65 ? "high"
@@ -377,8 +376,8 @@ final class Steward: ObservableObject {
 
         // Outcome watch: a visitor a plan was executed
         // against has come back inside the day.
-        resolveWatches(host: host, outcome: "returned within "
-            + "the day — still interested")
+        resolveWatches(host: host,
+            outcome: L("returned within the day — still interested"))
 
         // The operator's watch orders.
         for order in orders where order.enabled {
@@ -394,13 +393,13 @@ final class Steward: ObservableObject {
             else { continue }
             markFired("order:\(order.id)")
             respond(
-                situation: "watch order: \(order.name)",
-                evidence: "\(host) on port \(port) spoke "
-                    + "\u{201C}\(verdict)\u{201D} — the "
-                    + "operator's own order covers this",
+                situation: String(format: L("watch order: %@"),
+                                  order.name),
+                evidence: String(format: L("%@ on port %lld spoke “%@” — the operator's own order covers this"),
+                                  host, port, verdict),
                 plan: [order.action],
                 confidence: (100, "high",
-                             ["the operator wrote this order"]),
+                             [L("the operator wrote this order")]),
                 emcon: emcon, host: host, port: port,
                 verdict: verdict, file: file)
         }
@@ -428,10 +427,9 @@ final class Steward: ObservableObject {
            !resting("taker") {
             markFired("taker")
             respond(
-                situation: "the taker returns",
-                evidence: "\(host) has taken \(file.drops) "
-                    + "honeydrop(s) before and is knocking "
-                    + "again on port \(port)",
+                situation: L("the taker returns"),
+                evidence: String(format: L("%@ has taken %lld honeydrop(s) before and is knocking again on port %lld"),
+                                  host, file.drops, port),
                 plan: ["pivot"], confidence: score,
                 emcon: emcon, host: host, port: port,
                 verdict: verdict, file: file)
@@ -444,11 +442,11 @@ final class Steward: ObservableObject {
            newSource || offPattern, !resting("colleague") {
             markFired("colleague")
             respond(
-                situation: "a colleague-grade prober",
-                evidence: "\(host) spoke \(verdict) on port "
-                    + "\(port) — nightjar-grade tooling, "
-                    + (newSource ? "a source never seen before"
-                                  : "at an off-pattern door"),
+                situation: L("a colleague-grade prober"),
+                evidence: String(format: L("%@ spoke %@ on port %lld — nightjar-grade tooling, %@"),
+                                  host, verdict, port,
+                                  newSource ? L("a source never seen before")
+                                            : L("at an off-pattern door")),
                 plan: ["tighten", "answer", "pivot"],
                 confidence: score, emcon: emcon, host: host,
                 port: port, verdict: verdict, file: file)
@@ -462,15 +460,14 @@ final class Steward: ObservableObject {
             markFired("cluster")
             let extra = min(emcon.hometurfNotes.count - 3, 3)
             respond(
-                situation: "a pattern-break cluster",
-                evidence: "\(emcon.hometurfNotes.count) "
-                    + "deviations off the learned home "
-                    + "pattern tonight",
+                situation: L("a pattern-break cluster"),
+                evidence: String(format: L("%lld deviations off the learned home pattern tonight"),
+                                  emcon.hometurfNotes.count),
                 plan: ["tighten"],
                 confidence: (35 + extra * 10,
                              extra >= 3 ? "high" : "medium",
-                             ["\(emcon.hometurfNotes.count) "
-                                + "deviations tonight"]),
+                             [String(format: L("%lld deviations tonight"),
+                                      emcon.hometurfNotes.count)]),
                 emcon: emcon, host: nil, port: nil,
                 verdict: nil, file: nil)
         }
@@ -500,11 +497,11 @@ final class Steward: ObservableObject {
         guard let persona = Self.persona(forPort: next)
         else { return }
         markFired("anticipation:\(host)")
-        let evidence = "\(host)'s own sequence — "
-            + sequence.map(String.init)
-                .joined(separator: " → ")
-            + " — says port \(next) comes after "
-            + "\(knockedPort)"
+        let evidence = String(format: L("%@'s own sequence — %@ — says port %lld comes after %lld"),
+            host,
+            sequence.map(String.init)
+                .joined(separator: " → "),
+            next, knockedPort)
         if mayAct {
             emcon.prestageCanary(port: next, persona: persona,
                                  source: host)
@@ -513,16 +510,16 @@ final class Steward: ObservableObject {
                         + "\(persona) canary is pre-staged on "
                         + "port \(next) under latitude "
                         + "\(Self.latitude).")
-            fileCase(situation: "anticipation", host: host,
+            fileCase(situation: L("anticipation"), host: host,
                      evidence: evidence, file: file)
         } else {
             proposals.insert(Proposal(
                 id: UUID().uuidString, when: Date(),
                 kind: "plan",
-                title: "Anticipation: \(host)",
-                detail: evidence + ". Proposed: pre-stage "
-                    + "the \(persona) canary on port \(next). "
-                    + "Held under latitude observe.",
+                title: String(format: L("Anticipation: %@"),
+                              host),
+                detail: evidence + String(format: L(". Proposed: pre-stage the %@ canary on port %lld. Held under latitude observe."),
+                                          persona, next),
                 host: host, port: next,
                 prestagePersona: persona), at: 0)
             saveProposals()
@@ -562,10 +559,10 @@ final class Steward: ObservableObject {
                          emcon: Emcon, host: String?,
                          port: Int?, verdict: String?,
                          file: ProberFile?) {
-        let scoreText = "confidence \(confidence.band) "
-            + "(\(confidence.points)): "
-            + (confidence.factors.isEmpty
-                ? "no strong factors"
+        let scoreText = String(format: L("confidence %@ (%lld): %@"),
+            L(confidence.band), confidence.points,
+            confidence.factors.isEmpty
+                ? L("no strong factors")
                 : confidence.factors.joined(separator: ", "))
         let planText = plan.map(Self.actionLabel)
             .joined(separator: " + ")
@@ -617,8 +614,8 @@ final class Steward: ObservableObject {
                 id: UUID().uuidString, when: Date(),
                 kind: "plan", title: situation,
                 detail: evidence + " " + scoreText
-                    + ". Proposed: " + planText
-                    + ". Held under latitude observe.",
+                    + String(format: L(". Proposed: %@. Held under latitude observe."),
+                             planText),
                 plan: plan, host: host, port: port,
                 verdict: verdict), at: 0)
             saveProposals()
@@ -661,11 +658,8 @@ final class Steward: ObservableObject {
             proposals.insert(Proposal(
                 id: UUID().uuidString, when: Date(),
                 kind: "rule",
-                title: "Drafted reflex: the taker rule",
-                detail: "Colleague-grade probing has begun "
-                    + "and no reflex loads the bench when a "
-                    + "honeydrop is taken. Approving adds it "
-                    + "to the conductor.",
+                title: L("Drafted reflex: the taker rule"),
+                detail: L("Colleague-grade probing has begun and no reflex loads the bench when a honeydrop is taken. Approving adds it to the conductor."),
                 ruleTrigger: "honeydrop",
                 ruleAction: "pivotRecon"), at: 0)
             saveProposals()
@@ -679,9 +673,9 @@ final class Steward: ObservableObject {
 
     private static func actionLabel(_ action: String) -> String {
         switch action {
-        case "tighten": return "raise the second sense"
-        case "answer": return "answer in character"
-        case "pivot": return "load the bench on them"
+        case "tighten": return L("raise the second sense")
+        case "answer": return L("answer in character")
+        case "pivot": return L("load the bench on them")
         default: return action
         }
     }
@@ -694,7 +688,7 @@ final class Steward: ObservableObject {
                          verdict: String?) -> Bool {
         switch action {
         case "tighten":
-            emcon.raiseSense(reason: "the steward's plan")
+            emcon.raiseSense(reason: L("the steward's plan"))
             return true
         case "answer":
             guard let host = host, let port = port,
@@ -728,7 +722,8 @@ final class Steward: ObservableObject {
         }
         let stamp = Date().formatted(date: .omitted,
                                      time: .shortened)
-        let entry = "\(stamp) — \(situation): \(evidence)"
+        let entry = String(format: L("%@ — %@: %@"),
+                           stamp, situation, evidence)
         if let idx = cases.firstIndex(where: {
             $0.open && !Set($0.hosts).isDisjoint(with: hosts)
         }) {
@@ -803,18 +798,15 @@ final class Steward: ObservableObject {
                         token.contains(".") && token.allSatisfy {
                             $0.isNumber || $0 == "."
                         }
-                    } ?? "a watched address"
-                let title = "Dossier drift: \(host)"
+                    } ?? L("a watched address")
+                let title = String(format: L("Dossier drift: %@"),
+                                   host)
                 guard !self.proposals.contains(
                     where: { $0.title == title }) else { return }
                 self.proposals.insert(Proposal(
                     id: UUID().uuidString, when: Date(),
                     kind: "note", title: title,
-                    detail: event.text + " Filed from the "
-                        + "journal the moment it was written — "
-                        + "re-baseline it in the dossier if "
-                        + "the change is explained, or load "
-                        + "the bench on it if it is not."),
+                    detail: event.text + L(" Filed from the journal the moment it was written — re-baseline it in the dossier if the change is explained, or load the bench on it if it is not.")),
                     at: 0)
                 self.saveProposals()
                 Journal.log("steward", "observe",
@@ -834,13 +826,12 @@ final class Steward: ObservableObject {
                 if !host.isEmpty {
                     self.resolveWatches(
                         host: host,
-                        outcome: "confirmed — the visitor "
-                            + "bit the canary too")
+                        outcome: L("confirmed — the visitor bit the canary too"))
                     if let idx = self.cases.firstIndex(
                         where: { $0.open
                             && $0.hosts.contains(host) }) {
                         self.cases[idx].entries.append(
-                            "took the canary's drop — "
+                            L("took the canary's drop — ")
                             + event.text)
                         self.cases[idx].lastActivity = Date()
                         self.saveCases()
@@ -1055,22 +1046,28 @@ final class Steward: ObservableObject {
             }
             var parts: [String] = []
             let knocks = count("emcon", "knock")
-            if knocks > 0 { parts.append("\(knocks) knock(s)") }
+            if knocks > 0 {
+                parts.append(String(format: L("%lld knock(s)"),
+                                    knocks))
+            }
             let drops = count("canary", "honeydrop")
             if drops > 0 {
-                parts.append("\(drops) honeydrop(s) TAKEN")
+                parts.append(String(format: L("%lld honeydrop(s) TAKEN"),
+                                    drops))
             }
             let deviations = count("emcon", "hometurf")
             if deviations > 0 {
-                parts.append("\(deviations) deviation(s)")
+                parts.append(String(format: L("%lld deviation(s)"),
+                                    deviations))
             }
             let plans = count("steward", "plan")
             if plans > 0 {
-                parts.append("\(plans) steward action(s)")
+                parts.append(String(format: L("%lld steward action(s)"),
+                                    plans))
             }
             if !parts.isEmpty {
-                let line = "While you were gone: "
-                    + parts.joined(separator: ", ") + "."
+                let line = String(format: L("While you were gone: %@."),
+                                  parts.joined(separator: ", "))
                 assessment = line
                 Journal.log("steward", "shift", line)
             }
@@ -1085,17 +1082,14 @@ final class Steward: ObservableObject {
             let stale = lastManeuvers.map {
                 Date().timeIntervalSince($0) > 24 * 3600
             } ?? true
+            let staleTitle = L("Night maneuvers are stale")
             if stale, !proposals.contains(
                 where: { $0.kind == "note"
-                    && $0.title.hasPrefix("Night maneuvers") }) {
+                    && $0.title == staleTitle }) {
                 proposals.insert(Proposal(
                     id: UUID().uuidString, when: Date(),
-                    kind: "note", title: "Night maneuvers "
-                        + "are stale",
-                    detail: "The last graded self-test is "
-                        + "over a day old (or never ran). The "
-                        + "maneuvers live in the EMCON tab "
-                        + "when you want them."), at: 0)
+                    kind: "note", title: staleTitle,
+                    detail: L("The last graded self-test is over a day old (or never ran). The maneuvers live in the EMCON tab when you want them.")), at: 0)
                 saveProposals()
             }
             studyOperator(emcon: emcon, all: all)
@@ -1130,20 +1124,15 @@ final class Steward: ObservableObject {
             }
             for (situation, count) in enacted
             where count >= 3 && (dismissed[situation] ?? 0) == 0 {
-                let title = "Charter amendment: trust the "
-                    + "\(situation) call"
+                let title = String(format: L("Charter amendment: trust the %@ call"),
+                                   situation)
                 guard !proposals.contains(
                     where: { $0.title == title }) else { continue }
                 proposals.insert(Proposal(
                     id: UUID().uuidString, when: Date(),
                     kind: "charter", title: title,
-                    detail: "You have enacted the steward's "
-                        + "held plan for \u{201C}\(situation)"
-                        + "\u{201D} \(count) times and never "
-                        + "dismissed one. Amending the charter "
-                        + "to Act lets it run that judgment "
-                        + "without waiting on you — every act "
-                        + "still journaled, still graded."),
+                    detail: String(format: L("You have enacted the steward's held plan for “%@” %lld times and never dismissed one. Amending the charter to Act lets it run that judgment without waiting on you — every act still journaled, still graded."),
+                                   situation, count)),
                     at: 0)
                 saveProposals()
                 Journal.log("steward", "observe",
@@ -1185,13 +1174,10 @@ final class Steward: ObservableObject {
             markFired("postureHour")
             proposals.insert(Proposal(
                 id: UUID().uuidString, when: Date(),
-                kind: "posture", title: "Your usual hour: "
-                    + "raise EMCON",
-                detail: "EMCON has risen at \(modal):00 "
-                    + "more than any other hour "
-                    + "(\(risings.count) risings on record) "
-                    + "and it is down now. Enacting raises "
-                    + "it."), at: 0)
+                kind: "posture",
+                title: L("Your usual hour: raise EMCON"),
+                detail: String(format: L("EMCON has risen at %lld:00 more than any other hour (%lld risings on record) and it is down now. Enacting raises it."),
+                               modal, risings.count)), at: 0)
             saveProposals()
             Journal.log("steward", "observe",
                         "The steward noticed the operator's "
@@ -1384,11 +1370,14 @@ struct StewardSectionView: View {
         -> String {
         var parts: [String] = []
         parts.append(order.host.isEmpty
-            ? "any host" : "host ∋ \(order.host)")
+            ? L("any host")
+            : String(format: L("host ∋ %@"), order.host))
         parts.append(order.port.isEmpty
-            ? "any port" : "port \(order.port)")
+            ? L("any port")
+            : String(format: L("port %@"), order.port))
         parts.append(order.verdict.isEmpty
-            ? "any first word" : "speaks ∋ \(order.verdict)")
+            ? L("any first word")
+            : String(format: L("speaks ∋ %@"), order.verdict))
         return parts.joined(separator: " · ")
             + " → " + order.action
     }

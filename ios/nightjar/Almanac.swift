@@ -514,9 +514,9 @@ enum Almanac {
                           "June", "July", "August",
                           "September", "October",
                           "November", "December"]
-            let range = "\(months[row.start.0 - 1]) "
+            let range = "\(L(months[row.start.0 - 1])) "
                 + "\(row.start.1) – "
-                + "\(months[row.end.0 - 1]) "
+                + "\(L(months[row.end.0 - 1])) "
                 + "\(row.end.1)"
             return (range, row.trait)
         }
@@ -1089,7 +1089,8 @@ final class SkelliSchedule {
         clock.dateStyle = .none
         clock.timeStyle = .short
         let when = Almanac.whenPhrase(date)
-        return "\(when) — \(day.string(from: date)) at "
-            + clock.string(from: date)
+        return String(format: L("%@ — %@ at %@"), when,
+                      day.string(from: date),
+                      clock.string(from: date))
     }
 }

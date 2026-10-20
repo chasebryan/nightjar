@@ -129,11 +129,7 @@ extension SkelliCenter {
     func skyBloomAsk(_ q: String) -> Bool {
         // The moon's distance, asked plainly.
         if q.contains("how far") && q.contains("moon") {
-            say("About 384,400 kilometres, on "
-                + "average — it drifts closer and "
-                + "farther by some 40,000 across "
-                + "its month, and away from us by "
-                + "nearly 4 centimetres a year.")
+            say(L("About 384,400 kilometres, on average — it drifts closer and farther by some 40,000 across its month, and away from us by nearly 4 centimetres a year."))
             return true
         }
         // The moon — as a word of its own, so a
@@ -194,23 +190,20 @@ extension SkelliCenter {
             }
             if cal.component(.month, from: full)
                 == month {
-                say("The full moon of "
-                    + months[mi].capitalized + " falls "
-                    + "on " + Almanac.spell(full)
-                    + " — the "
-                    + Almanac.fullMoonName(month: month)
-                    + ".")
+                say(String(format: L("The full moon of %@ falls on %@ — the %@."),
+                           L(months[mi].capitalized),
+                           Almanac.spell(full),
+                           L(Almanac.fullMoonName(month: month))))
             } else {
                 // A rare year: the month holds no
                 // full moon at all. Said plainly,
                 // with the nearest one named.
-                say(months[mi].capitalized + " holds "
-                    + "no full moon this year — the "
-                    + "nearest stands on "
-                    + Almanac.spell(full) + ", the "
-                    + Almanac.fullMoonName(
-                        month: cal.component(
-                            .month, from: full)) + ".")
+                say(String(format: L("%@ holds no full moon this year — the nearest stands on %@, the %@."),
+                           L(months[mi].capitalized),
+                           Almanac.spell(full),
+                           L(Almanac.fullMoonName(
+                               month: cal.component(
+                                   .month, from: full)))))
             }
             return true
         }
@@ -220,28 +213,24 @@ extension SkelliCenter {
             if age >= 13.8 && age <= 15.8 {
                 let m = Calendar.current.component(
                     .month, from: now)
-                say("Tonight — the moon stands full, "
-                    + "the "
-                    + Almanac.fullMoonName(month: m)
-                    + ".")
+                say(String(format: L("Tonight — the moon stands full, the %@."),
+                           L(Almanac.fullMoonName(month: m))))
             } else {
                 let full = Almanac.nextFullMoon(
                     after: now)
                 let m = Calendar.current.component(
                     .month, from: full)
-                say("The next full moon is "
-                    + Almanac.spell(full) + " — the "
-                    + Almanac.fullMoonName(month: m)
-                    + ".")
+                say(String(format: L("The next full moon is %@ — the %@."),
+                           Almanac.spell(full),
+                           L(Almanac.fullMoonName(month: m))))
             }
             return true
         }
         if q.contains("new moon")
             && (q.contains("when") || q.contains("next")) {
-            say("The next new moon is "
-                + Almanac.spell(Almanac.nextNewMoon(
-                    after: now))
-                + " — the sky's blank page.")
+            say(String(format: L("The next new moon is %@ — the sky's blank page."),
+                       Almanac.spell(Almanac.nextNewMoon(
+                           after: now))))
             return true
         }
         // Elsewhere: that place's own tonight.
@@ -268,17 +257,14 @@ extension SkelliCenter {
                         let dayFmt = DateFormatter()
                         dayFmt.timeZone = hit.tz
                         dayFmt.dateFormat = "EEEE"
-                        self.say("Over \(hit.name): "
-                            + "the moon tonight is "
-                            + phase.name.lowercased()
-                            + " — \(phase.illumination)% "
-                            + "lit, on their "
-                            + dayFmt.string(from: now)
-                            + ".")
+                        self.say(String(format: L("Over %@: the moon tonight is %@ — %lld%% lit, on their %@."),
+                                        hit.name,
+                                        L(phase.name.lowercased()),
+                                        phase.illumination,
+                                        dayFmt.string(from: now)))
                     } else {
-                        self.say("I can't find "
-                            + place + " on the map "
-                            + "I have.")
+                        self.say(String(format: L("I can't find %@ on the map I have."),
+                                        place))
                     }
                 }
                 return true
@@ -304,13 +290,12 @@ extension SkelliCenter {
         let full = Almanac.nextFullMoon(after: now)
         let fm = Calendar.current.component(.month,
                                             from: full)
-        say("The moon tonight: "
-            + phase.name.lowercased() + " — "
-            + "\(phase.illumination)% lit, "
-            + "\(Int(age.rounded())) days into its "
-            + "cycle. Full on " + Almanac.spell(full)
-            + " — the "
-            + Almanac.fullMoonName(month: fm) + ".")
+        say(String(format: L("The moon tonight: %@ — %lld%% lit, %lld days into its cycle. Full on %@ — the %@."),
+                   L(phase.name.lowercased()),
+                   phase.illumination,
+                   Int(age.rounded()),
+                   Almanac.spell(full),
+                   L(Almanac.fullMoonName(month: fm))))
         return true
     }
 
@@ -331,8 +316,9 @@ extension SkelliCenter {
             || q.contains("season")
             || q.hasPrefix("when is ") {
             if let found = Almanac.zodiacNamed(hit) {
-                return "\(hit.capitalized) runs "
-                    + found.range + ". " + found.trait
+                return String(format: L("%@ runs %@. %@"),
+                              L(hit.capitalized), found.range,
+                              L(found.trait))
             }
         }
         let asksMine = q.contains("my sign")
@@ -345,22 +331,17 @@ extension SkelliCenter {
             monthDay = parsed
         }
         if asksMine && monthDay == nil {
-            return "Tell me the date plainly — "
-                + "'my birthday is June 5' — and "
-                + "I'll keep it and read the wheel "
-                + "from it."
+            return L("Tell me the date plainly — 'my birthday is June 5' — and I'll keep it and read the wheel from it.")
         }
         if asksMine
             || (monthDay != nil && q.contains("born")) {
             if let (m, d) = monthDay {
                 let z = Almanac.zodiac(month: m, day: d)
-                var line = Almanac.spellMonthDay(m, d)
-                    + " is " + z.name + ". " + z.trait
+                var line = String(format: L("%@ is %@. %@"),
+                                  Almanac.spellMonthDay(m, d),
+                                  L(z.name), L(z.trait))
                 if z.cusp {
-                    line += " You stand within a day "
-                        + "of the cusp — the exact "
-                        + "hour of birth settles "
-                        + "which side."
+                    line += L(" You stand within a day of the cusp — the exact hour of birth settles which side.")
                 }
                 return line
             }
@@ -404,7 +385,7 @@ extension SkelliCenter {
             for occasion in Self.flowerOccasions
             where occasion.words.contains(where: {
                 q.contains($0) }) {
-                return occasion.answer
+                return L(occasion.answer)
             }
         }
         guard q.contains("mean")
@@ -426,7 +407,8 @@ extension SkelliCenter {
             }
             if forms.contains(where: {
                 q.contains($0) }) {
-                return "The \(flower): \(meaning)."
+                return String(format: L("The %@: %@."),
+                              L(flower), L(meaning))
             }
         }
         return nil
@@ -437,54 +419,33 @@ extension SkelliCenter {
     private func planetFact(_ q: String) -> String? {
         if q.contains("largest planet")
             || q.contains("biggest planet") {
-            return "Jupiter — more massive than "
-                + "every other planet combined, "
-                + "twice over."
+            return L("Jupiter — more massive than every other planet combined, twice over.")
         }
         if q.contains("smallest planet") {
-            return "Mercury — barely wider than "
-                + "the Atlantic, and shrinking "
-                + "as it cools."
+            return L("Mercury — barely wider than the Atlantic, and shrinking as it cools.")
         }
         if q.contains("closest planet")
             && q.contains("sun") {
-            return "Mercury — 58 million "
-                + "kilometres out, a year of "
-                + "88 days."
+            return L("Mercury — 58 million kilometres out, a year of 88 days.")
         }
         if q.contains("red planet") {
-            return "Mars — iron oxide dust. It is "
-                + "not red like fire; it is red "
-                + "like rust."
+            return L("Mars — iron oxide dust. It is not red like fire; it is red like rust.")
         }
         if q.contains("hottest planet") {
-            return "Venus — some 465 degrees "
-                + "under its blanket of cloud, "
-                + "hotter than Mercury for all "
-                + "its distance."
+            return L("Venus — some 465 degrees under its blanket of cloud, hotter than Mercury for all its distance.")
         }
         if q.contains("rings") && q.contains("planet") {
-            return "Saturn wears the grand rings. "
-                + "All four giants carry rings — "
-                + "only Saturn's announce "
-                + "themselves."
+            return L("Saturn wears the grand rings. All four giants carry rings — only Saturn's announce themselves.")
         }
         if q.contains("how many planets") {
-            return "Eight — Mercury out to "
-                + "Neptune. Pluto keeps its dwarf "
-                + "title, and its dignity."
+            return L("Eight — Mercury out to Neptune. Pluto keeps its dwarf title, and its dignity.")
         }
         if q.contains("order of the planets")
             || q.contains("planets in order") {
-            return "Mercury, Venus, Earth, Mars, "
-                + "Jupiter, Saturn, Uranus, "
-                + "Neptune."
+            return L("Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune.")
         }
         if q.contains("how far") && q.contains("sun") {
-            return "About 149.6 million "
-                + "kilometres — one astronomical "
-                + "unit; light makes the trip in "
-                + "eight minutes and a breath."
+            return L("About 149.6 million kilometres — one astronomical unit; light makes the trip in eight minutes and a breath.")
         }
         return nil
     }

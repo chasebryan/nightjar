@@ -142,9 +142,7 @@ final class CartomancyDeck {
         remaining = Array(0..<52)
         table = []
         shuffle()
-        return "The table is gathered and the "
-            + "deck made whole — fifty-two, "
-            + "shuffled under the table."
+        return L("The table is gathered and the deck made whole — fifty-two, shuffled under the table.")
     }
 
     /// Deal n cards. When the deck cannot cover
@@ -188,16 +186,12 @@ extension SkelliCenter {
                 || q.contains("please")
                 || q.contains("spread")
             if wantsReading {
-                say("oh, I actually prefer "
-                    + "cartomancy\n"
+                say(L("oh, I actually prefer cartomancy")
+                    + "\n"
                     + spread(deck, count: 3,
                              topic: nil))
             } else {
-                say("oh, I actually prefer "
-                    + "cartomancy — fifty-two "
-                    + "ordinary cards, no arcana. "
-                    + "Say 'read the cards' and "
-                    + "I'll deal.")
+                say(L("oh, I actually prefer cartomancy — fifty-two ordinary cards, no arcana. Say 'read the cards' and I'll deal."))
             }
             return true
         }
@@ -279,26 +273,33 @@ extension SkelliCenter {
                       (spades, "Spades")]
         let top = counts.max { $0.0 < $1.0 }!
         guard top.0 >= 2 else {
-            return "The suits sit mixed — no one "
-                + "weather rules the table."
+            return L("The suits sit mixed — no one weather rules the table.")
         }
         switch top.1 {
         case "Hearts":
-            return "The hearts hold the table — "
-                + "love's weather, and the "
-                + "house's."
+            return L("The hearts hold the table — love's weather, and the house's.")
         case "Diamonds":
-            return "Diamonds rule the table — "
-                + "money moving, messages flying."
+            return L("Diamonds rule the table — money moving, messages flying.")
         case "Clubs":
-            return "The clubs rule the table — "
-                + "work's weather; sleeves up."
+            return L("The clubs rule the table — work's weather; sleeves up.")
         default:
-            return "Spades rule the table — a "
-                + "night of warnings; walk "
-                + "carefully, and you'll walk "
-                + "through."
+            return L("Spades rule the table — a night of warnings; walk carefully, and you'll walk through.")
         }
+    }
+
+    /// A card's name in the house tongue: the
+    /// deck stores English (it is data, and the
+    /// suit counts read its endings); a reading
+    /// speaks the name localized, rank and suit.
+    private func spokenName(
+        _ card: CartomancyDeck.Card) -> String {
+        let parts = card.name.components(
+            separatedBy: " of ")
+        guard parts.count == 2 else {
+            return L(card.name)
+        }
+        return String(format: L("%@ of %@"),
+                      L(parts[0]), L(parts[1]))
     }
 
     private func spread(_ deck: CartomancyDeck,
@@ -307,43 +308,42 @@ extension SkelliCenter {
         let (cards, gathered) = deck.deal(count)
         var lines: [String] = []
         if gathered {
-            lines.append("The deck ran thin — "
-                + "the fallen are gathered and "
-                + "shuffled back in.")
+            lines.append(L("The deck ran thin — the fallen are gathered and shuffled back in."))
         }
         if let topic {
-            lines.append("The deck, on "
-                + topic + ":")
+            lines.append(String(format: L("The deck, on %@:"),
+                                topic))
             let places = ["The heart of it",
                           "What stands against",
                           "What the road does"]
             for (i, card) in cards.enumerated() {
-                lines.append("\(places[i]): the "
-                    + "\(card.name) — "
-                    + card.meaning + ".")
+                lines.append(String(format: L("%@: the %@ — %@."),
+                                    L(places[i]),
+                                    spokenName(card),
+                                    L(card.meaning)))
             }
         } else if count == 1 {
             let card = cards[0]
-            lines.append("For you: the "
-                + card.name + " — " + card.meaning
-                + ".")
+            lines.append(String(format: L("For you: the %@ — %@."),
+                                spokenName(card),
+                                L(card.meaning)))
         } else {
-            lines.append("Three cards, face-up:")
+            lines.append(L("Three cards, face-up:"))
             let places = ["What was", "What is",
                           "What comes"]
             for (i, card) in cards.enumerated() {
-                lines.append("\(places[i]): the "
-                    + "\(card.name) — "
-                    + card.meaning + ".")
+                lines.append(String(format: L("%@: the %@ — %@."),
+                                    L(places[i]),
+                                    spokenName(card),
+                                    L(card.meaning)))
             }
         }
         lines.append(suitWeather(cards))
-        lines.append("\(deck.table.count) "
-            + (deck.table.count == 1
-                ? "card lies" : "cards lie")
-            + " on the table; "
-            + "\(deck.remaining.count) remain "
-            + "in the deck.")
+        lines.append(deck.table.count == 1
+            ? String(format: L("%lld card lies on the table; %lld remain in the deck."),
+                     deck.table.count, deck.remaining.count)
+            : String(format: L("%lld cards lie on the table; %lld remain in the deck."),
+                     deck.table.count, deck.remaining.count))
         return lines.joined(separator: "\n")
     }
 
@@ -355,29 +355,24 @@ extension SkelliCenter {
         let (cards, gathered) = deck.deal(5)
         var lines: [String] = []
         if gathered {
-            lines.append("The deck ran thin — "
-                + "the fallen are gathered and "
-                + "shuffled back in.")
+            lines.append(L("The deck ran thin — the fallen are gathered and shuffled back in."))
         }
-        lines.append("Your fortune, in five:")
+        lines.append(L("Your fortune, in five:"))
         let places = ["What was", "What is",
                       "What hides", "What comes"]
         for i in 0..<4 {
-            lines.append("\(places[i]): the "
-                + "\(cards[i].name) — "
-                + cards[i].meaning + ".")
+            lines.append(String(format: L("%@: the %@ — %@."),
+                                L(places[i]),
+                                spokenName(cards[i]),
+                                L(cards[i].meaning)))
         }
         let crown = cards[4]
-        lines.append("What crowns it: face-down. "
-            + "Say 'yes' and I'll turn it — "
-            + "anything else, and it stays "
-            + "unopened.")
+        lines.append(L("What crowns it: face-down. Say 'yes' and I'll turn it — anything else, and it stays unopened."))
         lines.append(suitWeather(cards))
         pendingAction = { [weak self] in
-            self?.say("What crowns it: the "
-                + crown.name + " — " + crown.meaning
-                + ". There it is — the whole "
-                + "table, told.")
+            self?.say(String(format: L("What crowns it: the %@ — %@. There it is — the whole table, told."),
+                             spokenName(crown),
+                             L(crown.meaning)))
         }
         return lines.joined(separator: "\n")
     }
