@@ -99,10 +99,25 @@ struct AppTheme: Identifiable, Codable, Equatable {
         dim: 0.22,
         builtIn: true)
 
+    /// The other special one (the operator's
+    /// order, 2026-10-19): the season's whole
+    /// trio, one colour to a role — holly red
+    /// works the controls, snow-white carries
+    /// the glow, and the wash runs deep pine,
+    /// strong enough for the green to be in
+    /// the room. Christmas, wearable any
+    /// night of the year.
+    static let christmas = AppTheme(
+        id: "christmas", name: "Christmas",
+        accentHex: "#D42426", glowHex: "#FFFBF0",
+        tintHex: "#06130B", tintStrength: 0.42,
+        dim: 0.20,
+        builtIn: true)
+
     static let builtIns: [AppTheme] = [.phosphor, .bloodwork,
                                        .ultraviolet, .arctic,
                                        .amber, .bone,
-                                       .halloween]
+                                       .halloween, .christmas]
 }
 
 // MARK: - Backdrop slots and choices
