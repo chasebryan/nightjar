@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "مم. أعيش من أجل هذا الجمهور.";
 
 "Encores available on request. Kidding. Mostly." = "الإعادة متاحة عند الطلب. أمزح. غالبًا.";
+"Answers as" = "يردّ باسم";
+"Administer" = "إدارة";
+"Walk (SNMP)" = "مسح (SNMP)";
+"Audit posture" = "تدقيق الوضع الأمني";
+"Probing is dark under EMCON %@." = "الاستطلاع معطّل في وضع EMCON %@.";
+"Quarantine this device" = "عزل هذا الجهاز";
+"Lift the quarantine" = "رفع العزل";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "العزل يعمل ببيانات اعتماد الجهاز المحفوظة — لا توجد بيانات محفوظة، لذا التحكم غير متاح.";
+"The run" = "التشغيل";
+"Working…" = "جارٍ العمل…";
+"No credential kept for this device — the walk rides the factory word." = "لا توجد بيانات اعتماد محفوظة لهذا الجهاز — المسح يستخدم كلمة المصنع.";
