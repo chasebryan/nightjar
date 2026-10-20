@@ -1337,8 +1337,9 @@ extension SkelliCenter {
                 say(Spoofy.applyName(hit.n, mouth: mouth))
                 return true
             }
-            say(String(format: L("The rack holds costumes — %@"), String(describing: Spoofy.costumeNames.prefix(4)))
-                    .joined(separator: ", ")
+            say(String(format: L("The rack holds costumes — %@"),
+                       Spoofy.costumeNames.prefix(4)
+                           .joined(separator: ", "))
                 + L(" — network gear (access point, gateway, mesh node, media server, hub) and device shapes (printer, TV, speaker, NAS, thermostat, vacuum). Say wear the access point, or roll the dice."))
             return true
         }

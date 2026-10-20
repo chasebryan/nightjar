@@ -3619,8 +3619,7 @@ final class SkelliCenter: ObservableObject {
             if q.contains("port") {
                 say(neighbor.ports.isEmpty
                     ? String(format: L("%@ has no recorded open ports — no knock of ours has found one answering."), String(describing: neighbor.displayName))
-                    : String(format: L("%@ answers on: %@"), String(describing: neighbor.displayName), String(describing: neighbor.ports.map(String.init)))
-                          .joined(separator: ", ")
+                    : String(format: L("%@ answers on: %@"), String(describing: neighbor.displayName), neighbor.ports.map(String.init).joined(separator: ", "))
                       + ".")
                 return
             }
@@ -4774,8 +4773,8 @@ final class SkelliCenter: ObservableObject {
             : String(format: L("Seen %@ times; last %@."), String(describing: neighbor.sightings), String(describing: InstrumentCenter.ageLine(neighbor.lastSeen))))
         lines.append(neighbor.ports.isEmpty
             ? L("No recorded open ports.")
-            : String(format: L("Answers on: %@"), String(describing: neighbor.ports.map(String.init)))
-                  .joined(separator: ", ") + ".")
+            : String(format: L("Answers on: %@"), neighbor.ports.map(String.init).joined(separator: ", "))
+              + ".")
         lines.append(roomLine(neighbor))
         let acked = MapStore.shared
             .ackedDrift[neighbor.ip] ?? 0
@@ -4980,8 +4979,8 @@ final class SkelliCenter: ObservableObject {
                 self.say(hosts.isEmpty
                     ? L("The sweep finished: nobody answered on port 80.")
                     : (hosts.count == 1
-                      ? String(format: L("The sweep finished: %@ host answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), String(describing: hosts.prefix(5).map(\.ip)), String(describing: hosts.count > 5 ? "…" : ""))
-                      : String(format: L("The sweep finished: %@ hosts answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), String(describing: hosts.prefix(5).map(\.ip)), String(describing: hosts.count > 5 ? "…" : "")))
+                      ? String(format: L("The sweep finished: %@ host answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), hosts.prefix(5).map(\.ip).joined(separator: ", "), String(describing: hosts.count > 5 ? "…" : ""))
+                      : String(format: L("The sweep finished: %@ hosts answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), hosts.prefix(5).map(\.ip).joined(separator: ", "), String(describing: hosts.count > 5 ? "…" : "")))
                       + (markedHit == nil
                         ? ""
                         : String(format: L(" %@ answered wearing its tomato — picked on, as ordered."), String(describing: markedHit!.ip))))
