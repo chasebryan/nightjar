@@ -8329,19 +8329,56 @@ struct SkelliLiveView: View {
     /// must persist a breath, and the change
     /// fades — she never snaps between states.
     @State private var settled: SkelliMood = .idle
+    /// The reel advances each time a mood takes
+    /// her: a mood with two films shows them in
+    /// turn, never the same stretch twice
+    /// running (fix204).
+    @State private var reel = 0
 
     static var filmsPresent: Bool {
         Bundle.main.url(forResource: "skelli-idle",
                         withExtension: "mp4") != nil
     }
 
-    private var film: String {
-        switch settled {
-        case .idle: return "skelli-idle"
-        case .thinking: return "skelli-thinking"
-        case .working: return "skelli-working"
-        case .speaking: return "skelli-talking"
+    /// Which of her films actually rode the
+    /// bundle, asked once — the bundle does not
+    /// change while she runs. A film that is
+    /// missing is never offered to the player:
+    /// asking for one used to latch its name in
+    /// the player and strand her on the idle
+    /// loop for good (fix204).
+    private static let bundled: Set<String> = {
+        var found = Set<String>()
+        for name in ["skelli-idle", "skelli-idle-2",
+                     "skelli-talking", "skelli-talking-2",
+                     "skelli-thinking", "skelli-thinking-2",
+                     "skelli-working", "skelli-working-2"]
+        where Bundle.main.url(forResource: name,
+                              withExtension: "mp4") != nil {
+            found.insert(name)
         }
+        return found
+    }()
+
+    /// Her films for a mood: the one the mood is
+    /// named for, then its variant — only the
+    /// ones the bundle truly holds.
+    private func films(for mood: SkelliMood) -> [String] {
+        let base: String
+        switch mood {
+        case .idle: base = "skelli-idle"
+        case .thinking: base = "skelli-thinking"
+        case .working: base = "skelli-working"
+        case .speaking: base = "skelli-talking"
+        }
+        return [base, base + "-2"].filter {
+            Self.bundled.contains($0) }
+    }
+
+    private var film: String {
+        let options = films(for: settled)
+        guard !options.isEmpty else { return "skelli-idle" }
+        return options[reel % options.count]
     }
 
     var body: some View {
@@ -8366,6 +8403,7 @@ struct SkelliLiveView: View {
                     nanoseconds: 300_000_000)
                 if mood == newMood {
                     settled = newMood
+                    reel += 1
                 }
             }
         }
@@ -8420,6 +8458,25 @@ final class SkelliFilmView: UIView {
         [ObjectIdentifier: NSObjectProtocol] = [:]
     private var readiness: NSKeyValueObservation?
     private var current: String?
+    /// Film names already journalled as missing
+    /// or failed — the log hears about each
+    /// once, not once per render (fix204).
+    private static var missingNoted = Set<String>()
+    private static var failedNoted = Set<String>()
+
+    /// The bundle's answer for a film name,
+    /// journalled once when there is none.
+    private static func url(for name: String) -> URL? {
+        if let url = Bundle.main.url(
+            forResource: name, withExtension: "mp4") {
+            return url
+        }
+        if missingNoted.insert(name).inserted {
+            Journal.log("film", "missing",
+                        "\(name).mp4 is not in the bundle")
+        }
+        return nil
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -8480,6 +8537,26 @@ final class SkelliFilmView: UIView {
         }
     }
 
+    /// A pending film that failed to load:
+    /// retire it and keep the film on screen.
+    /// The name stays latched, so the ask is
+    /// not retried render after render — a
+    /// mood change and return asks again
+    /// (fix204).
+    private func abandonFade(for player: AVPlayer,
+                             name: String) {
+        guard pending === player else { return }
+        pending = nil
+        readiness?.invalidate()
+        readiness = nil
+        retire(player,
+               from: activeIsA ? layerB : layerA)
+        if Self.failedNoted.insert(name).inserted {
+            Journal.log("film", "failed",
+                        "\(name).mp4 would not play")
+        }
+    }
+
 
     func play(_ name: String) {
         if name == current {
@@ -8517,6 +8594,21 @@ final class SkelliFilmView: UIView {
             }
             return
         }
+        // Resolve the film BEFORE its name is
+        // latched (fix204): a film the bundle
+        // does not hold must never become
+        // `current` — latching it and returning
+        // stranded her on whatever was playing,
+        // for good, and the heartbeat above
+        // could not tell. A missing film falls
+        // back to idle under idle's own name.
+        guard let url = Self.url(for: name) else {
+            if name != "skelli-idle",
+               current != "skelli-idle" {
+                play("skelli-idle")
+            }
+            return
+        }
         current = name
         // A fade that never landed is superseded:
         // retire its player before the new one
@@ -8530,9 +8622,6 @@ final class SkelliFilmView: UIView {
                    from: activeIsA ? layerB : layerA)
             pending = nil
         }
-        guard let url = Bundle.main.url(
-            forResource: name, withExtension: "mp4")
-        else { return }
         let item = AVPlayerItem(url: url)
         let player = AVPlayer(playerItem: item)
         player.isMuted = true
@@ -8558,12 +8647,23 @@ final class SkelliFilmView: UIView {
         readiness = item.observe(
             \.status, options: [.new]) {
                 [weak self, weak player] item, _ in
-                guard item.status == .readyToPlay,
-                      let self, let player,
+                guard let self, let player,
                       self.pending === player
                 else { return }
-                DispatchQueue.main.async {
-                    self.landFade(for: player)
+                if item.status == .failed {
+                    // A film that cannot play must
+                    // not strand the fade half-landed:
+                    // retire the pending player and
+                    // keep the film on screen
+                    // (fix204).
+                    DispatchQueue.main.async {
+                        self.abandonFade(for: player,
+                                         name: name)
+                    }
+                } else if item.status == .readyToPlay {
+                    DispatchQueue.main.async {
+                        self.landFade(for: player)
+                    }
                 }
             }
         // Already ready when the
