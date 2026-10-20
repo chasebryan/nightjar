@@ -700,7 +700,7 @@ private struct ThemeEditorView: View {
         existingID = theme?.id
         _name = State(initialValue: theme?.name ?? "My theme")
         _accent = State(initialValue:
-            theme?.accent ?? Color(hex: "#148040"))
+            theme?.accent ?? Color(hex: "#1DB35A"))
         _glow = State(initialValue:
             theme?.glow ?? Color(hex: "#B6FFC9"))
         _tint = State(initialValue:
