@@ -77,6 +77,17 @@ final class BlacksiteJS {
         let gen: Int
         let callback: JSValue
         var task: URLSessionDataTask?
+        /// A large binary body is HELD
+        /// here, not shipped through the
+        /// callback as one base64 JSON
+        /// string: the script pulls it
+        /// in slices (__fetchSlice) and
+        /// releases it (__fetchRelease).
+        /// `delivered` marks that the
+        /// completion already fired, so
+        /// drains stop waiting on it.
+        var body: Data?
+        var delivered = false
         init(context: JSContext, gen: Int,
              callback: JSValue) {
             self.context = context
@@ -349,6 +360,29 @@ final class BlacksiteJS {
             fetchBlock,
             forKeyedSubscript: "__fetch"
                 as NSString)
+        let fetchSliceBlock:
+            @convention(block)
+            (Int, Int, Int) -> String? = {
+                [weak self] id, offset,
+                count in
+                self?.fetchSlice(
+                    id, offset: offset,
+                    count: count)
+            }
+        context.setObject(
+            fetchSliceBlock,
+            forKeyedSubscript: "__fetchSlice"
+                as NSString)
+        let fetchReleaseBlock:
+            @convention(block)
+            (Int) -> Void = {
+                [weak self] id in
+                self?.fetchRelease(id)
+            }
+        context.setObject(
+            fetchReleaseBlock,
+            forKeyedSubscript:
+                "__fetchRelease" as NSString)
         let execBlock: @convention(block)
             (String, JSValue) -> Bool = {
                 [weak self] line, callback in
@@ -477,6 +511,99 @@ function fetch(url, opts) {
         }
     });
 }
+var __b64rev = null;
+function __b64decode(text) {
+    // Chunked decode into a
+    // preallocated array — a body
+    // can be tens of megabytes, and
+    // the one-number-per-byte array
+    // this replaces peaked at over
+    // a gigabyte on a 42 MB pack in
+    // the bench (fix145).
+    if (__b64rev === null) {
+        __b64rev = {};
+        var chars =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            + "abcdefghijklmnopqrstuvwxyz"
+            + "0123456789+/";
+        for (var n = 0; n < chars.length;
+             n++) {
+            __b64rev[chars.charAt(n)] = n;
+        }
+    }
+    var clean = String(text).replace(
+        /[^A-Za-z0-9+/=]/g, "");
+    var pad = 0;
+    if (clean.length >= 1
+        && clean.charAt(
+            clean.length - 1) === "=") {
+        pad = clean.length >= 2
+            && clean.charAt(
+                clean.length - 2) === "="
+            ? 2 : 1;
+    }
+    var size = Math.max(
+        0, Math.floor(clean.length / 4)
+            * 3 - pad);
+    var out = new Uint8Array(size);
+    var at = 0;
+    for (var i = 0; i < clean.length;
+         i += 4) {
+        var a = __b64rev[
+            clean.charAt(i)] || 0;
+        var b = __b64rev[
+            clean.charAt(i + 1)] || 0;
+        var ch = clean.charAt(i + 2);
+        var d = clean.charAt(i + 3);
+        var c = ch === "=" ? 0
+            : (__b64rev[ch] || 0);
+        var e = d === "=" ? 0
+            : (__b64rev[d] || 0);
+        if (at < size) {
+            out[at++] = (a << 2) | (b >> 4);
+        }
+        if (ch !== "=" && at < size) {
+            out[at++] =
+                ((b & 15) << 4) | (c >> 2);
+        }
+        if (d !== "=" && at < size) {
+            out[at++] =
+                ((c & 3) << 6) | e;
+        }
+    }
+    return out;
+}
+function __assembleSlices(id, total) {
+    // Pull a held body down in slices
+    // of 786,432 bytes (a multiple of
+    // 3, so every slice's base64
+    // decodes independently) straight
+    // into one preallocated array.
+    var out = new Uint8Array(total);
+    var step = 786432;
+    var offset = 0;
+    try {
+        while (offset < total) {
+            var want = Math.min(
+                step, total - offset);
+            var slice = __fetchSlice(
+                id, offset, want);
+            if (slice === null
+                || slice === undefined) {
+                throw new Error(
+                    "fetch: a slice went "
+                    + "missing");
+            }
+            var bytes =
+                __b64decode(slice);
+            out.set(bytes, offset);
+            offset += want;
+        }
+    } finally {
+        __fetchRelease(id);
+    }
+    return out;
+}
 function fetchBinary(url, opts) {
     opts = opts || {};
     return new Promise(function(resolve,
@@ -506,10 +633,25 @@ function fetchBinary(url, opts) {
                     reject(new Error(r.error));
                     return;
                 }
+                var bytes;
+                try {
+                    bytes = (r.bodyId
+                            !== undefined
+                            && r.bodyBytes)
+                        ? __assembleSlices(
+                            r.bodyId,
+                            r.bodyBytes)
+                        : __b64decode(
+                            r.body64 || "");
+                } catch (e) {
+                    reject(e);
+                    return;
+                }
                 resolve({
                     status: r.status,
                     headers: r.headers,
-                    body64: r.body64 || ""
+                    body64: r.body64 || "",
+                    bytes: bytes
                 });
             });
         if (!started) {
@@ -1087,6 +1229,7 @@ function require(spec) {
         let binary = parsed["binary"]
             as? Bool ?? false
         request.timeoutInterval = 120
+        var hold: Data? = nil
         let task = URLSession.shared
             .dataTask(with: request) {
                 [weak self] data, response,
@@ -1116,9 +1259,16 @@ function require(spec) {
                     out["headers"] = fields
                     if binary {
                         out["body"] = ""
-                        out["body64"] = data?
-                            .base64EncodedString()
-                            ?? ""
+                        if let data = data,
+                           data.count
+                            > 1_000_000 {
+                            hold = data
+                            out["body64"] = ""
+                        } else {
+                            out["body64"] = data?
+                                .base64EncodedString()
+                                ?? ""
+                        }
                     } else {
                         out["body"] = data
                             .flatMap {
@@ -1129,6 +1279,14 @@ function require(spec) {
                     }
                 }
                 self.queue.async {
+                    if let held = hold,
+                       let box =
+                        self.fetchBoxes[id] {
+                        box.body = held
+                        out["bodyId"] = id
+                        out["bodyBytes"] =
+                            held.count
+                    }
                     self.deliverFetch(id, out)
                 }
             }
@@ -1140,9 +1298,16 @@ function require(spec) {
     private func deliverFetch(
         _ id: Int,
         _ payload: [String: Any]) {
-        guard let box = fetchBoxes
-            .removeValue(forKey: id)
+        let sliced = payload["bodyId"]
+            != nil
+        guard let box = sliced
+            ? fetchBoxes[id]
+            : fetchBoxes
+                .removeValue(forKey: id)
         else { return }
+        if sliced {
+            box.delivered = true
+        }
         let json =
             (try? JSONSerialization.data(
                 withJSONObject: payload))
@@ -1161,7 +1326,33 @@ function require(spec) {
         fetchBoxes.values.contains {
             $0.context === context
                 && $0.gen == gen
+                && !$0.delivered
         }
+    }
+
+    /// One slice of a held binary
+    /// body, base64 — nil when the id
+    /// is unknown or the range is off
+    /// the end. Slice sizes keep every
+    /// offset on a 3-byte boundary so
+    /// each slice decodes on its own.
+    private func fetchSlice(
+        _ id: Int, offset: Int,
+        count: Int) -> String? {
+        guard let body = fetchBoxes[id]?
+                .body,
+              offset >= 0, count > 0,
+              offset < body.count
+        else { return nil }
+        let end = min(
+            offset + count, body.count)
+        return body
+            .subdata(in: offset..<end)
+            .base64EncodedString()
+    }
+
+    private func fetchRelease(_ id: Int) {
+        fetchBoxes[id] = nil
     }
 
     private func cancelFetches(
@@ -2201,54 +2392,107 @@ for (var bi = 0; bi < B64CHARS.length;
     B64REV[B64CHARS.charAt(bi)] = bi;
 }
 function b64encode(bytes) {
-    var out = [];
-    for (var i = 0; i < bytes.length;
-         i += 3) {
-        var a = bytes[i];
-        var b = i + 1 < bytes.length
-            ? bytes[i + 1] : 0;
-        var c = i + 2 < bytes.length
-            ? bytes[i + 2] : 0;
-        out.push(B64CHARS.charAt(a >> 2));
-        out.push(B64CHARS.charAt(
-            ((a & 3) << 4) | (b >> 4)));
-        out.push(i + 1 < bytes.length
-            ? B64CHARS.charAt(
-                ((b & 15) << 2) | (c >> 6))
-            : "=");
-        out.push(i + 2 < bytes.length
-            ? B64CHARS.charAt(c & 63)
-            : "=");
+    // Chunked, always: the first cut
+    // pushed one small string per
+    // triplet into a single array,
+    // which at pack scale is its own
+    // memory bomb. Blocks are a
+    // multiple of 3 bytes so each
+    // encodes independently; padding
+    // appears only in the final block.
+    var parts = [];
+    var BLOCK = 786432;
+    for (var start = 0;
+         start < bytes.length;
+         start += BLOCK) {
+        var end = Math.min(
+            start + BLOCK, bytes.length);
+        var chars = [];
+        for (var i = start; i < end;
+             i += 3) {
+            var a = bytes[i];
+            var b = i + 1 < end
+                ? bytes[i + 1] : 0;
+            var c = i + 2 < end
+                ? bytes[i + 2] : 0;
+            chars.push(
+                B64CHARS.charAt(a >> 2),
+                B64CHARS.charAt(
+                    ((a & 3) << 4)
+                    | (b >> 4)),
+                i + 1 < end
+                    ? B64CHARS.charAt(
+                        ((b & 15) << 2)
+                        | (c >> 6))
+                    : "=",
+                i + 2 < end
+                    ? B64CHARS.charAt(c & 63)
+                    : "=");
+        }
+        parts.push(chars.join(""));
     }
-    return out.join("");
+    return parts.join("");
 }
 function b64decode(text) {
+    // Chunked into a preallocated
+    // array. The first cut pushed one
+    // JS number per byte into a plain
+    // array and copied at the end; on
+    // a 42 MB pack that peaked at
+    // 1.3 GB in the bench (fix145).
+    // Here the only allocations are
+    // the output itself and one
+    // block's worth of scratch.
     var clean = String(text).replace(
         /[^A-Za-z0-9+/=]/g, "");
-    var out = [];
-    for (var i = 0; i < clean.length;
-         i += 4) {
-        var a = B64REV[clean.charAt(i)]
-            || 0;
-        var b = B64REV[clean.charAt(i + 1)]
-            || 0;
-        var ch = clean.charAt(i + 2);
-        var d = clean.charAt(i + 3);
-        var c = ch === "=" ? 0
-            : (B64REV[ch] || 0);
-        var e = d === "=" ? 0
-            : (B64REV[d] || 0);
-        out.push((a << 2) | (b >> 4));
-        if (ch !== "=") {
-            out.push(
-                ((b & 15) << 4) | (c >> 2));
-        }
-        if (d !== "=") {
-            out.push(
-                ((c & 3) << 6) | e);
+    var pad = 0;
+    if (clean.length >= 1
+        && clean.charAt(
+            clean.length - 1) === "=") {
+        pad = clean.length >= 2
+            && clean.charAt(
+                clean.length - 2) === "="
+            ? 2 : 1;
+    }
+    var size = Math.max(
+        0, Math.floor(clean.length / 4)
+            * 3 - pad);
+    var out = new Uint8Array(size);
+    var BLOCK = 262144;
+    var at = 0;
+    for (var start = 0;
+         start < clean.length;
+         start += BLOCK) {
+        var end = Math.min(
+            start + BLOCK, clean.length);
+        for (var i = start; i < end;
+             i += 4) {
+            var a = B64REV[
+                clean.charAt(i)] || 0;
+            var b = B64REV[
+                clean.charAt(i + 1)] || 0;
+            var ch = clean.charAt(i + 2);
+            var d = clean.charAt(i + 3);
+            var c = ch === "=" ? 0
+                : (B64REV[ch] || 0);
+            var e = d === "=" ? 0
+                : (B64REV[d] || 0);
+            if (at < size) {
+                out[at++] =
+                    (a << 2) | (b >> 4);
+            }
+            if (ch !== "=" && at < size) {
+                out[at++] =
+                    ((b & 15) << 4)
+                    | (c >> 2);
+            }
+            if (d !== "=" && at < size) {
+                out[at++] =
+                    ((c & 3) << 6) | e;
+            }
         }
     }
-    return new Uint8Array(out);
+    return out;
 }
 function utf8encode(text) {
     return new TextEncoder()
@@ -2497,9 +2741,10 @@ var houseHttp = {
                         .toLowerCase()] =
                         src[name];
                 }
-                var bytes = r.body64
-                    ? b64decode(r.body64)
-                    : new Uint8Array(0);
+                var bytes = r.bytes
+                    || (r.body64
+                        ? b64decode(r.body64)
+                        : new Uint8Array(0));
                 return {
                     url: cfg.url,
                     statusCode: r.status,
@@ -3195,7 +3440,6 @@ function runGit(args) {
 registerCommand("git", function(args) {
     runGit(args || []).catch(fail);
 });
-
 """
 
     private static let ghSource = """
