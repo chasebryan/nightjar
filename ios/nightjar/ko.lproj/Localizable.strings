@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "음. 난 이 관객들 덕에 살아.";
 
 "Encores available on request. Kidding. Mostly." = "앵콜은 요청 시 가능. 농담이야. 대체로.";
+"Answers as" = "응답 이름";
+"Administer" = "관리";
+"Walk (SNMP)" = "워크 (SNMP)";
+"Audit posture" = "상태 감사";
+"Probing is dark under EMCON %@." = "EMCON %@ 상태에서는 프로빙이 꺼져 있습니다.";
+"Quarantine this device" = "이 기기 격리";
+"Lift the quarantine" = "격리 해제";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "격리는 장비의 저장된 자격 증명을 사용합니다 — 저장된 항목이 없어 비활성화 상태입니다.";
+"The run" = "실행";
+"Working…" = "작업 중…";
+"No credential kept for this device — the walk rides the factory word." = "이 기기에 저장된 자격 증명이 없습니다 — 워크는 공장 기본 비밀번호를 사용합니다.";
