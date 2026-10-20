@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "हम्म। इसी भीड़ के लिए तो जीती हूँ।";
 
 "Encores available on request. Kidding. Mostly." = "दोबारा सुनने की फ़रमाइश चलती है। मज़ाक कर रही हूँ। ज़्यादातर।";
+"Answers as" = "जवाब का नाम";
+"Administer" = "प्रबंधित करें";
+"Walk (SNMP)" = "वॉक (SNMP)";
+"Audit posture" = "सुरक्षा-स्थिति ऑडिट";
+"Probing is dark under EMCON %@." = "EMCON %@ के अंतर्गत जाँच बंद है।";
+"Quarantine this device" = "इस उपकरण को क्वारंटीन करें";
+"Lift the quarantine" = "क्वारंटीन हटाएँ";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "क्वारंटीन उपकरण के रखे गए क्रेडेंशियल पर चलता है — कोई रखा नहीं गया, इसलिए नियंत्रण उपलब्ध नहीं है।";
+"The run" = "रन";
+"Working…" = "कार्य जारी है…";
+"No credential kept for this device — the walk rides the factory word." = "इस उपकरण के लिए कोई क्रेडेंशियल रखा नहीं गया — वॉक फ़ैक्टरी शब्द पर चलता है।";
