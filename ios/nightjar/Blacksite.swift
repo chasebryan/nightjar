@@ -2936,7 +2936,7 @@ final class BlacksiteShell: ObservableObject {
             let mode = args.first ?? "status"
             if mode == "on" {
                 if watch.start() {
-                    emit("the watch stands.",
+                    emit(L("the watch stands."),
                          .ok)
                 } else {
                     emit("EMCON forbids the "
@@ -2946,7 +2946,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             } else if mode == "off" {
                 watch.stop()
-                emit("the watch stands down.",
+                emit(L("the watch stands down."),
                      .sys)
             } else {
                 let count = watch.events.count
@@ -3255,7 +3255,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         if entries.isEmpty {
-            emit("(empty)", .sys)
+            emit(L("(empty)"), .sys)
         }
         for entry in entries {
             if long {
@@ -3292,7 +3292,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func mkdirCommand(_ args: [String]) {
         guard !args.isEmpty else {
-            emit("mkdir needs a name.", .err)
+            emit(L("mkdir needs a name."), .err)
             return
         }
         for arg in args {
@@ -3307,7 +3307,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func touchCommand(_ args: [String]) {
         guard !args.isEmpty else {
-            emit("touch needs a file.", .err)
+            emit(L("touch needs a file."), .err)
             return
         }
         for arg in args {
@@ -3357,7 +3357,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func cpCommand(_ args: [String]) {
         guard args.count >= 2 else {
-            emit("cp <from> <to>", .err)
+            emit(L("cp <from> <to>"), .err)
             return
         }
         let from = resolved(args[0])
@@ -3377,7 +3377,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func mvCommand(_ args: [String]) {
         guard args.count >= 2 else {
-            emit("mv <from> <to>", .err)
+            emit(L("mv <from> <to>"), .err)
             return
         }
         let from = resolved(args[0])
@@ -3401,13 +3401,13 @@ final class BlacksiteShell: ObservableObject {
             !$0.hasPrefix("-")
         }
         guard !targets.isEmpty else {
-            emit("rm needs a target.", .err)
+            emit(L("rm needs a target."), .err)
             return
         }
         for arg in targets {
             let target = resolved(arg)
             guard target != "/" else {
-                emit("rm: the root stays.",
+                emit(L("rm: the root stays."),
                      .err)
                 continue
             }
@@ -3503,7 +3503,7 @@ final class BlacksiteShell: ObservableObject {
             return stageInput.components(
                 separatedBy: "\n")
         }
-        emit("needs a file — or a pipe.",
+        emit(L("needs a file — or a pipe."),
              .err)
         return nil
     }
@@ -3669,7 +3669,7 @@ final class BlacksiteShell: ObservableObject {
             rest.removeFirst()
         }
         guard let pattern = rest.first else {
-            emit("grep <pattern> [file]", .err)
+            emit(L("grep <pattern> [file]"), .err)
             return
         }
         let fileArgs = Array(rest.dropFirst())
@@ -3727,7 +3727,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func statCommand(_ args: [String]) {
         guard let arg = args.first else {
-            emit("stat <path>", .err)
+            emit(L("stat <path>"), .err)
             return
         }
         let target = resolved(arg)
@@ -3751,7 +3751,7 @@ final class BlacksiteShell: ObservableObject {
     private func whichCommand(_ args: [String]) {
         guard let name = args.first?
             .lowercased() else {
-            emit("which <command>", .err)
+            emit(L("which <command>"), .err)
             return
         }
         if BlacksiteShell.builtinNames
@@ -4156,7 +4156,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func scriptCommand(_ args: [String]) {
         guard let file = args.first else {
-            emit("sh <script.sh>", .err)
+            emit(L("sh <script.sh>"), .err)
             return
         }
         let target = resolved(file)
@@ -4343,7 +4343,7 @@ final class BlacksiteShell: ObservableObject {
             let installed = engine
                 .installedPackages()
             if installed.isEmpty {
-                emit("no packages installed.",
+                emit(L("no packages installed."),
                      .sys)
             }
             for name in installed {
@@ -4361,13 +4361,13 @@ final class BlacksiteShell: ObservableObject {
         case "install":
             guard let target = args.dropFirst()
                 .first else {
-                emit("pkg install <name | url>",
+                emit(L("pkg install <name | url>"),
                      .err)
                 return
             }
             if target.contains("://") {
                 guard !capturing else {
-                    emit("installs run live.",
+                    emit(L("installs run live."),
                          .err)
                     return
                 }
@@ -4404,7 +4404,7 @@ final class BlacksiteShell: ObservableObject {
         case "remove", "rm":
             guard let target = args.dropFirst()
                 .first?.lowercased() else {
-                emit("pkg remove <name>", .err)
+                emit(L("pkg remove <name>"), .err)
                 return
             }
             if engine.removePackage(target) {
@@ -4470,7 +4470,7 @@ final class BlacksiteShell: ObservableObject {
         switch sub {
         case "demo":
             guard !capturing else {
-                emit("pictures are drawn live.",
+                emit(L("pictures are drawn live."),
                      .err)
                 return
             }
@@ -4483,7 +4483,7 @@ final class BlacksiteShell: ObservableObject {
                  .sys)
         case "mandelbrot", "plasma", "stars":
             guard !capturing else {
-                emit("pictures are drawn live.",
+                emit(L("pictures are drawn live."),
                      .err)
                 return
             }
@@ -4535,7 +4535,7 @@ final class BlacksiteShell: ObservableObject {
         case "show":
             guard let file = args.dropFirst()
                 .first else {
-                emit("gfx show <picture.png>",
+                emit(L("gfx show <picture.png>"),
                      .err)
                 return
             }
@@ -4561,7 +4561,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func viewCommand(_ args: [String]) {
         guard let file = args.first else {
-            emit("view <file>", .err)
+            emit(L("view <file>"), .err)
             return
         }
         let target = resolved(file)
@@ -4780,7 +4780,7 @@ final class BlacksiteShell: ObservableObject {
             .snapshot()
         if board.active.isEmpty,
            procs.isEmpty {
-            emit("no processes running.", .sys)
+            emit(L("no processes running."), .sys)
         }
         for entry in board.active {
             emit("● \(entry.label) — "
@@ -5352,7 +5352,7 @@ final class BlacksiteShell: ObservableObject {
             !$0.hasPrefix("-")
         }
         guard !sets.isEmpty else {
-            emit("tr: name a set.",
+            emit(L("tr: name a set."),
                  .err)
             stageError = true
             return
@@ -5785,7 +5785,7 @@ final class BlacksiteShell: ObservableObject {
             }
         }
         if inPlace, files.isEmpty {
-            emit("sed: -i needs files.",
+            emit(L("sed: -i needs files."),
                  .err)
             stageError = true
             return
@@ -8461,7 +8461,7 @@ final class BlacksiteShell: ObservableObject {
         let port = args.first.flatMap(Int.init)
             ?? 80
         guard (1...65535).contains(port) else {
-            emit("a port is 1 through 65535.",
+            emit(L("a port is 1 through 65535."),
                  .err)
             return
         }
@@ -8473,7 +8473,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         guard !scanner.sweeping else {
-            emit("a sweep is already running.",
+            emit(L("a sweep is already running."),
                  .err)
             return
         }
@@ -8534,7 +8534,7 @@ final class BlacksiteShell: ObservableObject {
             ports = ScanModel.topPorts.map { $0.0 }
         }
         guard !ports.isEmpty else {
-            emit("no readable ports in that.",
+            emit(L("no readable ports in that."),
                  .err)
             return
         }
@@ -8553,7 +8553,7 @@ final class BlacksiteShell: ObservableObject {
                           ports: [Int],
                           label: String) {
         guard !recon.knocking else {
-            emit("the knock hand is busy.", .err)
+            emit(L("the knock hand is busy."), .err)
             return
         }
         busy = true
@@ -8731,7 +8731,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             guard let host = host else {
-                emit("ping needs a host.", .err)
+                emit(L("ping needs a host."), .err)
                 return
             }
             netBusy { emit, done in
@@ -8888,7 +8888,7 @@ final class BlacksiteShell: ObservableObject {
                 index += 1
             }
             guard let url = url else {
-                emit("curl needs a URL.",
+                emit(L("curl needs a URL."),
                      .err)
                 return
             }
@@ -8904,7 +8904,7 @@ final class BlacksiteShell: ObservableObject {
             guard netAllowed(name),
                   let url = args.first else {
                 if args.isEmpty {
-                    emit("wget needs a URL.",
+                    emit(L("wget needs a URL."),
                          .err)
                 }
                 return
@@ -9844,7 +9844,7 @@ final class BlacksiteShell: ObservableObject {
                                 .lowercased()
                             guard typed == "yes"
                             else {
-                                emit("left alone.",
+                                emit(L("left alone."),
                                     .sys)
                                 return
                             }
@@ -9980,7 +9980,7 @@ final class BlacksiteShell: ObservableObject {
                             output: { text in
                                 emit(text, .out)
                             })
-                        emit("— the shell closed.",
+                        emit(L("— the shell closed."),
                              .sys)
                     } else {
                         let result = try client
@@ -10324,7 +10324,7 @@ final class BlacksiteShell: ObservableObject {
             id = UInt16(raw, radix: 16)
         }
         guard let id else {
-            emit("that is not a company id.",
+            emit(L("that is not a company id."),
                  .err)
             return
         }
@@ -10346,7 +10346,7 @@ final class BlacksiteShell: ObservableObject {
     private func port(_ args: [String]) {
         guard let raw = args.first,
               let number = Int(raw) else {
-            emit("port needs a number.", .err)
+            emit(L("port needs a number."), .err)
             return
         }
         let udp = args.count > 1
@@ -10418,7 +10418,7 @@ final class BlacksiteShell: ObservableObject {
         if word == "list" {
             let saved = MacroStore.load()
             if saved.isEmpty {
-                emit("no macros saved.", .sys)
+                emit(L("no macros saved."), .sys)
             }
             for macro in saved {
                 emit("  \(macro.name) — "
@@ -10428,7 +10428,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         guard word == "run", args.count > 1 else {
-            emit("macro list · macro run <name>",
+            emit(L("macro list · macro run <name>"),
                  .err)
             return
         }
@@ -10465,7 +10465,7 @@ final class BlacksiteShell: ObservableObject {
         let events = Journal.events(
             limit: count)
         if events.isEmpty {
-            emit("the journal is empty.", .sys)
+            emit(L("the journal is empty."), .sys)
         }
         let clock = DateFormatter()
         clock.dateFormat = "HH:mm:ss"
@@ -10494,7 +10494,7 @@ final class BlacksiteShell: ObservableObject {
         case "throw":
             guard let ip = args.dropFirst()
                 .first else {
-                emit("throw needs an address.",
+                emit(L("throw needs an address."),
                      .err)
                 return
             }
@@ -10506,14 +10506,14 @@ final class BlacksiteShell: ObservableObject {
         case "wipe":
             if args.dropFirst().first == "all" {
                 marks.forgetAll()
-                emit("every tomato wiped.", .ok)
+                emit(L("every tomato wiped."), .ok)
             } else if let ip = args.dropFirst()
                 .first {
                 marks.unmark(ip)
                 emit("the tomato comes off "
                      + "\(ip).", .ok)
             } else {
-                emit("wipe <ip> · wipe all",
+                emit(L("wipe <ip> · wipe all"),
                      .err)
             }
         default:
@@ -10560,7 +10560,7 @@ final class BlacksiteShell: ObservableObject {
         case "on":
             UserDefaults.standard.set(
                 true, forKey: "house.haptics")
-            emit("haptics on.", .ok)
+            emit(L("haptics on."), .ok)
         default:
             emit("haptics are "
                  + (Haptics.enabled
