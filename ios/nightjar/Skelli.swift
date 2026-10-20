@@ -209,6 +209,18 @@ enum SkelliKnowledge {
                        "sealed", "pairing", "burn"],
             body: "Messages that travel as knock ORDER alone — a ChaCha20-Poly1305 sealed box spelled in port sequences under a pairing key kept in the Keychain. The journal records arrivals, never contents. A burn timer deletes decoded messages after the retention you set. Threads clear from its Housekeeping, key untouched."),
         SkelliEntry(
+            id: "blacksite",
+            title: "Blacksite — the console",
+            home: "the Blacksite tab",
+            keywords: ["blacksite", "console",
+                       "terminal", "shell",
+                       "python", "javascript",
+                       "wasm", "github",
+                       "git clone", "git push",
+                       "grok", "diagnose",
+                       "limits"],
+            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas."),
+        SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
             keywords: ["vault", "combination", "raise serve",
@@ -487,6 +499,13 @@ final class SkelliCenter: ObservableObject {
     private(set) var mouth: Mouth?
     private(set) var emcon: Emcon?
     private(set) var post: ListeningPost?
+    /// Her hand on the Blacksite room
+    /// (fix153): the console's shell,
+    /// registered by its view when the
+    /// room wakes. Weak — the room owns
+    /// it; she borrows the hand while
+    /// the room stands.
+    weak var blacksiteShell: BlacksiteShell?
     private let scanner = ScanModel()
     private var sweepWatch: AnyCancellable?
     /// Her interrogation bench — a Recon of her
@@ -3089,6 +3108,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if knocktalkAsk(q, raw: raw) {
+            return
+        }
+        if consoleAsk(q, raw: raw) {
             return
         }
         if mapPlaceAsk(q) {

@@ -977,6 +977,19 @@ final class BlacksiteShell: ObservableObject {
         return rows.joined(separator: "\n")
     }
 
+    /// Her hand on this room (fix153): run
+    /// one line and hand back what it
+    /// printed, for Skelli to speak.
+    /// Synchronous output only — a
+    /// program that keeps running keeps
+    /// its later output here in the
+    /// room, where it belongs.
+    func runForSkelli(_ line: String) -> String {
+        captureOutput {
+            execLine(line, stdin: "")
+        }
+    }
+
     private func writeRedirect(
         _ text: String,
         _ redirect: (path: String,
@@ -9470,6 +9483,8 @@ struct BlacksiteView: View {
             .onAppear {
                 rootSize = geo.size
                 shell.bootIfNeeded()
+                SkelliCenter.shared
+                    .blacksiteShell = shell
                 // A hardware keyboard
                 // means business: put the
                 // cursor in the line.

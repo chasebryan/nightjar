@@ -1809,6 +1809,84 @@ extension SkelliCenter {
     /// rides the RAW ask — his casing is his —
     /// and a message the road refuses for length
     /// is refused aloud, never truncated.
+    /// Her console hand (fix153):
+    /// "console: <line>", "blacksite
+    /// <line>", "run in the console:
+    /// <line>" — she runs the line in
+    /// the Blacksite room and speaks
+    /// what it printed. Questions about
+    /// the console are not commands
+    /// (the manual owns those), and an
+    /// unopened room is answered
+    /// honestly, never faked.
+    func consoleAsk(_ q: String, raw: String) -> Bool {
+        var payloadQ: String? = nil
+        let prefixes: [(String, Int)] = [
+            ("console:", 8), ("blacksite:", 10),
+            ("terminal:", 9), ("blacksite ", 10),
+            ("terminal ", 9), ("console run ", 12),
+        ]
+        for (prefix, count) in prefixes
+        where q.hasPrefix(prefix) {
+            payloadQ = String(q.dropFirst(count))
+            break
+        }
+        if payloadQ == nil,
+           let r = q.range(of: "run in the console:") {
+            payloadQ = String(q[r.upperBound...])
+        } else if payloadQ == nil,
+                  let r = q.range(of: "run in the console ") {
+            payloadQ = String(q[r.upperBound...])
+        }
+        guard var payload = payloadQ?
+            .trimmingCharacters(in: .whitespaces),
+              !payload.isEmpty, !payload.contains("?")
+        else { return false }
+        if ["status", "help", "open"]
+            .contains(payload) {
+            return false
+        }
+        // His casing, from the raw ask,
+        // when the raw ask carried the
+        // same prefix.
+        let rawLow = raw.lowercased()
+        for (prefix, count) in prefixes
+        where rawLow.hasPrefix(prefix) {
+            var text = String(raw.dropFirst(count))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            if text.hasPrefix(":") {
+                text = String(text.dropFirst())
+                    .trimmingCharacters(
+                        in: .whitespaces)
+            }
+            if !text.isEmpty { payload = text }
+            break
+        }
+        guard let shell = blacksiteShell else {
+            say("The console hasn't woken in "
+                + "this run of the app — open "
+                + "the Blacksite tab once and "
+                + "the hand is mine from then "
+                + "on.")
+            return true
+        }
+        let out = shell.runForSkelli(payload)
+        if out.isEmpty {
+            say("Ran it — nothing came back "
+                + "on the line. If it's a "
+                + "program, its output lives "
+                + "in the console; the "
+                + "Blacksite tab holds it.")
+        } else if out.count > 700 {
+            say(String(out.prefix(700))
+                + "\n…the console holds the rest.")
+        } else {
+            say(out)
+        }
+        return true
+    }
+
     func knocktalkAsk(_ q: String, raw: String) -> Bool {
         guard let chat = emcon?.chat else { return false }
         var payloadQ: String? = nil
