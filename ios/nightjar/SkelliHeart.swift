@@ -255,13 +255,13 @@ final class SkelliHeart: ObservableObject {
     /// whole house keeps the same time.
     static func daypart(hour: Int) -> String {
         switch hour {
-        case 0..<5: return "the deep night"
-        case 5..<9: return "the early morning"
-        case 9..<12: return "the morning"
-        case 12..<14: return "midday"
-        case 14..<18: return "the afternoon"
-        case 18..<22: return "the evening"
-        default: return "the night"
+        case 0..<5: return L("the deep night")
+        case 5..<9: return L("the early morning")
+        case 9..<12: return L("the morning")
+        case 12..<14: return L("midday")
+        case 14..<18: return L("the afternoon")
+        case 18..<22: return L("the evening")
+        default: return L("the night")
         }
     }
 

@@ -1183,7 +1183,7 @@ final class SkelliCenter: ObservableObject {
            seed % 3 == 0 {
             return String(format:
                 L("Still thinking about %@."),
-                episode.cause)
+                L(episode.cause))
         }
         return SkelliHeart.thought(
             feeling: SkelliHeart.shared.feeling,
