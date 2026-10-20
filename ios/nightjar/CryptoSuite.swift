@@ -421,7 +421,7 @@ enum CryptoSuite {
 
     /// Seal for a recipient's public key: an
     /// ephemeral ECDH exchange, HKDF, AES-GCM.
-    /// Output: ephemeral public key (65) |
+    /// Output: ephemeral public key (64) |
     /// the sealed box.
     static func envelopeSeal(
         _ data: Data,
@@ -447,9 +447,16 @@ enum CryptoSuite {
     }
 
     static func envelopeOpen(_ envelope: Data) -> Data? {
-        guard envelope.count > 65 else { return nil }
+        // The ephemeral key is 64 bytes —
+        // CryptoKit's key-agreement raw
+        // form is X then Y, no 0x04 prefix
+        // (the 65-byte x963 assumption
+        // broke this reader exactly as it
+        // broke NJCF's; Gauntlet run 5,
+        // 2026-10-20).
+        guard envelope.count > 64 else { return nil }
         let mine = identity()
-        let ephemeralData = envelope.subdata(in: 0..<65)
+        let ephemeralData = envelope.subdata(in: 0..<64)
         guard let ephemeral = try? P256.KeyAgreement
                 .PublicKey(rawRepresentation:
                             ephemeralData),
@@ -464,7 +471,7 @@ enum CryptoSuite {
             outputByteCount: 32)
         return open(.aes, key: key,
                     sealed: envelope.subdata(
-                        in: 65..<envelope.count))
+                        in: 64..<envelope.count))
     }
 }
 

@@ -177,7 +177,21 @@ enum CryptoFiles {
             break
         }
         if protection == .deadDrop {
-            header.ephemeral = try take(65)
+            // The ephemeral public key is
+            // 64 bytes: CryptoKit's key-
+            // agreement raw form is the
+            // point itself, X then Y, with
+            // no 0x04 prefix — not the
+            // 65-byte x963 form this parser
+            // first assumed. The one-byte
+            // lie starved every dead-drop
+            // parse (the wrap length was
+            // read a byte late, as ~15,000
+            // in a ~300-byte file) from the
+            // format's birth until Gauntlet
+            // run 5's head dump measured
+            // the truth (2026-10-20).
+            header.ephemeral = try take(64)
             header.wrapDeadDrop = try takeWrapped()
         }
         header.baseNonce = try take(12)
