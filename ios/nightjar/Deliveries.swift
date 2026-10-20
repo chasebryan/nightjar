@@ -142,6 +142,33 @@ final class DeliveriesCenter: ObservableObject {
         directory.appendingPathComponent(item.file)
     }
 
+    /// The shelf itself, for hands that
+    /// file real products of their own
+    /// (fix154): CryptoFiles writes its
+    /// sealed boxes as files, not data.
+    var shelf: URL { directory }
+
+    /// Index a file that already stands
+    /// on the shelf — written by a hand,
+    /// not by add — so the shelf lists
+    /// only what is really there.
+    func adopt(_ url: URL) {
+        let file = url.lastPathComponent
+        let attrs = try? FileManager.default
+            .attributesOfItem(atPath: url.path)
+        let bytes = (attrs?[.size]
+            as? NSNumber)?.intValue ?? 0
+        items.removeAll { $0.file == file }
+        items.insert(
+            Item(name: url
+                    .deletingPathExtension()
+                    .lastPathComponent,
+                 file: file, bytes: bytes,
+                 made: Date()),
+            at: 0)
+        persist()
+    }
+
     func data(for item: Item) -> Data? {
         try? Data(contentsOf: url(for: item))
     }

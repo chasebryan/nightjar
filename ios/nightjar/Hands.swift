@@ -31,6 +31,7 @@ extension SkelliCenter {
         // ("use the …"), and a room's name should never
         // be mistaken for a model.
         if warAsk(q) { return true }
+        if vaultAsk(q, raw: raw) { return true }
         if weightsAsk(q) { return true }
         return false
     }
@@ -1887,6 +1888,265 @@ extension SkelliCenter {
         return true
     }
 
+    /// Her vault hand (fix154): seal a
+    /// note she holds, seal a file on
+    /// the Deliveries shelf, or open a
+    /// sealed .njcf back onto it — all
+    /// under the Vault's own key,
+    /// CryptoFiles' work with no
+    /// password spoken. Password
+    /// sealing belongs to the Vault
+    /// tab's proper fields (the crypto
+    /// hand's standing doctrine); an
+    /// ask that names one is answered
+    /// with that truth and an offer of
+    /// the key instead.
+    func vaultAsk(_ q: String, raw: String) -> Bool {
+        let sealing = q.contains("encrypt")
+            || q.contains("seal the")
+            || q.contains("seal my")
+            || q.contains("seal a ")
+        let opening = q.contains("decrypt")
+            || q.contains("unseal")
+        guard sealing || opening else {
+            return false
+        }
+        guard q.contains("file")
+            || q.contains("note")
+            || q.contains(".njcf")
+        else { return false }
+
+        var noteText: String? = nil
+        var item: DeliveriesCenter.Item? = nil
+
+        if !opening && q.contains("note") {
+            // A note she holds. Named by
+            // its words, or the latest.
+            let target: SkelliNote?
+            if q.contains("last note")
+                || q.contains("latest note") {
+                target = notes.last
+            } else if notes.count == 1 {
+                target = notes.first
+            } else {
+                target = notes.max(by: { a, b in
+                    vaultScore(a.text, in: q)
+                        < vaultScore(b.text,
+                                     in: q)
+                }).flatMap {
+                    vaultScore($0.text, in: q) > 0
+                        ? $0 : nil
+                }
+            }
+            guard let note = target else {
+                say(notes.isEmpty
+                    ? "I hold no notes to seal "
+                        + "yet — teach me one "
+                        + "first."
+                    : "Which note? I hold "
+                        + "\(notes.count). "
+                        + "Say 'seal my last "
+                        + "note', or name it by "
+                        + "its words.")
+                return true
+            }
+            noteText = note.text
+        } else {
+            // A file on the shelf, named
+            // by its file name in the ask.
+            let token = q.split(whereSeparator: {
+                $0 == " " || $0 == "\""
+                    || $0 == "'"
+            }).map(String.init).first {
+                $0.contains(".")
+            }
+            let shelfItems = DeliveriesCenter
+                .shared.items
+            let hit = token.flatMap { t in
+                shelfItems.first {
+                    $0.file.lowercased() == t
+                        || $0.name.lowercased() == t
+                }
+            }
+            guard let found = hit else {
+                let names = shelfItems
+                    .map { $0.file }
+                    .joined(separator: ", ")
+                say(shelfItems.isEmpty
+                    ? "The Deliveries shelf is "
+                        + "empty — there is no "
+                        + "file for me to "
+                        + (opening ? "open."
+                                   : "seal.")
+                    : "I don't find that name "
+                        + "on the shelf. It "
+                        + "holds: " + names + ".")
+                return true
+            }
+            if opening && !found.file
+                .hasSuffix(".njcf") {
+                say(found.file + " isn't a "
+                    + "sealed box — opening "
+                    + "wants a .njcf.")
+                return true
+            }
+            item = found
+        }
+
+        if q.contains("password") {
+            // The doctrine, spoken, with
+            // the key offered in its
+            // place — a yes runs it.
+            let openingCopy = opening
+            let noteCopy = noteText
+            let itemCopy = item
+            pendingAction = { [weak self] in
+                self?.runVaultKey(
+                    opening: openingCopy,
+                    noteText: noteCopy,
+                    item: itemCopy)
+            }
+            say("Passwords aren't spoken "
+                + "here — sealing under one "
+                + "is the Vault tab's work, "
+                + "in its proper fields. "
+                + "But I can "
+                + (opening ? "open" : "seal")
+                + " it under the vault key "
+                + "instead, right now — "
+                + "say yes.")
+            return true
+        }
+        runVaultKey(opening: opening,
+                    noteText: noteText, item: item)
+        return true
+    }
+
+    /// How strongly a note is meant by
+    /// the words of the ask: its own
+    /// distinctive words, echoed.
+    func vaultScore(_ text: String,
+                    in q: String) -> Int {
+        let stop: Set<String> = [
+            "the", "seal", "note", "my",
+            "with", "password", "about",
+            "encrypt"]
+        return text.lowercased()
+            .split(whereSeparator: {
+                !$0.isLetter && !$0.isNumber
+            })
+            .map(String.init)
+            .filter { $0.count > 2
+                && !stop.contains($0) }
+            .filter { q.contains($0) }
+            .count
+    }
+
+    /// The vault-key work itself, off
+    /// the main thread, spoken when
+    /// done. No password exists in this
+    /// path at all: the Vault's key
+    /// wraps and unwraps, here or in
+    /// the tab alike.
+    func runVaultKey(opening: Bool,
+                     noteText: String?,
+                     item: DeliveriesCenter
+                        .Item?) {
+        let center = DeliveriesCenter.shared
+        DispatchQueue.global(
+            qos: .userInitiated).async {
+            func done(_ line: String,
+                      adopt url: URL? = nil) {
+                DispatchQueue.main.async {
+                    if let url {
+                        center.adopt(url)
+                    }
+                    self.say(line)
+                }
+            }
+            do {
+                if opening {
+                    guard let item else { return }
+                    let restored = try
+                        CryptoFiles.decrypt(
+                            input: center.url(
+                                for: item),
+                            password: nil,
+                            outputDirectory:
+                                center.shelf)
+                    done("Opened — "
+                        + restored
+                            .lastPathComponent
+                        + " is back on the "
+                        + "Deliveries shelf, "
+                        + "unsealed by the "
+                        + "vault key.",
+                        adopt: restored)
+                } else if let text = noteText {
+                    let base = text
+                        .split(whereSeparator: {
+                            !$0.isLetter
+                                && !$0.isNumber
+                        })
+                        .prefix(3)
+                        .joined(separator: "-")
+                    let name = base.isEmpty
+                        ? "note" : base
+                    let temp = FileManager
+                        .default
+                        .temporaryDirectory
+                        .appendingPathComponent(
+                            "skelli-seal.txt")
+                    try text.write(
+                        to: temp, atomically: true,
+                        encoding: .utf8)
+                    let out = center.shelf
+                        .appendingPathComponent(
+                            name + ".njcf")
+                    try CryptoFiles.encrypt(
+                        input: temp, output: out,
+                        protection: .vaultKey,
+                        password: nil,
+                        recipient: nil)
+                    done("Sealed — " + name
+                        + ".njcf stands on the "
+                        + "Deliveries shelf "
+                        + "under the vault key; "
+                        + "no password opens "
+                        + "it, only this "
+                        + "house's key. The "
+                        + "note itself stays "
+                        + "in my memory, "
+                        + "unsealed.",
+                        adopt: out)
+                } else if let item {
+                    let out = center.shelf
+                        .appendingPathComponent(
+                            item.file + ".njcf")
+                    try CryptoFiles.encrypt(
+                        input: center.url(
+                            for: item),
+                        output: out,
+                        protection: .vaultKey,
+                        password: nil,
+                        recipient: nil)
+                    done("Sealed — " + item.file
+                        + ".njcf stands on the "
+                        + "Deliveries shelf "
+                        + "under the vault "
+                        + "key. The original "
+                        + "keeps its place "
+                        + "beside it.",
+                        adopt: out)
+                }
+            } catch {
+                done("The vault refused it: "
+                    + error.localizedDescription
+                    + " Nothing was written.")
+            }
+        }
+    }
+
     func knocktalkAsk(_ q: String, raw: String) -> Bool {
         guard let chat = emcon?.chat else { return false }
         var payloadQ: String? = nil
@@ -2569,7 +2829,16 @@ extension SkelliCenter {
     /// read aloud: which device, how loud, how
     /// lately, and whether it's worth the walk.
     func huntAsk(_ q: String) -> Bool {
-        guard q.contains("hunt") else { return false }
+        // The word, not the letters
+        // (fix154): a bare substring
+        // claimed any ask carrying
+        // "hunt" inside another word —
+        // a password named hunter2 in a
+        // vault order went tracker
+        // hunting. Words are the gate.
+        guard q.split(whereSeparator: {
+            !$0.isLetter
+        }).contains("hunt") else { return false }
         guard let post else { return false }
         let rows = post.rows
         guard !rows.isEmpty else {
