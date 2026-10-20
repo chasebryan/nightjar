@@ -7108,6 +7108,53 @@ enum SkelliWeights {
 
     private static func loadedContainer()
         async throws -> ModelContainer {
+        do {
+            return try await loadOnce()
+        } catch WeightsError.lowMemory {
+            // The chosen bench does not
+            // fit the room the kernel
+            // leaves (fix152): fall to
+            // the recommended bench when
+            // it is on the phone, select
+            // it in the open, and try
+            // once more. The margin is
+            // never narrowed, and the
+            // big model is never deleted
+            // — the bench simply stops
+            // pointing at a door that
+            // cannot open.
+            let center = WeightsCenter.shared
+            let candidate = center.recommended
+            let downloaded = UserDefaults
+                .standard.stringArray(
+                    forKey:
+                        "skelli.weightsDownloaded")
+                ?? []
+            guard candidate.id
+                    != downloadedSelection,
+                  downloaded.contains(
+                    candidate.id)
+            else {
+                throw WeightsError.lowMemory
+            }
+            await MainActor.run {
+                center.select(candidate)
+            }
+            DevLog.event(
+                "weights",
+                "bench self-healed: the "
+                    + "chosen model does "
+                    + "not fit this phone's "
+                    + "headroom; selected "
+                    + "the recommended "
+                    + candidate.name
+                    + " instead")
+            return try await loadOnce()
+        }
+    }
+
+    private static func loadOnce()
+        async throws -> ModelContainer {
         let key = downloadedSelection ?? "folder"
         if let resident = state.with({
             $0.containerKey == key

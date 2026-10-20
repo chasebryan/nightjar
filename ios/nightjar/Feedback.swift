@@ -4025,7 +4025,20 @@ final class WeightsCenter: ObservableObject {
     var recommended: WeightsOption {
         let gb = Double(ProcessInfo.processInfo
             .physicalMemory) / 1_073_741_824
-        if gb >= 7.5 { return Self.catalog[0] }
+        // Judged by the jetsam line, not
+        // the spec sheet (fix152): on a
+        // 12 GB phone the kernel leaves
+        // this app about 3.3 GB of
+        // headroom, and the 4B needs
+        // 3.45 GB with its safety
+        // margin — a recommendation
+        // the load gate must refuse
+        // is no recommendation. The
+        // 1.7B clears the same gate
+        // with room to spare; the 4B
+        // stays on the shelf for the
+        // day an entitlement widens
+        // the room.
         if gb >= 5 { return Self.catalog[2] }
         return Self.catalog[4]
     }
