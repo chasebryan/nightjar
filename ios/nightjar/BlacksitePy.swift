@@ -4340,19 +4340,16 @@ class datetime:
                    _ message: String,
                    _ line: Int) {
         flushOut()
-        emit("Traceback (most recent "
-             + "call last):", .err)
+        emit(L("Traceback (most recent call last):"), .err)
         let shown = Array(frames.suffix(4))
         for frame in shown {
             let at = frame.line > 0
                 ? frame.line : max(line, 1)
-            emit("  File \"\(path)\", line "
-                 + "\(at), in \(frame.name)",
+            emit(String(format: L("  File \"%@\", line %@, in %@"), String(describing: path), String(describing: at), String(describing: frame.name)),
                  .err)
         }
         if frames.isEmpty, line > 0 {
-            emit("  File \"\(path)\", line "
-                 + "\(line), in <module>",
+            emit(String(format: L("  File \"%@\", line %@, in <module>"), String(describing: path), String(describing: line)),
                  .err)
         }
         emit(message.isEmpty
@@ -14891,8 +14888,7 @@ enum BlacksitePy {
             qos: .userInitiated).async {
             guard let source = BlacksiteFS
                 .readText(virtualPath) else {
-                emit("python3: cannot read "
-                     + virtualPath, .err)
+                emit(String(format: L("python3: cannot read %@"), String(describing: virtualPath)), .err)
                 done()
                 return
             }

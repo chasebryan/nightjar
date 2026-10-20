@@ -273,10 +273,7 @@ final class BlacksiteShell: ObservableObject {
                 guard let self = self
                 else { return }
                 if proc.background {
-                    self.emit(
-                        "kernel: [\(proc.pid)] "
-                            + "\(proc.name) — "
-                            + proc.exitNote,
+                    self.emit(String(format: L("kernel: [%@] %@ — %@"), String(describing: proc.pid), String(describing: proc.name), String(describing: proc.exitNote)),
                         .sys)
                 }
                 self.updateBusy()
@@ -290,16 +287,11 @@ final class BlacksiteShell: ObservableObject {
             { [weak self] image, path in
                 self?.emitImage(image, path: path)
             }
-        emit("BLACKSITE OS — nightjar-hack "
-             + AppInfo.version, .sys)
-        emit("organs: scan · recon · decode · "
-             + "emcon · macros · skelli", .sys)
-        emit("mounted: files (ls /) · editors "
-             + "(vim · emacs) · engine (run · js) "
-             + "· graphics (gfx) · packages (pkg)",
+        emit(String(format: L("BLACKSITE OS — nightjar-hack %@"), String(describing: AppInfo.version)), .sys)
+        emit(L("organs: scan · recon · decode · emcon · macros · skelli"), .sys)
+        emit(L("mounted: files (ls /) · editors (vim · emacs) · engine (run · js) · graphics (gfx) · packages (pkg)"),
              .sys)
-        emit("every gate that holds in the house "
-             + "holds here. type 'help'.", .sys)
+        emit(L("every gate that holds in the house holds here. type 'help'."), .sys)
     }
 
     /// The machine identifier (iPhone18,2
@@ -498,13 +490,9 @@ final class BlacksiteShell: ObservableObject {
             client.trustAsk = {
                 [weak self] fingerprint, algorithm in
                 guard let self else { return false }
-                out("first contact — \(host) "
-                    + "shows an \(algorithm) "
-                    + "host key:", .sys)
+                out(String(format: L("first contact — %@ shows an %@ host key:"), String(describing: host), String(describing: algorithm)), .sys)
                 out("  " + fingerprint, .out)
-                out("trust it? The key is kept, "
-                    + "and a changed key is "
-                    + "refused after. Type yes:",
+                out(L("trust it? The key is kept, and a changed key is refused after. Type yes:"),
                     .sys)
                 let answer = self.awaitLine(
                     secret: false)
@@ -989,9 +977,7 @@ final class BlacksiteShell: ObservableObject {
                         resolved(inRedir.path)) {
                     stageStdin = content
                 } else {
-                    emit("\(inRedir.path): no "
-                         + "such file to "
-                         + "read '<' from.",
+                    emit(String(format: L("%@: no such file to read '<' from."), String(describing: inRedir.path)),
                          .err)
                     lastStatus = 1
                     input = ""
@@ -1094,9 +1080,7 @@ final class BlacksiteShell: ObservableObject {
         let target = BlacksiteFS.normalize(
             redirect.path, cwd: cwd)
         guard !target.hasPrefix("/bin") else {
-            emit("\(target): /bin is read-only "
-                 + "— the built-ins live in "
-                 + "the shell.", .err)
+            emit(String(format: L("%@: /bin is read-only — the built-ins live in the shell."), String(describing: target)), .err)
             lastStatus = 1
             return
         }
@@ -1107,8 +1091,7 @@ final class BlacksiteShell: ObservableObject {
             append: redirect.append) {
             lastStatus = 0
         } else {
-            emit("\(target): cannot write "
-                 + "there.", .err)
+            emit(String(format: L("%@: cannot write there."), String(describing: target)), .err)
             lastStatus = 1
         }
     }
@@ -1763,8 +1746,7 @@ final class BlacksiteShell: ObservableObject {
                        cursor.parts.count)
         guard execute else { return }
         if j >= cursor.parts.count {
-            emit("\(kind): the loop never "
-                 + "meets its 'done'.",
+            emit(String(format: L("%@: the loop never meets its 'done'."), String(describing: kind)),
                  .err)
             stageError = true
             return
@@ -1774,8 +1756,7 @@ final class BlacksiteShell: ObservableObject {
             let tokens = tokenize(
                 keywordPart)
             guard tokens.count >= 2 else {
-                emit("for: a variable "
-                     + "needs naming.",
+                emit(L("for: a variable needs naming."),
                      .err)
                 stageError = true
                 return
@@ -1798,9 +1779,7 @@ final class BlacksiteShell: ObservableObject {
             for value in values {
                 if returnFlag { break }
                 if ran >= cap {
-                    emit("for: the house "
-                         + "caps a loop at "
-                         + "\(cap) turns.",
+                    emit(String(format: L("for: the house caps a loop at %@ turns."), String(describing: cap)),
                          .err)
                     stageError = true
                     break
@@ -1819,8 +1798,7 @@ final class BlacksiteShell: ObservableObject {
         let cond = remainderText(
             keywordPart)
         guard !cond.isEmpty else {
-            emit("\(kind): no condition "
-                 + "to judge.", .err)
+            emit(String(format: L("%@: no condition to judge."), String(describing: kind)), .err)
             stageError = true
             return
         }
@@ -1834,9 +1812,7 @@ final class BlacksiteShell: ObservableObject {
                 : status != 0
             if !go { break }
             if turns >= cap {
-                emit("\(kind): the house "
-                     + "caps a loop at "
-                     + "\(cap) turns.",
+                emit(String(format: L("%@: the house caps a loop at %@ turns."), String(describing: kind), String(describing: cap)),
                      .err)
                 stageError = true
                 break
@@ -1906,8 +1882,7 @@ final class BlacksiteShell: ObservableObject {
         stdin: String) {
         let tokens = tokenize(keywordPart)
         guard tokens.count >= 2 else {
-            emit("case: a word needs "
-                 + "judging.", .err)
+            emit(L("case: a word needs judging."), .err)
             stageError = true
             return
         }
@@ -2712,8 +2687,7 @@ final class BlacksiteShell: ObservableObject {
                  + "source "
                  + (SourceStamp.shortCommit
                     ?? "unstamped"), .sys)
-            emit("operator: the one holding the "
-                 + "phone. console: blacksite.",
+            emit(L("operator: the one holding the phone. console: blacksite."),
                  .sys)
         case "ps":
             processes()
@@ -2740,10 +2714,7 @@ final class BlacksiteShell: ObservableObject {
                 hex: args.joined(separator: "")) {
                 emitBlock(line)
             } else {
-                emit("decode needs hex bytes — "
-                     + "'decode 4c001006…' (the "
-                     + "first two bytes are the "
-                     + "company, little-endian).",
+                emit(L("decode needs hex bytes — 'decode 4c001006…' (the first two bytes are the company, little-endian)."),
                      .err)
             }
         case "company":
@@ -2773,26 +2744,20 @@ final class BlacksiteShell: ObservableObject {
             macro(args)
         case "freedoom", "doom":
             if capturing {
-                emit("freedoom plays live — "
-                     + "it cannot be piped.",
+                emit(L("freedoom plays live — it cannot be piped."),
                      .err)
             } else {
                 programRequest = .freedoom
-                emit("the room opens. "
-                     + "rip and tear.",
+                emit(L("the room opens. rip and tear."),
                      .ok)
             }
         case "gauntlet":
             if capturing {
-                emit("the gauntlet runs live — "
-                     + "it cannot be piped.",
+                emit(L("the gauntlet runs live — it cannot be piped."),
                      .err)
             } else {
                 Gauntlet.shared.run()
-                emit("the gauntlet runs. 'ps' "
-                     + "watches it; the verdict "
-                     + "lands in the developer "
-                     + "room and the log.", .ok)
+                emit(L("the gauntlet runs. 'ps' watches it; the verdict lands in the developer room and the log."), .ok)
             }
         case "journal":
             journal(args)
@@ -2817,8 +2782,7 @@ final class BlacksiteShell: ObservableObject {
                 reason: "halted by the "
                     + "operator")
             SkelliCenter.shared.haltAndVanish()
-            emit("everything halted; the house "
-                 + "stands down.", .ok)
+            emit(L("everything halted; the house stands down."), .ok)
         case "pwd":
             emit(cwd)
         case "cd":
@@ -2885,8 +2849,7 @@ final class BlacksiteShell: ObservableObject {
                     Array(args.dropLast()),
                     bracket: true)
             } else {
-                emit("[: the closing ']' "
-                     + "went missing.",
+                emit(L("[: the closing ']' went missing."),
                      .err)
                 stageError = true
             }
@@ -2939,10 +2902,7 @@ final class BlacksiteShell: ObservableObject {
                     emit(L("the watch stands."),
                          .ok)
                 } else {
-                    emit("EMCON forbids the "
-                         + "watch under this "
-                         + "condition — it "
-                         + "stays down.", .err)
+                    emit(L("EMCON forbids the watch under this condition — it stays down."), .err)
                 }
             } else if mode == "off" {
                 watch.stop()
@@ -2958,7 +2918,7 @@ final class BlacksiteShell: ObservableObject {
                      .out)
                 if let gateway = watch
                     .gatewayIP {
-                    emit("gateway: \(gateway)",
+                    emit(String(format: L("gateway: %@"), String(describing: gateway)),
                          .out)
                 }
                 for line in watch.events
@@ -2985,22 +2945,14 @@ final class BlacksiteShell: ObservableObject {
                   let targetQ = rest.first,
                   let gearFinal = gearQ
             else {
-                emit("quarantine <ip> [via "
-                     + "<gear>] — the gear "
-                     + "defaults to the "
-                     + "gateway.", .err)
+                emit(L("quarantine <ip> [via <gear>] — the gear defaults to the gateway."), .err)
                 return
             }
             guard let communityQ =
                 CryptoSuite.NetCred.secret(
                     for: gearFinal)
             else {
-                emit("no credential kept "
-                     + "for \(gearFinal) — "
-                     + "quarantine rides your "
-                     + "own keys. cred set "
-                     + "\(gearFinal) keeps "
-                     + "one, in secret.",
+                emit(String(format: L("no credential kept for %@ — quarantine rides your own keys. cred set %@ keeps one, in secret."), String(describing: gearFinal), String(describing: gearFinal)),
                      .err)
                 return
             }
@@ -3020,8 +2972,7 @@ final class BlacksiteShell: ObservableObject {
             if args.first == "lift" {
                 emit(Lockdown.lift(), .sys)
             } else if Lockdown.active {
-                emit("the lockdown already "
-                     + "stands.", .out)
+                emit(L("the lockdown already stands."), .out)
             } else {
                 emit(Lockdown.engage(
                     reason: "the operator's "
@@ -3032,15 +2983,11 @@ final class BlacksiteShell: ObservableObject {
             let sentinel = Sentinel.shared
             if args.first == "clear" {
                 sentinel.clearAlerts()
-                emit("the ledger is clear — "
-                     + "baselines will re-lay "
-                     + "on the next heartbeat.",
+                emit(L("the ledger is clear — baselines will re-lay on the next heartbeat."),
                      .sys)
             } else if sentinel.alerts
                 .isEmpty {
-                emit("no alerts — the wire "
-                     + "has shown the Sentinel "
-                     + "nothing it judges.",
+                emit(L("no alerts — the wire has shown the Sentinel nothing it judges."),
                      .out)
             } else {
                 for alert in sentinel.alerts {
@@ -3106,10 +3053,7 @@ final class BlacksiteShell: ObservableObject {
         case "view":
             viewCommand(args)
         case "exit", "quit", "logout":
-            emit("there is no exit from the "
-                 + "blacksite — open another "
-                 + "tab; the console keeps "
-                 + "the light on.", .sys)
+            emit(L("there is no exit from the blacksite — open another tab; the console keeps the light on."), .sys)
         default:
             if let body = functions[head] {
                 callFunction(
@@ -3127,10 +3071,7 @@ final class BlacksiteShell: ObservableObject {
                 head) {
                 jsInvoke(head, args)
             } else {
-                emit("no such command: \(head) "
-                     + "— 'help' lists the "
-                     + "house; 'pkg list' lists "
-                     + "what can be installed.",
+                emit(String(format: L("no such command: %@ — 'help' lists the house; 'pkg list' lists what can be installed."), String(describing: head)),
                      .err)
             }
         }
@@ -3146,9 +3087,7 @@ final class BlacksiteShell: ObservableObject {
         args: [String]) {
         guard positionalStack.count < 32
         else {
-            emit("\(name): functions may "
-                 + "nest 32 deep in "
-                 + "this house.", .err)
+            emit(String(format: L("%@: functions may nest 32 deep in this house."), String(describing: name)), .err)
             stageError = true
             return
         }
@@ -3173,8 +3112,7 @@ final class BlacksiteShell: ObservableObject {
         _ args: [String]) {
         guard !positionalStack.isEmpty,
               !localFrames.isEmpty else {
-            emit("local: only a function "
-                 + "has locals.", .err)
+            emit(L("local: only a function has locals."), .err)
             stageError = true
             return
         }
@@ -3214,14 +3152,12 @@ final class BlacksiteShell: ObservableObject {
         let target = resolved(
             args.first ?? env["HOME"] ?? "/home")
         guard BlacksiteFS.exists(target) else {
-            emit("cd: no such directory: "
-                 + "\(target)", .err)
+            emit(String(format: L("cd: no such directory: %@"), String(describing: target)), .err)
             return
         }
         guard BlacksiteFS.isDirectory(target)
         else {
-            emit("cd: not a directory: "
-                 + "\(target)", .err)
+            emit(String(format: L("cd: not a directory: %@"), String(describing: target)), .err)
             return
         }
         cwd = target
@@ -3234,8 +3170,7 @@ final class BlacksiteShell: ObservableObject {
         let target = resolved(
             targetArg(args) ?? cwd)
         guard BlacksiteFS.exists(target) else {
-            emit("ls: no such place: "
-                 + "\(target)", .err)
+            emit(String(format: L("ls: no such place: %@"), String(describing: target)), .err)
             return
         }
         guard BlacksiteFS.isDirectory(target)
@@ -3250,7 +3185,7 @@ final class BlacksiteShell: ObservableObject {
         }
         guard let entries = BlacksiteFS.list(
             target) else {
-            emit("ls: cannot read \(target)",
+            emit(String(format: L("ls: cannot read %@"), String(describing: target)),
                  .err)
             return
         }
@@ -3298,9 +3233,7 @@ final class BlacksiteShell: ObservableObject {
         for arg in args {
             let target = resolved(arg)
             if !BlacksiteFS.makeDir(target) {
-                emit("mkdir: cannot make "
-                     + "\(target) — /bin is "
-                     + "read-only.", .err)
+                emit(String(format: L("mkdir: cannot make %@ — /bin is read-only."), String(describing: target)), .err)
             }
         }
     }
@@ -3317,8 +3250,7 @@ final class BlacksiteShell: ObservableObject {
             }
             if !BlacksiteFS.writeText(
                 target, text: "") {
-                emit("touch: cannot make "
-                     + "\(target).", .err)
+                emit(String(format: L("touch: cannot make %@."), String(describing: target)), .err)
             }
         }
     }
@@ -3328,8 +3260,7 @@ final class BlacksiteShell: ObservableObject {
             if !stageInput.isEmpty {
                 emitBlock(stageInput)
             } else {
-                emit("cat needs a file — "
-                     + "or a pipe.", .err)
+                emit(L("cat needs a file — or a pipe."), .err)
             }
             return
         }
@@ -3337,14 +3268,12 @@ final class BlacksiteShell: ObservableObject {
             let target = resolved(arg)
             guard !BlacksiteFS.isDirectory(target)
             else {
-                emit("cat: \(target) is a "
-                     + "directory.", .err)
+                emit(String(format: L("cat: %@ is a directory."), String(describing: target)), .err)
                 continue
             }
             guard let text = BlacksiteFS
                 .readText(target) else {
-                emit("cat: cannot read "
-                     + "\(target).", .err)
+                emit(String(format: L("cat: cannot read %@."), String(describing: target)), .err)
                 continue
             }
             var body = text
@@ -3367,11 +3296,9 @@ final class BlacksiteShell: ObservableObject {
                 of: from)
         }
         if BlacksiteFS.copy(from: from, to: to) {
-            emit("copied → \(to)", .sys)
+            emit(String(format: L("copied → %@"), String(describing: to)), .sys)
         } else {
-            emit("cp: cannot copy \(from) "
-                 + "there (files only; /bin "
-                 + "is read-only).", .err)
+            emit(String(format: L("cp: cannot copy %@ there (files only; /bin is read-only)."), String(describing: from)), .err)
         }
     }
 
@@ -3387,10 +3314,9 @@ final class BlacksiteShell: ObservableObject {
                 of: from)
         }
         if BlacksiteFS.move(from: from, to: to) {
-            emit("moved → \(to)", .sys)
+            emit(String(format: L("moved → %@"), String(describing: to)), .sys)
         } else {
-            emit("mv: cannot move \(from) "
-                 + "there.", .err)
+            emit(String(format: L("mv: cannot move %@ there."), String(describing: from)), .err)
         }
     }
 
@@ -3413,22 +3339,18 @@ final class BlacksiteShell: ObservableObject {
             }
             guard BlacksiteFS.exists(target)
             else {
-                emit("rm: no such thing: "
-                     + "\(target)", .err)
+                emit(String(format: L("rm: no such thing: %@"), String(describing: target)), .err)
                 continue
             }
             if BlacksiteFS.isDirectory(target),
                !recursive,
                !(BlacksiteFS.list(target)?
                     .isEmpty ?? true) {
-                emit("rm: \(target) is a full "
-                     + "directory — rm -r if "
-                     + "you mean it.", .err)
+                emit(String(format: L("rm: %@ is a full directory — rm -r if you mean it."), String(describing: target)), .err)
                 continue
             }
             if !BlacksiteFS.remove(target) {
-                emit("rm: cannot remove "
-                     + "\(target).", .err)
+                emit(String(format: L("rm: cannot remove %@."), String(describing: target)), .err)
             }
         }
     }
@@ -3438,8 +3360,7 @@ final class BlacksiteShell: ObservableObject {
             targetArg(args) ?? cwd)
         guard BlacksiteFS.isDirectory(target)
         else {
-            emit("tree: \(target) is not a "
-                 + "directory.", .err)
+            emit(String(format: L("tree: %@ is not a directory."), String(describing: target)), .err)
             return
         }
         emit(target == "/" ? "/" : target, .sys)
@@ -3449,7 +3370,7 @@ final class BlacksiteShell: ObservableObject {
             emit(row, .out)
         }
         if rows.count > 300 {
-            emit("… \(rows.count - 300) more",
+            emit(String(format: L("… %@ more"), String(describing: rows.count - 300)),
                  .sys)
         }
     }
@@ -3492,7 +3413,7 @@ final class BlacksiteShell: ObservableObject {
             let target = resolved(file)
             guard let text = BlacksiteFS
                 .readText(target) else {
-                emit("cannot read \(target).",
+                emit(String(format: L("cannot read %@."), String(describing: target)),
                      .err)
                 return nil
             }
@@ -3555,8 +3476,7 @@ final class BlacksiteShell: ObservableObject {
             let target = resolved(file)
             guard let found = BlacksiteFS
                 .readText(target) else {
-                emit("wc: cannot read "
-                     + "\(target).", .err)
+                emit(String(format: L("wc: cannot read %@."), String(describing: target)), .err)
                 return
             }
             text = found
@@ -3717,7 +3637,7 @@ final class BlacksiteShell: ObservableObject {
                 } ?? true
             }
         if found.isEmpty {
-            emit("find: nothing under \(root)",
+            emit(String(format: L("find: nothing under %@"), String(describing: root)),
                  .sys)
         }
         for path in found {
@@ -3732,19 +3652,15 @@ final class BlacksiteShell: ObservableObject {
         }
         let target = resolved(arg)
         guard BlacksiteFS.exists(target) else {
-            emit("stat: no such thing: "
-                 + "\(target)", .err)
+            emit(String(format: L("stat: no such thing: %@"), String(describing: target)), .err)
             return
         }
         if BlacksiteFS.isDirectory(target) {
             let count = BlacksiteFS.list(
                 target)?.count ?? 0
-            emit("\(target) — directory, "
-                 + "\(count) entries", .sys)
+            emit(String(format: L("%@ — directory, %@ entries"), String(describing: target), String(describing: count)), .sys)
         } else {
-            emit("\(target) — file, "
-                 + "\(BlacksiteFS.fileSize(target) ?? 0)"
-                 + " bytes", .sys)
+            emit(String(format: L("%@ — file, %@ bytes"), String(describing: target), String(describing: BlacksiteFS.fileSize(target) ?? 0)), .sys)
         }
     }
 
@@ -3756,15 +3672,13 @@ final class BlacksiteShell: ObservableObject {
         }
         if BlacksiteShell.builtinNames
             .contains(name) {
-            emit("/bin/\(name) — a built-in",
+            emit(String(format: L("/bin/%@ — a built-in"), String(describing: name)),
                  .out)
         } else if BlacksiteJS.shared
             .hasCommand(name) {
-            emit("\(name) — a package command "
-                 + "('pkg commands' lists "
-                 + "its kin)", .out)
+            emit(String(format: L("%@ — a package command ('pkg commands' lists its kin)"), String(describing: name)), .out)
         } else {
-            emit("\(name): not found", .err)
+            emit(String(format: L("%@: not found"), String(describing: name)), .err)
         }
     }
 
@@ -3773,8 +3687,7 @@ final class BlacksiteShell: ObservableObject {
     private func jsCommand(_ args: [String]) {
         let source = args.joined(separator: " ")
         guard !source.isEmpty else {
-            emit("js needs code — 'js 2 + 2', "
-                 + "or run a file.", .err)
+            emit(L("js needs code — 'js 2 + 2', or run a file."), .err)
             return
         }
         let background = stageBackground
@@ -3794,7 +3707,7 @@ final class BlacksiteShell: ObservableObject {
             BlacksiteKernel.shared.finish(
                 proc, note: "done")
             if let error = error {
-                self.emit("js: \(error)", .err)
+                self.emit(String(format: L("js: %@"), String(describing: error)), .err)
             } else if let result = result {
                 self.emit(result, .out)
             }
@@ -3855,12 +3768,11 @@ final class BlacksiteShell: ObservableObject {
                 parent: currentParentPID(),
                 background: background)
         if let refusal = refusal {
-            emit("kernel: \(refusal)", .err)
+            emit(String(format: L("kernel: %@"), String(describing: refusal)), .err)
             return nil
         }
         if background, let proc = proc {
-            emit("kernel: [\(proc.pid)] "
-                + "\(name) — background",
+            emit(String(format: L("kernel: [%@] %@ — background"), String(describing: proc.pid), String(describing: name)),
                 .sys)
         }
         updateBusy()
@@ -3933,8 +3845,7 @@ final class BlacksiteShell: ObservableObject {
         guard BlacksiteFS.exists(path),
               !BlacksiteFS.isDirectory(path)
         else {
-            emit("python3: no such file — "
-                 + typed, .err)
+            emit(String(format: L("python3: no such file — %@"), String(describing: typed)), .err)
             return
         }
         let background = stageBackground
@@ -3968,15 +3879,13 @@ final class BlacksiteShell: ObservableObject {
 
     private func runFileCommand(_ args: [String]) {
         guard let file = args.first else {
-            emit("run <file.js | file.py | "
-                 + "file.sh | file.wasm>",
+            emit(L("run <file.js | file.py | file.sh | file.wasm>"),
                  .err)
             return
         }
         let target = resolved(file)
         guard BlacksiteFS.exists(target) else {
-            emit("run: no such file: "
-                 + "\(target)", .err)
+            emit(String(format: L("run: no such file: %@"), String(describing: target)), .err)
             return
         }
         if target.hasSuffix(".js") {
@@ -4004,7 +3913,7 @@ final class BlacksiteShell: ObservableObject {
                         "done — \($0)"
                     } ?? "done")
                 if let error = error {
-                    self.emit("run: \(error)",
+                    self.emit(String(format: L("run: %@"), String(describing: error)),
                               .err)
                 }
                 self.updateBusy()
@@ -4058,8 +3967,7 @@ final class BlacksiteShell: ObservableObject {
                     target)
             }
             guard let data = data else {
-                emit("run: cannot read "
-                     + "\(target).", .err)
+                emit(String(format: L("run: cannot read %@."), String(describing: target)), .err)
                 return
             }
             wasmRun(
@@ -4073,10 +3981,7 @@ final class BlacksiteShell: ObservableObject {
                     || target.hasSuffix(".bsh") {
             runScript(target)
         } else {
-            emit("run takes a .js, .py, .sh "
-                 + "or .wasm "
-                 + "file — '\(file)' is "
-                 + "none of them.", .err)
+            emit(String(format: L("run takes a .js, .py, .sh or .wasm file — '%@' is none of them."), String(describing: file)), .err)
         }
     }
 
@@ -4091,9 +3996,7 @@ final class BlacksiteShell: ObservableObject {
         stdin: String) {
         guard let data = BlacksiteWasm
             .linuxboxData() else {
-            emit("the linux userspace is "
-                 + "missing — its bundled "
-                 + "binary did not decode.",
+            emit(L("the linux userspace is missing — its bundled binary did not decode."),
                  .err)
             stageError = true
             return
@@ -4161,8 +4064,7 @@ final class BlacksiteShell: ObservableObject {
         }
         let target = resolved(file)
         guard BlacksiteFS.exists(target) else {
-            emit("sh: no such file: "
-                 + "\(target)", .err)
+            emit(String(format: L("sh: no such file: %@"), String(describing: target)), .err)
             return
         }
         runScript(target)
@@ -4171,7 +4073,7 @@ final class BlacksiteShell: ObservableObject {
     private func runScript(_ target: String) {
         guard let text = BlacksiteFS.readText(
             target) else {
-            emit("cannot read \(target).",
+            emit(String(format: L("cannot read %@."), String(describing: target)),
                  .err)
             return
         }
@@ -4187,10 +4089,7 @@ final class BlacksiteShell: ObservableObject {
             for rawLine in text.components(
                 separatedBy: "\n") {
                 if proc.cancel.isCancelled {
-                    self.emit(
-                        "kernel: [\(proc.pid)] "
-                            + "\(proc.name) — "
-                            + "stopped.",
+                    self.emit(String(format: L("kernel: [%@] %@ — stopped."), String(describing: proc.pid), String(describing: proc.name)),
                         .sys)
                     break
                 }
@@ -4347,15 +4246,14 @@ final class BlacksiteShell: ObservableObject {
                      .sys)
             }
             for name in installed {
-                emit("● \(name) — installed",
+                emit(String(format: L("● %@ — installed"), String(describing: name)),
                      .out)
             }
             for (name, pkg) in BlacksiteJS
                 .bundled.sorted(
                     by: { $0.key < $1.key })
                 where !installed.contains(name) {
-                emit("○ \(name) — \(pkg.blurb) "
-                     + "('pkg install \(name)')",
+                emit(String(format: L("○ %@ — %@ ('pkg install %@')"), String(describing: name), String(describing: pkg.blurb), String(describing: name)),
                      .sys)
             }
         case "install":
@@ -4372,7 +4270,7 @@ final class BlacksiteShell: ObservableObject {
                     return
                 }
                 busy = true
-                emit("fetching \(target)…",
+                emit(String(format: L("fetching %@…"), String(describing: target)),
                      .sys)
                 engine.installFromURL(target) {
                     [weak self] error in
@@ -4380,26 +4278,19 @@ final class BlacksiteShell: ObservableObject {
                     else { return }
                     self.busy = false
                     if let error = error {
-                        self.emit("pkg: \(error)",
+                        self.emit(String(format: L("pkg: %@"), String(describing: error)),
                                   .err)
                     } else {
-                        self.emit("installed. "
-                                  + "its commands "
-                                  + "are live — "
-                                  + "'pkg "
-                                  + "commands'.",
+                        self.emit(L("installed. its commands are live — 'pkg commands'."),
                                   .ok)
                     }
                 }
             } else if let error = engine
                 .installBundled(
                     target.lowercased()) {
-                emit("pkg: \(error)", .err)
+                emit(String(format: L("pkg: %@"), String(describing: error)), .err)
             } else {
-                emit("installed "
-                     + "\(target.lowercased()) "
-                     + "— 'pkg commands' shows "
-                     + "its gifts.", .ok)
+                emit(String(format: L("installed %@ — 'pkg commands' shows its gifts."), String(describing: target.lowercased())), .ok)
             }
         case "remove", "rm":
             guard let target = args.dropFirst()
@@ -4408,26 +4299,20 @@ final class BlacksiteShell: ObservableObject {
                 return
             }
             if engine.removePackage(target) {
-                emit("removed \(target) — its "
-                     + "commands leave with "
-                     + "it.", .ok)
+                emit(String(format: L("removed %@ — its commands leave with it."), String(describing: target)), .ok)
             } else {
-                emit("pkg: \(target) is not "
-                     + "installed.", .err)
+                emit(String(format: L("pkg: %@ is not installed."), String(describing: target)), .err)
             }
         case "commands":
             let names = engine.commandNames()
             if names.isEmpty {
-                emit("no package commands yet "
-                     + "— 'pkg list'.", .sys)
+                emit(L("no package commands yet — 'pkg list'."), .sys)
             }
             for name in names {
                 emit("  \(name)", .out)
             }
         default:
-            emit("pkg list · install <name|url>"
-                 + " · remove <name> · "
-                 + "commands", .err)
+            emit(L("pkg list · install <name|url> · remove <name> · commands"), .err)
         }
     }
 
@@ -4438,27 +4323,18 @@ final class BlacksiteShell: ObservableObject {
         let keeper = BlacksiteWallpaper.shared
         guard let wanted = args.first?
             .lowercased() else {
-            emit("the room wears: "
-                 + keeper.kind + " — filed at "
-                 + "/var/wallpaper-"
-                 + keeper.kind + ".png. "
-                 + "'wallpaper stars|plasma|"
-                 + "mandelbrot' repaints it.",
+            emit(String(format: L("the room wears: %@ — filed at /var/wallpaper-%@.png. 'wallpaper stars|plasma|mandelbrot' repaints it."), String(describing: keeper.kind), String(describing: keeper.kind)),
                  .sys)
             return
         }
         guard BlacksiteWallpaper.kinds
             .contains(wanted) else {
-            emit("wallpaper kinds: stars, "
-                 + "plasma, mandelbrot.",
+            emit(L("wallpaper kinds: stars, plasma, mandelbrot."),
                  .err)
             return
         }
         keeper.regenerate(kind: wanted)
-        emit("repainting the room: "
-             + wanted + " — the engine "
-             + "works; the wall changes "
-             + "when it is done.", .ok)
+        emit(String(format: L("repainting the room: %@ — the engine works; the wall changes when it is done."), String(describing: wanted)), .ok)
     }
 
     // MARK: Graphics
@@ -4477,9 +4353,7 @@ final class BlacksiteShell: ObservableObject {
             _ = engine.demo()
             let path = engine.show(
                 path: "/tmp/demo.png")
-            emit("drew the demo card — filed "
-                 + "at \(path). your own: "
-                 + "gfx.* in any .js program.",
+            emit(String(format: L("drew the demo card — filed at %@. your own: gfx.* in any .js program."), String(describing: path)),
                  .sys)
         case "mandelbrot", "plasma", "stars":
             guard !capturing else {
@@ -4501,7 +4375,7 @@ final class BlacksiteShell: ObservableObject {
                     height = single
                 }
             }
-            emit("rendering \(sub)…", .sys)
+            emit(String(format: L("rendering %@…"), String(describing: sub)), .sys)
             busy = true
             DispatchQueue.global(
                 qos: .userInitiated).async {
@@ -4514,9 +4388,7 @@ final class BlacksiteShell: ObservableObject {
                     else { return }
                     self.busy = false
                     guard let image = image else {
-                        self.emit("gfx: the "
-                                  + "renderer "
-                                  + "refused.",
+                        self.emit(L("gfx: the renderer refused."),
                                   .err)
                         return
                     }
@@ -4527,9 +4399,7 @@ final class BlacksiteShell: ObservableObject {
                     }
                     self.emitImage(image,
                                    path: path)
-                    self.emit("rendered \(sub) "
-                              + "— filed at "
-                              + "\(path).", .sys)
+                    self.emit(String(format: L("rendered %@ — filed at %@."), String(describing: sub), String(describing: path)), .sys)
                 }
             }
         case "show":
@@ -4541,9 +4411,7 @@ final class BlacksiteShell: ObservableObject {
             }
             showPicture(resolved(file))
         default:
-            emit("gfx demo · mandelbrot · "
-                 + "plasma · stars · show "
-                 + "<file>", .err)
+            emit(L("gfx demo · mandelbrot · plasma · stars · show <file>"), .err)
         }
     }
 
@@ -4552,8 +4420,7 @@ final class BlacksiteShell: ObservableObject {
             target),
               let image = UIImage(data: data)
         else {
-            emit("\(target): not a picture "
-                 + "I can show.", .err)
+            emit(String(format: L("%@: not a picture I can show."), String(describing: target)), .err)
             return
         }
         emitImage(image, path: target)
@@ -4791,17 +4658,12 @@ final class BlacksiteShell: ObservableObject {
                  + done.summary, .sys)
         }
         for proc in procs where proc.isLive {
-            emit("● pid \(proc.pid) · "
-                 + "\(proc.name) — "
-                 + kernelState(proc)
-                 + " · \(Int(proc.elapsed))s",
+            emit(String(format: L("● pid %@ · %@ — %@ · %@s"), String(describing: proc.pid), String(describing: proc.name), String(describing: kernelState(proc)), String(describing: Int(proc.elapsed))),
                  .out)
         }
         for proc in procs.filter({
             !$0.isLive }).suffix(4) {
-            emit("○ pid \(proc.pid) · "
-                 + "\(proc.name) — "
-                 + proc.exitNote, .sys)
+            emit(String(format: L("○ pid %@ · %@ — %@"), String(describing: proc.pid), String(describing: proc.name), String(describing: proc.exitNote)), .sys)
         }
     }
 
@@ -5030,8 +4892,7 @@ final class BlacksiteShell: ObservableObject {
             guard let text = BlacksiteFS
                 .readText(resolved(file))
             else {
-                emit("\(command): \(file): "
-                     + "no such file.",
+                emit(String(format: L("%@: %@: no such file."), String(describing: command), String(describing: file)),
                      .err)
                 stageError = true
                 return nil
@@ -5187,9 +5048,7 @@ final class BlacksiteShell: ObservableObject {
             i += 1
         }
         guard let spec = spec else {
-            emit("cut: name the fields "
-                 + "(-f) or the columns "
-                 + "(-c).", .err)
+            emit(L("cut: name the fields (-f) or the columns (-c)."), .err)
             stageError = true
             return
         }
@@ -5746,8 +5605,7 @@ final class BlacksiteShell: ObservableObject {
             i += 1
         }
         guard !scripts.isEmpty else {
-            emit("sed: a script is the "
-                 + "whole job.", .err)
+            emit(L("sed: a script is the whole job."), .err)
             stageError = true
             return
         }
@@ -5756,8 +5614,7 @@ final class BlacksiteShell: ObservableObject {
             for piece in sedSplit(script) {
                 guard let edit = parseSedEdit(
                     piece) else {
-                    emit("sed: cannot parse "
-                         + "'\(piece)'.",
+                    emit(String(format: L("sed: cannot parse '%@'."), String(describing: piece)),
                          .err)
                     stageError = true
                     return
@@ -5775,8 +5632,7 @@ final class BlacksiteShell: ObservableObject {
                 guard let text = BlacksiteFS
                     .readText(resolved(file))
                 else {
-                    emit("sed: \(file): no "
-                         + "such file.", .err)
+                    emit(String(format: L("sed: %@: no such file."), String(describing: file)), .err)
                     stageError = true
                     return
                 }
@@ -6107,8 +5963,7 @@ final class BlacksiteShell: ObservableObject {
                     .readText(
                         resolved(files[1]))
             else {
-                emit("diff: a file named "
-                     + "cannot be read.",
+                emit(L("diff: a file named cannot be read."),
                      .err)
                 stageError = true
                 return
@@ -6121,8 +5976,7 @@ final class BlacksiteShell: ObservableObject {
             guard let ta = BlacksiteFS
                 .readText(resolved(files[0]))
             else {
-                emit("diff: \(files[0]): "
-                     + "no such file.",
+                emit(String(format: L("diff: %@: no such file."), String(describing: files[0])),
                      .err)
                 stageError = true
                 return
@@ -6132,8 +5986,7 @@ final class BlacksiteShell: ObservableObject {
             aName = files[0]
             bName = "stdin"
         } else {
-            emit("diff: name two texts, "
-                 + "or one and a pipe.",
+            emit(L("diff: name two texts, or one and a pipe."),
                  .err)
             stageError = true
             return
@@ -6155,8 +6008,7 @@ final class BlacksiteShell: ObservableObject {
         // fuzzed pairs.
         guard a.count * b.count
                 <= 120_000_000 else {
-            emit("diff: too large for "
-                 + "this room.", .err)
+            emit(L("diff: too large for this room."), .err)
             stageError = true
             return
         }
@@ -6350,8 +6202,7 @@ final class BlacksiteShell: ObservableObject {
             if !BlacksiteFS.writeText(
                 resolved(file), text: body,
                 append: append) {
-                emit("tee: \(file): cannot "
-                     + "write there.", .err)
+                emit(String(format: L("tee: %@: cannot write there."), String(describing: file)), .err)
                 stageError = true
             }
         }
@@ -6456,8 +6307,7 @@ final class BlacksiteShell: ObservableObject {
     private func seqCommand(_ args: [String]) {
         let nums = args.compactMap(Double.init)
         guard !nums.isEmpty else {
-            emit("seq: numbers are the "
-                 + "whole job.", .err)
+            emit(L("seq: numbers are the whole job."), .err)
             stageError = true
             return
         }
@@ -6478,8 +6328,7 @@ final class BlacksiteShell: ObservableObject {
             last = nums[2]
         }
         guard step != 0 else {
-            emit("seq: a step of zero "
-                 + "goes nowhere.", .err)
+            emit(L("seq: a step of zero goes nowhere."), .err)
             stageError = true
             return
         }
@@ -6516,8 +6365,7 @@ final class BlacksiteShell: ObservableObject {
             guard let read = BlacksiteFS
                 .readText(resolved(file))
             else {
-                emit("base64: \(file): no "
-                     + "such file.", .err)
+                emit(String(format: L("base64: %@: no such file."), String(describing: file)), .err)
                 stageError = true
                 return
             }
@@ -6536,9 +6384,7 @@ final class BlacksiteShell: ObservableObject {
                     data: data,
                     encoding: .utf8)
             else {
-                emit("base64: that is not "
-                     + "base64, or not text "
-                     + "once decoded.",
+                emit(L("base64: that is not base64, or not text once decoded."),
                      .err)
                 stageError = true
                 return
@@ -6591,8 +6437,7 @@ final class BlacksiteShell: ObservableObject {
             guard let data = BlacksiteFS
                 .readData(resolved(file))
             else {
-                emit("\(head): \(file): no "
-                     + "such file.", .err)
+                emit(String(format: L("%@: %@: no such file."), String(describing: head), String(describing: file)), .err)
                 stageError = true
                 continue
             }
@@ -6609,8 +6454,7 @@ final class BlacksiteShell: ObservableObject {
             guard let read = BlacksiteFS
                 .readData(resolved(file))
             else {
-                emit("xxd: \(file): no "
-                     + "such file.", .err)
+                emit(String(format: L("xxd: %@: no such file."), String(describing: file)), .err)
                 stageError = true
                 return
             }
@@ -6661,8 +6505,7 @@ final class BlacksiteShell: ObservableObject {
         guard let seconds = args.first
                 .flatMap(Double.init)
         else {
-            emit("sleep: name the "
-                 + "seconds.", .err)
+            emit(L("sleep: name the seconds."), .err)
             stageError = true
             return
         }
@@ -6674,8 +6517,7 @@ final class BlacksiteShell: ObservableObject {
         _ args: [String]) {
         guard let format = args.first
         else {
-            emit("printf: a format is "
-                 + "the whole job.", .err)
+            emit(L("printf: a format is the whole job."), .err)
             stageError = true
             return
         }
@@ -6898,8 +6740,7 @@ final class BlacksiteShell: ObservableObject {
             let path = resolved(target)
             guard BlacksiteFS.exists(path)
             else {
-                emit("du: \(target): no "
-                     + "such place.", .err)
+                emit(String(format: L("du: %@: no such place."), String(describing: target)), .err)
                 stageError = true
                 continue
             }
@@ -6950,8 +6791,7 @@ final class BlacksiteShell: ObservableObject {
             !$0.hasPrefix("-")
         }
         guard !targets.isEmpty else {
-            emit("file: name something "
-                 + "to identify.", .err)
+            emit(L("file: name something to identify."), .err)
             stageError = true
             return
         }
@@ -6963,9 +6803,7 @@ final class BlacksiteShell: ObservableObject {
                     + "(a virtual file)"
             } else if !BlacksiteFS
                 .exists(path) {
-                emit("file: \(target): "
-                     + "cannot open — no "
-                     + "such file.", .err)
+                emit(String(format: L("file: %@: cannot open — no such file."), String(describing: target)), .err)
                 stageError = true
                 continue
             } else if BlacksiteFS
@@ -7083,8 +6921,7 @@ final class BlacksiteShell: ObservableObject {
             guard let read = BlacksiteFS
                 .readData(resolved(file))
             else {
-                emit("strings: \(file): no "
-                     + "such file.", .err)
+                emit(String(format: L("strings: %@: no such file."), String(describing: file)), .err)
                 stageError = true
                 return
             }
@@ -7150,8 +6987,7 @@ final class BlacksiteShell: ObservableObject {
             year = nums[1]
         }
         guard (1...12).contains(month) else {
-            emit("cal: months run 1 "
-                 + "through 12.", .err)
+            emit(L("cal: months run 1 through 12."), .err)
             stageError = true
             return
         }
@@ -7363,9 +7199,7 @@ final class BlacksiteShell: ObservableObject {
         let text = words.joined(
             separator: " ").uppercased()
         guard !text.isEmpty else {
-            emit("figlet: give me words "
-                 + "and I'll make them "
-                 + "big.", .err)
+            emit(L("figlet: give me words and I'll make them big."), .err)
             stageError = true
             return
         }
@@ -7512,39 +7346,27 @@ final class BlacksiteShell: ObservableObject {
              + "live instruments, not "
              + "text."),
         ]
-        emit("limits — what this room "
-             + "honestly cannot do:",
+        emit(L("limits — what this room honestly cannot do:"),
              .sys)
         for (name, why) in rows {
             emit("  " + name + " — " + why,
                  .out)
         }
-        emit("everything else that "
-             + "once refused has been "
-             + "built. if a wall is not "
-             + "on this list, it is a "
-             + "bug: run diagnose, and "
-             + "say so.", .sys)
+        emit(L("everything else that once refused has been built. if a wall is not on this list, it is a bug: run diagnose, and say so."), .sys)
     }
 
     private func diagnoseCommand() {
         guard !diagnoseRunning else {
-            emit("diagnose: the battery "
-                 + "is already running.",
+            emit(L("diagnose: the battery is already running."),
                  .err)
             return
         }
         diagnoseRunning = true
-        emit("diagnose — the house "
-             + "through its paces: "
-             + "engines, libraries, and "
-             + "the containment drills.",
+        emit(L("diagnose — the house through its paces: engines, libraries, and the containment drills."),
              .sys)
         if BlacksiteKernel.shared
             .liveCount > 0 {
-            emit("other programs are "
-                 + "live; the drills share "
-                 + "the table with them.",
+            emit(L("other programs are live; the drills share the table with them."),
                  .sys)
         }
         let probes = diagnoseProbes()
@@ -8396,8 +8218,7 @@ final class BlacksiteShell: ObservableObject {
         let live = BlacksiteKernel.shared
             .snapshot().filter { $0.isLive }
         if live.isEmpty {
-            emit("no jobs — nothing runs "
-                 + "under the kernel.", .sys)
+            emit(L("no jobs — nothing runs under the kernel."), .sys)
             return
         }
         for proc in live {
@@ -8433,20 +8254,17 @@ final class BlacksiteShell: ObservableObject {
         _ args: [String]) {
         guard let first = args.first,
               let pid = Int(first) else {
-            emit("kill <pid> — 'ps' lists "
-                 + "the kernel's table.", .err)
+            emit(L("kill <pid> — 'ps' lists the kernel's table."), .err)
             return
         }
         if let proc = BlacksiteKernel.shared
             .kill(pid: pid,
                   reason: "killed by the "
                     + "operator") {
-            emit("kernel: [\(pid)] "
-                 + "\(proc.name) — killed.",
+            emit(String(format: L("kernel: [%@] %@ — killed."), String(describing: pid), String(describing: proc.name)),
                  .sys)
         } else {
-            emit("kill: no live process "
-                 + "\(pid).", .err)
+            emit(String(format: L("kill: no live process %@."), String(describing: pid)), .err)
         }
     }
 
@@ -8454,8 +8272,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func scan(_ args: [String]) {
         if capturing {
-            emit("scan runs live — it cannot "
-                 + "be piped or captured.", .err)
+            emit(L("scan runs live — it cannot be piped or captured."), .err)
             return
         }
         let port = args.first.flatMap(Int.init)
@@ -8466,10 +8283,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         if EmconStandard.refused(.sweep) {
-            emit("the Standard refuses the sweep "
-                 + "under "
-                 + EmconCondition.current.name
-                 + ".", .err)
+            emit(String(format: L("the Standard refuses the sweep under %@."), String(describing: EmconCondition.current.name)), .err)
             return
         }
         guard !scanner.sweeping else {
@@ -8479,8 +8293,7 @@ final class BlacksiteShell: ObservableObject {
         }
         scanner.sweep(port: port)
         busy = true
-        emit("sweeping the wire on port "
-             + "\(port)…", .sys)
+        emit(String(format: L("sweeping the wire on port %@…"), String(describing: port)), .sys)
         Task { [weak self] in
             guard let self = self else { return }
             while self.scanner.sweeping {
@@ -8491,21 +8304,15 @@ final class BlacksiteShell: ObservableObject {
             await MainActor.run {
                 self.busy = false
                 if hosts.isEmpty {
-                    self.emit("the sweep found no "
-                              + "one on port "
-                              + "\(port).", .out)
+                    self.emit(String(format: L("the sweep found no one on port %@."), String(describing: port)), .out)
                 } else {
-                    self.emit("\(hosts.count) "
-                              + "answered on port "
-                              + "\(port):", .ok)
+                    self.emit(String(format: L("%@ answered on port %@:"), String(describing: hosts.count), String(describing: port)), .ok)
                     for host in hosts.prefix(24) {
                         self.emit("  \(host.ip)",
                                   .out)
                     }
                     if hosts.count > 24 {
-                        self.emit("  …and "
-                                  + "\(hosts.count - 24) "
-                                  + "more", .sys)
+                        self.emit(String(format: L("  …and %@ more"), String(describing: hosts.count - 24)), .sys)
                     }
                 }
             }
@@ -8514,13 +8321,11 @@ final class BlacksiteShell: ObservableObject {
 
     private func knock(_ args: [String]) {
         if capturing {
-            emit("knock runs live — it cannot "
-                 + "be piped or captured.", .err)
+            emit(L("knock runs live — it cannot be piped or captured."), .err)
             return
         }
         guard let host = args.first else {
-            emit("knock needs a host — "
-                 + "'knock 192.168.4.1'.", .err)
+            emit(L("knock needs a host — 'knock 192.168.4.1'."), .err)
             return
         }
         let ports: [Int]
@@ -8539,10 +8344,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         if EmconStandard.refused(.probing) {
-            emit("the Standard refuses probing "
-                 + "under "
-                 + EmconCondition.current.name
-                 + ".", .err)
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
             return
         }
         runKnock(host: host, ports: ports,
@@ -8570,8 +8372,7 @@ final class BlacksiteShell: ObservableObject {
             await MainActor.run {
                 self.busy = false
                 if hits.isEmpty {
-                    self.emit("\(label): every "
-                              + "door shut.", .out)
+                    self.emit(String(format: L("%@: every door shut."), String(describing: label)), .out)
                 } else {
                     for hit in hits {
                         var line = "\(label): "
@@ -8592,27 +8393,20 @@ final class BlacksiteShell: ObservableObject {
 
     private func census() {
         if capturing {
-            emit("census runs live — it "
-                 + "cannot be piped or "
-                 + "captured.", .err)
+            emit(L("census runs live — it cannot be piped or captured."), .err)
             return
         }
         if EmconStandard.refused(.probing) {
-            emit("the Standard refuses probing "
-                 + "under "
-                 + EmconCondition.current.name
-                 + ".", .err)
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
             return
         }
         let board = NeighborhoodStore.shared
             .neighbors
         guard !board.isEmpty else {
-            emit("the board is empty — nothing "
-                 + "to census yet.", .err)
+            emit(L("the board is empty — nothing to census yet."), .err)
             return
         }
-        emit("census of \(board.count) known "
-             + "devices, in turn…", .sys)
+        emit(String(format: L("census of %@ known devices, in turn…"), String(describing: board.count)), .sys)
         Task { [weak self] in
             guard let self = self else { return }
             for neighbor in board.prefix(12) {
@@ -8633,7 +8427,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             await MainActor.run {
-                self.emit("census complete.",
+                self.emit(L("census complete."),
                           .sys)
             }
         }
@@ -8648,16 +8442,11 @@ final class BlacksiteShell: ObservableObject {
     private func netAllowed(_ name: String)
         -> Bool {
         if capturing {
-            emit("\(name) runs live — it "
-                 + "cannot be piped or "
-                 + "captured.", .err)
+            emit(String(format: L("%@ runs live — it cannot be piped or captured."), String(describing: name)), .err)
             return false
         }
         if EmconStandard.refused(.probing) {
-            emit("the Standard refuses "
-                 + "probing under "
-                 + EmconCondition.current.name
-                 + ".", .err)
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
             return false
         }
         return true
@@ -8743,8 +8532,7 @@ final class BlacksiteShell: ObservableObject {
             guard netAllowed(name),
                   let host = args.first else {
                 if args.isEmpty {
-                    emit("traceroute needs a "
-                         + "host.", .err)
+                    emit(L("traceroute needs a host."), .err)
                 }
                 return
             }
@@ -8773,10 +8561,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             guard let target = target else {
-                emit("dig needs a name — "
-                     + "'dig example.com', "
-                     + "'dig @192.168.4.1 "
-                     + "x.local AAAA'.",
+                emit(L("dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'."),
                      .err)
                 return
             }
@@ -8792,8 +8577,7 @@ final class BlacksiteShell: ObservableObject {
                   let target = args.first
             else {
                 if args.isEmpty {
-                    emit("nslookup needs a "
-                         + "name.", .err)
+                    emit(L("nslookup needs a name."), .err)
                 }
                 return
             }
@@ -8818,8 +8602,7 @@ final class BlacksiteShell: ObservableObject {
                   let target = args.first
             else {
                 if args.isEmpty {
-                    emit("host needs a name "
-                         + "or an address.",
+                    emit(L("host needs a name or an address."),
                          .err)
                 }
                 return
@@ -8834,8 +8617,7 @@ final class BlacksiteShell: ObservableObject {
                   let domain = args.first
             else {
                 if args.isEmpty {
-                    emit("whois needs a "
-                         + "domain.", .err)
+                    emit(L("whois needs a domain."), .err)
                 }
                 return
             }
@@ -8946,9 +8728,7 @@ final class BlacksiteShell: ObservableObject {
             guard rest.count >= 2,
                   let port = Int(rest[1])
             else {
-                emit("nc wants 'nc "
-                     + "[-u] [-z] <host> "
-                     + "<port> [words…]'.",
+                emit(L("nc wants 'nc [-u] [-z] <host> <port> [words…]'."),
                      .err)
                 return
             }
@@ -8972,8 +8752,7 @@ final class BlacksiteShell: ObservableObject {
                              + " — " + problem,
                              .err)
                     } else if scanOnly {
-                        emit("\(host):\(port)"
-                             + " — open.", .ok)
+                        emit(String(format: L("%@:%@ — open."), String(describing: host), String(describing: port)), .ok)
                     } else if let text = text,
                               !text.isEmpty {
                         for row in text.split(
@@ -8984,10 +8763,7 @@ final class BlacksiteShell: ObservableObject {
                                  .out)
                         }
                     } else {
-                        emit("\(host):\(port)"
-                             + " — the door "
-                             + "opened; it said "
-                             + "nothing.", .out)
+                        emit(String(format: L("%@:%@ — the door opened; it said nothing."), String(describing: host), String(describing: port)), .out)
                     }
                     done()
                 }
@@ -8997,8 +8773,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("telnet needs a "
-                         + "host.", .err)
+                    emit(L("telnet needs a host."), .err)
                 }
                 return
             }
@@ -9023,8 +8798,7 @@ final class BlacksiteShell: ObservableObject {
                                  .out)
                         }
                     } else {
-                        emit("the far end "
-                             + "said nothing.",
+                        emit(L("the far end said nothing."),
                              .out)
                     }
                     done()
@@ -9036,10 +8810,7 @@ final class BlacksiteShell: ObservableObject {
             }
             guard let base = args.first
                 ?? localPrefix() else {
-                emit("discover: this "
-                     + "phone has no local "
-                     + "address to sweep "
-                     + "from.", .err)
+                emit(L("discover: this phone has no local address to sweep from."), .err)
                 return
             }
             netBusy { emit, done in
@@ -9052,8 +8823,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("portscan needs a "
-                         + "host.", .err)
+                    emit(L("portscan needs a host."), .err)
                 }
                 return
             }
@@ -9090,10 +8860,7 @@ final class BlacksiteShell: ObservableObject {
                     }
             }
             guard !ports.isEmpty else {
-                emit("portscan: no readable "
-                     + "doors in that — "
-                     + "try 'top', '1-1024', "
-                     + "'all', or a list.",
+                emit(L("portscan: no readable doors in that — try 'top', '1-1024', 'all', or a list."),
                      .err)
                 return
             }
@@ -9108,9 +8875,7 @@ final class BlacksiteShell: ObservableObject {
                   let port = Int(args[1])
             else {
                 if args.count < 2 {
-                    emit("banner wants "
-                         + "'banner <host> "
-                         + "<port>'.", .err)
+                    emit(L("banner wants 'banner <host> <port>'."), .err)
                 }
                 return
             }
@@ -9135,11 +8900,7 @@ final class BlacksiteShell: ObservableObject {
                                  .out)
                         }
                     } else {
-                        emit("\(host):\(port)"
-                             + " — the door "
-                             + "opened and "
-                             + "stayed "
-                             + "silent.", .out)
+                        emit(String(format: L("%@:%@ — the door opened and stayed silent."), String(describing: host), String(describing: port)), .out)
                     }
                     done()
                 }
@@ -9149,8 +8910,7 @@ final class BlacksiteShell: ObservableObject {
                   let domain = args.first
             else {
                 if args.isEmpty {
-                    emit("subdomains needs "
-                         + "a domain.", .err)
+                    emit(L("subdomains needs a domain."), .err)
                 }
                 return
             }
@@ -9165,9 +8925,7 @@ final class BlacksiteShell: ObservableObject {
             }
             guard let base = args.first
                 ?? localPrefix() else {
-                emit("revdns: name a /24 "
-                     + "— 'revdns "
-                     + "192.168.4'.", .err)
+                emit(L("revdns: name a /24 — 'revdns 192.168.4'."), .err)
                 return
             }
             let server = args.count > 1
@@ -9183,8 +8941,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("nbstat needs a "
-                         + "host.", .err)
+                    emit(L("nbstat needs a host."), .err)
                 }
                 return
             }
@@ -9198,8 +8955,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("snmp needs a "
-                         + "host.", .err)
+                    emit(L("snmp needs a host."), .err)
                 }
                 return
             }
@@ -9216,8 +8972,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("snmpaudit needs a "
-                         + "host.", .err)
+                    emit(L("snmpaudit needs a host."), .err)
                 }
                 return
             }
@@ -9248,9 +9003,7 @@ final class BlacksiteShell: ObservableObject {
                 let hosts = CryptoSuite.NetCred
                     .hosts()
                 if hosts.isEmpty {
-                    out("no credentials kept "
-                        + "yet — cred set <host> "
-                        + "keeps one.", .out)
+                    out(L("no credentials kept yet — cred set <host> keeps one."), .out)
                 } else {
                     for account in hosts {
                         if account.hasPrefix(
@@ -9264,11 +9017,7 @@ final class BlacksiteShell: ObservableObject {
                                     separator: "|",
                                     omittingEmptySubsequences: false)
                             if parts.count == 3 {
-                                out("\(parts[1]) "
-                                    + "— \(parts[2])"
-                                    + ", UniFi "
-                                    + "controller "
-                                    + "login",
+                                out(String(format: L("%@ — %@, UniFi controller login"), String(describing: parts[1]), String(describing: parts[2])),
                                     .out)
                                 continue
                             }
@@ -9299,24 +9048,19 @@ final class BlacksiteShell: ObservableObject {
                                     ? "the write user"
                                     : "read+write, "
                                       + "unseparated"
-                                out("\(h) — \(u), "
-                                    + "SNMPv3 "
-                                    + "\(label)",
+                                out(String(format: L("%@ — %@, SNMPv3 %@"), String(describing: h), String(describing: u), String(describing: label)),
                                     .out)
                                 continue
                             }
                         }
-                        out("\(account) — "
-                            + "credential "
-                            + "kept", .out)
+                        out(String(format: L("%@ — credential kept"), String(describing: account)), .out)
                     }
                 }
             } else if sub == "forget",
                       args.count > 1 {
                 CryptoSuite.NetCred.forget(
                     host: args[1])
-                out("forgotten — \(args[1]) "
-                    + "holds nothing now.",
+                out(String(format: L("forgotten — %@ holds nothing now."), String(describing: args[1])),
                     .sys)
             } else if sub == "set",
                       args.count > 1 {
@@ -9331,18 +9075,14 @@ final class BlacksiteShell: ObservableObject {
                         .trimmingCharacters(
                             in: .whitespaces)
                     guard !secret.isEmpty else {
-                        out("nothing typed — "
-                            + "nothing kept.",
+                        out(L("nothing typed — nothing kept."),
                             .err)
                         return
                     }
                     CryptoSuite.NetCred.keep(
                         host: host,
                         secret: secret)
-                    out("kept for \(host). "
-                        + "snmpwalk and snmpset "
-                        + "will use it "
-                        + "unnamed.", .ok)
+                    out(String(format: L("kept for %@. snmpwalk and snmpset will use it unnamed."), String(describing: host)), .ok)
                 }
             } else if sub == "set3",
                       args.count > 3 {
@@ -9386,12 +9126,7 @@ final class BlacksiteShell: ObservableObject {
                       !(privProto != "none"
                         && authProto == "none")
                 else {
-                    out("cred set3 <host> "
-                        + "<user> <md5|sha|none> "
-                        + "[des|aes|none] "
-                        + "[read|write] — "
-                        + "privacy needs auth "
-                        + "beneath it.", .err)
+                    out(L("cred set3 <host> <user> <md5|sha|none> [des|aes|none] [read|write] — privacy needs auth beneath it."), .err)
                     return
                 }
                 let finish: (String, String)
@@ -9449,9 +9184,7 @@ final class BlacksiteShell: ObservableObject {
                                 in: .whitespaces)
                         guard !word.isEmpty
                         else {
-                            out("nothing typed "
-                                + "— nothing "
-                                + "kept.", .err)
+                            out(L("nothing typed — nothing kept."), .err)
                             return
                         }
                         finish(word, "")
@@ -9466,9 +9199,7 @@ final class BlacksiteShell: ObservableObject {
                                 in: .whitespaces)
                         guard !authWord.isEmpty
                         else {
-                            out("nothing typed "
-                                + "— nothing "
-                                + "kept.", .err)
+                            out(L("nothing typed — nothing kept."), .err)
                             return
                         }
                         askSecret(
@@ -9482,10 +9213,7 @@ final class BlacksiteShell: ObservableObject {
                             guard !privWord
                                 .isEmpty
                             else {
-                                out("nothing "
-                                    + "typed — "
-                                    + "nothing "
-                                    + "kept.",
+                                out(L("nothing typed — nothing kept."),
                                     .err)
                                 return
                             }
@@ -9509,17 +9237,14 @@ final class BlacksiteShell: ObservableObject {
                         .trimmingCharacters(
                             in: .whitespaces)
                     guard !word.isEmpty else {
-                        out("nothing typed — "
-                            + "nothing kept.",
+                        out(L("nothing typed — nothing kept."),
                             .err)
                         return
                     }
                     CryptoSuite.NetCred.keepSSH(
                         host: host, user: user,
                         word: word)
-                    out("kept — ssh will speak "
-                        + "it for \(user)@"
-                        + "\(host) unnamed.",
+                    out(String(format: L("kept — ssh will speak it for %@@%@ unnamed."), String(describing: user), String(describing: host)),
                         .ok)
                 }
             } else if sub == "setunifi",
@@ -9537,8 +9262,7 @@ final class BlacksiteShell: ObservableObject {
                         .trimmingCharacters(
                             in: .whitespaces)
                     guard !word.isEmpty else {
-                        out("nothing typed — "
-                            + "nothing kept.",
+                        out(L("nothing typed — nothing kept."),
                             .err)
                         return
                     }
@@ -9547,22 +9271,11 @@ final class BlacksiteShell: ObservableObject {
                             host: host,
                             user: user,
                             word: word)
-                    out("kept — unifi will "
-                        + "speak it for "
-                        + "\(user)@\(host) "
-                        + "unnamed.",
+                    out(String(format: L("kept — unifi will speak it for %@@%@ unnamed."), String(describing: user), String(describing: host)),
                         .ok)
                 }
             } else {
-                out("cred set <host> · cred "
-                    + "set3 <host> <user> "
-                    + "<md5|sha> [des|aes] "
-                    + "[read|write] · "
-                    + "cred setssh <host> "
-                    + "<user> · cred "
-                    + "setunifi <host> "
-                    + "<user> · cred hosts · "
-                    + "cred forget <host>",
+                out(L("cred set <host> · cred set3 <host> <user> <md5|sha> [des|aes] [read|write] · cred setssh <host> <user> · cred setunifi <host> <user> · cred hosts · cred forget <host>"),
                     .err)
             }
         case "snmpwalk":
@@ -9597,8 +9310,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.count < 4 {
-                    out("snmpset <host> <oid> "
-                        + "<s|i|t|a|o> <value>",
+                    out(L("snmpset <host> <oid> <s|i|t|a|o> <value>"),
                         .err)
                 }
                 return
@@ -9629,8 +9341,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.count < 2 {
-                    out("snmp3walk <host> "
-                        + "<user> [root]",
+                    out(L("snmp3walk <host> <user> [root]"),
                         .err)
                 }
                 return
@@ -9640,19 +9351,12 @@ final class BlacksiteShell: ObservableObject {
                 .NetCred.v3(host: host,
                             user: user)
             else {
-                out("no v3 user kept for "
-                    + "\(user)@\(host) — "
-                    + "cred set3 keeps one.",
+                out(String(format: L("no v3 user kept for %@@%@ — cred set3 keeps one."), String(describing: user), String(describing: host)),
                     .err)
                 return
             }
             if cred.role == "write" {
-                out("note: \(user) is kept "
-                    + "as the WRITE user, and "
-                    + "this walk rides it "
-                    + "anyway — the 2026 CSI "
-                    + "gives walks the read "
-                    + "user.", .sys)
+                out(String(format: L("note: %@ is kept as the WRITE user, and this walk rides it anyway — the 2026 CSI gives walks the read user."), String(describing: user)), .sys)
             }
             let root = args.count > 2
                 ? args[2] : "1.3.6.1.2.1"
@@ -9668,9 +9372,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.count < 5 {
-                    out("snmp3set <host> "
-                        + "<user> <oid> "
-                        + "<s|i|t|a|o> <value>",
+                    out(L("snmp3set <host> <user> <oid> <s|i|t|a|o> <value>"),
                         .err)
                 }
                 return
@@ -9680,19 +9382,12 @@ final class BlacksiteShell: ObservableObject {
                 .NetCred.v3(host: host,
                             user: user)
             else {
-                out("no v3 user kept for "
-                    + "\(user)@\(host) — "
-                    + "cred set3 keeps one.",
+                out(String(format: L("no v3 user kept for %@@%@ — cred set3 keeps one."), String(describing: user), String(describing: host)),
                     .err)
                 return
             }
             guard cred.role != "read" else {
-                out("\(user)@\(host) is "
-                    + "kept as the READ user "
-                    + "— a set needs the "
-                    + "write user. cred set3 "
-                    + "with the write word "
-                    + "keeps one.", .err)
+                out(String(format: L("%@@%@ is kept as the READ user — a set needs the write user. cred set3 with the write word keeps one."), String(describing: user), String(describing: host)), .err)
                 return
             }
             netBusy { emit, done in
@@ -9708,14 +9403,7 @@ final class BlacksiteShell: ObservableObject {
                 return
             }
             guard args.count > 1 else {
-                out("unifi <host> devices · "
-                    + "unifi <host> clients · "
-                    + "unifi <host> restart "
-                    + "<device> · unifi "
-                    + "<host> block|unblock "
-                    + "<client> — the login "
-                    + "is kept with cred "
-                    + "setunifi.", .err)
+                out(L("unifi <host> devices · unifi <host> clients · unifi <host> restart <device> · unifi <host> block|unblock <client> — the login is kept with cred setunifi."), .err)
                 return
             }
             var host = args[0]
@@ -9738,11 +9426,7 @@ final class BlacksiteShell: ObservableObject {
                     .NetCred.unifiWord(
                         host: host, user: user)
             else {
-                out("no controller login "
-                    + "kept for \(host) — "
-                    + "cred setunifi \(host) "
-                    + "<user> keeps one, "
-                    + "typed in secret.",
+                out(String(format: L("no controller login kept for %@ — cred setunifi %@ <user> keeps one, typed in secret."), String(describing: host), String(describing: host)),
                     .err)
                 return
             }
@@ -9771,9 +9455,7 @@ final class BlacksiteShell: ObservableObject {
                             let devices =
                                 try session
                                 .devices()
-                            emit("— \(host): "
-                                + "\(devices.count) "
-                                + "adopted",
+                            emit(String(format: L("— %@: %@ adopted"), String(describing: host), String(describing: devices.count)),
                                 .sys)
                             for device
                                 in devices {
@@ -9786,9 +9468,7 @@ final class BlacksiteShell: ObservableObject {
                             let clients =
                                 try session
                                 .clients()
-                            emit("— \(host): "
-                                + "\(clients.count) "
-                                + "on the wire",
+                            emit(String(format: L("— %@: %@ on the wire"), String(describing: host), String(describing: clients.count)),
                                 .sys)
                             for client
                                 in clients {
@@ -9830,11 +9510,7 @@ final class BlacksiteShell: ObservableObject {
                             let label =
                                 UnifiPlaybook
                                 .name(of: record)
-                            emit("\(action) "
-                                + "\(label) "
-                                + "(\(mac)) at "
-                                + "\(host)? "
-                                + "type yes:",
+                            emit(String(format: L("%@ %@ (%@) at %@? type yes:"), String(describing: action), String(describing: label), String(describing: mac), String(describing: host)),
                                 .sys)
                             let typed =
                                 self.awaitLine(
@@ -9853,9 +9529,7 @@ final class BlacksiteShell: ObservableObject {
                                 try session
                                     .restart(
                                         mac: mac)
-                                emit("\(label) "
-                                    + "is "
-                                    + "restarting.",
+                                emit(String(format: L("%@ is restarting."), String(describing: label)),
                                     .ok)
                             } else {
                                 try session.block(
@@ -9872,13 +9546,7 @@ final class BlacksiteShell: ObservableObject {
                                     .ok)
                             }
                         default:
-                            emit("unifi \(host) "
-                                + "— actions "
-                                + "are devices, "
-                                + "clients, "
-                                + "restart, "
-                                + "block, "
-                                + "unblock.",
+                            emit(String(format: L("unifi %@ — actions are devices, clients, restart, block, unblock."), String(describing: host)),
                                 .err)
                         }
                     } catch let failure
@@ -9886,12 +9554,8 @@ final class BlacksiteShell: ObservableObject {
                             .Failure {
                         emit(failure.line, .err)
                     } catch {
-                        emit("the controller "
-                            + "at \(host) did "
-                            + "not answer "
-                            + "cleanly — "
-                            + error
-                                .localizedDescription,
+                        emit(String(format: L("the controller at %@ did not answer cleanly — %@"), String(describing: host), String(describing: error
+                                .localizedDescription)),
                             .err)
                     }
                 }
@@ -9908,9 +9572,7 @@ final class BlacksiteShell: ObservableObject {
                 rest = Array(rest.dropFirst(2))
             }
             guard let target = rest.first else {
-                out("ssh [-p port] [user@]host "
-                    + "[command] — no command "
-                    + "opens a shell", .err)
+                out(L("ssh [-p port] [user@]host [command] — no command opens a shell"), .err)
                 return
             }
             var user = "root"
@@ -9924,10 +9586,7 @@ final class BlacksiteShell: ObservableObject {
                 .joined(separator: " ")
             let passive = capturing
             if command.isEmpty, passive {
-                out("a shell needs the operator "
-                    + "at the console — give me "
-                    + "a command to run on "
-                    + "\(host) instead.", .err)
+                out(String(format: L("a shell needs the operator at the console — give me a command to run on %@ instead."), String(describing: host)), .err)
                 return
             }
             let client = sshClient(host: host,
@@ -9955,23 +9614,12 @@ final class BlacksiteShell: ObservableObject {
                                 port: port,
                                 blob: client
                                     .hostKeyBlob)
-                        emit("host key kept for "
-                             + "\(host) — a "
-                             + "changed key will "
-                             + "be refused.",
+                        emit(String(format: L("host key kept for %@ — a changed key will be refused."), String(describing: host)),
                              .sys)
                     }
                     if command.isEmpty {
-                        emit("— on \(host) as "
-                             + "\(user) · "
-                             + client
-                                .negotiatedCipher
-                             + " · host key "
-                             + client.fingerprint
-                             + ". You are on the "
-                             + "host now; ~. on "
-                             + "its own line "
-                             + "leaves.", .sys)
+                        emit(String(format: L("— on %@ as %@ · %@ · host key %@. You are on the host now; ~. on its own line leaves."), String(describing: host), String(describing: user), String(describing: client
+                                .negotiatedCipher), String(describing: client.fingerprint)), .sys)
                         try client.shell(
                             nextLine: {
                                 self.awaitLine(
@@ -10001,14 +9649,11 @@ final class BlacksiteShell: ObservableObject {
                             emit(line, .err)
                         }
                         if result.status >= 0 {
-                            emit("— exit "
-                                 + "\(result.status)",
+                            emit(String(format: L("— exit %@"), String(describing: result.status)),
                                  result.status == 0
                                  ? .ok : .err)
                         } else {
-                            emit("— the host "
-                                 + "closed without "
-                                 + "an exit status",
+                            emit(L("— the host closed without an exit status"),
                                  .err)
                         }
                     }
@@ -10021,12 +9666,11 @@ final class BlacksiteShell: ObservableObject {
                                 host: host,
                                 fingerprint: fp)
                     }
-                    emit("ssh: "
-                         + failure.description,
+                    emit(String(format: L("ssh: %@"), String(describing: failure.description)),
                          .err)
                     client.disconnect()
                 } catch {
-                    emit("ssh: \(error)", .err)
+                    emit(String(format: L("ssh: %@"), String(describing: error)), .err)
                     client.disconnect()
                 }
             }
@@ -10044,10 +9688,7 @@ final class BlacksiteShell: ObservableObject {
             guard rest.count >= 2,
                   let target = rest.first
             else {
-                out("sshbackup [-p port] "
-                    + "[user@]host <command> — "
-                    + "runs it and seals the "
-                    + "output into the Vault",
+                out(L("sshbackup [-p port] [user@]host <command> — runs it and seals the output into the Vault"),
                     .err)
                 return
             }
@@ -10091,28 +9732,17 @@ final class BlacksiteShell: ObservableObject {
                         .exec(command)
                     client.disconnect()
                     guard result.status == 0 else {
-                        emit("sshbackup: the "
-                             + "command ended "
-                             + "\(result.status) "
-                             + "— nothing sealed.",
+                        emit(String(format: L("sshbackup: the command ended %@ — nothing sealed."), String(describing: result.status)),
                              .err)
                         return
                     }
                     if let filed = SSHClient
                         .sealBackup(result.stdout,
                                     host: host) {
-                        emit("sealed into the "
-                             + "Vault and filed "
-                             + "in Deliveries as "
-                             + "\(filed) — "
-                             + "\(result.stdout.count) "
-                             + "characters of it.",
+                        emit(String(format: L("sealed into the Vault and filed in Deliveries as %@ — %@ characters of it."), String(describing: filed), String(describing: result.stdout.count)),
                              .ok)
                     } else {
-                        emit("sshbackup: the "
-                             + "sealing failed — "
-                             + "the output was "
-                             + "not kept.", .err)
+                        emit(L("sshbackup: the sealing failed — the output was not kept."), .err)
                     }
                 } catch let failure as SSHFailure {
                     if case .hostKeyChanged(
@@ -10122,12 +9752,11 @@ final class BlacksiteShell: ObservableObject {
                                 host: host,
                                 fingerprint: fp)
                     }
-                    emit("sshbackup: "
-                         + failure.description,
+                    emit(String(format: L("sshbackup: %@"), String(describing: failure.description)),
                          .err)
                     client.disconnect()
                 } catch {
-                    emit("sshbackup: \(error)",
+                    emit(String(format: L("sshbackup: %@"), String(describing: error)),
                          .err)
                     client.disconnect()
                 }
@@ -10136,34 +9765,20 @@ final class BlacksiteShell: ObservableObject {
             if args.first == "forget" {
                 CryptoSuite.NetCred
                     .forgetSSHIdentity()
-                out("the house SSH identity is "
-                    + "burned — hosts that "
-                    + "trusted its key will "
-                    + "refuse it now.", .sys)
+                out(L("the house SSH identity is burned — hosts that trusted its key will refuse it now."), .sys)
             } else if args.first == "make" {
                 let key = CryptoSuite.NetCred
                     .makeSSHIdentity()
                 out(SSHClient.identityLine(key),
                     .out)
-                out("made and kept in the "
-                    + "Keychain — the private "
-                    + "half never leaves it. "
-                    + "Install the line above "
-                    + "in a host's "
-                    + "authorized_keys.", .ok)
+                out(L("made and kept in the Keychain — the private half never leaves it. Install the line above in a host's authorized_keys."), .ok)
             } else if let key = CryptoSuite
                 .NetCred.sshIdentity() {
                 out(SSHClient.identityLine(key),
                     .out)
-                out("the house identity — a "
-                    + "host holding this line "
-                    + "in authorized_keys lets "
-                    + "her in by key.", .sys)
+                out(L("the house identity — a host holding this line in authorized_keys lets her in by key."), .sys)
             } else {
-                out("sshkey — no identity yet "
-                    + "· sshkey make — mint one "
-                    + "· sshkey forget — burn "
-                    + "it", .err)
+                out(L("sshkey — no identity yet · sshkey make — mint one · sshkey forget — burn it"), .err)
             }
         case "sshhosts":
             if args.first == "forget",
@@ -10181,18 +9796,12 @@ final class BlacksiteShell: ObservableObject {
                 CryptoSuite.NetCred
                     .forgetKnownKey(host: host,
                                     port: port)
-                out("the key on file for "
-                    + "\(host) is forgotten — "
-                    + "the next ssh will ask "
-                    + "again.", .sys)
+                out(String(format: L("the key on file for %@ is forgotten — the next ssh will ask again."), String(describing: host)), .sys)
             } else {
                 let known = CryptoSuite.NetCred
                     .knownHosts()
                 if known.isEmpty {
-                    out("no host keys on file "
-                        + "— the first ssh to a "
-                        + "host asks, and keeps "
-                        + "what you trust.",
+                    out(L("no host keys on file — the first ssh to a host asks, and keeps what you trust."),
                         .out)
                 } else {
                     for entry in known {
@@ -10226,8 +9835,7 @@ final class BlacksiteShell: ObservableObject {
                   let host = args.first
             else {
                 if args.isEmpty {
-                    emit("cert needs a "
-                         + "host.", .err)
+                    emit(L("cert needs a host."), .err)
                 }
                 return
             }
@@ -10243,8 +9851,7 @@ final class BlacksiteShell: ObservableObject {
                   let url = args.first
             else {
                 if args.isEmpty {
-                    emit("webaudit needs a "
-                         + "URL.", .err)
+                    emit(L("webaudit needs a URL."), .err)
                 }
                 return
             }
@@ -10258,8 +9865,7 @@ final class BlacksiteShell: ObservableObject {
                   let url = args.first
             else {
                 if args.isEmpty {
-                    emit("methods needs a "
-                         + "URL.", .err)
+                    emit(L("methods needs a URL."), .err)
                 }
                 return
             }
@@ -10289,8 +9895,7 @@ final class BlacksiteShell: ObservableObject {
             guard netAllowed(name),
                   let mac = args.first else {
                 if args.isEmpty {
-                    emit("wol needs a MAC "
-                         + "address.", .err)
+                    emit(L("wol needs a MAC address."), .err)
                 }
                 return
             }
@@ -10308,9 +9913,7 @@ final class BlacksiteShell: ObservableObject {
 
     private func company(_ args: [String]) {
         guard let raw = args.first else {
-            emit("company needs an id — "
-                 + "'company 004c' or "
-                 + "'company 76'.", .err)
+            emit(L("company needs an id — 'company 004c' or 'company 76'."), .err)
             return
         }
         let id: UInt16?
@@ -10330,16 +9933,13 @@ final class BlacksiteShell: ObservableObject {
         }
         let hex = String(format: "0x%04X", id)
         if let curated = Vendors.companyNames[id] {
-            emit("\(hex) — \(curated) "
-                 + "(the house's curated name)",
+            emit(String(format: L("%@ — %@ (the house's curated name)"), String(describing: hex), String(describing: curated)),
                  .ok)
         } else if let name = CompanyRegistry
             .names[id] {
             emit("\(hex) — \(name)", .ok)
         } else {
-            emit("\(hex) — unassigned. the "
-                 + "registry does not name it, "
-                 + "and neither do I.", .err)
+            emit(String(format: L("%@ — unassigned. the registry does not name it, and neither do I."), String(describing: hex)), .err)
         }
     }
 
@@ -10381,8 +9981,7 @@ final class BlacksiteShell: ObservableObject {
         switch word {
         case "off", "open":
             center.emcon.deactivate()
-            emit("EMCON off — the house is "
-                 + "open.", .ok)
+            emit(L("EMCON off — the house is open."), .ok)
         case "charlie", "bravo", "alpha":
             let condition: EmconCondition =
                 word == "charlie" ? .charlie
@@ -10391,12 +9990,10 @@ final class BlacksiteShell: ObservableObject {
             center.emcon.activate(
                 mouth: center.mouth,
                 condition: condition)
-            emit("EMCON "
-                 + condition.declared + " set.",
+            emit(String(format: L("EMCON %@ set."), String(describing: condition.declared)),
                  .ok)
         default:
-            emit("conditions: open, charlie, "
-                 + "bravo, alpha.", .err)
+            emit(L("conditions: open, charlie, bravo, alpha."), .err)
         }
     }
 
@@ -10405,8 +10002,7 @@ final class BlacksiteShell: ObservableObject {
         let center = SkelliCenter.shared
         guard let mouth = center.mouth,
               let emcon = center.emcon else {
-            emit("the house's organs are not "
-                 + "wired yet.", .err)
+            emit(L("the house's organs are not wired yet."), .err)
             return nil
         }
         return (mouth, emcon)
@@ -10421,9 +10017,7 @@ final class BlacksiteShell: ObservableObject {
                 emit(L("no macros saved."), .sys)
             }
             for macro in saved {
-                emit("  \(macro.name) — "
-                     + "\(macro.blocks.count) "
-                     + "blocks", .out)
+                emit(String(format: L("  %@ — %@ blocks"), String(describing: macro.name), String(describing: macro.blocks.count)), .out)
             }
             return
         }
@@ -10442,8 +10036,7 @@ final class BlacksiteShell: ObservableObject {
                 $0.title.lowercased() == wanted
             })
             .map({ $0.make() }) else {
-            emit("no macro by that name in "
-                 + "this house.", .err)
+            emit(L("no macro by that name in this house."), .err)
             return
         }
         guard let center = centerOrgans(),
@@ -10453,9 +10046,7 @@ final class BlacksiteShell: ObservableObject {
             macro, mouth: center.mouth,
             post: post, emcon: center.emcon,
             book: PayloadBook())
-        emit("running \(macro.name) — "
-             + "\(macro.blocks.count) blocks. "
-             + "'ps' and her room carry it.",
+        emit(String(format: L("running %@ — %@ blocks. 'ps' and her room carry it."), String(describing: macro.name), String(describing: macro.blocks.count)),
              .ok)
     }
 
@@ -10481,8 +10072,7 @@ final class BlacksiteShell: ObservableObject {
         switch args.first?.lowercased() ?? "list" {
         case "list":
             if marks.marked.isEmpty {
-                emit("no one is wearing a "
-                     + "tomato.", .sys)
+                emit(L("no one is wearing a tomato."), .sys)
             }
             for ip in marks.marked.sorted() {
                 let name = NeighborhoodStore
@@ -10502,7 +10092,7 @@ final class BlacksiteShell: ObservableObject {
             Journal.log("tomato",
                         "console threw a tomato",
                         ip)
-            emit("🍅 \(ip) is marked.", .ok)
+            emit(String(format: L("🍅 %@ is marked."), String(describing: ip)), .ok)
         case "wipe":
             if args.dropFirst().first == "all" {
                 marks.forgetAll()
@@ -10510,15 +10100,13 @@ final class BlacksiteShell: ObservableObject {
             } else if let ip = args.dropFirst()
                 .first {
                 marks.unmark(ip)
-                emit("the tomato comes off "
-                     + "\(ip).", .ok)
+                emit(String(format: L("the tomato comes off %@."), String(describing: ip)), .ok)
             } else {
                 emit(L("wipe <ip> · wipe all"),
                      .err)
             }
         default:
-            emit("tomato list · throw <ip> · "
-                 + "wipe <ip>|all", .err)
+            emit(L("tomato list · throw <ip> · wipe <ip>|all"), .err)
         }
     }
 
@@ -10526,7 +10114,7 @@ final class BlacksiteShell: ObservableObject {
         let center = ThemeCenter.shared
         guard let name = args.first?.lowercased()
         else {
-            emit("wearing: \(center.current.name)",
+            emit(String(format: L("wearing: %@"), String(describing: center.current.name)),
                  .sys)
             for theme in center.allThemes {
                 emit("  \(theme.name)"
@@ -10540,14 +10128,12 @@ final class BlacksiteShell: ObservableObject {
                 $0.name.lowercased() == name
                     || $0.id == name
             }) else {
-            emit("no theme by that name — "
-                 + "'theme' lists the wardrobe.",
+            emit(L("no theme by that name — 'theme' lists the wardrobe."),
                  .err)
             return
         }
         center.apply(theme)
-        emit("the house wears \(theme.name) "
-             + "now.", .ok)
+        emit(String(format: L("the house wears %@ now."), String(describing: theme.name)), .ok)
     }
 
     private func haptics(_ args: [String]) {
@@ -10555,8 +10141,7 @@ final class BlacksiteShell: ObservableObject {
         case "off":
             UserDefaults.standard.set(
                 false, forKey: "house.haptics")
-            emit("haptics off — the motor is "
-                 + "silent, house-wide.", .ok)
+            emit(L("haptics off — the motor is silent, house-wide."), .ok)
         case "on":
             UserDefaults.standard.set(
                 true, forKey: "house.haptics")
@@ -10573,14 +10158,12 @@ final class BlacksiteShell: ObservableObject {
     private func ask(_ args: [String]) {
         let words = args.joined(separator: " ")
         guard !words.isEmpty else {
-            emit("skelli needs words — "
-                 + "'skelli sweep the wire'.",
+            emit(L("skelli needs words — 'skelli sweep the wire'."),
                  .err)
             return
         }
         SkelliCenter.shared.ask(words)
-        emit("asked. she answers in her room "
-             + "— 'open skelli' goes there.",
+        emit(L("asked. she answers in her room — 'open skelli' goes there."),
              .sys)
     }
 
@@ -10588,8 +10171,7 @@ final class BlacksiteShell: ObservableObject {
         guard let name = args.first?.lowercased(),
               let tag = Blacksite.tabTags[name]
         else {
-            emit("open needs a tab name — "
-                 + "skelli, scan, macros, vault…",
+            emit(L("open needs a tab name — skelli, scan, macros, vault…"),
                  .err)
             return
         }
@@ -10597,7 +10179,7 @@ final class BlacksiteShell: ObservableObject {
             name: Blacksite.openTabNotification,
             object: nil,
             userInfo: ["tag": tag])
-        emit("going to \(name).", .sys)
+        emit(String(format: L("going to %@."), String(describing: name)), .sys)
     }
 }
 

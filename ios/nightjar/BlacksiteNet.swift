@@ -353,24 +353,18 @@ enum BlacksiteNet {
         run {
             guard let resolved = resolve4(
                 host) else {
-                emit("ping: \(host) does not "
-                     + "resolve.", .err)
+                emit(String(format: L("ping: %@ does not resolve."), String(describing: host)), .err)
                 done()
                 return
             }
             let fd = icmpSocket()
             guard fd >= 0 else {
-                emit("ping: the ICMP door "
-                     + "is shut on this "
-                     + "system (errno "
-                     + "\(errno)).", .err)
+                emit(String(format: L("ping: the ICMP door is shut on this system (errno %@)."), String(describing: errno)), .err)
                 done()
                 return
             }
             defer { close(fd) }
-            emit("PING \(host) "
-                 + "(\(resolved.ip)) — "
-                 + "\(count) echoes, by hand",
+            emit(String(format: L("PING %@ (%@) — %@ echoes, by hand"), String(describing: host), String(describing: resolved.ip), String(describing: count)),
                  .sys)
             let id = UInt16.random(
                 in: 1...UInt16.max)
@@ -405,19 +399,12 @@ enum BlacksiteNet {
                         times.append(rtt)
                         received += 1
                         answered = true
-                        emit("reply from "
-                             + "\(reply.fromIP)"
-                             + ": seq \(seq), "
-                             + "\(ms(rtt)) ms, "
-                             + "ttl "
-                             + "\(reply.ttl)",
+                        emit(String(format: L("reply from %@: seq %@, %@ ms, ttl %@"), String(describing: reply.fromIP), String(describing: seq), String(describing: ms(rtt)), String(describing: reply.ttl)),
                              .out)
                     }
                 }
                 if !answered {
-                    emit("seq \(seq): no "
-                         + "answer in a "
-                         + "second.", .err)
+                    emit(String(format: L("seq %@: no answer in a second."), String(describing: seq)), .err)
                 }
                 if seq + 1 < count {
                     Thread.sleep(
@@ -428,18 +415,11 @@ enum BlacksiteNet {
                 let avg = times.reduce(
                     0, +) / Double(
                         times.count)
-                emit("\(sent) sent, "
-                     + "\(received) back — "
-                     + "min \(ms(times.min()!))"
-                     + " · avg \(ms(avg))"
-                     + " · max "
-                     + "\(ms(times.max()!)) "
-                     + "ms",
+                emit(String(format: L("%@ sent, %@ back — min %@ · avg %@ · max %@ ms"), String(describing: sent), String(describing: received), String(describing: ms(times.min()!)), String(describing: ms(avg)), String(describing: ms(times.max()!))),
                      received == sent
                         ? .ok : .out)
             } else {
-                emit("\(sent) sent, none "
-                     + "came back.", .err)
+                emit(String(format: L("%@ sent, none came back."), String(describing: sent)), .err)
             }
             done()
         }
@@ -452,25 +432,20 @@ enum BlacksiteNet {
         run {
             guard let resolved = resolve4(
                 host) else {
-                emit("traceroute: \(host) "
-                     + "does not resolve.",
+                emit(String(format: L("traceroute: %@ does not resolve."), String(describing: host)),
                      .err)
                 done()
                 return
             }
             let fd = icmpSocket()
             guard fd >= 0 else {
-                emit("traceroute: the ICMP "
-                     + "door is shut "
-                     + "(errno \(errno)).",
+                emit(String(format: L("traceroute: the ICMP door is shut (errno %@)."), String(describing: errno)),
                      .err)
                 done()
                 return
             }
             defer { close(fd) }
-            emit("the road to \(host) "
-                 + "(\(resolved.ip)), "
-                 + "30 hops at most", .sys)
+            emit(String(format: L("the road to %@ (%@), 30 hops at most"), String(describing: host), String(describing: resolved.ip)), .sys)
             let id = UInt16.random(
                 in: 1...UInt16.max)
             var seq: UInt16 = 0
@@ -813,9 +788,7 @@ extension BlacksiteNet {
                 .query(server: server,
                        name: name, type: type)
             else {
-                emit("dig: no answer from "
-                     + "\(server) — the "
-                     + "wire stayed quiet.",
+                emit(String(format: L("dig: no answer from %@ — the wire stayed quiet."), String(describing: server)),
                      .err)
                 done()
                 return
@@ -830,27 +803,17 @@ extension BlacksiteNet {
                 status = "rcode "
                     + "\(reply.rcode)"
             }
-            emit("; dig \(name) "
-                 + "\(typeName.uppercased()) "
-                 + "@\(server) — \(status), "
-                 + "\(reply.answers.count) "
-                 + "answer(s), "
-                 + "\(ms(reply.elapsed)) ms",
+            emit(String(format: L("; dig %@ %@ @%@ — %@, %@ answer(s), %@ ms"), String(describing: name), String(describing: typeName.uppercased()), String(describing: server), String(describing: status), String(describing: reply.answers.count), String(describing: ms(reply.elapsed))),
                  reply.rcode == 0
                     ? .sys : .err)
             if reply.rcode == 3 {
-                emit("the name does not "
-                     + "exist. that is the "
-                     + "whole answer.", .err)
+                emit(L("the name does not exist. that is the whole answer."), .err)
             }
             for answer in reply.answers {
                 let label = BlacksiteDNS
                     .typeNames[answer.type]
                     ?? "\(answer.type)"
-                emit("\(answer.name). "
-                     + "\(answer.ttl) IN "
-                     + "\(label) "
-                     + "\(answer.data)", .out)
+                emit(String(format: L("%@. %@ IN %@ %@"), String(describing: answer.name), String(describing: answer.ttl), String(describing: label), String(describing: answer.data)), .out)
             }
             done()
         }
@@ -885,9 +848,8 @@ extension BlacksiteNet {
                    let first = result,
                    let canon = first.pointee
                     .ai_canonname {
-                    emit("\(target) is "
-                         + String(cString:
-                                    canon),
+                    emit(String(format: L("%@ is %@"), String(describing: target), String(describing: String(cString:
+                                    canon))),
                          .out)
                     freeaddrinfo(result)
                     done()
@@ -896,9 +858,7 @@ extension BlacksiteNet {
                 if let result = result {
                     freeaddrinfo(result)
                 }
-                emit("\(target) has no "
-                     + "name the resolver "
-                     + "knows.", .err)
+                emit(String(format: L("%@ has no name the resolver knows."), String(describing: target)), .err)
                 done()
                 return
             }
@@ -914,8 +874,7 @@ extension BlacksiteNet {
                               &hints,
                               &result) == 0,
                   let first = result else {
-                emit("host: \(target) does "
-                     + "not resolve.", .err)
+                emit(String(format: L("host: %@ does not resolve."), String(describing: target)), .err)
                 done()
                 return
             }
@@ -950,9 +909,7 @@ extension BlacksiteNet {
                         cString: buffer)
                     if printed.insert(ip)
                         .inserted {
-                        emit("\(target) has "
-                             + "address "
-                             + ip, .out)
+                        emit(String(format: L("%@ has address %@"), String(describing: target), String(describing: ip)), .out)
                         found = true
                     }
                 } else if family
@@ -974,17 +931,14 @@ extension BlacksiteNet {
                         cString: buffer)
                     if printed.insert(ip)
                         .inserted {
-                        emit("\(target) has "
-                             + "IPv6 address "
-                             + ip, .out)
+                        emit(String(format: L("%@ has IPv6 address %@"), String(describing: target), String(describing: ip)), .out)
                         found = true
                     }
                 }
             }
             freeaddrinfo(result)
             if !found {
-                emit("host: nothing came "
-                     + "back for \(target).",
+                emit(String(format: L("host: nothing came back for %@."), String(describing: target)),
                      .err)
             }
             done()
@@ -1030,7 +984,7 @@ extension BlacksiteNet {
                 idleSeconds: 12
             ) { text, problem in
                 if let problem = problem {
-                    emit("whois: \(problem)",
+                    emit(String(format: L("whois: %@"), String(describing: problem)),
                          .err)
                     done()
                     return
@@ -1041,13 +995,11 @@ extension BlacksiteNet {
                     referral(in: body) {
                     followed = true
                     server = referral
-                    emit("; referred to "
-                         + referral, .sys)
+                    emit(String(format: L("; referred to %@"), String(describing: referral)), .sys)
                     ask(referral)
                     return
                 }
-                emit("; whois \(domain) "
-                     + "via \(serverName)",
+                emit(String(format: L("; whois %@ via %@"), String(describing: domain), String(describing: serverName)),
                      .sys)
                 var lines = 0
                 for row in body.split(
@@ -1064,16 +1016,13 @@ extension BlacksiteNet {
                     emit(trimmed, .out)
                     lines += 1
                     if lines >= 110 {
-                        emit("; … the rest "
-                             + "is boilerplate.",
+                        emit(L("; … the rest is boilerplate."),
                              .sys)
                         break
                     }
                 }
                 if lines == 0 {
-                    emit("the registry "
-                         + "answered with "
-                         + "nothing readable.",
+                    emit(L("the registry answered with nothing readable."),
                          .err)
                 }
                 done()
@@ -1338,8 +1287,7 @@ extension BlacksiteNet {
         }
         guard let url = URL(string: text)
         else {
-            emit("curl: that is not a "
-                 + "URL.", .err)
+            emit(L("curl: that is not a URL."), .err)
             done()
             return
         }
@@ -1361,16 +1309,14 @@ extension BlacksiteNet {
                 let elapsed = Date()
                     .timeIntervalSince(started)
                 if let error = error {
-                    emit("curl: "
-                         + fetchProblem(error),
+                    emit(String(format: L("curl: %@"), String(describing: fetchProblem(error))),
                          .err)
                     done()
                     return
                 }
                 guard let http = response
                     as? HTTPURLResponse else {
-                    emit("curl: the answer "
-                         + "was not HTTP.",
+                    emit(L("curl: the answer was not HTTP."),
                          .err)
                     done()
                     return
@@ -1391,8 +1337,7 @@ extension BlacksiteNet {
                 if let final = http.url,
                    final.absoluteString
                     != url.absoluteString {
-                    emit("followed to "
-                         + final.absoluteString,
+                    emit(String(format: L("followed to %@"), String(describing: final.absoluteString)),
                          .sys)
                 }
                 let fields = http
@@ -1418,14 +1363,9 @@ extension BlacksiteNet {
                 if let savePath = savePath {
                     if BlacksiteFS.writeData(
                         savePath, data: body) {
-                        emit("saved "
-                             + "\(body.count) "
-                             + "bytes to "
-                             + savePath, .ok)
+                        emit(String(format: L("saved %@ bytes to %@"), String(describing: body.count), String(describing: savePath)), .ok)
                     } else {
-                        emit("curl: the "
-                             + "files would "
-                             + "not take it.",
+                        emit(L("curl: the files would not take it."),
                              .err)
                     }
                     done()
@@ -1607,8 +1547,7 @@ extension BlacksiteNet {
         emit: @escaping BlacksiteEmit) {
         let infos = interfaces()
         if infos.isEmpty {
-            emit("no interfaces with "
-                 + "addresses.", .err)
+            emit(L("no interfaces with addresses."), .err)
             return
         }
         for info in infos {
@@ -1633,7 +1572,7 @@ extension BlacksiteNet {
                      .out)
             }
             for v6 in info.v6 {
-                emit("  inet6 \(v6)", .out)
+                emit(String(format: L("  inet6 %@"), String(describing: v6)), .out)
             }
             if let mac = info.mac {
                 emit("  ether \(mac)"
@@ -1665,10 +1604,7 @@ extension BlacksiteNet {
 
     static func arp(
         emit: @escaping BlacksiteEmit) {
-        emit("the neighborhood board is "
-             + "this house's arp table — "
-             + "iOS keeps the system's own "
-             + "from apps.", .sys)
+        emit(L("the neighborhood board is this house's arp table — iOS keeps the system's own from apps."), .sys)
         let neighbors = NeighborhoodStore
             .shared.neighbors.sorted {
                 ipSortKey($0.ip)
@@ -1676,9 +1612,7 @@ extension BlacksiteNet {
                         ipSortKey($1.ip))
             }
         if neighbors.isEmpty {
-            emit("the board is empty — "
-                 + "nothing has been seen "
-                 + "yet.", .err)
+            emit(L("the board is empty — nothing has been seen yet."), .err)
             return
         }
         for neighbor in neighbors {
@@ -1706,9 +1640,7 @@ extension BlacksiteNet {
 
     static func netstat(
         emit: @escaping BlacksiteEmit) {
-        emit("iOS shows no app the "
-             + "system's socket table — "
-             + "here is this house's own.",
+        emit(L("iOS shows no app the system's socket table — here is this house's own."),
              .sys)
         let defaults =
             UserDefaults.standard
@@ -1725,24 +1657,19 @@ extension BlacksiteNet {
             .mouth?.serveRunning ?? false
         let state = running
             ? "standing" : "dark"
-        emit("tcp \(tcp) — serve door, "
-             + state, running ? .ok : .out)
-        emit("udp \(udp) — serve door, "
-             + state, running ? .ok : .out)
-        emit("http \(http) — serve door, "
-             + state, running ? .ok : .out)
+        emit(String(format: L("tcp %@ — serve door, %@"), String(describing: tcp), String(describing: state)), running ? .ok : .out)
+        emit(String(format: L("udp %@ — serve door, %@"), String(describing: udp), String(describing: state)), running ? .ok : .out)
+        emit(String(format: L("http %@ — serve door, %@"), String(describing: http), String(describing: state)), running ? .ok : .out)
         let board = ProcessBoard.shared
         if board.active.isEmpty {
-            emit("no live wires in the "
-                 + "house right now.", .sys)
+            emit(L("no live wires in the house right now."), .sys)
         }
         for entry in board.active {
             emit("● \(entry.label) — "
                  + entry.detail, .out)
         }
         if let ip = primaryIPv4() {
-            emit("this phone: \(ip) "
-                 + "(see ifconfig)", .sys)
+            emit(String(format: L("this phone: %@ (see ifconfig)"), String(describing: ip)), .sys)
         }
     }
 
@@ -1751,8 +1678,7 @@ extension BlacksiteNet {
         emit(ProcessInfo.processInfo
             .hostName, .out)
         if let ip = primaryIPv4() {
-            emit("answering at \(ip) on "
-                 + "the local wire.", .sys)
+            emit(String(format: L("answering at %@ on the local wire."), String(describing: ip)), .sys)
         }
     }
 }
