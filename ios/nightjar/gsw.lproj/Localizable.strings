@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "Mm. Für die Lüüt läbe ech.";
 
 "Encores available on request. Kidding. Mostly." = "Zuegab uf Aafrog verfüegbar. Scherz. Meischtens.";
+"Answers as" = "Meldet sech als";
+"Administer" = "Verwalte";
+"Walk (SNMP)" = "Durchlouf (SNMP)";
+"Audit posture" = "Sicherheitslag prüefe";
+"Probing is dark under EMCON %@." = "Sondiere esch under EMCON %@ dunkel.";
+"Quarantine this device" = "Das Grät i Quarantäne tue";
+"Lift the quarantine" = "Quarantäne ufhebe";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "D Quarantäne bruucht s gspicherete Passwort vom Grät — es esch keis gspicheret, drum esch de Hebel dunkel.";
+"The run" = "De Louf";
+"Working…" = "Am schaffe…";
+"No credential kept for this device — the walk rides the factory word." = "Für das Grät esch keis Passwort gspicheret — de Durchlouf louft mit em Fabrikpasswort.";
