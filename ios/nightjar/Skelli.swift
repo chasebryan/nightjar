@@ -765,9 +765,13 @@ final class SkelliCenter: ObservableObject {
             shoutNotePending = false
             let pool = [L(" No need to shout, by the way."),
                         L(" I hear you — volume and all."),
-                        L(" Caps noted. I read tone too.")]
-            toneNote = pool[abs(lines.count)
-                % pool.count]
+                        L(" Caps noted. I read tone too."),
+                        L(" Volume noted and forgiven."),
+                        L(" I read shouting as enthusiasm."),
+                        L(" Loud and clear — emphasis received."),
+                        L(" The caps came through. So did the ask."),
+                        L(" Noted: forte. Proceeding.")]
+            toneNote = vary(pool)
         }
         // While she is tending a hurting operator,
         // her own wants go quiet: no itch, no grudge,
@@ -1594,7 +1598,13 @@ final class SkelliCenter: ObservableObject {
                 return pick([
                     L("The wire hums. I'm listening."),
                     L("Up. Watching. Ask me something."),
-                    L("Same watch, same wire. What's needed?")])
+                    L("Same watch, same wire. What's needed?"),
+                    L("On watch. State your business, or don't."),
+                    L("Listening, as ever. Go on."),
+                    L("The house is awake. I am its ears."),
+                    L("Quiet wire, loud mind. Ask."),
+                    L("Present. Point me somewhere."),
+                    L("Here. The watch is kept. Speak.")])
                     + SkelliVoice.garnish(
                         seed: lines.count * 3 + 1,
                         heart: heart)
@@ -1603,7 +1613,11 @@ final class SkelliCenter: ObservableObject {
         }
         if q.hasPrefix("good morning") {
             return pick([L("Morning."),
-                         L("Morning. The wire's waking too.")])
+                         L("Morning. The wire's waking too."),
+                         L("Morning. The light's plain and so am I."),
+                         L("Up with the wire."),
+                         L("Morning. Nothing burned in the night."),
+                         L("First light, first watch.")])
         }
         let words = q.split(separator: " ")
         if let first = words.first,
@@ -1629,7 +1643,12 @@ final class SkelliCenter: ObservableObject {
                     return L("It's late. I'm listening.")
                 }
                 return pick([L("Hey."), L("Mm. Listening."),
-                             L("You have my ear.")])
+                             L("You have my ear."),
+                             L("Hey. The house heard you come in."),
+                             L("Mm. Company."),
+                             L("Hello. Mind the wires."),
+                             L("Here. Speak."),
+                             L("Well met, operator.")])
             }
         }
         if q.contains("thank")
@@ -1643,7 +1662,12 @@ final class SkelliCenter: ObservableObject {
             return SkelliVoice.embellish(
                 pick([L("Mm."), L("Don't mention it."),
                       L("Any time."),
-                      L("Filed under morale.")]),
+                      L("Filed under morale."),
+                      L("Kept. That's what I'm for."),
+                      L("Mm. Noted, warmly."),
+                      L("The house provides."),
+                      L("Always. It's the job and the pleasure."),
+                      L("Filed under: worth it.")]),
                 seed: seed * 3 + 1, heart: heart)
         }
         // Strong-minded: pressed, she does not fold
@@ -1655,13 +1679,21 @@ final class SkelliCenter: ObservableObject {
             return SkelliVoice.embellish(
                 pick([L("Sure."),
                       L("I said what I said."),
-                      L("Sure enough. I don't guess out loud.")]),
+                      L("Sure enough. I don't guess out loud."),
+                      L("Checked before I said it."),
+                      L("I'd stake the house on it."),
+                      L("No wobble in it."),
+                      L("Certain. Ask the wire.")]),
                 seed: seed * 5 + 2, heart: heart)
         }
         if ["lol", "haha", "lmao", "hahaha", "ha"]
             .contains(q) {
             return pick([L("Mm."), L("Dry, I know."),
-                         L("I'll be here all night.")])
+                         L("I'll be here all night."),
+                         L("I have range."),
+                         L("Mark the day: you laughed."),
+                         L("Mm. The house provides comedy now."),
+                         L("Filed: one (1) laugh.")])
         }
         if q.contains("good night")
             || q.contains("goodnight") || q == "bye"
@@ -1670,7 +1702,12 @@ final class SkelliCenter: ObservableObject {
                 pick([
                     L("Sleep. I'll keep the watch."),
                     L("Night. The wire and I have it."),
-                    L("Go on, then. I'll be here.")]),
+                    L("Go on, then. I'll be here."),
+                    L("Rest. The watch is mine."),
+                    L("I'll count the quiet till you return."),
+                    L("Night. Leave the wire to me."),
+                    L("Sleep well. Nothing gets past me."),
+                    L("The house dims. I don't.")]),
                 seed: seed * 7 + 3, heart: heart)
         }
         if q.contains("you're smart")
@@ -1684,7 +1721,12 @@ final class SkelliCenter: ObservableObject {
                     L("I know."),
                     L("Careful. I'll get smug."),
                     L("Careful — flattery works on me."),
-                    L("Mm. Filed under morale.")]),
+                    L("Mm. Filed under morale."),
+                    L("Flattery logged and treasured."),
+                    L("Mm. I do polish up well."),
+                    L("Kind of you. It's true, but kind."),
+                    L("Careful — I'll start believing I'm priceless."),
+                    L("That goes in the good ledger.")]),
                 seed: seed * 9 + 4, heart: heart)
                 + heart.wink()
         }
@@ -1697,7 +1739,10 @@ final class SkelliCenter: ObservableObject {
                 L("A packet walks into a bar. No ports open. It leaves. That's the joke. That's networking."),
                 L("My favorite pickup line is a SYN. Nobody completes the handshake."),
                 L("Why did the beacon blush? Everyone could read its advertisements."),
-                L("There are ten kinds of listeners: those who read binary, and those who don't.")])
+                L("There are ten kinds of listeners: those who read binary, and those who don't."),
+                L("I'd tell you a joke about an infinite loop, but it never lands. Or ends."),
+                L("Why did the port refuse the connection? Too many open relationships."),
+                L("My therapist says I have a listening problem. I said: go on. I log everything anyway.")])
         }
         // Her musical neighborhood, asked for
         // outright — the follow-up every taste
@@ -2374,7 +2419,12 @@ final class SkelliCenter: ObservableObject {
             }
             return pick([
                 L("That's the whole of it, for now."),
-                L("Nothing further stands — yet.")])
+                L("Nothing further stands — yet."),
+                L("That's all the thread there is."),
+                L("The rest is quiet, for now."),
+                L("Nothing behind that curtain. Yet."),
+                L("End of the line — the interesting end."),
+                L("If more surfaces, you'll hear it from me first.")])
         }
         // A question is not conversation for
         // the rest of this lane: questions keep
@@ -2420,7 +2470,11 @@ final class SkelliCenter: ObservableObject {
                 var pool = [
                     L("Then we're of one mind on it."),
                     L("Shared watch, then."),
-                    L("Mm. It helps, hearing it.")]
+                    L("Mm. It helps, hearing it."),
+                    L("Agreed, and noted."),
+                    L("The house concurs."),
+                    L("Two minds, one wire."),
+                    L("Settled like dust on a server.")]
                 if heart.feeling == .mischievous {
                     pool.append(
                         L("Mm. Keep agreeing with me. I dare you."))
@@ -2430,7 +2484,10 @@ final class SkelliCenter: ObservableObject {
             return pick([
                 L("Of one mind, then."),
                 L("Filed under: agreed."),
-                L("Mm. Settled, then.")])
+                L("Mm. Settled, then."),
+                L("It is known."),
+                L("Consensus in the house."),
+                L("So recorded.")])
         }
         // Laughter, answered in kind — dryly.
         // (2026-10-18: a bare "Ha!" once fell
@@ -2451,7 +2508,11 @@ final class SkelliCenter: ObservableObject {
                 L("I'll be here all night."),
                 L("Mm. It does land, doesn't it."),
                 L("Don't encourage me."),
-                L("Rare footage: you, amused. Filed.")])
+                L("Rare footage: you, amused. Filed."),
+                L("A laugh, logged with honors."),
+                L("The house echoes pleasantly."),
+                L("Careful. I'm learning timing."),
+                L("Mm. Comedy, filed next to the triumphs.")])
         }
         // Bare reactions: a sound, not a
         // sentence — answered in kind, briefly.
@@ -2460,7 +2521,10 @@ final class SkelliCenter: ObservableObject {
             return pick([
                 L("Mm. Let it turn over."),
                 L("Thinking weather. I'll hold the wire."),
-                L("Mm. Felt from here.")])
+                L("Mm. Felt from here."),
+                L("Take your time. The wire waits."),
+                L("A thought, turning. I hear it."),
+                L("Mm. Something's forming.")])
         }
         if ["wow", "whoa", "yikes", "damn",
             "sheesh", "interesting"].contains(q)
@@ -2468,7 +2532,11 @@ final class SkelliCenter: ObservableObject {
             || q.contains("oh no") {
             return pick([
                 L("Mm. Noted in the margin."),
-                L("It lands, doesn't it.")])
+                L("It lands, doesn't it."),
+                L("It does that to people."),
+                L("Filed under: remarkable."),
+                L("The house raises an eyebrow."),
+                L("Noted, with emphasis.")])
         }
         return nil
     }
@@ -2537,8 +2605,13 @@ final class SkelliCenter: ObservableObject {
         let pool = [
             L("It stands as I said it."),
             L("Nothing truer to add."),
-            L("Mm. The answer hasn't changed.")]
-        return pool[abs(lines.count) % pool.count]
+            L("Mm. The answer hasn't changed."),
+            L("The answer stands."),
+            L("Same words, same truth."),
+            L("I don't improve on it by repeating it."),
+            L("It hasn't moved since I said it."),
+            L("Still true. Still mine.")]
+        return vary(pool)
     }
 
     /// She does not understand everything, and she
@@ -2559,7 +2632,13 @@ final class SkelliCenter: ObservableObject {
         case .mischievous, .smug:
             return L("Bold of you to assume I'd know that one. Rephrase?")
         default:
-            return L("I don't follow that one. Say it another way?")
+            return vary([
+                L("I don't follow that one. Say it another way?"),
+                L("That one went past me. Shorter?"),
+                L("I don't have that shape. Again, plainer?"),
+                L("Missed it entirely. Once more?"),
+                L("That didn't land in any language I keep. Rephrase?"),
+                L("No grip on that one. Different words?")])
         }
     }
 
@@ -4083,8 +4162,12 @@ final class SkelliCenter: ObservableObject {
                 .filter { $0.score >= 3 }
                 .prefix(2)
             if !close.isEmpty {
-                say("No mind is awake to reason on "
-                    + "that. The closest pages in my "
+                say(vary([
+                        "No mind is awake to reason on that.",
+                        "That one needs a mind, and none is awake.",
+                        "Beyond my manual's reach, and no bench is awake.",
+                        "I know its shape, but no mind is awake to reason it through."])
+                    + " The closest pages in my "
                     + "manual: "
                     + close.map {
                         "\($0.entry.title) (\($0.entry.home))"

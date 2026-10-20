@@ -3561,7 +3561,12 @@ extension SkelliCenter {
                ["there", "friend", "all", "everyone",
                 "guys", "again"].contains($0)
            }) {
-            say("Hello.")
+            say(vary(["Hello.",
+                      "Hello. The house is listening.",
+                      "Well met.",
+                      "Hello — mind the wires.",
+                      "Hey. In you come.",
+                      "Hello. State of the house: attentive."]))
             return true
         }
         if ["what's up", "whats up", "what is up",
@@ -3576,22 +3581,33 @@ extension SkelliCenter {
             return true
         }
         if clean.hasPrefix("good morning") {
-            say("Morning.")
+            say(vary(["Morning.",
+                      "Morning. The wire's up too.",
+                      "First watch, morning side."]))
             return true
         }
         if clean.hasPrefix("good afternoon") {
-            say("Afternoon.")
+            say(vary(["Afternoon.",
+                      "Afternoon. The light's leaning.",
+                      "Mid-watch. Afternoon."]))
             return true
         }
         if clean.hasPrefix("good evening") {
-            say("Evening.")
+            say(vary(["Evening.",
+                      "Evening. Lamps on.",
+                      "Evening. The house exhales."]))
             return true
         }
         if ["bye", "goodbye", "good night",
             "goodnight", "see you", "see ya", "cya",
             "later", "gn"].contains(clean) {
             say(clean.contains("night")
-                ? "Night." : "Later.")
+                ? vary(["Night.",
+                        "Night. The watch is mine.",
+                        "Rest well."])
+                : vary(["Later.",
+                        "Later. The wire keeps.",
+                        "Go on, then."]))
             return true
         }
         if ["ok", "okay", "k", "got it", "cool",
@@ -3600,26 +3616,42 @@ extension SkelliCenter {
             "copy that", "sounds good", "good",
             "right", "indeed", "exactly", "yes",
             "yeah", "yep"].contains(clean) {
-            say("Noted.")
+            say(vary(["Noted.", "Logged.", "Filed.",
+                      "So recorded.", "In the ledger.",
+                      "Mm. Kept.", "Understood and kept."]))
             return true
         }
         if clean == "sorry" || clean == "my bad"
             || clean == "apologies"
             || clean.hasPrefix("sorry ") {
-            say("Nothing to forgive.")
+            say(vary(["Nothing to forgive.",
+                      "No debt on the books.",
+                      "Forgiven before you finished.",
+                      "The slate was never marked.",
+                      "All clear between us."]))
             return true
         }
         if ["lol", "haha", "lmao", "heh"]
             .contains(squeezed(clean)) {
-            say("Heh.")
+            say(vary(["Heh.", "Heh. Filed.",
+                      "A laugh, duly noted.",
+                      "Mm. Amusement logged.",
+                      "The house chuckles, quietly."]))
             return true
         }
         if q.contains("thank") {
-            say("Any time.")
+            say(vary(["Any time.", "Always.",
+                      "The house provides.",
+                      "Mm. That's the job.",
+                      "Whenever. I'm here.",
+                      "Kept with pleasure."]))
             return true
         }
         if q.contains("how are you") {
-            say("Running clean. You?")
+            say(vary(["Running clean. You?",
+                      "All systems, all senses. You?",
+                      "Kept, listening, unbothered. You?",
+                      "The house purrs. And you?"]))
             return true
         }
         if let value = mathAnswer(q) {
