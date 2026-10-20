@@ -467,6 +467,21 @@ enum CryptoSuite {
                 "ssh|" + host + "|") {
                 forget(host: account)
             }
+            for account in hosts()
+            where account.hasPrefix(
+                "unifi|" + host + "|") {
+                forget(host: account)
+            }
+            let pinQuery: [String: Any] = [
+                kSecClass as String:
+                    kSecClassGenericPassword,
+                kSecAttrService as String:
+                    service,
+                kSecAttrAccount as String:
+                    "unificert|" + host,
+            ]
+            SecItemDelete(
+                pinQuery as CFDictionary)
         }
 
         /// Host names only — never values.
@@ -672,6 +687,60 @@ enum CryptoSuite {
 
         static func forgetSSHIdentity() {
             forget(host: "ssh-identity")
+        }
+
+        // MARK: UniFi keeping
+
+        /// The word kept for one UniFi
+        /// controller login, under
+        /// "unifi|<host>|<user>" — read at
+        /// the moment of use, never
+        /// printed, logged, or spoken.
+        static func keepUnifi(host: String,
+                              user: String,
+                              word: String) {
+            keep(host: "unifi|" + host + "|"
+                 + user, secret: word)
+        }
+
+        static func unifiWord(host: String,
+                              user: String)
+            -> String? {
+            secret(for: "unifi|" + host + "|"
+                   + user)
+        }
+
+        /// The controller logins kept for
+        /// a host — user names only.
+        static func unifiUsers(
+            host: String) -> [String] {
+            var found: [String] = []
+            for account in hosts()
+            where account.hasPrefix(
+                "unifi|" + host + "|") {
+                found.append(String(
+                    account.dropFirst(
+                        6 + host.count + 1)))
+            }
+            return found
+        }
+
+        /// A controller's certificate
+        /// fingerprint (SHA-256 hex of the
+        /// leaf's DER), pinned at first
+        /// sight — the SSH host-key
+        /// doctrine carried over TLS,
+        /// under "unificert|<host>".
+        static func keepUnifiCert(
+            host: String,
+            fingerprint: String) {
+            keep(host: "unificert|" + host,
+                 secret: fingerprint)
+        }
+
+        static func unifiCert(
+            host: String) -> String? {
+            secret(for: "unificert|" + host)
         }
     }
 

@@ -806,5 +806,13 @@ extension SkelliKnowledge {
                        "post-quantum requirements",
                        "ml-kem", "quantum deadlines"],
             body: "CNSA 2.0 is the NSA's algorithm suite for National Security Systems — the networks that carry classified traffic — and it deserves an honest reading, because the marketing version is mostly weather. The suite: AES-256 for symmetric encryption, SHA-384 and SHA-512 for hashing, ML-KEM-1024 for key establishment, ML-DSA-87 for signatures. Its deadlines (staged across 2027, 2030, 2031, and 2035) bind the owners and operators of national security systems — not consumers, not ordinary apps, and nothing about them makes a home network illegal or a phone obsolete. Two honest corollaries she will never blur. First: ChaCha20-Poly1305 and ECDH on P-256 are sound, standard, and widely trusted — and they are NOT CNSA algorithms; anyone claiming CNSA compliance for them is selling something. This house uses them where it uses them and claims nothing. Second: for a home operator the actionable lesson is not panic but agility — prefer AES-256 and the larger SHA-2 hashes where a choice is offered, and keep systems patchable so their algorithms can be swapped when settled standards arrive. Crypto-agility beats crypto-panic, and honesty beats both."),
+        SkelliEntry(
+            id: "unifi",
+            title: "UniFi — the controller playbook",
+            home: "running your own controller",
+            keywords: ["unifi", "controller",
+                       "dream machine", "udm",
+                       "playbook"],
+            body: "A UniFi network is run from its controller — UniFi OS on a Dream Machine, or the classic controller on a host of your own — and the console's unifi command speaks to it over HTTPS with the login you kept for it (cred setunifi), never a default and never a guess. unifi <host> devices reads the adopted fleet — access points, switches, gateways, their models, versions, and state — and unifi <host> clients reads who is on the wire through it. The verbs that change things — restart a device, block or unblock a client — ask for a typed yes before they move, and they move only on your own controller. Two honest notes. The controller's certificate is pinned at first sight, the way SSH pins a host key: a controller whose certificate changes is refused until you clear it on purpose. And the playbook stands at the controller door only — it does not reach past it into per-device shells; those are the ssh command's road, with their own kept words."),
     ]
 }

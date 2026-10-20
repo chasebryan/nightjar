@@ -195,6 +195,7 @@ final class BlacksiteShell: ObservableObject {
         "router", "mndp", "cred", "snmpwalk",
         "snmp3walk", "snmpset", "snmp3set",
         "ssh", "sshkey", "sshhosts", "sshbackup",
+        "unifi",
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
@@ -2760,7 +2761,7 @@ final class BlacksiteShell: ObservableObject {
              "snmpwalk", "snmp3walk",
              "snmpset", "snmp3set",
              "ssh", "sshkey", "sshhosts",
-             "sshbackup",
+             "sshbackup", "unifi",
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
@@ -4650,6 +4651,10 @@ final class BlacksiteShell: ObservableObject {
                 ("sshhosts [forget <host>]", "the host keys you have trusted, kept by fingerprint"),
                 ("sshbackup [user@]host <command>", "run a command and seal its output into the Vault, filed in Deliveries"),
                 ("cred setssh <host> <user>", "keep an SSH word for a host — typed in secret, held in the Keychain"),
+                ("cred setunifi <host> <user>", "keep a UniFi controller login — typed in secret, held in the Keychain"),
+                ("unifi <host> devices|clients", "the controller's adopted devices, or who is on the wire through it"),
+                ("unifi <host> restart <device>", "restart one adopted device — asks first"),
+                ("unifi <host> block|unblock <client>", "bar a client from the network, or readmit it — asks first"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -9249,6 +9254,26 @@ final class BlacksiteShell: ObservableObject {
                 } else {
                     for account in hosts {
                         if account.hasPrefix(
+                            "unificert|") {
+                            continue
+                        }
+                        if account.hasPrefix(
+                            "unifi|") {
+                            let parts = account
+                                .split(
+                                    separator: "|",
+                                    omittingEmptySubsequences: false)
+                            if parts.count == 3 {
+                                out("\(parts[1]) "
+                                    + "— \(parts[2])"
+                                    + ", UniFi "
+                                    + "controller "
+                                    + "login",
+                                    .out)
+                                continue
+                            }
+                        }
+                        if account.hasPrefix(
                             "v3|") {
                             let parts = account
                                 .split(
@@ -9497,12 +9522,45 @@ final class BlacksiteShell: ObservableObject {
                         + "\(host) unnamed.",
                         .ok)
                 }
+            } else if sub == "setunifi",
+                      args.count > 2 {
+                let host = args[1]
+                let user = args[2]
+                askSecret(
+                    "the UniFi controller "
+                    + "word for \(user)@"
+                    + "\(host) — it will be "
+                    + "kept in the Keychain "
+                    + "and never shown again:"
+                ) { typed in
+                    let word = typed
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                    guard !word.isEmpty else {
+                        out("nothing typed — "
+                            + "nothing kept.",
+                            .err)
+                        return
+                    }
+                    CryptoSuite.NetCred
+                        .keepUnifi(
+                            host: host,
+                            user: user,
+                            word: word)
+                    out("kept — unifi will "
+                        + "speak it for "
+                        + "\(user)@\(host) "
+                        + "unnamed.",
+                        .ok)
+                }
             } else {
                 out("cred set <host> · cred "
                     + "set3 <host> <user> "
                     + "<md5|sha> [des|aes] "
                     + "[read|write] · "
                     + "cred setssh <host> "
+                    + "<user> · cred "
+                    + "setunifi <host> "
                     + "<user> · cred hosts · "
                     + "cred forget <host>",
                     .err)
@@ -9644,6 +9702,199 @@ final class BlacksiteShell: ObservableObject {
                     type: args[3],
                     value: args[4],
                     emit: emit, done: done)
+            }
+        case "unifi":
+            guard netAllowed(name) else {
+                return
+            }
+            guard args.count > 1 else {
+                out("unifi <host> devices · "
+                    + "unifi <host> clients · "
+                    + "unifi <host> restart "
+                    + "<device> · unifi "
+                    + "<host> block|unblock "
+                    + "<client> — the login "
+                    + "is kept with cred "
+                    + "setunifi.", .err)
+                return
+            }
+            var host = args[0]
+            var port: Int? = nil
+            if let colon = host.lastIndex(
+                of: ":"),
+               let parsed = Int(
+                host[host.index(
+                    after: colon)...]) {
+                port = parsed
+                host = String(host[..<colon])
+            }
+            let action = args[1].lowercased()
+            let target = args.dropFirst(2)
+                .joined(separator: " ")
+            let users = CryptoSuite.NetCred
+                .unifiUsers(host: host)
+            guard let user = users.first,
+                  let word = CryptoSuite
+                    .NetCred.unifiWord(
+                        host: host, user: user)
+            else {
+                out("no controller login "
+                    + "kept for \(host) — "
+                    + "cred setunifi \(host) "
+                    + "<user> keeps one, "
+                    + "typed in secret.",
+                    .err)
+                return
+            }
+            netBusy { emit, done in
+                DispatchQueue.global(
+                    qos: .userInitiated).async {
+                    [weak self] in
+                    defer { done() }
+                    guard let self else {
+                        return
+                    }
+                    do {
+                        let session =
+                            try UnifiPlaybook
+                            .login(
+                                host: host,
+                                port: port,
+                                user: user,
+                                word: word)
+                        if let note =
+                            session.pinNote {
+                            emit(note, .sys)
+                        }
+                        switch action {
+                        case "devices":
+                            let devices =
+                                try session
+                                .devices()
+                            emit("— \(host): "
+                                + "\(devices.count) "
+                                + "adopted",
+                                .sys)
+                            for device
+                                in devices {
+                                emit(UnifiPlaybook
+                                    .deviceLine(
+                                        device),
+                                    .out)
+                            }
+                        case "clients":
+                            let clients =
+                                try session
+                                .clients()
+                            emit("— \(host): "
+                                + "\(clients.count) "
+                                + "on the wire",
+                                .sys)
+                            for client
+                                in clients {
+                                emit(UnifiPlaybook
+                                    .clientLine(
+                                        client),
+                                    .out)
+                            }
+                        case "restart", "block",
+                             "unblock":
+                            let pool =
+                                action
+                                    == "restart"
+                                ? try session
+                                    .devices()
+                                : try session
+                                    .clients()
+                            guard let record =
+                                UnifiPlaybook
+                                .resolve(
+                                    target,
+                                    in: pool),
+                                  let mac =
+                                    record["mac"]
+                                    as? String
+                            else {
+                                emit("no "
+                                    + (action
+                                        == "restart"
+                                       ? "device"
+                                       : "client")
+                                    + " at "
+                                    + "\(host) "
+                                    + "answers to "
+                                    + "\u{201C}\(target)\u{201D}.",
+                                    .err)
+                                return
+                            }
+                            let label =
+                                UnifiPlaybook
+                                .name(of: record)
+                            emit("\(action) "
+                                + "\(label) "
+                                + "(\(mac)) at "
+                                + "\(host)? "
+                                + "type yes:",
+                                .sys)
+                            let typed =
+                                self.awaitLine(
+                                    secret: false)?
+                                .trimmingCharacters(
+                                    in: .whitespacesAndNewlines)
+                                .lowercased()
+                            guard typed == "yes"
+                            else {
+                                emit("left alone.",
+                                    .sys)
+                                return
+                            }
+                            if action
+                                == "restart" {
+                                try session
+                                    .restart(
+                                        mac: mac)
+                                emit("\(label) "
+                                    + "is "
+                                    + "restarting.",
+                                    .ok)
+                            } else {
+                                try session.block(
+                                    mac: mac,
+                                    unblock:
+                                        action
+                                        == "unblock")
+                                emit("\(label) "
+                                    + (action
+                                        == "block"
+                                       ? "is barred."
+                                       : "is "
+                                        + "readmitted."),
+                                    .ok)
+                            }
+                        default:
+                            emit("unifi \(host) "
+                                + "— actions "
+                                + "are devices, "
+                                + "clients, "
+                                + "restart, "
+                                + "block, "
+                                + "unblock.",
+                                .err)
+                        }
+                    } catch let failure
+                        as UnifiPlaybook
+                            .Failure {
+                        emit(failure.line, .err)
+                    } catch {
+                        emit("the controller "
+                            + "at \(host) did "
+                            + "not answer "
+                            + "cleanly — "
+                            + error
+                                .localizedDescription,
+                            .err)
+                    }
+                }
             }
         case "ssh":
             guard netAllowed(name) else {
