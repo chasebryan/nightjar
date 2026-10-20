@@ -166,8 +166,16 @@ extension SkelliCenter {
         -> Bool {
         let runner = MacroRunner.shared
         if runner.running {
-            say("“\(runner.currentMacroName)” is "
-                + "already running — stop it first.")
+            say(vary([
+                "“\(runner.currentMacroName)” is "
+                    + "already running — stop it "
+                    + "first.",
+                "“\(runner.currentMacroName)” is "
+                    + "still running — stop it "
+                    + "before another.",
+                "“\(runner.currentMacroName)” has "
+                    + "not finished. Stop it "
+                    + "first."]))
             return true
         }
         guard let mouth = mouth, let post = post,
@@ -2531,10 +2539,19 @@ extension SkelliCenter {
         }) else { return false }
         if let persona = canary.runningPersona,
            let port = canary.runningPort {
-            say("The " + persona + " canary is "
-                + "already singing on port "
-                + "\(port) — in character, and "
-                + "listening.")
+            say(vary([
+                "The " + persona + " canary is "
+                    + "already singing on port "
+                    + "\(port) — in character, and "
+                    + "listening.",
+                "Already up: the " + persona
+                    + " canary, singing on port "
+                    + "\(port), in character and "
+                    + "listening.",
+                "The " + persona + " canary never "
+                    + "sat down — it is singing on "
+                    + "port \(port), in character, "
+                    + "listening."]))
             return true
         }
         var persona: String? = nil
@@ -2570,10 +2587,20 @@ extension SkelliCenter {
                 forKey: "canaryHoneydrop"),
             drop: defaults.string(
                 forKey: "canaryDrop") ?? "")
-        say("The " + chosen + " canary rises on "
-            + "port \(port) — in character, and "
-            + "every word spoken to it is filed "
-            + "in the inbox.")
+        say(vary([
+            "The " + chosen + " canary rises on "
+                + "port \(port) — in character, "
+                + "and every word spoken to it "
+                + "is filed in the inbox.",
+            "The " + chosen + " canary is up on "
+                + "port \(port) — fully in "
+                + "character. Whatever is said "
+                + "to it lands in the inbox.",
+            "Up it goes: the " + chosen
+                + " canary, port \(port), in "
+                + "character — and every word "
+                + "it hears is filed in the "
+                + "inbox."]))
         return true
     }
 
@@ -3341,11 +3368,20 @@ extension SkelliCenter {
                 || q.contains("show")
                 || q.contains("?")
             guard statusShaped else { return false }
-            say("The house wears "
-                + center.current.name + ". The "
-                + "rack: " + center.allThemes
-                    .map { $0.name }
-                    .joined(separator: ", ") + ".")
+            let rack = center.allThemes
+                .map { $0.name }
+                .joined(separator: ", ")
+            say(vary([
+                "The house wears "
+                    + center.current.name
+                    + ". The rack: " + rack + ".",
+                center.current.name
+                    + " is what the house wears. "
+                    + "On the rack: " + rack + ".",
+                "Currently wearing "
+                    + center.current.name
+                    + ". The rack holds: "
+                    + rack + "."]))
             return true
         }
         return false

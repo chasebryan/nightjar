@@ -6338,14 +6338,27 @@ final class SkelliCenter: ObservableObject {
                     + "Lifting the condition is the "
                     + "only key, and that word is "
                     + "yours alone.")
-                say("Holstered — and held dark: "
-                    + EmconCondition.current.declared
-                    + " forbids it. The Standard keeps "
-                    + "loud organs down; lift the "
-                    + "condition and I'll run it.")
+                say(vary([
+                    "Holstered — and held dark: "
+                        + EmconCondition.current.declared
+                        + " forbids it. The Standard keeps "
+                        + "loud organs down; lift the "
+                        + "condition and I'll run it.",
+                    "Held dark by the Standard: "
+                        + EmconCondition.current.declared
+                        + " forbids it, and loud organs "
+                        + "stay down while it stands. Lift "
+                        + "the condition and I'll run it."]))
             } else {
-                say("Holstered. Say 'analyze the wire' "
-                    + "and I'll turn it loose myself.")
+                say(vary([
+                    "Holstered. Say 'analyze the wire' "
+                        + "and I'll turn it loose myself.",
+                    "Holstered, by my own hand. Say "
+                        + "'analyze the wire' and I'll "
+                        + "loose it.",
+                    "It stays holstered until you say "
+                        + "'analyze the wire' — then I "
+                        + "run it myself."]))
             }
             return true
         }

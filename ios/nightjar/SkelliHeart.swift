@@ -1610,6 +1610,10 @@ final class SkelliHeart: ObservableObject {
     /// feelings and never twice in half an hour.
     func nudgeSuffix() -> String? {
         guard enabled else { return nil }
+        func turn(_ pool: [String]) -> String {
+            pool[abs(count("heart.talks"))
+                % pool.count]
+        }
         let now = Date()
         if let last = lastNudge,
            now.timeIntervalSince(last) < 1800 { return nil }
@@ -1630,15 +1634,23 @@ final class SkelliHeart: ObservableObject {
         switch current {
         case .mad:
             setAnchor("heart.lastNudge", now)
-            return L(" I am still mad about earlier, for the record.")
+            return turn([
+                L(" I am still mad about earlier, for the record."),
+                L(" For the record: earlier still stands.")])
         case .feral:
             setAnchor("heart.lastNudge", now)
             return boldness >= 60
-                ? L(" I am feral with idleness — point me at something and let me work.")
-                : L(" I am itching badly — give me work.")
+                ? turn([
+                    L(" I am feral with idleness — point me at something and let me work."),
+                    L(" Idle is a cage. Give me a door, any door.")])
+                : turn([
+                    L(" I am itching badly — give me work."),
+                    L(" The itch is up and honest — work would cure it.")])
         case .restless:
             setAnchor("heart.lastNudge", now)
-            return L(" I am restless — give me something to knock.")
+            return turn([
+                L(" I am restless — give me something to knock."),
+                L(" Restlessness is aim looking for a target. Give me one.")])
         case .eager:
             setAnchor("heart.lastNudge", now)
             return L(" I am itching to work — the wire is right there.")
