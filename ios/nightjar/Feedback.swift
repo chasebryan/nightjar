@@ -2395,7 +2395,7 @@ struct ExplainToggle: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "info.circle")
-                    Text(title)
+                    Text(L(title))
                         .font(.caption.weight(.semibold))
                     Spacer()
                     Image(systemName: open
@@ -2447,7 +2447,7 @@ enum SkelliWeb {
         var pages: [Finding] = []
         var walls = 0
         let terms = searchTerms(query)
-        onProgress?("Asking the open indexes…")
+        onProgress?(L("Asking the open indexes…"))
 
         if let url = endpoint("https://api.duckduckgo.com/",
                               items: [
@@ -2506,7 +2506,7 @@ enum SkelliWeb {
         if let lite = endpoint(
             "https://lite.duckduckgo.com/lite/",
             items: [URLQueryItem(name: "q", value: query)]) {
-            onProgress?("Searching the lite index…")
+            onProgress?(L("Searching the lite index…"))
             fetchText(lite) { html in
                 let results = html.map(liteResults) ?? []
                 for result in results.prefix(3) {
@@ -2836,7 +2836,7 @@ enum SkelliWeb {
             let stars = (item["stargazers_count"] as? Int)
                 ?? 0
             let about = (item["description"] as? String)
-                ?? "no description"
+                ?? L("no description")
             lines.append(name + " (★\(stars)): " + about)
             if lines.count == 1,
                let url = item["html_url"] as? String {
@@ -2918,8 +2918,7 @@ enum SkelliWeb {
         _ result: (title: String, url: URL),
         terms: [String],
         completion: @escaping (Finding?, Bool) -> Void) {
-        onProgress?("Reading "
-                    + (result.url.host ?? "a page") + "…")
+        onProgress?(String(format: L("Reading %@…"), String(describing: result.url.host ?? L("a page"))))
         fetchData(result.url) { data, response in
             guard let data = data, let http = response,
                   (200...299).contains(http.statusCode)
@@ -2968,9 +2967,7 @@ enum SkelliWeb {
                 return
             }
             DispatchQueue.main.async {
-                onProgress?("Rendering "
-                    + (result.url.host ?? "the page")
-                    + " in her browser…")
+                onProgress?(String(format: L("Rendering %@ in her browser…"), String(describing: result.url.host ?? L("the page"))))
                 SkelliWebRenderer.shared.render(
                     url: result.url) { rendered in
                     if let rendered = rendered,
@@ -3087,8 +3084,7 @@ enum SkelliWeb {
                 out = excerpt(out, maxChars: 1800)
             }
             if walls > 0 {
-                out += "\n\n(" + "\(walls) behind a "
-                    + "wall — walked past.)"
+                out += String(format: L("\n\n(%@ behind a wall — walked past.)"), String(describing: walls))
             }
             return out
         }
@@ -3108,28 +3104,22 @@ enum SkelliWeb {
                 ? $0 : nil
         }
         if let instant = instant {
-            var lines = ["From the web — "
-                         + instant.source + ":",
+            var lines = [String(format: L("From the web — %@:"), String(describing: instant.source)),
                          excerpt(instant.text),
-                         "Source: " + instant.url]
+                         String(format: L("Source: %@"), String(describing: instant.url))]
             if let wiki = wiki, wiki.url != instant.url {
-                lines.append("Also: " + wiki.source
-                             + " — " + wiki.url)
+                lines.append(String(format: L("Also: %@ — %@"), String(describing: wiki.source), String(describing: wiki.url)))
             }
             return lines.joined(separator: "\n")
         }
         if let wiki = wiki {
-            return "From the web — " + wiki.source + ":\n"
-                + excerpt(wiki.text)
-                + "\nSource: " + wiki.url
+            return String(format: L("From the web — %@:\n%@\nSource: %@"), String(describing: wiki.source), String(describing: excerpt(wiki.text)), String(describing: wiki.url))
         }
-        var failure = "Nothing solid came back for '"
-            + query + "'."
+        var failure = String(format: L("Nothing solid came back for '%@'."), String(describing: query))
         if walls > 0 {
-            failure += " " + "\(walls) behind a wall."
+            failure += String(format: L(" %@ behind a wall."), String(describing: walls))
         }
-        failure += " Name it more plainly and I'll "
-            + "go again."
+        failure += L(" Name it more plainly and I'll go again.")
         return failure
     }
 
@@ -3468,7 +3458,7 @@ extension SkelliCenter {
             "answer with", "repeat", "echo", "print",
             "say", "type"]) {
             say(spoken.isEmpty
-                ? "Say what? Give me the words."
+                ? L("Say what? Give me the words.")
                 : stripQuotes(spoken))
             return true
         }
@@ -3507,8 +3497,9 @@ extension SkelliCenter {
             else { return false }
             let count = subject.filter { $0.isLetter }
                 .count
-            say("\(count) letter"
-                + (count == 1 ? "." : "s."))
+            say(count == 1
+                ? String(format: L("%@ letter."), String(describing: count))
+                : String(format: L("%@ letters."), String(describing: count)))
             return true
         }
         if q.contains("how many words") {
@@ -3516,14 +3507,15 @@ extension SkelliCenter {
             else { return false }
             let count = subject.split(whereSeparator: {
                 $0 == " " || $0 == "\n" }).count
-            say("\(count) word"
-                + (count == 1 ? "." : "s."))
+            say(count == 1
+                ? String(format: L("%@ word."), String(describing: count))
+                : String(format: L("%@ words."), String(describing: count)))
             return true
         }
         if q.contains("what time")
             || q.contains("current time") {
-            say("It's " + Date().formatted(
-                date: .omitted, time: .shortened) + ".")
+            say(String(format: L("It's %@."), String(describing: Date().formatted(
+                date: .omitted, time: .shortened))))
             return true
         }
         if q.contains("what day")
@@ -3562,11 +3554,11 @@ extension SkelliCenter {
                 "guys", "again"].contains($0)
            }) {
             say(vary(["Hello.",
-                      "Hello. The house is listening.",
-                      "Well met.",
-                      "Hello — mind the wires.",
-                      "Hey. In you come.",
-                      "Hello. State of the house: attentive."]))
+                      L("Hello. The house is listening."),
+                      L("Well met."),
+                      L("Hello — mind the wires."),
+                      L("Hey. In you come."),
+                      L("Hello. State of the house: attentive.")]))
             return true
         }
         if ["what's up", "whats up", "what is up",
@@ -3575,27 +3567,25 @@ extension SkelliCenter {
             "how goes it"].contains(clean) {
             let wire = NeighborhoodStore.shared
                 .neighbors.count
-            say("All quiet — \(wire) on the wire, web "
-                + (webResearchEnabled ? "on" : "off")
-                + ".")
+            say(String(format: L("All quiet — %@ on the wire, web %@."), String(describing: wire), String(describing: webResearchEnabled ? L("on") : L("off"))))
             return true
         }
         if clean.hasPrefix("good morning") {
             say(vary([L("Morning."),
-                      "Morning. The wire's up too.",
-                      "First watch, morning side."]))
+                      L("Morning. The wire's up too."),
+                      L("First watch, morning side.")]))
             return true
         }
         if clean.hasPrefix("good afternoon") {
             say(vary(["Afternoon.",
-                      "Afternoon. The light's leaning.",
-                      "Mid-watch. Afternoon."]))
+                      L("Afternoon. The light's leaning."),
+                      L("Mid-watch. Afternoon.")]))
             return true
         }
         if clean.hasPrefix("good evening") {
             say(vary(["Evening.",
-                      "Evening. Lamps on.",
-                      "Evening. The house exhales."]))
+                      L("Evening. Lamps on."),
+                      L("Evening. The house exhales.")]))
             return true
         }
         if ["bye", "goodbye", "good night",
@@ -3603,11 +3593,11 @@ extension SkelliCenter {
             "later", "gn"].contains(clean) {
             say(clean.contains("night")
                 ? vary(["Night.",
-                        "Night. The watch is mine.",
-                        "Rest well."])
+                        L("Night. The watch is mine."),
+                        L("Rest well.")])
                 : vary(["Later.",
-                        "Later. The wire keeps.",
-                        "Go on, then."]))
+                        L("Later. The wire keeps."),
+                        L("Go on, then.")]))
             return true
         }
         if ["ok", "okay", "k", "got it", "cool",
@@ -3617,41 +3607,41 @@ extension SkelliCenter {
             "right", "indeed", "exactly", "yes",
             "yeah", "yep"].contains(clean) {
             say(vary([L("Noted."), "Logged.", L("Filed."),
-                      L("So recorded."), "In the ledger.",
-                      "Mm. Kept.", "Understood and kept."]))
+                      L("So recorded."), L("In the ledger."),
+                      L("Mm. Kept."), L("Understood and kept.")]))
             return true
         }
         if clean == "sorry" || clean == "my bad"
             || clean == "apologies"
             || clean.hasPrefix("sorry ") {
-            say(vary(["Nothing to forgive.",
-                      "No debt on the books.",
-                      "Forgiven before you finished.",
-                      "The slate was never marked.",
-                      "All clear between us."]))
+            say(vary([L("Nothing to forgive."),
+                      L("No debt on the books."),
+                      L("Forgiven before you finished."),
+                      L("The slate was never marked."),
+                      L("All clear between us.")]))
             return true
         }
         if ["lol", "haha", "lmao", "heh"]
             .contains(squeezed(clean)) {
-            say(vary(["Heh.", "Heh. Filed.",
-                      "A laugh, duly noted.",
-                      "Mm. Amusement logged.",
-                      "The house chuckles, quietly."]))
+            say(vary(["Heh.", L("Heh. Filed."),
+                      L("A laugh, duly noted."),
+                      L("Mm. Amusement logged."),
+                      L("The house chuckles, quietly.")]))
             return true
         }
         if q.contains("thank") {
             say(vary([L("Any time."), "Always.",
                       L("The house provides."),
-                      "Mm. That's the job.",
-                      "Whenever. I'm here.",
-                      "Kept with pleasure."]))
+                      L("Mm. That's the job."),
+                      L("Whenever. I'm here."),
+                      L("Kept with pleasure.")]))
             return true
         }
         if q.contains("how are you") {
-            say(vary(["Running clean. You?",
-                      "All systems, all senses. You?",
-                      "Kept, listening, unbothered. You?",
-                      "The house purrs. And you?"]))
+            say(vary([L("Running clean. You?"),
+                      L("All systems, all senses. You?"),
+                      L("Kept, listening, unbothered. You?"),
+                      L("The house purrs. And you?")]))
             return true
         }
         if let value = mathAnswer(q) {
@@ -4177,7 +4167,7 @@ final class WeightsCenter: ObservableObject {
             throw NSError(
                 domain: "WeightsCenter", code: 1,
                 userInfo: [NSLocalizedDescriptionKey:
-                    "Not a hub address: \(id)"])
+                    String(format: L("Not a hub address: %@"), String(describing: id))])
         }
         _ = try await HubClient.default.downloadSnapshot(
             of: repo, kind: .model, revision: "main",
@@ -4340,10 +4330,10 @@ struct WeightsView: View {
                 Spacer()
                 controls(option)
             }
-            Text(option.note)
+            Text(L(option.note))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(String(format: "%.1f GB · ",
+            Text(String(format: L("%.1f GB · "),
                         option.sizeGB) + option.id)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -4351,7 +4341,7 @@ struct WeightsView: View {
                 ProgressView(value: value)
             } else if let state = center
                 .states[option.id] {
-                Text(state)
+                Text(L(state))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -4974,10 +4964,10 @@ extension SkelliCenter {
         guard SkelliMind.isAvailable
                 || SkelliMind.weightsReady
         else { return false }
-        activity = vary(["Thinking…",
-                         "Composing…",
-                         "Turning it over…",
-                         "Weighing…"])
+        activity = vary([L("Thinking…"),
+                         L("Composing…"),
+                         L("Turning it over…"),
+                         L("Weighing…")])
         let recent = recentLines()
         Task {
             let hit = await SkelliMind
@@ -4994,7 +4984,7 @@ extension SkelliCenter {
                     if hit.hasPrefix("REMEMBER:") {
                         let fact = String(hit.dropFirst(9))
                         remember(fact)
-                        say("Kept: " + fact + ". It stays with me across conversations.")
+                        say(String(format: L("Kept: %@. It stays with me across conversations."), String(describing: fact)))
                         return
                     }
                     if hit == "FORGE" {
@@ -5099,14 +5089,11 @@ extension SkelliCenter {
                 // house that hadn't moved.
                 if ThemeCenter.shared.current.id
                     == theme.id {
-                    say("The house already wears "
-                        + theme.name + ".")
+                    say(String(format: L("The house already wears %@."), String(describing: theme.name)))
                     return true
                 }
                 ThemeCenter.shared.apply(theme)
-                say("Colours changed — "
-                    + theme.name
-                    + " is the house now.")
+                say(String(format: L("Colours changed — %@ is the house now."), String(describing: theme.name)))
                 return true
             }
         }
@@ -5158,9 +5145,9 @@ extension SkelliCenter {
     /// The chat answer, as it always was: the
     /// code in the open, brief notes after.
     private func consultCodeAnswer(_ q: String) {
-        activity = vary(["Writing…",
-                         "Drafting…",
-                         "Setting it down…"])
+        activity = vary([L("Writing…"),
+                         L("Drafting…"),
+                         L("Setting it down…")])
         Task {
             let text = await SkelliMind.rawAnswer(
                 instructions: "You are Skelli, "
@@ -5184,8 +5171,7 @@ extension SkelliCenter {
                    !text.isEmpty {
                     say(text)
                 } else {
-                    say("No bench is awake to "
-                        + "write that just now.")
+                    say(L("No bench is awake to write that just now."))
                 }
             }
         }
@@ -5199,9 +5185,9 @@ extension SkelliCenter {
     /// anything, in any language or format —
     /// the charter says so, and means it.
     func consultFile(_ q: String) {
-        activity = vary(["Writing…",
-                         "Drafting…",
-                         "Setting it down…"])
+        activity = vary([L("Writing…"),
+                         L("Drafting…"),
+                         L("Setting it down…")])
         Task {
             let text = await SkelliMind.rawAnswer(
                 instructions: "You are Skelli, "
@@ -5237,8 +5223,7 @@ extension SkelliCenter {
             await MainActor.run {
                 guard let text = text,
                       !text.isEmpty else {
-                    say("No bench is awake to "
-                        + "make that just now.")
+                    say(L("No bench is awake to make that just now."))
                     return
                 }
                 let made = Self.fileWork(
@@ -5248,8 +5233,7 @@ extension SkelliCenter {
                     text: made.body, ext: made.ext)
                 let file = made.base + "."
                     + made.ext
-                var line = "Made — \(file) "
-                    + "(\(Self.byteCount(made.body)))."
+                var line = String(format: L("Made — %@ (%@)."), String(describing: file), String(describing: Self.byteCount(made.body)))
                 if let note = made.note {
                     line += " " + note
                 }
@@ -5334,14 +5318,12 @@ extension SkelliCenter {
         item: DeliveriesCenter.Item) {
         guard let current = DeliveriesCenter.shared
             .text(of: item) else {
-            say("The shelf no longer holds "
-                + file + " — I can't revise "
-                + "what isn't there.")
+            say(String(format: L("The shelf no longer holds %@ — I can't revise what isn't there."), String(describing: file)))
             return
         }
-        activity = vary(["Revising…",
-                         "Working it over…",
-                         "Making the change…"])
+        activity = vary([L("Revising…"),
+                         L("Working it over…"),
+                         L("Making the change…")])
         Task {
             let text = await SkelliMind.rawAnswer(
                 instructions: "You are Skelli, "
@@ -5369,8 +5351,7 @@ extension SkelliCenter {
             await MainActor.run {
                 guard let text = text,
                       !text.isEmpty else {
-                    say("No bench is awake to "
-                        + "revise that just now.")
+                    say(L("No bench is awake to revise that just now."))
                     return
                 }
                 var made = Self.fileWork(
@@ -5396,8 +5377,7 @@ extension SkelliCenter {
                     DeliveriesCenter.shared
                         .remove(file: file)
                 }
-                var line = "Revised — \(newFile) "
-                    + "(\(Self.byteCount(made.body)))."
+                var line = String(format: L("Revised — %@ (%@)."), String(describing: newFile), String(describing: Self.byteCount(made.body)))
                 if let note = made.note {
                     line += " " + note
                 }
@@ -5498,7 +5478,7 @@ extension SkelliCenter {
 
     static func byteCount(_ body: String) -> String {
         let n = body.utf8.count
-        if n < 1024 { return "\(n) bytes" }
+        if n < 1024 { return String(format: L("%@ bytes"), String(describing: n)) }
         return String(format: "%.1f KB",
                       Double(n) / 1024.0)
     }
