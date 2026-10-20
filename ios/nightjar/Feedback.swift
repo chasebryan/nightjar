@@ -4991,7 +4991,10 @@ extension SkelliCenter {
         guard SkelliMind.isAvailable
                 || SkelliMind.weightsReady
         else { return false }
-        activity = "Thinking…"
+        activity = vary(["Thinking…",
+                         "Composing…",
+                         "Turning it over…",
+                         "Weighing…"])
         let recent = recentLines()
         Task {
             let hit = await SkelliMind
@@ -5120,7 +5123,9 @@ extension SkelliCenter {
     }
 
     func consultCode(_ q: String) {
-        activity = "Writing…"
+        activity = vary(["Writing…",
+                         "Drafting…",
+                         "Setting it down…"])
         Task {
             let text = await SkelliMind.rawAnswer(
                 instructions: "You are Skelli, "

@@ -4152,7 +4152,10 @@ final class SkelliCenter: ObservableObject {
             }
         }
         if started {
-            activity = "Thinking…"
+            activity = vary(["Thinking…",
+                             "Composing…",
+                             "Turning it over…",
+                             "Weighing…"])
         } else {
             // No bench awake: before the web, the
             // brain offers the manual's closest
@@ -4632,7 +4635,9 @@ final class SkelliCenter: ObservableObject {
         }
         mood = .working
         SkelliHeart.shared.noteAction()
-        activity = "Researching…"
+        activity = vary(["Researching…",
+                         "Asking the library…",
+                         "Reading widely…"])
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
         }

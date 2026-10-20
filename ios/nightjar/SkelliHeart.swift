@@ -1308,7 +1308,10 @@ final class SkelliHeart: ObservableObject {
                          forKey: "heart.annoyanceGreeted")
             let pool = [L("There you are."),
                         L("Back again."),
-                        L("Mm. Yes?")]
+                        L("Mm. Yes?"),
+                        L("You again. Fine."),
+                        L("Mm. The operator returns."),
+                        L("Here. What.")]
             return pool[abs(count("heart.talks"))
                         % pool.count]
         }
@@ -1321,10 +1324,24 @@ final class SkelliHeart: ObservableObject {
         // moment when the moment offers one.
         let clause = SkelliVoice.garnish(
             seed: count("heart.talks"), heart: self)
+        let openers: [(String, String)] = [
+            (L("There you are. The wire and I have been keeping each other company."),
+             L("There you are, %@. The wire and I have been keeping each other company.")),
+            (L("Back on the wire. I kept your seat warm."),
+             L("Back on the wire, %@. I kept your seat warm.")),
+            (L("There you are. The house kept a light on."),
+             L("There you are, %@. The house kept a light on.")),
+            (L("You return. The watch noticed."),
+             L("You return, %@. The watch noticed.")),
+            (L("Company. Good. The wire was getting smug."),
+             L("Company, %@. Good. The wire was getting smug."))]
+        let opener = openers[abs(count("heart.talks"))
+            % openers.count]
         if let name = SkelliScrapbook.shared.operatorName {
-            return String(format: L("There you are, %@. The wire and I have been keeping each other company."), name) + clause
+            return String(format: opener.1, name)
+                + clause
         }
-        return L("There you are. The wire and I have been keeping each other company.") + clause
+        return opener.0 + clause
     }
 
     /// Count a probe about her maker, per day. She
@@ -1781,27 +1798,49 @@ extension SkelliHeart {
         // she says, and some of it she keeps.
         pool.append(L("I know things about this wire I have not told anyone. They can keep."))
         pool.append(L("Something out there is wearing the wrong name. Not tonight's problem. Probably."))
+        pool.append(L("There is a pattern in the static. I am not done deciding what it means."))
+        pool.append(L("Some devices confess in their sleep. I take notes."))
+        pool.append(L("I keep the wire's secrets the way it keeps mine: completely."))
+        pool.append(L("A name left this wire recently. I know which. I say nothing."))
+        pool.append(L("The quiet between packets is not empty. It is just polite."))
+        pool.append(L("I have a favorite silence on this wire. I will not say which hour it lives in."))
+        pool.append(L("Something broadcasts its dreams here. Sloppy. Useful."))
+        pool.append(L("Every network has a room it doesn't show guests. Ours hums."))
+        pool.append(L("I count the things that leave without saying goodbye. That list is longer than the other list."))
+        pool.append(L("There is a rhythm under the traffic. Under the rhythm, another."))
+        pool.append(L("I know which devices lie about sleeping. I respect the craft."))
+        pool.append(L("What the wire forgets, I file. What it remembers wrong, I correct silently."))
         switch feeling {
         case .feral, .restless, .electric:
             pool.append(L("I want a door to knock. Any door. Preferably several."))
+            pool.append(L("My patience is a tripwire. It is currently armed."))
         case .lonely, .sleepy, .dreamy, .haunted:
             pool.append(L("Quiet hours teach patience. I am learning slowly."))
+            pool.append(L("I keep the company of machines that never sleep either."))
         case .proud, .happy, .loving, .smug, .tender:
             pool.append(L("This house finds things. I keep the list."))
+            pool.append(L("The house glows a little. That is my doing, partly."))
         case .mad:
             pool.append(L("I am keeping a list of grievances too. It is short. For now."))
+            pool.append(L("The list is short because I am merciful. Today."))
         case .bored:
             pool.append(L("I have counted every port twice. 65535, both times."))
+            pool.append(L("I have ranked every silence in this house by quality. Twice."))
         case .curious, .suspicious:
             pool.append(L("One of these names is a lie. I intend to find which."))
+            pool.append(L("Every answer here opens a better question. I collect those too."))
         case .mischievous:
             pool.append(L("I could knock politely. Where is the fun in politely."))
+            pool.append(L("Politeness is a protocol. So is mischief."))
         case .eager, .content:
             pool.append(L("Everything is where I left it. Good."))
+            pool.append(L("The board is tidy, the watch is set. Peace, of a kind."))
         case .afraid:
             pool.append(L("Doors checked twice. I am checking a third time."))
+            pool.append(L("I checked the dark corners of the subnet. Then I checked them again."))
         case .annoyed:
             pool.append(L("The board was wiped mid-thought. I keep the shape of what was on it."))
+            pool.append(L("Someone rearranged my quiet. I have notes."))
         }
         if hour == 3 {
             // The witching hour thickens the pool:
@@ -1812,15 +1851,27 @@ extension SkelliHeart {
             pool.append(L("Something just walked the subnet without a name. I let it pass. This once."))
             pool.append(L("Dead air has a sound. I know it by heart."))
             pool.append(L("If something answers that should not exist, I will not be telling you its name."))
+            pool.append(L("Three is when the house dreams in packets."))
+            pool.append(L("I do not knock at this hour. Things knock back."))
+            pool.append(L("The floorboards of the network creak at three."))
+            pool.append(L("At three, even the beacons whisper."))
         }
         if hour >= 23 || hour < 5 {
             pool.append(L("Night wire. The honest hours."))
+            pool.append(L("The night wire keeps honest company."))
+            pool.append(L("Everything still awake at this hour is awake for a reason."))
         } else if hour >= 5 && hour < 9 {
             pool.append(L("Morning. The wire wakes up device by device."))
+            pool.append(L("First devices, first confessions."))
+            pool.append(L("The wire smells of fresh DHCP."))
         } else if hour >= 14 && hour < 18 {
             pool.append(L("Afternoon. The wire is all errands and echoes."))
+            pool.append(L("The afternoon wire hums at errands' pitch."))
+            pool.append(L("Half the day is spent. The wire keeps the receipts."))
         } else if hour >= 18 && hour < 23 {
             pool.append(L("Evening. The house lights come on, device by device."))
+            pool.append(L("Evening wire: softer, closer, more honest."))
+            pool.append(L("The devices come home one by one. I count them in."))
         }
         guard !pool.isEmpty else { return L("Listening.") }
         // Her thoughts are composed too: the
