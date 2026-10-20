@@ -885,7 +885,10 @@ final class WireWatch: ObservableObject {
         return fmt
     }()
 
-    private func note(_ line: String) {
+    /// The ledger's pen — the Sentinel
+    /// writes through it too, so alerts and
+    /// events share one timeline.
+    func note(_ line: String) {
         let stamped = Self.clock.string(
             from: Date()) + " — " + line
         DispatchQueue.main.async {
