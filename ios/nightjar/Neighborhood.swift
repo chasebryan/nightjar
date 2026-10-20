@@ -138,6 +138,18 @@ enum RouterSigns {
             }
         }
         for line in announcements {
+            let lowLine = line.lowercased()
+            if gearWords.contains(
+                where: { lowLine.contains($0) }),
+               name == nil {
+                points += 1
+                signs.append("announces "
+                             + "network gear in "
+                             + "its own words")
+                break
+            }
+        }
+        for line in announcements {
             if line.contains("MikroTik") {
                 points += 3
                 signs.append("speaks MikroTik's "
