@@ -441,12 +441,29 @@ enum GauntletBattery {
                                 password: secret,
                                 outputDirectory: outDir)
                     } catch {
+                        // Show the file it choked
+                        // on: its size and the
+                        // head bytes, so the
+                        // header's true layout
+                        // can be read off the
+                        // failure itself.
+                        let bytes = (try? Data(
+                            contentsOf: sealedURL))
+                            ?? Data()
+                        let head = bytes
+                            .prefix(176).map {
+                                String(format: "%02x",
+                                       $0)
+                            }.joined()
                         throw Gauntlet.Failure(
                             message: "the control "
                             + "decrypt threw "
                             + "\(error) at \(size) "
                             + "bytes / "
-                            + "\(protection.label)")
+                            + "\(protection.label)"
+                            + "; file "
+                            + "\(bytes.count) B; "
+                            + "head " + head)
                     }
                     cases += 1
                     let back = try Data(

@@ -738,8 +738,27 @@ final class Gauntlet: ObservableObject {
                         recipient: protection == .deadDrop
                             ? CryptoSuite.identity().publicKey
                             : nil)
-                    let info = try CryptoFiles
-                        .inspect(sealed)
+                    let info: NJCFInfo
+                    do {
+                        info = try CryptoFiles
+                            .inspect(sealed)
+                    } catch {
+                        let bytes = (try? Data(
+                            contentsOf: sealed))
+                            ?? Data()
+                        let head = bytes
+                            .prefix(176).map {
+                                String(format: "%02x",
+                                       $0)
+                            }.joined()
+                        throw Failure(
+                            message: "inspect threw "
+                            + "\(error) at \(size) "
+                            + "bytes / "
+                            + "\(protection); file "
+                            + "\(bytes.count) B; "
+                            + "head " + head)
+                    }
                     try Gauntlet.require(
                         info.protection == protection,
                         "inspect misread the "
