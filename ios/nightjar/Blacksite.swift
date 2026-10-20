@@ -3965,6 +3965,14 @@ final class BlacksiteShell: ObservableObject {
     /// — a package cannot summon js, node
     /// or grok itself through the bridge.
     private func installExecBridge() {
+        BlacksiteJS.envProvider =
+            { [weak self] in
+                guard let self = self
+                else { return [:] }
+                var env = self.env
+                env["PWD"] = self.cwd
+                return env
+            }
         BlacksiteJS.execProvider =
             { [weak self] line, done in
                 guard let self = self else {

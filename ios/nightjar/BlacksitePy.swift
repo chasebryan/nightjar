@@ -4781,9 +4781,42 @@ extension PyInterp {
         case (.bool(let x), .bool(let y)):
             if x == y { return 0 }
             return x ? 1 : -1
+        case (.list(let x), .list(let y)):
+            return sequenceOrdering(
+                x.items, y.items)
+        case (.tuple(let x), .tuple(let y)):
+            return sequenceOrdering(x, y)
         default:
             return nil
         }
+    }
+
+    /// Lexicographic ordering for
+    /// sequences, the way Python orders
+    /// lists and tuples: the first
+    /// unequal pair decides, and a
+    /// proper prefix sorts first. An
+    /// incomparable element pair makes
+    /// the whole comparison nil, which
+    /// the caller raises as TypeError.
+    func sequenceOrdering(
+        _ xs: [PyValue], _ ys: [PyValue])
+        -> Int? {
+        let shared = min(xs.count, ys.count)
+        for i in 0..<shared {
+            if PyFormat.equals(xs[i], ys[i]) {
+                continue
+            }
+            guard let order = ordering(
+                xs[i], ys[i]) else {
+                return nil
+            }
+            return order
+        }
+        if xs.count == ys.count {
+            return 0
+        }
+        return xs.count < ys.count ? -1 : 1
     }
 
     func evalCompare(_ op: String,

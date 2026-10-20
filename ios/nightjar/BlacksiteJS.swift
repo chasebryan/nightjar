@@ -99,6 +99,36 @@ final class BlacksiteJS {
     private var fetchBoxes:
         [Int: FetchBox] = [:]
     private var fetchSeq = 0
+
+    /// A staged upload (fix146): the
+    /// request is opened with
+    /// __fetchBegin, the body arrives
+    /// through __fetchAppend in
+    /// base64 slices, and __fetchSend
+    /// fires it — a giant body never
+    /// exists as one JS string, the
+    /// mirror of fix145's sliced
+    /// replies.
+    private final class SendBox {
+        let context: JSContext
+        let gen: Int
+        let url: String
+        let parsed: [String: Any]
+        let callback: JSValue
+        var body = Data()
+        init(context: JSContext,
+             gen: Int, url: String,
+             parsed: [String: Any],
+             callback: JSValue) {
+            self.context = context
+            self.gen = gen
+            self.url = url
+            self.parsed = parsed
+            self.callback = callback
+        }
+    }
+    private var sendBoxes:
+        [Int: SendBox] = [:]
     private var execInFlight = 0
 
     /// The shell installs this so a script
@@ -109,6 +139,12 @@ final class BlacksiteJS {
         ((String,
           @escaping (String) -> Void)
             -> Void)?
+    /// The shell installs this so a
+    /// script can read the console's
+    /// environment (the shim's
+    /// process.env rides it).
+    static var envProvider:
+        (() -> [String: String])?
     private var registered: [String: JSValue] = [:]
     private var loadedPackages: [String] = []
     private var bridgeReady = false
@@ -383,6 +419,60 @@ final class BlacksiteJS {
             fetchReleaseBlock,
             forKeyedSubscript:
                 "__fetchRelease" as NSString)
+        let envBlock: @convention(block)
+            () -> String = {
+                let env = BlacksiteJS
+                    .envProvider?() ?? [:]
+                let data = (try?
+                    JSONSerialization.data(
+                        withJSONObject: env))
+                    ?? Data()
+                return String(
+                    data: data,
+                    encoding: .utf8) ?? "{}"
+            }
+        context.setObject(
+            envBlock,
+            forKeyedSubscript: "__env"
+                as NSString)
+        let fetchBeginBlock:
+            @convention(block)
+            (String, String, JSValue)
+            -> Int = {
+                [weak self] url, options,
+                callback in
+                self?.fetchBegin(
+                    url: url,
+                    optionsJSON: options,
+                    callback: callback)
+                    ?? 0
+            }
+        context.setObject(
+            fetchBeginBlock,
+            forKeyedSubscript: "__fetchBegin"
+                as NSString)
+        let fetchAppendBlock:
+            @convention(block)
+            (Int, String) -> Bool = {
+                [weak self] id, chunk in
+                self?.fetchAppend(
+                    id, chunk) ?? false
+            }
+        context.setObject(
+            fetchAppendBlock,
+            forKeyedSubscript:
+                "__fetchAppend" as NSString)
+        let fetchSendBlock:
+            @convention(block)
+            (Int) -> Bool = {
+                [weak self] id in
+                self?.fetchSend(id)
+                    ?? false
+            }
+        context.setObject(
+            fetchSendBlock,
+            forKeyedSubscript: "__fetchSend"
+                as NSString)
         let execBlock: @convention(block)
             (String, JSValue) -> Bool = {
                 [weak self] line, callback in
@@ -442,8 +532,190 @@ var house = {
     state: function() { return __houseState(); },
     emcon: function() { return __emcon(); }
 };
+// ---------- runtime citizens ----------
+// What a Node-ish program expects to
+// find already in the room (fix146).
+// Packages used to polyfill these one
+// by one; they live here now.
+if (typeof TextEncoder === "undefined") {
+    self.TextEncoder = function() {};
+    TextEncoder.prototype.encode =
+        function(text) {
+            var out = [];
+            var str = String(text);
+            for (var i = 0; i < str.length;
+                 i++) {
+                var code = str.charCodeAt(i);
+                if (code < 0x80) {
+                    out.push(code);
+                } else if (code < 0x800) {
+                    out.push(
+                        0xc0 | (code >> 6),
+                        0x80 | (code & 0x3f));
+                } else if (code >= 0xd800
+                    && code <= 0xdbff
+                    && i + 1 < str.length) {
+                    var next =
+                        str.charCodeAt(i + 1);
+                    if (next >= 0xdc00
+                        && next <= 0xdfff) {
+                        i++;
+                        var cp = 0x10000
+                            + ((code - 0xd800)
+                               << 10)
+                            + (next - 0xdc00);
+                        out.push(
+                            0xf0 | (cp >> 18),
+                            0x80
+                                | ((cp >> 12)
+                                   & 0x3f),
+                            0x80
+                                | ((cp >> 6)
+                                   & 0x3f),
+                            0x80
+                                | (cp & 0x3f));
+                    } else {
+                        out.push(0xef, 0xbf,
+                                 0xbd);
+                    }
+                } else {
+                    out.push(
+                        0xe0 | (code >> 12),
+                        0x80
+                            | ((code >> 6)
+                               & 0x3f),
+                        0x80
+                            | (code & 0x3f));
+                }
+            }
+            return new Uint8Array(out);
+        };
+}
+if (typeof TextDecoder === "undefined") {
+    self.TextDecoder = function() {};
+    TextDecoder.prototype.decode =
+        function(bytes) {
+            var out = [];
+            var i = 0;
+            while (i < bytes.length) {
+                var b = bytes[i];
+                if (b < 0x80) {
+                    out.push(
+                        String.fromCharCode(b));
+                    i += 1;
+                } else if (b >= 0xc0
+                    && b < 0xe0) {
+                    out.push(
+                        String.fromCharCode(
+                            ((b & 0x1f) << 6)
+                            | (bytes[i + 1]
+                               & 0x3f)));
+                    i += 2;
+                } else if (b >= 0xe0
+                    && b < 0xf0) {
+                    out.push(
+                        String.fromCharCode(
+                            ((b & 0x0f) << 12)
+                            | ((bytes[i + 1]
+                                & 0x3f) << 6)
+                            | (bytes[i + 2]
+                               & 0x3f)));
+                    i += 3;
+                } else {
+                    var cp =
+                        ((b & 0x07) << 18)
+                        | ((bytes[i + 1]
+                            & 0x3f) << 12)
+                        | ((bytes[i + 2]
+                            & 0x3f) << 6)
+                        | (bytes[i + 3]
+                           & 0x3f);
+                    cp -= 0x10000;
+                    out.push(
+                        String.fromCharCode(
+                            0xd800
+                                + (cp >> 10),
+                            0xdc00
+                                + (cp
+                                   & 0x3ff)));
+                    i += 4;
+                }
+            }
+            return out.join("");
+        };
+}
+if (typeof URL === "undefined") {
+    self.URL = function(url, base) {
+        var text = String(url);
+        if (base
+            && text.indexOf("://") < 0) {
+            var b = new URL(base);
+            if (text.charAt(0) === "/") {
+                text = b.protocol + "//"
+                    + b.host + text;
+            } else {
+                text = b.protocol + "//"
+                    + b.host
+                    + b.pathname.replace(
+                        /[^\\/]*$/, "")
+                    + text;
+            }
+        }
+        var m = text.match(
+            /^([a-zA-Z][a-zA-Z0-9+.-]*:)\\/\\/([^\\/:?#]*)(?::([0-9]+))?([^?#]*)(\\?[^#]*)?(#.*)?$/);
+        if (!m) {
+            throw new Error(
+                "bad url: " + text);
+        }
+        this.protocol = m[1];
+        this.hostname = m[2];
+        this.port = m[3] || "";
+        this.host = this.port
+            ? this.hostname + ":" + this.port
+            : this.hostname;
+        this.pathname = m[4] || "/";
+        this.search = m[5] || "";
+        this.hash = m[6] || "";
+        this.origin = this.protocol + "//"
+            + this.host;
+        this.href = text;
+    };
+    URL.prototype.toString = function() {
+        return this.href;
+    };
+}
+var process = {
+    platform: "blacksite",
+    argv: [],
+    env: {},
+    cwd: function() {
+        return process.env.PWD || "/home";
+    },
+    exit: function(code) {
+        var e = new Error("process.exit");
+        e.__exit = true;
+        e.exitCode = code | 0;
+        throw e;
+    }
+};
+self.process = process;
+function __refreshProcess(name, args) {
+    process.argv = [String(name)]
+        .concat(args || []);
+    try {
+        process.env = JSON.parse(__env());
+    } catch (e) { /* keep the last */ }
+}
 function registerCommand(name, fn) {
-    __register(String(name), fn);
+    __register(String(name), function(args) {
+        __refreshProcess(name, args);
+        try {
+            return fn(args);
+        } catch (e) {
+            if (e && e.__exit) { return; }
+            throw e;
+        }
+    });
 }
 function setTimeout(fn, ms) {
     var rest = Array.prototype.slice.call(
@@ -604,56 +876,104 @@ function __assembleSlices(id, total) {
     }
     return out;
 }
+function __binaryReply(resolve, reject) {
+    return function(payload) {
+        var r;
+        try {
+            r = JSON.parse(payload);
+        } catch (e) {
+            reject(new Error(
+                "fetch: bad reply"));
+            return;
+        }
+        if (r.error) {
+            reject(new Error(r.error));
+            return;
+        }
+        var bytes;
+        try {
+            bytes = (r.bodyId
+                    !== undefined
+                    && r.bodyBytes)
+                ? __assembleSlices(
+                    r.bodyId,
+                    r.bodyBytes)
+                : __b64decode(
+                    r.body64 || "");
+        } catch (e) {
+            reject(e);
+            return;
+        }
+        resolve({
+            status: r.status,
+            headers: r.headers,
+            body64: r.body64 || "",
+            bytes: bytes
+        });
+    };
+}
 function fetchBinary(url, opts) {
     opts = opts || {};
     return new Promise(function(resolve,
-                               reject) {
+                                reject) {
+        var reply = __binaryReply(
+            resolve, reject);
+        var body64 = (opts.body64
+                === undefined
+                || opts.body64 === null)
+            ? null : String(opts.body64);
+        if (body64 !== null
+            && body64.length > 1048576) {
+            // Staged upload (fix146): a
+            // big body crosses in slices
+            // instead of one string. The
+            // slice size is a multiple of
+            // 4, so every slice decodes
+            // on its own at the far end.
+            var id = __fetchBegin(
+                String(url),
+                JSON.stringify({
+                    method: opts.method
+                        || "GET",
+                    headers: opts.headers
+                        || {},
+                    binary: true
+                }), reply);
+            if (!id) {
+                reject(new Error(
+                    "fetch: bad url"));
+                return;
+            }
+            var step = 1048576;
+            for (var at = 0;
+                 at < body64.length;
+                 at += step) {
+                var chunk = body64.substring(
+                    at, Math.min(
+                        at + step,
+                        body64.length));
+                if (!__fetchAppend(
+                        id, chunk)) {
+                    reject(new Error(
+                        "fetch: upload "
+                        + "failed"));
+                    return;
+                }
+            }
+            if (!__fetchSend(id)) {
+                reject(new Error(
+                    "fetch: unavailable"));
+            }
+            return;
+        }
         var started = __fetch(
             String(url),
             JSON.stringify({
                 method: opts.method || "GET",
                 headers: opts.headers || {},
-                bodyBase64:
-                    (opts.body64 === undefined
-                     || opts.body64 === null)
-                    ? null
-                    : String(opts.body64),
+                bodyBase64: body64,
                 binary: true
-            }),
-            function(payload) {
-                var r;
-                try {
-                    r = JSON.parse(payload);
-                } catch (e) {
-                    reject(new Error(
-                        "fetch: bad reply"));
-                    return;
-                }
-                if (r.error) {
-                    reject(new Error(r.error));
-                    return;
-                }
-                var bytes;
-                try {
-                    bytes = (r.bodyId
-                            !== undefined
-                            && r.bodyBytes)
-                        ? __assembleSlices(
-                            r.bodyId,
-                            r.bodyBytes)
-                        : __b64decode(
-                            r.body64 || "");
-                } catch (e) {
-                    reject(e);
-                    return;
-                }
-                resolve({
-                    status: r.status,
-                    headers: r.headers,
-                    body64: r.body64 || "",
-                    bytes: bytes
-                });
-            });
+            }), reply);
         if (!started) {
             reject(new Error(
                 "fetch: unavailable"));
@@ -1203,6 +1523,20 @@ function require(spec) {
                          ["error": "fetch: bad url"])
             return id
         }
+        let binary = parsed["binary"]
+            as? Bool ?? false
+        let request = buildRequest(
+            link, parsed, nil)
+        launchFetch(id, request,
+                    binary: binary)
+        return id
+    }
+
+    private func buildRequest(
+        _ link: URL,
+        _ parsed: [String: Any],
+        _ bodyOverride: Data?)
+        -> URLRequest {
         var request = URLRequest(url: link)
         request.httpMethod =
             (parsed["method"] as? String)
@@ -1215,20 +1549,26 @@ function require(spec) {
                     forHTTPHeaderField: name)
             }
         }
-        if let body = parsed["body"]
+        if let bodyOverride = bodyOverride {
+            request.httpBody = bodyOverride
+        } else if let body = parsed["body"]
             as? String {
             request.httpBody =
                 Data(body.utf8)
-        }
-        if let body64 = parsed["bodyBase64"]
+        } else if let body64 =
+            parsed["bodyBase64"]
             as? String,
            let data = Data(
             base64Encoded: body64) {
             request.httpBody = data
         }
-        let binary = parsed["binary"]
-            as? Bool ?? false
         request.timeoutInterval = 120
+        return request
+    }
+
+    private func launchFetch(
+        _ id: Int, _ request: URLRequest,
+        binary: Bool) {
         var hold: Data? = nil
         let task = URLSession.shared
             .dataTask(with: request) {
@@ -1290,9 +1630,64 @@ function require(spec) {
                     self.deliverFetch(id, out)
                 }
             }
-        box.task = task
+        fetchBoxes[id]?.task = task
         task.resume()
+    }
+
+    private func fetchBegin(
+        url: String, optionsJSON: String,
+        callback: JSValue) -> Int {
+        guard let context = callback.context,
+              URL(string: url) != nil
+        else { return 0 }
+        let parsed =
+            (try? JSONSerialization
+                .jsonObject(
+                    with: Data(
+                        optionsJSON.utf8))
+            as? [String: Any]) ?? [:]
+        fetchSeq += 1
+        let id = fetchSeq
+        sendBoxes[id] = SendBox(
+            context: context,
+            gen: fetchGen(context),
+            url: url, parsed: parsed,
+            callback: callback)
         return id
+    }
+
+    private func fetchAppend(
+        _ id: Int, _ chunk: String)
+        -> Bool {
+        guard let box = sendBoxes[id],
+              let data = Data(
+                base64Encoded: chunk)
+        else { return false }
+        box.body.append(data)
+        return true
+    }
+
+    private func fetchSend(_ id: Int)
+        -> Bool {
+        guard let staged = sendBoxes
+                .removeValue(forKey: id),
+              let link = URL(
+                string: staged.url)
+        else { return false }
+        fetchSeq += 1
+        let fid = fetchSeq
+        fetchBoxes[fid] = FetchBox(
+            context: staged.context,
+            gen: staged.gen,
+            callback: staged.callback)
+        let binary = staged.parsed["binary"]
+            as? Bool ?? false
+        let request = buildRequest(
+            link, staged.parsed,
+            staged.body)
+        launchFetch(fid, request,
+                    binary: binary)
+        return true
     }
 
     private func deliverFetch(
@@ -1323,10 +1718,16 @@ function require(spec) {
     private func fetchesPending(
         context: JSContext, gen: Int)
         -> Bool {
-        fetchBoxes.values.contains {
+        if fetchBoxes.values.contains {
             $0.context === context
                 && $0.gen == gen
                 && !$0.delivered
+        } {
+            return true
+        }
+        return sendBoxes.values.contains {
+            $0.context === context
+                && $0.gen == gen
         }
     }
 
@@ -1363,6 +1764,11 @@ function require(spec) {
             box.task?.cancel()
             fetchBoxes[id] = nil
         }
+        for (id, box) in sendBoxes
+            where box.context === context
+                && box.gen == gen {
+            sendBoxes[id] = nil
+        }
     }
 
     private func cancelFetches(
@@ -1371,6 +1777,10 @@ function require(spec) {
             where box.context === context {
             box.task?.cancel()
             fetchBoxes[id] = nil
+        }
+        for (id, box) in sendBoxes
+            where box.context === context {
+            sendBoxes[id] = nil
         }
     }
 
