@@ -179,7 +179,7 @@ final class BlacksiteShell: ObservableObject {
         "strings", "cal", "yes", "figlet",
         "bigtext", "env",
         "export", "unset", "which", "history",
-        "watch", "sentinel",
+        "watch", "sentinel", "lockdown",
         "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "python3", "python",
         "sh", "source", "pkg",
@@ -2893,6 +2893,18 @@ final class BlacksiteShell: ObservableObject {
                     emit(line, .out)
                 }
             }
+        case "lockdown":
+            if args.first == "lift" {
+                emit(Lockdown.lift(), .sys)
+            } else if Lockdown.active {
+                emit("the lockdown already "
+                     + "stands.", .out)
+            } else {
+                emit(Lockdown.engage(
+                    reason: "the operator's "
+                    + "word at the console"),
+                    .err)
+            }
         case "sentinel":
             let sentinel = Sentinel.shared
             if args.first == "clear" {
@@ -4599,6 +4611,8 @@ final class BlacksiteShell: ObservableObject {
                 ("watch on|off|status", "the standing passives — browse, MNDP ear, gateway heartbeat"),
                 ("sentinel", "the Sentinel's alert ledger — what the signs judged"),
                 ("sentinel clear", "clear the alert ledger and its baselines"),
+                ("lockdown", "go dark: EMCON Alpha, assault and watch stood down, all of it journaled"),
+                ("lockdown lift", "lift the lockdown and restore the condition that stood before"),
                 ("date", "when it is"),
                 ("which <cmd>", "where a command lives"),
                 ("ver", "what this is"),

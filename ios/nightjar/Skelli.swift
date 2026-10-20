@@ -2686,6 +2686,7 @@ final class SkelliCenter: ObservableObject {
         if dressAsk(q) { return true }
         if tomatoAsk(q) { return true }
         if offenseAsk(q) { return true }
+        if lockdownAsk(q) { return true }
         if networkAsk(q) { return true }
         if assaultAsk(q) { return true }
         if skyBloomAsk(q) { return true }
@@ -6274,6 +6275,36 @@ final class SkelliCenter: ObservableObject {
             say("Who gets it? Name a device from "
                 + "the Neighborhood — 'throw a "
                 + "tomato at the printer'.")
+            return true
+        }
+        return false
+    }
+
+    /// The lockdown hand (Sentinel S5):
+    /// her defensive procedure by voice.
+    /// Lifting requires the lockdown to be
+    /// standing, so a bare "stand down"
+    /// still belongs to Net-Assault.
+    private func lockdownAsk(_ q: String) -> Bool {
+        if Lockdown.active
+            && (q.contains("lift")
+                || q.contains("stand down")
+                || q.contains("all clear")
+                || q.contains("lockdown off")) {
+            say(Lockdown.lift())
+            return true
+        }
+        if q.contains("lockdown")
+            || q.contains("lock down") {
+            if Lockdown.active {
+                say("We're already dark — "
+                    + "the lockdown stands. "
+                    + "Only your word lifts "
+                    + "it.")
+            } else {
+                say(Lockdown.engage(
+                    reason: "at your word"))
+            }
             return true
         }
         return false

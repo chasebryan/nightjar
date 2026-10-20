@@ -835,6 +835,8 @@ final class WireWatch: ObservableObject {
             .defaultGatewayIP()
         if let now, let was = gatewayIP,
            now != was {
+            Sentinel.shared.noteGatewayMoved(
+                from: was, to: now, watch: self)
             note("the default gateway MOVED: "
                  + "\(was) → \(now) — a "
                  + "gateway that changes "
@@ -858,6 +860,22 @@ final class WireWatch: ObservableObject {
             store: store,
             gateway: gatewayIP ?? now,
             watch: self)
+        if on, !Lockdown.active,
+           Lockdown.autoArmed {
+            let severe = Sentinel.shared
+                .recentSevere(within: 600)
+            if severe.count >= 2 {
+                let why = severe.map { $0.line }
+                    .joined(separator: " · ")
+                let summary = Lockdown.engage(
+                    reason: "two severe signs "
+                        + "inside ten minutes: "
+                        + why)
+                Journal.log("lockdown",
+                            "automatic",
+                            summary)
+            }
+        }
         if let crown = gatewayIP ?? now {
             for neighbor in store.neighbors
             where neighbor.ports.contains(67)
@@ -1044,6 +1062,24 @@ final class Sentinel: ObservableObject {
         persist()
         watch.note("ALERT · \(severity.word) — "
                    + line)
+    }
+
+    /// The heartbeat's own severe: the
+    /// crown moved. Judged here so the
+    /// lockdown tripwire counts it.
+    func noteGatewayMoved(from: String,
+                          to: String,
+                          watch: WireWatch) {
+        raise(key: "gateway-moved-"
+                + from + "-" + to,
+              severity: .severe,
+              line: "the default gateway "
+                + "moved: \(from) → \(to) "
+                + "— a gateway that changes "
+                + "without the operator's "
+                + "hand is a sign to read "
+                + "hard",
+              ip: to, watch: watch)
     }
 
     /// Judge the neighborhood as it stands.
@@ -1444,6 +1480,133 @@ enum WireBrief {
             ? "The watch stands."
             : "The watch is down.")
         return parts.joined(separator: " ")
+    }
+}
+
+// MARK: - Lockdown — the house goes dark
+
+/// Lockdown (Sentinel S5, 2026-10-20): the
+/// defensive procedure, one motion — EMCON
+/// Alpha declared and enforced (the
+/// Standard's own silencer stills every
+/// forbidden organ), Net-Assault stood
+/// down, the watch stood down, the prior
+/// condition remembered. It fires three
+/// ways: the operator's word, Skelli's
+/// hand, and automatically — two severe
+/// Sentinel signs inside ten minutes while
+/// the watch stands (the toggle rides in
+/// UserDefaults as lockdown.auto, on
+/// unless the operator turns it off).
+/// Only the operator lifts it; lifting
+/// restores the condition that stood
+/// before. Honest scope, stated once: an
+/// app can silence ITSELF completely — it
+/// cannot firewall the phone or leave the
+/// network for the operator; those moves
+/// are the operator's own hands, and the
+/// lockdown speech says so.
+enum Lockdown {
+    private static let activeKey =
+        "lockdown.active"
+    private static let priorKey =
+        "lockdown.prior"
+    static let autoKey = "lockdown.auto"
+
+    static var active: Bool {
+        UserDefaults.standard.bool(
+            forKey: activeKey)
+    }
+
+    static var autoArmed: Bool {
+        UserDefaults.standard.object(
+            forKey: autoKey) as? Bool ?? true
+    }
+
+    /// Engage. Returns the spoken summary —
+    /// what went dark, and why.
+    @discardableResult
+    static func engage(reason: String)
+        -> String {
+        if active {
+            return "Lockdown is already "
+                + "standing — the house is "
+                + "dark."
+        }
+        let prior = EmconCondition.current
+        UserDefaults.standard.set(
+            prior.rawValue, forKey: priorKey)
+        UserDefaults.standard.set(
+            true, forKey: activeKey)
+        WireWatch.shared.stop()
+        var silenced: [String] = []
+        let center = SkelliCenter.shared
+        if let mouth = center.mouth,
+           let emcon = center.emcon {
+            emcon.activate(
+                mouth: mouth, condition: .alpha)
+            silenced = emcon.lastSilenced
+        } else {
+            EmconCondition.store(.alpha)
+        }
+        if AssaultCenter.shared.running {
+            AssaultCenter.shared.disarm(
+                reason: "lockdown")
+            silenced.append("Net-Assault")
+        }
+        Journal.log("lockdown", "engaged",
+                    reason + " — prior "
+                    + prior.declared)
+        var line = "Lockdown. EMCON Alpha — "
+            + "total silence. "
+        if silenced.isEmpty {
+            line += "Nothing was standing "
+                + "to silence. "
+        } else {
+            line += "Silenced: "
+                + silenced.joined(
+                    separator: ", ") + ". "
+        }
+        line += "The watch stands down too. "
+            + "Why: " + reason + ". The "
+            + "phone itself is beyond my "
+            + "hands — airplane mode and "
+            + "forgetting the network are "
+            + "yours. Say \u{201C}lift the "
+            + "lockdown\u{201D} when you "
+            + "want the house back."
+        return line
+    }
+
+    /// Lift — the operator's word only.
+    /// Restores the remembered condition.
+    @discardableResult
+    static func lift() -> String {
+        guard active else {
+            return "No lockdown is standing."
+        }
+        UserDefaults.standard.set(
+            false, forKey: activeKey)
+        let raw = UserDefaults.standard
+            .integer(forKey: priorKey)
+        let prior = EmconCondition(
+            rawValue: raw) ?? .open
+        let center = SkelliCenter.shared
+        if let mouth = center.mouth,
+           let emcon = center.emcon {
+            emcon.activate(
+                mouth: mouth, condition: prior)
+        } else {
+            EmconCondition.store(prior)
+        }
+        Journal.log("lockdown", "lifted",
+                    "restored "
+                    + prior.declared)
+        return "Lockdown lifted — the "
+            + "house returns to "
+            + "\(prior.declared). The watch "
+            + "stays down until you stand "
+            + "it; nothing resumes itself."
     }
 }
 
