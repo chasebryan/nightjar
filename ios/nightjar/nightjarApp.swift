@@ -19,6 +19,11 @@ struct NightjarApp: App {
         // Keychain mirror before anything reads a
         // setting, and the mirror starts watching.
         HouseSetup.prepare()
+        // The backup shield (fix205): the
+        // sensitive stores stay out of device
+        // backups — applied before anything
+        // writes, and again on backgrounding.
+        BackupShield.shieldSensitiveStores()
         // The developer kit, when armed, stands
         // up before anything else can fall: the
         // crash traps are registered first, then
@@ -107,6 +112,8 @@ struct NightjarApp: App {
 #endif
                     }
                     if phase == .background {
+                        BackupShield
+                            .shieldSensitiveStores()
 #if !STORE_BUILD
                         updater.unwatch()
                         UpdateChecker.scheduleBackgroundCheck()

@@ -31,6 +31,49 @@ struct NightEvent: Identifiable, Codable {
     var h: String? = nil
 }
 
+/// The backup shield (fix205 — NSA/CISA
+/// program, Arc A): the house's sensitive
+/// stores — inbox captures, the night log,
+/// session and trace records, her transcript
+/// and subconscious, canary lessons, chat
+/// threads, device baselines, the developer
+/// kit's records — are marked out of device
+/// backups, so what was gathered on this
+/// phone does not ride an iCloud or desktop
+/// backup out of it unsealed. The vault's
+/// files were always sealed; these were the
+/// unsealed remainder. Run at launch and
+/// again on backgrounding, so stores born
+/// during a session are shielded before the
+/// system takes its snapshots.
+enum BackupShield {
+    static func shieldSensitiveStores() {
+        let docs = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask)[0]
+        let names = [
+            "exchanges.jsonl",
+            "nightjar-nightlog.jsonl",
+            "canary-lessons.json",
+            "knocktalk-threads.json",
+            "network-trace-logbook.json",
+            "skelli.json",
+            "subconscious.json",
+            "dossier-baselines.json",
+            "sessions", "Traces", "Developer",
+        ]
+        for name in names {
+            var url = docs
+                .appendingPathComponent(name)
+            guard FileManager.default.fileExists(
+                atPath: url.path) else { continue }
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? url.setResourceValues(values)
+        }
+    }
+}
+
 enum Journal {
     static var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory,
