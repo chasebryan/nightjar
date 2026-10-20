@@ -451,4 +451,170 @@ final class DecoderTests: XCTestCase {
         XCTAssertNil(BlacksitePentest.parseMNDP(
             hexBytes("0005")))
     }
+
+    // MARK: SNMPv3 USM (netadmin Phase 2)
+
+    func testAES128FIPS197() {
+        // The FIPS-197 worked example.
+        let key = bytes(
+            "000102030405060708090a0b0c0d0e0f")
+        let plain = bytes(
+            "00112233445566778899aabbccddeeff")
+        XCTAssertEqual(
+            AES128.encryptBlock(
+                key: key, plain),
+            bytes("69c4e0d86a7b0430"
+                  + "d8cdb78070b4c55a"))
+    }
+
+    func testDESClassicVectors() {
+        let key = bytes("133457799BBCDFF1")
+        let plain = bytes("0123456789ABCDEF")
+        let cipher = DESCipher.encryptBlock(
+            key: key, plain)
+        XCTAssertEqual(
+            cipher, bytes("85E813540F0AB405"))
+        XCTAssertEqual(
+            DESCipher.decryptBlock(
+                key: key, cipher), plain)
+        let key2 = bytes("0123456789ABCDEF")
+        XCTAssertEqual(
+            DESCipher.encryptBlock(
+                key: key2,
+                Array("Now is t".utf8)),
+            bytes("3FA40E8A984D4815"))
+    }
+
+    func testUSMKeyDerivationRFC3414() {
+        // RFC 3414 appendix A.3: the word
+        // is "maplesyrup"; the engine is
+        // the twelve-octet 00...02. These
+        // are the localized keys.
+        let engine = bytes(
+            "000000000000000000000002")
+        XCTAssertEqual(
+            BlacksitePentest.usmKul(
+                word: "maplesyrup",
+                engineID: engine,
+                proto: "md5"),
+            bytes("526f5eed9fcce26f"
+                  + "8964c2930787d82b"))
+        XCTAssertEqual(
+            BlacksitePentest.usmKul(
+                word: "maplesyrup",
+                engineID: engine,
+                proto: "sha"),
+            bytes("6695febc9288e362"
+                  + "82235fc7151f1284"
+                  + "97b38f3f"))
+    }
+
+    func testUSMPrivacyRoundTrips() {
+        let engine = bytes(
+            "800000090300aabbccddee01")
+        let desKul = BlacksitePentest
+            .usmKul(word: "maplesyrup",
+                    engineID: engine,
+                    proto: "md5")
+        let plain = Array(
+            "the scoped pdu rides hidden"
+                .utf8)
+        let salt = bytes("0102030405060708")
+        let sealed = BlacksitePentest
+            .usmDESEncrypt(plain: plain,
+                           key: desKul,
+                           salt: salt)
+        XCTAssertEqual(sealed.count % 8, 0)
+        let opened = BlacksitePentest
+            .usmDESDecrypt(cipher: sealed,
+                           key: desKul,
+                           salt: salt)
+        XCTAssertEqual(
+            Array(opened[..<plain.count]),
+            plain)
+        let aesKul = BlacksitePentest
+            .usmKul(word: "maplesyrup",
+                    engineID: engine,
+                    proto: "sha")
+        let sealedAES = BlacksitePentest
+            .usmAES(bytes: plain,
+                    key: aesKul, boots: 7,
+                    time: 12345, salt: salt,
+                    decrypt: false)
+        XCTAssertEqual(
+            sealedAES.count, plain.count)
+        let openedAES = BlacksitePentest
+            .usmAES(bytes: sealedAES,
+                    key: aesKul, boots: 7,
+                    time: 12345, salt: salt,
+                    decrypt: true)
+        XCTAssertEqual(openedAES, plain)
+    }
+
+    func testUSMMessageRoundTrip() {
+        // A Response PDU sealed and signed
+        // by the builder must come back
+        // through the parser whole — and a
+        // single tampered byte must fail
+        // the digest.
+        let engine = bytes(
+            "800000090300aabbccddee01")
+        let authKul = BlacksitePentest
+            .usmKul(word: "maplesyrup",
+                    engineID: engine,
+                    proto: "sha")
+        let privKul = BlacksitePentest
+            .usmKul(word: "privatesyrup",
+                    engineID: engine,
+                    proto: "sha")
+        let bind = BlacksitePentest.berTLV(
+            0x30, BlacksitePentest.berOID(
+                [1, 3, 6, 1, 2, 1, 1, 5, 0])
+            + BlacksitePentest.berTLV(
+                0x04,
+                Array("switch-01".utf8)))
+        let pdu = BlacksitePentest.berTLV(
+            0xA2, BlacksitePentest
+                .berInt(4245)
+            + BlacksitePentest.berInt(0)
+            + BlacksitePentest.berInt(0)
+            + BlacksitePentest.berTLV(
+                0x30, bind))
+        let message = BlacksitePentest
+            .usmBuild(
+                engineID: engine, boots: 3,
+                time: 999, user: "operator",
+                authProto: "sha",
+                authKul: authKul,
+                privProto: "aes",
+                privKul: privKul, pdu: pdu,
+                msgID: 4245)
+        let parsed = BlacksitePentest
+            .usmParse(
+                reply: message,
+                authProto: "sha",
+                authKul: authKul,
+                privProto: "aes",
+                privKul: privKul)
+        XCTAssertNotNil(parsed)
+        XCTAssertEqual(parsed?.error, 0)
+        XCTAssertEqual(
+            parsed?.binds.first?.oid,
+            "1.3.6.1.2.1.1.5.0")
+        XCTAssertEqual(
+            parsed?.binds.first.map {
+                BlacksitePentest.snmpRender(
+                    $0.tag, $0.body)
+            }, "switch-01")
+        var tampered = message
+        tampered[tampered.count - 3] ^= 0xFF
+        let verdict = BlacksitePentest
+            .usmParse(
+                reply: tampered,
+                authProto: "sha",
+                authKul: authKul,
+                privProto: "aes",
+                privKul: privKul)
+        XCTAssertNotNil(verdict?.note)
+    }
 }

@@ -457,6 +457,11 @@ enum CryptoSuite {
                 kSecAttrAccount as String: host,
             ]
             SecItemDelete(query as CFDictionary)
+            for account in hosts()
+            where account.hasPrefix(
+                "v3|" + host + "|") {
+                forget(host: account)
+            }
         }
 
         /// Host names only — never values.
@@ -481,6 +486,65 @@ enum CryptoSuite {
                 $0[kSecAttrAccount as String]
                     as? String
             }.sorted()
+        }
+
+        /// One SNMPv3 user as kept for a
+        /// host: the protocols by their
+        /// wire names ("md5" / "sha" /
+        /// "none" for auth, "des" / "aes" /
+        /// "none" for privacy) and the two
+        /// words themselves. Stored as one
+        /// JSON record under a v3 account,
+        /// so the hosts list shows the
+        /// shape of what is kept, never a
+        /// word.
+        struct V3 {
+            var authProto: String
+            var authPass: String
+            var privProto: String
+            var privPass: String
+        }
+
+        static func keepV3(
+            host: String, user: String,
+            cred: V3) {
+            let record: [String: String] = [
+                "a": cred.authProto,
+                "ap": cred.authPass,
+                "p": cred.privProto,
+                "pp": cred.privPass,
+            ]
+            guard let data = try?
+                JSONSerialization.data(
+                    withJSONObject: record),
+                  let blob = String(
+                    data: data,
+                    encoding: .utf8)
+            else { return }
+            keep(host: "v3|" + host + "|"
+                 + user, secret: blob)
+        }
+
+        static func v3(
+            host: String, user: String
+        ) -> V3? {
+            guard let blob = secret(
+                for: "v3|" + host + "|"
+                + user),
+                  let data = blob.data(
+                    using: .utf8),
+                  let record = try?
+                    JSONSerialization
+                    .jsonObject(with: data)
+                    as? [String: String]
+            else { return nil }
+            return V3(
+                authProto: record["a"]
+                    ?? "none",
+                authPass: record["ap"] ?? "",
+                privProto: record["p"]
+                    ?? "none",
+                privPass: record["pp"] ?? "")
         }
     }
 

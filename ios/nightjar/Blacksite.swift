@@ -193,7 +193,7 @@ final class BlacksiteShell: ObservableObject {
         "netstat", "hostname", "subdomains",
         "revdns", "nbstat", "snmp", "snmpaudit",
         "router", "mndp", "cred", "snmpwalk",
-        "snmpset",
+        "snmp3walk", "snmpset", "snmp3set",
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
@@ -2689,7 +2689,8 @@ final class BlacksiteShell: ObservableObject {
              "arp", "netstat", "hostname",
              "subdomains", "revdns",
              "router", "mndp", "cred",
-             "snmpwalk", "snmpset",
+             "snmpwalk", "snmp3walk",
+             "snmpset", "snmp3set",
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
@@ -4567,10 +4568,13 @@ final class BlacksiteShell: ObservableObject {
                 ("router", "which neighbor is the router — crowned by the default route, ranked by signs"),
                 ("mndp [seconds]", "hear MikroTik introduce itself (UDP 5678)"),
                 ("cred set <host>", "keep a credential for your own gear — typed in secret, held in the Keychain"),
+                ("cred set3 <host> <user> <md5|sha> [des|aes]", "keep an SNMPv3 user — its auth and privacy words, typed in secret"),
                 ("cred hosts", "the hosts holding a kept credential (never the secrets)"),
                 ("cred forget <host>", "let a kept credential go"),
                 ("snmpwalk <host> [community] [root]", "walk the MIB with the kept or given community"),
                 ("snmpset <host> <oid> <s|i|t|a|o> <value>", "write one object on your own gear, then read it back"),
+                ("snmp3walk <host> <user> [root]", "walk the MIB as a kept SNMPv3 user — signed, and sealed when privacy is kept"),
+                ("snmp3set <host> <user> <oid> <s|i|t|a|o> <value>", "write one object as that v3 user, then read it back"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -9206,10 +9210,113 @@ final class BlacksiteShell: ObservableObject {
                         + "will use it "
                         + "unnamed.", .ok)
                 }
+            } else if sub == "set3",
+                      args.count > 3 {
+                let host = args[1]
+                let user = args[2]
+                let authProto = args[3]
+                    .lowercased()
+                let privProto = args.count > 4
+                    ? args[4].lowercased()
+                    : "none"
+                let authOK = authProto == "md5"
+                    || authProto == "sha"
+                    || authProto == "none"
+                let privOK = privProto == "des"
+                    || privProto == "aes"
+                    || privProto == "none"
+                guard authOK, privOK,
+                      !(privProto != "none"
+                        && authProto == "none")
+                else {
+                    out("cred set3 <host> "
+                        + "<user> <md5|sha|none> "
+                        + "[des|aes|none] — "
+                        + "privacy needs auth "
+                        + "beneath it.", .err)
+                    return
+                }
+                let finish: (String, String)
+                    -> Void = { authWord, privWord in
+                    CryptoSuite.NetCred.keepV3(
+                        host: host, user: user,
+                        cred: CryptoSuite
+                            .NetCred.V3(
+                                authProto: authProto,
+                                authPass: authWord,
+                                privProto: privProto,
+                                privPass: privWord))
+                    out("kept — \(user)@\(host) "
+                        + "speaks SNMPv3 "
+                        + "\(authProto)"
+                        + (privProto == "none"
+                           ? "."
+                           : " + \(privProto)."),
+                        .ok)
+                }
+                if authProto == "none" {
+                    finish("", "")
+                } else if privProto == "none" {
+                    askSecret(
+                        "the auth word for "
+                        + "\(user)@\(host):"
+                    ) { typed in
+                        let word = typed
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                        guard !word.isEmpty
+                        else {
+                            out("nothing typed "
+                                + "— nothing "
+                                + "kept.", .err)
+                            return
+                        }
+                        finish(word, "")
+                    }
+                } else {
+                    askSecret(
+                        "the auth word for "
+                        + "\(user)@\(host):"
+                    ) { typed in
+                        let authWord = typed
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                        guard !authWord.isEmpty
+                        else {
+                            out("nothing typed "
+                                + "— nothing "
+                                + "kept.", .err)
+                            return
+                        }
+                        askSecret(
+                            "the privacy word "
+                            + "for "
+                            + "\(user)@\(host):"
+                        ) { typed2 in
+                            let privWord = typed2
+                                .trimmingCharacters(
+                                    in: .whitespaces)
+                            guard !privWord
+                                .isEmpty
+                            else {
+                                out("nothing "
+                                    + "typed — "
+                                    + "nothing "
+                                    + "kept.",
+                                    .err)
+                                return
+                            }
+                            finish(authWord,
+                                   privWord)
+                        }
+                    }
+                }
             } else {
                 out("cred set <host> · cred "
-                    + "hosts · cred forget "
-                    + "<host>", .err)
+                    + "set3 <host> <user> "
+                    + "<md5|sha> [des|aes] · "
+                    + "cred hosts · cred "
+                    + "forget <host>", .err)
             }
         case "snmpwalk":
             guard netAllowed(name),
@@ -9267,6 +9374,69 @@ final class BlacksiteShell: ObservableObject {
                     oid: args[1],
                     type: args[2],
                     value: args[3],
+                    emit: emit, done: done)
+            }
+        case "snmp3walk":
+            guard netAllowed(name),
+                  args.count >= 2,
+                  let host = args.first
+            else {
+                if args.count < 2 {
+                    out("snmp3walk <host> "
+                        + "<user> [root]",
+                        .err)
+                }
+                return
+            }
+            let user = args[1]
+            guard let cred = CryptoSuite
+                .NetCred.v3(host: host,
+                            user: user)
+            else {
+                out("no v3 user kept for "
+                    + "\(user)@\(host) — "
+                    + "cred set3 keeps one.",
+                    .err)
+                return
+            }
+            let root = args.count > 2
+                ? args[2] : "1.3.6.1.2.1"
+            netBusy { emit, done in
+                BlacksitePentest.snmp3Walk(
+                    host: host, user: user,
+                    cred: cred, root: root,
+                    emit: emit, done: done)
+            }
+        case "snmp3set":
+            guard netAllowed(name),
+                  args.count >= 5,
+                  let host = args.first
+            else {
+                if args.count < 5 {
+                    out("snmp3set <host> "
+                        + "<user> <oid> "
+                        + "<s|i|t|a|o> <value>",
+                        .err)
+                }
+                return
+            }
+            let user = args[1]
+            guard let cred = CryptoSuite
+                .NetCred.v3(host: host,
+                            user: user)
+            else {
+                out("no v3 user kept for "
+                    + "\(user)@\(host) — "
+                    + "cred set3 keeps one.",
+                    .err)
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.snmp3Set(
+                    host: host, user: user,
+                    cred: cred, oid: args[2],
+                    type: args[3],
+                    value: args[4],
                     emit: emit, done: done)
             }
         case "upnp":
