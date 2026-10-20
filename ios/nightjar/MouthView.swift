@@ -159,12 +159,12 @@ struct SendView: View {
 
     private var verifyPlantLabel: String {
         guard let last = lastPlant else {
-            return "Verify — plant something first"
+            return L("Verify — plant something first")
         }
         if last.service != "redis" {
-            return "Verify — only Redis plants can be checked"
+            return L("Verify — only Redis plants can be checked")
         }
-        return "Verify — GET '\(last.key)' back"
+        return String(format: L("Verify — GET '%@' back"), last.key)
     }
 
     private var fanoutList: [String] {
@@ -364,7 +364,7 @@ struct SendView: View {
                     } label: {
                         HStack {
                             Label(selectedPayloadName
-                                  ?? "Choose from the library",
+                                  ?? L("Choose from the library"),
                                   systemImage: "books.vertical")
                             Spacer()
                             Text(selectedPayloadName == nil ? "browse" : "change")
@@ -373,7 +373,7 @@ struct SendView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    DisclosureGroup("…or build a custom one",
+                    DisclosureGroup(L("…or build a custom one"),
                                     isExpanded: $customExpanded) {
                         Picker(L("Encoding"), selection: $source) {
                             Text(L("Text")).tag("text")
@@ -408,8 +408,8 @@ struct SendView: View {
                     if let data = previewData {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(data.isEmpty
-                                 ? "0 bytes — an empty payload"
-                                 : "\(data.count) bytes, exactly as they will go out:")
+                                 ? L("0 bytes — an empty payload")
+                                 : String(format: L("%lld bytes, exactly as they will go out:"), data.count))
                                 .font(.caption).foregroundStyle(.secondary)
                             if !data.isEmpty {
                                 Text(PayloadKit.hexdump(
@@ -471,7 +471,7 @@ struct SendView: View {
                         Haptics.tap()
                         guard build() != nil else { return }
                         withTiming(label: "fan-out to "
-                                         + "\(fanoutExpandedCount) target(s)") {
+                                         + String(format: L("%lld target(s)"), fanoutExpandedCount)) {
                             mouth.sendToMany(
                                 targets: fanoutList,
                                 payloadFor: { build(forTargetText: $0) },
@@ -481,7 +481,7 @@ struct SendView: View {
                     } label: {
                         Label(mouth.fanoutBusy
                                 ? "Sending…"
-                                : "Send payload to \(fanoutExpandedCount) target(s)",
+                                : String(format: L("Send payload to %lld target(s)"), fanoutExpandedCount),
                               systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
@@ -602,7 +602,7 @@ struct SendView: View {
                         } label: {
                             Label(mouth.crawlSweepBusy
                                     ? "Sweeping…"
-                                    : "Sweep this subnet",
+                                    : L("Sweep this subnet"),
                                   systemImage: "dot.radiowaves.left.and.right")
                         }
                         .disabled(mouth.crawlSweepBusy)
@@ -877,8 +877,8 @@ struct SendView: View {
                             mouth.traceAutoCentipede = true
                         } label: {
                             Label(mouth.traceAutoCentipede
-                                  ? "Centipede setup armed for this trace"
-                                  : "Set up the Centipede from this trace",
+                                  ? L("Centipede setup armed for this trace")
+                                  : L("Set up the Centipede from this trace"),
                                   systemImage: "arrow.triangle.2.circlepath")
                                 .frame(maxWidth: .infinity)
                         }
@@ -1045,8 +1045,8 @@ struct SendView: View {
                         snatch()
                     } label: {
                         Label(mouth.snatchBusy
-                                ? "Snatching… \(mouth.snatchBytes) bytes so far"
-                                : "Snatch from \(phoneSelection ?? target)",
+                                ? String(format: L("Snatching… %lld bytes so far"), mouth.snatchBytes)
+                                : String(format: L("Snatch from %@"), phoneSelection ?? target),
                               systemImage: "hand.raised.fill")
                             .frame(maxWidth: .infinity)
                     }
@@ -1229,7 +1229,7 @@ struct SendView: View {
                 Toggle(L("Read a reply"), isOn: $readReply)
                 Button {
                     Haptics.tap()
-                    withTiming(label: "send to \(phone)") {
+                    withTiming(label: String(format: L("send to %@"), phone)) {
                         if let data = build() {
                             noteTargetUsed("phone:\(phone)")
                             mouth.sendToPhone(name: phone, payload: data,
@@ -1259,7 +1259,7 @@ struct SendView: View {
                     Toggle(L("Read a reply"), isOn: $readReply)
                     Button {
                         Haptics.tap()
-                        withTiming(label: "send to \(target)") {
+                        withTiming(label: String(format: L("send to %@"), target)) {
                             sendNetwork(value)
                         }
                     } label: {
@@ -1325,7 +1325,7 @@ struct SendView: View {
                         Haptics.tap()
                         mouth.scanForWriteTargets()
                     } label: {
-                        Label(mouth.writeScanning ? "Scanning…" : "Scan for devices",
+                        Label(mouth.writeScanning ? L("Scanning…") : L("Scan for devices"),
                               systemImage: "magnifyingglass")
                     }
                     .disabled(mouth.writeScanning)
@@ -1374,12 +1374,12 @@ struct SendView: View {
 
     private func describe(_ target: SendTarget) -> String {
         switch target {
-        case .tcp(_, _, let tls): return tls ? "TLS-wrapped TCP" : "raw TCP"
-        case .udp(_, _): return "one UDP datagram"
-        case .http(_, let https): return https ? "HTTPS request" : "HTTP request"
-        case .bleBeacon: return "BLE advertisement carrying the payload"
-        case .bleGatt: return "BLE GATT server hosting the payload"
-        case .bleWrite(_): return "BLE central write — pick the device below"
+        case .tcp(_, _, let tls): return tls ? L("TLS-wrapped TCP") : L("raw TCP")
+        case .udp(_, _): return L("one UDP datagram")
+        case .http(_, let https): return https ? L("HTTPS request") : L("HTTP request")
+        case .bleBeacon: return L("BLE advertisement carrying the payload")
+        case .bleGatt: return L("BLE GATT server hosting the payload")
+        case .bleWrite(_): return L("BLE central write — pick the device below")
         }
     }
 
@@ -2037,7 +2037,7 @@ struct MouthLogSheet: View {
                 ShareSheet(items: item.items)
             }
             .confirmationDialog(
-                "Delete the exchange history?",
+                L("Delete the exchange history?"),
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible) {
                 Button(String(format: L("Delete %@"),

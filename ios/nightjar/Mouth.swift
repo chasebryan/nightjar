@@ -31,14 +31,14 @@ enum PayloadKit {
             .replacingOccurrences(of: "-", with: "")
             .replacingOccurrences(of: "\n", with: "")
         guard compact.count % 2 == 0 else {
-            throw MouthError.message("could not decode hex payload: odd number of digits")
+            throw MouthError.message(L("could not decode hex payload: odd number of digits"))
         }
         var bytes: [UInt8] = []
         var index = compact.startIndex
         while index < compact.endIndex {
             let next = compact.index(index, offsetBy: 2)
             guard let byte = UInt8(compact[index..<next], radix: 16) else {
-                throw MouthError.message("could not decode hex payload: bad digits")
+                throw MouthError.message(L("could not decode hex payload: bad digits"))
             }
             bytes.append(byte)
             index = next
@@ -79,7 +79,7 @@ enum PayloadKit {
             data = try decodeHex(hex)
         case "base64":
             guard let decoded = Data(base64Encoded: b64) else {
-                throw MouthError.message("could not decode base64 payload")
+                throw MouthError.message(L("could not decode base64 payload"))
             }
             data = decoded
         default:
@@ -90,7 +90,7 @@ enum PayloadKit {
         }
         if useGzip {
             guard let zipped = gzipCompress(data) else {
-                throw MouthError.message("gzip failed")
+                throw MouthError.message(L("gzip failed"))
             }
             data = zipped
         }
@@ -365,8 +365,7 @@ enum SendTarget {
         }
         if !text.contains("://") {
             if looksLikeMAC(text) { return .bleWrite(address: text.uppercased()) }
-            throw MouthError.message("target needs a scheme: tcp://, udp://, tcp+tls://, "
-                                     + "http(s)://, ble://, ble-gatt://, ble-write://, a MAC, or name:DEVICE")
+            throw MouthError.message(L("target needs a scheme: tcp://, udp://, tcp+tls://, http(s)://, ble://, ble-gatt://, ble-write://, a MAC, or name:DEVICE"))
         }
         let parts = text.split(separator: ":", maxSplits: 1).map(String.init)
         let scheme = parts[0].lowercased()
@@ -381,7 +380,7 @@ enum SendTarget {
                   let host = url.host, !host.isEmpty,
                   (!hasExplicitPort || url.port != nil),
                   (1...65535).contains(url.port ?? (scheme == "https" ? 443 : 80)) else {
-                throw MouthError.message("bad host or port in \(text)")
+                throw MouthError.message(String(format: L("bad host or port in %@"), text))
             }
             return .http(url: url, https: scheme == "https")
         case "ble", "adv", "advertise":
@@ -389,22 +388,22 @@ enum SendTarget {
         case "ble-gatt", "gatt", "peripheral":
             return .bleGatt
         case "ble-write", "gatt-write", "write":
-            if rest.isEmpty { throw MouthError.message("\(scheme):// needs an address or name:DEVICE") }
+            if rest.isEmpty { throw MouthError.message(String(format: L("%@:// needs an address or name:DEVICE"), scheme)) }
             return .bleWrite(address: String(rest))
         case "tcp", "udp", "tls", "tcp+tls", "ssl":
             guard let colon = rest.lastIndex(of: ":") else {
-                throw MouthError.message("\(scheme):// target needs host:port, got \(rest)")
+                throw MouthError.message(String(format: L("%@:// target needs host:port, got %@"), scheme, rest))
             }
             let host = String(rest[..<colon])
             guard !host.isEmpty,
                   let port = Int(rest[rest.index(after: colon)...]),
                   (1...65535).contains(port) else {
-                throw MouthError.message("bad host or port in \(text)")
+                throw MouthError.message(String(format: L("bad host or port in %@"), text))
             }
             if scheme == "udp" { return .udp(host: host, port: port) }
             return .tcp(host: host, port: port, tls: scheme != "tcp")
         default:
-            throw MouthError.message("unknown target scheme \(scheme) in \(text)")
+            throw MouthError.message(String(format: L("unknown target scheme %@ in %@"), scheme, text))
         }
     }
 
@@ -882,7 +881,7 @@ final class Mouth: NSObject, ObservableObject {
         exchangeQueue.sync {
             try? FileManager.default.removeItem(at: Mouth.exchangesURL)
         }
-        line("exchange history deleted")
+        line(L("exchange history deleted"))
     }
 
     /// Recon results join the same exportable history as payload
@@ -920,7 +919,7 @@ final class Mouth: NSObject, ObservableObject {
             return
         }
         guard let endpointPort = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else {
-            line("nightjar: bad port \(port)")
+            line(String(format: L("nightjar: bad port %lld"), port))
             completion?(false)
             return
         }
@@ -966,15 +965,15 @@ final class Mouth: NSObject, ObservableObject {
             // already kept.
             if read {
                 if replied.isEmpty {
-                    line("  (no reply)")
+                    line(L("  (no reply)"))
                 } else {
                     noteReply(label: label, data: replied)
-                    line("  <- \(replied.count) byte reply")
+                    line(String(format: L("  <- %lld byte reply"), replied.count))
                     for l in PayloadKit.hexdump(replied).components(separatedBy: "\n") {
                         line(l)
                     }
                     if let text = PayloadKit.printableText(replied) {
-                        line("  text: \(text)")
+                        line(String(format: L("  text: %@"), text))
                     }
                     DispatchQueue.main.async { [weak self] in
                         self?.toasts?.show(String(format: L("Reply received — %lld bytes"), replied.count))
@@ -997,11 +996,11 @@ final class Mouth: NSObject, ObservableObject {
         connection.stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
-                self?.line("sent \(framed.count) bytes over \(label)")
+                self?.line(String(format: L("sent %lld bytes over %@"), framed.count, label))
                 connection.send(content: framed, completion: .contentProcessed { error in
                     if let error = error {
-                        self?.line("nightjar: send failed: \(error.localizedDescription)")
-                        self?.ui("Send failed: \(error.localizedDescription)", error: true)
+                        self?.line(String(format: L("nightjar: send failed: %@"), error.localizedDescription))
+                        self?.ui(String(format: L("Send failed: %@"), error.localizedDescription), error: true)
                         finish()
                         return
                     }
@@ -1009,12 +1008,12 @@ final class Mouth: NSObject, ObservableObject {
                     if read {
                         receiveMore()
                     } else {
-                        self?.uiSuccess("Sent \(framed.count) bytes to \(label)")
+                        self?.uiSuccess(String(format: L("Sent %lld bytes to %@"), framed.count, label))
                         finish()
                     }
                 })
             case .failed(let error):
-                self?.line("nightjar: \(error.localizedDescription)")
+                self?.line(String(format: L("nightjar: %@"), error.localizedDescription))
                 self?.ui(error.localizedDescription, error: true)
                 finish()
             default:
@@ -1129,11 +1128,11 @@ final class Mouth: NSObject, ObservableObject {
             return
         }
         fanoutBusy = true
-        fanoutLines = ["Fanning out to \(targets.count) target(s)…"]
+        fanoutLines = [String(format: L("Fanning out to %lld target(s)…"), targets.count)]
         for text in invalid {
-            fanoutLines.append("✗ \(text) — invalid range")
+            fanoutLines.append(String(format: L("✗ %@ — invalid range"), text))
         }
-        line("fan-out: one payload to \(targets.count) targets")
+        line(String(format: L("fan-out: one payload to %lld targets"), targets.count))
         var index = 0
         var sentCount = 0
         func step() {
@@ -1143,9 +1142,9 @@ final class Mouth: NSObject, ObservableObject {
                 DispatchQueue.main.async { [weak self] in
                     self?.fanoutBusy = false
                     self?.fanoutLines.append(
-                        "Done — \(sent)/\(total) sent")
+                        String(format: L("Done — %lld/%lld sent"), sent, total))
                     self?.toasts?.show(
-                        "Fan-out done: \(sent)/\(total) sent",
+                        String(format: L("Fan-out done: %lld/%lld sent"), sent, total),
                         error: sent == 0)
                 }
                 return
@@ -1165,7 +1164,7 @@ final class Mouth: NSObject, ObservableObject {
                 DispatchQueue.main.async { step() }
             }
             guard let payload = payloadFor(text) else {
-                line("fan-out: payload failed to build for \(text)")
+                line(String(format: L("fan-out: payload failed to build for %@"), text))
                 report(false)
                 return
             }
@@ -1177,7 +1176,7 @@ final class Mouth: NSObject, ObservableObject {
                 return
             }
             guard let parsed = try? SendTarget.parse(text) else {
-                line("fan-out: cannot parse target \(text)")
+                line(String(format: L("fan-out: cannot parse target %@"), text))
                 report(false)
                 return
             }
@@ -1191,7 +1190,7 @@ final class Mouth: NSObject, ObservableObject {
                             framing: framing, read: readReply,
                             timeout: 3, completion: report)
             default:
-                line("fan-out: \(text) is not a network target — skipped")
+                line(String(format: L("fan-out: %@ is not a network target — skipped"), text))
                 report(false)
             }
         }
@@ -1271,9 +1270,9 @@ final class Mouth: NSObject, ObservableObject {
         schedInterval = interval
         schedRounds = interval == nil ? 1 : max(1, rounds)
         schedFired = 0
-        line("timed: \(label) — first fire in \(Int(delay))s"
+        line(String(format: L("timed: %@ — first fire in %llds"), label, Int(delay))
              + (interval != nil
-                ? ", then every \(Int(interval!))s × \(schedRounds)" : ""))
+                ? String(format: L(", then every %llds × %lld"), Int(interval!), schedRounds) : ""))
         func arm(after wait: TimeInterval) {
             schedDeadline = Date().addingTimeInterval(wait)
             refreshScheduleStatus()
@@ -1286,8 +1285,8 @@ final class Mouth: NSObject, ObservableObject {
                     // consumes a round — the count moves only once the
                     // send is actually about to initiate.
                     self.schedFired += 1
-                    self.line("timed: firing \(label) — round "
-                              + "\(self.schedFired)/\(self.schedRounds)")
+                    self.line(String(format: L("timed: firing %@ — round %lld/%lld"),
+                                     label, self.schedFired, self.schedRounds))
                     action()
                     guard self.scheduleIdentity == identity else { return }
                     if self.schedFired < self.schedRounds,
@@ -1297,7 +1296,7 @@ final class Mouth: NSObject, ObservableObject {
                         let doneLabel = label
                         self.cancelSchedule()
                         self.toasts?.show(
-                            "Timed delivery finished — \(doneLabel)")
+                            String(format: L("Timed delivery finished — %@"), doneLabel))
                     }
                 }
             }
@@ -1405,8 +1404,8 @@ final class Mouth: NSObject, ObservableObject {
                 self?.logExchange("snatch", label,
                                   sent: probe?.count ?? 0, reply: captured)
                 self?.toasts?.show(
-                    captured.isEmpty ? "Snatch came back empty"
-                                     : "Snatched \(captured.count) bytes",
+                    captured.isEmpty ? L("Snatch came back empty")
+                                     : String(format: L("Snatched %lld bytes"), captured.count),
                     error: captured.isEmpty)
             }
         }
@@ -1526,11 +1525,11 @@ final class Mouth: NSObject, ObservableObject {
             request.setValue(framing == "json" ? "application/json" : "application/octet-stream",
                              forHTTPHeaderField: "Content-Type")
         }
-        line("sending \(payload.count) bytes over http to \(url.absoluteString) (\(method))")
+        line(String(format: L("sending %lld bytes over http to %@ (%@)"), payload.count, url.absoluteString, method))
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             if let error = error {
-                self?.line("nightjar: \(error.localizedDescription)")
-                self?.ui("HTTP send failed: \(error.localizedDescription)", error: true)
+                self?.line(String(format: L("nightjar: %@"), error.localizedDescription))
+                self?.ui(String(format: L("HTTP send failed: %@"), error.localizedDescription), error: true)
                 completion?(false)
                 return
             }
@@ -1544,11 +1543,11 @@ final class Mouth: NSObject, ObservableObject {
                               sent: body?.count ?? payload.count, reply: reply)
             self?.noteReply(label: "http", data: reply)
             if ok {
-                self?.uiSuccess("HTTP \(status) — \(reply.count) bytes back")
+                self?.uiSuccess(String(format: L("HTTP %lld — %lld bytes back"), status, reply.count))
             } else {
-                self?.ui("HTTP \(status)", error: true)
+                self?.ui(String(format: L("HTTP %lld"), status), error: true)
             }
-            self?.line("  HTTP \(status), \(reply.count) byte reply")
+            self?.line(String(format: L("  HTTP %lld, %lld byte reply"), status, reply.count))
             if !reply.isEmpty {
                 for l in PayloadKit.hexdump(reply).components(separatedBy: "\n") {
                     self?.line(l)
@@ -1647,15 +1646,15 @@ final class Mouth: NSObject, ObservableObject {
         // does NOT re-arm. The arm itself is left untouched
         // — standing EMCON down lets it return.
         guard EmconCondition.current.permits(.gattHost) else {
-            line("the GATT arm holds — "
-                 + EmconCondition.current.declared)
+            line(String(format: L("the GATT arm holds — %@"),
+                        EmconCondition.current.declared))
             return
         }
         let payload = UserDefaults.standard.data(forKey: "gattArm.payload")
             ?? Data()
         let name = UserDefaults.standard.string(forKey: "gattArm.name")
             ?? "nightjar-post"
-        line("re-arming the GATT host (it was left on)")
+        line(L("re-arming the GATT host (it was left on)"))
         startGattHost(payload: payload, name: name)
     }
 
@@ -1677,12 +1676,12 @@ final class Mouth: NSObject, ObservableObject {
 
     func startBeacon(payload: Data, name: String) {
         if EmconStandard.refused(.beacon) {
-            line("the beacon stays dark — "
-                 + EmconCondition.current.declared)
+            line(String(format: L("the beacon stays dark — %@"),
+                        EmconCondition.current.declared))
             return
         }
         if gattHostOn {
-            line("nightjar: stop the GATT host before starting a beacon")
+            line(L("nightjar: stop the GATT host before starting a beacon"))
             return
         }
         Haptics.start()
@@ -1692,22 +1691,22 @@ final class Mouth: NSObject, ObservableObject {
         beaconOn = true
         _ = ensurePeripheral()
         refreshAdvertising()
-        ui("Beacon on — the payload is on the air")
+        ui(L("Beacon on — the payload is on the air"))
     }
 
     func startFlare() {
         if EmconStandard.refused(.beacon) {
-            line("the flare stays dark — "
-                 + EmconCondition.current.declared)
+            line(String(format: L("the flare stays dark — %@"),
+                        EmconCondition.current.declared))
             return
         }
         if gattHostOn {
-            line("nightjar: stop the GATT host before raising a flare")
+            line(L("nightjar: stop the GATT host before raising a flare"))
             return
         }
         guard KnockKeyStore.key != nil else {
-            line("nightjar: a flare needs a pairing key")
-            ui("Set a pairing key first — a flare is keyed",
+            line(L("nightjar: a flare needs a pairing key"))
+            ui(L("Set a pairing key first — a flare is keyed"),
                error: true)
             return
         }
@@ -1762,8 +1761,8 @@ final class Mouth: NSObject, ObservableObject {
 
     func startGattHost(payload: Data, name: String) {
         if EmconStandard.refused(.gattHost) {
-            line("the GATT host stays dark — "
-                 + EmconCondition.current.declared)
+            line(String(format: L("the GATT host stays dark — %@"),
+                        EmconCondition.current.declared))
             return
         }
         Haptics.start()
@@ -1876,7 +1875,7 @@ final class Mouth: NSObject, ObservableObject {
             centralManager = CBCentralManager(delegate: self, queue: nil)
         }
         guard centralManager?.state == .poweredOn else {
-            line("nightjar: Bluetooth is not ready for the write scan")
+            line(L("nightjar: Bluetooth is not ready for the write scan"))
             ui("Bluetooth is not ready for the write scan", error: true)
             return
         }
@@ -1884,7 +1883,7 @@ final class Mouth: NSObject, ObservableObject {
         writePeripherals = [:]
         centralManager?.scanForPeripherals(withServices: nil, options: nil)
         writeScanning = true
-        line("scanning for peripherals to write to…")
+        line(L("scanning for peripherals to write to…"))
         queue.asyncAfter(deadline: .now() + 6) { [weak self] in
             self?.centralManager?.stopScan()
             DispatchQueue.main.async { self?.writeScanning = false }
@@ -1893,7 +1892,7 @@ final class Mouth: NSObject, ObservableObject {
 
     func write(to target: WriteTarget, payload: Data) {
         guard let manager = centralManager, manager.state == .poweredOn else {
-            line("nightjar: Bluetooth is not ready")
+            line(L("nightjar: Bluetooth is not ready"))
             ui("Bluetooth is not ready — give it a second", error: true)
             return
         }
@@ -1903,8 +1902,8 @@ final class Mouth: NSObject, ObservableObject {
         writeToken += 1
         let token = writeToken
         let peripheral = target.peripheral
-        line("connecting to \(target.name ?? target.id.uuidString)…")
-        ui("Writing to \(target.name ?? "device")…")
+        line(String(format: L("connecting to %@…"), target.name ?? target.id.uuidString))
+        ui(String(format: L("Writing to %@…"), target.name ?? L("device")))
         manager.connect(target.peripheral, options: nil)
         // 15s timeout: a write that never lands fails and clears the
         // pending state instead of hanging the next write forever.
@@ -1913,8 +1912,8 @@ final class Mouth: NSObject, ObservableObject {
                   self.pendingWrite?.peripheral === peripheral else { return }
             self.pendingWrite = nil
             self.centralManager?.cancelPeripheralConnection(peripheral)
-            self.line("nightjar: BLE write timed out")
-            self.ui("BLE write timed out", error: true)
+            self.line(L("nightjar: BLE write timed out"))
+            self.ui(L("BLE write timed out"), error: true)
         }
     }
 
@@ -1940,12 +1939,12 @@ final class Mouth: NSObject, ObservableObject {
             centralManager = CBCentralManager(delegate: self, queue: nil)
         }
         guard let manager = centralManager, manager.state == .poweredOn else {
-            line("nightjar: Bluetooth is not ready yet — give it a second and tap Write again")
+            line(L("nightjar: Bluetooth is not ready yet — give it a second and tap Write again"))
             return
         }
         guard let peripheral = manager.retrievePeripherals(
             withIdentifiers: [id]).first else {
-            line("nightjar: that device is no longer in this phone's Bluetooth cache")
+            line(L("nightjar: that device is no longer in this phone's Bluetooth cache"))
             return
         }
         write(to: WriteTarget(id: id, peripheral: peripheral,
@@ -1993,7 +1992,7 @@ extension Mouth: CBPeripheralManagerDelegate {
                            willRestoreState dict: [String: Any]) {
         // iOS relaunched the app for a Bluetooth event; the saved arm
         // replays in peripheralManagerDidUpdateState, which follows.
-        line("bluetooth state restored — re-arming what was left on")
+        line(L("bluetooth state restored — re-arming what was left on"))
         // If a service with our UUID is among the restored services it
         // already exists on the manager — adopt it instead of letting
         // startGattHost add a duplicate.
@@ -2026,7 +2025,7 @@ extension Mouth: CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService,
                            error: Error?) {
         if let error = error {
-            line("nightjar: GATT service failed: \(error.localizedDescription)")
+            line(String(format: L("nightjar: GATT service failed: %@"), error.localizedDescription))
             // No service, no host: clear the optimistic host state.
             gattHostOn = false
             gattCharacteristic = nil
@@ -2040,7 +2039,7 @@ extension Mouth: CBPeripheralManagerDelegate {
         if let error = error {
             // Advertising never started: clear the optimistic on-air
             // state set by startBeacon/startGattHost and say so.
-            line("nightjar: advertising failed: \(error.localizedDescription)")
+            line(String(format: L("nightjar: advertising failed: %@"), error.localizedDescription))
             beaconOn = false
             gattHostOn = false
             return
@@ -2135,7 +2134,7 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral,
                         error: Error?) {
-        line("nightjar: connect failed: \(error?.localizedDescription ?? "unknown")")
+        line(String(format: L("nightjar: connect failed: %@"), error?.localizedDescription ?? L("unknown")))
         if pendingWrite?.peripheral.identifier == peripheral.identifier {
             pendingWrite = nil
         }
@@ -2170,12 +2169,13 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
         let withResponse = characteristic.properties.contains(.write)
         peripheral.writeValue(pending.payload, for: characteristic,
                               type: withResponse ? .withResponse : .withoutResponse)
-        line("wrote \(pending.payload.count) bytes to \(characteristic.uuid.uuidString) "
-             + "on \(peripheral.name ?? peripheral.identifier.uuidString)")
+        line(String(format: L("wrote %lld bytes to %@ on %@"),
+                    pending.payload.count, characteristic.uuid.uuidString,
+                    peripheral.name ?? peripheral.identifier.uuidString))
         logExchange("ble-write",
                     peripheral.name ?? peripheral.identifier.uuidString,
                     sent: pending.payload.count, reply: nil)
-        uiSuccess("Payload written (\(pending.payload.count) bytes)")
+        uiSuccess(String(format: L("Payload written (%lld bytes)"), pending.payload.count))
         pendingWrite = nil
         centralManager?.cancelPeripheralConnection(peripheral)
     }
@@ -2183,7 +2183,7 @@ extension Mouth: CBCentralManagerDelegate, CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic,
                     error: Error?) {
         if let error = error {
-            line("nightjar: write failed: \(error.localizedDescription)")
+            line(String(format: L("nightjar: write failed: %@"), error.localizedDescription))
             ui("Write failed: \(error.localizedDescription)", error: true)
         }
     }
@@ -2207,8 +2207,8 @@ extension Mouth {
         let condition = EmconCondition.current
         if condition != .open {
             if !condition.permits(.serveStealth) {
-                serveError = "\(condition.declared) forbids "
-                    + "Serve — stand EMCON down to serve"
+                serveError = String(format: L("%@ forbids Serve — stand EMCON down to serve"),
+                                      condition.declared)
                 Journal.log("emcon", "regulation",
                             "\(condition.declared) refused "
                             + "a Serve start")
@@ -2216,8 +2216,8 @@ extension Mouth {
             }
             if !stealth {
                 setStealth(true)
-                line("Serve stands unlisted — "
-                     + condition.declared)
+                line(String(format: L("Serve stands unlisted — %@"),
+                            condition.declared))
             }
         }
         stopServe()
@@ -2281,21 +2281,21 @@ extension Mouth {
         } catch {
             stopServe()
             DispatchQueue.main.async {
-                self.serveError = "nightjar: \(error.localizedDescription)"
-                self.ui("Serving failed: \(error.localizedDescription)", error: true)
+                self.serveError = String(format: L("nightjar: %@"), error.localizedDescription)
+                self.ui(String(format: L("Serving failed: %@"), error.localizedDescription), error: true)
             }
             return
         }
         if started.isEmpty {
             DispatchQueue.main.async {
-                self.serveError = "nightjar: no listener selected"
-                self.ui("No listener selected", error: true)
+                self.serveError = L("nightjar: no listener selected")
+                self.ui(L("No listener selected"), error: true)
             }
             return
         }
         DispatchQueue.main.async { self.serveRunning = true }
         ui("Serving: \(started.joined(separator: ", "))")
-        line("serve: \(started.joined(separator: ", ")) — foreground only")
+        line(String(format: L("serve: %@ — foreground only"), started.joined(separator: ", ")))
     }
 
     func stopServe() {
@@ -2318,7 +2318,7 @@ extension Mouth {
             connection.cancel()
         }
         DispatchQueue.main.async { self.serveRunning = false }
-        if wasRunning { ui("Stopped serving") }
+        if wasRunning { ui(L("Stopped serving")) }
     }
 
     private func trackServeConnection(_ connection: NWConnection) {
@@ -2340,7 +2340,7 @@ extension Mouth {
                               generation: Int,
                               onConnection: @escaping (NWConnection) -> Void) throws -> NWListener {
         guard let endpoint = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else {
-            throw MouthError.message("bad port \(port)")
+            throw MouthError.message(String(format: L("bad port %lld"), port))
         }
         let listener = try NWListener(using: params, on: endpoint)
         if bonjour {
@@ -2358,7 +2358,7 @@ extension Mouth {
                           self.serveSync({
                               self.serveGeneration
                           }) == generation else { return }
-                    self.serveError = "nightjar: listener failed: \(error.localizedDescription)"
+                    self.serveError = String(format: L("nightjar: listener failed: %@"), error.localizedDescription)
                     self.serveRunning = false
                 }
             }
