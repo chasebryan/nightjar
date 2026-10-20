@@ -376,6 +376,14 @@ struct CryptoView: View {
         case .truncated:
             return "The file ends early — it was "
                 + "cut off on its road here."
+        case .truncatedHeader:
+            return "The envelope's head is cut "
+                + "off — the file ends before its "
+                + "protection material does."
+        case .truncatedChunk:
+            return "The file ends mid-chunk — "
+                + "it was cut off on its road "
+                + "here."
         case .corrupt:
             return "The envelope is damaged."
         case .unreadable:

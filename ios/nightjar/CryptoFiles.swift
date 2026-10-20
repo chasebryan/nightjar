@@ -66,6 +66,8 @@ enum CryptoFileError: Error, Equatable {
     case needsPassword
     case wrongKeyOrPassword
     case truncated
+    case truncatedHeader
+    case truncatedChunk
     case unreadable
 }
 
@@ -134,7 +136,8 @@ enum CryptoFiles {
         var index = 6
         func need(_ count: Int) throws {
             guard data.count >= index + count else {
-                throw CryptoFileError.truncated
+                throw CryptoFileError
+                    .truncatedHeader
             }
         }
         func take(_ count: Int) throws -> Data {
@@ -436,7 +439,8 @@ enum CryptoFiles {
                 ofLength: 4)
             if lengthData.isEmpty { return nil }
             guard lengthData.count == 4 else {
-                throw CryptoFileError.truncated
+                throw CryptoFileError
+                    .truncatedChunk
             }
             let length = Int(UInt32(bigEndian:
                 lengthData.withUnsafeBytes {
@@ -447,7 +451,8 @@ enum CryptoFiles {
             let sealed = inHandle.readData(
                 ofLength: length)
             guard sealed.count == length else {
-                throw CryptoFileError.truncated
+                throw CryptoFileError
+                    .truncatedChunk
             }
             guard let plain = openChunk(
                 sealed, key: fileKey,
