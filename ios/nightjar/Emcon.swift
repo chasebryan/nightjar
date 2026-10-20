@@ -418,7 +418,8 @@ final class Emcon: ObservableObject {
         }
         if AssaultCenter.shared.running {
             AssaultCenter.shared.disarm(
-                reason: "\(goal.declared) engaged")
+                reason: String(format: L("%@ engaged"),
+                               goal.declared))
             silenced.append(L("Net-Assault"))
         }
         if WarRun.shared.running {
@@ -788,8 +789,8 @@ final class Emcon: ObservableObject {
                         type: item.type, label: item.label,
                         name: item.name,
                         why: nameHit
-                            ? "announced under this device's name"
-                            : "resolves to this phone's address"))
+                            ? L("announced under this device's name")
+                            : L("resolves to this phone's address")))
                     lock.unlock()
                 }
                 group.leave()
@@ -882,15 +883,13 @@ final class Emcon: ObservableObject {
                 // scan is an echo-prone witness for these.
                 var ledger: [String] = []
                 if mouth.serveRunning, !mouth.stealth {
-                    ledger.append("Serve's Bonjour listing — "
-                        + "withdrawn; the listeners stay up, "
-                        + "unlisted")
+                    ledger.append(L("Serve's Bonjour listing — withdrawn; the listeners stay up, unlisted"))
                 }
                 if mouth.gattHostOn {
-                    ledger.append("BLE GATT host — stood down")
+                    ledger.append(L("BLE GATT host — stood down"))
                 }
                 if mouth.beaconOn {
-                    ledger.append("BLE beacon — stood down")
+                    ledger.append(L("BLE beacon — stood down"))
                 }
                 self.drillSilenced = ledger
                 self.activate(mouth: mouth)
@@ -1123,7 +1122,7 @@ final class Emcon: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             let mine = self.ownIP != nil && source.contains(self.ownIP!)
-            let labeled = mine ? "\(source) (this device)" : source
+            let labeled = mine ? String(format: L("%@ (this device)"), source) : source
             Self.record(&self.events, source: labeled, port: port,
                         proto: proto, verdict: verdict,
                         byteCount: byteCount,
@@ -1248,15 +1247,15 @@ final class Emcon: ObservableObject {
             var notes: [String] = []
             if !hometurf.sources.contains(host),
                !hometurf.stagedSources.contains(host) {
-                notes.append("a new source knocked: \(host)")
+                notes.append(String(format: L("a new source knocked: %@"), host))
             }
             if !hometurf.ports.contains(port),
                !hometurf.stagedPorts.contains(port) {
-                notes.append("a new door tried: port \(port)")
+                notes.append(String(format: L("a new door tried: port %lld"), port))
             }
             if !hometurf.verdicts.contains(verdict),
                !hometurf.stagedVerdicts.contains(verdict) {
-                notes.append("a new first word: \(verdict)")
+                notes.append(String(format: L("a new first word: %@"), verdict))
             }
             for note in notes
             where !Steward.isDismissed(note: note) {
@@ -1337,8 +1336,8 @@ final class Emcon: ObservableObject {
         guard !mine, proto == "TCP",
               verdict.hasPrefix("nightjar-hack probe:")
         else { return }
-        raiseSense(reason: "a foreign nightjar-grade probe "
-                   + "(\(verdict)) from \(source)")
+        raiseSense(reason: String(format: L("a foreign nightjar-grade probe (%@) from %@"),
+                                  verdict, source))
     }
 
     // MARK: - dead hand
@@ -1680,9 +1679,8 @@ final class Emcon: ObservableObject {
                             + "verdicts running from "
                             + "\(message.source); the "
                             + "second sense rises")
-                raiseSense(reason: "cadence: foreign "
-                    + "hands from \(message.source), "
-                    + "three verdicts running")
+                raiseSense(reason: String(format: L("cadence: foreign hands from %@, three verdicts running"),
+                                          message.source))
                 Conductor.onForeignHands(emcon: self,
                                          host: peer)
             }
@@ -1934,12 +1932,12 @@ final class Emcon: ObservableObject {
         stamp.locale = Locale(identifier: "en_US_POSIX")
         stamp.dateFormat = "yyyy-MM-dd HH:mm:ss"
         var lines = [
-            "EMCON tripwire",
-            "The tripwire never replies.",
+            L("EMCON tripwire"),
+            L("The tripwire never replies."),
             "",
         ]
         if events.isEmpty {
-            lines.append("Nobody has knocked.")
+            lines.append(L("Nobody has knocked."))
             return lines.joined(separator: "\n")
         }
         for event in events {

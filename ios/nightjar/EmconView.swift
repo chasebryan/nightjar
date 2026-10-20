@@ -161,7 +161,7 @@ struct EmconView: View {
             ShareSheet(items: item.items)
         }
         .confirmationDialog(
-            "Turn loose the net-assault?",
+            L("Turn loose the net-assault?"),
             isPresented: $armAssault,
             titleVisibility: .visible) {
             Button(L("Begin the assault"), role: .destructive) {
@@ -271,7 +271,7 @@ struct EmconView: View {
             // The standing board: every governed organ, its
             // live state, and this condition's ruling on it.
             // A switch redraws it even in a quiet house.
-            Text("The standing board")
+            Text(L("The standing board"))
                 .font(.caption.weight(.semibold))
             ForEach(emcon.board(mouth: mouth)) { row in
                 HStack {
@@ -285,7 +285,7 @@ struct EmconView: View {
                                               ? .red
                                               : scoreColor(live.value))
                     } else {
-                        Text("dark")
+                        Text(L("dark"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -300,7 +300,7 @@ struct EmconView: View {
             }
             if emcon.active {
                 if emcon.lastSilenced.isEmpty {
-                    Text("Nothing was standing — nothing had to be silenced.")
+                    Text(L("Nothing was standing — nothing had to be silenced."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -440,8 +440,8 @@ struct EmconView: View {
                 emcon.runDrill(mouth: mouth)
             } label: {
                 Label(emcon.drilling
-                      ? "Running the drill…"
-                      : "Prove it — scan, go dark, scan again",
+                      ? L("Running the drill…")
+                      : L("Prove it — scan, go dark, scan again"),
                       systemImage: "checklist")
             }
             .disabled(emcon.drilling || emcon.scanning || emcon.auditing)
@@ -464,7 +464,7 @@ struct EmconView: View {
                         Text(L("Silenced by going dark:"))
                             .font(.callout.weight(.semibold))
                         ForEach(Array(gone.enumerated()), id: \.offset) { item in
-                            Text("— \(item.element)").font(.callout)
+                            Text(String(format: L("— %@"), item.element)).font(.callout)
                         }
                     } else if !still.isEmpty {
                         Text(L("Nothing went quiet."))
@@ -477,7 +477,7 @@ struct EmconView: View {
                         Text(L("Still showing:"))
                             .font(.callout.weight(.semibold))
                         ForEach(Array(still.enumerated()), id: \.offset) { item in
-                            Text("— \(item.element)").font(.callout)
+                            Text(String(format: L("— %@"), item.element)).font(.callout)
                         }
                         Text(L("These are real listeners on the device that EMCON does not own — the OS, other apps, or Serve ports kept under stealth. The hardening list below is where the OS ones die."))
                             .font(.callout).foregroundStyle(.secondary)
@@ -520,9 +520,9 @@ struct EmconView: View {
     private func emissionRow(_ name: String, state: String,
                              bad: Bool) -> some View {
         HStack {
-            Text(name)
+            Text(L(name))
             Spacer()
-            Text(state)
+            Text(L(state))
                 .font(.callout)
                 .foregroundStyle(bad ? .red : .secondary)
         }
@@ -541,14 +541,14 @@ struct EmconView: View {
             HStack {
                 Text(L("LAN address"))
                 Spacer()
-                Text(emcon.ownIP ?? "not on Wi-Fi").font(.callout)
+                Text(emcon.ownIP ?? L("not on Wi-Fi")).font(.callout)
                     .foregroundStyle(.secondary)
             }
             Button {
                 Haptics.tap()
                 emcon.runSelfScan()
             } label: {
-                Label(emcon.scanning ? "Knocking…" : "Knock myself",
+                Label(emcon.scanning ? L("Knocking…") : L("Knock myself"),
                       systemImage: "target")
             }
             .disabled(emcon.scanning || emcon.drilling)
@@ -638,9 +638,10 @@ struct EmconView: View {
                 Text(L("Listeners"))
                 Spacer()
                 Text(emcon.tripwireOn
-                     ? "\(emcon.watched.count) TCP + "
-                       + "\(emcon.watchedUDP.count) UDP watched"
-                     : "off")
+                     ? String(format: L("%lld TCP + %lld UDP watched"),
+                              emcon.watched.count,
+                              emcon.watchedUDP.count)
+                     : L("off"))
                     .font(.callout).foregroundStyle(.secondary)
             }
             if !emcon.unwatched.isEmpty {
@@ -703,8 +704,9 @@ struct EmconView: View {
                         withAnimation { tripShowAll.toggle() }
                     } label: {
                         Label(tripShowAll
-                              ? "Show fewer"
-                              : "Show all \(emcon.events.count) knocks",
+                              ? L("Show fewer")
+                              : String(format: L("Show all %lld knocks"),
+                                       emcon.events.count),
                               systemImage: tripShowAll
                                 ? "chevron.up" : "chevron.down")
                     }
@@ -735,11 +737,11 @@ struct EmconView: View {
                           _ reading: VitalReading?) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.callout)
+                Text(L(label)).font(.callout)
                 Text(reading.map {
                     InstrumentCenter.ageLine($0.when)
                         + ($0.source.map { " · \($0)" } ?? "")
-                } ?? "no reading yet")
+                } ?? L("no reading yet"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -770,7 +772,7 @@ struct EmconView: View {
             case .asking:
                 HStack {
                     ProgressView()
-                    Text("Asking\u{2026}")
+                    Text(L("Asking…"))
                         .font(.callout).foregroundStyle(.secondary)
                 }
             case .reading:
@@ -792,13 +794,12 @@ struct EmconView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(L("Sleep, last night")).font(.callout)
                         Text(instrument.lastSleep.map {
-                            "asleep "
-                                + $0.start.formatted(
-                                    date: .omitted, time: .shortened)
-                                + " → "
-                                + $0.end.formatted(
-                                    date: .omitted, time: .shortened)
-                        } ?? "no sleep recorded")
+                            String(format: L("asleep %@ → %@"),
+                                   $0.start.formatted(
+                                       date: .omitted, time: .shortened),
+                                   $0.end.formatted(
+                                       date: .omitted, time: .shortened))
+                        } ?? L("no sleep recorded"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -858,12 +859,12 @@ struct EmconView: View {
                                     .foregroundStyle(.primary)
                                 Text(String(format: L("%lld knock(s) · %lld port(s)"), file.knocks, file.ports.count)
                                      + (file.drops > 0
-                                        ? " · took \(file.drops) "
-                                            + "drop(s)" : "")
-                                     + " · last "
-                                     + file.lastSeen.formatted(
-                                        date: .omitted,
-                                        time: .shortened))
+                                        ? String(format: L(" · took %lld drop(s)"),
+                                                 file.drops) : "")
+                                     + String(format: L(" · last %@"),
+                                              file.lastSeen.formatted(
+                                                  date: .omitted,
+                                                  time: .shortened)))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -884,8 +885,9 @@ struct EmconView: View {
                         withAnimation { proberShowAll.toggle() }
                     } label: {
                         Label(proberShowAll
-                              ? "Show fewer"
-                              : "Show all \(files.count) files",
+                              ? L("Show fewer")
+                              : String(format: L("Show all %lld files"),
+                                       files.count),
                               systemImage: proberShowAll
                                 ? "chevron.up" : "chevron.down")
                     }
@@ -913,9 +915,7 @@ struct EmconView: View {
                 Text(L("No captured bytes yet. When the tripwire catches a knock, its first words are kept — and become ammunition here: replayed, mutated, and fired at your own Serve to see what holds."))
                     .font(.caption).foregroundStyle(.secondary)
             } else if !mouth.serveRunning {
-                Text(String(format: L("%lld captured probe(s) ready. Start Serve (TCP :%lld) on the Serve tab — sparring fires mutations of a "), sparSeeds.count, serveTCPPort)
-                     + "real capture at your own listener, on "
-                     + "loopback, and reads what it answers.")
+                Text(String(format: L("%lld captured probe(s) ready. Start Serve (TCP :%lld) on the Serve tab — sparring fires mutations of a real capture at your own listener, on loopback, and reads what it answers."), sparSeeds.count, serveTCPPort))
                     .font(.caption).foregroundStyle(.secondary)
             } else if let seed = sparSeeds.first,
                       let seedData = try? PayloadKit.decodeHex(
@@ -955,9 +955,9 @@ struct EmconView: View {
                 }
                 if !spar.fuzzing {
                     Text(spar.fuzzDead == 0
-                         ? "Serve held: no dead connections."
-                         : "Serve dropped \(spar.fuzzDead) "
-                           + "connection(s) under mutation.")
+                         ? L("Serve held: no dead connections.")
+                         : String(format: L("Serve dropped %lld connection(s) under mutation."),
+                                  spar.fuzzDead))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -1057,9 +1057,7 @@ struct EmconView: View {
                             emcon.hometurf.nights))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
-                Text(String(format: L("Pattern held: %lld nights · %lld sources · %lld "), emcon.hometurf.nights, emcon.hometurf.sources.count, emcon.hometurf.ports.count)
-                     + "doors · \(emcon.hometurf.verdicts.count) "
-                     + "first words.")
+                Text(String(format: L("Pattern held: %lld nights · %lld sources · %lld doors · %lld first words."), emcon.hometurf.nights, emcon.hometurf.sources.count, emcon.hometurf.ports.count, emcon.hometurf.verdicts.count))
                     .font(.callout)
                 if emcon.hometurfNotes.isEmpty {
                     Text(L("Nothing off-pattern tonight."))
@@ -1191,31 +1189,31 @@ struct EmconView: View {
 
         let chain = Journal.verifyChain()
         maneuverLegs.append(ManeuverLeg(
-            name: "Seal chain",
+            name: L("Seal chain"),
             outcome: chain.brokenLine == nil ? .pass : .flag,
             detail: chain.brokenLine == nil
-                ? "\(chain.sealed) sealed line(s) hold, "
-                    + "\(chain.legacy) legacy line(s) predate "
-                    + "the chain"
-                : "BROKEN at sealed line "
-                    + "\(chain.brokenLine ?? 0)"))
+                ? String(format: L("%lld sealed line(s) hold, %lld legacy line(s) predate the chain"),
+                         chain.sealed, chain.legacy)
+                : String(format: L("BROKEN at sealed line %lld"),
+                         chain.brokenLine ?? 0)))
 
-        let censusDetail = "exposure "
-            + "\(Emcon.fmt(score.value)) · tripwire "
-            + (emcon.tripwireOn ? "up" : "DOWN")
+        let censusDetail = String(format: L("exposure %@ · tripwire %@"),
+                                  Emcon.fmt(score.value),
+                                  emcon.tripwireOn ? L("up") : L("DOWN"))
             + (emcon.unwatched.isEmpty
-                ? " · every port watched"
-                : " · \(emcon.unwatched.count) port(s) unwatched")
+                ? L(" · every port watched")
+                : String(format: L(" · %lld port(s) unwatched"),
+                         emcon.unwatched.count))
         maneuverLegs.append(ManeuverLeg(
-            name: "Census",
+            name: L("Census"),
             outcome: emcon.tripwireOn && emcon.unwatched.isEmpty
                 ? .pass : .flag,
             detail: censusDetail))
 
         guard mouth.serveRunning else {
             maneuverLegs.append(ManeuverLeg(
-                name: "Spar", outcome: .skip,
-                detail: "Serve is down — no listener to test"))
+                name: L("Spar"), outcome: .skip,
+                detail: L("Serve is down — no listener to test")))
             finishManeuvers()
             return
         }

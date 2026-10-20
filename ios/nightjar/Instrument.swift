@@ -475,9 +475,9 @@ final class InstrumentCenter: ObservableObject {
     /// "just now", "4 min ago", "2 h ago", "Tue 21:14".
     static func ageLine(_ when: Date) -> String {
         let seconds = Date().timeIntervalSince(when)
-        if seconds < 90 { return "just now" }
-        if seconds < 3600 { return "\(Int(seconds / 60)) min ago" }
-        if seconds < 24 * 3600 { return "\(Int(seconds / 3600)) h ago" }
+        if seconds < 90 { return L("just now") }
+        if seconds < 3600 { return String(format: L("%lld min ago"), Int(seconds / 60)) }
+        if seconds < 24 * 3600 { return String(format: L("%lld h ago"), Int(seconds / 3600)) }
         return when.formatted(date: .abbreviated, time: .shortened)
     }
 
