@@ -854,6 +854,10 @@ final class WireWatch: ObservableObject {
             note("a new neighbor at "
                  + "\(neighbor.ip)\(named)")
         }
+        Sentinel.shared.evaluate(
+            store: store,
+            gateway: gatewayIP ?? now,
+            watch: self)
         if let crown = gatewayIP ?? now {
             for neighbor in store.neighbors
             where neighbor.ports.contains(67)
@@ -896,6 +900,311 @@ final class WireWatch: ObservableObject {
                 self.events,
                 forKey: Self.eventsKey)
         }
+    }
+}
+
+// MARK: - The Sentinel — what the signs mean
+
+/// The Sentinel (Sentinel program, 2026-10-20):
+/// the classification layer over everything
+/// the watch and the neighborhood learn. The
+/// watch testifies; the Sentinel judges. Its
+/// rules name the shapes an attacker's hand
+/// makes on a home wire:
+///
+/// - a second address-giver (rogue DHCP) —
+///   SEVERE: that is how quiet intercepts
+///   begin;
+/// - a second device wearing the gateway's
+///   name — SEVERE: impersonation;
+/// - the gateway itself moving — SEVERE
+///   (raised by the watch's heartbeat);
+/// - a non-gateway newly serving DNS —
+///   SUSPICIOUS: answers can be steered;
+/// - a burst of knocks against this phone —
+///   SUSPICIOUS, SEVERE when it pours;
+/// - the router's own doors changing —
+///   SUSPICIOUS: its surface is its story;
+/// - a new arrival already wearing many
+///   doors — a NOTICE, nothing more.
+///
+/// Every alert is ledgered with its severity
+/// and its evidence line, deduplicated per
+/// rule and address, and baselines persist —
+/// the Sentinel remembers what normal looked
+/// like yesterday.
+final class Sentinel: ObservableObject {
+    static let shared = Sentinel()
+
+    enum Severity: String, Codable {
+        case notice, suspicious, severe
+        var word: String {
+            switch self {
+            case .notice: return "NOTICE"
+            case .suspicious: return "SUSPICIOUS"
+            case .severe: return "SEVERE"
+            }
+        }
+    }
+
+    struct Alert: Codable, Identifiable {
+        var id: String { key }
+        var key: String
+        var at: Date
+        var severity: Severity
+        var line: String
+        var ip: String?
+    }
+
+    @Published private(set) var alerts: [Alert] = []
+
+    private var portBaseline: [String: [Int]] = [:]
+    private var arrivalBaseline: [String: Int] = [:]
+    private var fired: Set<String> = []
+    private static let alertsKey =
+        "sentinel.alerts"
+    private static let stateKey =
+        "sentinel.state"
+
+    private init() {
+        if let data = UserDefaults.standard
+            .data(forKey: Self.alertsKey),
+           let saved = try? JSONDecoder()
+            .decode([Alert].self, from: data) {
+            alerts = saved
+        }
+        if let data = UserDefaults.standard
+            .data(forKey: Self.stateKey),
+           let saved = try? JSONDecoder()
+            .decode(State.self, from: data) {
+            portBaseline = saved.ports
+            arrivalBaseline = saved.arrivals
+            fired = Set(saved.fired)
+        }
+    }
+
+    private struct State: Codable {
+        var ports: [String: [Int]]
+        var arrivals: [String: Int]
+        var fired: [String]
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder()
+            .encode(alerts) {
+            UserDefaults.standard.set(
+                data, forKey: Self.alertsKey)
+        }
+        let state = State(ports: portBaseline,
+                          arrivals: arrivalBaseline,
+                          fired: Array(fired))
+        if let data = try? JSONEncoder()
+            .encode(state) {
+            UserDefaults.standard.set(
+                data, forKey: Self.stateKey)
+        }
+    }
+
+    /// Severe alerts inside a window — the
+    /// lockdown's tripwire reads this.
+    func recentSevere(
+        within seconds: TimeInterval) -> [Alert] {
+        let cutoff = Date()
+            .addingTimeInterval(-seconds)
+        return alerts.filter {
+            $0.severity == .severe
+                && $0.at > cutoff
+        }
+    }
+
+    var standingSevere: [Alert] {
+        alerts.filter { $0.severity == .severe }
+    }
+
+    func clearAlerts() {
+        alerts = []
+        fired = []
+        persist()
+    }
+
+    private func raise(key: String,
+                       severity: Severity,
+                       line: String,
+                       ip: String?,
+                       watch: WireWatch) {
+        guard !fired.contains(key) else { return }
+        fired.insert(key)
+        let alert = Alert(key: key, at: Date(),
+                          severity: severity,
+                          line: line, ip: ip)
+        alerts.append(alert)
+        persist()
+        watch.note("ALERT · \(severity.word) — "
+                   + line)
+    }
+
+    /// Judge the neighborhood as it stands.
+    /// Called by the watch's heartbeat; cheap
+    /// enough to run every minute.
+    func evaluate(store: NeighborhoodStore,
+                  gateway: String?,
+                  watch: WireWatch) {
+        let neighbors = store.neighbors
+        let crowned = gateway.flatMap { ip in
+            neighbors.first { $0.ip == ip }
+        }
+        for neighbor in neighbors {
+            let isCrown = gateway != nil
+                && neighbor.ip == gateway
+            // Rogue DHCP — severe.
+            if neighbor.ports.contains(67),
+               !isCrown, gateway != nil {
+                raise(key: "rogue-dhcp-"
+                        + neighbor.ip,
+                      severity: .severe,
+                      line: "\(neighbor.ip) "
+                        + "answers DHCP but is "
+                        + "not the gateway — a "
+                        + "second address-giver",
+                      ip: neighbor.ip,
+                      watch: watch)
+            }
+            // Gateway impersonation — severe.
+            if let crowned, !isCrown,
+               let crownName = crowned.name,
+               neighbor.name == crownName {
+                raise(key: "impersonation-"
+                        + neighbor.ip,
+                      severity: .severe,
+                      line: "\(neighbor.ip) "
+                        + "wears the gateway's "
+                        + "name (\u{201C}"
+                        + "\(crownName)"
+                        + "\u{201D})",
+                      ip: neighbor.ip,
+                      watch: watch)
+            }
+            // Non-gateway DNS — suspicious,
+            // judged against the baseline so
+            // the house's known resolver (a Pi-
+            // hole the operator runs) alerts
+            // once, at first sight, not daily.
+            if neighbor.ports.contains(53),
+               !isCrown {
+                if let base = portBaseline[
+                    neighbor.ip],
+                   !base.contains(53) {
+                    raise(key: "new-dns-"
+                            + neighbor.ip,
+                          severity: .suspicious,
+                          line: "\(neighbor.ip) "
+                            + "has begun serving "
+                            + "DNS — it did not "
+                            + "before",
+                          ip: neighbor.ip,
+                          watch: watch)
+                }
+            }
+            // Knock bursts against this phone.
+            let arrivals = neighbor.arrivals
+            if let before = arrivalBaseline[
+                neighbor.ip] {
+                let delta = arrivals - before
+                if delta >= 15 {
+                    raise(key: "knock-pour-"
+                            + neighbor.ip
+                            + "-\(arrivals)",
+                          severity: .severe,
+                          line: "\(neighbor.ip) "
+                            + "has knocked this "
+                            + "phone "
+                            + "\(delta) times in "
+                            + "a minute — that "
+                            + "is a probe pour, "
+                            + "not a visit",
+                          ip: neighbor.ip,
+                          watch: watch)
+                } else if delta >= 5 {
+                    raise(key: "knock-burst-"
+                            + neighbor.ip
+                            + "-\(arrivals)",
+                          severity: .suspicious,
+                          line: "\(neighbor.ip) "
+                            + "knocked this "
+                            + "phone \(delta) "
+                            + "times in a "
+                            + "minute",
+                          ip: neighbor.ip,
+                          watch: watch)
+                }
+            }
+            arrivalBaseline[neighbor.ip] =
+                arrivals
+            // The router's own doors changing.
+            if isCrown {
+                if let base = portBaseline[
+                    neighbor.ip],
+                   base != neighbor.ports {
+                    let gained = neighbor.ports
+                        .filter {
+                            !base.contains($0)
+                        }
+                    let lost = base.filter {
+                        !neighbor.ports
+                            .contains($0)
+                    }
+                    var parts: [String] = []
+                    if !gained.isEmpty {
+                        parts.append("opened "
+                            + gained.map(
+                                String.init)
+                            .joined(
+                                separator: ", "))
+                    }
+                    if !lost.isEmpty {
+                        parts.append("closed "
+                            + lost.map(
+                                String.init)
+                            .joined(
+                                separator: ", "))
+                    }
+                    raise(key: "router-doors-"
+                            + neighbor.ip + "-"
+                            + "\(neighbor.ports)",
+                          severity: .suspicious,
+                          line: "the router's "
+                            + "own doors "
+                            + "changed: "
+                            + parts.joined(
+                                separator: "; "),
+                          ip: neighbor.ip,
+                          watch: watch)
+                }
+            }
+            // A many-doored newcomer — a
+            // notice, set the first time its
+            // port baseline is laid.
+            if portBaseline[neighbor.ip] == nil,
+               neighbor.ports.count >= 6,
+               !isCrown {
+                let doors = neighbor.ports.count
+                raise(key: "many-doors-"
+                        + neighbor.ip,
+                      severity: .notice,
+                      line: "\(neighbor.ip) "
+                        + "stands with "
+                        + "\(doors) doors "
+                        + "open — worth "
+                        + "knowing",
+                      ip: neighbor.ip,
+                      watch: watch)
+            }
+            if portBaseline[neighbor.ip] == nil {
+                portBaseline[neighbor.ip] =
+                    neighbor.ports
+            }
+        }
+        persist()
     }
 }
 

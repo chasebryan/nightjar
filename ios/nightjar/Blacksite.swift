@@ -179,6 +179,7 @@ final class BlacksiteShell: ObservableObject {
         "strings", "cal", "yes", "figlet",
         "bigtext", "env",
         "export", "unset", "which", "history",
+        "watch", "sentinel",
         "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "python3", "python",
         "sh", "source", "pkg",
@@ -2857,6 +2858,66 @@ final class BlacksiteShell: ObservableObject {
                 emit("\(index + 1)  \(entry)",
                      .sys)
             }
+        case "watch":
+            let watch = WireWatch.shared
+            let mode = args.first ?? "status"
+            if mode == "on" {
+                if watch.start() {
+                    emit("the watch stands.",
+                         .ok)
+                } else {
+                    emit("EMCON forbids the "
+                         + "watch under this "
+                         + "condition — it "
+                         + "stays down.", .err)
+                }
+            } else if mode == "off" {
+                watch.stop()
+                emit("the watch stands down.",
+                     .sys)
+            } else {
+                let count = watch.events.count
+                emit(watch.on
+                     ? "the watch stands — "
+                       + "\(count) events "
+                       + "ledgered."
+                     : "the watch is down.",
+                     .out)
+                if let gateway = watch
+                    .gatewayIP {
+                    emit("gateway: \(gateway)",
+                         .out)
+                }
+                for line in watch.events
+                    .suffix(8) {
+                    emit(line, .out)
+                }
+            }
+        case "sentinel":
+            let sentinel = Sentinel.shared
+            if args.first == "clear" {
+                sentinel.clearAlerts()
+                emit("the ledger is clear — "
+                     + "baselines will re-lay "
+                     + "on the next heartbeat.",
+                     .sys)
+            } else if sentinel.alerts
+                .isEmpty {
+                emit("no alerts — the wire "
+                     + "has shown the Sentinel "
+                     + "nothing it judges.",
+                     .out)
+            } else {
+                for alert in sentinel.alerts {
+                    let word = alert.severity
+                        .word
+                    emit("\(word) — "
+                         + "\(alert.line)",
+                         alert.severity
+                            == .severe
+                            ? .err : .out)
+                }
+            }
         case "date":
             let formatter = DateFormatter()
             formatter.dateFormat =
@@ -4535,6 +4596,9 @@ final class BlacksiteShell: ObservableObject {
             ]),
             ("the room", [
                 ("history", "what you have run"),
+                ("watch on|off|status", "the standing passives — browse, MNDP ear, gateway heartbeat"),
+                ("sentinel", "the Sentinel's alert ledger — what the signs judged"),
+                ("sentinel clear", "clear the alert ledger and its baselines"),
                 ("date", "when it is"),
                 ("which <cmd>", "where a command lives"),
                 ("ver", "what this is"),
