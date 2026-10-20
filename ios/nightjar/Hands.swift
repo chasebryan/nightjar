@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 /// Her working hands, callable from conversation:
 /// the forge and the weights bench. These live in
@@ -2438,7 +2439,15 @@ extension SkelliCenter {
     /// herself, on the house's stored choices
     /// (persona, port, honeydrop) unless the
     /// ask names its own — the same defaults the
-    /// knock vault raises it by.
+    /// knock vault raises it by. The hand is
+    /// verb-led (2026-10-20): a canary ask she
+    /// cannot act on is no longer answered by
+    /// raising the bird and reciting the rises
+    /// line — that fall-through is what answered
+    /// "knock the canary, then read me the
+    /// filing" with the setup speech. She can
+    /// also knock her own decoy like a stranger,
+    /// and read back what it filed.
     func canaryAsk(_ q: String) -> Bool {
         guard q.contains("canary") else { return false }
         guard let mouth else { return false }
@@ -2456,6 +2465,44 @@ extension SkelliCenter {
             }
             return true
         }
+        let words = Set(q.split {
+            !$0.isLetter && !$0.isNumber
+        }.map(String.init))
+        // Knock it: she pays her own decoy a
+        // stranger's visit. Checked before the
+        // catch, so a chained "knock it, then
+        // read me the filing" knocks first —
+        // the knock's own report covers the read.
+        if words.contains("knock")
+            || words.contains("test")
+            || words.contains("probe")
+            || words.contains("visit") {
+            guard let persona = canary.runningPersona,
+                  let port = canary.runningPort else {
+                say("No canary is up — nothing "
+                    + "to knock. Raise one and "
+                    + "I'll knock it all day.")
+                return true
+            }
+            say("Knocking my own " + persona
+                + " canary on port \(port) — one "
+                + "stranger's visit, coming up "
+                + "in the inbox.")
+            knockCanary(persona: persona,
+                        port: port, mouth: mouth)
+            return true
+        }
+        // The catch: read the newest filing
+        // aloud, from the inbox itself.
+        if words.contains("caught")
+            || words.contains("catch")
+            || q.contains("inbox")
+            || words.contains("filed")
+            || words.contains("heard")
+            || q.contains("visitor") {
+            sayCanaryCatch()
+            return true
+        }
         if q.contains("status") || q.contains("?")
             || q.contains("running") {
             if let persona = canary.runningPersona,
@@ -2470,7 +2517,25 @@ extension SkelliCenter {
             }
             return true
         }
-        // Raise it.
+        // Raise it — only when the ask actually
+        // asks for that. Anything else with the
+        // word in it falls through to the rest
+        // of her mind, unanswered by this hand.
+        let raising = ["set up", "setup", "raise",
+                       "start", "arm", "put up",
+                       "deploy", "launch", "bring up",
+                       "turn on", "wake"]
+        guard raising.contains(where: {
+            q.contains($0)
+        }) else { return false }
+        if let persona = canary.runningPersona,
+           let port = canary.runningPort {
+            say("The " + persona + " canary is "
+                + "already singing on port "
+                + "\(port) — in character, and "
+                + "listening.")
+            return true
+        }
         var persona: String? = nil
         for name in CanaryHost.personas
         where q.contains(name) {
@@ -2509,6 +2574,132 @@ extension SkelliCenter {
             + "every word spoken to it is filed "
             + "in the inbox.")
         return true
+    }
+
+    /// One stranger's visit to her own decoy:
+    /// connect on loopback, trade the persona's
+    /// first words, hang up. The session files
+    /// itself on the canary's idle clock (about
+    /// twenty seconds for a drive-by), and when
+    /// it lands she reads the filing back
+    /// unasked — the loop closed in the open.
+    private func knockCanary(persona: String,
+                             port: Int,
+                             mouth: Mouth) {
+        let before = mouth.inbox.first {
+            $0.transport.hasPrefix("canary-")
+        }?.id
+        guard let nwPort = NWEndpoint.Port(
+            rawValue: UInt16(clamping: port))
+        else { return }
+        let connection = NWConnection(
+            host: "127.0.0.1", port: nwPort,
+            using: .tcp)
+        let queue = DispatchQueue(
+            label: "skelli.canaryknock")
+        connection.stateUpdateHandler = { state in
+            if case .ready = state {
+                connection.receive(
+                    minimumIncompleteLength: 1,
+                    maximumLength: 65536) {
+                    _, _, _, _ in
+                    let probe: Data
+                    switch persona {
+                    case "http":
+                        probe = Data(
+                            "GET / HTTP/1.0\r\n\r\n"
+                                .utf8)
+                    case "smtp":
+                        probe = Data(
+                            "EHLO nightjar\r\n"
+                                .utf8)
+                    case "mqtt":
+                        probe = Data(
+                            [0x10, 0x0C, 0x00, 0x04,
+                             0x4D, 0x51, 0x54, 0x54,
+                             0x04, 0x02, 0x00, 0x3C,
+                             0x00, 0x00])
+                    default:
+                        probe = Data(
+                            "SSH-2.0-OpenSSH_9.6\r\n"
+                                .utf8)
+                    }
+                    connection.send(
+                        content: probe,
+                        completion: .contentProcessed {
+                            _ in
+                            queue.asyncAfter(
+                                deadline: .now() + 1.5) {
+                                connection.cancel()
+                            }
+                        })
+                }
+            }
+        }
+        connection.start(queue: queue)
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 26) {
+            let newest = mouth.inbox.first {
+                $0.transport.hasPrefix("canary-")
+            }
+            if let newest, newest.id != before {
+                self.sayCanaryCatch()
+            } else {
+                self.say("The knock landed, but "
+                    + "the canary has filed "
+                    + "nothing yet — its clock "
+                    + "runs about twenty seconds "
+                    + "behind a quiet line. Ask "
+                    + "me for the catch shortly.")
+            }
+        }
+    }
+
+    /// The catch, reported from the inbox
+    /// itself: which decoy, when, from where,
+    /// and what the visitor actually said.
+    private func sayCanaryCatch() {
+        guard let mouth else { return }
+        guard let filing = mouth.inbox.first(
+            where: {
+                $0.transport.hasPrefix("canary-")
+            }) else {
+            say("The canary has filed nothing "
+                + "yet — no visitors.")
+            return
+        }
+        let persona = filing.transport
+            .replacingOccurrences(
+                of: "canary-", with: "")
+        let clock = DateFormatter()
+        clock.timeStyle = .short
+        var heard: String
+        if let text = PayloadKit.printableText(
+            filing.data) {
+            let lines = text
+                .split(separator: "\n")
+                .map { $0.trimmingCharacters(
+                    in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            let flat = lines.prefix(3)
+                .joined(separator: " · ")
+            heard = flat.isEmpty
+                ? "\(filing.data.count) bytes of it"
+                : "\u{201C}" + flat.prefix(200)
+                    + "\u{201D}"
+        } else {
+            let head = filing.data.prefix(8)
+                .map { String(format: "%02x", $0) }
+                .joined(separator: " ")
+            heard = "\(filing.data.count) bytes "
+                + "of machine talk, opening "
+                + head
+        }
+        say("Latest catch — the " + persona
+            + " canary filed a visit at "
+            + clock.string(from: filing.at)
+            + ", from " + filing.peer
+            + ". It heard: " + heard)
     }
 
     // MARK: her conductor hand — reflexes kept
