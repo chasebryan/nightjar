@@ -167,15 +167,9 @@ extension SkelliCenter {
         let runner = MacroRunner.shared
         if runner.running {
             say(vary([
-                "“\(runner.currentMacroName)” is "
-                    + "already running — stop it "
-                    + "first.",
-                "“\(runner.currentMacroName)” is "
-                    + "still running — stop it "
-                    + "before another.",
-                "“\(runner.currentMacroName)” has "
-                    + "not finished. Stop it "
-                    + "first."]))
+                String(format: L("“%@” is already running — stop it first."), String(describing: runner.currentMacroName)),
+                String(format: L("“%@” is still running — stop it before another."), String(describing: runner.currentMacroName)),
+                String(format: L("“%@” has not finished. Stop it first."), String(describing: runner.currentMacroName))]))
             return true
         }
         guard let mouth = mouth, let post = post,
@@ -184,13 +178,11 @@ extension SkelliCenter {
         let problems = MacroValidator.problems(
             in: target, book: book)
         guard problems.isEmpty else {
-            say("“\(target.name)” is not ready: "
-                + problems[0])
+            say(String(format: L("“%@” is not ready: %@"), String(describing: target.name), String(describing: problems[0])))
             return true
         }
         if NetbombFuse.shared.task != nil {
-            say("The Netbomb is already counting "
-                + "down — say stop, or let it drop.")
+            say(L("The Netbomb is already counting down — say stop, or let it drop."))
             return true
         }
         if target.name == "Atomic Netbomb" {
@@ -199,8 +191,7 @@ extension SkelliCenter {
         }
         runner.run(target, mouth: mouth, post: post,
                    emcon: emcon, book: book)
-        say("Running “\(target.name)” — "
-            + "\(target.blocks.count) blocks.")
+        say(String(format: L("Running “%@” — %@ blocks."), String(describing: target.name), String(describing: target.blocks.count)))
         return true
     }
 
@@ -211,8 +202,7 @@ extension SkelliCenter {
     /// order, 2026-10-18). Say stop anywhere
     /// in the count and it stays in the rack.
     private func lightNetbombFuse(_ target: Macro) {
-        say("Atomic Netbomb. Counting down — "
-            + "say stop and it stays in the rack.")
+        say(L("Atomic Netbomb. Counting down — say stop and it stays in the rack."))
         NetbombFuse.shared.task = Task { @MainActor in
             for step in stride(from: 5, through: 1,
                                by: -1) {
@@ -229,16 +219,13 @@ extension SkelliCenter {
             guard !runner.running,
                   let mouth = mouth, let post = post,
                   let emcon = emcon else {
-                say("The drop is off — the floor "
-                    + "isn't clear.")
+                say(L("The drop is off — the floor isn't clear."))
                 return
             }
             runner.run(target, mouth: mouth,
                        post: post, emcon: emcon,
                        book: PayloadBook())
-            say("Dropping it — “Atomic Netbomb” "
-                + "running, "
-                + "\(target.blocks.count) blocks.")
+            say(String(format: L("Dropping it — “Atomic Netbomb” running, %@ blocks."), String(describing: target.blocks.count)))
         }
     }
 
@@ -288,14 +275,11 @@ extension SkelliCenter {
                     || named?.name
                         == runner.currentMacroName
             else { return nil }
-            return "Still running — "
-                + "\(runner.currentMacroName): "
-                + "\(runner.currentStep)."
+            return String(format: L("Still running — %@: %@."), String(describing: runner.currentMacroName), String(describing: runner.currentStep))
         }
         if let named,
            runner.lastSummary.hasPrefix(named.name) {
-            return "Last run — "
-                + runner.lastSummary
+            return String(format: L("Last run — %@"), String(describing: runner.lastSummary))
         }
         return nil
     }
@@ -313,8 +297,7 @@ extension SkelliCenter {
             || q.contains("never mind") {
             NetbombFuse.shared.task?.cancel()
             NetbombFuse.shared.task = nil
-            say("Called off — the Netbomb stays "
-                + "in the rack.")
+            say(L("Called off — the Netbomb stays in the rack."))
             return true
         }
         if let report = runReport(q) {
@@ -393,14 +376,11 @@ extension SkelliCenter {
         if q.contains("status") || q.contains("how is the macro")
             || q.contains("macro doing") {
             if runner.running {
-                say("Running “\(runner.currentMacroName)” — "
-                    + "\(runner.currentStep).")
+                say(String(format: L("Running “%@” — %@."), String(describing: runner.currentMacroName), String(describing: runner.currentStep)))
             } else if !runner.lastSummary.isEmpty {
-                say("No macro is running. Last run: "
-                    + runner.lastSummary)
+                say(String(format: L("No macro is running. Last run: %@"), String(describing: runner.lastSummary)))
             } else {
-                say("No macro is running, and none has run "
-                    + "yet this session.")
+                say(L("No macro is running, and none has run yet this session."))
             }
             return true
         }
@@ -411,16 +391,15 @@ extension SkelliCenter {
             guard let target = bestMacro(in: q, from: macros)
             else {
                 say(macros.isEmpty
-                    ? "There are no macros to delete."
-                    : "Which macro? The library holds: "
-                        + macroNames(macros) + ".")
+                    ? L("There are no macros to delete.")
+                    : String(format: L("Which macro? The library holds: %@."), String(describing: macroNames(macros))))
                 return true
             }
             macros.removeAll { $0.id == target.id }
             MacroStore.save(macros)
             Journal.log("macro", "deleted",
                         "“\(target.name)” deleted by voice")
-            say("Deleted “\(target.name)”.")
+            say(String(format: L("Deleted “%@”."), String(describing: target.name)))
             return true
         }
 
@@ -429,14 +408,10 @@ extension SkelliCenter {
             || q.contains("show me the macros") {
             let macros = MacroStore.load()
             if macros.isEmpty {
-                say("No macros yet. Dictate the steps — "
-                    + "“build a macro called Night Post: "
-                    + "go dark; wait 30; sweep” — and I "
-                    + "will build it.")
+                say(L("No macros yet. Dictate the steps — “build a macro called Night Post: go dark; wait 30; sweep” — and I will build it."))
             } else {
-                say("The library: " + macros.map {
-                    "“\($0.name)” (\($0.blocks.count) block"
-                    + ($0.blocks.count == 1 ? "" : "s") + ")"
+                say(L("The library: ") + macros.map {
+                    String(format: L("“%@” (%@ block%@)"), String(describing: $0.name), String(describing: $0.blocks.count), String(describing: $0.blocks.count == 1 ? "" : "s"))
                 }.joined(separator: ", ") + ".")
             }
             return true
@@ -457,9 +432,9 @@ extension SkelliCenter {
             if runner.running {
                 let name = runner.currentMacroName
                 runner.stop()
-                say("Stopped “\(name)”.")
+                say(String(format: L("Stopped “%@”."), String(describing: name)))
             } else {
-                say("No macro is running.")
+                say(L("No macro is running."))
             }
             return true
         }
@@ -469,17 +444,15 @@ extension SkelliCenter {
             guard let mouth = mouth, let post = post,
                   let emcon = emcon else { return false }
             if runner.running {
-                say("“\(runner.currentMacroName)” is "
-                    + "already running — stop it first.")
+                say(String(format: L("“%@” is already running — stop it first."), String(describing: runner.currentMacroName)))
                 return true
             }
             let macros = MacroStore.load()
             guard let target = bestMacro(in: q, from: macros)
             else {
                 say(macros.isEmpty
-                    ? "There are no macros to run yet."
-                    : "Which macro? The library holds: "
-                        + macroNames(macros) + ".")
+                    ? L("There are no macros to run yet.")
+                    : String(format: L("Which macro? The library holds: %@."), String(describing: macroNames(macros))))
                 return true
             }
             return runMacroByVoice(target)
@@ -641,15 +614,7 @@ extension SkelliCenter {
         }
 
         guard !blocks.isEmpty else {
-            say("I couldn't place any of those steps. "
-                + "Steps I know: send, serve, beacon, "
-                + "gatt, listen, sweep, knock, fuzz, go "
-                + "dark, stealth, the banshee, a persona, "
-                + "a costume, a chest, a Helm button, the "
-                + "war room, a SIGINT watch, a challenge, "
-                + "a defense, wait, wait for an arrival, "
-                + "wait for a sighting, note, announce, "
-                + "stop — separated by semicolons.")
+            say(L("I couldn't place any of those steps. Steps I know: send, serve, beacon, gatt, listen, sweep, knock, fuzz, go dark, stealth, the banshee, a persona, a costume, a chest, a Helm button, the war room, a SIGINT watch, a challenge, a defense, wait, wait for an arrival, wait for a sighting, note, announce, stop — separated by semicolons."))
             return
         }
 
@@ -662,18 +627,14 @@ extension SkelliCenter {
         Journal.log("macro", "built",
                     "“\(name)” built by voice — "
                     + "\(blocks.count) blocks")
-        var reply = "Built “\(name)” — \(blocks.count) "
-            + "block\(blocks.count == 1 ? "" : "s"): "
-            + blocks.map {
+        var reply = String(format: L("Built “%@” — %@ block%@: %@."), String(describing: name), String(describing: blocks.count), String(describing: blocks.count == 1 ? "" : "s"), String(describing: blocks.map {
                 MacroCatalog.spec($0.kind).title
-            }.joined(separator: ", ") + "."
+            }.joined(separator: ", ")))
         if !unplaced.isEmpty {
-            reply += " I couldn't place: "
-                + unplaced.map { "“\($0)”" }
-                    .joined(separator: ", ")
-                + " — the editor can add them."
+            reply += String(format: L(" I couldn't place: %@ — the editor can add them."), String(describing: unplaced.map { "“\($0)”" }
+                    .joined(separator: ", ")))
         }
-        reply += " Say “run macro \(name)” when ready."
+        reply += String(format: L(" Say “run macro %@” when ready."), String(describing: name))
         say(reply)
     }
 
@@ -695,21 +656,13 @@ extension SkelliCenter {
         var macros = MacroStore.load()
         guard let target = bestMacro(in: macroWords,
                                      from: macros) else {
-            say("Which macro? The library holds: "
-                + macroNames(macros) + ".")
+            say(String(format: L("Which macro? The library holds: %@."), String(describing: macroNames(macros))))
             return
         }
         guard let block = macroStep(
             stepText.trimmingCharacters(in: .whitespaces),
             book: PayloadBook()) else {
-            say("I couldn't place that step. Steps I "
-                + "know: send, serve, beacon, gatt, "
-                + "listen, sweep, knock, fuzz, go dark, "
-                + "stealth, the banshee, a persona, a "
-                + "costume, a chest, a Helm button, the "
-                + "war room, a SIGINT watch, a "
-                + "challenge, a defense, wait, wait for "
-                + "an arrival, note, announce, stop.")
+            say(L("I couldn't place that step. Steps I know: send, serve, beacon, gatt, listen, sweep, knock, fuzz, go dark, stealth, the banshee, a persona, a costume, a chest, a Helm button, the war room, a SIGINT watch, a challenge, a defense, wait, wait for an arrival, note, announce, stop."))
             return
         }
         guard let index = macros.firstIndex(
@@ -717,9 +670,7 @@ extension SkelliCenter {
         macros[index].blocks.append(block)
         macros[index].modifiedAt = Date()
         MacroStore.save(macros)
-        say("Added “\(MacroCatalog.spec(block.kind).title)” "
-            + "to “\(target.name)” — now "
-            + "\(macros[index].blocks.count) blocks.")
+        say(String(format: L("Added “%@” to “%@” — now %@ blocks."), String(describing: MacroCatalog.spec(block.kind).title), String(describing: target.name), String(describing: macros[index].blocks.count)))
     }
 
     // MARK: one dictated step → one block
@@ -1074,17 +1025,11 @@ extension SkelliCenter {
                 || q.contains("quiet") {
                 BansheeCenter.shared.cease(
                     mouth: mouth, assault: AssaultCenter.shared)
-                say("The banshee is silent. The posture it "
-                    + "found is restored, stealth last of all.")
+                say(L("The banshee is silent. The posture it found is restored, stealth last of all."))
             } else {
                 BansheeCenter.shared.scream(
                     mouth: mouth, assault: AssaultCenter.shared)
-                say("The banshee screams: Serve listed and "
-                    + "stealth off, the beacon shouting, "
-                    + "Net-Assault armed, a broadcast "
-                    + "heartbeat on the subnet. Say cease the "
-                    + "banshee and the room returns to what "
-                    + "it was.")
+                say(L("The banshee screams: Serve listed and stealth off, the beacon shouting, Net-Assault armed, a broadcast heartbeat on the subnet. Say cease the banshee and the room returns to what it was."))
             }
             return true
         }
@@ -1108,14 +1053,11 @@ extension SkelliCenter {
             let top = station.emitters
                 .sorted { $0.priority > $1.priority }
                 .prefix(3).map { $0.label }
-            say("The registry holds \(station.emitters.count) "
-                + "emitters this epoch — \(air) in the air, "
-                + "\(wire) on the wire."
+            say(String(format: L("The registry holds %@ emitters this epoch — %@ in the air, %@ on the wire."), String(describing: station.emitters.count), String(describing: air), String(describing: wire))
                 + (top.isEmpty ? ""
-                   : " Loudest: \(top.joined(separator: ", ")).")
+                   : String(format: L(" Loudest: %@."), String(describing: top.joined(separator: ", "))))
                 + (woke
-                   ? " The station was asleep — it is on "
-                   + "the desk now and stays."
+                   ? L(" The station was asleep — it is on the desk now and stays.")
                    : ""))
             return true
         }
@@ -1124,11 +1066,11 @@ extension SkelliCenter {
             if q.contains("stop") || q.contains("file")
                 || q.contains("end") {
                 guard station.currentWatch != nil else {
-                    say("No watch is running.")
+                    say(L("No watch is running."))
                     return true
                 }
                 station.stopWatch(post: post)
-                say("Watch filed. "
+                say(L("Watch filed. ")
                     + (station.lastWatch?.summaryText ?? ""))
                 return true
             }
@@ -1137,9 +1079,7 @@ extension SkelliCenter {
                 if let watch = station.lastWatch {
                     say(watch.summaryText)
                 } else {
-                    say("No watch has been filed yet — "
-                        + "start one, work the room, stop it, "
-                        + "and I will read you the delta.")
+                    say(L("No watch has been filed yet — start one, work the room, stop it, and I will read you the delta."))
                 }
                 return true
             }
@@ -1151,14 +1091,9 @@ extension SkelliCenter {
                        || q.contains("lan")) ? "wire" : "mixed"
                 station.startWatch(name: "Skelli's watch",
                                    scope: scope, post: post)
-                say("Watch running (\(scope)). The registry "
-                    + "records; stop it and I will read the "
-                    + "delta — what arrived, what vanished, "
-                    + "which doors changed."
+                say(String(format: L("Watch running (%@). The registry records; stop it and I will read the delta — what arrived, what vanished, which doors changed."), String(describing: scope))
                     + (post.session == nil
-                       ? " The ear is down, so this watch "
-                       + "reads the wire and the log — "
-                       + "start Listen for the air half."
+                       ? L(" The ear is down, so this watch reads the wire and the log — start Listen for the air half.")
                        : ""))
                 return true
             }
@@ -1181,10 +1116,7 @@ extension SkelliCenter {
                 shelf.append(NJChest.capture(
                     id: UUID().uuidString, name: name))
                 NJChestStore.save(shelf)
-                say("Packed “\(name)” — the rig as it "
-                    + "stands, on the shelf. Applying it "
-                    + "later dresses everything and starts "
-                    + "nothing.")
+                say(String(format: L("Packed “%@” — the rig as it stands, on the shelf. Applying it later dresses everything and starts nothing."), String(describing: name)))
                 return true
             }
             let chests = NJChestStore.load()
@@ -1197,32 +1129,25 @@ extension SkelliCenter {
                     .sorted { $0.s > $1.s }.first
                 guard let chest = hit?.c else {
                     say(chests.isEmpty
-                        ? "No chests are packed yet."
-                        : "Which chest? Packed: "
+                        ? L("No chests are packed yet.")
+                        : L("Which chest? Packed: ")
                         + chests.map { $0.name }
                             .joined(separator: ", ") + ".")
                     return true
                 }
                 chest.apply(mouth: mouth)
-                say("The \(chest.name) chest is on — Send, "
-                    + "Serve, Recon and the trace wear it. "
-                    + "Nothing was started; a chest dresses "
-                    + "the rig, it does not pull a trigger."
+                say(String(format: L("The %@ chest is on — Send, Serve, Recon and the trace wear it. Nothing was started; a chest dresses the rig, it does not pull a trigger."), String(describing: chest.name))
                     + (MimicCenter.shared.activePersona != nil
-                       ? " Note: a Spoofy shape is worn, "
-                       + "and dropping it restores the "
-                       + "wardrobe from before the shape — "
-                       + "this dress would unwind with it."
+                       ? L(" Note: a Spoofy shape is worn, and dropping it restores the wardrobe from before the shape — this dress would unwind with it.")
                        : ""))
                 return true
             }
             say(chests.isEmpty
-                ? "No chests are packed yet — pack one in "
-                + "the Send tab's Trace section."
-                : "Packed chests: "
+                ? L("No chests are packed yet — pack one in the Send tab's Trace section.")
+                : L("Packed chests: ")
                 + chests.map { $0.name }
                     .joined(separator: ", ")
-                + ". Say apply one and I will dress the rig.")
+                + L(". Say apply one and I will dress the rig."))
             return true
         }
 
@@ -1244,9 +1169,9 @@ extension SkelliCenter {
                 let labels = remotes.flatMap { $0.buttons }
                     .map { $0.label }
                 say(remotes.isEmpty
-                    ? "The Helm holds no remotes yet."
-                    : "No button matches that. On the "
-                    + "shelf: "
+                    ? L("The Helm holds no remotes yet.")
+                    : L("No button matches that. On the ")
+                    + L("shelf: ")
                     + labels.joined(separator: ", ") + ".")
                 return true
             }
@@ -1261,17 +1186,11 @@ extension SkelliCenter {
             else { return false }
             let run = WarRun.shared
             if q.contains("status") || q.contains("how") {
-                say("War Room: "
-                    + run.phase.rawValue.lowercased()
-                    + " — \(run.events.count) timeline events "
-                    + "so far.")
+                say(String(format: L("War Room: %@ — %@ timeline events so far."), String(describing: run.phase.rawValue.lowercased()), String(describing: run.events.count)))
                 return true
             }
             if run.running {
-                say("The War Room run is already working "
-                    + "— \(run.phase.rawValue.lowercased()). "
-                    + "There is only the one run; the room's "
-                    + "console shows this same one.")
+                say(String(format: L("The War Room run is already working — %@. There is only the one run; the room's console shows this same one."), String(describing: run.phase.rawValue.lowercased())))
                 return true
             }
             run.start(mouth: mouth, post: post,
@@ -1279,12 +1198,9 @@ extension SkelliCenter {
                       config: warRoomConfig())
             if run.phase == .failed {
                 say(run.statusLine
-                    ?? "The run did not start.")
+                    ?? L("The run did not start."))
             } else {
-                say("The War Room is working — Listen, "
-                    + "trace, then knocks at the doors the "
-                    + "trace touches, one timeline. Ask me "
-                    + "for its status.")
+                say(L("The War Room is working — Listen, trace, then knocks at the doors the trace touches, one timeline. Ask me for its status."))
             }
             return true
         }
@@ -1301,13 +1217,13 @@ extension SkelliCenter {
                 if let report = games.report {
                     say(report.verdict)
                 } else {
-                    say("No scored round yet — the cards are "
-                        + "not both in (mine: "
+                    say(L("No scored round yet — the cards are ")
+                        + L("not both in (mine: ")
                         + (games.myCard == nil
-                           ? "not filed" : "filed")
-                        + ", theirs: "
+                           ? L("not filed") : "filed")
+                        + L(", theirs: ")
                         + (games.theirCard == nil
-                           ? "not received" : "in") + ").")
+                           ? L("not received") : "in") + ").")
                 }
                 // A scoring ask with no challenge out
                 // is an errand, not a hold — her tick
@@ -1321,28 +1237,21 @@ extension SkelliCenter {
             if q.contains("begin") || q.contains("attack now")
                 || q.contains("start the attack") {
                 guard games.role == "attacker" else {
-                    say("You are set as the \(games.role) — "
-                        + "a challenge makes you the attacker.")
+                    say(String(format: L("You are set as the %@ — a challenge makes you the attacker."), String(describing: games.role)))
                     return true
                 }
                 guard !games.challengedPeer.isEmpty else {
-                    say("No challenge is out — challenge "
-                        + "the defender's address first.")
+                    say(L("No challenge is out — challenge the defender's address first."))
                     return true
                 }
                 guard games.phase.contains("READY") else {
-                    say("The defender has not answered "
-                        + "READY yet. \(games.phase)")
+                    say(String(format: L("The defender has not answered READY yet. %@"), String(describing: games.phase)))
                     return true
                 }
                 games.beginAttack(config: warRoomConfig(),
                                   knockPorts: warReconPorts(),
                                   knockUDP: warReconUDP())
-                say("START sent to \(games.challengedPeer) "
-                    + "— the trace runs at them, then the "
-                    + "knocks on the Recon ports. The card "
-                    + "files itself when the round closes; "
-                    + "ask me for the score.")
+                say(String(format: L("START sent to %@ — the trace runs at them, then the knocks on the Recon ports. The card files itself when the round closes; ask me for the score."), String(describing: games.challengedPeer)))
                 return true
             }
             if q.contains("defend") || q.contains("defense") {
@@ -1353,13 +1262,10 @@ extension SkelliCenter {
                 let decoys = warParseDecoys()
                 games.setDefense(serveDoors: doors,
                                  decoys: decoys)
-                say("Defense set: \(doors.count) of Serve's "
-                    + "doors held as real, \(decoys.count) "
-                    + "decoys flying"
+                say(String(format: L("Defense set: %@ of Serve's doors held as real, %@ decoys flying"), String(describing: doors.count), String(describing: decoys.count))
                     + (decoys.isEmpty ? ""
-                       : " (\(decoys.joined(separator: ", ")))")
-                    + ". The catch window is the Serve "
-                    + "inbox — keep Serve up and serving.")
+                       : String(format: L(" (%@)"), String(describing: decoys.joined(separator: ", "))))
+                    + L(". The catch window is the Serve inbox — keep Serve up and serving."))
                 return true
             }
             if q.contains("challenge") {
@@ -1371,9 +1277,7 @@ extension SkelliCenter {
                         }
                 }
                 guard let ip = ip else {
-                    say("Challenge whom? Give me the "
-                        + "defender's address — challenge "
-                        + "192.168.4.31.")
+                    say(L("Challenge whom? Give me the defender's address — challenge 192.168.4.31."))
                     return true
                 }
                 let port = Int(UserDefaults.standard.string(
@@ -1382,16 +1286,10 @@ extension SkelliCenter {
                 games.challenge(defenderIP: String(ip),
                                 port: port, myControlPort: port,
                                 myLabel: warHostName())
-                say("Challenge sent to \(ip) — the defender "
-                    + "must be serving with its War Games "
-                    + "room open. When READY lands, the round "
-                    + "is set from the War Games room in the "
-                    + "Send tab.")
+                say(String(format: L("Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab."), String(describing: ip)))
                 return true
             }
-            say("War Games: match \(games.matchID), round "
-                + "\(games.round), you fight as the "
-                + "\(games.role). \(games.phase)")
+            say(String(format: L("War Games: match %@, round %@, you fight as the %@. %@"), String(describing: games.matchID), String(describing: games.round), String(describing: games.role), String(describing: games.phase)))
             return true
         }
 
@@ -1407,8 +1305,7 @@ extension SkelliCenter {
             if q.contains("rotat") {
                 if q.contains("stop") || q.contains("still") {
                     SpoofyRotator.shared.stop()
-                    say("The rack stands still — the name "
-                        + "stays where the rotation left it.")
+                    say(L("The rack stands still — the name stays where the rotation left it."))
                 } else {
                     say(SpoofyRotator.shared.start(
                         mouth: mouth))
@@ -1440,15 +1337,9 @@ extension SkelliCenter {
                 say(Spoofy.applyName(hit.n, mouth: mouth))
                 return true
             }
-            say("The rack holds costumes — "
-                + Spoofy.costumeNames.prefix(4)
+            say(String(format: L("The rack holds costumes — %@"), String(describing: Spoofy.costumeNames.prefix(4)))
                     .joined(separator: ", ")
-                + " — network gear (access point, "
-                + "gateway, mesh node, media server, hub) "
-                + "and device shapes (printer, TV, "
-                + "speaker, NAS, thermostat, vacuum). "
-                + "Say wear the access point, or roll "
-                + "the dice.")
+                + L(" — network gear (access point, gateway, mesh node, media server, hub) and device shapes (printer, TV, speaker, NAS, thermostat, vacuum). Say wear the access point, or roll the dice."))
             return true
         }
 
@@ -1534,9 +1425,7 @@ extension SkelliCenter {
         if q.contains("pattern") {
             if bulk {
                 ForgePatternStore.save([])
-                say("Struck all \(customs.count) "
-                    + "taught patterns. She builds "
-                    + "from her five built-ins again.")
+                say(String(format: L("Struck all %@ taught patterns. She builds from her five built-ins again."), String(describing: customs.count)))
                 return true
             }
             let doomed = customs.filter {
@@ -1546,9 +1435,8 @@ extension SkelliCenter {
                 score($0.name) < score($1.name)
             }) else {
                 say(customs.isEmpty
-                    ? "She holds no taught patterns "
-                        + "to strike."
-                    : "Which pattern? She holds: "
+                    ? L("She holds no taught patterns to strike.")
+                    : L("Which pattern? She holds: ")
                         + customs.map { $0.name }
                             .joined(separator: ", ")
                         + ".")
@@ -1557,7 +1445,7 @@ extension SkelliCenter {
             ForgePatternStore.save(customs.filter {
                 $0.id != hit.id
             })
-            say("Struck the pattern: " + hit.name + ".")
+            say(String(format: L("Struck the pattern: %@."), String(describing: hit.name)))
             return true
         }
 
@@ -1571,8 +1459,7 @@ extension SkelliCenter {
                 $0.name.hasPrefix("Forged — ")
             }
             guard !doomed.isEmpty else {
-                say("Nothing of hers sits in the "
-                    + "armory to strike.")
+                say(L("Nothing of hers sits in the armory to strike."))
                 return true
             }
             var indices = IndexSet()
@@ -1586,10 +1473,10 @@ extension SkelliCenter {
             for item in doomed {
                 strikeDelivery(item.name)
             }
-            say("Struck from the armory: "
+            say(L("Struck from the armory: ")
                 + doomed.map { $0.name }
                     .joined(separator: "; ")
-                + ". Deliveries copies went too.")
+                + L(". Deliveries copies went too."))
             return true
         }
         let scored = book.items
@@ -1618,11 +1505,10 @@ extension SkelliCenter {
             book.remove(at: IndexSet(integer: index))
         }
         strikeDelivery(hit.item.name)
-        say("Struck from the armory: " + hit.item.name
+        say(L("Struck from the armory: ") + hit.item.name
             + (hit.item.builtIn
-                ? " — a built-in; Restore in the "
-                    + "Send payload list brings it back."
-                : ". Its Deliveries copy went too."))
+                ? L(" — a built-in; Restore in the Send payload list brings it back.")
+                : L(". Its Deliveries copy went too.")))
         return true
     }
 
@@ -1720,9 +1606,7 @@ extension SkelliCenter {
                                        useGzip: false, framing: "raw"))
         DeliveriesCenter.shared.add(name: built.name, text: built.text,
                                     ext: built.source == "hex" ? "hex" : "txt")
-        say("Forged and kept: " + built.name
-            + " — \(ForgeKit.byteCount(of: built)) bytes. It is in the "
-            + "armory, filed in Deliveries, ready to fire from Send.")
+        say(String(format: L("Forged and kept: %@ — %@ bytes. It is in the armory, filed in Deliveries, ready to fire from Send."), String(describing: built.name), String(describing: ForgeKit.byteCount(of: built))))
     }
 
     /// A forge she holds no pattern for goes to her
@@ -1730,9 +1614,7 @@ extension SkelliCenter {
     /// same draft the Forge sheet asks for.
     private func forgeDraft(_ raw: String) {
         guard SkelliMind.isAvailable || SkelliMind.weightsReady else {
-            say("My patterns are HTTP, DNS, SSDP, MQTT, and a banner "
-                + "probe — name one and I will build it. With a bench "
-                + "awake I can also draft from a plain brief.")
+            say(L("My patterns are HTTP, DNS, SSDP, MQTT, and a banner probe — name one and I will build it. With a bench awake I can also draft from a plain brief."))
             return
         }
         activity = "Forging…"
@@ -1742,7 +1624,7 @@ extension SkelliCenter {
                 prompt: raw)
             await MainActor.run {
                 guard let text, !text.isEmpty else {
-                    say("No bench could draft that just now.")
+                    say(L("No bench could draft that just now."))
                     return
                 }
                 let hexish = text.split(separator: " ").allSatisfy {
@@ -1775,25 +1657,21 @@ extension SkelliCenter {
         if q.contains("download") || q.contains("fetch") || q.contains("install") {
             let pick = option() ?? center.recommended
             if center.downloaded.contains(pick.id) {
-                say(pick.name + " is already on the phone.")
+                say(pick.name + L(" is already on the phone."))
                 return true
             }
             center.download(pick)
-            say("Fetching " + pick.name + " — \(pick.sizeGB) GB from the "
-                + "hub. It joins the bench when it lands; tell me to use "
-                + "it and I will put it on.")
+            say(String(format: L("Fetching %@ — %@ GB from the hub. It joins the bench when it lands; tell me to use it and I will put it on."), String(describing: pick.name), String(describing: pick.sizeGB)))
             return true
         }
         if q.contains("use ") || q.contains("select") || q.contains("switch") {
             guard let pick = option() else { return false }
             if center.downloaded.contains(pick.id) {
                 center.select(pick)
-                say(pick.name + " is on the bench.")
+                say(pick.name + L(" is on the bench."))
             } else {
                 center.download(pick)
-                say(pick.name + " is not on the phone yet — fetching it "
-                    + "now. When it lands, tell me to use it and I will "
-                    + "put it on the bench.")
+                say(pick.name + L(" is not on the phone yet — fetching it now. When it lands, tell me to use it and I will put it on the bench."))
             }
             return true
         }
@@ -1802,9 +1680,9 @@ extension SkelliCenter {
                 .filter { center.downloaded.contains($0.id) }.map { $0.name }
             let current = WeightsCenter.catalog
                 .first(where: { $0.id == center.selectedID })?.name
-            say("On the bench: " + (current ?? "none chosen")
-                + ". On the phone: "
-                + (carried.isEmpty ? "no weights yet" : carried.joined(separator: ", "))
+            say(L("On the bench: ") + (current ?? L("none chosen"))
+                + L(". On the phone: ")
+                + (carried.isEmpty ? L("no weights yet") : carried.joined(separator: ", "))
                 + ".")
             return true
         }
@@ -1875,23 +1753,15 @@ extension SkelliCenter {
             break
         }
         guard let shell = blacksiteShell else {
-            say("The console hasn't woken in "
-                + "this run of the app — open "
-                + "the Blacksite tab once and "
-                + "the hand is mine from then "
-                + "on.")
+            say(L("The console hasn't woken in this run of the app — open the Blacksite tab once and the hand is mine from then on."))
             return true
         }
         let out = shell.runForSkelli(payload)
         if out.isEmpty {
-            say("Ran it — nothing came back "
-                + "on the line. If it's a "
-                + "program, its output lives "
-                + "in the console; the "
-                + "Blacksite tab holds it.")
+            say(L("Ran it — nothing came back on the line. If it's a program, its output lives in the console; the Blacksite tab holds it."))
         } else if out.count > 700 {
             say(String(out.prefix(700))
-                + "\n…the console holds the rest.")
+                + L("\n…the console holds the rest."))
         } else {
             say(out)
         }
@@ -1950,14 +1820,8 @@ extension SkelliCenter {
             }
             guard let note = target else {
                 say(notes.isEmpty
-                    ? "I hold no notes to seal "
-                        + "yet — teach me one "
-                        + "first."
-                    : "Which note? I hold "
-                        + "\(notes.count). "
-                        + "Say 'seal my last "
-                        + "note', or name it by "
-                        + "its words.")
+                    ? L("I hold no notes to seal yet — teach me one first.")
+                    : String(format: L("Which note? I hold %@. Say 'seal my last note', or name it by its words."), String(describing: notes.count)))
                 return true
             }
             noteText = note.text
@@ -1983,21 +1847,17 @@ extension SkelliCenter {
                     .map { $0.file }
                     .joined(separator: ", ")
                 say(shelfItems.isEmpty
-                    ? "The Deliveries shelf is "
-                        + "empty — there is no "
-                        + "file for me to "
+                    ? L("The Deliveries shelf is ")
+                        + L("empty — there is no ")
+                        + L("file for me to ")
                         + (opening ? "open."
                                    : "seal.")
-                    : "I don't find that name "
-                        + "on the shelf. It "
-                        + "holds: " + names + ".")
+                    : String(format: L("I don't find that name on the shelf. It holds: %@."), String(describing: names)))
                 return true
             }
             if opening && !found.file
                 .hasSuffix(".njcf") {
-                say(found.file + " isn't a "
-                    + "sealed box — opening "
-                    + "wants a .njcf.")
+                say(found.file + L(" isn't a sealed box — opening wants a .njcf."))
                 return true
             }
             item = found
@@ -2016,15 +1876,13 @@ extension SkelliCenter {
                     noteText: noteCopy,
                     item: itemCopy)
             }
-            say("Passwords aren't spoken "
-                + "here — sealing under one "
-                + "is the Vault tab's work, "
-                + "in its proper fields. "
-                + "But I can "
+            say(L("Passwords aren't spoken ")
+                + L("here — sealing under one ")
+                + L("is the Vault tab's work, ")
+                + L("in its proper fields. ")
+                + L("But I can ")
                 + (opening ? "open" : "seal")
-                + " it under the vault key "
-                + "instead, right now — "
-                + "say yes.")
+                + L(" it under the vault key instead, right now — say yes."))
             return true
         }
         runVaultKey(opening: opening,
@@ -2084,13 +1942,7 @@ extension SkelliCenter {
                             password: nil,
                             outputDirectory:
                                 center.shelf)
-                    done("Opened — "
-                        + restored
-                            .lastPathComponent
-                        + " is back on the "
-                        + "Deliveries shelf, "
-                        + "unsealed by the "
-                        + "vault key.",
+                    done(String(format: L("Opened — %@ is back on the Deliveries shelf, unsealed by the vault key."), String(describing: restored.lastPathComponent)),
                         adopt: restored)
                 } else if let text = noteText {
                     let base = text
@@ -2118,16 +1970,7 @@ extension SkelliCenter {
                         protection: .vaultKey,
                         password: nil,
                         recipient: nil)
-                    done("Sealed — " + name
-                        + ".njcf stands on the "
-                        + "Deliveries shelf "
-                        + "under the vault key; "
-                        + "no password opens "
-                        + "it, only this "
-                        + "house's key. The "
-                        + "note itself stays "
-                        + "in my memory, "
-                        + "unsealed.",
+                    done(String(format: L("Sealed — %@.njcf stands on the Deliveries shelf under the vault key; no password opens it, only this house's key. The note itself stays in my memory, unsealed."), String(describing: name)),
                         adopt: out)
                 } else if let item {
                     let out = center.shelf
@@ -2140,19 +1983,11 @@ extension SkelliCenter {
                         protection: .vaultKey,
                         password: nil,
                         recipient: nil)
-                    done("Sealed — " + item.file
-                        + ".njcf stands on the "
-                        + "Deliveries shelf "
-                        + "under the vault "
-                        + "key. The original "
-                        + "keeps its place "
-                        + "beside it.",
+                    done(String(format: L("Sealed — %@.njcf stands on the Deliveries shelf under the vault key. The original keeps its place beside it."), String(describing: item.file)),
                         adopt: out)
                 }
             } catch {
-                done("The vault refused it: "
-                    + error.localizedDescription
-                    + " Nothing was written.")
+                done(String(format: L("The vault refused it: %@ Nothing was written."), String(describing: error.localizedDescription)))
             }
         }
     }
@@ -2196,17 +2031,12 @@ extension SkelliCenter {
             return false
         }
         guard let key = KnockKeyStore.key else {
-            say("Knocktalk isn't paired on this "
-                + "phone — there's no key in the "
-                + "Keychain to seal with.")
+            say(L("Knocktalk isn't paired on this phone — there's no key in the Keychain to seal with."))
             return true
         }
         let peers = chat.peersByRecency
         guard !peers.isEmpty else {
-            say("No knocktalk threads yet — "
-                + "there's nobody on the other end "
-                + "of the knock road. Pair from "
-                + "the Knocktalk door first.")
+            say(L("No knocktalk threads yet — there's nobody on the other end of the knock road. Pair from the Knocktalk door first."))
             return true
         }
         let peer: String
@@ -2217,9 +2047,9 @@ extension SkelliCenter {
             }) {
                 peer = match
             } else {
-                say("I don't have a thread with "
-                    + "'" + hint + "'. The threads "
-                    + "stand: "
+                say(L("I don't have a thread with ")
+                    + "'" + hint + L("'. The threads ")
+                    + L("stand: ")
                     + peers.joined(separator: ", ")
                     + ".")
                 return true
@@ -2227,8 +2057,8 @@ extension SkelliCenter {
         } else if peers.count == 1 {
             peer = peers[0]
         } else {
-            say("More than one thread stands — "
-                + "name the peer. The threads: "
+            say(L("More than one thread stands — ")
+                + L("name the peer. The threads: ")
                 + peers.joined(separator: ", ")
                 + ".")
             return true
@@ -2255,13 +2085,9 @@ extension SkelliCenter {
         if chat.send(text: text, to: peer, key: key) {
             Journal.log("knocktalk", "sent by voice",
                         "\(text.prefix(40)) → \(peer)")
-            say("Sent by knock to " + peer + ": \u{201C}"
-                + text + "\u{201D}")
+            say(String(format: L("Sent by knock to %@: “%@”"), String(describing: peer), String(describing: text)))
         } else {
-            say("Too long for the knock road — "
-                + "it refused rather than "
-                + "truncate. Shorten it, and "
-                + "I'll send.")
+            say(L("Too long for the knock road — it refused rather than truncate. Shorten it, and I'll send."))
         }
         return true
     }
@@ -2287,13 +2113,10 @@ extension SkelliCenter {
             else { return false }
             if store.rooms.contains(where: {
                 $0.name.lowercased() == name }) {
-                say("The " + name.capitalized
-                    + " is already on the map.")
+                say(String(format: L("The %@ is already on the map."), String(describing: name.capitalized)))
             } else {
                 store.addRoom(name: name.capitalized)
-                say("Raised the " + name.capitalized
-                    + " on the map — empty floor, "
-                    + "waiting for its things.")
+                say(String(format: L("Raised the %@ on the map — empty floor, waiting for its things."), String(describing: name.capitalized)))
             }
             return true
         }
@@ -2347,15 +2170,11 @@ extension SkelliCenter {
             if let device = found.match {
                 store.unplace(key: device.ip)
                 say((device.name ?? device.ip)
-                    + " is off the map. The wire "
-                    + "still knows it; the wall "
-                    + "doesn't.")
+                    + L(" is off the map. The wire still knows it; the wall doesn't."))
                 return true
             }
             if found.many.count > 1 {
-                say("That name covers more than "
-                    + "one: "
-                    + deviceNames(found.many) + ".")
+                say(String(format: L("That name covers more than one: %@."), String(describing: deviceNames(found.many))))
                 return true
             }
             return false
@@ -2407,12 +2226,7 @@ extension SkelliCenter {
                 || roomName.contains(
                     $0.name.lowercased())
         }) else {
-            say("There's no room called "
-                + roomName.capitalized
-                + " on the map. Say 'add a room "
-                + "called " + roomName
-                + "' and I'll raise it — then "
-                + "I'll put things in it.")
+            say(String(format: L("There's no room called %@ on the map. Say 'add a room called %@' and I'll raise it — then I'll put things in it."), String(describing: roomName.capitalized), String(describing: roomName)))
             return true
         }
         let found = resolveDevice(device)
@@ -2421,22 +2235,17 @@ extension SkelliCenter {
                         x: room.x + room.w / 2,
                         y: room.y + room.h / 2)
             say((target.name ?? target.ip)
-                + " stands in the " + room.name
-                + " now.")
+                + String(format: L(" stands in the %@ now."), String(describing: room.name)))
             return true
         }
         if found.many.count > 1 {
-            say("That name covers more than one: "
-                + deviceNames(found.many)
-                + ". Name the one, and I'll "
-                + "stand it in the " + room.name
-                + ".")
+            say(String(format: L("That name covers more than one: %@. Name the one, and I'll stand it in the %@."), String(describing: deviceNames(found.many)), String(describing: room.name)))
             return true
         }
-        say("I don't know a '" + device
-            + "' on this wire. The neighborhood "
-            + "holds: " + (neighbors.isEmpty
-                ? "nobody yet"
+        say(L("I don't know a '") + device
+            + L("' on this wire. The neighborhood ")
+            + L("holds: ") + (neighbors.isEmpty
+                ? L("nobody yet")
                 : deviceNames(neighbors)) + ".")
         return true
     }
@@ -2466,11 +2275,9 @@ extension SkelliCenter {
             || q.contains("silence") {
             if canary.runningPersona != nil {
                 canary.stop()
-                say("The canary is down. Whatever "
-                    + "it heard is filed in the "
-                    + "inbox.")
+                say(L("The canary is down. Whatever it heard is filed in the inbox."))
             } else {
-                say("No canary is singing.")
+                say(L("No canary is singing."))
             }
             return true
         }
@@ -2488,15 +2295,10 @@ extension SkelliCenter {
             || words.contains("visit") {
             guard let persona = canary.runningPersona,
                   let port = canary.runningPort else {
-                say("No canary is up — nothing "
-                    + "to knock. Raise one and "
-                    + "I'll knock it all day.")
+                say(L("No canary is up — nothing to knock. Raise one and I'll knock it all day."))
                 return true
             }
-            say("Knocking my own " + persona
-                + " canary on port \(port) — one "
-                + "stranger's visit, coming up "
-                + "in the inbox.")
+            say(String(format: L("Knocking my own %@ canary on port %@ — one stranger's visit, coming up in the inbox."), String(describing: persona), String(describing: port)))
             knockCanary(persona: persona,
                         port: port, mouth: mouth)
             return true
@@ -2516,13 +2318,9 @@ extension SkelliCenter {
             || q.contains("running") {
             if let persona = canary.runningPersona,
                let port = canary.runningPort {
-                say("The " + persona + " canary is "
-                    + "singing on port \(port) — "
-                    + "in character, and listening.")
+                say(String(format: L("The %@ canary is singing on port %@ — in character, and listening."), String(describing: persona), String(describing: port)))
             } else {
-                say("No canary is up. The personas "
-                    + "on the rack: ssh, http, "
-                    + "mqtt, smtp.")
+                say(L("No canary is up. The personas on the rack: ssh, http, mqtt, smtp."))
             }
             return true
         }
@@ -2540,18 +2338,9 @@ extension SkelliCenter {
         if let persona = canary.runningPersona,
            let port = canary.runningPort {
             say(vary([
-                "The " + persona + " canary is "
-                    + "already singing on port "
-                    + "\(port) — in character, and "
-                    + "listening.",
-                "Already up: the " + persona
-                    + " canary, singing on port "
-                    + "\(port), in character and "
-                    + "listening.",
-                "The " + persona + " canary never "
-                    + "sat down — it is singing on "
-                    + "port \(port), in character, "
-                    + "listening."]))
+                String(format: L("The %@ canary is already singing on port %@ — in character, and listening."), String(describing: persona), String(describing: port)),
+                String(format: L("Already up: the %@ canary, singing on port %@, in character and listening."), String(describing: persona), String(describing: port)),
+                String(format: L("The %@ canary never sat down — it is singing on port %@, in character, listening."), String(describing: persona), String(describing: port))]))
             return true
         }
         var persona: String? = nil
@@ -2588,19 +2377,9 @@ extension SkelliCenter {
             drop: defaults.string(
                 forKey: "canaryDrop") ?? "")
         say(vary([
-            "The " + chosen + " canary rises on "
-                + "port \(port) — in character, "
-                + "and every word spoken to it "
-                + "is filed in the inbox.",
-            "The " + chosen + " canary is up on "
-                + "port \(port) — fully in "
-                + "character. Whatever is said "
-                + "to it lands in the inbox.",
-            "Up it goes: the " + chosen
-                + " canary, port \(port), in "
-                + "character — and every word "
-                + "it hears is filed in the "
-                + "inbox."]))
+            String(format: L("The %@ canary rises on port %@ — in character, and every word spoken to it is filed in the inbox."), String(describing: chosen), String(describing: port)),
+            String(format: L("The %@ canary is up on port %@ — fully in character. Whatever is said to it lands in the inbox."), String(describing: chosen), String(describing: port)),
+            String(format: L("Up it goes: the %@ canary, port %@, in character — and every word it hears is filed in the inbox."), String(describing: chosen), String(describing: port))]))
         return true
     }
 
@@ -2673,12 +2452,7 @@ extension SkelliCenter {
             if let newest, newest.id != before {
                 self.sayCanaryCatch()
             } else {
-                self.say("The knock landed, but "
-                    + "the canary has filed "
-                    + "nothing yet — its clock "
-                    + "runs about twenty seconds "
-                    + "behind a quiet line. Ask "
-                    + "me for the catch shortly.")
+                self.say(L("The knock landed, but the canary has filed nothing yet — its clock runs about twenty seconds behind a quiet line. Ask me for the catch shortly."))
             }
         }
     }
@@ -2692,8 +2466,7 @@ extension SkelliCenter {
             where: {
                 $0.transport.hasPrefix("canary-")
             }) else {
-            say("The canary has filed nothing "
-                + "yet — no visitors.")
+            say(L("The canary has filed nothing yet — no visitors."))
             return
         }
         let persona = filing.transport
@@ -2701,12 +2474,7 @@ extension SkelliCenter {
                 of: "canary-", with: "")
         let clock = DateFormatter()
         clock.timeStyle = .short
-        say("Latest catch — the " + persona
-            + " canary filed a visit at "
-            + clock.string(from: filing.at)
-            + ", from " + filing.peer
-            + ". It heard: "
-            + arrivalHeard(filing.data))
+        say(String(format: L("Latest catch — the %@ canary filed a visit at %@, from %@. It heard: %@"), String(describing: persona), String(describing: clock.string(from: filing.at)), String(describing: filing.peer), String(describing: arrivalHeard(filing.data))))
     }
 
     /// What an arrival said, in one breath:
@@ -2730,15 +2498,13 @@ extension SkelliCenter {
             let flat = lines.prefix(3)
                 .joined(separator: " · ")
             return flat.isEmpty
-                ? "\(data.count) bytes of it"
-                : "\u{201C}\(flat.prefix(200))"
-                    + "\u{201D}"
+                ? String(format: L("%@ bytes of it"), String(describing: data.count))
+                : "“\(flat.prefix(200))”"
         }
         let head = data.prefix(8)
             .map { String(format: "%02x", $0) }
             .joined(separator: " ")
-        return "\(data.count) bytes of "
-            + "machine talk, opening " + head
+        return String(format: L("%@ bytes of machine talk, opening %@"), String(describing: data.count), String(describing: head))
     }
 
     /// Her inbox, read aloud (2026-10-20,
@@ -2781,18 +2547,12 @@ extension SkelliCenter {
         guard let mouth else { return false }
         guard let newest = mouth.inbox.first
         else {
-            say("The inbox is empty — "
-                + "nothing has arrived.")
+            say(L("The inbox is empty — nothing has arrived."))
             return true
         }
         let clock = DateFormatter()
         clock.timeStyle = .short
-        say("Newest in the inbox — "
-            + newest.transport + ", at "
-            + clock.string(from: newest.at)
-            + ", from " + newest.peer
-            + ". It said: "
-            + arrivalHeard(newest.data))
+        say(String(format: L("Newest in the inbox — %@, at %@, from %@. It said: %@"), String(describing: newest.transport), String(describing: clock.string(from: newest.at)), String(describing: newest.peer), String(describing: arrivalHeard(newest.data))))
         return true
     }
 
@@ -2826,8 +2586,7 @@ extension SkelliCenter {
                 if rules.contains(where: {
                     $0.trigger == trigger.id
                         && $0.action == action.id }) {
-                    say("That reflex already stands: "
-                        + name + ".")
+                    say(String(format: L("That reflex already stands: %@."), String(describing: name)))
                     return true
                 }
                 rules.append(Conductor.Rule(
@@ -2835,43 +2594,35 @@ extension SkelliCenter {
                     trigger: trigger.id,
                     action: action.id, enabled: true))
                 Conductor.saveRules(rules)
-                say("A new reflex stands: when "
+                say(L("A new reflex stands: when ")
                     + trigger.label.lowercased()
                     + ", I " + action.label.lowercased()
-                    + ". The conductor is "
+                    + L(". The conductor is ")
                     + (defaults.bool(
                         forKey: "conductorOn")
-                        ? "awake — it will fire."
-                        : "asleep — wake it and it will."))
+                        ? L("awake — it will fire.")
+                        : L("asleep — wake it and it will.")))
                 return true
             }
-            say("A reflex is a trigger and an act. "
-                + "Triggers: a fingerprinted knock, "
-                + "a honeydrop taken, the knock vault "
-                + "opening, a new source, any knock, "
-                + "foreign hands. Acts: answer in "
-                + "character, load the bench on them, "
-                + "raise Serve, raise the second "
-                + "sense, burn the threads, mark the "
-                + "journal. Name one of each.")
+            say(L("A reflex is a trigger and an act. Triggers: a fingerprinted knock, a honeydrop taken, the knock vault opening, a new source, any knock, foreign hands. Acts: answer in character, load the bench on them, raise Serve, raise the second sense, burn the threads, mark the journal. Name one of each."))
             return true
         }
 
         if q.contains("rules") || q.contains("list")
             || q.contains("book") {
             if rules.isEmpty {
-                say("The book of reflexes is empty.")
+                say(L("The book of reflexes is empty."))
             } else {
-                var lines = ["The conductor's book:"]
+                var lines = [L("The conductor's book:")]
                 for rule in rules {
                     lines.append("— " + rule.name
                         + (rule.enabled
-                            ? " (awake)" : " (stilled)"))
+                            ? L(" (awake)") : L(" (stilled)")))
                 }
-                lines.append("The conductor itself is "
+                lines.append(L("The conductor itself is ")
                     + (defaults.bool(
                         forKey: "conductorOn")
-                        ? "awake." : "asleep."))
+                        ? L("awake.") : L("asleep.")))
                 say(lines.joined(separator: "\n"))
             }
             return true
@@ -2893,7 +2644,7 @@ extension SkelliCenter {
             }) {
                 rules[hit].enabled = waking
                 Conductor.saveRules(rules)
-                say("The reflex '" + rules[hit].name
+                say(L("The reflex '") + rules[hit].name
                     + "' is "
                     + (waking ? "awake." : "stilled."))
                 return true
@@ -2911,17 +2662,14 @@ extension SkelliCenter {
                 defaults.set(waking,
                              forKey: "conductorOn")
                 say(waking
-                    ? "The conductor wakes. Its "
-                        + "reflexes will fire as "
-                        + "the wire moves."
-                    : "The conductor sleeps. Its "
-                        + "rules keep, unfired.")
+                    ? L("The conductor wakes. Its reflexes will fire as the wire moves.")
+                    : L("The conductor sleeps. Its rules keep, unfired."))
                 return true
             }
-            say("No reflex by that name in "
-                + "the book. It holds: "
+            say(L("No reflex by that name in ")
+                + L("the book. It holds: ")
                 + (rules.isEmpty
-                    ? "nothing yet."
+                    ? L("nothing yet.")
                     : rules.map {
                         "'" + $0.name + "'"
                     }.joined(separator: ", ")
@@ -2935,22 +2683,18 @@ extension SkelliCenter {
             if defaults.bool(forKey: "conductorOn") {
                 defaults.set(false,
                              forKey: "conductorOn")
-                say("The conductor sleeps. Its "
-                    + "rules keep, unfired.")
+                say(L("The conductor sleeps. Its rules keep, unfired."))
             } else {
-                say("The conductor already "
-                    + "sleeps.")
+                say(L("The conductor already sleeps."))
             }
             return true
         }
         if q.contains("status") || q.contains("?")
             || q == "conductor" {
             let lit = rules.filter { $0.enabled }.count
-            say("The conductor is "
+            say(L("The conductor is ")
                 + (defaults.bool(forKey: "conductorOn")
-                    ? "awake" : "asleep") + " — "
-                + "\(rules.count) reflexes in the "
-                + "book, \(lit) of them awake.")
+                    ? "awake" : "asleep") + String(format: L(" — %@ reflexes in the book, %@ of them awake."), String(describing: rules.count), String(describing: lit)))
             return true
         }
         return false
@@ -3036,14 +2780,11 @@ extension SkelliCenter {
                 }
             }
             guard let blob = token else {
-                say("Paste the capsule blob with "
-                    + "the order, and I'll grind it.")
+                say(L("Paste the capsule blob with the order, and I'll grind it."))
                 return true
             }
             let control = GrindControl()
-            say("Grinding — the squarings run one "
-                + "by one; that's the lock working. "
-                + "I'll speak when it opens.")
+            say(L("Grinding — the squarings run one by one; that's the lock working. I'll speak when it opens."))
             DispatchQueue.global(
                 qos: .userInitiated).async { [weak self] in
                 TimeCapsule.grind(
@@ -3052,16 +2793,9 @@ extension SkelliCenter {
                     completion: { text in
                         DispatchQueue.main.async {
                             if let text {
-                                self?.say("The capsule "
-                                    + "opens: \u{201C}"
-                                    + text + "\u{201D}")
+                                self?.say(String(format: L("The capsule opens: “%@”"), String(describing: text)))
                             } else {
-                                self?.say("The grind "
-                                    + "finished with "
-                                    + "nothing inside "
-                                    + "— that blob was "
-                                    + "not a capsule, "
-                                    + "or not whole.")
+                                self?.say(L("The grind finished with nothing inside — that blob was not a capsule, or not whole."))
                             }
                         }
                     })
@@ -3074,7 +2808,7 @@ extension SkelliCenter {
         // The span: "for <n> <unit>", defaulting
         // to the module's own ten minutes.
         var seconds: Double = 600
-        var spanWords = "ten minutes"
+        var spanWords = L("ten minutes")
         let units: [(String, Double)] = [
             ("second", 1), ("minute", 60),
             ("hour", 3600), ("day", 86400)]
@@ -3112,8 +2846,7 @@ extension SkelliCenter {
         guard var words = text?
             .trimmingCharacters(in: .whitespaces),
               !words.isEmpty else {
-            say("Seal what words? 'Seal a capsule: "
-                + "<the words> for <the span>'.")
+            say(L("Seal what words? 'Seal a capsule: <the words> for <the span>'."))
             return true
         }
         if let r = words.range(of: " for ") {
@@ -3122,15 +2855,13 @@ extension SkelliCenter {
         }
         guard words.utf8.count + 28
                 <= Knocktalk.maxSealedBytes else {
-            say("Too many words for a capsule — "
-                + "the lock carries only so much. "
-                + "Shorten them.")
+            say(L("Too many words for a capsule — the lock carries only so much. Shorten them."))
             return true
         }
         let suite = emcon?.chat.sendSuite
             ?? Knocktalk.suiteChaCha
         let span = spanWords
-        say("Forging the lock…")
+        say(L("Forging the lock…"))
         DispatchQueue.global(
             qos: .userInitiated).async { [weak self] in
             let blob = TimeCapsule.seal(
@@ -3138,14 +2869,9 @@ extension SkelliCenter {
                 suite: suite) { _ in }
             DispatchQueue.main.async {
                 if let blob {
-                    self?.say("Sealed under a " + span
-                        + " lock. The capsule — "
-                        + "carry it by any road:\n"
-                        + blob)
+                    self?.say(String(format: L("Sealed under a %@ lock. The capsule — carry it by any road:\n%@"), String(describing: span), String(describing: blob)))
                 } else {
-                    self?.say("The lock wouldn't "
-                        + "forge. Say it again and "
-                        + "I'll try once more.")
+                    self?.say(L("The lock wouldn't forge. Say it again and I'll try once more."))
                 }
             }
         }
@@ -3186,19 +2912,13 @@ extension SkelliCenter {
         if q.contains("stop")
             || q.contains("halt")
             || q.contains("cease") {
-            say("Nothing to stop — I hunt "
-                + "by answering. Ask, and I "
-                + "point at the strongest "
-                + "signal on the air.")
+            say(L("Nothing to stop — I hunt by answering. Ask, and I point at the strongest signal on the air."))
             return true
         }
         guard let post else { return false }
         let rows = post.rows
         guard !rows.isEmpty else {
-            say("The ear isn't up — there's "
-                + "nothing on the air to hunt. "
-                + "Start the listen and the air "
-                + "fills in.")
+            say(L("The ear isn't up — there's nothing on the air to hunt. Start the listen and the air fills in."))
             return true
         }
         func label(_ row: DeviceRow) -> String {
@@ -3231,8 +2951,8 @@ extension SkelliCenter {
             ($0.rssiSmooth ?? -999)
                 < ($1.rssiSmooth ?? -999)
         }) else {
-            say("Nothing on the air answers to "
-                + "that name. The loudest voices: "
+            say(L("Nothing on the air answers to ")
+                + L("that name. The loudest voices: ")
                 + rows.sorted {
                     ($0.rssiSmooth ?? -999)
                         > ($1.rssiSmooth ?? -999)
@@ -3247,26 +2967,20 @@ extension SkelliCenter {
         let strength: String
         switch rssi {
         case -55...0:
-            strength = "close — practically in reach"
+            strength = L("close — practically in reach")
         case -70 ..< -55:
-            strength = "near — a room's reach"
+            strength = L("near — a room's reach")
         case -85 ..< -70:
-            strength = "faint, but present"
+            strength = L("faint, but present")
         default:
-            strength = "a whisper at the edge"
+            strength = L("a whisper at the edge")
         }
         say(label(best) + ": " + strength + ". "
-            + "Last heard \(age) seconds ago at "
-            + "\(rssi) dBm"
+            + String(format: L("Last heard %@ seconds ago at %@ dBm"), String(describing: age), String(describing: rssi))
             + (best.rssiSmooth != nil
-                ? " (smoothed "
-                    + "\(Int(best.rssiSmooth!)))"
+                ? String(format: L(" (smoothed %@)"), String(describing: Int(best.rssiSmooth!)))
                 : "")
-            + ", seen \(best.sightings)×. The "
-            + "tone that rises as you close is "
-            + "walked from its Listen row — I'll "
-            + "keep the numbers; you keep the "
-            + "feet.")
+            + String(format: L(", seen %@×. The tone that rises as you close is walked from its Listen row — I'll keep the numbers; you keep the feet."), String(describing: best.sightings)))
         return true
     }
 
@@ -3310,17 +3024,15 @@ extension SkelliCenter {
         if languageCued {
             if q.contains("system") {
                 LanguageCenter.shared.code = "system"
-                say("Following the system's tongue, "
-                    + "then.")
+                say(L("Following the system's tongue, then."))
                 return true
             }
             for (names, code, line) in tongues
             where names.contains(where: {
                 q.contains($0) }) {
                 if LanguageCenter.shared.code == code {
-                    say("We're already speaking "
-                        + LanguageCenter.englishName(
-                            for: code) + ".")
+                    say(String(format: L("We're already speaking %@."), String(describing: LanguageCenter.englishName(
+                            for: code))))
                 } else {
                     LanguageCenter.shared.code = code
                     say(line)
@@ -3331,12 +3043,8 @@ extension SkelliCenter {
                 && (q.contains("what")
                     || q.contains("which")
                     || q.contains("?")) {
-                say("My tongue is set to "
-                    + LanguageCenter.englishName(
-                        for: LanguageCenter.shared.code)
-                    + " — I keep twelve and the "
-                    + "system's own. Name one and "
-                    + "I'll wear it.")
+                say(String(format: L("My tongue is set to %@ — I keep twelve and the system's own. Name one and I'll wear it."), String(describing: LanguageCenter.englishName(
+                        for: LanguageCenter.shared.code))))
                 return true
             }
         }
@@ -3372,16 +3080,10 @@ extension SkelliCenter {
                 .map { $0.name }
                 .joined(separator: ", ")
             say(vary([
-                "The house wears "
-                    + center.current.name
-                    + ". The rack: " + rack + ".",
+                String(format: L("The house wears %@. The rack: %@."), String(describing: center.current.name), String(describing: rack)),
                 center.current.name
-                    + " is what the house wears. "
-                    + "On the rack: " + rack + ".",
-                "Currently wearing "
-                    + center.current.name
-                    + ". The rack holds: "
-                    + rack + "."]))
+                    + String(format: L(" is what the house wears. On the rack: %@."), String(describing: rack)),
+                String(format: L("Currently wearing %@. The rack holds: %@."), String(describing: center.current.name), String(describing: rack))]))
             return true
         }
         return false
