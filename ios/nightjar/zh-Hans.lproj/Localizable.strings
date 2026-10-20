@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "嗯。我就靠这观众活着。";
 
 "Encores available on request. Kidding. Mostly." = "可申请返场。开玩笑的。大体上是。";
+"Answers as" = "应答名称";
+"Administer" = "管理";
+"Walk (SNMP)" = "遍历 (SNMP)";
+"Audit posture" = "审计态势";
+"Probing is dark under EMCON %@." = "EMCON %@ 状态下探测不可用。";
+"Quarantine this device" = "隔离此设备";
+"Lift the quarantine" = "解除隔离";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "隔离依赖设备保存的凭据——尚未保存任何凭据，此功能不可用。";
+"The run" = "运行输出";
+"Working…" = "处理中…";
+"No credential kept for this device — the walk rides the factory word." = "此设备未保存凭据——遍历将使用出厂口令。";
