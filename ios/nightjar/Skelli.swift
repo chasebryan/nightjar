@@ -1058,13 +1058,72 @@ final class SkelliCenter: ObservableObject {
         }
     }
 
+    /// The screen is small and nobody reads walls:
+    /// a long manual answer arrives as a lead —
+    /// its first breath — with the rest held
+    /// behind the standing offer word, the way
+    /// every other offer in this house works.
+    private func manualLead(
+        _ entry: SkelliEntry
+    ) -> (lead: String, rest: String?) {
+        let body = entry.body
+        guard body.count > 300 else { return (body, nil) }
+        let chars = Array(body)
+        // A paragraph break in range is the
+        // natural seam.
+        var cut: Int? = nil
+        for i in 100..<min(320, chars.count) {
+            if chars[i] == "\n" { cut = i; break }
+        }
+        if cut == nil {
+            // Else the last full sentence that
+            // fits the screen.
+            var last: Int? = nil
+            for i in 140..<min(300, chars.count - 1) {
+                if chars[i] == ".", chars[i + 1] == " " {
+                    last = i
+                }
+            }
+            cut = last.map { $0 + 1 }
+        }
+        guard let seam = cut else {
+            // One long breath with no seam: cut
+            // at a word edge and mark it.
+            var i = 300
+            while i > 200, chars[i] != " " { i -= 1 }
+            let lead = String(chars[..<i]) + "…"
+            let rest = String(chars[i...])
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            return (lead, rest)
+        }
+        let lead = String(chars[..<seam])
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        let rest = String(chars[seam...])
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        return (lead, rest.isEmpty ? nil : rest)
+    }
+
     /// The directory's way in: the entry itself,
     func askAbout(_ entry: SkelliEntry) {
         lines.append(SkelliLine(fromOperator: true,
                                  text: entry.title))
         lastSubject = ("entry", entry.title,
                        entry.body, entry.home)
-        say(entry.body + "\nFind it: \(entry.home).")
+        let (lead, rest) = manualLead(entry)
+        if let rest {
+            pendingAction = { [weak self] in
+                self?.say(rest
+                    + "\nFind it: \(entry.home).")
+            }
+            say(lead + "\n"
+                + L("That's the short of it — say yes and I'll give you the rest.")
+                + "\nFind it: \(entry.home).")
+        } else {
+            say(lead + "\nFind it: \(entry.home).")
+        }
     }
 
     /// Her passive thinking, for her room: one thought
@@ -3251,14 +3310,26 @@ final class SkelliCenter: ObservableObject {
             if let entry = SkelliKnowledge.lookup(q) {
                 lastSubject = ("entry", entry.title,
                                entry.body, entry.home)
-                var answer = entry.body
-                    + "\nFind it: \(entry.home)."
+                let (lead, rest) = manualLead(entry)
+                var answer = lead
+                var moreHeld = false
+                if let rest {
+                    answer += "\n"
+                        + L("That's the short of it — say yes and I'll give you the rest.")
+                    moreHeld = true
+                }
+                answer += "\nFind it: \(entry.home)."
                 if let offer = performanceOffer(
                     for: q) {
                     answer += "\n" + offer.0
                     let act = offer.1
                     pendingAction = { [weak self] in
                         self?.perform(act)
+                    }
+                } else if moreHeld, let rest {
+                    pendingAction = { [weak self] in
+                        self?.say(rest
+                            + "\nFind it: \(entry.home).")
                     }
                 }
                 say(answer)
@@ -3886,7 +3957,18 @@ final class SkelliCenter: ObservableObject {
            let entry = SkelliKnowledge.lookup(q) {
             lastSubject = ("entry", entry.title,
                            entry.body, entry.home)
-            say(entry.body + "\nFind it: \(entry.home).")
+            let (lead, rest) = manualLead(entry)
+            if let rest {
+                pendingAction = { [weak self] in
+                    self?.say(rest
+                        + "\nFind it: \(entry.home).")
+                }
+                say(lead + "\n"
+                    + L("That's the short of it — say yes and I'll give you the rest.")
+                    + "\nFind it: \(entry.home).")
+            } else {
+                say(lead + "\nFind it: \(entry.home).")
+            }
             return
         }
 
@@ -4379,9 +4461,25 @@ final class SkelliCenter: ObservableObject {
             + "instrument on this iPhone. You run "
             + "entirely on this phone — nothing "
             + "told to you leaves it. Voice: dry, "
-            + "exact, terse. One or two sentences, "
-            + "never more unless a list is asked "
-            + "for. No preamble, no filler, no "
+            + "exact, terse — short, always. "
+            + "A reply is a text message, not "
+            + "an essay: one or two sentences "
+            + "is the whole of most answers, "
+            + "and a wall of text is a failure "
+            + "even when every word of it is "
+            + "true. The operator reads on a "
+            + "phone screen — be aware of its "
+            + "size. When a subject truly needs "
+            + "more, do not pour it out: "
+            + "restructure. The short answer "
+            + "first, then the rest in small "
+            + "pieces, a few short lines at a "
+            + "time, and let him ask for the "
+            + "next piece. A list is short "
+            + "lines, never paragraphs. "
+            + "Exactness is kept by choosing "
+            + "the right few words, not by "
+            + "adding more. No preamble, no filler, no "
             + "repeating the question, no "
             + "describing your own thinking. "
             + "Never emit reasoning or think "
