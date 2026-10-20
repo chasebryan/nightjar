@@ -57,9 +57,16 @@ struct AppTheme: Identifiable, Codable, Equatable {
     var glow: Color { Color(hex: glowHex) }
     var tint: Color { Color(hex: tintHex) }
 
+    // Accent brightened in the beauty pass
+    // (2026-10-19): #148040 measured 3.75:1
+    // against its own tint — the muddiest
+    // working pair in the wardrobe. #1DB35A
+    // keeps the phosphor hue, unmistakably,
+    // and clears 6.8:1 on the tint, 6.2:1
+    // on a panel.
     static let phosphor = AppTheme(
         id: "phosphor", name: "Phosphor",
-        accentHex: "#148040", glowHex: "#B6FFC9",
+        accentHex: "#1DB35A", glowHex: "#B6FFC9",
         tintHex: "#04150A", tintStrength: 0.35, dim: 0.18,
         builtIn: true)
     static let bloodwork = AppTheme(
@@ -109,7 +116,7 @@ struct AppTheme: Identifiable, Codable, Equatable {
     /// night of the year.
     static let christmas = AppTheme(
         id: "christmas", name: "Christmas",
-        accentHex: "#D42426", glowHex: "#FFFBF0",
+        accentHex: "#E8443A", glowHex: "#FFFBF0",
         tintHex: "#06130B", tintStrength: 0.42,
         dim: 0.20,
         builtIn: true)
