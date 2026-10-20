@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "Hum. Vivo para este público.";
 
 "Encores available on request. Kidding. Mostly." = "Bis mediante pedido. Estou a brincar. Quase.";
+"Answers as" = "Responde como";
+"Administer" = "Administrar";
+"Walk (SNMP)" = "Percorrer (SNMP)";
+"Audit posture" = "Auditar postura";
+"Probing is dark under EMCON %@." = "A sondagem está inativa sob EMCON %@.";
+"Quarantine this device" = "Colocar este dispositivo em quarentena";
+"Lift the quarantine" = "Levantar a quarentena";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "A quarentena usa a credencial guardada do equipamento — nenhuma está guardada, por isso o controlo está inativo.";
+"The run" = "A execução";
+"Working…" = "A trabalhar…";
+"No credential kept for this device — the walk rides the factory word." = "Nenhuma credencial guardada para este dispositivo — o percurso usa a palavra de fábrica.";
