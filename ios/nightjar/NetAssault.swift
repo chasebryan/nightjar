@@ -1211,6 +1211,242 @@ final class Sentinel: ObservableObject {
     }
 }
 
+// MARK: - The wire brief — her answers
+
+/// The brief (Sentinel S4, 2026-10-20): what
+/// Skelli says when she is asked about the
+/// network — composed on the spot from the
+/// crown, the census, and the Sentinel's
+/// ledger, never from memory of an older
+/// wire. And when the knowledge isn't
+/// there, the answer goes and gets it: the
+/// watch is stood up, a pass is armed. Her
+/// use cases are hers to trigger.
+enum WireBrief {
+    static func crownAnswer() -> String {
+        let gateway = BlacksiteNet
+            .defaultGatewayIP()
+        let rows = NeighborhoodStore.shared
+            .routerReport(gatewayIP: gateway)
+        if let crown = rows.first(
+            where: { $0.weight == .certain }),
+           let gateway {
+            let n = crown.neighbor
+            var line = "Your router is "
+            if let name = n.name {
+                line += "\(name) at "
+            }
+            line += "\(gateway) — crowned, "
+                + "not guessed: this phone's "
+                + "default route lands there."
+            if !n.ports.isEmpty {
+                let doors = n.ports.prefix(5)
+                    .map(String.init)
+                    .joined(separator: ", ")
+                line += " It holds doors "
+                    + "\(doors)."
+            }
+            return line
+        }
+        if let best = rows.first {
+            let n = best.neighbor
+            let verdict = best.weight == .likely
+                ? "Likely" : "Possibly"
+            return "The gateway itself did "
+                + "not read, so no crown — by "
+                + "signs the strongest "
+                + "candidate is "
+                + "\(n.displayName) at "
+                + "\(n.ip): "
+                + best.signs.joined(
+                    separator: "; ")
+                + ". \(verdict) the router."
+        }
+        return "I can't crown a router on "
+            + "this wire yet — the gateway "
+            + "didn't read and no neighbor "
+            + "carries router signs. A "
+            + "Net-Assault pass and a minute "
+            + "of the watch would give me "
+            + "the evidence."
+    }
+
+    static func alertAnswer() -> String {
+        let sentinel = Sentinel.shared
+        let severe = sentinel.standingSevere
+        if !severe.isEmpty {
+            let lines = severe.suffix(3)
+                .map { $0.line }
+            return "Yes — the Sentinel has "
+                + "judged, and it isn't "
+                + "quiet: "
+                + lines.joined(
+                    separator: " · ")
+                + ". Read those hard."
+        }
+        let others = sentinel.alerts.filter {
+            $0.severity == .suspicious
+        }
+        if !others.isEmpty {
+            let lines = others.suffix(3)
+                .map { $0.line }
+            return "Nothing severe, but not "
+                + "nothing: "
+                + lines.joined(
+                    separator: " · ") + "."
+        }
+        let watch = WireWatch.shared
+        if watch.on {
+            let count = watch.events.count
+            return "Nothing the Sentinel "
+                + "judges — and the watch has "
+                + "been standing over the "
+                + "wire (\(count) events in "
+                + "its ledger, none rising "
+                + "to an alert). The wire "
+                + "looks like itself."
+        }
+        if watch.start() {
+            return "Nothing judged yet — "
+                + "but the watch wasn't "
+                + "standing, so any answer "
+                + "would have been a guess. "
+                + "I've stood it up: browse, "
+                + "an MNDP ear, a gateway "
+                + "heartbeat. Ask me again as "
+                + "it learns and the answer "
+                + "will be evidence."
+        }
+        let declared = EmconCondition.current
+            .declared
+        return "Nothing judged yet, and "
+            + "the watch won't stand under "
+            + "EMCON \(declared) — the "
+            + "condition forbids its browse. "
+            + "The ledger holds what "
+            + "earlier standing learned."
+    }
+
+    static func newcomerAnswer() -> String {
+        let cutoff = Date()
+            .addingTimeInterval(-24 * 3600)
+        let fresh = NeighborhoodStore.shared
+            .neighbors
+            .filter { $0.firstSeen > cutoff }
+            .sorted {
+                $0.firstSeen > $1.firstSeen
+            }
+        if fresh.isEmpty {
+            return "No new faces in the "
+                + "last day — the cast on "
+                + "this wire is the cast."
+        }
+        let fmt = RelativeDateTimeFormatter()
+        fmt.unitsStyle = .full
+        let lines = fresh.prefix(4).map { n in
+            "\(n.displayName) at \(n.ip) "
+                + "(first seen "
+                + fmt.localizedString(
+                    for: n.firstSeen,
+                    relativeTo: Date()) + ")"
+        }
+        return "New in the last day: "
+            + lines.joined(separator: "; ")
+            + "."
+    }
+
+    static func briefAnswer() -> String {
+        let store = NeighborhoodStore.shared
+        if store.neighbors.isEmpty {
+            let center = AssaultCenter.shared
+            if center.running {
+                return "Net-Assault is "
+                    + "mid-pass right now ("
+                    + center.phase
+                    + ") — the census is "
+                    + "being taken as we "
+                    + "speak."
+            }
+            center.arm()
+            if center.running {
+                return "This wire is a blank "
+                    + "page to me — no "
+                    + "neighbors on the "
+                    + "board at all. I've "
+                    + "armed Net-Assault for "
+                    + "a pass to census it; "
+                    + "give it a breath and "
+                    + "ask me again."
+            }
+            let declared = EmconCondition
+                .current.declared
+            return "This wire is a blank "
+                + "page to me, and "
+                + "Net-Assault stays dark "
+                + "under EMCON \(declared) "
+                + "— the census waits on "
+                + "the condition, or on "
+                + "Recon's own eyes."
+        }
+        var parts: [String] = []
+        let gateway = BlacksiteNet
+            .defaultGatewayIP()
+        if let gateway {
+            let crown = store.neighbors
+                .first { $0.ip == gateway }
+            if let crown, let name =
+                crown.name {
+                parts.append("The router is "
+                             + "\(name) at "
+                             + "\(gateway).")
+            } else {
+                parts.append("The router is "
+                             + "at \(gateway).")
+            }
+        }
+        let count = store.neighbors.count
+        parts.append("\(count) neighbor(s) "
+                     + "known.")
+        let named = store.neighbors
+            .filter { $0.name != nil }
+            .prefix(3)
+            .map { $0.displayName }
+        if !named.isEmpty {
+            parts.append("Named among them: "
+                         + named.joined(
+                            separator: ", ")
+                         + ".")
+        }
+        let severe = Sentinel.shared
+            .standingSevere.count
+        let suspicious = Sentinel.shared
+            .alerts.filter {
+                $0.severity == .suspicious
+            }.count
+        if severe > 0 {
+            parts.append("The Sentinel "
+                         + "holds \(severe) "
+                         + "severe alert(s) — "
+                         + "ask me what's "
+                         + "strange and I'll "
+                         + "read them.")
+        } else if suspicious > 0 {
+            parts.append("The Sentinel "
+                         + "holds \(suspicious) "
+                         + "suspicious "
+                         + "alert(s).")
+        } else {
+            parts.append("The Sentinel "
+                         + "judges nothing "
+                         + "amiss.")
+        }
+        parts.append(WireWatch.shared.on
+            ? "The watch stands."
+            : "The watch is down.")
+        return parts.joined(separator: " ")
+    }
+}
+
 // MARK: - The section
 
 struct NetAssaultSectionView: View {

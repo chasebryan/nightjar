@@ -2686,6 +2686,7 @@ final class SkelliCenter: ObservableObject {
         if dressAsk(q) { return true }
         if tomatoAsk(q) { return true }
         if offenseAsk(q) { return true }
+        if networkAsk(q) { return true }
         if assaultAsk(q) { return true }
         if skyBloomAsk(q) { return true }
         if cartomancyAsk(q) { return true }
@@ -6273,6 +6274,123 @@ final class SkelliCenter: ObservableObject {
             say("Who gets it? Name a device from "
                 + "the Neighborhood — 'throw a "
                 + "tomato at the printer'.")
+            return true
+        }
+        return false
+    }
+
+    /// The wire brief hand (Sentinel S4):
+    /// network questions answered from live
+    /// knowledge — the crown, the census,
+    /// the Sentinel's ledger, the newcomers
+    /// — and when the knowledge isn't there,
+    /// the answers go and get it (WireBrief
+    /// stands the watch, arms the pass).
+    /// Gated on possessive/local shapes so
+    /// general knowledge ("what is a
+    /// router") still falls to the manual.
+    private func networkAsk(_ q: String) -> Bool {
+        let netish = q.contains("network")
+            || q.contains("wire")
+            || q.contains("router")
+            || q.contains("gateway")
+            || q.contains("wifi")
+            || q.contains("wi-fi")
+        if q.contains("my router")
+            || q.contains("my gateway")
+            || q.contains("which router")
+            || q.contains("which gateway")
+            || q.contains("our router") {
+            say(WireBrief.crownAnswer())
+            return true
+        }
+        let trouble = q.contains("strange")
+            || q.contains("suspicious")
+            || q.contains("intruder")
+            || q.contains("attacker")
+            || q.contains("attacked")
+            || q.contains("hacked")
+            || q.contains("compromised")
+            || q.contains("anything wrong")
+        if trouble && (netish
+                       || q.contains("attacked")
+                       || q.contains("hacked")) {
+            say(WireBrief.alertAnswer())
+            return true
+        }
+        if (q.contains("new device")
+            || q.contains("who's new")
+            || q.contains("whos new")
+            || q.contains("anyone new")
+            || q.contains("new on"))
+            && (netish
+                || q.contains("device")) {
+            say(WireBrief.newcomerAnswer())
+            return true
+        }
+        let censusPlace = q.contains(
+                "on my network")
+            || q.contains("on the network")
+            || q.contains("on my wifi")
+            || q.contains("on the wifi")
+        let censusAsked = q.contains("what")
+            || q.contains("who")
+            || q.contains("how many")
+        if (censusPlace && censusAsked)
+            || q.contains("how many devices")
+            || q.contains("what devices") {
+            say(WireBrief.briefAnswer())
+            return true
+        }
+        if (q.contains("watch")
+             && netish)
+            || q.contains("keep an eye") {
+            if q.contains("stop")
+                || q.contains("stand down")
+                || q.contains("off") {
+                WireWatch.shared.stop()
+                say("The watch stands down "
+                    + "— the wire keeps its "
+                    + "own counsel again.")
+                return true
+            }
+            if q.contains("start")
+                || q.contains("stand")
+                || q.contains("keep")
+                || q.contains(" on")
+                || q.contains("watch my")
+                || q.contains("keep an eye") {
+                if WireWatch.shared.start() {
+                    say("The watch stands "
+                        + "— browse, MNDP "
+                        + "ear, gateway "
+                        + "heartbeat. I'll be "
+                        + "learning this wire "
+                        + "from here.")
+                } else {
+                    let declared =
+                        EmconCondition.current
+                        .declared
+                    say("The watch won't "
+                        + "stand under EMCON "
+                        + "\(declared) — the "
+                        + "condition forbids "
+                        + "its browse.")
+                }
+                return true
+            }
+            if WireWatch.shared.on {
+                let count = WireWatch.shared
+                    .events.count
+                say("The watch is standing "
+                    + "— \(count) events "
+                    + "ledgered so far.")
+            } else {
+                say("The watch is down. Say "
+                    + "\u{201C}watch my "
+                    + "network\u{201D} and "
+                    + "I'll stand it.")
+            }
             return true
         }
         return false
