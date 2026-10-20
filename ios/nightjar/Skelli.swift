@@ -7734,6 +7734,10 @@ final class SkelliFilmView: UIView {
     /// player retires THAT player, never the one
     /// now on screen.
     private var pending: AVPlayer?
+    /// When the pending fade began;
+    /// the heartbeat lands any fade
+    /// older than a breath (fix155).
+    private var fadeBegan = Date.distantPast
     /// End-of-film observers, one per live
     /// player, retired with it. An observer per
     /// mood change kept for the view's whole life
@@ -7771,8 +7775,52 @@ final class SkelliFilmView: UIView {
     /// Crossfade, never cut: the new film starts
     /// hidden; when ready, the layers trade
     /// places over half a second.
+    /// Land the pending fade (fix155):
+    /// the crossfade's one completion
+    /// path, called by the readiness
+    /// observation, by the already-ready
+    /// check, and by the heartbeat when
+    /// an observation never fires — the
+    /// fault that stranded her in the
+    /// PREVIOUS mood, still moving,
+    /// while a ready clip waited at
+    /// opacity zero. Supersede-safe:
+    /// it lands only the player still
+    /// pending.
+    private func landFade(for player: AVPlayer) {
+        guard pending === player else { return }
+        pending = nil
+        readiness?.invalidate()
+        readiness = nil
+        let incoming = activeIsA ? layerB : layerA
+        let outgoing = activeIsA ? layerA : layerB
+        let old = activeIsA ? playerA : playerB
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.55)
+        incoming.opacity = 1
+        outgoing.opacity = 0
+        CATransaction.commit()
+        activeIsA.toggle()
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.6) { [weak self] in
+            self?.retire(old, from: outgoing)
+        }
+    }
+
+
     func play(_ name: String) {
         if name == current {
+            // A fade that never landed
+            // (fix155): its readiness
+            // observation never fired,
+            // and the previous mood is
+            // still on screen. The
+            // heartbeat lands it.
+            if let stuck = pending,
+               Date().timeIntervalSince(
+                   fadeBegan) > 1.2 {
+                landFade(for: stuck)
+            }
             // The same film, asked again: this
             // call is the heartbeat. iOS pauses
             // players on its own — backgrounding,
@@ -7825,6 +7873,7 @@ final class SkelliFilmView: UIView {
                     player?.play()
                 }
         pending = player
+        fadeBegan = Date()
         let incoming = activeIsA ? layerB : layerA
         let outgoing = activeIsA ? layerA : layerB
         incoming.player = player
@@ -7841,28 +7890,20 @@ final class SkelliFilmView: UIView {
                       self.pending === player
                 else { return }
                 DispatchQueue.main.async {
-                    guard self.pending === player
-                    else { return }
-                    self.pending = nil
-                    self.readiness?.invalidate()
-                    self.readiness = nil
-                    let old = self.activeIsA
-                        ? self.playerA : self.playerB
-                    CATransaction.begin()
-                    CATransaction
-                        .setAnimationDuration(0.55)
-                    incoming.opacity = 1
-                    outgoing.opacity = 0
-                    CATransaction.commit()
-                    self.activeIsA.toggle()
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + 0.6) {
-                        [weak self] in
-                        self?.retire(old,
-                                     from: outgoing)
-                    }
+                    self.landFade(for: player)
                 }
             }
+        // Already ready when the
+        // observation was installed:
+        // the KVO reports changes
+        // only, so this state would
+        // never fire it (fix155).
+        if item.status == .readyToPlay {
+            DispatchQueue.main.async {
+                [weak self] in
+                self?.landFade(for: player)
+            }
+        }
     }
 
     /// A player leaving the screen: paused,
