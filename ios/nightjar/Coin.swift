@@ -55,7 +55,7 @@ final class CoinCenter: NSObject, ObservableObject {
     func tap(_ purpose: Purpose, emcon: Emcon?,
              completion: ((Bool, String) -> Void)? = nil) {
         guard NFCNDEFReaderSession.readingAvailable else {
-            completion?(false, "This phone cannot read NFC tags.")
+            completion?(false, L("This phone cannot read NFC tags."))
             return
         }
         self.purpose = purpose
@@ -70,14 +70,11 @@ final class CoinCenter: NSObject, ObservableObject {
 
     private func alert(for purpose: Purpose) -> String {
         switch purpose {
-        case .claim: return "Hold the tag to the top of the "
-            + "phone to claim it as the coin."
-        case .mint: return "Hold a writable tag to the top of "
-            + "the phone to mint it as the coin."
-        case .checkin: return "Tap the coin to check in the "
-            + "dead hand."
-        case .vault: return "Tap the coin to raise the vault."
-        case .unlock: return "Tap the coin to unlock Knocktalk."
+        case .claim: return L("Hold the tag to the top of the phone to claim it as the coin.")
+        case .mint: return L("Hold a writable tag to the top of the phone to mint it as the coin.")
+        case .checkin: return L("Tap the coin to check in the dead hand.")
+        case .vault: return L("Tap the coin to raise the vault.")
+        case .unlock: return L("Tap the coin to unlock Knocktalk.")
         }
     }
 
@@ -99,13 +96,12 @@ final class CoinCenter: NSObject, ObservableObject {
                        session: NFCNDEFReaderSession) {
         guard let stored = coinHash else {
             finish(false,
-                   "No coin claimed yet — claim a tag first, "
-                   + "in EMCON.",
+                   L("No coin claimed yet — claim a tag first, in EMCON."),
                    session: session)
             return
         }
         guard stored == hash else {
-            finish(false, "Not the coin — a different tag.",
+            finish(false, L("Not the coin — a different tag."),
                    session: session)
             return
         }
@@ -114,19 +110,19 @@ final class CoinCenter: NSObject, ObservableObject {
             emcon?.deadHandCheckIn()
             Journal.log("coin", "checkin",
                         "dead hand checked in by the coin")
-            finish(true, "Checked in — the hand stays up.",
+            finish(true, L("Checked in — the hand stays up."),
                    session: session)
         case .vault:
             emcon?.openVault(source: "the coin")
             Journal.log("coin", "vault",
                         "knock vault raised by the coin")
-            finish(true, "The vault stands open.", session: session)
+            finish(true, L("The vault stands open."), session: session)
         case .unlock:
             Journal.log("coin", "unlock",
                         "Knocktalk unlocked by the coin")
-            finish(true, "Unlocked.", session: session)
+            finish(true, L("Unlocked."), session: session)
         case .claim, .mint:
-            finish(true, "The coin, recognized.", session: session)
+            finish(true, L("The coin, recognized."), session: session)
         }
     }
 
@@ -134,24 +130,21 @@ final class CoinCenter: NSObject, ObservableObject {
                        session: NFCNDEFReaderSession) {
         if let stored = coinHash, stored != hash {
             finish(false,
-                   "A different coin is already claimed. This "
-                   + "tag is not it — forget the old coin first "
-                   + "if this one is to rule.",
+                   L("A different coin is already claimed. This tag is not it — forget the old coin first if this one is to rule."),
                    session: session)
             return
         }
         UserDefaults.standard.set(hash, forKey: Self.hashKey)
         Journal.log("coin", "claim",
                     "a tag was claimed as the coin")
-        finish(true, "Claimed — this tag is the coin now.",
+        finish(true, L("Claimed — this tag is the coin now."),
                session: session)
     }
 
     func forget() {
         UserDefaults.standard.removeObject(forKey: Self.hashKey)
         claimed = false
-        lastResult = "The coin is forgotten. Any tag may be " +
-            "claimed in its place."
+        lastResult = L("The coin is forgotten. Any tag may be claimed in its place.")
         Journal.log("coin", "forget",
                     "the coin was forgotten by the operator")
     }
@@ -169,13 +162,12 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
                        didDetectNDEFs messages: [NFCNDEFMessage]) {
         guard let message = messages.first else {
             session.invalidate(
-                errorMessage: "That tag said nothing.")
+                errorMessage: L("That tag said nothing."))
             return
         }
         if purpose == .mint {
             finish(false,
-                   "The mint needs the tag itself, not its "
-                   + "message — hold it steady and try again.",
+                   L("The mint needs the tag itself, not its message — hold it steady and try again."),
                    session: session)
             return
         }
@@ -194,7 +186,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
         if code != 200 {
             DispatchQueue.main.async { [weak self] in
                 self?.lastResult =
-                    "The tap failed: \(error.localizedDescription)"
+                    String(format: L("The tap failed: %@"), error.localizedDescription)
                 let completion = self?.completion
                 self?.completion = nil
                 completion?(false, self?.lastResult ?? "")
@@ -215,7 +207,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
         tag.readNDEF { [weak self] message, _ in
             guard let self = self, let message = message else {
                 self?.finish(false,
-                             "That tag carries nothing readable.",
+                             L("That tag carries nothing readable."),
                              session: session)
                 return
             }
@@ -234,8 +226,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
             guard let self = self else { return }
             guard status == .readWrite else {
                 self.finish(false,
-                            "That tag cannot be written — mint "
-                            + "needs a blank, writable tag.",
+                            L("That tag cannot be written — mint needs a blank, writable tag."),
                             session: session)
                 return
             }
@@ -243,7 +234,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
             guard let record = NFCNDEFPayload.wellKnownTypeTextPayload(
                     string: token, locale: Locale(identifier: "en"))
             else {
-                self.finish(false, "The coin would not strike.",
+                self.finish(false, L("The coin would not strike."),
                             session: session)
                 return
             }
@@ -252,7 +243,7 @@ extension CoinCenter: NFCNDEFReaderSessionDelegate {
                 guard let self = self else { return }
                 if error != nil {
                     self.finish(false,
-                                "The mint failed mid-strike.",
+                                L("The mint failed mid-strike."),
                                 session: session)
                     return
                 }

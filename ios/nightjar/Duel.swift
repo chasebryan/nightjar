@@ -125,8 +125,7 @@ final class DuelCenter: ObservableObject {
         phase = "inviting"
         send(.init(kind: "invite", id: duelID, ip: hostIP),
              chat: chat)
-        say("You offered \(peer) a duel on this wire. Your "
-            + "phone is the ground.")
+        say(String(format: L("You offered %@ a duel on this wire. Your phone is the ground."), peer))
         Journal.log("duel", "invite",
                     "a duel was offered to \(peer)")
     }
@@ -137,14 +136,14 @@ final class DuelCenter: ObservableObject {
         send(.init(kind: "accept", id: duelID, ip: guestIP),
              chat: chat)
         phase = "between"
-        say("Duel accepted. The arena is being dealt…")
+        say(L("Duel accepted. The arena is being dealt…"))
     }
 
     func refuse(chat: KnockChat) {
         guard phase == "invited" else { return }
         send(.init(kind: "refuse", id: duelID), chat: chat)
         reset()
-        say("You refused the duel.")
+        say(L("You refused the duel."))
     }
 
     func reset() {
@@ -195,9 +194,9 @@ final class DuelCenter: ObservableObject {
         phase = "round"
         send(.init(kind: "round", id: duelID, n: roundNumber,
                    arena: arena, seconds: 60), chat: chat)
-        say("Round \(roundNumber) dealt: "
-            + arena.map(String.init).joined(separator: ", ")
-            + " — three of these are yours to lose.")
+        say(String(format: L("Round %lld dealt: %@ — three of these are yours to lose."),
+                   roundNumber,
+                   arena.map(String.init).joined(separator: ", ")))
         Journal.log("duel", "round",
                     "round \(roundNumber) dealt against \(peer)")
     }
@@ -207,8 +206,9 @@ final class DuelCenter: ObservableObject {
               picked.count == Self.strikesPerRound,
               !hostIP.isEmpty else { return }
         strikesSent = false
-        say("Striking \(picked.sorted().map(String.init).joined(separator: ", ")) "
-            + "at \(hostIP)…")
+        say(String(format: L("Striking %@ at %@…"),
+                   picked.sorted().map(String.init).joined(separator: ", "),
+                   hostIP))
         recon.knock(host: hostIP, ports: picked.sorted(),
                     udp: false)
     }
@@ -225,10 +225,9 @@ final class DuelCenter: ObservableObject {
                    ports: picked.sorted(), open: opened),
              chat: chat)
         phase = "between"
-        say("Struck. Open: "
-            + (opened.isEmpty ? "nothing answered"
-               : opened.map(String.init).joined(separator: ", "))
-            + ". Waiting for the tally…")
+        say(String(format: L("Struck. Open: %@. Waiting for the tally…"),
+                   opened.isEmpty ? L("nothing answered")
+                       : opened.map(String.init).joined(separator: ", ")))
     }
 
     // MARK: - the wire
@@ -249,19 +248,17 @@ final class DuelCenter: ObservableObject {
             hostIP = msg.ip ?? ""
             isHost = false
             phase = "invited"
-            say("\(source) offers a duel — their phone is the "
-                + "ground, yours the blade.")
+            say(String(format: L("%@ offers a duel — their phone is the ground, yours the blade."), source))
             Journal.log("duel", "invite",
                         "a duel was offered by \(source)")
         case "accept":
             guard isHost, phase == "inviting" else { return true }
             guestIP = msg.ip ?? ""
             phase = "between"
-            say("\(source) accepted. Deal the first round when "
-                + "ready.")
+            say(String(format: L("%@ accepted. Deal the first round when ready."), source))
             startRound(chat: chat, emcon: emcon)
         case "refuse":
-            say("The duel was refused.")
+            say(L("The duel was refused."))
             Journal.log("duel", "refused",
                         "the duel with \(peer) was refused")
             reset()
@@ -272,9 +269,10 @@ final class DuelCenter: ObservableObject {
             picked = []
             roundStart = Date()
             phase = "round"
-            say("Round \(roundNumber). The arena: "
-                + arena.map(String.init).joined(separator: ", ")
-                + " — pick \(Self.strikesPerRound) and strike.")
+            say(String(format: L("Round %lld. The arena: %@ — pick %lld and strike."),
+                       roundNumber,
+                       arena.map(String.init).joined(separator: ", "),
+                       Self.strikesPerRound))
         case "strikes":
             guard isHost, msg.n == roundNumber else { return true }
             tally(msg, chat: chat, emcon: emcon)
@@ -284,9 +282,10 @@ final class DuelCenter: ObservableObject {
             atkScore = msg.atk ?? atkScore
             let heard = (msg.heard ?? []).map(String.init)
                 .joined(separator: ", ")
-            say("Tally for round \(msg.n ?? 0): they heard "
-                + (heard.isEmpty ? "nothing" : heard)
-                + ". Defense \(defScore) — attack \(atkScore).")
+            say(String(format: L("Tally for round %lld: they heard %@. Defense %lld — attack %lld."),
+                       msg.n ?? 0,
+                       heard.isEmpty ? L("nothing") : heard,
+                       defScore, atkScore))
             if (msg.n ?? 0) >= Self.roundsTotal {
                 finish()
             } else {
@@ -318,15 +317,14 @@ final class DuelCenter: ObservableObject {
         send(.init(kind: "tally", id: duelID, n: roundNumber,
                    heard: heard, def: defScore, atk: atkScore),
              chat: chat)
-        say("Round \(roundNumber): struck "
-            + struck.map(String.init).joined(separator: ", ")
-            + "; answered "
-            + (opened.isEmpty ? "none"
-               : opened.map(String.init).joined(separator: ", "))
-            + "; heard "
-            + (heard.isEmpty ? "none"
-               : heard.map(String.init).joined(separator: ", "))
-            + ". Attack +\(atkRound), defense +\(defRound).")
+        say(String(format: L("Round %lld: struck %@; answered %@; heard %@. Attack +%lld, defense +%lld."),
+                   roundNumber,
+                   struck.map(String.init).joined(separator: ", "),
+                   opened.isEmpty ? L("none")
+                       : opened.map(String.init).joined(separator: ", "),
+                   heard.isEmpty ? L("none")
+                       : heard.map(String.init).joined(separator: ", "),
+                   atkRound, defRound))
         Journal.log("duel", "round",
                     "round \(roundNumber) tallied — defense "
                     + "\(defScore), attack \(atkScore)")
@@ -340,13 +338,13 @@ final class DuelCenter: ObservableObject {
     private func finish() {
         phase = "done"
         let verdict = defScore > atkScore
-            ? "The ground held — defense \(defScore), attack "
-              + "\(atkScore). The house wins."
+            ? String(format: L("The ground held — defense %lld, attack %lld. The house wins."),
+                     defScore, atkScore)
             : (defScore == atkScore
-               ? "An even duel — \(defScore) apiece. Both "
-                 + "phones leave with respect."
-               : "The blade got in — attack \(atkScore), "
-                 + "defense \(defScore). The ground has homework.")
+               ? String(format: L("An even duel — %lld apiece. Both phones leave with respect."),
+                        defScore)
+               : String(format: L("The blade got in — attack %lld, defense %lld. The ground has homework."),
+                        atkScore, defScore))
         say(verdict)
         Journal.log("duel", "verdict",
                     "duel with \(peer) closed — \(verdict)")
@@ -505,15 +503,15 @@ struct DuelView: View {
 
     private var statusLine: String {
         switch center.phase {
-        case "idle": return "No duel stands."
-        case "inviting": return "Offer sent — awaiting an answer."
-        case "invited": return "A duel is offered to you."
+        case "idle": return L("No duel stands.")
+        case "inviting": return L("Offer sent — awaiting an answer.")
+        case "invited": return L("A duel is offered to you.")
         case "round": return center.isHost
-            ? "Round \(center.roundNumber): your ground is "
-              + "being struck."
-            : "Round \(center.roundNumber): strike."
-        case "between": return "Between rounds."
-        case "done": return "The duel is decided."
+            ? String(format: L("Round %lld: your ground is being struck."),
+                     center.roundNumber)
+            : String(format: L("Round %lld: strike."), center.roundNumber)
+        case "between": return L("Between rounds.")
+        case "done": return L("The duel is decided.")
         default: return center.phase
         }
     }

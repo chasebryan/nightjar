@@ -114,25 +114,21 @@ enum TestamentLocks {
     static func absenceVerdict(for testament: Testament)
         -> (open: Bool, line: String) {
         guard handArmed || handFellAt != nil else {
-            return (false, "the dead hand is not armed — this "
-                    + "lock can never fall")
+            return (false, L("the dead hand is not armed — this lock can never fall"))
         }
         guard let fell = handFellAt else {
-            return (false, "the hand still stands — the author "
-                    + "is still checking in")
+            return (false, L("the hand still stands — the author is still checking in"))
         }
         let opens = fell.addingTimeInterval(
             Double(testament.afterFallDays) * 86_400)
         let fellText = fell.formatted(date: .abbreviated,
                                       time: .omitted)
         if Date() >= opens {
-            return (true, "the hand fell \(fellText) and has "
-                    + "stayed down")
+            return (true, String(format: L("the hand fell %@ and has stayed down"), fellText))
         }
         let opensText = opens.formatted(date: .abbreviated,
                                         time: .omitted)
-        return (false, "the hand fell \(fellText) — the "
-                + "testament waits until \(opensText)")
+        return (false, String(format: L("the hand fell %@ — the testament waits until %@"), fellText, opensText))
     }
 }
 
@@ -181,7 +177,7 @@ struct TestamentSectionView: View {
             Button {
                 seal()
             } label: {
-                Label(busy ? "Sealing…" : "Seal the testament",
+                Label(busy ? L("Sealing…") : L("Seal the testament"),
                       systemImage: "lock.square.stack")
             }
             .disabled(draft.isEmpty || busy
@@ -249,7 +245,7 @@ struct TestamentSectionView: View {
         let grindSeconds = grind
         let days = afterFall
         busy = true
-        status = "Forging the lock…"
+        status = L("Forging the lock…")
         DispatchQueue.global(qos: .userInitiated).async {
             let blob = TimeCapsule.seal(
                 message: text, seconds: grindSeconds,
@@ -266,7 +262,7 @@ struct TestamentSectionView: View {
                     draft = ""
                     hint = ""
                 } else {
-                    status = "The sealing failed — try again."
+                    status = L("The sealing failed — try again.")
                 }
             }
         }
@@ -276,7 +272,7 @@ struct TestamentSectionView: View {
         guard let blob = testament.blob else { return }
         let verdict = TestamentLocks.absenceVerdict(for: testament)
         guard verdict.open else {
-            notes[testament.id] = "Refused: " + verdict.line + "."
+            notes[testament.id] = String(format: L("Refused: %@."), verdict.line)
             Journal.log("testament", "attempt",
                         "an opening was refused — \(verdict.line)")
             return
@@ -284,9 +280,7 @@ struct TestamentSectionView: View {
         let control = GrindControl()
         controls[testament.id] = control
         progress[testament.id] = 0
-        notes[testament.id] = "Both locks agree. Grinding — "
-            + "the squarings are sequential; that is the lock "
-            + "working."
+        notes[testament.id] = L("Both locks agree. Grinding — the squarings are sequential; that is the lock working.")
         DispatchQueue.global(qos: .userInitiated).async {
             TimeCapsule.grind(
                 blob: blob, control: control,
@@ -299,18 +293,12 @@ struct TestamentSectionView: View {
                     DispatchQueue.main.async {
                         progress[testament.id] = nil
                         if control.cancelled {
-                            notes[testament.id] = "Grind "
-                                + "stopped. The testament "
-                                + "keeps — the work restarts "
-                                + "from the first squaring."
+                            notes[testament.id] = L("Grind stopped. The testament keeps — the work restarts from the first squaring.")
                         } else if let text {
                             store.markOpened(testament, text: text)
                             notes[testament.id] = nil
                         } else {
-                            notes[testament.id] = "The grind "
-                                + "finished and the testament "
-                                + "would not open — its capsule "
-                                + "is corrupt."
+                            notes[testament.id] = L("The grind finished and the testament would not open — its capsule is corrupt.")
                         }
                     }
                 })

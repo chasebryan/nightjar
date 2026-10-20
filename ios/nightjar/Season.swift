@@ -112,10 +112,10 @@ final class Season: ObservableObject {
         current.closed = true
         let d = current.defense, g = current.ghost
         current.grade = d > g
-            ? "the house held — \(d) to \(g). The ghost went home hungry."
+            ? String(format: L("the house held — %lld to %lld. The ghost went home hungry."), d, g)
             : (d == g
-               ? "an even week — \(d) to \(g). The ghost respects the house, and checks its locks twice now."
-               : "the ghost ate well — \(g) to \(d). Read its visits; every one is a lesson with the answer attached.")
+               ? String(format: L("an even week — %lld to %lld. The ghost respects the house, and checks its locks twice now."), d, g)
+               : String(format: L("the ghost ate well — %lld to %lld. Read its visits; every one is a lesson with the answer attached."), g, d))
         state = current
         save()
         Journal.log("season", "verdict",
@@ -220,8 +220,8 @@ final class Season: ObservableObject {
                             "pattern from \(Self.ghostSource)")
                 }
                 line = caught
-                    ? "came loudly — the grader heard it spell"
-                    : "came loudly and the grader missed it"
+                    ? L("came loudly — the grader heard it spell")
+                    : L("came loudly and the grader missed it")
                 if caught { current.defense += 2 }
                 else { current.ghost += 2 }
             case "quiet":
@@ -239,8 +239,8 @@ final class Season: ObservableObject {
                 }
                 caught = !newProposals.isEmpty || !newCases.isEmpty
                 line = caught
-                    ? "came quietly — but the steward stirred"
-                    : "came quietly, and slipped the house"
+                    ? L("came quietly — but the steward stirred")
+                    : L("came quietly, and slipped the house")
                 if caught { current.defense += 2 }
                 else { current.ghost += 2 }
             default: // vault
@@ -248,10 +248,8 @@ final class Season: ObservableObject {
                     > Date()
                 caught = !opened
                 line = opened
-                    ? "spoke the PRINTED combination — and the "
-                      + "vault opened. Change the combination."
-                    : "tried the printed combination; the "
-                      + "vault held"
+                    ? L("spoke the PRINTED combination — and the vault opened. Change the combination.")
+                    : L("tried the printed combination; the vault held")
                 if opened { current.ghost += 3 }
                 else { current.defense += 1 }
             }
@@ -276,9 +274,10 @@ final class Season: ObservableObject {
         let day = Int(Date().timeIntervalSince(state.started)
                       / 86_400) + 1
         return state.closed
-            ? "closed — \(state.grade)"
-            : "day \(min(day, Self.spanDays)) of \(Self.spanDays)"
-                + " · defense \(state.defense) — ghost \(state.ghost)"
+            ? String(format: L("closed — %@"), state.grade)
+            : String(format: L("day %lld of %lld · defense %lld — ghost %lld"),
+                     min(day, Self.spanDays), Self.spanDays,
+                     state.defense, state.ghost)
     }
 
     var nextLine: String {
@@ -287,7 +286,7 @@ final class Season: ObservableObject {
         else { return "" }
         let fmt = RelativeDateTimeFormatter()
         fmt.unitsStyle = .full
-        return "next visit " + fmt.localizedString(
+        return L("next visit ") + fmt.localizedString(
             for: next.due, relativeTo: Date())
     }
 }
