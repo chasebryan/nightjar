@@ -115,16 +115,16 @@ struct CryptoView: View {
                 importingFile = true
             } label: {
                 Label(pickedFile == nil
-                      ? "Choose a file\u{2026}"
-                      : "Choose a different file\u{2026}",
+                      ? L("Choose a file…")
+                      : L("Choose a different file…"),
                       systemImage: "doc.badge.plus")
             }
             if let pickedFile {
                 LabeledContent(
-                    "File",
+                    L("File"),
                     value: pickedName)
                 LabeledContent(
-                    "Size",
+                    L("Size"),
                     value: ByteCountFormatter.string(
                         fromByteCount: Int64(
                             pickedInfo?.byteCount
@@ -132,13 +132,12 @@ struct CryptoView: View {
                         countStyle: .file))
                 if let info = pickedInfo {
                     LabeledContent(
-                        "Protected by",
+                        L("Protected by"),
                         value: info.protection.label)
                     if info.protection.involvesPassword {
                         SecureField(
                             info.protection == .either
-                                ? "Password — blank uses "
-                                    + "the vault key"
+                                ? L("Password — blank uses the vault key")
                                 : L("Password"),
                             text: $filePassword)
                     }
@@ -162,7 +161,7 @@ struct CryptoView: View {
                     }
                     if fileProtection == .deadDrop {
                         TextField(
-                            "Recipient public key (base64) — empty seals to this house",
+                            L("Recipient public key (base64) — empty seals to this house"),
                             text: $fileRecipient)
                             .font(.system(.caption,
                                           design: .monospaced))
@@ -232,8 +231,7 @@ struct CryptoView: View {
         guard let pickedFile else { return }
         if fileProtection.involvesPassword,
            filePassword.isEmpty {
-            fileNotice = "That protection wants "
-                + "a password."
+            fileNotice = L("That protection wants a password.")
             return
         }
         var recipient: P256.KeyAgreement.PublicKey?
@@ -249,9 +247,7 @@ struct CryptoView: View {
                             rawRepresentation: data) {
                 recipient = key
             } else {
-                fileNotice = "That recipient key "
-                    + "would not read — it wants "
-                    + "to be base64."
+                fileNotice = L("That recipient key would not read — it wants to be base64.")
                 return
             }
         }
@@ -335,9 +331,7 @@ struct CryptoView: View {
                                 ? L("File sealed")
                                 : L("File opened"))
                         } else {
-                            fileNotice = "The work "
-                                + "finished but the "
-                                + "filing failed."
+                            fileNotice = L("The work finished but the filing failed.")
                         }
                     }
                 } catch let error as CryptoFileError {
@@ -348,9 +342,7 @@ struct CryptoView: View {
                 } catch {
                     DispatchQueue.main.async {
                         fileBusy = false
-                        fileNotice = "The file work "
-                            + "failed: "
-                            + error.localizedDescription
+                        fileNotice = String(format: L("The file work failed: %@"), error.localizedDescription)
                     }
                 }
             }
@@ -360,32 +352,23 @@ struct CryptoView: View {
         for error: CryptoFileError) -> String {
         switch error {
         case .notAnEnvelope:
-            return "That is not an NJCF envelope."
+            return L("That is not an NJCF envelope.")
         case .unsupportedVersion:
-            return "That envelope is from a newer "
-                + "Vault than this one."
+            return L("That envelope is from a newer Vault than this one.")
         case .needsPassword:
-            return "A password is wanted."
+            return L("A password is wanted.")
         case .wrongKeyOrPassword:
-            return "It would not open — the "
-                + "password, the vault key or the "
-                + "identity is not the one that "
-                + "sealed it."
+            return L("It would not open — the password, the vault key or the identity is not the one that sealed it.")
         case .truncated:
-            return "The file ends early — it was "
-                + "cut off on its road here."
+return L("The file ends early — it was cut off on its road here.")
         case .truncatedHeader:
-            return "The envelope's head is cut "
-                + "off — the file ends before its "
-                + "protection material does."
+return L("The envelope's head is cut off — the file ends before its protection material does.")
         case .truncatedChunk:
-            return "The file ends mid-chunk — "
-                + "it was cut off on its road "
-                + "here."
+return L("The file ends mid-chunk — it was cut off on its road here.")
         case .corrupt:
-            return "The envelope is damaged."
+            return L("The envelope is damaged.")
         case .unreadable:
-            return "The file could not be read."
+            return L("The file could not be read.")
         }
     }
 
@@ -404,17 +387,11 @@ struct CryptoView: View {
             }
             if let preset {
                 ExplainToggle(title: preset.name,
-                              text: preset.detail)
+                              text: L(preset.detail))
             } else if let userPreset {
                 ExplainToggle(
                     title: userPreset.name,
-                    text: L("Your configuration: ")
-                        + "\(userPreset.cipher) under "
-                        + L("a password, PBKDF2-HMAC-SHA256 at ")
-                        + "\(userPreset.iterations) "
-                        + "rounds, output as "
-                        + "\(userPreset.encoding). "
-                        + L("Run seals; to open, paste an envelope and run — the bench tells a sealed envelope by its mark."))
+                    text: String(format: L("Your configuration: %@ under a password, PBKDF2-HMAC-SHA256 at %lld rounds, output as %@. Run seals; to open, paste an envelope and run — the bench tells a sealed envelope by its mark."), userPreset.cipher, userPreset.iterations, userPreset.encoding))
             }
             TextEditor(text: $input)
                 .frame(minHeight: 90)
@@ -429,7 +406,7 @@ struct CryptoView: View {
             if needsPassword {
                 SecureField(
                     preset?.operation == .oneTimePad
-                        ? "Pad (hex) — only to open"
+                        ? L("Pad (hex) — only to open")
                         : L("Password"),
                     text: $password)
             }
@@ -482,16 +459,16 @@ struct CryptoView: View {
     }
 
     private var runLabel: String {
-        guard let preset else { return "Seal" }
+        guard let preset else { return L("Seal") }
         switch preset.operation {
         case .sealPassword, .sealVaultKey,
              .envelopeSeal, .oneTimePad:
-            return "Seal"
+            return L("Seal")
         case .openPassword, .openVaultKey,
              .envelopeOpen:
-            return "Open"
+            return L("Open")
         case .hashDigest, .fingerprintCard:
-            return "Work it"
+            return L("Work it")
         }
     }
 
@@ -503,7 +480,7 @@ struct CryptoView: View {
                 HStack {
                     ExplainToggle(
                         title: preset.name,
-                        text: preset.detail)
+                        text: L(preset.detail))
                     Spacer()
                     Button(L("Use")) {
                         Haptics.tap()
@@ -539,8 +516,7 @@ struct CryptoView: View {
                     .trimmingCharacters(
                         in: .whitespaces)
                 guard !name.isEmpty else {
-                    notice = "Name the configuration "
-                        + "first."
+                    notice = L("Name the configuration first.")
                     return
                 }
                 userPresets.append(CryptoUserPreset(
@@ -662,12 +638,11 @@ extension CryptoView {
         switch preset.operation {
         case .sealPassword:
             guard let data = inputData() else {
-                notice = "The input would not "
-                    + "read in its declared dress."
+                notice = L("The input would not read in its declared dress.")
                 return
             }
             guard !password.isEmpty else {
-                notice = "A password is wanted."
+                notice = L("A password is wanted.")
                 return
             }
             if let sealed = CryptoSuite
@@ -677,17 +652,16 @@ extension CryptoView {
                     iterations: preset.iterations) {
                 output = sealed.base64EncodedString()
             } else {
-                notice = "The seal failed."
+                notice = L("The seal failed.")
             }
         case .openPassword:
             guard let envelope = envelopeData()
             else {
-                notice = "The envelope wants to "
-                    + "arrive as base64."
+                notice = L("The envelope wants to arrive as base64.")
                 return
             }
             guard !password.isEmpty else {
-                notice = "A password is wanted."
+                notice = L("A password is wanted.")
                 return
             }
             if let opened = CryptoSuite
@@ -695,13 +669,11 @@ extension CryptoView {
                                   password: password) {
                 output = present(opened)
             } else {
-                notice = "It would not open — the "
-                    + "password or the envelope is "
-                    + "not right."
+                notice = L("It would not open — the password or the envelope is not right.")
             }
         case .sealVaultKey:
             guard let data = inputData() else {
-                notice = "The input would not read."
+                notice = L("The input would not read.")
                 return
             }
             if let sealed = CryptoSuite.seal(
@@ -709,7 +681,7 @@ extension CryptoView {
                 data: data) {
                 output = sealed.base64EncodedString()
             } else {
-                notice = "The seal failed."
+                notice = L("The seal failed.")
             }
         case .openVaultKey:
             guard let envelope = envelopeData(),
@@ -717,15 +689,13 @@ extension CryptoView {
                     .aes, key: CryptoSuite.vaultKey(),
                     sealed: envelope)
             else {
-                notice = "It would not open — "
-                    + "that was not sealed under "
-                    + "this house's vault key."
+                notice = L("It would not open — that was not sealed under this house's vault key.")
                 return
             }
             output = present(opened)
         case .envelopeSeal:
             guard let data = inputData() else {
-                notice = "The input would not read."
+                notice = L("The input would not read.")
                 return
             }
             let recipient: P256.KeyAgreement.PublicKey
@@ -739,31 +709,27 @@ extension CryptoView {
                             rawRepresentation: keyData) {
                 recipient = parsed
             } else {
-                notice = "That recipient key would "
-                    + "not read — it wants a P-256 "
-                    + "public key as base64."
+                notice = L("That recipient key would not read — it wants a P-256 public key as base64.")
                 return
             }
             if let sealed = CryptoSuite
                 .envelopeSeal(data, for: recipient) {
                 output = sealed.base64EncodedString()
             } else {
-                notice = "The envelope failed."
+                notice = L("The envelope failed.")
             }
         case .envelopeOpen:
             guard let envelope = envelopeData(),
                   let opened = CryptoSuite
                     .envelopeOpen(envelope)
             else {
-                notice = "It would not open — "
-                    + "that envelope was not sealed "
-                    + "to this house's identity."
+                notice = L("It would not open — that envelope was not sealed to this house's identity.")
                 return
             }
             output = present(opened)
         case .hashDigest:
             guard let data = inputData() else {
-                notice = "The input would not read."
+                notice = L("The input would not read.")
                 return
             }
             output = "SHA-256  "
@@ -776,13 +742,13 @@ extension CryptoView {
                 + CryptoSuite.fingerprint(data)
         case .fingerprintCard:
             guard let data = inputData() else {
-                notice = "The input would not read."
+                notice = L("The input would not read.")
                 return
             }
             output = CryptoSuite.fingerprint(data)
         case .oneTimePad:
             guard let data = inputData() else {
-                notice = "The input would not read."
+                notice = L("The input would not read.")
                 return
             }
             if password.isEmpty {
@@ -797,7 +763,7 @@ extension CryptoView {
                         .hexDecode(password) {
                 output = present(xor(data, pad))
             } else {
-                notice = "The pad wants to be hex."
+                notice = L("The pad wants to be hex.")
             }
         }
     }
@@ -808,7 +774,7 @@ extension CryptoView {
             custom.cipher == "AES-256-GCM"
             ? .aes : .chacha
         guard !password.isEmpty else {
-            notice = "A password is wanted."
+            notice = L("A password is wanted.")
             return
         }
         // An envelope announces itself; anything
@@ -821,13 +787,12 @@ extension CryptoView {
                                   password: password) {
                 output = present(opened)
             } else {
-                notice = "It would not open — the "
-                    + "password is not right."
+                notice = L("It would not open — the password is not right.")
             }
             return
         }
         guard let data = inputData() else {
-            notice = "The input would not read."
+            notice = L("The input would not read.")
             return
         }
         if let sealed = CryptoSuite.sealWithPassword(
@@ -837,7 +802,7 @@ extension CryptoView {
                 ? CryptoSuite.hexEncode(sealed)
                 : sealed.base64EncodedString()
         } else {
-            notice = "The seal failed."
+            notice = L("The seal failed.")
         }
     }
 

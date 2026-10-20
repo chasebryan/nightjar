@@ -157,7 +157,10 @@ enum Services {
         var eid: String?
 
         var frameName: String {
-            return Services.frameNames[frameType] ?? String(format: "frame 0x%02X", frameType)
+            if let name = Services.frameNames[frameType] {
+                return L(name)
+            }
+            return String(format: "frame 0x%02X", frameType)
         }
 
         var isFMDN: Bool { return frameType == 0x40 || frameType == 0x41 }
@@ -165,22 +168,22 @@ enum Services {
         var describe: String {
             if isFMDN {
                 return frameType == 0x41
-                    ? "Find My Device network (separated from owner)"
-                    : "Find My Device network (near owner)"
+                    ? L("Find My Device network (separated from owner)")
+                    : L("Find My Device network (near owner)")
             }
             switch frameType {
             case 0x00:
-                return "Eddystone-UID \(namespace ?? "")/\(instance ?? "")"
+                return String(format: L("Eddystone-UID %@/%@"), namespace ?? "", instance ?? "")
             case 0x10:
-                return "Eddystone-URL \(url ?? "")"
+                return String(format: L("Eddystone-URL %@"), url ?? "")
             case 0x20:
                 var parts: [String] = []
-                if let mv = batteryMv, mv > 0 { parts.append("battery \(mv) mV") }
+                if let mv = batteryMv, mv > 0 { parts.append(String(format: L("battery %lld mV"), mv)) }
                 if let temp = temperatureC { parts.append(String(format: "%.1f °C", temp)) }
                 if let up = uptimeS { parts.append(String(format: "up %.1f h", up / 3600)) }
                 return "Eddystone-TLM" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", "))
             case 0x30:
-                return "Eddystone-EID \(eid ?? "")"
+                return String(format: L("Eddystone-EID %@"), eid ?? "")
             default:
                 return "Eddystone \(frameName)"
             }
@@ -236,9 +239,9 @@ enum Services {
 
         var describe: String {
             if discoverable, let model = modelID {
-                return String(format: "Fast Pair, discoverable (model 0x%06X)", model)
+                return String(format: L("Fast Pair, discoverable (model 0x%06X)"), model)
             }
-            return "Fast Pair device (paired, not discoverable)"
+            return L("Fast Pair device (paired, not discoverable)")
         }
     }
 
@@ -275,42 +278,42 @@ enum Services {
         // Drones first: a Remote ID broadcast is unambiguous, and nothing
         // else uses 0xFFFA. Same order as the Python classify().
         if let rid = data[Drones.remoteIDService], let report = Drones.report(fromServiceData: rid) {
-            return Identification(kind: "Drone (Remote ID)",
+            return Identification(kind: L("Drone (Remote ID)"),
                                   details: [Drones.describe(report)],
                                   trackerShaped: false, rotatingPhone: false, specificity: 3,
-                                  preferredLabel: report.serial.map { "Drone \($0)" })
+                                  preferredLabel: report.serial.map { String(format: L("Drone %@"), $0) })
         }
         if shorts[eddystone] != nil {
             if let frame = decodeEddystone(data[eddystone] ?? []) {
                 if frame.isFMDN {
-                    return Identification(kind: "Find My Device network tag (Google)",
+                    return Identification(kind: L("Find My Device network tag (Google)"),
                                           details: [frame.describe], trackerShaped: true,
                                           rotatingPhone: false, specificity: 3)
                 }
-                return Identification(kind: "Eddystone beacon (\(frame.frameName))",
+                return Identification(kind: String(format: L("Eddystone beacon (%@)"), frame.frameName),
                                       details: [frame.describe], trackerShaped: false,
                                       rotatingPhone: false, specificity: 3)
             }
-            return Identification(kind: "Eddystone beacon", details: [], trackerShaped: false,
+            return Identification(kind: L("Eddystone beacon"), details: [], trackerShaped: false,
                                   rotatingPhone: false, specificity: 2)
         }
         if shorts[fastPair] != nil {
             let state = decodeFastPair(data[fastPair] ?? [])
-            return Identification(kind: "Fast Pair device (Google)",
+            return Identification(kind: L("Fast Pair device (Google)"),
                                   details: state.map { [$0.describe] } ?? [],
                                   trackerShaped: false, rotatingPhone: false, specificity: 2)
         }
         if shorts[exposureNotification] != nil {
-            return Identification(kind: "Phone (Exposure Notification)",
-                                  details: ["contact-tracing beacon; rotates every ~15 min"],
+            return Identification(kind: L("Phone (Exposure Notification)"),
+                                  details: [L("contact-tracing beacon; rotates every ~15 min")],
                                   trackerShaped: false, rotatingPhone: true, specificity: 2)
         }
         if tile.contains(where: { shorts[$0] != nil }) {
-            return Identification(kind: "Tile tracker", details: [], trackerShaped: true,
+            return Identification(kind: L("Tile tracker"), details: [], trackerShaped: true,
                                   rotatingPhone: false, specificity: 3)
         }
         if shorts[smartThingsFind] != nil {
-            return Identification(kind: "SmartThings Find device (Samsung tag or Galaxy)",
+            return Identification(kind: L("SmartThings Find device (Samsung tag or Galaxy)"),
                                   details: [], trackerShaped: true, rotatingPhone: false,
                                   specificity: 2)
         }
@@ -327,10 +330,9 @@ enum Services {
             let nearOwner = dult[1] & 0x01 == 1
             return Identification(
                 kind: nearOwner
-                    ? "DULT tracker — near owner"
-                    : "DULT tracker — separated",
-                details: ["Detecting Unwanted Location "
-                    + "Trackers standard (Apple / Google)"],
+                    ? L("DULT tracker — near owner")
+                    : L("DULT tracker — separated"),
+                details: [L("Detecting Unwanted Location Trackers standard (Apple / Google)")],
                 trackerShaped: true, rotatingPhone: false,
                 specificity: 3)
         }
@@ -371,20 +373,19 @@ enum Services {
             }
             .sorted { $0.0 < $1.0 }
         let memberDetails = memberNamed.map {
-            String(format: "member service 0x%04X "
-                   + "— registered to %@",
+            String(format: L("member service 0x%04X — registered to %@"),
                    $0.0, $0.1)
         }
         if !named.isEmpty {
-            return Identification(kind: "Device advertising " + named.joined(separator: ", "),
+            return Identification(kind: String(format: L("Device advertising %@"), named.joined(separator: ", ")),
                                   details: memberDetails, trackerShaped: false, rotatingPhone: false,
                                   specificity: 1)
         }
         if !memberNamed.isEmpty {
             return Identification(
-                kind: "Device advertising member "
-                    + (memberNamed.count > 1
-                       ? "services" : "service"),
+                kind: memberNamed.count > 1
+                    ? L("Device advertising member services")
+                    : L("Device advertising member service"),
                 details: memberDetails,
                 trackerShaped: false,
                 rotatingPhone: false,
@@ -410,62 +411,50 @@ enum Services {
             shorts.contains(v)
         }
         if has(0x180D) {
-            return ("Heart-rate monitor",
-                    "Heart Rate service"
-                    + (has(0x180F) ? " + Battery"
-                       : "")
-                    + " — the standard heart-rate "
-                    + "profile.")
+            return (L("Heart-rate monitor"),
+                    has(0x180F)
+                        ? L("Heart Rate service + Battery — the standard heart-rate profile.")
+                        : L("Heart Rate service — the standard heart-rate profile."))
         }
         if has(0x1826) {
-            return ("Fitness machine",
-                    "Fitness Machine service — "
-                    + "gym equipment class.")
+            return (L("Fitness machine"),
+                    L("Fitness Machine service — gym equipment class."))
         }
         if has(0x181D) {
-            return ("Weight scale",
-                    "Weight Scale service "
-                    + "advertised.")
+            return (L("Weight scale"),
+                    L("Weight Scale service advertised."))
         }
         if has(0x1810) {
-            return ("Blood pressure monitor",
-                    "Blood Pressure service "
-                    + "advertised.")
+            return (L("Blood pressure monitor"),
+                    L("Blood Pressure service advertised."))
         }
         if has(0x1808) {
-            return ("Glucose monitor",
-                    "Glucose service advertised.")
+            return (L("Glucose monitor"),
+                    L("Glucose service advertised."))
         }
         if has(0x1809) {
-            return ("Health thermometer",
-                    "Health Thermometer service "
-                    + "advertised.")
+            return (L("Health thermometer"),
+                    L("Health Thermometer service advertised."))
         }
         if has(0x1822) {
-            return ("Pulse oximeter",
-                    "Pulse Oximeter service "
-                    + "advertised.")
+            return (L("Pulse oximeter"),
+                    L("Pulse Oximeter service advertised."))
         }
         if has(0x1818) {
-            return ("Cycling power meter",
-                    "Cycling Power service "
-                    + "advertised.")
+            return (L("Cycling power meter"),
+                    L("Cycling Power service advertised."))
         }
         if has(0x1816) {
-            return ("Cycling speed/cadence sensor",
-                    "Cycling Speed and Cadence "
-                    + "service advertised.")
+            return (L("Cycling speed/cadence sensor"),
+                    L("Cycling Speed and Cadence service advertised."))
         }
         if has(0x1814) {
-            return ("Running speed/cadence sensor",
-                    "Running Speed and Cadence "
-                    + "service advertised.")
+            return (L("Running speed/cadence sensor"),
+                    L("Running Speed and Cadence service advertised."))
         }
         if has(0x1812) && has(0x180F) {
-            return ("HID peripheral",
-                    "Human Interface Device + "
-                    + "Battery — the keyboard, "
-                    + "mouse and remote class.")
+            return (L("HID peripheral"),
+                    L("Human Interface Device + Battery — the keyboard, mouse and remote class."))
         }
         return nil
     }

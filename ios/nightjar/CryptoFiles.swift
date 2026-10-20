@@ -47,9 +47,9 @@ enum NJCFProtection: Int, CaseIterable {
         switch self {
         case .password: return L("Password")
         case .vaultKey: return L("Vault key")
-        case .either: return "Password or vault key"
-        case .bothRequired: return "Password and vault key"
-        case .deadDrop: return "Dead drop — a recipient's key"
+        case .either: return L("Password or vault key")
+        case .bothRequired: return L("Password and vault key")
+        case .deadDrop: return L("Dead drop — a recipient's key")
         }
     }
 
