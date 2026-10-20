@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**9.0c**
+**10.0**
 
 **No jailbreak required**
 
@@ -280,9 +280,6 @@ address to SideStore and releases surface there,
 re-signed on the phone itself. Rebuilding from source,
 as above, always works too.
 
-<p align="center">
-  <img src="assets/scarface.gif" width="380" alt="Scarface">
-</p>
 
 ## 60 seconds (the CLI)
 
@@ -337,8 +334,6 @@ checkout and then calls apply_overlay.py.
 - [PRIVACY.md](PRIVACY.md) — what the app collects (nothing)
 
 ## About me
-
-<img align="right" width="230" src="assets/triangle.gif" alt="Triangle">
 
 I'm Chase Bryan — cryptographer and builder. nightjar-hack
 is my instrument: I build the tools I want to exist, and I

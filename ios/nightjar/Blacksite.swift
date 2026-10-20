@@ -4566,7 +4566,7 @@ final class BlacksiteShell: ObservableObject {
         let version = Bundle.main
             .infoDictionary?[
                 "CFBundleShortVersionString"]
-            as? String ?? "9.0c"
+            as? String ?? "10.0"
         let user = env["USER"] ?? "operator"
         let title = "\(user)@nightjar"
         let bold = "\u{1B}[1m"

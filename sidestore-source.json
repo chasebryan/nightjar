@@ -6,10 +6,10 @@
             "downloadURL": "https://github.com/chasebryan/nightjar-hack/releases/latest/download/nightjar-hack.ipa",
             "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
             "name": "nightjar-hack",
-            "tintColor": "148040",
-            "version": "9.0c",
+            "tintColor": "1DB35A",
+            "version": "10.0",
             "versionDate": "2026-10-20",
-            "versionDescription": "v9.0c \u2014 cosmic. Skelli gains a world-sense and a will: an almanac (where she is, the weather anywhere, the calendar, a book of hours she keeps herself), feelings proven rather than announced, apologies she judges on their merits, a voice that composes its own sentences, and a halo that reads her. Conversation no longer falls off her \u2014 fragments complete themselves, conversions and date sums are exact, and her memory answers from the sealed journal. Annoyed is not mad. Carries gamma entire \u2014 the crash-proofing program and the no-crash standard \u2014 with haptics made whole throughout."
+            "versionDescription": "v10- chorus. The tenth version opens: the console is an operating system, Skelli is awake inside it, and every instrument in the house plays at once. What chorus comes to mean, it will say as it lands."
         }
     ],
     "identifier": "net.nosuchmachine.nightjarhack.source",
