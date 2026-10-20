@@ -370,9 +370,10 @@ extension SkelliCenter {
         lines.append(L("What crowns it: face-down. Say 'yes' and I'll turn it — anything else, and it stays unopened."))
         lines.append(suitWeather(cards))
         pendingAction = { [weak self] in
-            self?.say(String(format: L("What crowns it: the %@ — %@. There it is — the whole table, told."),
-                             spokenName(crown),
-                             L(crown.meaning)))
+            guard let self else { return }
+            say(String(format: L("What crowns it: the %@ — %@. There it is — the whole table, told."),
+                       spokenName(crown),
+                       L(crown.meaning)))
         }
         return lines.joined(separator: "\n")
     }

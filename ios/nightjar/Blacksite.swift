@@ -2935,7 +2935,7 @@ final class BlacksiteShell: ObservableObject {
                 gearQ = rest[via + 1]
                 rest = Array(rest.prefix(via))
             }
-            guard netAllowed(name),
+            guard netAllowed(head),
                   let targetQ = rest.first,
                   let gearFinal = gearQ
             else {
@@ -9157,7 +9157,7 @@ final class BlacksiteShell: ObservableObject {
                             out(L("nothing typed — nothing kept."), .err)
                             return
                         }
-                        askSecret(
+                        self.askSecret(
                             String(format: L("the privacy word for %@@%@:"), String(describing: user), String(describing: host))
                         ) { typed2 in
                             let privWord = typed2

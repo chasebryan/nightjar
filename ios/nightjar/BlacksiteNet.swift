@@ -47,26 +47,44 @@ enum BlacksiteNet {
         guard sysctl(&mib, 6, &buffer,
                      &needed, nil, 0) == 0
         else { return nil }
-        let headerSize =
-            MemoryLayout<rt_msghdr>.size
+        // Darwin's rt_msghdr is not
+        // exposed to Swift on iOS — the
+        // iOS SDK ships no net/route.h —
+        // so the header is read by its
+        // offsets in that header: msglen
+        // u16 @0, version u8 @2, flags
+        // i32 @8, addrs i32 @12; the
+        // struct totals 92 bytes and the
+        // sockaddrs follow it. RTM_VERSION
+        // is 5, RTA_DST 0x1, RTA_GATEWAY
+        // 0x2, RTF_GATEWAY 0x2.
+        let headerSize = 92
+        func word32(_ at: Int) -> Int32 {
+            Int32(bitPattern:
+                UInt32(buffer[at])
+                | (UInt32(buffer[at + 1]) << 8)
+                | (UInt32(buffer[at + 2]) << 16)
+                | (UInt32(buffer[at + 3]) << 24))
+        }
         var offset = 0
         while offset + headerSize <= needed {
             let base = buffer.withUnsafeBytes {
                 $0.baseAddress!
             } + offset
-            let hdr = base.assumingMemoryBound(
-                to: rt_msghdr.self).pointee
-            let length = Int(hdr.rtm_msglen)
+            let length = Int(buffer[offset])
+                | (Int(buffer[offset + 1]) << 8)
             if length <= 0 { break }
             defer { offset += length }
-            guard Int32(hdr.rtm_version)
-                == RTM_VERSION else { continue }
+            guard buffer[offset + 2] == 5
+            else { continue }
+            let hdrFlags = word32(offset + 8)
+            let hdrAddrs = word32(offset + 12)
             // RTA_DST is the first sockaddr
             // after the header when its bit
             // is set, RTA_GATEWAY the next.
             var addrPtr = base + headerSize
-            let addrs = hdr.rtm_addrs
-            if (addrs & RTA_DST) != 0 {
+            let addrs = hdrAddrs
+            if (addrs & 0x1) != 0 {
                 let dst = addrPtr
                     .assumingMemoryBound(
                         to: sockaddr.self).pointee
@@ -79,8 +97,8 @@ enum BlacksiteNet {
                             to: sockaddr_in.self)
                         .pointee
                     if sin.sin_addr.s_addr == 0,
-                       (addrs & RTA_GATEWAY) != 0,
-                       (hdr.rtm_flags & RTF_GATEWAY) != 0 {
+                       (addrs & 0x2) != 0,
+                       (hdrFlags & 0x2) != 0 {
                         let gwPtr = addrPtr + dstLen
                         let gw = gwPtr
                             .assumingMemoryBound(
