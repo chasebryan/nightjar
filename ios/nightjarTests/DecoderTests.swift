@@ -389,4 +389,66 @@ final class DecoderTests: XCTestCase {
         XCTAssertEqual(BonjourTXT.facts(
             type: "_airplay._tcp", txt: [:]), [])
     }
+
+    // MARK: - Router signs and MNDP
+
+    /// The full house: DHCP + DNS + an admin
+    /// door + the .1 chair + a gear name must
+    /// rank likely, with every sign shown.
+    func testRouterSignsFullHouse() {
+        let scored = RouterSigns.score(
+            ip: "192.168.4.1", name: "eero",
+            ports: [53, 67, 80],
+            announcements: [])
+        XCTAssertEqual(scored.weight, .likely)
+        XCTAssertEqual(scored.signs.count, 5)
+    }
+
+    /// A MikroTik that introduced itself over
+    /// MNDP plus its chair: likely, and the
+    /// MNDP sign is the strongest listed.
+    func testRouterSignsMNDP() {
+        let scored = RouterSigns.score(
+            ip: "192.168.88.1", name: nil,
+            ports: [],
+            announcements: ["MNDP — MikroTik RB750Gr3"])
+        XCTAssertEqual(scored.weight, .likely)
+        XCTAssertTrue(scored.signs.first?
+            .contains("MNDP") ?? false)
+    }
+
+    /// A printer with SSH is not a router, and
+    /// a named box with only a door is merely
+    /// possible.
+    func testRouterSignsRestraint() {
+        let printer = RouterSigns.score(
+            ip: "192.168.4.60", name: "printer",
+            ports: [22, 631], announcements: [])
+        XCTAssertEqual(printer.weight, .none)
+        let named = RouterSigns.score(
+            ip: "192.168.4.2", name: "FRITZ!Box 7590",
+            ports: [443], announcements: [])
+        XCTAssertEqual(named.weight, .possible)
+    }
+
+    /// An MNDP packet framed by hand: platform
+    /// MikroTik, board RB750Gr3, version
+    /// 6.49.10, identity HomeAP. A packet with
+    /// no MikroTik platform states nothing.
+    func testMNDPFraming() {
+        let packet = hexBytes(
+            "000500084d696b726f54696b"
+            + "000800085242373530477233"
+            + "00030007362e34392e3130"
+            + "00020006486f6d654150")
+        XCTAssertEqual(
+            BlacksitePentest.parseMNDP(packet),
+            ["MikroTik RB750Gr3",
+             "RouterOS 6.49.10",
+             "identity \u{201C}HomeAP\u{201D}"])
+        XCTAssertNil(BlacksitePentest.parseMNDP(
+            hexBytes("0005000443617365")))
+        XCTAssertNil(BlacksitePentest.parseMNDP(
+            hexBytes("0005")))
+    }
 }

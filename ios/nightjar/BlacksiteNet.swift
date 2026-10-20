@@ -19,6 +19,96 @@ typealias BlacksiteEmit =
 
 enum BlacksiteNet {
 
+    // MARK: The default gateway
+
+    /// This phone's default gateway, read
+    /// from the kernel's route table: the
+    /// one identification on the wire that
+    /// is not an inference — the device the
+    /// default route names IS the router,
+    /// by definition. The classic route-
+    /// socket read: sysctl NET_RT_DUMP for
+    /// AF_INET, walk rt_msghdr entries, and
+    /// the default destination (0.0.0.0)
+    /// with RTF_GATEWAY carries its gateway
+    /// in the RTA_GATEWAY slot.
+    static func defaultGatewayIP() -> String? {
+        var mib: [Int32] = [
+            CTL_NET, PF_ROUTE, 0, AF_INET,
+            NET_RT_DUMP, 0,
+        ]
+        var needed = 0
+        guard sysctl(&mib, 6, nil, &needed,
+                     nil, 0) == 0,
+              needed > 0
+        else { return nil }
+        var buffer = [UInt8](
+            repeating: 0, count: needed)
+        guard sysctl(&mib, 6, &buffer,
+                     &needed, nil, 0) == 0
+        else { return nil }
+        let headerSize =
+            MemoryLayout<rt_msghdr>.size
+        var offset = 0
+        while offset + headerSize <= needed {
+            let base = buffer.withUnsafeBytes {
+                $0.baseAddress!
+            } + offset
+            let hdr = base.assumingMemoryBound(
+                to: rt_msghdr.self).pointee
+            let length = Int(hdr.rtm_msglen)
+            if length <= 0 { break }
+            defer { offset += length }
+            guard Int32(hdr.rtm_version)
+                == RTM_VERSION else { continue }
+            // RTA_DST is the first sockaddr
+            // after the header when its bit
+            // is set, RTA_GATEWAY the next.
+            var addrPtr = base + headerSize
+            let addrs = hdr.rtm_addrs
+            if (addrs & RTA_DST) != 0 {
+                let dst = addrPtr
+                    .assumingMemoryBound(
+                        to: sockaddr.self).pointee
+                let dstLen = max(
+                    Int(dst.sa_len),
+                    MemoryLayout<sockaddr>.size)
+                if dst.sa_family == AF_INET {
+                    let sin = addrPtr
+                        .assumingMemoryBound(
+                            to: sockaddr_in.self)
+                        .pointee
+                    if sin.sin_addr.s_addr == 0,
+                       (addrs & RTA_GATEWAY) != 0,
+                       (hdr.rtm_flags & RTF_GATEWAY) != 0 {
+                        let gwPtr = addrPtr + dstLen
+                        let gw = gwPtr
+                            .assumingMemoryBound(
+                                to: sockaddr_in.self)
+                            .pointee
+                        if gw.sin_family == AF_INET {
+                            return ipv4String(
+                                gw.sin_addr)
+                        }
+                    }
+                }
+                addrPtr += dstLen
+            }
+        }
+        return nil
+    }
+
+    /// inet_ntoa, spelled out: the in_addr
+    /// is already the wire's byte order.
+    static func ipv4String(
+        _ addr: in_addr) -> String {
+        let raw = addr.s_addr
+        return "\(raw & 0xff)."
+            + "\((raw >> 8) & 0xff)."
+            + "\((raw >> 16) & 0xff)."
+            + "\((raw >> 24) & 0xff)"
+    }
+
     // MARK: Shared plumbing
 
     private static let queue =

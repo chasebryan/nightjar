@@ -186,6 +186,7 @@ final class BlacksiteShell: ObservableObject {
         "telnet", "ifconfig", "arp",
         "netstat", "hostname", "subdomains",
         "revdns", "nbstat", "snmp", "snmpaudit",
+        "router", "mndp",
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
@@ -2661,6 +2662,7 @@ final class BlacksiteShell: ObservableObject {
              "nc", "telnet", "ifconfig",
              "arp", "netstat", "hostname",
              "subdomains", "revdns",
+             "router", "mndp",
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
@@ -4413,6 +4415,8 @@ final class BlacksiteShell: ObservableObject {
                 ("nbstat <host>", "NetBIOS names and the adapter"),
                 ("snmp <host> [community]", "ask the agent (default public)"),
                 ("snmpaudit <host>", "the NSA's five SNMP mitigations, graded from the wire"),
+                ("router", "which neighbor is the router — crowned by the default route, ranked by signs"),
+                ("mndp [seconds]", "hear MikroTik introduce itself (UDP 5678)"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -8975,6 +8979,22 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.snmpAudit(
                     host: host,
+                    emit: emit, done: done)
+            }
+        case "router":
+            netBusy { emit, done in
+                BlacksitePentest.router(
+                    emit: emit, done: done)
+            }
+        case "mndp":
+            guard netAllowed(name) else {
+                return
+            }
+            let seconds = args.first
+                .flatMap(Int.init) ?? 20
+            netBusy { emit, done in
+                BlacksitePentest.mndp(
+                    seconds: seconds,
                     emit: emit, done: done)
             }
         case "upnp":

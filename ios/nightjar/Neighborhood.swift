@@ -52,6 +52,107 @@ struct Neighbor: Codable, Identifiable {
     }
 }
 
+/// The router, read by signs (Chase's ruling,
+/// 2026-10-20: "we should still be capable
+/// of interpreting which signal is the
+/// router through signs"). One certainty
+/// exists — the default route's gateway IS
+/// the router by definition — and the store
+/// crowns it outright. Everything else is
+/// weighed evidence, scored and SHOWN: the
+/// signs are listed with the verdict, and
+/// the verdict's language never outruns
+/// them.
+enum RouterSigns {
+    enum Weight {
+        case certain, likely, possible, none
+        var line: String {
+            switch self {
+            case .certain: return "THE ROUTER"
+            case .likely: return "likely the router"
+            case .possible:
+                return "possibly router or access point"
+            case .none: return ""
+            }
+        }
+    }
+
+    /// Score one neighbor's signs. The
+    /// gateway fact is applied by the store
+    /// (it owns the comparison); here are
+    /// the circumstantial signs: the doors
+    /// it holds, the chair it sits in, the
+    /// name it answers to, what it has been
+    /// heard announcing.
+    static func score(
+        ip: String, name: String?,
+        ports: [Int], announcements: [String])
+        -> (weight: Weight, signs: [String]) {
+        var points = 0
+        var signs: [String] = []
+        if ports.contains(67) {
+            points += 3
+            signs.append("answers DHCP — it "
+                         + "hands out the "
+                         + "addresses")
+        }
+        if ports.contains(53) {
+            points += 2
+            signs.append("serves DNS")
+        }
+        let adminDoors = [80, 443, 8080, 8443,
+                          7547].filter {
+            ports.contains($0)
+        }
+        if let door = adminDoors.first {
+            points += 1
+            signs.append("holds a web-admin "
+                         + "door (\(door))")
+        }
+        if let last = ip.split(separator: ".")
+            .last, last == "1" || last == "254" {
+            points += 1
+            signs.append("sits at .\(last) — "
+                         + "the router's "
+                         + "usual chair")
+        }
+        let gearWords = ["router", "gateway",
+                         "fritz", "asus",
+                         "tplink", "tp-link",
+                         "deco", "eero", "orbi",
+                         "velop", "meraki",
+                         "aruba", "mikrotik",
+                         "unifi", "ubiquiti",
+                         "starlink", "linksys",
+                         "netgear", "airport",
+                         "synology"]
+        if let name {
+            let low = name.lowercased()
+            if gearWords.contains(
+                where: { low.contains($0) }) {
+                points += 2
+                signs.append("answers to a "
+                             + "network-gear name "
+                             + "(\u{201C}\(name)"
+                             + "\u{201D})")
+            }
+        }
+        for line in announcements {
+            if line.contains("MikroTik") {
+                points += 3
+                signs.append("speaks MikroTik's "
+                             + "own discovery "
+                             + "(MNDP)")
+                break
+            }
+        }
+        let weight: Weight = points >= 4
+            ? .likely
+            : points >= 2 ? .possible : .none
+        return (weight, signs)
+    }
+}
+
 final class NeighborhoodStore: ObservableObject {
     static let shared = NeighborhoodStore()
 
@@ -250,6 +351,49 @@ final class NeighborhoodStore: ObservableObject {
             self.neighbors.sort { $0.lastSeen > $1.lastSeen }
             self.scheduleSave()
         }
+    }
+
+    /// The router report: the crowned
+    /// gateway first (certainty, not a
+    /// sign), then every candidate with its
+    /// weighed signs, strongest first.
+    func routerReport(
+        gatewayIP: String?)
+        -> [(neighbor: Neighbor,
+             weight: RouterSigns.Weight,
+             signs: [String])] {
+        var rows: [(Neighbor,
+                     RouterSigns.Weight,
+                     [String])] = []
+        for neighbor in neighbors {
+            if let gatewayIP,
+               neighbor.ip == gatewayIP {
+                rows.append((neighbor,
+                    .certain,
+                    ["this phone's default "
+                     + "route lands here — "
+                     + "the router by "
+                     + "definition"]))
+                continue
+            }
+            let scored = RouterSigns.score(
+                ip: neighbor.ip,
+                name: neighbor.name,
+                ports: neighbor.ports,
+                announcements:
+                    neighbor.announcements)
+            if scored.weight != .none {
+                rows.append((neighbor,
+                             scored.weight,
+                             scored.signs))
+            }
+        }
+        rows.sort {
+            if $0.1 == .certain { return true }
+            if $1.1 == .certain { return false }
+            return $0.2.count > $1.2.count
+        }
+        return rows
     }
 
     /// A Bonjour announcement, resolved to its address.

@@ -288,6 +288,61 @@ struct DeviceRow: Identifiable {
 
     static let historyCap = 24
 
+    /// Signs, not a format: the behavioral
+    /// evidence that a broadcaster is bolted
+    /// down (Chase's signs ruling, 2026-10-20 —
+    /// identification reasons from evidence
+    /// when no published format names the
+    /// device). Each line states only what
+    /// the air showed; the verdict line, when
+    /// two or more signs stand together,
+    /// stays in possibility language.
+    var infrastructureSigns: [String] {
+        var lines: [String] = []
+        var stood = 0
+        let dwell = lastSeen - firstSeen
+        if dwell > 900 {
+            stood += 1
+            let minutes = Int(dwell / 60)
+            lines.append("heard steadily for "
+                         + "\(minutes) minutes — "
+                         + "infrastructure does "
+                         + "not sleep")
+        }
+        if rssiHistory.count >= 8,
+           let low = rssiHistory.min(),
+           let high = rssiHistory.max(),
+           high - low <= 6 {
+            stood += 1
+            lines.append("its strength barely "
+                         + "moves — a fixed "
+                         + "position, not a "
+                         + "pocket")
+        }
+        if sightingIntervals.count >= 8 {
+            let mean = sightingIntervals
+                .reduce(0, +)
+                / Double(sightingIntervals.count)
+            let spread = sightingIntervals
+                .map { abs($0 - mean) }
+                .max() ?? 0
+            if mean > 0, spread < mean * 0.25 {
+                stood += 1
+                lines.append("advertises on a "
+                             + "metronome — a "
+                             + "machine rhythm")
+            }
+        }
+        if stood >= 2 {
+            lines.append("signs of fixed "
+                         + "infrastructure — "
+                         + "likely an access "
+                         + "point or other "
+                         + "always-on gear")
+        }
+        return lines
+    }
+
     init(sighting: Sighting) {
         id = sighting.address
         firstSeen = sighting.seenAt
@@ -418,6 +473,7 @@ struct DeviceRow: Identifiable {
         // decided, because a device is everything
         // it said, not only its winning label.
         var extras = analysisEvidence
+        extras += infrastructureSigns
         extras += batteries.map { $0.summary }
         if classification.rank
             <= Classification.rankFamilyHint {
