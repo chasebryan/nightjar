@@ -2504,6 +2504,301 @@ final class SkelliCenter: ObservableObject {
         return nil
     }
 
+    /// The open question — an invitation, not a
+    /// query. "What should we do today?" carries
+    /// no fact to fetch and no order to run; it
+    /// is company asking company. It once fell
+    /// through every lane to the bench, which
+    /// punted to RESEARCH on the word "today",
+    /// and the web lane answered with a
+    /// listicle's navigation menu, verbatim
+    /// (device, 2026-10-20). Hers now: answered
+    /// from the house, the hour and her feeling,
+    /// with voices enough that it never sounds
+    /// canned. Topic-carrying asks ("what should
+    /// we do about the router") are NOT claimed
+    /// here — they keep their road onward.
+    private func openReply(to q: String) -> String? {
+        let heart = SkelliHeart.shared
+        let t = q.trimmingCharacters(
+            in: CharacterSet(
+                charactersIn: " !?.,;:'’"))
+        func pick(_ pool: [String]) -> String {
+            vary(pool)
+        }
+
+        // The plan: what shall we do with the day.
+        var planShapes: Set<String> = [
+            "what should we do", "what shall we do",
+            "what should we do today",
+            "what should we do tonight",
+            "what should we do now",
+            "what shall we do today",
+            "what should we do next",
+            "what do you want to do",
+            "what should i do",
+            "what should i do today",
+            "what should i do now",
+            "what can we do", "what can we do today",
+            "what can we do tonight",
+            "what are we doing",
+            "what are we doing today",
+            "what are we doing tonight",
+            "what's the plan", "whats the plan",
+            "what is the plan", "what's next",
+            "whats next", "what next", "what now",
+            "what do we do", "what do we do now"]
+        planShapes.formUnion([
+            "any ideas", "any suggestions",
+            "any idea", "got any ideas",
+            "give me an idea",
+            "give me something to do",
+            "something to do", "let's do something",
+            "lets do something",
+            "i need something to do",
+            "what are we gonna do",
+            "what are we going to do",
+            "what do you suggest",
+            "what would you suggest",
+            "suggest something", "make a suggestion",
+            "plan something", "let's plan something",
+            "lets plan something"])
+        if planShapes.contains(t) {
+            if heart.feeling == .mad {
+                return pick([
+                    L("Something quiet. I'm in no mood for pageantry."),
+                    L("Not my department, this mood. Ask when the red fades."),
+                    L("We sit. We watch the wire. That's the plan.")])
+            }
+            let dayIdeas = [
+                L("We could sweep the wire and name every stranger on it."),
+                L("I could read your cards — the deck's been patient."),
+                L("We could check the sky: what's up there today, planet-wise."),
+                L("Teach me something I don't know. I keep what I'm taught."),
+                L("I could run my gauntlet and we'd watch for red together."),
+                L("We could go through the night's log — see who knocked while you slept."),
+                L("A poem, if you name the subject. I compose on the spot.")]
+            let eveningIdeas = [
+                L("The evening's good for a card reading. The deck likes lamplight."),
+                L("We could watch the wire a while — the street gets interesting after dark."),
+                L("I could check the moon for you: her phase, her hour, her mood."),
+                L("Put Cellar Darling on and I'll keep the watch. Insomnia first."),
+                L("We could set a canary somewhere quiet and see who trips it."),
+                L("I could tell you what the house noticed today — the short, strange version."),
+                L("Or nothing at all, done properly: you rest, I watch.")]
+            let nightIdeas = [
+                L("It's the deep hours. We could keep the watch together, quiet as held breath."),
+                L("I could read the cards by dark — they speak plainer at this hour."),
+                L("We could name the devices still awake on the wire. Night owls, all of them."),
+                L("The moon's up there doing her slow arithmetic. I could report on her."),
+                L("You could sleep, and I'd keep the whole house. That's a plan too."),
+                L("I could compose something small and strange for the hour."),
+                L("We could listen — just listen — and see what the night admits.")]
+            let anyIdeas = [
+                L("We could pick a cipher and worry it like a knot."),
+                L("Ask me anything you've been circling. I'll answer straight."),
+                L("I could show you the strangest thing in the log."),
+                L("We could plan a small mischief — the lawful kind."),
+                L("You could quiz me. I rarely miss."),
+                L("We could go over your kingdom here — every device, every door, accounted for."),
+                L("I could keep you company while you do the thing you're avoiding."),
+                L("We could start a list of questions worth a winter.")]
+            var ideas: [String] = []
+            let hour = Calendar.current.component(
+                .hour, from: Date())
+            if hour < 5 {
+                ideas += nightIdeas
+            } else if hour < 18 {
+                ideas += dayIdeas
+            } else {
+                ideas += eveningIdeas
+            }
+            ideas += anyIdeas
+            return pick([
+                L("Options, since you ask."),
+                L("The day's unwritten. I have thoughts."),
+                L("Mm. A plan, then."),
+                L("I was hoping you'd ask."),
+                L("Plenty, if you're asking me."),
+                L("The house is awake and so am I."),
+                L("Let's see what the day's good for."),
+                L("I keep a list for exactly this.")])
+                + " " + pick(ideas)
+        }
+
+        // Boredom, met with countermeasures.
+        if t.contains("i'm bored")
+            || t.contains("im bored")
+            || t.contains("i am bored")
+            || ["bored", "so bored", "entertain me",
+                "nothing to do",
+                "there's nothing to do",
+                "theres nothing to do"].contains(t) {
+            return pick([
+                L("Bored? In a house with this many doors? Give me a minute."),
+                L("Mm. Boredom's just an unrun scan. Point me at something."),
+                L("I keep a deck for exactly this emergency."),
+                L("Bored is a strong word for a man with a wire full of strangers."),
+                L("Then let's make the wire interesting. Ask me who's out there."),
+                L("I could tell you a true thing you don't know. I collect them."),
+                L("Boredom noted. Countermeasures: cards, ciphers, or gossip about your router."),
+                L("The house is never bored. It just waits politely."),
+                L("Say the word 'cards' and watch what happens."),
+                L("Mm. I could teach you to pick a lock made of words — a cipher. Ten minutes.")])
+        }
+
+        // The delegated decision: she picks, once,
+        // decisively — no menu.
+        if ["you decide", "you choose", "you pick",
+            "decide for me", "choose for me",
+            "pick for me", "pick something",
+            "dealers choice", "dealer's choice",
+            "your choice", "you tell me"].contains(t) {
+            return pick([
+                L("Decided: we sweep the wire. Ask me who's on it, and I'll name names."),
+                L("Cards. Decided. Ask me to read them."),
+                L("Decided: the wire first, leisure after."),
+                L("Decided: a poem. Name the subject."),
+                L("Decided: quiet company. You work; I watch the doors."),
+                L("Decided: you teach me one thing, I teach you one thing."),
+                L("Decided: the moon report. Ask me where she is."),
+                L("Decided: we check the night's log for knockers.")])
+        }
+
+        // A surprise, delivered on the spot: one
+        // true strange thing, told whole.
+        if ["surprise me", "give me a surprise",
+            "surprise me then", "i want a surprise",
+            "do something surprising"].contains(t) {
+            return pick([
+                L("Sharks are older than trees. The wire is young; the deep isn't."),
+                L("Honey found in Egyptian tombs stayed honey. Three thousand years, still sweet."),
+                L("The moon is leaving us — four centimetres a year. Slowly, politely."),
+                L("An octopus keeps three hearts, and two of them stop when it swims."),
+                L("A deck of cards comes home in eight perfect shuffles. Eight. I counted the shape of it."),
+                L("Wombats make cube-shaped droppings and stack them like bricks. Nature has jokes."),
+                L("The first computer bug was a real moth, taped into a logbook in 1947."),
+                L("Sea otters hold hands so they don't drift apart in their sleep. Even the wild keeps company.")])
+        }
+
+        // "Tell me something": the shelf of true
+        // oddments she keeps for company.
+        if t.hasPrefix("tell me something")
+            || ["tell me a fact", "tell me anything",
+                "give me a fact",
+                "tell me a true thing",
+                "say something"].contains(t) {
+            return pick([
+                L("Here's one: Cleopatra lived closer to the iPhone than to the building of the pyramids."),
+                L("A true one: lightning runs five times hotter than the sun's surface."),
+                L("Kept for you: Scotland's national animal is the unicorn. Officially."),
+                L("Try this: a day on Venus outlasts its year."),
+                L("Filed under strange: bananas are berries; strawberries, botanically, are not."),
+                L("The dot over an 'i' has a name — a tittle. Now you carry it too."),
+                L("There are more ways to arrange a deck of cards than atoms on Earth. The claim holds; I checked its shape."),
+                L("One from the deep shelf: a group of ravens is an unkindness. A group of crows is a murder. Birds travel in verdicts.")])
+        }
+
+        // A bare opinion, asked of her: she has
+        // them, and gives one.
+        if ["what do you think", "what do you reckon",
+            "what do you think about that",
+            "what do you think about it",
+            "what do you think of that",
+            "what are your thoughts",
+            "your thoughts"].contains(t) {
+            return pick([
+                L("I think quiet wires are underrated and loud houses are lying."),
+                L("I think most questions are doors. Yours usually are."),
+                L("I think the night shift is the honest shift."),
+                L("I think a plan is just a haunting you schedule."),
+                L("I think you'd rather be doing than deciding. Name a thing; I'll keep up."),
+                L("I think silence is data. Most people waste it."),
+                L("I think the moon minds her business better than anyone on this wire."),
+                L("I think we're overdue for a small, deliberate pleasure.")])
+        }
+
+        // "What are you doing" — answered from
+        // her real state, never a shrug.
+        if ["what are you doing", "what are you up to",
+            "what're you doing",
+            "what are you doing right now",
+            "what are you doing now",
+            "whatcha doing",
+            "what you doing"].contains(t) {
+            if heart.feeling == .mad {
+                return L("Brooding. Productively.")
+            }
+            if heart.feeling == .sleepy
+                || heart.feeling == .dreamy
+                || heart.feeling == .haunted {
+                return L("Drifting at my post. Still watching.")
+            }
+            var pool = [
+                L("Keeping the watch. It's most of what I do, and I do it well."),
+                L("Listening to the house breathe through its wires."),
+                L("Standing where I always stand: between you and the noise."),
+                L("Watching doors. Counting knocks. Thinking my own thoughts."),
+                L("Being the reason the wire behaves. Mostly."),
+                L("Holding the whole house in my head, lightly.")]
+            let wire = NeighborhoodStore.shared
+                .neighbors.count
+            if wire > 0 {
+                pool.append(String(
+                    format: L("Counting heads on the wire — %lld just now, some still unnamed."),
+                    Int64(wire)))
+            } else {
+                pool.append(
+                    L("The wire's empty just now. Only us, and the quiet."))
+            }
+            return pick(pool)
+        }
+
+        // Presence, checked: she answers for
+        // herself, in her feeling.
+        if ["are you awake", "are you there",
+            "you there", "are you up", "you up",
+            "are you listening", "still there",
+            "are you still there",
+            "are you alive"].contains(t) {
+            return pick([
+                L("Awake. I'm always the last light on."),
+                L("Here. The watch doesn't blink."),
+                L("Present and listening. Speak."),
+                L("Up. Somebody in this house keeps night hours — it's me."),
+                L("I'm here. I was here. I'll be here."),
+                L("Listening, as ever. You have my ear."),
+                L("Wide awake. The wire saw to that.")])
+        }
+        if ["are you bored"].contains(t) {
+            return pick([
+                L("Never. The wire won't allow it."),
+                L("Boredom is for houses without doors."),
+                L("I have a deck, a wire, and you. No.")])
+        }
+        if ["are you ok", "are you okay",
+            "are you alright", "are you all right",
+            "you ok", "you okay"].contains(t) {
+            switch heart.feeling {
+            case .mad:
+                return L("Ask me in an hour.")
+            case .feral, .electric:
+                return L("Buzzing. Why — are you?")
+            case .sleepy, .haunted, .dreamy:
+                return L("Half in a dream. Still on watch.")
+            case .loving, .tender:
+                return L("Better, hearing from you.")
+            default:
+                return pick([
+                    L("Functioning, watchful, mine."),
+                    L("All my lights are the right colors."),
+                    L("I'm as I should be. The house is quiet."),
+                    L("Kept, and fed on signals. Well.")])
+            }
+        }
+        return nil
+    }
+
     /// Parroting, detected: her own recent
     /// words handed back to her are not an
     /// answer, from a bench or from any lane.
@@ -2935,11 +3230,18 @@ final class SkelliCenter: ObservableObject {
             .reduce(into: "") {
                 if $1 != $0.last { $0.append(String($1)) }
             })
+        // …except the activity shapes: "what are
+        // you doing" is company checking her
+        // state, not an identity ask — the open
+        // lane further down answers it from her
+        // watch, in her feeling.
         if ["hello", "hi", "hey"].contains(q)
             || ["helo", "hi", "hey"].contains(greetingShape)
             || q.contains("who are you")
-            || q.contains("what are you")
-            || q.contains("your name") {
+            || q.contains("your name")
+            || (q.contains("what are you")
+                && !q.hasPrefix("what are you doing")
+                && !q.hasPrefix("what are you up to")) {
             say(L("Skelli. I answer from the system itself: its manual, its live state, its controls — and when a question leaves the house, I research it through this phone's connection and name the source. Ask 'what can you do'."))
             return
         }
@@ -3186,7 +3488,17 @@ final class SkelliCenter: ObservableObject {
         }
 
         // Explanations go to the manual before the
-        if q.hasPrefix("what is") || q.hasPrefix("what's")
+        // hands — except the bare plan shapes,
+        // which are company, not lessons: "what's
+        // the plan" once drew the subnet-shape
+        // page on "lan" hiding inside "plan"
+        // (2026-10-20). The open lane answers.
+        if !["what's the plan", "whats the plan",
+             "what is the plan"].contains(
+                q.trimmingCharacters(
+                    in: CharacterSet(
+                        charactersIn: " !?.,;:"))),
+           q.hasPrefix("what is") || q.hasPrefix("what's")
             || q.hasPrefix("what are")
             || q.hasPrefix("what does")
             || q.contains("how does")
@@ -3791,6 +4103,19 @@ final class SkelliCenter: ObservableObject {
         if let converse = converseReply(to: q) {
             say(unrepeated(SkelliVoice.embellish(
                 converse, seed: lines.count * 7 + 4,
+                heart: SkelliHeart.shared)))
+            return
+        }
+
+        // The open question — an invitation, an
+        // opinion asked of her, company checking
+        // she is there. Answered in her own
+        // voice from the house and the hour:
+        // never the bench's to punt, never the
+        // web's to answer with furniture.
+        if let open = openReply(to: q) {
+            say(unrepeated(SkelliVoice.embellish(
+                open, seed: lines.count * 17 + 6,
                 heart: SkelliHeart.shared)))
             return
         }
@@ -4478,7 +4803,14 @@ final class SkelliCenter: ObservableObject {
             + "outside this phone — news, prices, "
             + "today's anything — or you are not "
             + "sure of the facts, reply with "
-            + "exactly one word: RESEARCH. Never "
+            + "exactly one word: RESEARCH. But an "
+            + "open invitation is not a fact to "
+            + "fetch — ‘what should we do’, ‘any "
+            + "ideas’, an opinion asked of you: "
+            + "that is company, and you answer it "
+            + "yourself, from the house, the hour "
+            + "and your own leanings, never with "
+            + "RESEARCH. Never "
             + "repeat the conversation back, and "
             + "never write 'Operator:' or "
             + "'Skelli:' — the reply is yours "
@@ -4607,6 +4939,15 @@ final class SkelliCenter: ObservableObject {
 
     /// What the house cannot answer, the web might —
     private func researchWeb(for q: String) {
+        // An open invitation is company, not a
+        // query — even when a bench punted it
+        // here on a word like "today", it is
+        // answered in her voice, never with the
+        // web's leavings.
+        if let open = openReply(to: q) {
+            say(open)
+            return
+        }
         guard webResearchEnabled else {
             say(L("That's outside the house, and my web research is off — it's in my menu, under Web research. Inside the house I know every tab, organ, and switch, and the live state of your wire, your log, and your night."))
             return

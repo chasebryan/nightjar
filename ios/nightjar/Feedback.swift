@@ -2956,7 +2956,8 @@ enum SkelliWeb {
             }
             let title = pageTitle(html) ?? result.title
             let extracted = extractText(html)
-            if extracted.count >= 600 {
+            if extracted.count >= 600
+                && !isChrome(extracted, title: title) {
                 completion(Finding(
                     text: bestExcerpt(extracted,
                                       terms: terms),
@@ -2971,7 +2972,8 @@ enum SkelliWeb {
                 SkelliWebRenderer.shared.render(
                     url: result.url) { rendered in
                     if let rendered = rendered,
-                       rendered.count > extracted.count {
+                       rendered.count > extracted.count,
+                       !isChrome(rendered, title: title) {
                         if hostile(rendered) {
                             completion(nil, true)
                             return
@@ -2984,7 +2986,9 @@ enum SkelliWeb {
                             score: score(rendered,
                                          terms: terms),
                             preformatted: true), false)
-                    } else if extracted.count >= 200 {
+                    } else if extracted.count >= 200
+                        && !isChrome(extracted,
+                                     title: title) {
                         completion(Finding(
                             text: bestExcerpt(extracted,
                                               terms: terms),
@@ -3011,6 +3015,39 @@ enum SkelliWeb {
                 "please complete the security check",
                 "enable javascript and cookies to continue"]
             .contains { low.contains($0) }
+    }
+
+    /// Page chrome, detected: a real article is
+    /// made of sentences; a site's furniture —
+    /// menus, category rails, mastheads — is
+    /// not. When the gathered text carries
+    /// almost no sentence endings for its
+    /// length, or repeats its own title at the
+    /// head like a masthead, it is furniture,
+    /// and furniture is not a finding. (Device
+    /// 2026-10-20: "what should we do today"
+    /// was answered with a listicle's whole
+    /// navigation menu, verbatim.)
+    private static func isChrome(_ text: String,
+                                 title: String)
+        -> Bool {
+        if text.count > 600 {
+            var ends = 0
+            for ch in text where ".!?".contains(ch) {
+                ends += 1
+            }
+            if ends * 500 < text.count {
+                return true
+            }
+        }
+        if !title.isEmpty, title.count >= 12 {
+            let head = String(text.prefix(320))
+            if head.components(separatedBy: title)
+                .count - 1 >= 2 {
+                return true
+            }
+        }
+        return false
     }
 
     private static func pageTitle(_ html: String)
@@ -3066,6 +3103,7 @@ enum SkelliWeb {
                                 instant: Finding?,
                                 wiki: Finding?,
                                 walls: Int) -> String {
+        let terms = searchTerms(query)
         var blocks: [String] = []
         if let scout = scout {
             blocks.append(block(scout))
@@ -3073,7 +3111,22 @@ enum SkelliWeb {
         for page in pages.sorted(by: {
             $0.score > $1.score
         }) {
-            if page.score <= 0 { continue }
+            // A page earns its place on evidence:
+            // two distinct terms of the question,
+            // or one term carried at least three
+            // times — and never on furniture. A
+            // lone weak word once seated a
+            // listicle's menu at the table on the
+            // strength of "today" (2026-10-20).
+            let matched = terms.filter {
+                score(page.text, terms: [$0]) > 0
+            }.count
+            if page.score < 3 && matched < 2 {
+                continue
+            }
+            if isChrome(page.text, title: page.source) {
+                continue
+            }
             if blocks.count >= 3 { break }
             blocks.append(block(page))
         }
@@ -3094,7 +3147,6 @@ enum SkelliWeb {
         // A question about the house once came
         // back as a pop song on the strength of
         // the word "you".
-        let terms = searchTerms(query)
         let instant = instant.flatMap {
             score($0.text, terms: terms) > 0
                 ? $0 : nil
