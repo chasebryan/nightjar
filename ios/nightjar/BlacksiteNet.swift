@@ -506,11 +506,8 @@ enum BlacksiteNet {
                 if reached { break }
             }
             emit(reached
-                 ? "there. the road ends "
-                   + "at the door."
-                 : "30 hops and no door — "
-                   + "the road goes on "
-                   + "past where I can see.",
+                 ? L("there. the road ends at the door.")
+                 : L("30 hops and no door — the road goes on past where I can see."),
                  reached ? .ok : .err)
             done()
         }
@@ -1575,11 +1572,10 @@ extension BlacksiteNet {
                 emit(String(format: L("  inet6 %@"), String(describing: v6)), .out)
             }
             if let mac = info.mac {
-                emit("  ether \(mac)"
+                emit(String(format: L("  ether %@"), String(describing: mac))
                      + (mac
                         == "02:00:00:00:00:00"
-                        ? " (the real one is "
-                          + "withheld by iOS)"
+                        ? L(" (the real one is withheld by iOS)")
                         : ""), .sys)
             }
         }

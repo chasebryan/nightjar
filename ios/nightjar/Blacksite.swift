@@ -2682,11 +2682,7 @@ final class BlacksiteShell: ObservableObject {
         case "sys", "status":
             emitBlock(DevKit.houseState(), .sys)
         case "ver", "whoami":
-            emit("nightjar-hack \(AppInfo.version) "
-                 + "on \(Self.deviceModelID) — "
-                 + "source "
-                 + (SourceStamp.shortCommit
-                    ?? "unstamped"), .sys)
+            emit(String(format: L("nightjar-hack %@ on %@ — source %@"), String(describing: AppInfo.version), String(describing: Self.deviceModelID), String(describing: SourceStamp.shortCommit ?? L("unstamped"))), .sys)
             emit(L("operator: the one holding the phone. console: blacksite."),
                  .sys)
         case "ps":
@@ -2911,10 +2907,8 @@ final class BlacksiteShell: ObservableObject {
             } else {
                 let count = watch.events.count
                 emit(watch.on
-                     ? "the watch stands — "
-                       + "\(count) events "
-                       + "ledgered."
-                     : "the watch is down.",
+                     ? String(format: L("the watch stands — %@ events ledgered."), String(describing: count))
+                     : L("the watch is down."),
                      .out)
                 if let gateway = watch
                     .gatewayIP {
@@ -2975,8 +2969,7 @@ final class BlacksiteShell: ObservableObject {
                 emit(L("the lockdown already stands."), .out)
             } else {
                 emit(Lockdown.engage(
-                    reason: "the operator's "
-                    + "word at the console"),
+                    reason: L("the operator's word at the console")),
                     .err)
             }
         case "sentinel":
@@ -3491,11 +3484,11 @@ final class BlacksiteShell: ObservableObject {
                 $0 == " " || $0 == "\n"
                     || $0 == "\t"
             }).count
-        emit("\(lineCount) lines · "
-             + "\(wordCount) words · "
-             + "\(text.count) chars"
-             + (file.map { " · \($0)" } ?? ""),
-             .out)
+        var wcLine = String(format: L("%@ lines · %@ words · %@ chars"), String(describing: lineCount), String(describing: wordCount), String(describing: text.count))
+        if let file = file {
+            wcLine += String(format: L(" · %@"), String(describing: file))
+        }
+        emit(wcLine, .out)
     }
 
     /// A name dressed for the screen the
@@ -4707,51 +4700,39 @@ final class BlacksiteShell: ObservableObject {
             repeating: "─",
             count: title.count))
         info.append(field(
-            "OS", "Blacksite \(version)"
-            + " · the house kernel"))
+            L("OS"), String(format: L("Blacksite %@ · the house kernel"), String(describing: version))))
         info.append(field(
-            "Host", machineName()
-            + " · iOS "
-            + UIDevice.current.systemVersion))
+            L("Host"), String(format: L("%@ · iOS %@"), String(describing: machineName()), String(describing: UIDevice.current.systemVersion))))
         info.append(field(
-            "Kernel", "blacksite · "
-            + "\(kernel.liveCount) live · "
-            + "\(kernel.totalSpawned) spawned"))
+            L("Kernel"), String(format: L("blacksite · %@ live · %@ spawned"), String(describing: kernel.liveCount), String(describing: kernel.totalSpawned))))
         info.append(field(
-            "Uptime", uptimeText()))
+            L("Uptime"), uptimeText()))
         info.append(field(
-            "Shell", "blacksite, the house shell"))
+            L("Shell"), L("blacksite, the house shell")))
         info.append(field(
-            "Theme",
+            L("Theme"),
             ThemeCenter.shared.current.name))
         info.append(field(
             "EMCON",
-            EmconCondition.current.name
-            + " · exposure " + exposure
-            + " of 100"))
+            String(format: L("%@ · exposure %@ of 100"), String(describing: EmconCondition.current.name), String(describing: exposure))))
         info.append(field(
-            "Packages",
-            "\(BlacksiteJS.shared.installedPackages().count)"
-            + " in /packages"))
+            L("Packages"),
+            String(format: L("%@ in /packages"), String(describing: BlacksiteJS.shared.installedPackages().count))))
         info.append(field(
-            "Files",
-            "\(BlacksiteFS.walk("/").count)"
-            + " in the tree"))
+            L("Files"),
+            String(format: L("%@ in the tree"), String(describing: BlacksiteFS.walk("/").count))))
         if let mb = footprintMB() {
             let totalGB = Double(
                 ProcessInfo.processInfo
                     .physicalMemory)
                 / 1_073_741_824
             info.append(field(
-                "Memory",
-                String(format: "%.0f MB "
-                       + "resident of %.0f GB",
+                L("Memory"),
+                String(format: L("%.0f MB resident of %.0f GB"),
                        mb, totalGB)))
         }
         info.append(field(
-            "CPU", machineName() + " · "
-            + "\(ProcessInfo.processInfo.processorCount)"
-            + " cores"))
+            L("CPU"), String(format: L("%@ · %@ cores"), String(describing: machineName()), String(describing: ProcessInfo.processInfo.processorCount))))
         var normal = ""
         var bright = ""
         for i in 0..<8 {
@@ -7382,12 +7363,7 @@ final class BlacksiteShell: ObservableObject {
         passed: Int) {
         if index == probes.count {
             let all = passed == probes.count
-            emit("diagnose: \(passed)/"
-                 + "\(probes.count) — "
-                 + (all
-                    ? "the house holds."
-                    : "the ✗ lines above "
-                      + "name the faults."),
+            emit(String(format: L("diagnose: %@/%@ — %@"), String(describing: passed), String(describing: probes.count), all ? L("the house holds.") : L("the ✗ lines above name the faults.")),
                  all ? .ok : .err)
             if !all { stageError = true }
             diagnoseRunning = false
@@ -9066,10 +9042,7 @@ final class BlacksiteShell: ObservableObject {
                       args.count > 1 {
                 let host = args[1]
                 askSecret(
-                    "the credential for "
-                    + "\(host) — it will be "
-                    + "kept in the Keychain "
-                    + "and never shown again:"
+                    String(format: L("the credential for %@ — it will be kept in the Keychain and never shown again:"), String(describing: host))
                 ) { typed in
                     let secret = typed
                         .trimmingCharacters(
@@ -9143,32 +9116,16 @@ final class BlacksiteShell: ObservableObject {
                     let roleLine: String
                     switch role {
                     case "read":
-                        roleLine = " Kept as "
-                            + "the READ user — "
-                            + "walks ride it; "
-                            + "sets refuse it."
+                        roleLine = L(" Kept as the READ user — walks ride it; sets refuse it.")
                     case "write":
-                        roleLine = " Kept as "
-                            + "the WRITE user — "
-                            + "sets ride it; a "
-                            + "walk that names "
-                            + "it says so."
+                        roleLine = L(" Kept as the WRITE user — sets ride it; a walk that names it says so.")
                     default:
-                        roleLine = " Kept for "
-                            + "both roles — "
-                            + "the 2026 CSI asks "
-                            + "for them "
-                            + "separated; keep "
-                            + "a second user "
-                            + "when the device "
-                            + "allows."
+                        roleLine = L(" Kept for both roles — the 2026 CSI asks for them separated; keep a second user when the device allows.")
                     }
-                    out("kept — \(user)@\(host) "
-                        + "speaks SNMPv3 "
-                        + "\(authProto)"
+                    out(String(format: L("kept — %@@%@ speaks SNMPv3 %@"), String(describing: user), String(describing: host), String(describing: authProto))
                         + (privProto == "none"
                            ? "."
-                           : " + \(privProto).")
+                           : String(format: L(" + %@."), String(describing: privProto)))
                         + roleLine,
                         .ok)
                 }
@@ -9176,8 +9133,7 @@ final class BlacksiteShell: ObservableObject {
                     finish("", "")
                 } else if privProto == "none" {
                     askSecret(
-                        "the auth word for "
-                        + "\(user)@\(host):"
+                        String(format: L("the auth word for %@@%@:"), String(describing: user), String(describing: host))
                     ) { typed in
                         let word = typed
                             .trimmingCharacters(
@@ -9191,8 +9147,7 @@ final class BlacksiteShell: ObservableObject {
                     }
                 } else {
                     askSecret(
-                        "the auth word for "
-                        + "\(user)@\(host):"
+                        String(format: L("the auth word for %@@%@:"), String(describing: user), String(describing: host))
                     ) { typed in
                         let authWord = typed
                             .trimmingCharacters(
@@ -9203,9 +9158,7 @@ final class BlacksiteShell: ObservableObject {
                             return
                         }
                         askSecret(
-                            "the privacy word "
-                            + "for "
-                            + "\(user)@\(host):"
+                            String(format: L("the privacy word for %@@%@:"), String(describing: user), String(describing: host))
                         ) { typed2 in
                             let privWord = typed2
                                 .trimmingCharacters(
@@ -9227,11 +9180,7 @@ final class BlacksiteShell: ObservableObject {
                 let host = args[1]
                 let user = args[2]
                 askSecret(
-                    "the SSH word for "
-                    + "\(user)@\(host) — it "
-                    + "will be kept in the "
-                    + "Keychain and never "
-                    + "shown again:"
+                    String(format: L("the SSH word for %@@%@ — it will be kept in the Keychain and never shown again:"), String(describing: user), String(describing: host))
                 ) { typed in
                     let word = typed
                         .trimmingCharacters(
@@ -9252,11 +9201,7 @@ final class BlacksiteShell: ObservableObject {
                 let host = args[1]
                 let user = args[2]
                 askSecret(
-                    "the UniFi controller "
-                    + "word for \(user)@"
-                    + "\(host) — it will be "
-                    + "kept in the Keychain "
-                    + "and never shown again:"
+                    String(format: L("the UniFi controller word for %@@%@ — it will be kept in the Keychain and never shown again:"), String(describing: user), String(describing: host))
                 ) { typed in
                     let word = typed
                         .trimmingCharacters(
@@ -9288,12 +9233,7 @@ final class BlacksiteShell: ObservableObject {
                 ? args[1]
                 : kept ?? "public"
             if args.count == 1, kept == nil {
-                out("no credential kept for "
-                    + "\(host) — trying the "
-                    + "factory word "
-                    + "\u{201C}public\u{201D}. "
-                    + "cred set \(host) keeps "
-                    + "yours.", .sys)
+                out(String(format: L("no credential kept for %@ — trying the factory word “public”. cred set %@ keeps yours."), String(describing: host), String(describing: host)), .sys)
             }
             let root = args.count > 2
                 ? args[2] : "1.3.6.1.2.1"
@@ -9318,12 +9258,7 @@ final class BlacksiteShell: ObservableObject {
             let keptSet = CryptoSuite.NetCred
                 .secret(for: host)
             if keptSet == nil {
-                out("no credential kept for "
-                    + "\(host) — the write "
-                    + "rides the factory word "
-                    + "\u{201C}public\u{201D}. "
-                    + "cred set \(host) keeps "
-                    + "yours.", .sys)
+                out(String(format: L("no credential kept for %@ — the write rides the factory word “public”. cred set %@ keeps yours."), String(describing: host), String(describing: host)), .sys)
             }
             let community = keptSet ?? "public"
             netBusy { emit, done in
@@ -9495,15 +9430,7 @@ final class BlacksiteShell: ObservableObject {
                                     record["mac"]
                                     as? String
                             else {
-                                emit("no "
-                                    + (action
-                                        == "restart"
-                                       ? "device"
-                                       : "client")
-                                    + " at "
-                                    + "\(host) "
-                                    + "answers to "
-                                    + "\u{201C}\(target)\u{201D}.",
+                                emit(String(format: L("no %@ at %@ answers to “%@”."), action == "restart" ? L("device") : L("client"), String(describing: host), String(describing: target)),
                                     .err)
                                 return
                             }
@@ -9537,12 +9464,7 @@ final class BlacksiteShell: ObservableObject {
                                     unblock:
                                         action
                                         == "unblock")
-                                emit("\(label) "
-                                    + (action
-                                        == "block"
-                                       ? "is barred."
-                                       : "is "
-                                        + "readmitted."),
+                                emit(String(format: L("%@ %@"), String(describing: label), action == "block" ? L("is barred.") : L("is readmitted.")),
                                     .ok)
                             }
                         default:
@@ -9808,7 +9730,7 @@ final class BlacksiteShell: ObservableObject {
                         out(entry
                             .replacingOccurrences(
                                 of: "|",
-                                with: " · port "),
+                                with: L(" · port ")),
                             .out)
                     }
                 }
@@ -9879,10 +9801,7 @@ final class BlacksiteShell: ObservableObject {
                   let url = args.first
             else {
                 if args.isEmpty {
-                    emit("dirb needs a URL "
-                         + "— 'dirb "
-                         + "http://"
-                         + "192.168.4.1'.", .err)
+                    emit(L("dirb needs a URL — 'dirb http://192.168.4.1'."), .err)
                 }
                 return
             }
@@ -9955,9 +9874,7 @@ final class BlacksiteShell: ObservableObject {
             for: number, udp: udp)
         let registry = PortRegistry.name(
             number, udp: udp)
-        emit("\(number)/\(udp ? "udp" : "tcp") — "
-             + "curated: \(curated) · registry: "
-             + (registry ?? "unnamed"), .ok)
+        emit(String(format: L("%@/%@ — curated: %@ · registry: %@"), String(describing: number), udp ? "udp" : "tcp", String(describing: curated), String(describing: registry ?? L("unnamed"))), .ok)
     }
 
     // MARK: The house's organs
@@ -10147,11 +10064,7 @@ final class BlacksiteShell: ObservableObject {
                 true, forKey: "house.haptics")
             emit(L("haptics on."), .ok)
         default:
-            emit("haptics are "
-                 + (Haptics.enabled
-                    ? "on" : "off")
-                 + " — 'haptics on|off' sets "
-                 + "them.", .sys)
+            emit(String(format: L("haptics are %@ — 'haptics on|off' sets them."), Haptics.enabled ? "on" : "off"), .sys)
         }
     }
 

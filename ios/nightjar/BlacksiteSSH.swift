@@ -33,33 +33,25 @@ enum SSHFailure: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .connect(let why):
-            return "the connection failed: " + why
+            return String(format: L("the connection failed: %@"), String(describing: why))
         case .timeout(let where_):
-            return "the host stopped answering ("
-                + where_ + ")"
+            return String(format: L("the host stopped answering (%@)"), String(describing: where_))
         case .closed:
-            return "the host closed the connection"
+            return L("the host closed the connection")
         case .noMutual(let what):
-            return "no shared " + what + " — this client "
-                + "speaks curve25519, AES-GCM, ed25519 / "
-                + "ecdsa host keys, nothing older"
+            return String(format: L("no shared %@ — this client speaks curve25519, AES-GCM, ed25519 / ecdsa host keys, nothing older"), String(describing: what))
         case .badHostSignature:
-            return "the host key signature does not verify "
-                + "— this is not the host it claims to be"
+            return L("the host key signature does not verify — this is not the host it claims to be")
         case .hostKeyChanged(let fp):
-            return "the host key CHANGED (now " + fp + ") "
-                + "— refused. If the gear was replaced on "
-                + "purpose, forget the old key with "
-                + "'sshhosts forget' and connect again"
+            return String(format: L("the host key CHANGED (now %@) — refused. If the gear was replaced on purpose, forget the old key with 'sshhosts forget' and connect again"), String(describing: fp))
         case .hostKeyRefused(let fp):
-            return "unknown host key " + fp
-                + " — not trusted, not used"
+            return String(format: L("unknown host key %@ — not trusted, not used"), String(describing: fp))
         case .authFailed(let why):
-            return "authentication failed: " + why
+            return String(format: L("authentication failed: %@"), String(describing: why))
         case .channelRefused(let why):
-            return "the host refused the channel: " + why
+            return String(format: L("the host refused the channel: %@"), String(describing: why))
         case .protocolFault(let why):
-            return "the host spoke out of turn: " + why
+            return String(format: L("the host spoke out of turn: %@"), String(describing: why))
         }
     }
 }

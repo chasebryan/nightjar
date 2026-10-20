@@ -130,10 +130,7 @@ enum UnifiPlaybook {
             else { return }
             CryptoSuite.NetCred.keepUnifiCert(
                 host: host, fingerprint: print)
-            pinNote = "the controller's "
-                + "certificate was pinned at "
-                + "first sight — a changed "
-                + "one will be refused."
+            pinNote = L("the controller's certificate was pinned at first sight — a changed one will be refused.")
         }
 
         // MARK: The wire
@@ -151,8 +148,7 @@ enum UnifiPlaybook {
                 relativeTo: base)
             else {
                 throw Failure(
-                    line: "that address does "
-                        + "not parse.")
+                    line: L("that address does not parse."))
             }
             var request = URLRequest(url: url)
             request.httpMethod = method
@@ -193,26 +189,12 @@ enum UnifiPlaybook {
                 timeout: .now() + 25)
             if pinMismatch {
                 throw Failure(
-                    line: "the controller's "
-                        + "certificate has "
-                        + "CHANGED since it "
-                        + "was pinned — "
-                        + "refusing. If the "
-                        + "controller was "
-                        + "rebuilt on purpose, "
-                        + "cred forget clears "
-                        + "the pin with the "
-                        + "login.")
+                    line: L("the controller's certificate has CHANGED since it was pinned — refusing. If the controller was rebuilt on purpose, cred forget clears the pin with the login."))
             }
             guard let (data, http) = result
             else {
                 throw Failure(
-                    line: "the controller at "
-                        + "\(host) did not "
-                        + "answer — "
-                        + (failure?
-                            .localizedDescription
-                           ?? "timed out."))
+                    line: String(format: L("the controller at %@ did not answer — %@"), String(describing: host), String(describing: failure?.localizedDescription ?? L("timed out."))))
             }
             if csrf == nil,
                let token = http.value(
@@ -253,8 +235,7 @@ enum UnifiPlaybook {
                     as? String
                     ?? "HTTP \(status)"
                 throw Failure(
-                    line: "the controller "
-                        + "refused: \(word)")
+                    line: String(format: L("the controller refused: %@"), String(describing: word)))
             }
             return json["data"]
                 as? [[String: Any]] ?? []
@@ -349,12 +330,7 @@ enum UnifiPlaybook {
             }
         }
         throw Failure(
-            line: "no UniFi controller at "
-                + "\(host) took the kept "
-                + "login (\(lastWord)) — "
-                + "UniFi OS answers on 443, "
-                + "the classic controller "
-                + "on 8443.")
+            line: String(format: L("no UniFi controller at %@ took the kept login (%@) — UniFi OS answers on 443, the classic controller on 8443."), String(describing: host), String(describing: lastWord)))
     }
 
     // MARK: Reading the records
@@ -418,36 +394,33 @@ enum UnifiPlaybook {
         let version = (device["version"]
             as? String) ?? "?"
         let ip = (device["ip"] as? String)
-            ?? "no address"
+            ?? L("no address")
         let state = (device["state"]
             as? Int) ?? -1
         let word = state == 1
-            ? "connected"
+            ? L("connected")
             : state == 0
-                ? "down"
-                : "state \(state)"
-        return "\(name(of: device)) — "
-            + "\(model), UniFi \(version), "
-            + "\(ip), \(word)"
+                ? L("down")
+                : String(format: L("state %@"), String(describing: state))
+        return String(format: L("%@ — %@, UniFi %@, %@, %@"), String(describing: name(of: device)), String(describing: model), String(describing: version), String(describing: ip), String(describing: word))
     }
 
     static func clientLine(
         _ client: [String: Any]) -> String {
         let ip = (client["ip"] as? String)
-            ?? "no address"
-        var line = "\(name(of: client)) — "
-            + ip
+            ?? L("no address")
+        var line = String(format: L("%@ — %@"), String(describing: name(of: client)), String(describing: ip))
         if let essid = client["essid"]
             as? String {
-            line += ", on \(essid)"
+            line += String(format: L(", on %@"), String(describing: essid))
         }
         if let signal = client["signal"]
             as? Int {
-            line += ", \(signal) dBm"
+            line += String(format: L(", %@ dBm"), String(describing: signal))
         }
         if let wired = client["is_wired"]
             as? Bool, wired {
-            line += ", wired"
+            line += L(", wired")
         }
         return line
     }
