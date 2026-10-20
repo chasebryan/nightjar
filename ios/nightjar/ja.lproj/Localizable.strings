@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "ん。こういう観客のために生きてる。";
 
 "Encores available on request. Kidding. Mostly." = "アンコールはリクエスト制。冗談。だいたい。";
+"Answers as" = "応答名";
+"Administer" = "管理";
+"Walk (SNMP)" = "ウォーク (SNMP)";
+"Audit posture" = "体制を監査";
+"Probing is dark under EMCON %@." = "EMCON %@ ではプローブ不可。";
+"Quarantine this device" = "このデバイスを隔離";
+"Lift the quarantine" = "隔離を解除";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "隔離は機器の保存済み認証情報に依存します — 未保存のため、この操作は使用できません。";
+"The run" = "実行";
+"Working…" = "処理中…";
+"No credential kept for this device — the walk rides the factory word." = "このデバイスの認証情報は未保存 — ウォークは工場出荷時の文字列で実行されます。";
