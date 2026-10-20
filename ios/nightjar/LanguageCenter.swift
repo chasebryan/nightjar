@@ -36,6 +36,7 @@ final class LanguageCenter: ObservableObject {
         Language(code: "es", name: "Español"),
         Language(code: "fr", name: "Français"),
         Language(code: "de", name: "Deutsch"),
+        Language(code: "gsw", name: "Schwiizerdütsch"),
         Language(code: "pt", name: "Português"),
         Language(code: "it", name: "Italiano"),
         Language(code: "ru", name: "Русский"),
@@ -111,6 +112,7 @@ final class LanguageCenter: ObservableObject {
         case "es": return "Spanish"
         case "fr": return "French"
         case "de": return "German"
+        case "gsw": return "Swiss German"
         case "pt": return "Portuguese"
         case "it": return "Italian"
         case "ru": return "Russian"
@@ -135,6 +137,7 @@ final class LanguageCenter: ObservableObject {
         case "es": return "Spanish"
         case "fr": return "French"
         case "de": return "German"
+        case "gsw": return "Swiss German"
         case "pt": return "Portuguese"
         case "it": return "Italian"
         case "ru": return "Russian"
