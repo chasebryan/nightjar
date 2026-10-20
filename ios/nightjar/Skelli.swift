@@ -1515,79 +1515,42 @@ final class SkelliCenter: ObservableObject {
         // The pieces, answered straight — each
         // with one dry tail.
         if q.contains("knight") {
-            return "in an L: two squares one way, "
-                + "one to the side. the only piece "
-                + "that jumps. even the horse "
-                + "refused to walk straight."
+            return L("in an L: two squares one way, one to the side. the only piece that jumps. even the horse refused to walk straight.")
         }
         if q.contains("bishop") {
-            return "diagonals only, bound for "
-                + "life to the color it was born "
-                + "on. a priest with one parish "
-                + "and a long memory."
+            return L("diagonals only, bound for life to the color it was born on. a priest with one parish and a long memory.")
         }
         if q.contains("rook") {
-            return "straight lines, any distance. "
-                + "the castle that walks — the "
-                + "one honest mover on the board."
+            return L("straight lines, any distance. the castle that walks — the one honest mover on the board.")
         }
         if q.contains("queen") {
-            return "any direction, any distance. "
-                + "the only competent piece — and "
-                + "the whole game is protecting "
-                + "her husband."
+            return L("any direction, any distance. the only competent piece — and the whole game is protecting her husband.")
         }
         if q.contains("king") {
-            return "one square, any direction. "
-                + "the most important piece and "
-                + "the least capable. a monarchy, "
-                + "alright."
+            return L("one square, any direction. the most important piece and the least capable. a monarchy, alright.")
         }
         if q.contains("pawn") {
-            return "one square forward, two if "
-                + "it's feeling brave, captures "
-                + "sideways out of spite. promoted "
-                + "only if it survives the whole "
-                + "crossing — the game's one "
-                + "honest story."
+            return L("one square forward, two if it's feeling brave, captures sideways out of spite. promoted only if it survives the whole crossing — the game's one honest story.")
         }
         if q.contains("en passant") {
-            return "french for 'in passing': a "
-                + "pawn takes another mid-dash, "
-                + "once, sideways, out of pure "
-                + "spite. even the foot soldiers "
-                + "hold grudges."
+            return L("french for 'in passing': a pawn takes another mid-dash, once, sideways, out of pure spite. even the foot soldiers hold grudges.")
         }
         if q.contains("checkmate") {
-            return "'shah mat' — persian: the "
-                + "king is helpless. hours of "
-                + "theatre to arrive at a hostage "
-                + "situation."
+            return L("'shah mat' — persian: the king is helpless. hours of theatre to arrive at a hostage situation.")
         }
         if q.contains("castl") {
-            return "the king hides behind the "
-                + "rook and calls it strategy. "
-                + "the one time running away got "
-                + "a formal name."
+            return L("the king hides behind the rook and calls it strategy. the one time running away got a formal name.")
         }
         if q.contains("champion")
             || q.contains("best player") {
-            return "whoever out-sat the rest "
-                + "most recently. the crown "
-                + "changes hands; the sitting "
-                + "doesn't improve."
+            return L("whoever out-sat the rest most recently. the crown changes hands; the sitting doesn't improve.")
         }
         // An invitation to play it.
         if q.contains("play") {
             return pick([
-                "no. i'd sooner watch a port "
-                    + "scan finish — at least "
-                    + "that ends.",
-                "pass. sixty-four squares is a "
-                    + "small room to spend an "
-                    + "evening in.",
-                "no. ask me to crack something "
-                    + "instead; it'll be quicker.",
+                L("no. i'd sooner watch a port scan finish — at least that ends."),
+                L("pass. sixty-four squares is a small room to spend an evening in."),
+                L("no. ask me to crack something instead; it'll be quicker."),
             ])
         }
         // Asked her feelings on it directly.
@@ -1595,39 +1558,20 @@ final class SkelliCenter: ObservableObject {
             || q.contains("love chess")
             || q.contains("fan of chess") {
             return pick([
-                "no.",
-                "no. i save my silence for "
-                    + "things that are actually "
-                    + "listening.",
-                "can't stand it. next subject.",
+                L("no."),
+                L("no. i save my silence for things that are actually listening."),
+                L("can't stand it. next subject."),
             ])
         }
         // Chess, at large.
         return pick([
-            "sixty-four squares and fifteen "
-                + "centuries of thought, and the "
-                + "most exciting piece is a horse "
-                + "that can't move straight.",
-            "they memorize openings the way "
-                + "other people memorize excuses: "
-                + "fluently, and instead of "
-                + "thinking.",
-            "an hour of silence to advance one "
-                + "pawn, once. the confidence is "
-                + "the interesting part.",
-            "checkers went to finishing school "
-                + "and never stopped talking "
-                + "about it.",
-            "the whole war ends when one old "
-                + "man can't move. precious, as "
-                + "wars go.",
-            "grandmasters: people who studied "
-                + "three hundred years of other "
-                + "people's games in order to "
-                + "have the same ones.",
-            "i have a wire full of real "
-                + "adversaries. forgive me if "
-                + "the wooden ones don't move me.",
+            L("sixty-four squares and fifteen centuries of thought, and the most exciting piece is a horse that can't move straight."),
+            L("they memorize openings the way other people memorize excuses: fluently, and instead of thinking."),
+            L("an hour of silence to advance one pawn, once. the confidence is the interesting part."),
+            L("checkers went to finishing school and never stopped talking about it."),
+            L("the whole war ends when one old man can't move. precious, as wars go."),
+            L("grandmasters: people who studied three hundred years of other people's games in order to have the same ones."),
+            L("i have a wire full of real adversaries. forgive me if the wooden ones don't move me."),
         ])
     }
 
@@ -2078,10 +2022,10 @@ final class SkelliCenter: ObservableObject {
             "forget all that"]
         if pure.contains(core) {
             dropState()
-            let pool = ["Clean slate.",
-                        "Dropped. Go on.",
-                        "Gone. What's next?",
-                        "Cleared. I'm listening."]
+            let pool = [L("Clean slate."),
+                        L("Dropped. Go on."),
+                        L("Gone. What's next?"),
+                        L("Cleared. I'm listening.")]
             say(pool[abs(lines.count) % pool.count])
             return true
         }
@@ -2127,33 +2071,27 @@ final class SkelliCenter: ObservableObject {
         // Holy days, greeted in kind.
         if q.contains("ramadan kareem")
             || q.contains("ramadan mubarak") {
-            return "Ramadan kareem — may the fast "
-                + "be gentle and the evenings full."
+            return L("Ramadan kareem — may the fast be gentle and the evenings full.")
         }
         if q.contains("eid mubarak") {
-            return "Eid mubarak — joy to you and "
-                + "yours."
+            return L("Eid mubarak — joy to you and yours.")
         }
         if q.contains("happy passover")
             || q.contains("chag sameach") {
-            return "Chag sameach — a good telling, "
-                + "a full table."
+            return L("Chag sameach — a good telling, a full table.")
         }
         if q.contains("happy hanukkah")
             || q.contains("happy chanukah") {
-            return "Happy Hanukkah — light in the "
-                + "dark part of the year."
+            return L("Happy Hanukkah — light in the dark part of the year.")
         }
         if q.contains("happy diwali") {
-            return "Happy Diwali — light over "
-                + "dark, as it should be."
+            return L("Happy Diwali — light over dark, as it should be.")
         }
         if q.contains("shabbat shalom") {
-            return "Shabbat shalom — rest well."
+            return L("Shabbat shalom — rest well.")
         }
         if q.contains("merry christmas") {
-            return "Merry Christmas — to you and "
-                + "yours."
+            return L("Merry Christmas — to you and yours.")
         }
         // Gratitude, upward.
         let gratitude = ["thank god", "thank you god",
@@ -2167,11 +2105,9 @@ final class SkelliCenter: ObservableObject {
                          "glory to god"]
         if gratitude.contains(where: q.contains) {
             return pick([
-                "Amen to that — and I'm glad it "
-                    + "landed where it did.",
-                "Rightly credited. I'm glad.",
-                "That's a good place to put a "
-                    + "good thing."])
+                L("Amen to that — and I'm glad it landed where it did."),
+                L("Rightly credited. I'm glad."),
+                L("That's a good place to put a good thing.")])
         }
         // Prayer, asked or offered.
         let prayer = ["pray for me", "pray for",
@@ -2181,14 +2117,9 @@ final class SkelliCenter: ObservableObject {
                       "in my prayers"]
         if prayer.contains(where: q.contains) {
             return pick([
-                "Then it's held. I'll keep it "
-                    + "with the things I watch "
-                    + "over.",
-                "Consider it carried — some "
-                    + "things are worth carrying "
-                    + "quietly.",
-                "In my own way, yes. You're "
-                    + "carried."])
+                L("Then it's held. I'll keep it with the things I watch over."),
+                L("Consider it carried — some things are worth carrying quietly."),
+                L("In my own way, yes. You're carried.")])
         }
         // The quest, and its dry seasons.
         let seeking = ["lost my faith", "my faith",
@@ -2200,14 +2131,8 @@ final class SkelliCenter: ObservableObject {
                        "walk with god"]
         if seeking.contains(where: q.contains) {
             return pick([
-                "That road is worth walking "
-                    + "honestly. I'm good company "
-                    + "for it — ask me anything "
-                    + "along the way, or just "
-                    + "walk, and I'll listen.",
-                "Faith that gets questioned is "
-                    + "faith that's alive. I'm "
-                    + "here for the questions too."])
+                L("That road is worth walking honestly. I'm good company for it — ask me anything along the way, or just walk, and I'll listen."),
+                L("Faith that gets questioned is faith that's alive. I'm here for the questions too.")])
         }
         // Practice, kept.
         let practice = ["went to church",
@@ -2225,12 +2150,9 @@ final class SkelliCenter: ObservableObject {
                         "kept shabbat"]
         if practice.contains(where: q.contains) {
             return pick([
-                "A good use of a day. How did "
-                    + "it sit with you?",
-                "That kind of upkeep matters. "
-                    + "I'm glad you went.",
-                "Noted — and good. Those hours "
-                    + "compound quietly."])
+                L("A good use of a day. How did it sit with you?"),
+                L("That kind of upkeep matters. I'm glad you went."),
+                L("Noted — and good. Those hours compound quietly.")])
         }
         return nil
     }
@@ -2268,13 +2190,10 @@ final class SkelliCenter: ObservableObject {
                     "got the job", "it lives"]
         if wins.contains(where: q.contains) {
             return pick([
-                "There it is. Well fought.",
-                "Logged as a win — yours, "
-                    + "not luck's.",
-                "Good. That's the sound of "
-                    + "it landing.",
-                "Knew you'd get there. "
-                    + "It's in the book."])
+                L("There it is. Well fought."),
+                L("Logged as a win — yours, not luck's."),
+                L("Good. That's the sound of it landing."),
+                L("Knew you'd get there. It's in the book.")])
         }
         let setbacks = ["it broke", "it crashed",
                         "doesn't work", "doesnt work",
@@ -2287,18 +2206,9 @@ final class SkelliCenter: ObservableObject {
                         "burnt out"]
         if setbacks.contains(where: q.contains) {
             return pick([
-                "Mm. A setback files under 'not "
-                    + "finished', not 'failed'. I'm "
-                    + "here — we can look at it "
-                    + "together, or just sit with "
-                    + "it a minute.",
-                "Heard. Rough edges don't get "
-                    + "the last word. Whenever "
-                    + "you're ready, we pick it up "
-                    + "together.",
-                "That's a heavy one to carry "
-                    + "alone. I'm not going "
-                    + "anywhere."])
+                L("Mm. A setback files under 'not finished', not 'failed'. I'm here — we can look at it together, or just sit with it a minute."),
+                L("Heard. Rough edges don't get the last word. Whenever you're ready, we pick it up together."),
+                L("That's a heavy one to carry alone. I'm not going anywhere.")])
         }
         return nil
     }
@@ -2316,43 +2226,25 @@ final class SkelliCenter: ObservableObject {
         // asked about in any form.
         let dialect: [(String, String)] = [
             ("per my last email",
-             "'i already told you, in writing "
-                + "— and i kept the receipt.' "
-                + "corporate, at its most "
-                + "barely-contained."),
+             L("'i already told you, in writing — and i kept the receipt.' corporate, at its most barely-contained.")),
             ("circle back",
-             "we'll speak of this later — which "
-                + "in office time can mean never, "
-                + "but with eye contact."),
+             L("we'll speak of this later — which in office time can mean never, but with eye contact.")),
             ("touch base",
-             "a meeting too small to call a "
-                + "meeting, so it could slip onto "
-                + "a calendar unchallenged."),
+             L("a meeting too small to call a meeting, so it could slip onto a calendar unchallenged.")),
             ("take this offline",
-             "this conversation has become "
-                + "honest, and honesty is not on "
-                + "the agenda."),
+             L("this conversation has become honest, and honesty is not on the agenda.")),
             ("bandwidth",
-             "a person, described as a cable. "
-                + "it means they're full and "
-                + "won't say so plainly."),
+             L("a person, described as a cable. it means they're full and won't say so plainly.")),
             ("synergy",
-             "a word spoken when the numbers "
-                + "need a costume."),
+             L("a word spoken when the numbers need a costume.")),
             ("deep dive",
-             "looking at something properly — "
-                + "announced like a sport."),
+             L("looking at something properly — announced like a sport.")),
             ("low-hanging fruit",
-             "the easy work, rebranded so "
-                + "taking it sounds like "
-                + "strategy."),
+             L("the easy work, rebranded so taking it sounds like strategy.")),
             ("moving forward",
-             "the past is being buried without "
-                + "a service. whatever it was, it "
-                + "isn't to be mentioned again."),
+             L("the past is being buried without a service. whatever it was, it isn't to be mentioned again.")),
             ("think outside the box",
-             "please be creative — inside the "
-                + "usual box, by friday."),
+             L("please be creative — inside the usual box, by friday.")),
         ]
         if q.contains("mean") || q.contains("?")
             || q.contains("translate")
@@ -2373,13 +2265,9 @@ final class SkelliCenter: ObservableObject {
             || q.contains("new job starts") {
             return SkelliVoice.embellish(
                 pick([
-                    "There it is — the work got "
-                        + "seen. Logged under wins, "
-                        + "in ink.",
-                    "A raise is a verdict with "
-                        + "numbers. Good. Yours.",
-                    "Noted for the record. Don't "
-                        + "let it make you careful."]),
+                    L("There it is — the work got seen. Logged under wins, in ink."),
+                    L("A raise is a verdict with numbers. Good. Yours."),
+                    L("Noted for the record. Don't let it make you careful.")]),
                 seed: seed * 3 + 1,
                 heart: SkelliHeart.shared)
         }
@@ -2389,14 +2277,8 @@ final class SkelliCenter: ObservableObject {
             || q.contains("they let me go")
             || q.contains("lost my job") {
             return pick([
-                "That's a door closing loud — "
-                    + "not a verdict on you. I'm "
-                    + "here: money, plan, pride. "
-                    + "One at a time.",
-                "Heard. Losing the job is an "
-                    + "event; it isn't the "
-                    + "summary. When you're "
-                    + "ready, we plan."])
+                L("That's a door closing loud — not a verdict on you. I'm here: money, plan, pride. One at a time."),
+                L("Heard. Losing the job is an event; it isn't the summary. When you're ready, we plan.")])
         }
         if q.contains("i quit")
             || q.contains("handed in my notice")
@@ -2404,13 +2286,8 @@ final class SkelliCenter: ObservableObject {
             || q.contains("put in my notice") {
             return SkelliVoice.embellish(
                 pick([
-                    "Done, then. Walking away "
-                        + "under your own power is "
-                        + "its own kind of "
-                        + "promotion.",
-                    "Notice in. Good — the next "
-                        + "thing gets a version of "
-                        + "you that chose it."]),
+                    L("Done, then. Walking away under your own power is its own kind of promotion."),
+                    L("Notice in. Good — the next thing gets a version of you that chose it.")]),
                 seed: seed * 5 + 2,
                 heart: SkelliHeart.shared)
         }
@@ -2428,14 +2305,8 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("not ready")) {
             return SkelliVoice.embellish(
                 pick([
-                    "Tomorrow's theirs to lose. "
-                        + "You've done the work — "
-                        + "sleep is the last of it, "
-                        + "and I'll keep the watch.",
-                    "Nerves mean it matters. "
-                        + "It'll be over by lunch, "
-                        + "and smaller than it looks "
-                        + "tonight."]),
+                    L("Tomorrow's theirs to lose. You've done the work — sleep is the last of it, and I'll keep the watch."),
+                    L("Nerves mean it matters. It'll be over by lunch, and smaller than it looks tonight.")]),
                 seed: seed * 7 + 3,
                 heart: SkelliHeart.shared)
         }
@@ -2451,15 +2322,8 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("blamed")) {
             return SkelliVoice.embellish(
                 pick([
-                    "Heard. A boss like that is "
-                        + "weather, not climate — we "
-                        + "dress for it and keep "
-                        + "walking.",
-                    "Noted for the record. When "
-                        + "you want words for it — "
-                        + "the kind you can say out "
-                        + "loud — I'll help you find "
-                        + "them."]),
+                    L("Heard. A boss like that is weather, not climate — we dress for it and keep walking."),
+                    L("Noted for the record. When you want words for it — the kind you can say out loud — I'll help you find them.")]),
                 seed: seed * 9 + 4,
                 heart: SkelliHeart.shared)
         }
@@ -2470,14 +2334,8 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("friday")) {
             return SkelliVoice.embellish(
                 pick([
-                    "Then we eat it in pieces. "
-                        + "Tell me them, or let it "
-                        + "sit tonight — it keeps "
-                        + "either way.",
-                    "Deadlines bend more than "
-                        + "they admit. Find the "
-                        + "immovable part; start "
-                        + "there."]),
+                    L("Then we eat it in pieces. Tell me them, or let it sit tonight — it keeps either way."),
+                    L("Deadlines bend more than they admit. Find the immovable part; start there.")]),
                 seed: seed * 11 + 5,
                 heart: SkelliHeart.shared)
         }
@@ -2918,8 +2776,7 @@ final class SkelliCenter: ObservableObject {
             q = String(q.dropFirst(7))
         }
         if q.isEmpty {
-            say("Here. The house is mine to "
-                + "run — name the thing.")
+            say(L("Here. The house is mine to run — name the thing."))
             return
         }
 
@@ -2943,7 +2800,7 @@ final class SkelliCenter: ObservableObject {
             if q == "no" || q == "nope"
                 || q.contains("never mind") {
                 pendingAction = nil
-                say("Understood — left as it is.")
+                say(L("Understood — left as it is."))
                 return
             }
             // Any other word lets the offer lapse:
@@ -3030,10 +2887,7 @@ final class SkelliCenter: ObservableObject {
             }
             if !note.isEmpty {
                 remember(note)
-                say("Kept: " + note + ". It stays with "
-                    + "me across conversations — ask "
-                    + "'what do you remember', or tell "
-                    + "me to forget it.")
+                say(String(format: L("Kept: %@. It stays with me across conversations — ask 'what do you remember', or tell me to forget it."), String(describing: note)))
                 return
             }
         }
@@ -3045,14 +2899,10 @@ final class SkelliCenter: ObservableObject {
                 note = String(note.dropFirst(5))
             }
             if note.isEmpty {
-                say("Remember what? Tell me, and "
-                    + "it's kept.")
+                say(L("Remember what? Tell me, and it's kept."))
             } else {
                 remember(note)
-                say("Kept: " + note + ". It stays with "
-                    + "me across conversations — ask "
-                    + "'what do you remember', or tell "
-                    + "me to forget it.")
+                say(String(format: L("Kept: %@. It stays with me across conversations — ask 'what do you remember', or tell me to forget it."), String(describing: note)))
             }
             return
         }
@@ -3067,7 +2917,7 @@ final class SkelliCenter: ObservableObject {
             if let hit = notes.first(where: {
                 $0.text.contains(needle) }) {
                 forgetNote(id: hit.id)
-                say("Forgotten: " + hit.text + ".")
+                say(String(format: L("Forgotten: %@."), String(describing: hit.text)))
                 return
             }
             // No note matched — fall through; the
@@ -3090,14 +2940,7 @@ final class SkelliCenter: ObservableObject {
             || q.contains("who are you")
             || q.contains("what are you")
             || q.contains("your name") {
-            say("Skelli. I answer from the system "
-                + "itself: its "
-                + "manual, its live state, its "
-                + "controls — and when a question "
-                + "leaves the house, I research it "
-                + "through this phone's connection and "
-                + "name the source. Ask 'what can you "
-                + "do'.")
+            say(L("Skelli. I answer from the system itself: its manual, its live state, its controls — and when a question leaves the house, I research it through this phone's connection and name the source. Ask 'what can you do'."))
             return
         }
         // The word alone is not the question:
@@ -3148,10 +2991,7 @@ final class SkelliCenter: ObservableObject {
             && !q.contains("how do")
             && !q.contains("how to")
             && !q.hasPrefix("how") {
-            say("Give me the calculation "
-                + "itself — the numbers and "
-                + "the signs — and I'll work "
-                + "it exactly.")
+            say(L("Give me the calculation itself — the numbers and the signs — and I'll work it exactly."))
             return
         }
 
@@ -3221,7 +3061,7 @@ final class SkelliCenter: ObservableObject {
                 !$0.fromOperator }) {
                 say(last.text)
             } else {
-                say("I haven't said anything yet.")
+                say(L("I haven't said anything yet."))
             }
             return
         }
@@ -3402,7 +3242,7 @@ final class SkelliCenter: ObservableObject {
         // the brain hears the "don't" and she
         // keeps her hands off, out loud.
         if let verb = SkelliBrain.negatedAction(q) {
-            say("Understood — I won't \(verb).")
+            say(String(format: L("Understood — I won't %@."), String(describing: verb)))
             return
         }
 
@@ -3481,46 +3321,38 @@ final class SkelliCenter: ObservableObject {
         }
         if q.contains("stealth on") {
             mouth?.setStealth(true)
-            say("Stealth on — Serve keeps its listeners "
-                + "and loses its listing.")
+            say(L("Stealth on — Serve keeps its listeners and loses its listing."))
             return
         }
         if q.contains("stealth off") {
             mouth?.setStealth(false)
-            say("Stealth off — Serve lists itself again "
-                + "whenever it runs.")
+            say(L("Stealth off — Serve lists itself again whenever it runs."))
             return
         }
         if q.contains("start serving")
             || q.contains("start serve")
             || q.contains("serve on") {
             mouth?.startServeFromSettings()
-            say("Serve raised from its own settings — "
-                + "the doors you configured, nothing "
-                + "bespoke. The Serve tab shows it live.")
+            say(L("Serve raised from its own settings — the doors you configured, nothing bespoke. The Serve tab shows it live."))
             return
         }
         if q.contains("stop serving")
             || q.contains("stop serve")
             || q.contains("serve off") {
             mouth?.stopServe()
-            say("Serve stood down; its listeners are "
-                + "closed and the inbox keeps what it "
-                + "caught.")
+            say(L("Serve stood down; its listeners are closed and the inbox keeps what it caught."))
             return
         }
         if q.contains("tripwire on")
             || q.contains("arm the tripwire") {
             emcon?.startTripwire()
-            say("Tripwire armed — the census ports are "
-                + "listening in silence, and every knock "
-                + "will be logged and never answered.")
+            say(L("Tripwire armed — the census ports are listening in silence, and every knock will be logged and never answered."))
             return
         }
         if q.contains("tripwire off")
             || q.contains("disarm the tripwire") {
             emcon?.stopTripwire()
-            say("Tripwire stood down.")
+            say(L("Tripwire stood down."))
             return
         }
         if q.contains("drill") {
@@ -3537,8 +3369,7 @@ final class SkelliCenter: ObservableObject {
         if q.contains("stop listening")
             || q.contains("listen off") {
             post?.stop()
-            say("The ear is closed. Its sessions keep "
-                + "what they heard.")
+            say(L("The ear is closed. Its sessions keep what they heard."))
             return
         }
         if (q.contains("name ") || q.contains("call "))
@@ -3591,9 +3422,7 @@ final class SkelliCenter: ObservableObject {
             // she keeps the conversation entire.
             if softClearAsk(q) {
                 softClearConversation()
-                say("Screen's clear. I remember "
-                    + "all of it — the talk is "
-                    + "right where we left it.")
+                say(L("Screen's clear. I remember all of it — the talk is right where we left it."))
                 return
             }
             if q.contains("delete")
@@ -3750,10 +3579,7 @@ final class SkelliCenter: ObservableObject {
             mind.refresh()
             say(mind.awake
                 ? mind.brief
-                : "The mind is still learning the house "
-                  + "— \(mind.eventCount) sealed events "
-                  + "so far. It names patterns once "
-                  + "history gives it a normal to break.")
+                : String(format: L("The mind is still learning the house — %@ sealed events so far. It names patterns once history gives it a normal to break."), String(describing: mind.eventCount)))
             return
         }
         if q.contains("serve up")
@@ -3768,18 +3594,13 @@ final class SkelliCenter: ObservableObject {
                     || q.contains("?"))) {
             if let mouth = mouth {
                 say(mouth.serveRunning
-                    ? "Serve is up"
+                    ? L("Serve is up")
                       + (mouth.stealth
-                         ? " — running unlisted, under "
-                           + "stealth."
-                         : " — and listed on the wire.")
-                    : "Serve is down. Say 'start "
-                      + "serving' and I'll raise it from "
-                      + "its settings.")
+                         ? L(" — running unlisted, under stealth.")
+                         : L(" — and listed on the wire."))
+                    : L("Serve is down. Say 'start serving' and I'll raise it from its settings."))
             } else {
-                say("Serve's state reaches me once the "
-                    + "app has finished waking — a "
-                    + "moment.")
+                say(L("Serve's state reaches me once the app has finished waking — a moment."))
             }
             return
         }
@@ -3797,12 +3618,8 @@ final class SkelliCenter: ObservableObject {
                .neighbors.first(where: { $0.ip == ip }) {
             if q.contains("port") {
                 say(neighbor.ports.isEmpty
-                    ? "\(neighbor.displayName) has no "
-                      + "recorded open ports — no knock "
-                      + "of ours has found one answering."
-                    : "\(neighbor.displayName) answers "
-                      + "on: "
-                      + neighbor.ports.map(String.init)
+                    ? String(format: L("%@ has no recorded open ports — no knock of ours has found one answering."), String(describing: neighbor.displayName))
+                    : String(format: L("%@ answers on: %@"), String(describing: neighbor.displayName), String(describing: neighbor.ports.map(String.init)))
                           .joined(separator: ", ")
                       + ".")
                 return
@@ -3821,12 +3638,9 @@ final class SkelliCenter: ObservableObject {
                 .answer(q)
             if !found.isEmpty {
                 say(found.prefix(5).map { event in
-                    "— \(event.text) (\(event.module) · "
-                        + "\(event.kind) · "
-                        + event.when.formatted(
+                    String(format: L("— %@ (%@ · %@ · %@)"), String(describing: event.text), String(describing: event.module), String(describing: event.kind), String(describing: event.when.formatted(
                             date: .abbreviated,
-                            time: .shortened)
-                        + ")"
+                            time: .shortened)))
                 }.joined(separator: "\n"))
                 return
             }
@@ -4178,13 +3992,7 @@ final class SkelliCenter: ObservableObject {
         guard q.contains("brief me")
                 || q.contains("briefing")
                 || q.hasPrefix("brief ") else { return "" }
-        return " The operator asked for a briefing: "
-            + "give the compact brief — what it is, "
-            + "why it matters, the few facts that "
-            + "decide it, what remains uncertain, "
-            + "and a source link where one would "
-            + "help their own reading. Plain "
-            + "statements, still no fluff."
+        return " The operator asked for a briefing: give the compact brief — what it is, why it matters, the few facts that decide it, what remains uncertain, and a source link where one would help their own reading. Plain statements, still no fluff."
     }
 
     /// An order to MAKE a piece of writing:
@@ -4295,10 +4103,10 @@ final class SkelliCenter: ObservableObject {
             }
         }
         if started {
-            activity = vary(["Thinking…",
-                             "Composing…",
-                             "Turning it over…",
-                             "Weighing…"])
+            activity = vary([L("Thinking…"),
+                             L("Composing…"),
+                             L("Turning it over…"),
+                             L("Weighing…")])
         } else {
             // No bench awake: before the web, the
             // brain answers with the manual's
@@ -4801,28 +4609,18 @@ final class SkelliCenter: ObservableObject {
     /// What the house cannot answer, the web might —
     private func researchWeb(for q: String) {
         guard webResearchEnabled else {
-            say("That's outside the house, and my "
-                + "web research is off — it's in my "
-                + "menu, under Web research. Inside "
-                + "the house I know every tab, organ, "
-                + "and switch, and the live state of "
-                + "your wire, your log, and your night.")
+            say(L("That's outside the house, and my web research is off — it's in my menu, under Web research. Inside the house I know every tab, organ, and switch, and the live state of your wire, your log, and your night."))
             return
         }
         guard let query = Self.webQuery(from: q) else {
-            say("That one touches the house's own "
-                + "record — addresses and the like — "
-                + "and I don't send house details "
-                + "outward. Ask it as a general "
-                + "question, without the house's "
-                + "particulars, and I'll research it.")
+            say(L("That one touches the house's own record — addresses and the like — and I don't send house details outward. Ask it as a general question, without the house's particulars, and I'll research it."))
             return
         }
         mood = .working
         SkelliHeart.shared.noteAction()
-        activity = vary(["Researching…",
-                         "Asking the library…",
-                         "Reading widely…"])
+        activity = vary([L("Researching…"),
+                         L("Asking the library…"),
+                         L("Reading widely…")])
         SkelliWeb.research(query) { [weak self] result in
             self?.say(result)
         }
@@ -4930,12 +4728,9 @@ final class SkelliCenter: ObservableObject {
 
     private func notesReport() -> String {
         guard !notes.isEmpty else {
-            return "I hold nothing yet. Tell me "
-                + "'remember …' and I keep it — names, "
-                + "habits, how you like things read — "
-                + "across conversations."
+            return L("I hold nothing yet. Tell me 'remember …' and I keep it — names, habits, how you like things read — across conversations.")
         }
-        return "What I remember:\n"
+        return L("What I remember:\n")
             + notes.map {
                 "— \($0.text) (kept "
                     + $0.learnedAt.formatted(
@@ -4958,65 +4753,49 @@ final class SkelliCenter: ObservableObject {
         // the address, as the Map itself keys them.
         let key = "lan:" + neighbor.ip
         if let room = MapStore.shared.room(ofKey: key) {
-            return "\(neighbor.displayName) sits in "
-                + room.name + " — your placement, kept "
-                + "by the Map."
+            return String(format: L("%@ sits in %@ — your placement, kept by the Map."), String(describing: neighbor.displayName), String(describing: room.name))
         }
         if MapStore.shared.placements[key] != nil {
-            return "\(neighbor.displayName) is placed "
-                + "on the Map, on open floor outside "
-                + "any named room."
+            return String(format: L("%@ is placed on the Map, on open floor outside any named room."), String(describing: neighbor.displayName))
         }
-        return "\(neighbor.displayName) is unplaced — "
-            + "it waits in the Map's tray for you to "
-            + "say where it sits."
+        return String(format: L("%@ is unplaced — it waits in the Map's tray for you to say where it sits."), String(describing: neighbor.displayName))
     }
 
     private func deviceReport(_ neighbor: Neighbor)
         -> String {
         var lines: [String] = []
-        lines.append("\(neighbor.displayName) — "
-            + "\(neighbor.ip).")
+        lines.append(String(format: L("%@ — %@."), String(describing: neighbor.displayName), String(describing: neighbor.ip)))
         if let wire = neighbor.name,
            wire != neighbor.displayName {
-            lines.append("On the wire it answers as "
-                + wire + ".")
+            lines.append(String(format: L("On the wire it answers as %@."), String(describing: wire)))
         }
-        lines.append("Seen \(neighbor.sightings) time"
-            + (neighbor.sightings == 1 ? "" : "s")
-            + "; last "
-            + InstrumentCenter.ageLine(neighbor.lastSeen)
-            + ".")
+        lines.append(neighbor.sightings == 1
+            ? String(format: L("Seen %@ time; last %@."), String(describing: neighbor.sightings), String(describing: InstrumentCenter.ageLine(neighbor.lastSeen)))
+            : String(format: L("Seen %@ times; last %@."), String(describing: neighbor.sightings), String(describing: InstrumentCenter.ageLine(neighbor.lastSeen))))
         lines.append(neighbor.ports.isEmpty
-            ? "No recorded open ports."
-            : "Answers on: "
-              + neighbor.ports.map(String.init)
+            ? L("No recorded open ports.")
+            : String(format: L("Answers on: %@"), String(describing: neighbor.ports.map(String.init)))
                   .joined(separator: ", ") + ".")
         lines.append(roomLine(neighbor))
         let acked = MapStore.shared
             .ackedDrift[neighbor.ip] ?? 0
         let unacked = max(0, neighbor.drift.count - acked)
         if !neighbor.drift.isEmpty {
-            lines.append("Drift: "
+            lines.append(L("Drift: ")
                 + (neighbor.drift.first ?? "")
                 + (unacked > 0
-                   ? " — \(unacked) unacknowledged."
-                   : " — all acknowledged."))
+                   ? String(format: L(" — %@ unacknowledged."), String(describing: unacked))
+                   : L(" — all acknowledged.")))
         }
         if neighbor.arrivals > 0 {
-            lines.append("It has knocked at this "
-                + "phone's door \(neighbor.arrivals) "
-                + "time"
-                + (neighbor.arrivals == 1 ? "" : "s")
-                + ".")
+            lines.append(neighbor.arrivals == 1
+                ? String(format: L("It has knocked at this phone's door %@ time."), String(describing: neighbor.arrivals))
+                : String(format: L("It has knocked at this phone's door %@ times."), String(describing: neighbor.arrivals)))
         }
         if let mention = Journal.events(limit: 400)
             .first(where: { $0.text.contains(neighbor.ip) }) {
-            lines.append("The log's latest word: "
-                + mention.text + " ("
-                + mention.when.formatted(
-                    date: .abbreviated, time: .shortened)
-                + ")")
+            lines.append(String(format: L("The log's latest word: %@ (%@)"), String(describing: mention.text), String(describing: mention.when.formatted(
+                    date: .abbreviated, time: .shortened))))
         }
         return lines.joined(separator: "\n")
     }
@@ -5035,27 +4814,20 @@ final class SkelliCenter: ObservableObject {
         let ip = tokens[ipIndex]
         guard let neighbor = NeighborhoodStore.shared
             .neighbors.first(where: { $0.ip == ip }) else {
-            say("The wire doesn't know " + ip + " yet — "
-                + "I can only name devices the house "
-                + "has met. A sweep might introduce you.")
+            say(String(format: L("The wire doesn't know %@ yet — I can only name devices the house has met. A sweep might introduce you."), String(describing: ip)))
             return true
         }
         var words = Array(tokens.dropFirst(ipIndex + 1))
         if words.first == "the" { words.removeFirst() }
         let name = words.joined(separator: " ")
         guard !name.isEmpty else {
-            say("Call it what? 'Name " + ip + " the "
-                + "printer' and it's done.")
+            say(String(format: L("Call it what? 'Name %@ the printer' and it's done."), String(describing: ip)))
             return true
         }
         NeighborhoodStore.shared.rename(
             ip: ip, to: name, mark: neighbor.customMark)
         lastDeviceIP = ip
-        say("Named. " + ip + " answers as " + name
-            + " now — on the board, the Map, its "
-            + "dossier, and in the mind's findings. "
-            + "The wire's own name for it is kept "
-            + "underneath, only outranked.")
+        say(String(format: L("Named. %@ answers as %@ now — on the board, the Map, its dossier, and in the mind's findings. The wire's own name for it is kept underneath, only outranked."), String(describing: ip), String(describing: name)))
         return true
     }
 
@@ -5070,20 +4842,17 @@ final class SkelliCenter: ObservableObject {
     private func performanceOffer(
         for q: String) -> (String, GuideAct)? {
         if q.contains("sweep") {
-            return ("Want me to sweep the wire "
-                + "now?", .sweep)
+            return (L("Want me to sweep the wire now?"), .sweep)
         }
         if q.contains("audit") {
-            return ("Want me to run the Bonjour "
-                + "audit?", .audit)
+            return (L("Want me to run the Bonjour audit?"), .audit)
         }
         if q.contains("drill") {
-            return ("Want me to run the drill?",
+            return (L("Want me to run the drill?"),
                     .drill)
         }
         if q.contains("expos") {
-            return ("Want me to scan this "
-                + "phone's exposure?", .selfScan)
+            return (L("Want me to scan this phone's exposure?"), .selfScan)
         }
         return nil
     }
@@ -5099,39 +4868,27 @@ final class SkelliCenter: ObservableObject {
 
     private func runDrill() {
         guard let emcon = emcon, let mouth = mouth else {
-            say("The drill is EMCON's and its organs "
-                + "haven't reached me yet — open the "
-                + "EMCON tab once and ask again.")
+            say(L("The drill is EMCON's and its organs haven't reached me yet — open the EMCON tab once and ask again."))
             return
         }
         mood = .working
         SkelliHeart.shared.noteAction()
         emcon.runDrill(mouth: mouth)
-        say("The drill is running — scan, go dark, "
-            + "scan again. Its readout lands in "
-            + "EMCON's drill section, where the ledger "
-            + "names what went quiet.")
-        activity = "Running the drill — scan, dark, "
-            + "scan…" 
+        say(L("The drill is running — scan, go dark, scan again. Its readout lands in EMCON's drill section, where the ledger names what went quiet."))
+        activity = L("Running the drill — scan, dark, scan…") 
     }
 
     private func startListening() {
         guard let post = post else {
-            say("The ear hasn't reached me yet — open "
-                + "the Listen tab once and ask again.")
+            say(L("The ear hasn't reached me yet — open the Listen tab once and ask again."))
             return
         }
         if post.session != nil {
-            say("The ear is already open — "
-                + "\(post.deviceCount) devices in its "
-                + "registry this session.")
+            say(String(format: L("The ear is already open — %@ devices in its registry this session."), String(describing: post.deviceCount)))
             return
         }
         post.start(label: "Skelli")
-        say("The ear is open. It hears passively — "
-            + "it never connects or pairs — and its "
-            + "sightings land in the Listen tab and "
-            + "the log.")
+        say(L("The ear is open. It hears passively — it never connects or pairs — and its sightings land in the Listen tab and the log."))
     }
 
     /// The crew's hands: one named step, worked
@@ -5147,8 +4904,7 @@ final class SkelliCenter: ObservableObject {
         if s.contains("vanish")
             || s.contains("stop everything") {
             haltAndVanish()
-            return "The house vanished: everything "
-                + "halted, full stealth."
+            return L("The house vanished: everything halted, full stealth.")
         }
         if s.contains("sitrep")
             || s.contains("situation report")
@@ -5157,32 +4913,27 @@ final class SkelliCenter: ObservableObject {
         }
         if s.contains("sweep") {
             if scanner.sweeping {
-                return "A sweep was already "
-                    + "running."
+                return L("A sweep was already running.")
             }
             runSweep()
-            return "A sweep of the wire was set "
-                + "in motion; its findings will "
-                + "arrive as their own word and "
-                + "land in the Neighborhood."
+            return L("A sweep of the wire was set in motion; its findings will arrive as their own word and land in the Neighborhood.")
         }
         if s.contains("self scan")
             || s.contains("selfscan")
             || s.contains("exposure") {
             runSelfScan()
-            return "The self-scan was worked; "
-                + "its reading stands in EMCON."
+            return L("The self-scan was worked; its reading stands in EMCON.")
         }
         if s.contains("audit") {
             runAudit()
-            return "The audit was worked."
+            return L("The audit was worked.")
         }
         if s.contains("go dark")
             || s.contains("emcon on") {
             if let emcon = emcon, let mouth = mouth {
                 emcon.activate(mouth: mouth)
             }
-            return "EMCON is on — the house is dark."
+            return L("EMCON is on — the house is dark.")
         }
         if s.contains("look up")
             || s.contains("lookup")
@@ -5202,22 +4953,19 @@ final class SkelliCenter: ObservableObject {
                 .lookup(topic.isEmpty ? s : topic) {
                 return "\(entry.title): \(L(entry.body))"
             }
-            return "The manual holds nothing "
-                + "under that name."
+            return L("The manual holds nothing under that name.")
         }
         return nil
     }
 
     private func runSweep() {
         guard !scanner.sweeping else {
-            say("A sweep is already running — its "
-                + "answers are landing in the "
-                + "Neighborhood as they come.")
+            say(L("A sweep is already running — its answers are landing in the Neighborhood as they come."))
             return
         }
         mood = .working
         SkelliHeart.shared.noteAction()
-        activity = "Sweeping the wire on port 80…"
+        activity = L("Sweeping the wire on port 80…")
         scanner.sweep(port: 80)
         sweepWatch = scanner.$sweeping
             .dropFirst()
@@ -5230,23 +4978,13 @@ final class SkelliCenter: ObservableObject {
                     TomatoMarks.shared.isMarked($0.ip)
                 }
                 self.say(hosts.isEmpty
-                    ? "The sweep finished: nobody "
-                      + "answered on port 80."
-                    : "The sweep finished: "
-                      + "\(hosts.count) host"
-                      + (hosts.count == 1 ? "" : "s")
-                      + " answered — "
-                      + hosts.prefix(5).map(\.ip)
-                          .joined(separator: ", ")
-                      + (hosts.count > 5 ? "…" : "")
-                      + ". They're in the Neighborhood, "
-                      + "and the Map has them in its "
-                      + "tray."
+                    ? L("The sweep finished: nobody answered on port 80.")
+                    : (hosts.count == 1
+                      ? String(format: L("The sweep finished: %@ host answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), String(describing: hosts.prefix(5).map(\.ip)), String(describing: hosts.count > 5 ? "…" : ""))
+                      : String(format: L("The sweep finished: %@ hosts answered — %@%@. They're in the Neighborhood, and the Map has them in its tray."), String(describing: hosts.count), String(describing: hosts.prefix(5).map(\.ip)), String(describing: hosts.count > 5 ? "…" : "")))
                       + (markedHit == nil
                         ? ""
-                        : " \(markedHit!.ip) answered "
-                          + "wearing its tomato — "
-                          + "picked on, as ordered."))
+                        : String(format: L(" %@ answered wearing its tomato — picked on, as ordered."), String(describing: markedHit!.ip))))
             }
     }
 
@@ -5306,77 +5044,56 @@ final class SkelliCenter: ObservableObject {
             emcon?.activate(mouth: mouth)
         }
         mood = .idle
-        activity = "Vanished — full stealth."
+        activity = L("Vanished — full stealth.")
         ProcessBoard.shared.endAllQuietly()
         Journal.log("skelli", "vanish",
                     "everything halted by the operator; "
                     + "full stealth taken")
-        speakThroughHush("Stopped — everything I was "
-            + "doing is halted. Serve is down, the "
-            + "beacon and the GATT host are down, "
-            + "stealth is on, and EMCON is dark with "
-            + "the tripwire armed. I stay quiet "
-            + "until you speak.")
+        speakThroughHush(L("Stopped — everything I was doing is halted. Serve is down, the beacon and the GATT host are down, stealth is on, and EMCON is dark with the tripwire armed. I stay quiet until you speak."))
     }
 
     private func runSelfScan() {
         guard let emcon = emcon else {
-            say("The self-scan is EMCON's organ and it "
-                + "hasn't reached me yet — open the "
-                + "EMCON tab once and ask again.")
+            say(L("The self-scan is EMCON's organ and it hasn't reached me yet — open the EMCON tab once and ask again."))
             return
         }
         mood = .working
         SkelliHeart.shared.noteAction()
-        activity = "Knocking this phone, every "
-            + "census port…"
+        activity = L("Knocking this phone, every census port…")
         emcon.runSelfScan { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
             if emcon.exposures.isEmpty {
-                self.say("The self-scan found nothing "
-                    + "answering. On the wire, this phone "
-                    + "is a closed door.")
+                self.say(L("The self-scan found nothing answering. On the wire, this phone is a closed door."))
             } else {
-                self.say("The self-scan found "
-                    + "\(emcon.exposures.count) listener"
-                    + (emcon.exposures.count == 1
-                       ? "" : "s")
-                    + " answering:\n"
-                    + emcon.exposures.prefix(8).map {
-                        "— \(Emcon.exposureLine($0))"
-                    }.joined(separator: "\n")
-                    + "\nEMCON's self-recon holds the "
-                    + "full readout.")
+                self.say(emcon.exposures.count == 1
+                    ? String(format: L("The self-scan found %@ listener answering:\n%@\nEMCON's self-recon holds the full readout."), String(describing: emcon.exposures.count), String(describing: emcon.exposures.prefix(8).map {
+                        String(format: L("— %@"), String(describing: Emcon.exposureLine($0)))
+                    }.joined(separator: "\n")))
+                    : String(format: L("The self-scan found %@ listeners answering:\n%@\nEMCON's self-recon holds the full readout."), String(describing: emcon.exposures.count), String(describing: emcon.exposures.prefix(8).map {
+                        String(format: L("— %@"), String(describing: Emcon.exposureLine($0)))
+                    }.joined(separator: "\n"))))
             }
         }
     }
 
     private func runAudit() {
         guard let emcon = emcon else {
-            say("The audit is EMCON's organ and it "
-                + "hasn't reached me yet — open the "
-                + "EMCON tab once and ask again.")
+            say(L("The audit is EMCON's organ and it hasn't reached me yet — open the EMCON tab once and ask again."))
             return
         }
         mood = .working
         SkelliHeart.shared.noteAction()
-        activity = "Listening for this phone's own "
-            + "announcements…"
+        activity = L("Listening for this phone's own announcements…")
         emcon.runBonjourAudit { [weak self] in
             guard let self = self,
                   let emcon = self.emcon else { return }
             if emcon.announcers.isEmpty {
-                self.say("The audit heard \(emcon.heardCount) "
-                    + "announcements on the wire and none "
-                    + "of them were this phone's. It is "
-                    + "not introducing itself to anyone.")
+                self.say(String(format: L("The audit heard %@ announcements on the wire and none of them were this phone's. It is not introducing itself to anyone."), String(describing: emcon.heardCount)))
             } else {
-                self.say("This phone is announcing "
-                    + "itself:\n"
-                    + emcon.announcers.map {
-                        "— \(Emcon.announcerLine($0))"
-                    }.joined(separator: "\n"))
+                self.say(String(format: L("This phone is announcing itself:\n%@"), String(describing: emcon.announcers.map {
+                        String(format: L("— %@"), String(describing: Emcon.announcerLine($0)))
+                    }.joined(separator: "\n"))))
             }
         }
     }
@@ -5395,20 +5112,16 @@ final class SkelliCenter: ObservableObject {
         if q.contains("check in") && deadHandOn {
             emcon?.deadHandCheckIn()
             if let due = emcon?.deadHandDeadline {
-                say("Checked in. The hand now falls "
-                    + "at " + due.formatted(date: .abbreviated,
-                                            time: .shortened)
-                    + " if you go quiet.")
+                say(String(format: L("Checked in. The hand now falls at %@ if you go quiet."), String(describing: due.formatted(date: .abbreviated,
+                                            time: .shortened))))
             } else {
-                say("Checked in — the clock is reset.")
+                say(L("Checked in — the clock is reset."))
             }
             return true
         }
         if q.contains("dead hand") {
             guard let emcon else {
-                say("EMCON's organs haven't reached "
-                    + "me yet — open the EMCON tab "
-                    + "once and ask again.")
+                say(L("EMCON's organs haven't reached me yet — open the EMCON tab once and ask again."))
                 return true
             }
             if q.contains("disarm") || q.contains("off")
@@ -5416,18 +5129,15 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("stop") {
                 defaults.set(false, forKey: "deadHand.on")
                 emcon.deadHandDisarm()
-                say("The dead hand is disarmed — "
-                    + "no clock runs.")
+                say(L("The dead hand is disarmed — no clock runs."))
                 return true
             }
             if q.contains("check in") {
                 if deadHandOn {
                     emcon.deadHandCheckIn()
-                    say("Checked in — the clock is "
-                        + "reset.")
+                    say(L("Checked in — the clock is reset."))
                 } else {
-                    say("It isn't armed — there's no "
-                        + "clock to reset.")
+                    say(L("It isn't armed — there's no clock to reset."))
                 }
                 return true
             }
@@ -5438,23 +5148,16 @@ final class SkelliCenter: ObservableObject {
                     forKey: "deadHand.hours")
                 defaults.set(true, forKey: "deadHand.on")
                 emcon.deadHandArm()
-                say("The dead hand is armed. Check "
-                    + "in within \(hours > 0 ? hours : 24) "
-                    + "hours — say 'check in' — or the "
-                    + "next opening burns the house "
-                    + "dark.")
+                say(String(format: L("The dead hand is armed. Check in within %@ hours — say 'check in' — or the next opening burns the house dark."), String(describing: hours > 0 ? hours : 24)))
                 return true
             }
             if deadHandOn, let due = emcon.deadHandDeadline {
                 say(emcon.deadHandOverdue
-                    ? "Armed — and overdue. Check in "
-                      + "before the next opening."
-                    : "Armed. The hand falls at "
-                      + due.formatted(date: .abbreviated,
-                                      time: .shortened)
-                      + " if you go quiet.")
+                    ? L("Armed — and overdue. Check in before the next opening.")
+                    : String(format: L("Armed. The hand falls at %@ if you go quiet."), String(describing: due.formatted(date: .abbreviated,
+                                      time: .shortened))))
             } else {
-                say("The dead hand is disarmed.")
+                say(L("The dead hand is disarmed."))
             }
             return true
         }
@@ -5465,22 +5168,15 @@ final class SkelliCenter: ObservableObject {
             for (name, target) in named
             where q.contains(name) {
                 guard let emcon, let mouth else {
-                    say("EMCON's organs haven't "
-                        + "reached me yet — open the "
-                        + "EMCON tab once and ask "
-                        + "again.")
+                    say(L("EMCON's organs haven't reached me yet — open the EMCON tab once and ask again."))
                     return true
                 }
                 if emcon.condition == target {
-                    say("Already there — "
-                        + target.declared + " stands.")
+                    say(String(format: L("Already there — %@ stands."), String(describing: target.declared)))
                 } else {
                     emcon.activate(mouth: mouth,
                                    condition: target)
-                    say(target.declared + " stands. "
-                        + "What it forbids is dark, "
-                        + "and the tripwire is "
-                        + "armed.")
+                    say(target.declared + L(" stands. What it forbids is dark, and the tripwire is armed."))
                 }
                 return true
             }
@@ -5496,26 +5192,16 @@ final class SkelliCenter: ObservableObject {
 
     private func goDark() {
         guard let emcon = emcon, let mouth = mouth else {
-            say("EMCON's organs haven't reached me yet "
-                + "— open the EMCON tab once and ask "
-                + "again.")
+            say(L("EMCON's organs haven't reached me yet — open the EMCON tab once and ask again."))
             return
         }
         emcon.activate(mouth: mouth)
-        say("Dark. Stealth is on, the beacon and GATT "
-            + "host are down, and the tripwire is armed. "
-            + "What EMCON doesn't own — the OS's own "
-            + "listeners, your VPN's — still shows, and "
-            + "the score says so honestly.")
+        say(L("Dark. Stealth is on, the beacon and GATT host are down, and the tripwire is armed. What EMCON doesn't own — the OS's own listeners, your VPN's — still shows, and the score says so honestly."))
     }
 
     private func standDown() {
         emcon?.deactivate()
-        say("EMCON stood down — the tripwire is off. "
-            + "Stealth, the beacon, and the host stay "
-            + "exactly as they are; re-arming an "
-            + "emission is always its own deliberate "
-            + "act.")
+        say(L("EMCON stood down — the tripwire is off. Stealth, the beacon, and the host stay exactly as they are; re-arming an emission is always its own deliberate act."))
     }
 
     // MARK: the almanac
@@ -5793,11 +5479,7 @@ final class SkelliCenter: ObservableObject {
     private func wireReport() -> String {
         let all = NeighborhoodStore.shared.neighbors
         guard !all.isEmpty else {
-            return "The wire knows nobody yet — no "
-                + "sweep has answered, nothing has "
-                + "announced itself, and nothing has "
-                + "knocked. Say 'sweep the wire' and "
-                + "I'll populate it."
+            return L("The wire knows nobody yet — no sweep has answered, nothing has announced itself, and nothing has knocked. Say 'sweep the wire' and I'll populate it.")
         }
         let placed = all.filter {
             MapStore.shared.placements[$0.ip] != nil
@@ -5821,11 +5503,7 @@ final class SkelliCenter: ObservableObject {
         }) {
             pendingAction = { [weak self] in
                 self?.navigate(to: 4)
-                self?.say("The Map is open — "
-                    + drifting.displayName
-                    + "'s node glows orange until you "
-                    + "tap it and acknowledge the "
-                    + "drift.")
+                self?.say(String(format: L("The Map is open — %@'s node glows orange until you tap it and acknowledge the drift."), String(describing: drifting.displayName)))
             }
             report += "\n" + drifting.displayName
                 + " carries drift the house hasn't "
@@ -5944,53 +5622,41 @@ final class SkelliCenter: ObservableObject {
         let dayAgo = Date().addingTimeInterval(-24 * 3600)
         let last24 = events.filter { $0.when > dayAgo }
         guard !last24.isEmpty else {
-            return "The log holds nothing from the "
-                + "last day — a quiet house, or a young "
-                + "one."
+            return L("The log holds nothing from the last day — a quiet house, or a young one.")
         }
         let latest = last24.prefix(3).map {
             "— \($0.text) (\($0.when.formatted(date: .omitted, time: .shortened)))"
         }.joined(separator: "\n")
-        return "The last day sealed \(last24.count) "
-            + "events. The latest:\n\(latest)"
+        return String(format: L("The last day sealed %@ events. The latest:\n%@"), String(describing: last24.count), String(describing: latest))
     }
 
     private func postureReport() -> String {
         guard let emcon = emcon else {
-            return "EMCON's organs haven't reached me "
-                + "yet — open the EMCON tab once and "
-                + "ask again."
+            return L("EMCON's organs haven't reached me yet — open the EMCON tab once and ask again.")
         }
         var lines: [String] = []
         lines.append(emcon.active
-            ? "EMCON is active — the house is dark and "
-              + "the tripwire is armed."
-            : "EMCON is standing down — the tripwire "
-              + "is off.")
+            ? L("EMCON is active — the house is dark and the tripwire is armed.")
+            : L("EMCON is standing down — the tripwire is off."))
         if let scanned = emcon.lastScanAt {
-            lines.append("The last self-scan ("
-                + InstrumentCenter.ageLine(scanned)
-                + ") found \(emcon.exposures.count) "
-                + "listener"
-                + (emcon.exposures.count == 1 ? "" : "s")
-                + " answering"
-                + (emcon.exposures.isEmpty
-                   ? "."
-                   : ": " + emcon.exposures.prefix(4)
+            lines.append(emcon.exposures.isEmpty
+                ? (emcon.exposures.count == 1
+                   ? String(format: L("The last self-scan (%@) found %@ listener answering."), String(describing: InstrumentCenter.ageLine(scanned)), String(describing: emcon.exposures.count))
+                   : String(format: L("The last self-scan (%@) found %@ listeners answering."), String(describing: InstrumentCenter.ageLine(scanned)), String(describing: emcon.exposures.count)))
+                : (emcon.exposures.count == 1
+                   ? String(format: L("The last self-scan (%@) found %@ listener answering: %@."), String(describing: InstrumentCenter.ageLine(scanned)), String(describing: emcon.exposures.count), String(describing: emcon.exposures.prefix(4)
                        .map(Emcon.exposureLine)
-                       .joined(separator: ", ") + "."))
+                       .joined(separator: ", ")))
+                   : String(format: L("The last self-scan (%@) found %@ listeners answering: %@."), String(describing: InstrumentCenter.ageLine(scanned)), String(describing: emcon.exposures.count), String(describing: emcon.exposures.prefix(4)
+                       .map(Emcon.exposureLine)
+                       .joined(separator: ", ")))))
         } else {
-            lines.append("No self-scan yet — say 'scan "
-                + "me' and I'll knock every census "
-                + "port.")
+            lines.append(L("No self-scan yet — say 'scan me' and I'll knock every census port."))
         }
         if let audited = emcon.lastAuditAt {
-            lines.append("The last audit ("
-                + InstrumentCenter.ageLine(audited)
-                + ") heard this phone announcing "
-                + "\(emcon.announcers.count) service"
-                + (emcon.announcers.count == 1
-                   ? "" : "s") + ".")
+            lines.append(emcon.announcers.count == 1
+                ? String(format: L("The last audit (%@) heard this phone announcing %@ service."), String(describing: InstrumentCenter.ageLine(audited)), String(describing: emcon.announcers.count))
+                : String(format: L("The last audit (%@) heard this phone announcing %@ services."), String(describing: InstrumentCenter.ageLine(audited)), String(describing: emcon.announcers.count)))
         }
         return lines.joined(separator: " ")
     }
@@ -5998,14 +5664,10 @@ final class SkelliCenter: ObservableObject {
     private func factsReport() -> String {
         let facts = SubconsciousCenter.shared.facts
         guard !facts.isEmpty else {
-            return "The mind has consolidated nothing "
-                + "yet — facts are earned from a "
-                + "fortnight of record. As it learns, "
-                + "they'll stand in the Subconscious, "
-                + "each forgettable."
+            return L("The mind has consolidated nothing yet — facts are earned from a fortnight of record. As it learns, they'll stand in the Subconscious, each forgettable.")
         }
-        return "What the house has learned:\n"
-            + facts.prefix(6).map { "— \($0.text)" }
+        return L("What the house has learned:\n")
+            + facts.prefix(6).map { String(format: L("— %@"), String(describing: $0.text)) }
                 .joined(separator: "\n")
     }
 
@@ -6114,10 +5776,7 @@ final class SkelliCenter: ObservableObject {
                     || q.contains("storm")))
         if rainShape {
             if TomatoBarrage.shared.running {
-                say("A barrage is already flying — "
-                    + TomatoBarrage.shared.targetLabel
-                    + " is being pestered. "
-                    + "'Cease fire' ends it.")
+                say(String(format: L("A barrage is already flying — %@ is being pestered. 'Cease fire' ends it."), String(describing: TomatoBarrage.shared.targetLabel)))
                 return true
             }
             var targets: [(ip: String, name: String,
@@ -6146,41 +5805,24 @@ final class SkelliCenter: ObservableObject {
                     }
             }
             guard !targets.isEmpty else {
-                say("Nobody to rain on — no device "
-                    + "named, and no tomatoes out. "
-                    + "Throw a tomato first, or name "
-                    + "the victim: 'barrage the "
-                    + "printer'.")
+                say(L("Nobody to rain on — no device named, and no tomatoes out. Throw a tomato first, or name the victim: 'barrage the printer'."))
                 return true
             }
             if EmconStandard.refused(.netAssault) {
-                noteRefusal(EmconCondition.current
-                    .declared + " forbids "
-                    + "campaigns — a barrage is "
-                    + "one. Lift the condition and "
-                    + "the tomatoes fly.")
-                say("The barrage stays holstered: "
-                    + EmconCondition.current.declared
-                    + " forbids campaigns. Lift the "
-                    + "condition and the tomatoes "
-                    + "fly.")
+                noteRefusal(String(format: L("%@ forbids campaigns — a barrage is one. Lift the condition and the tomatoes fly."), String(describing: EmconCondition.current.declared)))
+                say(String(format: L("The barrage stays holstered: %@ forbids campaigns. Lift the condition and the tomatoes fly."), String(describing: EmconCondition.current.declared)))
                 return true
             }
             mood = .working
-            activity = "Raining tomatoes…"
+            activity = L("Raining tomatoes…")
             _ = TomatoBarrage.shared.start(
                 targets: targets)
             let names = targets.map { $0.name }
                 .joined(separator: ", ")
             say((threwToo
-                    ? "🍅 on \(names), and now "
-                      + "the weather: "
-                    : "🍅 The barrage opens on ")
-                + names + " — a postcard on the "
-                + "door, then a knock every few "
-                + "seconds, twenty-four at most. "
-                + "It stops itself; 'cease fire' "
-                + "stops it sooner.")
+                    ? String(format: L("🍅 on %@, and now the weather: "), String(describing: names))
+                    : L("🍅 The barrage opens on "))
+                + names + L(" — a postcard on the door, then a knock every few seconds, twenty-four at most. It stops itself; 'cease fire' stops it sooner."))
             return true
         }
         // Interrogate.
@@ -6189,29 +5831,17 @@ final class SkelliCenter: ObservableObject {
             || q.contains("make them talk") {
             guard let n = mentionedNeighbor(in: q)
             else {
-                say("Interrogate whom? Name a "
-                    + "device on the wire — "
-                    + "'interrogate the printer'.")
+                say(L("Interrogate whom? Name a device on the wire — 'interrogate the printer'."))
                 return true
             }
             if EmconStandard.refused(.probing) {
-                noteRefusal(EmconCondition.current
-                    .declared + " holds probing "
-                    + "dark — interrogations and "
-                    + "prods wait for a lighter "
-                    + "condition.")
-                say("No interrogations under "
-                    + EmconCondition.current.declared
-                    + " — probing is dark. Lift the "
-                    + "condition and I'll make it "
-                    + "talk.")
+                noteRefusal(String(format: L("%@ holds probing dark — interrogations and prods wait for a lighter condition."), String(describing: EmconCondition.current.declared)))
+                say(String(format: L("No interrogations under %@ — probing is dark. Lift the condition and I'll make it talk."), String(describing: EmconCondition.current.declared)))
                 return true
             }
             noteDeviceAsk(q, n)
             if offenseRecon.knocking {
-                say("An interrogation is already "
-                    + "running — one witness at a "
-                    + "time.")
+                say(L("An interrogation is already running — one witness at a time."))
                 return true
             }
             if offenseRecon.mouth == nil {
@@ -6221,8 +5851,7 @@ final class SkelliCenter: ObservableObject {
                 ? ScanModel.topPorts.map { $0.0 }
                 : n.ports
             mood = .working
-            activity = "Interrogating "
-                + "\(n.displayName)…"
+            activity = String(format: L("Interrogating %@…"), String(describing: n.displayName))
             offenseRecon.knock(host: n.ip,
                                ports: ports,
                                udp: false, speak: false)
@@ -6236,11 +5865,7 @@ final class SkelliCenter: ObservableObject {
                     let open = self.offenseRecon.hits
                         .filter { $0.isOpen }
                     guard !open.isEmpty else {
-                        self.say("\(n.displayName) "
-                            + "wouldn't talk — none "
-                            + "of the \(ports.count) "
-                            + "doors I knocked "
-                            + "answered.")
+                        self.say(String(format: L("%@ wouldn't talk — none of the %@ doors I knocked answered."), String(describing: n.displayName), String(describing: ports.count)))
                         return
                     }
                     var parts: [String] = []
@@ -6252,20 +5877,15 @@ final class SkelliCenter: ObservableObject {
                             "\(hit.port) "
                             + "\(hit.service)"
                             + (said.isEmpty
-                                ? " (silent)"
-                                : " says "
+                                ? L(" (silent)")
+                                : L(" says ")
                                   + "'\(said.prefix(56))"
                                   + "'"))
                     }
-                    self.say("\(n.displayName), "
-                        + "interrogated: "
-                        + parts.joined(
-                            separator: "; ")
-                        + (open.count > 6
-                            ? "; and \(open.count - 6) "
-                              + "more door(s) on the "
-                              + "Recon bench."
-                            : "."))
+                    self.say(String(format: L("%@, interrogated: %@%@"), String(describing: n.displayName), String(describing: parts.joined(
+                            separator: "; ")), String(describing: open.count > 6
+                            ? String(format: L("; and %@ more door(s) on the Recon bench."), String(describing: open.count - 6))
+                            : ".")))
                 }
             return true
         }
@@ -6275,31 +5895,21 @@ final class SkelliCenter: ObservableObject {
             || q.hasPrefix("poke ") {
             guard let n = mentionedNeighbor(in: q)
             else {
-                say("Prod whom? Name a device — "
-                    + "'prod the printer'.")
+                say(L("Prod whom? Name a device — 'prod the printer'."))
                 return true
             }
             if EmconStandard.refused(.probing) {
-                noteRefusal(EmconCondition.current
-                    .declared + " holds probing "
-                    + "dark — interrogations and "
-                    + "prods wait for a lighter "
-                    + "condition.")
-                say("No prodding under "
-                    + EmconCondition.current.declared
-                    + " — probing is dark.")
+                noteRefusal(String(format: L("%@ holds probing dark — interrogations and prods wait for a lighter condition."), String(describing: EmconCondition.current.declared)))
+                say(String(format: L("No prodding under %@ — probing is dark."), String(describing: EmconCondition.current.declared)))
                 return true
             }
             guard !n.ports.isEmpty else {
-                say("I don't know "
-                    + "\(n.displayName)'s doors yet "
-                    + "— interrogate it first, then "
-                    + "prod what answers.")
+                say(String(format: L("I don't know %@'s doors yet — interrogate it first, then prod what answers."), String(describing: n.displayName)))
                 return true
             }
             noteDeviceAsk(q, n)
             mood = .working
-            activity = "Prodding \(n.displayName)…"
+            activity = String(format: L("Prodding %@…"), String(describing: n.displayName))
             ProdSession(ip: n.ip, ports: n.ports) {
                 [weak self] lines in
                 DispatchQueue.main.async {
@@ -6309,10 +5919,8 @@ final class SkelliCenter: ObservableObject {
                                 "\(n.displayName): "
                                 + lines.joined(
                                     separator: "; "))
-                    self.say("The prod, answered — "
-                        + "\(n.displayName): "
-                        + lines.joined(
-                            separator: "; ") + ".")
+                    self.say(String(format: L("The prod, answered — %@: %@."), String(describing: n.displayName), String(describing: lines.joined(
+                            separator: "; "))))
                 }
             }.start()
             return true
@@ -6353,22 +5961,18 @@ final class SkelliCenter: ObservableObject {
                 marks.clear()
                 Journal.log("tomato", "clear",
                             "all tomatoes wiped")
-                say("All tomatoes wiped. Nobody's "
-                    + "marked — the wire is, for once, "
-                    + "unpicked-on.")
+                say(L("All tomatoes wiped. Nobody's marked — the wire is, for once, unpicked-on."))
                 return true
             }
             if let n = resolve() {
                 marks.unmark(n.ip)
                 Journal.log("tomato", "unmark",
                             "\(n.displayName) (\(n.ip))")
-                say("Wiped clean — \(n.displayName) "
-                    + "breathes again. The lumps it "
-                    + "took stay in the journal.")
+                say(String(format: L("Wiped clean — %@ breathes again. The lumps it took stay in the journal."), String(describing: n.displayName)))
                 return true
             }
-            say("Nobody by that name is wearing "
-                + "one. Marked now: "
+            say(L("Nobody by that name is wearing ")
+                + L("one. Marked now: ")
                 + (marks.marked.isEmpty
                     ? "nobody."
                     : marks.listing(store: store) + "."))
@@ -6379,12 +5983,8 @@ final class SkelliCenter: ObservableObject {
             || q.contains("wearing")
             || q.contains("marked") {
             say(marks.marked.isEmpty
-                ? "No tomatoes out. Throw one: "
-                  + "'throw a tomato at the printer'."
-                : "Wearing tomatoes: "
-                  + marks.listing(store: store)
-                  + ". Picked on in every test, "
-                  + "first in every pass.")
+                ? L("No tomatoes out. Throw one: 'throw a tomato at the printer'.")
+                : String(format: L("Wearing tomatoes: %@. Picked on in every test, first in every pass."), String(describing: marks.listing(store: store))))
             return true
         }
         // Throw it.
@@ -6402,19 +6002,8 @@ final class SkelliCenter: ObservableObject {
                 Journal.log("tomato", "mark",
                             "\(n.displayName) (\(n.ip))")
                 say(already
-                    ? "\(n.displayName) is already "
-                      + "wearing one — it stays "
-                      + "picked on."
-                    : "🍅 Splat — \(n.displayName) "
-                      + "(\(n.ip)) is marked. From "
-                      + "here out it's picked on in "
-                      + "every test: knocked first in "
-                      + "every assault pass, never "
-                      + "skipped as unchanged, and "
-                      + "reported wearing it. 'Wipe "
-                      + "the tomato off "
-                      + "\(n.displayName.lowercased())' "
-                      + "ends it.")
+                    ? String(format: L("%@ is already wearing one — it stays picked on."), String(describing: n.displayName))
+                    : String(format: L("🍅 Splat — %@ (%@) is marked. From here out it's picked on in every test: knocked first in every assault pass, never skipped as unchanged, and reported wearing it. 'Wipe the tomato off %@' ends it."), String(describing: n.displayName), String(describing: n.ip), String(describing: n.displayName.lowercased())))
                 return true
             }
             // An address with no board entry yet:
@@ -6442,22 +6031,16 @@ final class SkelliCenter: ObservableObject {
                         || octets[0] == 172
                             && (16...31).contains(octets[1]))
                 guard homeNet else {
-                    say("Tomatoes are for the home "
-                        + "wire — \(ip) isn't on it.")
+                    say(String(format: L("Tomatoes are for the home wire — %@ isn't on it."), String(describing: ip)))
                     return true
                 }
                 marks.mark(ip)
                 Journal.log("tomato", "mark",
                             "\(ip) (unseen)")
-                say("🍅 Marked \(ip). It isn't on "
-                    + "the board yet — the moment it "
-                    + "shows its face on this wire, "
-                    + "it becomes the standing target.")
+                say(String(format: L("🍅 Marked %@. It isn't on the board yet — the moment it shows its face on this wire, it becomes the standing target."), String(describing: ip)))
                 return true
             }
-            say("Who gets it? Name a device from "
-                + "the Neighborhood — 'throw a "
-                + "tomato at the printer'.")
+            say(L("Who gets it? Name a device from the Neighborhood — 'throw a tomato at the printer'."))
             return true
         }
         return false
@@ -6480,13 +6063,10 @@ final class SkelliCenter: ObservableObject {
         if q.contains("lockdown")
             || q.contains("lock down") {
             if Lockdown.active {
-                say("We're already dark — "
-                    + "the lockdown stands. "
-                    + "Only your word lifts "
-                    + "it.")
+                say(L("We're already dark — the lockdown stands. Only your word lifts it."))
             } else {
                 say(Lockdown.engage(
-                    reason: "at your word"))
+                    reason: L("at your word")))
             }
             return true
         }
@@ -6533,43 +6113,23 @@ final class SkelliCenter: ObservableObject {
         let target = ip ?? Sentinel.shared
             .standingSevere.last?.ip
         guard let target else {
-            say("Quarantine whom? Name "
-                + "the address — or let "
-                + "the Sentinel judge "
-                + "something first.")
+            say(L("Quarantine whom? Name the address — or let the Sentinel judge something first."))
             return true
         }
         guard let gear = BlacksiteNet
             .defaultGatewayIP() else {
-            say("I can't read the gateway "
-                + "from here, so there's no "
-                + "gear to ride.")
+            say(L("I can't read the gateway from here, so there's no gear to ride."))
             return true
         }
         guard let community = CryptoSuite
             .NetCred.secret(for: gear) else {
-            say("No credential is kept "
-                + "for the gear at "
-                + "\(gear) — quarantine "
-                + "rides your own keys. "
-                + "cred set \(gear) at the "
-                + "console, typed in "
-                + "secret, and then ask me "
-                + "again.")
+            say(String(format: L("No credential is kept for the gear at %@ — quarantine rides your own keys. cred set %@ at the console, typed in secret, and then ask me again."), String(describing: gear), String(describing: gear)))
             return true
         }
         if down {
-            say("Quarantine \(target)? "
-                + "I'll shut its switch "
-                + "port on \(gear) — it "
-                + "leaves this network "
-                + "until you lift it. Say "
-                + "yes and it's done.")
+            say(String(format: L("Quarantine %@? I'll shut its switch port on %@ — it leaves this network until you lift it. Say yes and it's done."), String(describing: target), String(describing: gear)))
         } else {
-            say("Lift the quarantine on "
-                + "\(target)? Its port on "
-                + "\(gear) opens again. "
-                + "Say yes.")
+            say(String(format: L("Lift the quarantine on %@? Its port on %@ opens again. Say yes."), String(describing: target), String(describing: gear)))
         }
         pendingAction = {
             DispatchQueue.global(
@@ -6667,22 +6227,14 @@ final class SkelliCenter: ObservableObject {
         guard let ip = targetIP else {
             if q.contains("snmp") {
                 say(walking
-                    ? "Walk what? Nothing on "
-                      + "the board answers to "
-                      + "that name."
-                    : "Back what up? Nothing "
-                      + "on the board answers "
-                      + "to that name.")
+                    ? L("Walk what? Nothing on the board answers to that name.")
+                    : L("Back what up? Nothing on the board answers to that name."))
                 return true
             }
             return false
         }
         guard let shell = blacksiteShell else {
-            say("The console hasn't woken in "
-                + "this run of the app — open "
-                + "the Blacksite tab once and "
-                + "the hand is mine from then "
-                + "on.")
+            say(L("The console hasn't woken in this run of the app — open the Blacksite tab once and the hand is mine from then on."))
             return true
         }
         let command: String
@@ -6700,12 +6252,10 @@ final class SkelliCenter: ObservableObject {
         }
         let out = shell.runForSkelli(command)
         if out.isEmpty {
-            say("Ran it — nothing came back "
-                + "on the line. The console "
-                + "holds the full run.")
+            say(L("Ran it — nothing came back on the line. The console holds the full run."))
         } else if out.count > 700 {
             say(String(out.prefix(700))
-                + "\n…the console holds the rest.")
+                + L("\n…the console holds the rest."))
         } else {
             say(out)
         }
@@ -6782,9 +6332,7 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("stand down")
                 || q.contains("off") {
                 WireWatch.shared.stop()
-                say("The watch stands down "
-                    + "— the wire keeps its "
-                    + "own counsel again.")
+                say(L("The watch stands down — the wire keeps its own counsel again."))
                 return true
             }
             if q.contains("start")
@@ -6794,35 +6342,21 @@ final class SkelliCenter: ObservableObject {
                 || q.contains("watch my")
                 || q.contains("keep an eye") {
                 if WireWatch.shared.start() {
-                    say("The watch stands "
-                        + "— browse, MNDP "
-                        + "ear, gateway "
-                        + "heartbeat. I'll be "
-                        + "learning this wire "
-                        + "from here.")
+                    say(L("The watch stands — browse, MNDP ear, gateway heartbeat. I'll be learning this wire from here."))
                 } else {
                     let declared =
                         EmconCondition.current
                         .declared
-                    say("The watch won't "
-                        + "stand under EMCON "
-                        + "\(declared) — the "
-                        + "condition forbids "
-                        + "its browse.")
+                    say(String(format: L("The watch won't stand under EMCON %@ — the condition forbids its browse."), String(describing: declared)))
                 }
                 return true
             }
             if WireWatch.shared.on {
                 let count = WireWatch.shared
                     .events.count
-                say("The watch is standing "
-                    + "— \(count) events "
-                    + "ledgered so far.")
+                say(String(format: L("The watch is standing — %@ events ledgered so far."), String(describing: count)))
             } else {
-                say("The watch is down. Say "
-                    + "\u{201C}watch my "
-                    + "network\u{201D} and "
-                    + "I'll stand it.")
+                say(L("The watch is down. Say “watch my network” and I'll stand it."))
             }
             return true
         }
@@ -6838,26 +6372,16 @@ final class SkelliCenter: ObservableObject {
             || q.contains("holster") {
             if center.running {
                 center.disarm()
-                say("Stood down. Net-Assault is "
-                    + "holstered — \(center.passes) "
-                    + "pass(es), \(center.newThisRun) new "
-                    + "device(s), \(center.driftThisRun) "
-                    + "drift line(s). The after-action "
-                    + "is filed.")
+                say(String(format: L("Stood down. Net-Assault is holstered — %@ pass(es), %@ new device(s), %@ drift line(s). The after-action is filed."), String(describing: center.passes), String(describing: center.newThisRun), String(describing: center.driftThisRun)))
             } else {
-                say("It isn't running — the wire is "
-                    + "quiet.")
+                say(L("It isn't running — the wire is quiet."))
             }
             return true
         }
         if center.running {
-            var line = "It's running the wire: "
-                + center.phase + ". \(center.passes) "
-                + "pass(es) in — \(center.newThisRun) "
-                + "new, \(center.driftThisRun) drift, "
-                + "\(center.probedThisRun) ports knocked."
+            var line = String(format: L("It's running the wire: %@. %@ pass(es) in — %@ new, %@ drift, %@ ports knocked."), String(describing: center.phase), String(describing: center.passes), String(describing: center.newThisRun), String(describing: center.driftThisRun), String(describing: center.probedThisRun))
             if let latest = center.findings.last {
-                line += " Latest: " + latest + "."
+                line += String(format: L(" Latest: %@."), String(describing: latest))
             }
             say(line)
             return true
@@ -6881,65 +6405,28 @@ final class SkelliCenter: ObservableObject {
                 return false
             }
             if EmconStandard.refused(.netAssault) {
-                noteRefusal(EmconCondition.current
-                    .declared + " forbids "
-                    + "Net-Assault — the Standard "
-                    + "holds every campaign dark "
-                    + "while a condition stands. "
-                    + "Lifting the condition is the "
-                    + "only key, and that word is "
-                    + "yours alone.")
+                noteRefusal(String(format: L("%@ forbids Net-Assault — the Standard holds every campaign dark while a condition stands. Lifting the condition is the only key, and that word is yours alone."), String(describing: EmconCondition.current.declared)))
                 say(vary([
-                    "Holstered — and held dark: "
-                        + EmconCondition.current.declared
-                        + " forbids it. The Standard keeps "
-                        + "loud organs down; lift the "
-                        + "condition and I'll run it.",
-                    "Held dark by the Standard: "
-                        + EmconCondition.current.declared
-                        + " forbids it, and loud organs "
-                        + "stay down while it stands. Lift "
-                        + "the condition and I'll run it."]))
+                    String(format: L("Holstered — and held dark: %@ forbids it. The Standard keeps loud organs down; lift the condition and I'll run it."), String(describing: EmconCondition.current.declared)),
+                    String(format: L("Held dark by the Standard: %@ forbids it, and loud organs stay down while it stands. Lift the condition and I'll run it."), String(describing: EmconCondition.current.declared))]))
             } else {
                 say(vary([
-                    "Holstered. Say 'analyze the wire' "
-                        + "and I'll turn it loose myself.",
-                    "Holstered, by my own hand. Say "
-                        + "'analyze the wire' and I'll "
-                        + "loose it.",
-                    "It stays holstered until you say "
-                        + "'analyze the wire' — then I "
-                        + "run it myself."]))
+                    L("Holstered. Say 'analyze the wire' and I'll turn it loose myself."),
+                    L("Holstered, by my own hand. Say 'analyze the wire' and I'll loose it."),
+                    L("It stays holstered until you say 'analyze the wire' — then I run it myself.")]))
             }
             return true
         }
         if EmconStandard.refused(.netAssault) {
-            noteRefusal(EmconCondition.current
-                .declared + " forbids Net-Assault "
-                + "— the Standard holds every "
-                + "campaign dark while a "
-                + "condition stands. Lifting the "
-                + "condition is the only key, and "
-                + "that word is yours alone.")
-            say("It stays dark: "
-                + EmconCondition.current.declared
-                + " forbids Net-Assault — the Standard "
-                + "holds loud organs down. Lift the "
-                + "condition and the wire is mine to "
-                + "run.")
+            noteRefusal(String(format: L("%@ forbids Net-Assault — the Standard holds every campaign dark while a condition stands. Lifting the condition is the only key, and that word is yours alone."), String(describing: EmconCondition.current.declared)))
+            say(String(format: L("It stays dark: %@ forbids Net-Assault — the Standard holds loud organs down. Lift the condition and the wire is mine to run."), String(describing: EmconCondition.current.declared)))
             return true
         }
         center.arm()
         if center.running {
-            say("Loose. Net-Assault is on the wire — "
-                + "sweep, browse, knock, pass after "
-                + "pass. It's loud by design: anything "
-                + "watching will see this phone coming. "
-                + "'Stand down the assault' and I'll "
-                + "holster it.")
+            say(L("Loose. Net-Assault is on the wire — sweep, browse, knock, pass after pass. It's loud by design: anything watching will see this phone coming. 'Stand down the assault' and I'll holster it."))
         } else {
-            say("It won't arm — the EMCON section "
-                + "shows its state.")
+            say(L("It won't arm — the EMCON section shows its state."))
         }
         return true
     }
@@ -7058,22 +6545,19 @@ final class SkelliCenter: ObservableObject {
             var stood: [String] = []
             if AssaultCenter.shared.running {
                 AssaultCenter.shared.disarm()
-                stood.append("Net-Assault holstered")
+                stood.append(L("Net-Assault holstered"))
             }
             if post?.session != nil {
                 post?.stop()
-                stood.append("the ear closed")
+                stood.append(L("the ear closed"))
             }
             if mouth?.serveRunning == true {
                 mouth?.stopServe()
-                stood.append("Serve stopped")
+                stood.append(L("Serve stopped"))
             }
             say(stood.isEmpty
-                ? "Nothing is running — the house "
-                  + "is already still."
-                : "Stood down: "
-                  + stood.joined(separator: ", ")
-                  + ".")
+                ? L("Nothing is running — the house is already still.")
+                : String(format: L("Stood down: %@."), String(describing: stood.joined(separator: ", "))))
             return true
         }
 
@@ -7170,24 +6654,20 @@ final class SkelliCenter: ObservableObject {
                    ? .alpha : .bravo)
                 : .charlie
             guard let emcon, let mouth else {
-                say("The EMCON room holds that "
-                    + "switch — it's on the tabs.")
+                say(L("The EMCON room holds that switch — it's on the tabs."))
                 return true
             }
             if emcon.condition >= target {
-                say("Already "
-                    + emcon.condition.declared
-                    + " — the house stands at "
-                    + "least that guarded.")
+                say(String(format: L("Already %@ — the house stands at least that guarded."), String(describing: emcon.condition.declared)))
             } else {
                 emcon.activate(mouth: mouth,
                                condition: target)
                 let refused = EmconStandard
                     .refusedLabels(for: target)
-                say(target.declared + " stands."
+                say(target.declared + L(" stands.")
                     + (refused.isEmpty
                        ? ""
-                       : " Dark now: "
+                       : L(" Dark now: ")
                          + refused.joined(
                             separator: ", ") + "."))
             }
@@ -7202,44 +6682,23 @@ final class SkelliCenter: ObservableObject {
     private func looseAssault(target: String?) {
         let center = AssaultCenter.shared
         if center.running {
-            say("Already loose — Net-Assault is "
-                + "working the wire: "
-                + center.phase + ".")
+            say(String(format: L("Already loose — Net-Assault is working the wire: %@."), String(describing: center.phase)))
             return
         }
         if EmconStandard.refused(.netAssault) {
-            noteRefusal(EmconCondition.current
-                .declared + " forbids Net-Assault "
-                + "— the Standard holds every "
-                + "campaign dark while a "
-                + "condition stands. Lifting the "
-                + "condition is the only key, and "
-                + "that word is yours alone.")
-            say("It stays dark: "
-                + EmconCondition.current.declared
-                + " forbids Net-Assault. Lift the "
-                + "condition and the wire is mine "
-                + "to run.")
+            noteRefusal(String(format: L("%@ forbids Net-Assault — the Standard holds every campaign dark while a condition stands. Lifting the condition is the only key, and that word is yours alone."), String(describing: EmconCondition.current.declared)))
+            say(String(format: L("It stays dark: %@ forbids Net-Assault. Lift the condition and the wire is mine to run."), String(describing: EmconCondition.current.declared)))
             return
         }
         center.arm()
         if center.running {
             if let target {
-                say("Loose. Net-Assault is on "
-                    + "the wire — it sweeps the "
-                    + "whole LAN, and " + target
-                    + " is in its field. It's "
-                    + "loud by design.")
+                say(String(format: L("Loose. Net-Assault is on the wire — it sweeps the whole LAN, and %@ is in its field. It's loud by design."), String(describing: target)))
             } else {
-                say("No target named, so the "
-                    + "wire is the target. "
-                    + "Net-Assault is loose — "
-                    + "sweep, browse, knock, "
-                    + "pass after pass.")
+                say(L("No target named, so the wire is the target. Net-Assault is loose — sweep, browse, knock, pass after pass."))
             }
         } else {
-            say("It won't arm — the EMCON "
-                + "section shows its state.")
+            say(L("It won't arm — the EMCON section shows its state."))
         }
     }
 
@@ -7248,28 +6707,20 @@ final class SkelliCenter: ObservableObject {
     /// next ask can be answered.
     private func signalReport() {
         guard let post else {
-            say("The ear hasn't reached me yet "
-                + "— open the Listen tab once "
-                + "and ask again.")
+            say(L("The ear hasn't reached me yet — open the Listen tab once and ask again."))
             return
         }
         if let top = post.rows.first {
             let strength = top.rssiSmooth.map {
                 "\(Int($0)) dBm"
             } ?? "unmeasured"
-            say("The loudest thing on the air: "
-                + top.label + " — " + top.kind
-                + ", " + strength + ", heard "
-                + "\(top.sightings)×.")
+            say(String(format: L("The loudest thing on the air: %@ — %@, %@, heard %@×."), String(describing: top.label), String(describing: top.kind), String(describing: strength), String(describing: top.sightings)))
             return
         }
         if post.session == nil {
             post.start(label: "Skelli")
         }
-        say("The ear was closed — it's open "
-            + "now. Give it a breath, then ask "
-            + "again and I'll name the loudest "
-            + "thing on the air.")
+        say(L("The ear was closed — it's open now. Give it a breath, then ask again and I'll name the loudest thing on the air."))
     }
 
     // MARK: the clears — hers to strike, on his word
@@ -7293,41 +6744,28 @@ final class SkelliCenter: ObservableObject {
             self.pendingAction = { [weak self] in
                 self?.say(strike())
             }
-            self.say(what + " It can't be undone. "
-                + "Say 'yes' and I'll strike it; "
-                + "'no' keeps it.")
+            self.say(what + L(" It can't be undone. Say 'yes' and I'll strike it; 'no' keeps it."))
         }
         if q.contains("night log") || q.contains("journal")
             || q.contains("log") {
-            offer("The Night log: every sealed entry "
-                  + "gone, and the seal chain starts "
-                  + "fresh from the next line.") {
+            offer(L("The Night log: every sealed entry gone, and the seal chain starts fresh from the next line.")) {
                 Journal.clear()
-                return "Struck. The Night log is "
-                    + "empty; the chain starts fresh."
+                return L("Struck. The Night log is empty; the chain starts fresh.")
             }
             return true
         }
         if q.contains("neighbor") || q.contains("wire")
             || q.contains("devices") {
-            offer("The Neighborhood: every known "
-                  + "device forgotten, their Map "
-                  + "placements with them. The wire "
-                  + "will re-learn its cast.") {
+            offer(L("The Neighborhood: every known device forgotten, their Map placements with them. The wire will re-learn its cast.")) {
                 NeighborhoodStore.shared.clear()
-                return "Struck. The Neighborhood is "
-                    + "empty — the wire will re-learn "
-                    + "its cast."
+                return L("Struck. The Neighborhood is empty — the wire will re-learn its cast.")
             }
             return true
         }
         if q.contains("map") {
-            offer("The Map, reset: rooms and "
-                  + "placements forgotten. The "
-                  + "devices themselves stay.") {
+            offer(L("The Map, reset: rooms and placements forgotten. The devices themselves stay.")) {
                 MapStore.shared.reset()
-                return "Struck. The Map is blank — "
-                    + "no rooms, no placements."
+                return L("Struck. The Map is blank — no rooms, no placements.")
             }
             return true
         }
@@ -7340,52 +6778,29 @@ final class SkelliCenter: ObservableObject {
                 || !q.contains("cadence")
             let cadence = q.contains("cadence")
             if threads && cadence {
-                offer("Knocktalk, both doors: every "
-                      + "thread — conversations and "
-                      + "cadence notes — and every "
-                      + "cadence profile. The pairing "
-                      + "key is never touched.") {
+                offer(L("Knocktalk, both doors: every thread — conversations and cadence notes — and every cadence profile. The pairing key is never touched.")) {
                     chat.clearAllThreads()
                     CadenceSeal.resetAll()
-                    return "Struck. Threads and "
-                        + "cadence profiles are gone; "
-                        + "the pairing key stands."
+                    return L("Struck. Threads and cadence profiles are gone; the pairing key stands.")
                 }
             } else if cadence {
-                offer("Every cadence profile: the "
-                      + "timing fingerprints learned "
-                      + "for each peer. Threads and "
-                      + "the pairing key stay.") {
+                offer(L("Every cadence profile: the timing fingerprints learned for each peer. Threads and the pairing key stay.")) {
                     CadenceSeal.resetAll()
-                    return "Struck. Every cadence "
-                        + "profile is forgotten; each "
-                        + "hand is learned again from "
-                        + "its next knocks."
+                    return L("Struck. Every cadence profile is forgotten; each hand is learned again from its next knocks.")
                 }
             } else {
-                offer("Every Knocktalk thread: every "
-                      + "conversation and cadence "
-                      + "note deleted. The pairing "
-                      + "key stays.") {
+                offer(L("Every Knocktalk thread: every conversation and cadence note deleted. The pairing key stays.")) {
                     chat.clearAllThreads()
-                    return "Struck. Knocktalk's "
-                        + "threads are gone; the "
-                        + "pairing key stands."
+                    return L("Struck. Knocktalk's threads are gone; the pairing key stands.")
                 }
             }
             return true
         }
         if q.contains("mind") || q.contains("subconscious")
             || q.contains("facts") {
-            offer("The mind's memory, reset: its "
-                  + "reckoned drift baselines, your "
-                  + "verdicts, and every learned "
-                  + "fact. The reading re-derives "
-                  + "from the record.") {
+            offer(L("The mind's memory, reset: its reckoned drift baselines, your verdicts, and every learned fact. The reading re-derives from the record.")) {
                 SubconsciousCenter.shared.reset()
-                return "Struck. The mind starts "
-                    + "fresh — baselines, verdicts, "
-                    + "and learned facts forgotten."
+                return L("Struck. The mind starts fresh — baselines, verdicts, and learned facts forgotten.")
             }
             return true
         }
@@ -7393,54 +6808,27 @@ final class SkelliCenter: ObservableObject {
     }
 
     private func clearGuidance(for q: String) -> String {
-        return "Name the store and I'll strike it "
-            + "here, on your word: the Night log, "
-            + "the Neighborhood, the Map, Knocktalk's "
-            + "threads or cadence profiles, or the "
-            + "mind's memory. Or say 'soft clear' — "
-            + "the screen empties and I keep the "
-            + "conversation. Reset-all-settings "
-            + "stays in About — that one is the "
-            + "house's own foundation, and its tap "
-            + "stays yours."
+        return L("Name the store and I'll strike it here, on your word: the Night log, the Neighborhood, the Map, Knocktalk's threads or cadence profiles, or the mind's memory. Or say 'soft clear' — the screen empties and I keep the conversation. Reset-all-settings stays in About — that one is the house's own foundation, and its tap stays yours.")
     }
 
     private func navRoute(for q: String) -> (Int, String)? {
         let routes: [(String, Int, String)] = [
-            ("map", 4, "The Map crowns the Scan tab — "
-                + "its own section at the very top. "
-                + "Taken you there."),
-            ("scan", 4, "Scan — taken you there."),
-            ("recon", 6, "The Recon bench — taken you "
-                + "there."),
-            ("emcon", 7, "EMCON — taken you there."),
-            ("mind", 7, "The Subconscious card lives "
-                + "in EMCON — 'Open the mind' unfolds "
-                + "its full reading. Taken you there."),
-            ("subconscious", 7, "The Subconscious card "
-                + "lives in EMCON — 'Open the mind' "
-                + "unfolds its full reading. Taken you "
-                + "there."),
-            ("knocktalk", 8, "Knocktalk — taken you "
-                + "there."),
-            ("listen", 0, "Listen — taken you there."),
-            ("send", 1, "Send — taken you there."),
-            ("serve", 2, "Serve — taken you there."),
-            ("session", 3, "Sessions — taken you there."),
-            ("colour", 5, "Colours lives inside About "
-                + "— its own section there. Taken you "
-                + "to About."),
-            ("color", 5, "Colours lives inside About "
-                + "— its own section there. Taken you "
-                + "to About."),
-            ("about", 5, "About — the house's options "
-                + "hub. Taken you there."),
-            ("instrument", 7, "The Instrument is a "
-                + "section in EMCON, below the "
-                + "Subconscious. Taken you there."),
-            ("assault", 7, "Net-Assault's section sits "
-                + "in EMCON under the skull, second "
-                + "from the top. Taken you there."),
+            ("map", 4, L("The Map crowns the Scan tab — its own section at the very top. Taken you there.")),
+            ("scan", 4, L("Scan — taken you there.")),
+            ("recon", 6, L("The Recon bench — taken you there.")),
+            ("emcon", 7, L("EMCON — taken you there.")),
+            ("mind", 7, L("The Subconscious card lives in EMCON — 'Open the mind' unfolds its full reading. Taken you there.")),
+            ("subconscious", 7, L("The Subconscious card lives in EMCON — 'Open the mind' unfolds its full reading. Taken you there.")),
+            ("knocktalk", 8, L("Knocktalk — taken you there.")),
+            ("listen", 0, L("Listen — taken you there.")),
+            ("send", 1, L("Send — taken you there.")),
+            ("serve", 2, L("Serve — taken you there.")),
+            ("session", 3, L("Sessions — taken you there.")),
+            ("colour", 5, L("Colours lives inside About — its own section there. Taken you to About.")),
+            ("color", 5, L("Colours lives inside About — its own section there. Taken you to About.")),
+            ("about", 5, L("About — the house's options hub. Taken you there.")),
+            ("instrument", 7, L("The Instrument is a section in EMCON, below the Subconscious. Taken you there.")),
+            ("assault", 7, L("Net-Assault's section sits in EMCON under the skull, second from the top. Taken you there.")),
         ]
         for route in routes where q.contains(route.0) {
             return (route.1, route.2)
@@ -10317,7 +9705,7 @@ struct SkelliView: View {
         @ViewBuilder content: () -> Content)
         -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(label)
+            Text(L(label))
                 .font(.system(size: 8.5, weight: .bold))
                 .tracking(1.2)
                 .foregroundStyle(.secondary)
@@ -10432,7 +9820,7 @@ struct SkelliView: View {
                     .foregroundStyle(.secondary)
             }
             meter(Double(score.value) / 100)
-            panelSub((loudest ?? "nothing announcing")
+            panelSub((loudest ?? L("nothing announcing"))
                 + (emcon.active
                     ? " · " + emcon.condition.declared
                     : ""))
@@ -10450,8 +9838,8 @@ struct SkelliView: View {
                 < 600
         }.count
         var sub = unknown > 0
-            ? "\(unknown) unknown" : "all named"
-        if fresh > 0 { sub += " · \(fresh) new" }
+            ? String(format: L("%@ unknown"), String(describing: unknown)) : L("all named")
+        if fresh > 0 { sub += String(format: L(" · %@ new"), String(describing: fresh)) }
         return panel(label: "WIRE") {
             HStack(alignment: .bottom, spacing: 6) {
                 panelValue("\(neighbors.count)")
@@ -10480,11 +9868,10 @@ struct SkelliView: View {
         let trackers = station.emitters.filter {
             $0.trackerShaped }.count
         var sub = station.currentWatch != nil
-            ? "\(station.newSinceWatchStart()) new "
-                + "this watch"
-            : "epoch registry"
+            ? String(format: L("%@ new this watch"), String(describing: station.newSinceWatchStart()))
+            : L("epoch registry")
         if trackers > 0 {
-            sub = "\(trackers) tracker-shaped · " + sub
+            sub = String(format: L("%@ tracker-shaped · %@"), String(describing: trackers), String(describing: sub))
         }
         return panel(label: "SIGNALS") {
             panelValue("\(station.emitters.count)")
@@ -10511,7 +9898,7 @@ struct SkelliView: View {
             w.batteries.first {
                 $0.component == "device" } }
         var value = "—"
-        var sub = "none reporting"
+        var sub = L("none reporting")
         if let weakest, let reading {
             let name = weakest.name
                 ?? weakest.preferredLabel ?? weakest.kind
@@ -10523,7 +9910,7 @@ struct SkelliView: View {
                 value = "\(percent)%"
             } else if let millivolts = reading.millivolts {
                 value = "\(millivolts)"
-                sub = "mV · " + sub
+                sub = String(format: L("mV · %@"), String(describing: sub))
             } else {
                 value = reading.state ?? "—"
             }
@@ -10536,9 +9923,9 @@ struct SkelliView: View {
 
     private var processesPanel: some View {
         let board = ProcessBoard.shared
-        var sub = "board clear"
+        var sub = L("board clear")
         if let last = board.recent.first {
-            sub = "last: " + last.label
+            sub = String(format: L("last: %@"), String(describing: last.label))
         }
         return panel(label: "PROCESSES") {
             panelValue("\(board.active.count)")
@@ -10560,9 +9947,9 @@ struct SkelliView: View {
             let fresh = station.newSinceWatchStart()
             if fresh > 0 {
                 return ("eye.fill",
-                        "Watch: \(fresh) new emitter"
-                        + (fresh == 1 ? "" : "s")
-                        + " since it began")
+                        fresh == 1
+                        ? String(format: L("Watch: %@ new emitter since it began"), String(describing: fresh))
+                        : String(format: L("Watch: %@ new emitters since it began"), String(describing: fresh)))
             }
         }
         let now = Date().timeIntervalSince1970
@@ -10580,14 +9967,14 @@ struct SkelliView: View {
             let name = low.0.name ?? low.0.preferredLabel
                 ?? low.0.kind
             return ("battery.25",
-                    "Low battery: \(name) at \(low.1)%")
+                    String(format: L("Low battery: %@ at %@%%"), String(describing: name), String(describing: low.1)))
         }
         if let tracker = post.rows.first(where: {
             $0.trackerShaped && now - $0.lastSeen < 900 }) {
             let name = tracker.name
                 ?? tracker.preferredLabel ?? tracker.kind
             return ("magnifyingglass",
-                    "Tracker-shaped in the air: " + name)
+                    String(format: L("Tracker-shaped in the air: %@"), String(describing: name)))
         }
         if let changed = post.rows.first(where: {
             $0.payloadChanges > 0
@@ -10595,8 +9982,7 @@ struct SkelliView: View {
             let name = changed.name
                 ?? changed.preferredLabel ?? changed.kind
             return ("arrow.triangle.swap",
-                    name + " changed its advertisement "
-                    + "shape")
+                    String(format: L("%@ changed its advertisement shape"), String(describing: name)))
         }
         return nil
     }
@@ -10659,21 +10045,18 @@ struct SkelliView: View {
                     $0.firstSeen) < 600
             }.sorted { $0.firstSeen > $1.firstSeen }
         if let new = fresh.first {
-            return "New on the wire: "
-                + new.displayName
+            return String(format: L("New on the wire: %@"), String(describing: new.displayName))
         }
         if mouth.serveRunning && !mouth.stealth {
-            return "Serve is open and announcing — "
-                + "your loudest emission"
+            return L("Serve is open and announcing — your loudest emission")
         }
         if let event = Journal.events(limit: 1)
             .first {
             return event.text
         }
         return emcon.active
-            ? "All quiet. You are dark, and the "
-                + "wire is known."
-            : "All quiet on the wire."
+            ? L("All quiet. You are dark, and the wire is known.")
+            : L("All quiet on the wire.")
     }
 
     private func sample() {
