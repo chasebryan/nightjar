@@ -173,14 +173,13 @@ final class WarRun: ObservableObject {
         guard !running else { return }
         if EmconStandard.refused(.warRun) {
             phase = .failed
-            statusLine = "The run stays dark — "
-                + EmconCondition.current.declared
+            statusLine = String(format: L("The run stays dark — %@"),
+                                EmconCondition.current.declared)
             return
         }
         guard !mouth.traceBusy else {
             phase = .failed
-            statusLine = "The trace is already working — "
-                + "a run waits for the wire to free."
+            statusLine = L("The trace is already working — a run waits for the wire to free.")
             return
         }
         self.mouth = mouth
@@ -194,9 +193,7 @@ final class WarRun: ObservableObject {
               let subnet = Mouth.sweepBase(config.scopeText,
                                            ownIP: ownIP) else {
             phase = .failed
-            statusLine = "Couldn't read that scope — blank means "
-                + "this phone's /24; otherwise an address in the "
-                + "/24 or its base."
+            statusLine = L("Couldn't read that scope — blank means this phone's /24; otherwise an address in the /24 or its base.")
             return
         }
         base = subnet
@@ -236,14 +233,13 @@ final class WarRun: ObservableObject {
             startedListen = false
         }
 
-        addEvent(.run, "War Room run started",
+        addEvent(.run, L("War Room run started"),
                  detail: "\(base).0/24"
-                    + (config.includeBLE ? " · air included" : " · wire only"),
+                    + (config.includeBLE ? L(" · air included") : L(" · wire only")),
                  source: "war-room")
         if startedListen {
-            addEvent(.note, "Listen started for this run",
-                     detail: "It stops again when the run ends — "
-                        + "the room is left as it was found.",
+            addEvent(.note, L("Listen started for this run"),
+                     detail: L("It stops again when the run ends — the room is left as it was found."),
                      source: "listen")
         }
         Journal.log("war-room", "run",
@@ -281,7 +277,7 @@ final class WarRun: ObservableObject {
         guard running else { return }
         if phase == .tracing { mouth?.stopNetworkTrace() }
         if phase == .knocking { recon?.cancelKnock() }
-        addEvent(.run, "Run stopped by the operator",
+        addEvent(.run, L("Run stopped by the operator"),
                  source: "war-room")
         finish(stopped: true)
     }
@@ -312,7 +308,7 @@ final class WarRun: ObservableObject {
                     // The trace refused (busy elsewhere, bad
                     // ports): its own status says why.
                     statusLine = mouth.traceStatus
-                    addEvent(.note, "The trace did not start",
+                    addEvent(.note, L("The trace did not start"),
                              detail: mouth.traceStatus ?? "",
                              source: "trace")
                     phase = .failed
@@ -334,7 +330,7 @@ final class WarRun: ObservableObject {
             if !knownHosts.contains(host.ip) {
                 knownHosts.insert(host.ip)
                 let name = host.names.first ?? ""
-                addEvent(.host, "Host \(host.ip)",
+                addEvent(.host, String(format: L("Host %@"), host.ip),
                          detail: name, source: "trace")
             }
             for service in host.services {
@@ -343,7 +339,7 @@ final class WarRun: ObservableObject {
                     knownDoors.insert(key)
                     doorSignatures[key] = service.signature
                     addEvent(.door,
-                             "Door \(host.ip):\(service.port)/\(service.proto)",
+                             String(format: L("Door %@:%lld/%@"), host.ip, service.port, service.proto),
                              detail: service.bannerFirstLine.isEmpty
                                 ? service.serviceName
                                 : service.bannerFirstLine,
@@ -352,7 +348,7 @@ final class WarRun: ObservableObject {
                           old != service.signature {
                     doorSignatures[key] = service.signature
                     addEvent(.banner,
-                             "Banner changed \(host.ip):\(service.port)",
+                             String(format: L("Banner changed %@:%lld"), host.ip, service.port),
                              detail: service.bannerFirstLine,
                              source: "trace")
                 }
@@ -408,16 +404,15 @@ final class WarRun: ObservableObject {
         knockIndex = 0
         knockInFlight = false
         if knockPlan.isEmpty {
-            addEvent(.note, "No doors to knock",
-                     detail: "The trace found no answering "
-                        + "services on this run.",
+            addEvent(.note, L("No doors to knock"),
+                     detail: L("The trace found no answering services on this run."),
                      source: "recon")
             finish(stopped: false)
             return
         }
         phase = .knocking
-        addEvent(.run, "Trace complete — knocking "
-                    + "\(knockPlan.count) door group(s)",
+        addEvent(.run, String(format: L("Trace complete — knocking %lld door group(s)"),
+                              knockPlan.count),
                  source: "war-room")
     }
 
@@ -434,9 +429,9 @@ final class WarRun: ObservableObject {
                     banner: hit.banner, confirmed: hit.confirmed))
                 if hit.isOpen {
                     addEvent(.recon,
-                             "\(step.host):\(hit.port) answered",
+                             String(format: L("%@:%lld answered"), step.host, hit.port),
                              detail: hit.confirmed
-                                ? "★ answered as \(hit.service)"
+                                ? String(format: L("★ answered as %@"), hit.service)
                                 : (hit.banner.isEmpty
                                     ? hit.service : hit.banner),
                              source: "recon")
@@ -449,8 +444,8 @@ final class WarRun: ObservableObject {
             return
         }
         let step = knockPlan[knockIndex]
-        statusLine = "Knocking \(step.host) — "
-            + "group \(knockIndex + 1)/\(knockPlan.count)"
+        statusLine = String(format: L("Knocking %@ — group %lld/%lld"),
+                            step.host, knockIndex + 1, knockPlan.count)
         recon.knock(host: step.host, ports: step.ports,
                     udp: step.udp, timeout: config.knockTimeout,
                     jobs: config.knockJobs)
@@ -471,9 +466,9 @@ final class WarRun: ObservableObject {
             phase = stopped ? .stopped : .complete
             let open = reconHits.filter { $0.isOpen }.count
             addEvent(.run,
-                     stopped ? "Run closed" : "Run complete",
-                     detail: "\(events.count) timeline events · "
-                        + "\(open) open door(s) knocked",
+                     stopped ? L("Run closed") : L("Run complete"),
+                     detail: String(format: L("%lld timeline events · %lld open door(s) knocked"),
+                                    events.count, open),
                      source: "war-room")
             writeExport(stopped: stopped,
                         listenWasStarted: listenWasStarted)
@@ -486,14 +481,14 @@ final class WarRun: ObservableObject {
             boardID = nil
             if failed {
                 ProcessBoard.shared.end(id, .failed(
-                    "the run failed — see the War Room"))
+                    L("the run failed — see the War Room")))
             } else if stopped {
                 ProcessBoard.shared.end(id, .stopped)
             } else {
                 ProcessBoard.shared.end(id, .done(
-                    "\(events.count) events · "
-                    + "\(reconHits.filter { $0.isOpen }.count)"
-                    + " open doors"))
+                    String(format: L("%lld events · %lld open doors"),
+                           events.count,
+                           reconHits.filter { $0.isOpen }.count)))
             }
         }
     }
@@ -521,7 +516,7 @@ final class WarRun: ObservableObject {
             timeline: events,
             reconHits: reconHits,
             trace: trace,
-            limitations: WarRoomExport.limitations)
+            limitations: WarRoomExport.limitations.map { L($0) })
         let directory = (FileManager.default
             .urls(for: .documentDirectory,
                   in: .userDomainMask).first
@@ -634,7 +629,7 @@ struct WarRoomView: View {
             List {
                 Section {
                     HStack {
-                        Label(run.phase.rawValue,
+                        Label(L(run.phase.rawValue),
                               systemImage: phaseIcon)
                             .font(.headline)
                         Spacer()
@@ -716,8 +711,8 @@ struct WarRoomView: View {
                         }
                         if run.events.count > 40 {
                             Button(showAllEvents
-                                   ? "Fold — latest 40"
-                                   : "Show all \(run.events.count)") {
+                                   ? L("Fold — latest 40")
+                                   : String(format: L("Show all %lld"), run.events.count)) {
                                 showAllEvents.toggle()
                             }
                         }

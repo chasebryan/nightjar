@@ -140,16 +140,14 @@ struct WarMatchReport: Codable {
             + unseen.count * 5
         let verdict: String
         if attackerPoints > defenderPoints {
-            verdict = "The attacker takes the round — "
-                + "\(attackerPoints) to \(defenderPoints). "
-                + "The wire was read better than it was held."
+            verdict = String(format: L("The attacker takes the round — %lld to %lld. The wire was read better than it was held."),
+                             attackerPoints, defenderPoints)
         } else if defenderPoints > attackerPoints {
-            verdict = "The defender takes the round — "
-                + "\(defenderPoints) to \(attackerPoints). "
-                + "The house saw more than it showed."
+            verdict = String(format: L("The defender takes the round — %lld to %lld. The house saw more than it showed."),
+                             defenderPoints, attackerPoints)
         } else {
-            verdict = "Honours even — \(attackerPoints) apiece. "
-                + "Run it back."
+            verdict = String(format: L("Honours even — %lld apiece. Run it back."),
+                             attackerPoints)
         }
         return WarMatchReport(
             schema: "net.nosuchmachine.nightjar.wargames",
@@ -167,7 +165,7 @@ struct WarMatchReport: Codable {
             attackerPoints: attackerPoints,
             defenderPoints: defenderPoints,
             verdict: verdict,
-            limitations: limitations)
+            limitations: Self.limitations.map { L($0) })
     }
 }
 
@@ -190,7 +188,7 @@ final class WarGamesCenter: ObservableObject {
     @Published var matchID: String = WarGamesCenter.newMatchID()
     @Published var round: Int = 1
     @Published var role: String = "defender"
-    @Published var phase: String = "No match running."
+    @Published var phase: String = L("No match running.")
     @Published var log: [String] = []
     @Published var myCard: WarCard?
     @Published var theirCard: WarCard?
@@ -292,17 +290,17 @@ final class WarGamesCenter: ObservableObject {
         matchID = Self.newMatchID()
         round = 1
         resetRound()
-        phase = "New match \(matchID). "
+        phase = String(format: L("New match %@. "), matchID)
             + (role == "attacker"
-                ? "Challenge the defender when ready."
-                : "Waiting for a challenge.")
-        note("match \(matchID) created")
+                ? L("Challenge the defender when ready.")
+                : L("Waiting for a challenge."))
+        note(String(format: L("match %@ created"), matchID))
     }
 
     func nextRound() {
         round += 1
         resetRound()
-        phase = "Round \(round) — fresh cards."
+        phase = String(format: L("Round %lld — fresh cards."), round)
     }
 
     func setRole(_ newRole: String) {
@@ -310,8 +308,8 @@ final class WarGamesCenter: ObservableObject {
         role = newRole
         resetRound()
         phase = newRole == "attacker"
-            ? "Attacker — challenge a serving defender."
-            : "Defender — keep Serve up and this room open."
+            ? L("Attacker — challenge a serving defender.")
+            : L("Defender — keep Serve up and this room open.")
     }
 
     private func resetRound() {
@@ -356,8 +354,7 @@ final class WarGamesCenter: ObservableObject {
                     to: defenderIP)
         awaiting = "READY"
         awaitDeadline = Date().addingTimeInterval(20)
-        phase = "Challenge sent — waiting for the defender "
-            + "to answer READY."
+        phase = L("Challenge sent — waiting for the defender to answer READY.")
     }
 
     func beginAttack(config: WarConfig, knockPorts: [Int],
@@ -368,7 +365,7 @@ final class WarGamesCenter: ObservableObject {
         sendControl("NJWG/1 START \(matchID) \(round)", to: peerIP)
         awaiting = "ARMED"
         awaitDeadline = Date().addingTimeInterval(10)
-        phase = "START sent — waiting for ARMED."
+        phase = L("START sent — waiting for ARMED.")
     }
 
     private func runAttack() {
@@ -378,7 +375,7 @@ final class WarGamesCenter: ObservableObject {
         sawTraceBusy = false
         collectedHits = []
         attackStart = Date()
-        phase = "Attacking — tracing \(peerIP)'s wire."
+        phase = String(format: L("Attacking — tracing %@'s wire."), peerIP)
         mouth.startNetworkTrace(
             scopeText: peerIP,
             discoveryPorts: config.discoveryPorts,
@@ -417,8 +414,8 @@ final class WarGamesCenter: ObservableObject {
         knockIndex = 0
         knockInFlight = false
         phase = knockPlan.isEmpty
-            ? "No doors to knock — filing the card."
-            : "Knocking the defender's doors."
+            ? L("No doors to knock — filing the card.")
+            : L("Knocking the defender's doors.")
         if knockPlan.isEmpty { buildAttackerCard() }
     }
 
@@ -489,8 +486,8 @@ final class WarGamesCenter: ObservableObject {
             servedDoors: [], decoys: [], caught: [])
         myCard = card
         attacking = false
-        phase = "Attack complete — \(card.foundDoors.count) "
-            + "door(s) found. Sending the card."
+        phase = String(format: L("Attack complete — %lld door(s) found. Sending the card."),
+                       card.foundDoors.count)
         sendControl("NJWG/1 DONE \(matchID) \(round)", to: peerIP)
         sendCard(card, to: peerIP)
         tryScore()
@@ -510,10 +507,9 @@ final class WarGamesCenter: ObservableObject {
             peerIP = peer
             matchPort = port
             peerLabel = label
-            phase = "Paired with \(label.isEmpty ? peer : label) "
-                + "— match \(match), round \(incoming). "
-                + "Serve proud; the attack comes when it comes."
-            note("paired: \(peer) as \(label)")
+            phase = String(format: L("Paired with %@ — match %@, round %lld. Serve proud; the attack comes when it comes."),
+                           label.isEmpty ? peer : label, match, incoming)
+            note(String(format: L("paired: %@ as %@"), peer, label))
             sendControl("NJWG/1 READY \(matchID) \(round)",
                         to: peer)
         }
@@ -523,9 +519,8 @@ final class WarGamesCenter: ObservableObject {
         guard role == "defender", peer == peerIP else { return }
         windowBaseline = Set((mouth?.inbox ?? []).map { $0.id })
         windowOpen = true
-        phase = "The attack is live — the inbox is the catch "
-            + "log. Hold the wire."
-        note("catch window opened")
+        phase = L("The attack is live — the inbox is the catch log. Hold the wire.")
+        note(L("catch window opened"))
         sendControl("NJWG/1 ARMED \(matchID) \(round)", to: peer)
     }
 
@@ -553,9 +548,9 @@ final class WarGamesCenter: ObservableObject {
         defenderServeDoors = serveDoors
         defenderDecoys = decoys
         myCard = card
-        phase = "Round over — caught \(caught.count) "
-            + "arrival(s). Card sent."
-        note("defense card built: \(caught.count) caught")
+        phase = String(format: L("Round over — caught %lld arrival(s). Card sent."),
+                       caught.count)
+        note(String(format: L("defense card built: %lld caught"), caught.count))
         sendCard(card, to: peerIP)
         tryScore()
     }
@@ -588,7 +583,7 @@ final class WarGamesCenter: ObservableObject {
         guard let card = try? decoder.decode(WarCard.self,
                                              from: data)
         else {
-            note("imported file is not a match card")
+            note(L("imported file is not a match card"))
             return
         }
         receiveCard(card)
@@ -597,13 +592,13 @@ final class WarGamesCenter: ObservableObject {
     private func receiveCard(_ card: WarCard) {
         guard card.matchID == matchID, card.round == round
         else {
-            note("card for \(card.matchID) r\(card.round) "
-                    + "ignored — not this match")
+            note(String(format: L("card for %@ r%lld ignored — not this match"),
+                        card.matchID, card.round))
             return
         }
         theirCard = card
-        note("their card received (\(card.role))")
-        phase = "Both cards in — the round can be scored."
+        note(String(format: L("their card received (%@)"), card.role))
+        phase = L("Both cards in — the round can be scored.")
         tryScore()
     }
 
@@ -618,7 +613,7 @@ final class WarGamesCenter: ObservableObject {
                                           defender: defender)
         report = scored
         reportURL = writeReport(scored)
-        phase = "Round \(round) scored."
+        phase = String(format: L("Round %lld scored."), round)
         Journal.log("war-games", "score",
                     "match \(matchID) round \(round): "
                     + "attacker \(scored.attackerPoints), "
@@ -689,13 +684,10 @@ final class WarGamesCenter: ObservableObject {
            let deadline = awaitDeadline, Date() > deadline {
             self.awaiting = nil
             if awaiting == "READY" {
-                phase = "No READY heard. The defender must be "
-                    + "serving (Serve tab) with the War Games "
-                    + "room open, on the match port."
+                phase = L("No READY heard. The defender must be serving (Serve tab) with the War Games room open, on the match port.")
             } else if awaiting == "ARMED" {
-                note("no ARMED — attacking unsynchronised")
-                phase = "No ARMED heard — attacking anyway, "
-                    + "unsynchronised."
+                note(L("no ARMED — attacking unsynchronised"))
+                phase = L("No ARMED heard — attacking anyway, unsynchronised.")
                 runAttack()
             }
         }
@@ -742,9 +734,8 @@ final class WarGamesCenter: ObservableObject {
                    roundNo == round, awaiting == "READY" {
                     awaiting = nil
                     defenderReady = true
-                    phase = "The defender is READY. Begin the "
-                        + "attack when you are."
-                    note("defender ready")
+                    phase = L("The defender is READY. Begin the attack when you are.")
+                    note(L("defender ready"))
                 }
             case "START":
                 if match == matchID, roundNo == round {
@@ -754,8 +745,7 @@ final class WarGamesCenter: ObservableObject {
                 if role == "attacker", match == matchID,
                    roundNo == round, awaiting == "ARMED" {
                     awaiting = nil
-                    phase = "ARMED — the catch window is open. "
-                        + "Attacking."
+                    phase = L("ARMED — the catch window is open. Attacking.")
                     runAttack()
                 }
             case "DONE":
@@ -902,8 +892,8 @@ struct WarGamesView: View {
                                 .foregroundStyle(.secondary)
                         }
                         if center.log.count > 30 {
-                            Button(showAllLog ? "Fold"
-                                   : "Show all \(center.log.count)") {
+                            Button(showAllLog ? L("Fold")
+                                   : String(format: L("Show all %lld"), center.log.count)) {
                                 showAllLog.toggle()
                             }
                         }
@@ -956,9 +946,7 @@ struct WarGamesView: View {
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.numberPad)
             }
-            Text(L("The defender's Serve TCP port. Your replies come back to this phone's Serve TCP port ")
-                + "(\(serveTcpPort)) — keep this phone serving "
-                + "too.")
+            Text(String(format: L("The defender's Serve TCP port. Your replies come back to this phone's Serve TCP port (%@) — keep this phone serving too."), serveTcpPort))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Button {
@@ -1030,16 +1018,16 @@ struct WarGamesView: View {
                 Text(L("My card"))
                 Spacer()
                 Text(center.myCard == nil
-                     ? "not filed"
-                     : "\(center.myCard!.role) · filed")
+                     ? L("not filed")
+                     : String(format: L("%@ · filed"), center.myCard!.role))
                     .foregroundStyle(.secondary)
             }
             HStack {
                 Text(L("Their card"))
                 Spacer()
                 Text(center.theirCard == nil
-                     ? "not received"
-                     : "\(center.theirCard!.role) · in")
+                     ? L("not received")
+                     : String(format: L("%@ · in"), center.theirCard!.role))
                     .foregroundStyle(.secondary)
             }
             if center.myCard != nil {
