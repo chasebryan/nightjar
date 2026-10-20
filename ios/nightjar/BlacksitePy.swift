@@ -23,9 +23,12 @@ import Foundation
 // help says them out loud): there are no
 // threads — a generator's body walks on
 // one of its own, but user code cannot
-// start another — and the house has no
-// bytes type, so hashlib and base64
-// speak in text and lists of numbers.
+// start another. Bytes are real
+// (fix150): b'' literals, binary
+// files, hashlib and base64 speaking
+// them natively — but there is no
+// bytearray yet, and bytes are
+// immutable, as they should be.
 // Where CPython would raise, it raises
 // in CPython's voice, with the file and
 // line.
@@ -36,6 +39,7 @@ indirect enum PyValue {
     case int(Int)
     case float(Double)
     case str(String)
+    case bytes([UInt8])
     case list(PyList)
     case dict(PyDict)
     case tuple([PyValue])
@@ -116,6 +120,10 @@ final class PyFile {
     let path: String
     let mode: String
     var content: String = ""
+    /// Set for a binary mode ('rb',
+    /// 'wb', 'ab'): the file's bytes,
+    /// and the text side stays empty.
+    var data: [UInt8]? = nil
     var closed = false
     var wrote = false
     init(path: String, mode: String) {
@@ -447,6 +455,7 @@ enum PyFormat {
         case .int: return "int"
         case .float: return "float"
         case .str: return "str"
+        case .bytes: return "bytes"
         case .list: return "list"
         case .dict: return "dict"
         case .tuple: return "tuple"
@@ -477,6 +486,8 @@ enum PyFormat {
         case .int(let n): return n != 0
         case .float(let d): return d != 0
         case .str(let s): return !s.isEmpty
+        case .bytes(let data):
+            return !data.isEmpty
         case .list(let l): return !l.items.isEmpty
         case .dict(let d): return d.count > 0
         case .tuple(let t): return !t.isEmpty
@@ -497,6 +508,9 @@ enum PyFormat {
         case .int(let n): return "i:\(n)"
         case .float(let d): return "f:\(d)"
         case .str(let s): return "s:" + s
+        case .bytes(let data):
+            return "y:" + Data(data)
+                .base64EncodedString()
         case .tuple(let t):
             return "t:" + t.map { hashKey($0) }
                 .joined(separator: ",")
@@ -549,6 +563,8 @@ enum PyFormat {
         case .float(let d):
             return floatText(d)
         case .str(let s): return s
+        case .bytes(let data):
+            return quoteBytes(data)
         case .list(let l):
             let inner = l.items.map {
                 repr($0)
@@ -610,6 +626,47 @@ enum PyFormat {
         }
     }
 
+    /// A bytes value in its written
+    /// dress: b'...' with CPython's
+    /// escapes and its quote rule
+    /// (singles, unless the bytes
+    /// hold a single and no double).
+    static func quoteBytes(
+        _ data: [UInt8]) -> String {
+        let hasSingle = data.contains(39)
+        let hasDouble = data.contains(34)
+        let quote: UInt8 =
+            (hasSingle && !hasDouble)
+            ? 34 : 39
+        var out = "b"
+        out.append(Character(
+            UnicodeScalar(quote)))
+        let hexits = Array("0123456789abcdef")
+        for byte in data {
+            switch byte {
+            case 92: out += "\\\\"
+            case quote: out += "\\"
+                + String(Character(
+                    UnicodeScalar(quote)))
+            case 10: out += "\\n"
+            case 13: out += "\\r"
+            case 9: out += "\\t"
+            case 32...126:
+                out.append(Character(
+                    UnicodeScalar(byte)))
+            default:
+                out += "\\x"
+                out.append(
+                    hexits[Int(byte >> 4)])
+                out.append(
+                    hexits[Int(byte & 15)])
+            }
+        }
+        out.append(Character(
+            UnicodeScalar(quote)))
+        return out
+    }
+
     static func repr(_ value: PyValue)
         -> String {
         if case .str(let s) = value {
@@ -653,6 +710,9 @@ enum PyFormat {
             return x == (y ? 1 : 0)
         case (.str(let x), .str(let y)):
             return x == y
+        case (.bytes(let x),
+              .bytes(let y)):
+            return x == y
         case (.tuple(let x), .tuple(let y)):
             guard x.count == y.count
             else { return false }
@@ -691,6 +751,7 @@ enum PyTok {
     case int(Int)
     case float(Double)
     case string(String)
+    case bytes([UInt8])
     case fstring([PyFPart])
     case op(String)
     case newline
@@ -868,7 +929,8 @@ struct PyLexer {
         // Strings, with their f/r prefixes.
         if c == "\"" || c == "'"
             || ((c == "f" || c == "F"
-                 || c == "r" || c == "R")
+                 || c == "r" || c == "R"
+                 || c == "b" || c == "B")
                 && stringAhead()) {
             try scanString()
             return
@@ -941,7 +1003,8 @@ struct PyLexer {
         while j < chars.count, seen < 2 {
             let c = chars[j]
             if c == "f" || c == "F"
-                || c == "r" || c == "R" {
+                || c == "r" || c == "R"
+                || c == "b" || c == "B" {
                 j += 1
                 seen += 1
             } else {
@@ -1042,10 +1105,150 @@ struct PyLexer {
 // MARK: - String scanning
 
 extension PyLexer {
+    /// A bytes literal's body: the
+    /// same quotes and escapes as a
+    /// string's, but every character
+    /// must be ASCII and every escape
+    /// names ONE byte (fix150).
+    mutating func scanBytesBody(
+        quote: Character, triple: Bool,
+        raw: Bool, startLine: Int) throws {
+        var out: [UInt8] = []
+        func asciiByte(_ ch: Character)
+            throws -> UInt8 {
+            let scalars = ch.unicodeScalars
+            guard scalars.count == 1,
+                  let only = scalars.first,
+                  only.value < 128 else {
+                throw PyError(
+                    "SyntaxError",
+                    "bytes can only "
+                        + "contain ASCII "
+                        + "literal characters",
+                    line: startLine)
+            }
+            return UInt8(only.value)
+        }
+        while !atEnd {
+            let c = chars[i]
+            if triple {
+                if c == quote,
+                   peek() == quote,
+                   peek(1) == quote,
+                   peek(2) == quote {
+                    i += 3
+                    tokens.append(PyToken(
+                        tok: .bytes(out),
+                        line: startLine))
+                    return
+                }
+            } else if c == quote {
+                i += 1
+                tokens.append(PyToken(
+                    tok: .bytes(out),
+                    line: startLine))
+                return
+            }
+            if c == "\n" {
+                if !triple {
+                    throw PyError(
+                        "SyntaxError",
+                        "unterminated string",
+                        line: startLine)
+                }
+                line += 1
+                out.append(10)
+                i += 1
+                continue
+            }
+            if c == "\\", !raw,
+               let next = peek(1) {
+                switch next {
+                case "n": out.append(10)
+                    i += 2
+                case "r": out.append(13)
+                    i += 2
+                case "t": out.append(9)
+                    i += 2
+                case "a": out.append(7)
+                    i += 2
+                case "b": out.append(8)
+                    i += 2
+                case "f": out.append(12)
+                    i += 2
+                case "v": out.append(11)
+                    i += 2
+                case "\\": out.append(92)
+                    i += 2
+                case "'": out.append(39)
+                    i += 2
+                case "\"": out.append(34)
+                    i += 2
+                case "\n":
+                    line += 1
+                    i += 2
+                case "x":
+                    var hex = ""
+                    var k = 0
+                    while k < 2,
+                          let h = peek(2 + k),
+                          h.isHexDigit {
+                        hex.append(h)
+                        k += 1
+                    }
+                    guard hex.count == 2,
+                          let value = UInt8(
+                            hex, radix: 16)
+                    else {
+                        throw PyError(
+                            "SyntaxError",
+                            "truncated "
+                                + "\\xXX "
+                                + "escape",
+                            line: startLine)
+                    }
+                    out.append(value)
+                    i += 4
+                case "0", "1", "2", "3",
+                     "4", "5", "6", "7":
+                    var value = Int(
+                        String(next)) ?? 0
+                    var digits = 1
+                    while digits < 3,
+                          let h = peek(
+                            1 + digits),
+                          h >= "0",
+                          h <= "7" {
+                        value = value * 8
+                            + (Int(String(
+                                h)) ?? 0)
+                        digits += 1
+                    }
+                    out.append(
+                        UInt8(value & 0xff))
+                    i += 1 + digits
+                default:
+                    out.append(92)
+                    out.append(
+                        try asciiByte(next))
+                    i += 2
+                }
+                continue
+            }
+            out.append(try asciiByte(c))
+            i += 1
+        }
+        throw PyError(
+            "SyntaxError",
+            "unterminated string",
+            line: startLine)
+    }
+
     mutating func scanString() throws {
         let startLine = line
         var raw = false
         var fstring = false
+        var isBytes = false
         while !atEnd {
             let c = chars[i]
             if c == "r" || c == "R" {
@@ -1054,9 +1257,19 @@ extension PyLexer {
             } else if c == "f" || c == "F" {
                 fstring = true
                 i += 1
+            } else if c == "b" || c == "B" {
+                isBytes = true
+                i += 1
             } else {
                 break
             }
+        }
+        if isBytes && fstring {
+            throw PyError(
+                "SyntaxError",
+                "the b and f prefixes "
+                    + "do not mix",
+                line: startLine)
         }
         guard let quote = peek(),
               quote == "\"" || quote == "'"
@@ -1070,6 +1283,13 @@ extension PyLexer {
         if peek() == quote, peek(1) == quote {
             triple = true
             i += 2
+        }
+        if isBytes {
+            try scanBytesBody(
+                quote: quote,
+                triple: triple, raw: raw,
+                startLine: startLine)
+            return
         }
         if fstring {
             let parts = try scanFString(
@@ -1306,6 +1526,7 @@ indirect enum PyExpr {
     case int(Int)
     case float(Double)
     case string(String)
+    case bytesLit([UInt8])
     case fstring([PyFPart])
     case name(String)
     case listOf([PyExpr])
@@ -2387,6 +2608,15 @@ extension PyParser {
                 advance()
             }
             return .string(text)
+        case .bytes(let data):
+            advance()
+            var joined = data
+            while case .bytes(let more) =
+                current.tok {
+                joined += more
+                advance()
+            }
+            return .bytesLit(joined)
         case .fstring(let parts):
             advance()
             return .fstring(parts)
@@ -2794,6 +3024,7 @@ final class PyInterp {
         "round", "ord", "chr", "open",
         "input", "set", "frozenset",
         "isinstance", "issubclass",
+        "bytes",
         "getattr", "setattr", "hasattr",
         "callable", "iter", "next",
         "any", "all", "divmod", "pow",
@@ -4770,6 +5001,10 @@ class datetime:
             return text.map {
                 PyValue.str(String($0))
             }
+        case .bytes(let data):
+            return data.map {
+                PyValue.int(Int($0))
+            }
         case .dict(let dict):
             return dict.keys.map {
                 dict.display[$0] ?? .none
@@ -4946,8 +5181,15 @@ class datetime:
         guard !file.closed else { return }
         file.closed = true
         if file.mode != "r", file.wrote {
-            _ = BlacksiteFS.writeText(
-                file.path, text: file.content)
+            if let data = file.data {
+                _ = BlacksiteFS.writeData(
+                    file.path,
+                    data: Data(data))
+            } else {
+                _ = BlacksiteFS.writeText(
+                    file.path,
+                    text: file.content)
+            }
         }
     }
 }
@@ -4965,6 +5207,8 @@ extension PyInterp {
             return .float(d)
         case .string(let s):
             return .str(s)
+        case .bytesLit(let data):
+            return .bytes(data)
         case .fstring(let parts):
             var out = ""
             for part in parts {
@@ -5357,6 +5601,21 @@ extension PyInterp {
                 items += a.items
             }
             return .list(PyList(items))
+        case ("+", .bytes(let a),
+              .bytes(let b)):
+            return .bytes(a + b)
+        case ("*", .bytes(let a),
+              .int(let n)),
+             ("*", .int(let n),
+              .bytes(let a)):
+            if n <= 0 {
+                return .bytes([])
+            }
+            var out: [UInt8] = []
+            for _ in 0..<n {
+                out += a
+            }
+            return .bytes(out)
         case ("|", .set(let a),
               .set(let b)):
             let out = PySet()
@@ -5633,6 +5892,22 @@ extension PyInterp {
             if x < y { return -1 }
             if x > y { return 1 }
             return 0
+        case (.bytes(let x),
+              .bytes(let y)):
+            // Byte by byte, the way
+            // CPython orders them.
+            let shared = min(x.count,
+                             y.count)
+            for at in 0..<shared
+                where x[at] != y[at] {
+                return x[at] < y[at]
+                    ? -1 : 1
+            }
+            if x.count == y.count {
+                return 0
+            }
+            return x.count < y.count
+                ? -1 : 1
         case (.bool(let x), .bool(let y)):
             if x == y { return 0 }
             return x ? 1 : -1
@@ -5771,6 +6046,31 @@ extension PyInterp {
                     line: line)
             }
             return text.contains(bit)
+        case .bytes(let data):
+            if case .int(let n) = needle {
+                guard (0...255).contains(n)
+                else {
+                    throw PyError(
+                        "ValueError",
+                        "byte must be in "
+                            + "range(0, 256)",
+                        line: line)
+                }
+                return data.contains(
+                    UInt8(n))
+            }
+            if case .bytes(let sub) =
+                needle {
+                return bytesFind(
+                    data, sub, 0,
+                    data.count) != nil
+            }
+            throw PyError(
+                "TypeError",
+                "'in <bytes>' needs an "
+                    + "integer or bytes "
+                    + "on the left",
+                line: line)
         case .list(let list):
             return list.items.contains {
                 PyFormat.equals($0, needle)
@@ -5866,6 +6166,11 @@ extension PyInterp {
                 index, chars.count,
                 "string", line)
             return .str(String(chars[at]))
+        case .bytes(let data):
+            let at = try listIndexOf(
+                index, data.count,
+                "bytes", line)
+            return .int(Int(data[at]))
         case .dict(let dict):
             guard let value = dict.get(
                 index) else {
@@ -5978,6 +6283,12 @@ extension PyInterp {
                 step, line)
             return .str(String(
                 picks.map { chars[$0] }))
+        case .bytes(let data):
+            let picks = try sliceParts(
+                data.count, start, stop,
+                step, line)
+            return .bytes(
+                picks.map { data[$0] })
         case .list(let list):
             let picks = try sliceParts(
                 list.items.count, start,
@@ -6021,8 +6332,9 @@ extension PyInterp {
                     + "has no attribute "
                     + "'\(field)'",
                 line: line)
-        case .str, .list, .dict, .file,
-             .set, .generator, .seqIter:
+        case .str, .bytes, .list, .dict,
+             .file, .set, .generator,
+             .seqIter:
             return .bound(base, field)
         case .instance(let obj):
             if let value = obj.attrs[field] {
@@ -6719,6 +7031,284 @@ extension PyInterp {
         return nil
     }
 
+    /// bytes(...) the way CPython
+    /// builds them (fix150): nothing,
+    /// a count of zeroes, bytes again,
+    /// text WITH an encoding, or any
+    /// iterable of small integers.
+    func makeBytes(_ args: [PyValue],
+                   _ kwargs: [(String,
+                                PyValue)],
+                   _ line: Int) throws
+        -> PyValue {
+        guard !args.isEmpty else {
+            return .bytes([])
+        }
+        switch args[0] {
+        case .bytes(let data):
+            return .bytes(data)
+        case .int(let count):
+            guard count >= 0 else {
+                throw PyError(
+                    "ValueError",
+                    "negative count",
+                    line: line)
+            }
+            return .bytes([UInt8](
+                repeating: 0,
+                count: count))
+        case .str(let text):
+            var encoding: String? = nil
+            if args.count > 1,
+               case .str(let name) =
+                args[1] {
+                encoding = name
+            }
+            if let named = kwarg(
+                kwargs, "encoding"),
+               case .str(let name) = named {
+                encoding = name
+            }
+            guard let codec = encoding
+            else {
+                throw PyError(
+                    "TypeError",
+                    "string argument "
+                        + "without an "
+                        + "encoding",
+                    line: line)
+            }
+            return .bytes(try encodeText(
+                text, codec, line))
+        default:
+            var out: [UInt8] = []
+            for item in try iterate(
+                args[0]) {
+                out.append(try byteValue(
+                    item, line))
+            }
+            return .bytes(out)
+        }
+    }
+
+    /// One small integer, the way
+    /// every bytes builder needs it.
+    func byteValue(_ value: PyValue,
+                   _ line: Int) throws
+        -> UInt8 {
+        guard let n = asInt(value) else {
+            throw PyError(
+                "TypeError",
+                "'\(PyFormat.typeName(value))' "
+                    + "object cannot be "
+                    + "interpreted as an "
+                    + "integer",
+                line: line)
+        }
+        guard (0...255).contains(n) else {
+            throw PyError(
+                "ValueError",
+                "bytes must be in "
+                    + "range(0, 256)",
+                line: line)
+        }
+        return UInt8(n)
+    }
+
+    /// Text into bytes under a named
+    /// codec: utf-8, ascii, latin-1.
+    /// Anything else is a LookupError,
+    /// as CPython names it.
+    func encodeText(_ text: String,
+                    _ encoding: String,
+                    _ line: Int) throws
+        -> [UInt8] {
+        switch encoding.lowercased() {
+        case "utf-8", "utf8", "utf_8":
+            return Array(text.utf8)
+        case "ascii", "us-ascii":
+            for scalar in
+                text.unicodeScalars
+                where scalar.value >= 128 {
+                throw PyError(
+                    "ValueError",
+                    "'ascii' codec can't "
+                        + "encode "
+                        + "characters: "
+                        + "the text holds "
+                        + "non-ascii",
+                    line: line)
+            }
+            return Array(text.utf8)
+        case "latin-1", "latin1",
+             "iso-8859-1":
+            var out: [UInt8] = []
+            for scalar in
+                text.unicodeScalars {
+                guard scalar.value <= 255
+                else {
+                    throw PyError(
+                        "ValueError",
+                        "'latin-1' codec "
+                            + "can't encode "
+                            + "characters "
+                            + "past 255",
+                        line: line)
+                }
+                out.append(
+                    UInt8(scalar.value))
+            }
+            return out
+        default:
+            throw PyError(
+                "LookupError",
+                "unknown encoding: "
+                    + encoding,
+                line: line)
+        }
+    }
+
+    /// Bytes back into text under a
+    /// named codec, strict: the first
+    /// bad position is named, in
+    /// CPython's own phrasing.
+    func decodeBytes(_ data: [UInt8],
+                     _ encoding: String,
+                     _ line: Int) throws
+        -> String {
+        switch encoding.lowercased() {
+        case "utf-8", "utf8", "utf_8":
+            if let bad =
+                utf8ErrorPosition(data) {
+                let byte = data[bad]
+                throw PyError(
+                    "ValueError",
+                    "'utf-8' codec can't "
+                        + "decode byte 0x"
+                        + String(byte,
+                            radix: 16)
+                        + " in position "
+                        + "\(bad): the "
+                        + "bytes are not "
+                        + "utf-8 there",
+                    line: line)
+            }
+            return String(
+                decoding: data, as: UTF8.self)
+        case "ascii", "us-ascii":
+            for (at, byte)
+                in data.enumerated()
+                where byte >= 128 {
+                throw PyError(
+                    "ValueError",
+                    "'ascii' codec can't "
+                        + "decode byte 0x"
+                        + String(byte,
+                            radix: 16)
+                        + " in position "
+                        + "\(at)",
+                    line: line)
+            }
+            return String(
+                decoding: data, as: UTF8.self)
+        case "latin-1", "latin1",
+             "iso-8859-1":
+            return String(data.map {
+                Character(UnicodeScalar($0))
+            })
+        default:
+            throw PyError(
+                "LookupError",
+                "unknown encoding: "
+                    + encoding,
+                line: line)
+        }
+    }
+
+    /// The first position where the
+    /// bytes stop being well-formed
+    /// UTF-8, or nil when they are:
+    /// lead widths, continuations,
+    /// overlong forms, surrogates,
+    /// and the ceiling of the range.
+    func utf8ErrorPosition(
+        _ data: [UInt8]) -> Int? {
+        var i = 0
+        while i < data.count {
+            let lead = data[i]
+            if lead < 0x80 {
+                i += 1
+                continue
+            }
+            let width: Int
+            var value: UInt32
+            let floor: UInt32
+            switch lead {
+            case 0xC2...0xDF:
+                width = 2
+                value = UInt32(lead & 0x1F)
+                floor = 0x80
+            case 0xE0...0xEF:
+                width = 3
+                value = UInt32(lead & 0x0F)
+                floor = 0x800
+            case 0xF0...0xF4:
+                width = 4
+                value = UInt32(lead & 0x07)
+                floor = 0x10000
+            default:
+                return i
+            }
+            guard i + width <= data.count
+            else { return i }
+            for k in 1..<width {
+                let cont = data[i + k]
+                guard cont & 0xC0 == 0x80
+                else { return i }
+                value = (value << 6)
+                    | UInt32(cont & 0x3F)
+            }
+            guard value >= floor,
+                  value <= 0x10FFFF,
+                  !(0xD800...0xDFFF)
+                    .contains(value)
+            else { return i }
+            i += width
+        }
+        return nil
+    }
+
+    /// A subsequence search over
+    /// bytes, bounded to a window:
+    /// the index of the first match,
+    /// or nil. An empty needle is
+    /// found at the window's start.
+    func bytesFind(_ data: [UInt8],
+                   _ needle: [UInt8],
+                   _ start: Int,
+                   _ stop: Int) -> Int? {
+        let lo = max(0, min(start,
+                            data.count))
+        let hi = max(lo, min(stop,
+                             data.count))
+        if needle.isEmpty { return lo }
+        guard needle.count <= hi - lo
+        else { return nil }
+        var at = lo
+        while at + needle.count <= hi {
+            var matched = true
+            for k in 0..<needle.count
+                where data[at + k]
+                    != needle[k] {
+                matched = false
+                break
+            }
+            if matched { return at }
+            at += 1
+        }
+        return nil
+    }
+
     func callBuiltin(_ name: String,
                      _ args: [PyValue],
                      _ kwargs: [(String,
@@ -6744,6 +7334,9 @@ extension PyInterp {
             }.joined(separator: sep)
             printText(text + end)
             return .none
+        case "bytes":
+            return try makeBytes(
+                args, kwargs, line)
         case "len":
             try needArgs(name, args, 1, line)
             return .int(try lengthOf(
@@ -7399,6 +7992,8 @@ extension PyInterp {
                   _ line: Int) throws -> Int {
         switch value {
         case .str(let s): return s.count
+        case .bytes(let data):
+            return data.count
         case .list(let l):
             return l.items.count
         case .dict(let d): return d.count
@@ -7608,6 +8203,27 @@ extension PyInterp {
             rawPath, cwd: BlacksiteFS.home)
         let file = PyFile(
             path: clean, mode: mode)
+        if mode.contains("b") {
+            if mode.contains("r")
+                || mode.contains("a") {
+                if let bytes = BlacksiteFS
+                    .readData(clean) {
+                    file.data = Array(bytes)
+                } else if mode
+                    .contains("r") {
+                    throw PyError(
+                        "FileNotFoundError",
+                        "no such file: "
+                            + "'\(rawPath)'",
+                        line: line)
+                } else {
+                    file.data = []
+                }
+            } else {
+                file.data = []
+            }
+            return .file(file)
+        }
         if mode.contains("r")
             || mode.contains("a") {
             if let text = BlacksiteFS
@@ -7662,6 +8278,9 @@ extension PyInterp {
         case .str(let text):
             return try strMethod(
                 text, method, args, line)
+        case .bytes(let data):
+            return try bytesMethod(
+                data, method, args, line)
         case .list(let list):
             return try listMethod(
                 list, method, args, kwargs,
@@ -9077,17 +9696,16 @@ extension PyInterp {
         }
         var chunks: [PyValue] = []
         if let data = data {
-            guard case .str(let text) =
-                data else {
+            switch data {
+            case .str, .bytes:
+                chunks.append(data)
+            default:
                 throw PyError(
                     "TypeError",
                     "hash data must be "
-                        + "text — the "
-                        + "house hashes "
-                        + "strings",
+                        + "bytes or text",
                     line: line)
             }
-            chunks.append(.str(text))
         }
         return nativeInstance(
             "hashlib.HASH", "HASH",
@@ -9210,6 +9828,11 @@ extension PyInterp {
             return false
         case "str":
             if case .str = value {
+                return true
+            }
+            return false
+        case "bytes":
+            if case .bytes = value {
                 return true
             }
             return false
@@ -9678,6 +10301,9 @@ extension PyInterp {
                     chunk {
                     data += Data(
                         text.utf8)
+                } else if case .bytes(
+                    let raw) = chunk {
+                    data += Data(raw)
                 }
             }
         }
@@ -10405,19 +11031,20 @@ extension PyInterp {
         case "update":
             try needArgs("update", args, 1,
                          line)
-            guard case .str(let chunk) =
-                args[0] else {
+            switch args[0] {
+            case .str, .bytes:
+                break
+            default:
                 throw PyError(
                     "TypeError",
-                    "update() needs text "
-                        + "— the house "
-                        + "hashes strings",
+                    "update() needs "
+                        + "bytes or text",
                     line: line)
             }
             if case .list(let chunks)? =
                 obj.attrs["__chunks__"] {
                 chunks.items.append(
-                    .str(chunk))
+                    args[0])
             }
             return .none
         case "hexdigest":
@@ -10426,12 +11053,8 @@ extension PyInterp {
                 String(format: "%02x", $0)
             }.joined())
         case "digest":
-            return .list(PyList(
-                try hashDigest(obj, line)
-                    .map {
-                        PyValue.int(
-                            Int($0))
-                    }))
+            return .bytes(
+                try hashDigest(obj, line))
         case "copy":
             var items: [PyValue] = []
             if case .list(let chunks)? =
@@ -10462,6 +11085,355 @@ extension PyInterp {
             "'\(type)' object has no "
                 + "attribute '\(method)'",
             line: line)
+    }
+
+    /// A bytes argument, or the
+    /// TypeError CPython raises when
+    /// the value is not bytes-like.
+    func needBytes(_ args: [PyValue],
+                   _ at: Int,
+                   _ method: String,
+                   _ line: Int) throws
+        -> [UInt8] {
+        guard args.count > at,
+              case .bytes(let data) =
+                args[at] else {
+            throw PyError(
+                "TypeError",
+                "\(method)() needs a "
+                    + "bytes argument",
+                line: line)
+        }
+        return data
+    }
+
+    /// The bytes methods (fix150):
+    /// decode back to text, hex both
+    /// ways, the search family, case,
+    /// replace, split, strip, join.
+    func bytesMethod(_ data: [UInt8],
+                     _ method: String,
+                     _ args: [PyValue],
+                     _ line: Int) throws
+        -> PyValue {
+        switch method {
+        case "decode":
+            var encoding = "utf-8"
+            if let first = args.first,
+               case .str(let name) = first {
+                encoding = name
+            }
+            return .str(try decodeBytes(
+                data, encoding, line))
+        case "hex":
+            return .str(data.map {
+                String(format: "%02x", $0)
+            }.joined())
+        case "fromhex":
+            // A classmethod in CPython,
+            // and callable through an
+            // instance there too; the
+            // house answers it here.
+            guard let first = args.first,
+                  case .str(let text) = first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "fromhex() needs a "
+                        + "string",
+                    line: line)
+            }
+            let digits = text.filter {
+                !$0.isWhitespace
+            }
+            guard digits.count % 2 == 0
+            else {
+                throw PyError(
+                    "ValueError",
+                    "non-hexadecimal "
+                        + "number found in "
+                        + "fromhex() arg",
+                    line: line)
+            }
+            var out: [UInt8] = []
+            var at = digits.startIndex
+            while at < digits.endIndex {
+                let next = digits.index(
+                    at, offsetBy: 2)
+                guard let byte = UInt8(
+                    digits[at..<next],
+                    radix: 16) else {
+                    throw PyError(
+                        "ValueError",
+                        "non-hexadecimal "
+                            + "number found "
+                            + "in fromhex() "
+                            + "arg",
+                        line: line)
+                }
+                out.append(byte)
+                at = next
+            }
+            return .bytes(out)
+        case "join":
+            guard let first = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "join() needs an "
+                        + "iterable",
+                    line: line)
+            }
+            var out: [UInt8] = []
+            var started = false
+            for item in try iterate(
+                first) {
+                guard case .bytes(
+                    let piece) = item else {
+                    throw PyError(
+                        "TypeError",
+                        "sequence item: "
+                            + "expected "
+                            + "bytes",
+                        line: line)
+                }
+                if started { out += data }
+                out += piece
+                started = true
+            }
+            return .bytes(out)
+        case "find", "index", "count":
+            let sub = try needBytes(
+                args, 0, method, line)
+            var start = 0
+            var stop = data.count
+            if args.count > 1,
+               let n = asInt(args[1]) {
+                start = n < 0
+                    ? max(0, data.count + n)
+                    : n
+            }
+            if args.count > 2,
+               let n = asInt(args[2]) {
+                stop = n < 0
+                    ? max(0, data.count + n)
+                    : n
+            }
+            if method == "count" {
+                if sub.isEmpty {
+                    return .int(stop - start
+                        + 1)
+                }
+                var total = 0
+                var from = start
+                while let hit = bytesFind(
+                    data, sub, from, stop) {
+                    total += 1
+                    from = hit
+                        + sub.count
+                }
+                return .int(total)
+            }
+            if let hit = bytesFind(
+                data, sub, start, stop) {
+                return .int(hit)
+            }
+            if method == "index" {
+                throw PyError(
+                    "ValueError",
+                    "subsection not found",
+                    line: line)
+            }
+            return .int(-1)
+        case "startswith", "endswith":
+            guard let first = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "\(method)() needs a "
+                        + "bytes argument",
+                    line: line)
+            }
+            var options: [[UInt8]] = []
+            if case .tuple(let many) =
+                first {
+                for item in many {
+                    options.append(
+                        try needBytes(
+                            [item], 0,
+                            method, line))
+                }
+            } else {
+                options.append(
+                    try needBytes(
+                        args, 0, method,
+                        line))
+            }
+            for option in options {
+                if method == "startswith",
+                   data.starts(with: option) {
+                    return .bool(true)
+                }
+                if method == "endswith",
+                   data.count
+                    >= option.count,
+                   Array(data.suffix(
+                    option.count)) == option {
+                    return .bool(true)
+                }
+            }
+            return .bool(false)
+        case "upper", "lower":
+            let out = data.map {
+                byte -> UInt8 in
+                if method == "upper",
+                   byte >= 97, byte <= 122 {
+                    return byte - 32
+                }
+                if method == "lower",
+                   byte >= 65, byte <= 90 {
+                    return byte + 32
+                }
+                return byte
+            }
+            return .bytes(out)
+        case "replace":
+            let old = try needBytes(
+                args, 0, method, line)
+            let new = try needBytes(
+                args, 1, method, line)
+            var limit = -1
+            if args.count > 2,
+               let n = asInt(args[2]) {
+                limit = n
+            }
+            if old.isEmpty {
+                // CPython splices the
+                // replacement around
+                // every byte; the house
+                // keeps the plain read:
+                // no match, no change.
+                return .bytes(data)
+            }
+            var out: [UInt8] = []
+            var from = 0
+            var done = 0
+            while limit < 0 || done < limit,
+                  let hit = bytesFind(
+                    data, old, from,
+                    data.count) {
+                out += data[from..<hit]
+                out += new
+                from = hit + old.count
+                done += 1
+            }
+            out += data[from...]
+            return .bytes(out)
+        case "split":
+            var sep: [UInt8]? = nil
+            if let first = args.first,
+               case .bytes(let given) =
+                first {
+                sep = given
+            }
+            var maxsplit = -1
+            if args.count > 1,
+               let n = asInt(args[1]) {
+                maxsplit = n
+            }
+            var pieces: [[UInt8]] = []
+            if let sep = sep {
+                guard !sep.isEmpty else {
+                    throw PyError(
+                        "ValueError",
+                        "empty separator",
+                        line: line)
+                }
+                var from = 0
+                var splits = 0
+                while (maxsplit < 0
+                       || splits < maxsplit),
+                      let hit = bytesFind(
+                        data, sep, from,
+                        data.count) {
+                    pieces.append(Array(
+                        data[from..<hit]))
+                    from = hit + sep.count
+                    splits += 1
+                }
+                pieces.append(Array(
+                    data[from...]))
+            } else {
+                // No separator: runs of
+                // ascii whitespace are
+                // the dividers, and no
+                // empty pieces survive.
+                // Once maxsplit is spent
+                // the rest rides whole,
+                // trailing spaces and all.
+                let spaces: Set<UInt8> = [
+                    32, 9, 10, 13, 11, 12]
+                var at = 0
+                var splits = 0
+                while at < data.count {
+                    while at < data.count,
+                          spaces.contains(
+                            data[at]) {
+                        at += 1
+                    }
+                    if at >= data.count {
+                        break
+                    }
+                    if maxsplit >= 0,
+                       splits >= maxsplit {
+                        pieces.append(Array(
+                            data[at...]))
+                        at = data.count
+                        break
+                    }
+                    var piece: [UInt8] = []
+                    while at < data.count,
+                          !spaces.contains(
+                            data[at]) {
+                        piece.append(data[at])
+                        at += 1
+                    }
+                    pieces.append(piece)
+                    splits += 1
+                }
+            }
+            return .list(PyList(pieces.map {
+                PyValue.bytes($0)
+            }))
+        case "strip", "lstrip", "rstrip":
+            var cut: Set<UInt8> = [
+                32, 9, 10, 13, 11, 12]
+            if let first = args.first,
+               case .bytes(let given) =
+                first {
+                cut = Set(given)
+            }
+            var lo = 0
+            var hi = data.count
+            if method != "rstrip" {
+                while lo < hi,
+                      cut.contains(data[lo]) {
+                    lo += 1
+                }
+            }
+            if method != "lstrip" {
+                while hi > lo,
+                      cut.contains(
+                        data[hi - 1]) {
+                    hi -= 1
+                }
+            }
+            return .bytes(Array(
+                data[lo..<hi]))
+        default:
+            throw attrError(
+                "bytes", method, line)
+        }
     }
 
     func strMethod(_ text: String,
@@ -10544,6 +11516,14 @@ extension PyInterp {
                     separatedBy: sep).map {
                         PyValue.str($0)
                     }))
+        case "encode":
+            var encoding = "utf-8"
+            if let first = args.first,
+               case .str(let name) = first {
+                encoding = name
+            }
+            return .bytes(try encodeText(
+                text, encoding, line))
         case "join":
             guard let first = args.first
             else {
@@ -11025,8 +12005,30 @@ extension PyInterp {
         -> PyValue {
         switch method {
         case "read":
+            if let data = file.data {
+                return .bytes(data)
+            }
             return .str(file.content)
         case "readlines":
+            if let data = file.data {
+                var lines: [[UInt8]] = []
+                var current: [UInt8] = []
+                for byte in data {
+                    if byte == 10 {
+                        lines.append(current)
+                        current = []
+                    } else {
+                        current.append(byte)
+                    }
+                }
+                if !current.isEmpty {
+                    lines.append(current)
+                }
+                return .list(PyList(
+                    lines.map {
+                        PyValue.bytes($0)
+                    }))
+            }
             let rows = file.content
                 .components(
                     separatedBy: "\n")
@@ -11043,6 +12045,23 @@ extension PyInterp {
                     "the file was opened "
                         + "read-only",
                     line: line)
+            }
+            if file.data != nil {
+                guard let first = args.first,
+                      case .bytes(
+                        let raw) = first
+                else {
+                    throw PyError(
+                        "TypeError",
+                        "write() needs "
+                            + "bytes for a "
+                            + "binary file",
+                        line: line)
+                }
+                file.data =
+                    (file.data ?? []) + raw
+                file.wrote = true
+                return .int(raw.count)
             }
             guard let first = args.first,
                   case .str(let text) = first
@@ -11496,6 +12515,62 @@ extension PyInterp {
                     line: line)
             }
             return text
+        }
+        /// A codec argument (fix150):
+        /// bytes ride raw, text rides
+        /// as its utf-8.
+        func needBytesArg(_ at: Int)
+            throws -> [UInt8] {
+            guard args.count > at else {
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs an "
+                        + "argument",
+                    line: line)
+            }
+            switch args[at] {
+            case .bytes(let data):
+                return data
+            case .str(let text):
+                return Array(text.utf8)
+            default:
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs a "
+                        + "bytes or string "
+                        + "argument",
+                    line: line)
+            }
+        }
+        /// A codec's text input: a
+        /// string, or bytes read as
+        /// latin-1 so every byte
+        /// survives the trip.
+        func needTextArg(_ at: Int)
+            throws -> String {
+            guard args.count > at else {
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs an "
+                        + "argument",
+                    line: line)
+            }
+            switch args[at] {
+            case .str(let text):
+                return text
+            case .bytes(let data):
+                return String(data.map {
+                    Character(
+                        UnicodeScalar($0))
+                })
+            default:
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs a "
+                        + "bytes or string "
+                        + "argument",
+                    line: line)
+            }
         }
         func timeParts(_ seconds: Double,
                        _ utc: Bool) -> [Int] {
@@ -12322,26 +13397,27 @@ extension PyInterp {
         case ("base64", "b64encode"),
              ("base64",
               "standard_b64encode"):
-            return .str(Data(
-                try needStr(0).utf8)
-                .base64EncodedString())
+            return .bytes(Array(Data(
+                try needBytesArg(0))
+                .base64EncodedString()
+                .utf8))
         case ("base64",
               "urlsafe_b64encode"):
             var text = Data(
-                try needStr(0).utf8)
+                try needBytesArg(0))
                 .base64EncodedString()
             text = text
                 .replacingOccurrences(
                     of: "+", with: "-")
                 .replacingOccurrences(
                     of: "/", with: "_")
-            return .str(text)
+            return .bytes(Array(text.utf8))
         case ("base64", "b64decode"),
              ("base64",
               "standard_b64decode"),
              ("base64",
               "urlsafe_b64decode"):
-            var text = try needStr(0)
+            var text = try needTextArg(0)
             text = text
                 .replacingOccurrences(
                     of: "-", with: "+")
@@ -12351,10 +13427,7 @@ extension PyInterp {
                 text += "="
             }
             guard let data = Data(
-                base64Encoded: text),
-                  let decoded = String(
-                    data: data,
-                    encoding: .utf8)
+                base64Encoded: text)
             else {
                 throw PyError(
                     "ValueError",
@@ -12362,16 +13435,16 @@ extension PyInterp {
                         + "house can read",
                     line: line)
             }
-            return .str(decoded)
+            return .bytes(Array(data))
         case ("base64", "b16encode"):
-            return .str(Data(
-                try needStr(0).utf8)
+            return .bytes(Array(Data(
+                try needBytesArg(0))
                 .map {
                     String(format: "%02X",
                            $0)
-                }.joined())
+                }.joined().utf8))
         case ("base64", "b16decode"):
-            let text = try needStr(0)
+            let text = try needTextArg(0)
                 .uppercased()
             guard text.count % 2 == 0
             else {
@@ -12397,9 +13470,7 @@ extension PyInterp {
                 bytes.append(byte)
                 at = next
             }
-            return .str(String(
-                bytes: bytes,
-                encoding: .utf8) ?? "")
+            return .bytes(bytes)
         case ("base64", "b32encode"):
             // A bit stream: five bits at a
             // time off the top, the last
@@ -12411,8 +13482,7 @@ extension PyInterp {
             var out = ""
             var pool = 0
             var bits = 0
-            for byte in [UInt8](
-                try needStr(0).utf8) {
+            for byte in try needBytesArg(0) {
                 pool = (pool << 8)
                     | Int(byte)
                 bits += 8
@@ -12430,7 +13500,7 @@ extension PyInterp {
             while out.count % 8 != 0 {
                 out += "="
             }
-            return .str(out)
+            return .bytes(Array(out.utf8))
         case ("base64", "b32decode"):
             let alphabet =
                 "ABCDEFGHIJKLMNOPQRSTUV"
@@ -12438,7 +13508,7 @@ extension PyInterp {
             var pool = 0
             var bits = 0
             var bytes: [UInt8] = []
-            for ch in try needStr(0)
+            for ch in try needTextArg(0)
                 .uppercased() {
                 if ch == "=" { break }
                 guard let at = alphabet
@@ -12462,9 +13532,7 @@ extension PyInterp {
                             & 0xff))
                 }
             }
-            return .str(String(
-                bytes: bytes,
-                encoding: .utf8) ?? "")
+            return .bytes(bytes)
 
         // statistics — the numbers shelf.
         case ("statistics", "mean"),
@@ -13806,7 +14874,7 @@ enum BlacksitePy {
         "  input() reads the console "
             + "line; the program waits "
             + "while you type",
-        "  not yet: threads",
+        "  not yet: threads, bytearray",
         "run one: python3 hello.py · "
             + "or: run hello.py",
     ]

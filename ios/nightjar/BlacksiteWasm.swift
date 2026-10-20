@@ -47,6 +47,11 @@ final class BlacksiteWasm: NSObject {
         "head", "tail", "true", "false",
         "env", "cp", "mv", "rm", "mkdir",
         "touch", "uname", "grep", "sleep",
+        "sort", "uniq", "cut", "tr", "rev",
+        "tac", "nl", "basename", "dirname",
+        "date", "rmdir", "test", "[",
+        "seq", "yes", "printf", "clear",
+        "whoami",
     ]
 
     static func isApplet(_ name: String)
@@ -257,13 +262,29 @@ final class BlacksiteWasm: NSObject {
                         .appendingPathComponent(
                             base + "." + ext))
             }
+            let staged = stageFiles(cwd: cwd)
             let stage: [String: Any] = [
                 "argv": argv,
                 "env": env,
                 "cwd": cwd,
                 "stdin": stdin,
-                "files": stageFiles(cwd: cwd),
+                "files": staged.files,
             ]
+            if !staged.unstaged.isEmpty {
+                let named = staged.unstaged
+                    .prefix(4).map {
+                        "\($0.0) (\($0.1) B)"
+                    }
+                    .joined(separator: ", ")
+                emitLine(
+                    "wasm: \(staged.unstaged.count) "
+                        + "file(s) did not fit "
+                        + "the 32 MB staging grant "
+                        + "read as I/O errors "
+                        + "in the guest: "
+                        + named,
+                    .err)
+            }
             let json = try JSONSerialization
                 .data(withJSONObject: stage)
             try json.write(
@@ -276,7 +297,9 @@ final class BlacksiteWasm: NSObject {
     }
 
     private func stageFiles(
-        cwd: String) -> [String: Any] {
+        cwd: String)
+        -> (files: [String: Any],
+            unstaged: [(String, Int)]) {
         var entries: [(String, Bool)] = []
         func walk(_ path: String) {
             guard let listed = BlacksiteFS
@@ -305,7 +328,8 @@ final class BlacksiteWasm: NSObject {
             if aHome != bHome { return aHome }
             return a.0 < b.0
         }
-        var budget = 8 * 1024 * 1024
+        var budget = 32 * 1024 * 1024
+        var unstaged: [(String, Int)] = []
         var files: [String: Any] = [:]
         for (path, isDir) in entries {
             if isDir {
@@ -329,12 +353,18 @@ final class BlacksiteWasm: NSObject {
                         .base64EncodedString()
                 ]
             } else {
+                // Over the grant, or
+                // the grant ran out
+                // first: either way the
+                // operator hears the
+                // name.
+                unstaged.append((path, size))
                 files[path] = [
                     "stagedEmpty": true
                 ]
             }
         }
-        return files
+        return (files, unstaged)
     }
 
     // MARK: Ending

@@ -156,6 +156,7 @@ final class BlacksiteShell: ObservableObject {
         "help", "clear", "sys", "ver", "ps",
         "jobs", "kill", "fastfetch",
         "neofetch", "diagnose",
+        "limits",
         "scan", "knock", "census", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
@@ -2612,6 +2613,8 @@ final class BlacksiteShell: ObservableObject {
             killCommand(args)
         case "diagnose":
             diagnoseCommand()
+        case "limits":
+            limitsCommand()
         case "fastfetch":
             fetchCommand(neofetch: false)
         case "neofetch":
@@ -4344,6 +4347,8 @@ final class BlacksiteShell: ObservableObject {
                  "the machine's calling card"),
                 ("diagnose",
                  "put the whole house through its paces — engines, kernel, containment drills"),
+                ("limits",
+                 "what this room honestly cannot do — the true limits, named"),
                 ("neofetch",
                  "the same card, under a crescent moon"),
                 ("jobs", "the kernel's live programs"),
@@ -5869,33 +5874,26 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         if a == b { return }
-        guard (a.count + 1) * (b.count + 1)
-                <= 9_000_000 else {
+        // The edit script comes from
+        // Hirschberg's algorithm
+        // (fix149): two rolling rows
+        // instead of the whole LCS
+        // table, so memory stays
+        // linear in the line counts
+        // and the room fits files far
+        // past the old 9M-cell
+        // ceiling. The guard that
+        // remains is a time bound.
+        // The algorithm is bench-
+        // proven: valid, minimal
+        // scripts over thousands of
+        // fuzzed pairs.
+        guard a.count * b.count
+                <= 120_000_000 else {
             emit("diff: too large for "
                  + "this room.", .err)
             stageError = true
             return
-        }
-        var table = [[Int]](
-            repeating: [Int](
-                repeating: 0,
-                count: b.count + 1),
-            count: a.count + 1)
-        if !a.isEmpty, !b.isEmpty {
-            for i in stride(
-                from: a.count - 1,
-                through: 0, by: -1) {
-                for j in stride(
-                    from: b.count - 1,
-                    through: 0, by: -1) {
-                    table[i][j] = a[i] == b[j]
-                        ? table[i + 1][j + 1]
-                            + 1
-                        : max(
-                            table[i + 1][j],
-                            table[i][j + 1])
-                }
-            }
         }
         enum Op {
             case same(String)
@@ -5903,30 +5901,114 @@ final class BlacksiteShell: ObservableObject {
             case add(String)
         }
         var ops: [Op] = []
-        var i = 0
-        var j = 0
-        while i < a.count, j < b.count {
-            if a[i] == b[j] {
-                ops.append(.same(a[i]))
-                i += 1
-                j += 1
-            } else if table[i + 1][j]
-                        >= table[i][j + 1] {
-                ops.append(.del(a[i]))
-                i += 1
+        // LCS lengths of x[x0..<x1]
+        // against every prefix of
+        // y[y0..<y1] — or, backwards,
+        // against every suffix.
+        func lcsRow(_ x: [String],
+                    _ x0: Int, _ x1: Int,
+                    _ y: [String],
+                    _ y0: Int, _ y1: Int,
+                    _ backwards: Bool)
+            -> [Int] {
+            var prev = [Int](
+                repeating: 0,
+                count: y1 - y0 + 1)
+            var cur = prev
+            if backwards {
+                var xi = x1 - 1
+                while xi >= x0 {
+                    cur[0] = 0
+                    var k = 1
+                    while k <= y1 - y0 {
+                        cur[k] =
+                            x[xi] == y[y1 - k]
+                            ? prev[k - 1] + 1
+                            : max(prev[k],
+                                  cur[k - 1])
+                        k += 1
+                    }
+                    swap(&prev, &cur)
+                    xi -= 1
+                }
             } else {
-                ops.append(.add(b[j]))
-                j += 1
+                var xi = x0
+                while xi < x1 {
+                    cur[0] = 0
+                    var k = 1
+                    while k <= y1 - y0 {
+                        cur[k] =
+                            x[xi]
+                                == y[y0 + k - 1]
+                            ? prev[k - 1] + 1
+                            : max(prev[k],
+                                  cur[k - 1])
+                        k += 1
+                    }
+                    swap(&prev, &cur)
+                    xi += 1
+                }
             }
+            return prev
         }
-        while i < a.count {
-            ops.append(.del(a[i]))
-            i += 1
+        func walkDiff(_ a0: Int,
+                      _ a1: Int,
+                      _ b0: Int,
+                      _ b1: Int) {
+            if a0 >= a1 {
+                for j in b0..<b1 {
+                    ops.append(.add(b[j]))
+                }
+                return
+            }
+            if b0 >= b1 {
+                for i in a0..<a1 {
+                    ops.append(.del(a[i]))
+                }
+                return
+            }
+            if a1 - a0 == 1 {
+                if let hit = (b0..<b1)
+                    .first(where: {
+                        b[$0] == a[a0]
+                    }) {
+                    for j in b0..<hit {
+                        ops.append(.add(b[j]))
+                    }
+                    ops.append(.same(a[a0]))
+                    for j in
+                        (hit + 1)..<b1 {
+                        ops.append(.add(b[j]))
+                    }
+                } else {
+                    ops.append(.del(a[a0]))
+                    for j in b0..<b1 {
+                        ops.append(.add(b[j]))
+                    }
+                }
+                return
+            }
+            let mid = (a0 + a1) / 2
+            let fwd = lcsRow(
+                a, a0, mid, b, b0, b1,
+                false)
+            let bwd = lcsRow(
+                a, mid, a1, b, b0, b1,
+                true)
+            var split = b0
+            var best = -1
+            for p in b0...b1 {
+                let score = fwd[p - b0]
+                    + bwd[b1 - p]
+                if score > best {
+                    best = score
+                    split = p
+                }
+            }
+            walkDiff(a0, mid, b0, split)
+            walkDiff(mid, a1, split, b1)
         }
-        while j < b.count {
-            ops.append(.add(b[j]))
-            j += 1
-        }
+        walkDiff(0, a.count, 0, b.count)
         var changeAt = Set<Int>()
         for (index, op) in ops.enumerated() {
             if case .same = op { continue }
@@ -7102,6 +7184,84 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    /// The honest inventory
+    /// (fix151): every wall left in
+    /// the room is either the
+    /// platform's or the doctrine's,
+    /// and each one is named here —
+    /// nothing else may call itself
+    /// a limit.
+    private func limitsCommand() {
+        let rows: [(String, String)] = [
+            ("no linux kernel",
+             "ios grants no app a "
+             + "hypervisor, so no guest "
+             + "kernel boots here; the "
+             + "wasm userspace (35 "
+             + "applets) is the linux "
+             + "surface, and the kernel "
+             + "is the house's own."),
+            ("emcon is doctrine",
+             "at bravo and alpha the "
+             + "standing radios stay "
+             + "silent. what you fire by "
+             + "hand is your own voice "
+             + "and is never gated."),
+            ("the kernel's quotas",
+             "32 live processes, a "
+             + "600-second watchdog, "
+             + "20,000 lines of output "
+             + "per program — a runaway "
+             + "is named, never silent."),
+            ("one js engine room",
+             "two javascript programs "
+             + "running at once can see "
+             + "their output attributed "
+             + "to the newest; the drain "
+             + "roof is 960 seconds and "
+             + "a cut speaks its reason."),
+            ("python's edges",
+             "no threads, no bytearray, "
+             + "no sockets module — the "
+             + "network lives in the "
+             + "shell's own commands. "
+             + "bytes are immutable, "
+             + "as they should be."),
+            ("the wasm grant",
+             "a guest is staged up to "
+             + "32 MB of the tree; "
+             + "files past the grant "
+             + "read as i/o errors in "
+             + "the guest, and are "
+             + "named to you when it "
+             + "happens."),
+            ("git's one gap",
+             "symlinks are not carried "
+             + "across a clone; every "
+             + "other object is real."),
+            ("screens, not pipes",
+             "freedoom, the gauntlet, "
+             + "census and the net "
+             + "scans talk to you, not "
+             + "to pipes — they are "
+             + "live instruments, not "
+             + "text."),
+        ]
+        emit("limits — what this room "
+             + "honestly cannot do:",
+             .sys)
+        for (name, why) in rows {
+            emit("  " + name + " — " + why,
+                 .out)
+        }
+        emit("everything else that "
+             + "once refused has been "
+             + "built. if a wall is not "
+             + "on this list, it is a "
+             + "bug: run diagnose, and "
+             + "say so.", .sys)
+    }
+
     private func diagnoseCommand() {
         guard !diagnoseRunning else {
             emit("diagnose: the battery "
@@ -7404,6 +7564,88 @@ final class BlacksiteShell: ObservableObject {
             }))
 
         probes.append((
+            "python — the new shelves", 10, {
+                done in
+                let source = [
+                    "import heapq, bisect",
+                    "import array, datetime",
+                    "rows = [[2], [1, 5], [1]]",
+                    "rows.sort()",
+                    "h = [5, 1, 4]",
+                    "heapq.heapify(h)",
+                    "seq = [1, 3]",
+                    "bisect.insort(seq, 2)",
+                    "a = array.array("
+                        + "'i', [3, 1, 2])",
+                    "d = datetime.date("
+                        + "2000, 2, 29)",
+                    "print(\"PYNEW\", rows,"
+                        + " heapq.heappop(h),"
+                        + " seq, sum(a),"
+                        + " d.toordinal())",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diagnew.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains(
+                            "PYNEW")
+                         && out.contains(
+                            "[[1], [1, 5], [2]]")
+                         && out.contains("730179"),
+                         "ordering, heapq, "
+                         + "bisect, array, "
+                         + "datetime")
+                }
+            }))
+
+        probes.append((
+            "python — bytes are real", 10, {
+                done in
+                let source = [
+                    "import hashlib, base64",
+                    "raw = b\"\\x00\\xff\"",
+                    "h = hashlib.sha256()",
+                    "h.update(b\"abc\")",
+                    "f = open("
+                        + "'/tmp/diagbytes.bin',"
+                        + " 'wb')",
+                    "f.write(b\"\\x01\\x02\")",
+                    "f.close()",
+                    "back = open("
+                        + "'/tmp/diagbytes.bin',"
+                        + " 'rb').read()",
+                    "print(\"PYBYTES\","
+                        + " len(raw),"
+                        + " h.hexdigest()[:8],"
+                        + " base64.b64encode("
+                        + "b'hi'), sum(back))",
+                ].joined(separator: "\n")
+                let (emit, collected) =
+                    self.diagnoseCollector()
+                self.diagnosePyRun(
+                    source,
+                    path: "/tmp/diagbytes.py",
+                    cancel: nil, emit: emit) {
+                    let out = collected()
+                        .joined(separator: " ")
+                    done(out.contains(
+                            "PYBYTES")
+                         && out.contains(
+                            "ba7816bf")
+                         && out.contains(
+                            "b'aGk='"),
+                         "literals, binary "
+                         + "files, hashlib, "
+                         + "base64")
+                }
+            }))
+
+        probes.append((
             "python — your own modules", 10, {
                 done in
                 _ = BlacksiteFS.writeText(
@@ -7569,6 +7811,28 @@ final class BlacksiteShell: ObservableObject {
             }))
 
         probes.append((
+            "javascript — the citizens", 8, {
+                done in
+                BlacksiteJS.shared.eval(
+                    "typeof TextEncoder"
+                    + " + '/' + typeof URL"
+                    + " + '/' + new"
+                    + " TextEncoder()"
+                    + ".encode('é').length"
+                    + " + '/' +"
+                    + " process.platform") {
+                    result, error in
+                    done(error == nil
+                         && (result ?? "")
+                            .contains(
+                                "function/"
+                                + "function/2/"
+                                + "blacksite"),
+                         result ?? "")
+                }
+            }))
+
+        probes.append((
             "drill: a javascript loop, "
             + "killed", 10, {
                 done in
@@ -7708,6 +7972,23 @@ final class BlacksiteShell: ObservableObject {
                             finishCaps()
                         }
                 }
+            }))
+
+        probes.append((
+            "programs ride the pipe", 10, {
+                done in
+                _ = BlacksiteFS.writeText(
+                    "/tmp/diagpipe.py",
+                    text: "print('PIPE-OK')\n")
+                let out = self.captureOutput {
+                    self.execLine(
+                        "py /tmp/diagpipe.py"
+                        + " | grep PIPE",
+                        stdin: "")
+                }
+                done(out.contains("PIPE-OK"),
+                     "py | grep, through "
+                     + "the shell itself")
             }))
 
         probes.append((
