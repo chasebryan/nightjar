@@ -1083,6 +1083,26 @@ final class Sentinel: ObservableObject {
               ip: to, watch: watch)
     }
 
+    /// An SSH host key that changed under
+    /// the operator's feet — the console's
+    /// client refused it, and the refusal
+    /// is ledgered here at the severe
+    /// grade: keys change when gear is
+    /// replaced, and also when someone
+    /// stands in the middle.
+    func noteHostKeyChanged(host: String,
+                            fingerprint: String) {
+        raise(key: "ssh-key-changed-" + host,
+              severity: .severe,
+              line: "the SSH host key for "
+                + "\(host) changed — now "
+                + "\(fingerprint). The client "
+                + "refused it. If the gear "
+                + "was not replaced, read "
+                + "this hard",
+              ip: nil, watch: WireWatch.shared)
+    }
+
     /// Judge the neighborhood as it stands.
     /// Called by the watch's heartbeat; cheap
     /// enough to run every minute.

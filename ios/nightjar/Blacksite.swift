@@ -194,6 +194,7 @@ final class BlacksiteShell: ObservableObject {
         "revdns", "nbstat", "snmp", "snmpaudit",
         "router", "mndp", "cred", "snmpwalk",
         "snmp3walk", "snmpset", "snmp3set",
+        "ssh", "sshkey", "sshhosts", "sshbackup",
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
@@ -450,6 +451,73 @@ final class BlacksiteShell: ObservableObject {
         emit(prompt, .sys)
         secretWaiter = true
         inputWaiter = answer
+    }
+
+    /// Block the calling (background) thread for one
+    /// typed line — the session-grade sibling of
+    /// askSecret, for the SSH client's trust question,
+    /// secret prompts and interactive shell. Secret
+    /// waits are echoed as bullets, like any secret.
+    func awaitLine(secret: Bool) -> String? {
+        let gate = DispatchSemaphore(value: 0)
+        var answer: String? = nil
+        DispatchQueue.main.async {
+            if secret {
+                self.secretWaiter = true
+            }
+            self.inputWaiter = { typed in
+                answer = typed
+                gate.signal()
+            }
+        }
+        gate.wait()
+        return answer
+    }
+
+    /// Build an SSH client for the console: kept word
+    /// and house identity from the Keychain, the filed
+    /// host key as the expectation. With an operator
+    /// present the trust and secret questions are asked
+    /// in the room; under capture (her hand) unknowns
+    /// are refused and only what is kept can speak.
+    func sshClient(host: String, port: Int,
+                   user: String,
+                   passive: Bool) -> SSHClient {
+        let client = SSHClient(host: host,
+                               port: port,
+                               user: user)
+        client.knownKey = CryptoSuite.NetCred
+            .knownKey(host: host, port: port)
+        client.keptWord = CryptoSuite.NetCred
+            .sshWord(host: host, user: user)
+        client.identity = CryptoSuite.NetCred
+            .sshIdentity()
+        if !passive {
+            let out = Self.netEmit(self)
+            client.trustAsk = {
+                [weak self] fingerprint, algorithm in
+                guard let self else { return false }
+                out("first contact — \(host) "
+                    + "shows an \(algorithm) "
+                    + "host key:", .sys)
+                out("  " + fingerprint, .out)
+                out("trust it? The key is kept, "
+                    + "and a changed key is "
+                    + "refused after. Type yes:",
+                    .sys)
+                let answer = self.awaitLine(
+                    secret: false)
+                return answer?
+                    .lowercased() == "yes"
+            }
+            client.secretAsk = {
+                [weak self] prompt in
+                guard let self else { return nil }
+                out(prompt + ":", .sys)
+                return self.awaitLine(secret: true)
+            }
+        }
+        return client
     }
 
     // MARK: The language
@@ -2691,6 +2759,8 @@ final class BlacksiteShell: ObservableObject {
              "router", "mndp", "cred",
              "snmpwalk", "snmp3walk",
              "snmpset", "snmp3set",
+             "ssh", "sshkey", "sshhosts",
+             "sshbackup",
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
@@ -4575,6 +4645,11 @@ final class BlacksiteShell: ObservableObject {
                 ("snmpset <host> <oid> <s|i|t|a|o> <value>", "write one object on your own gear, then read it back"),
                 ("snmp3walk <host> <user> [root]", "walk the MIB as a kept SNMPv3 user — signed, and sealed when privacy is kept"),
                 ("snmp3set <host> <user> <oid> <s|i|t|a|o> <value>", "write one object as that v3 user, then read it back"),
+                ("ssh [-p port] [user@]host [command]", "open SSH to your own gear — no command opens a shell; her client, curve25519 + AES-GCM"),
+                ("sshkey [make|forget]", "the house SSH identity — an ed25519 key whose private half never leaves the Keychain"),
+                ("sshhosts [forget <host>]", "the host keys you have trusted, kept by fingerprint"),
+                ("sshbackup [user@]host <command>", "run a command and seal its output into the Vault, filed in Deliveries"),
+                ("cred setssh <host> <user>", "keep an SSH word for a host — typed in secret, held in the Keychain"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -9311,12 +9386,42 @@ final class BlacksiteShell: ObservableObject {
                         }
                     }
                 }
+            } else if sub == "setssh",
+                      args.count > 2 {
+                let host = args[1]
+                let user = args[2]
+                askSecret(
+                    "the SSH word for "
+                    + "\(user)@\(host) — it "
+                    + "will be kept in the "
+                    + "Keychain and never "
+                    + "shown again:"
+                ) { typed in
+                    let word = typed
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                    guard !word.isEmpty else {
+                        out("nothing typed — "
+                            + "nothing kept.",
+                            .err)
+                        return
+                    }
+                    CryptoSuite.NetCred.keepSSH(
+                        host: host, user: user,
+                        word: word)
+                    out("kept — ssh will speak "
+                        + "it for \(user)@"
+                        + "\(host) unnamed.",
+                        .ok)
+                }
             } else {
                 out("cred set <host> · cred "
                     + "set3 <host> <user> "
                     + "<md5|sha> [des|aes] · "
-                    + "cred hosts · cred "
-                    + "forget <host>", .err)
+                    + "cred setssh <host> "
+                    + "<user> · cred hosts · "
+                    + "cred forget <host>",
+                    .err)
             }
         case "snmpwalk":
             guard netAllowed(name),
@@ -9438,6 +9543,314 @@ final class BlacksiteShell: ObservableObject {
                     type: args[3],
                     value: args[4],
                     emit: emit, done: done)
+            }
+        case "ssh":
+            guard netAllowed(name) else {
+                return
+            }
+            var rest = args
+            var port = 22
+            if rest.count >= 2, rest[0] == "-p",
+               let parsed = Int(rest[1]) {
+                port = parsed
+                rest = Array(rest.dropFirst(2))
+            }
+            guard let target = rest.first else {
+                out("ssh [-p port] [user@]host "
+                    + "[command] — no command "
+                    + "opens a shell", .err)
+                return
+            }
+            var user = "root"
+            var host = target
+            if let at = target.firstIndex(of: "@") {
+                user = String(target[..<at])
+                host = String(target[
+                    target.index(after: at)...])
+            }
+            let command = rest.dropFirst()
+                .joined(separator: " ")
+            let passive = capturing
+            if command.isEmpty, passive {
+                out("a shell needs the operator "
+                    + "at the console — give me "
+                    + "a command to run on "
+                    + "\(host) instead.", .err)
+                return
+            }
+            let client = sshClient(host: host,
+                                   port: port,
+                                   user: user,
+                                   passive: passive)
+            let wasKnown = client.knownKey != nil
+            busy = true
+            DispatchQueue.global(
+                qos: .userInitiated).async {
+                [weak self] in
+                guard let self else { return }
+                let emit = Self.netEmit(self)
+                defer {
+                    DispatchQueue.main.async {
+                        self.busy = false
+                    }
+                }
+                do {
+                    try client.handshake()
+                    if !wasKnown {
+                        CryptoSuite.NetCred
+                            .keepKnownKey(
+                                host: host,
+                                port: port,
+                                blob: client
+                                    .hostKeyBlob)
+                        emit("host key kept for "
+                             + "\(host) — a "
+                             + "changed key will "
+                             + "be refused.",
+                             .sys)
+                    }
+                    if command.isEmpty {
+                        emit("— on \(host) as "
+                             + "\(user) · "
+                             + client
+                                .negotiatedCipher
+                             + " · host key "
+                             + client.fingerprint
+                             + ". You are on the "
+                             + "host now; ~. on "
+                             + "its own line "
+                             + "leaves.", .sys)
+                        try client.shell(
+                            nextLine: {
+                                self.awaitLine(
+                                    secret: false)
+                            },
+                            output: { text in
+                                emit(text, .out)
+                            })
+                        emit("— the shell closed.",
+                             .sys)
+                    } else {
+                        let result = try client
+                            .exec(command)
+                        var lines = result.stdout
+                            .components(
+                                separatedBy: "\n")
+                        if lines.last == "" {
+                            lines.removeLast()
+                        }
+                        for line in lines {
+                            emit(line, .out)
+                        }
+                        for line in result.stderr
+                            .components(
+                                separatedBy: "\n")
+                        where !line.isEmpty {
+                            emit(line, .err)
+                        }
+                        if result.status >= 0 {
+                            emit("— exit "
+                                 + "\(result.status)",
+                                 result.status == 0
+                                 ? .ok : .err)
+                        } else {
+                            emit("— the host "
+                                 + "closed without "
+                                 + "an exit status",
+                                 .err)
+                        }
+                    }
+                    client.disconnect()
+                } catch let failure as SSHFailure {
+                    if case .hostKeyChanged(
+                        let fp) = failure {
+                        Sentinel.shared
+                            .noteHostKeyChanged(
+                                host: host,
+                                fingerprint: fp)
+                    }
+                    emit("ssh: "
+                         + failure.description,
+                         .err)
+                    client.disconnect()
+                } catch {
+                    emit("ssh: \(error)", .err)
+                    client.disconnect()
+                }
+            }
+        case "sshbackup":
+            guard netAllowed(name) else {
+                return
+            }
+            var rest = args
+            var port = 22
+            if rest.count >= 2, rest[0] == "-p",
+               let parsed = Int(rest[1]) {
+                port = parsed
+                rest = Array(rest.dropFirst(2))
+            }
+            guard rest.count >= 2,
+                  let target = rest.first
+            else {
+                out("sshbackup [-p port] "
+                    + "[user@]host <command> — "
+                    + "runs it and seals the "
+                    + "output into the Vault",
+                    .err)
+                return
+            }
+            var user = "root"
+            var host = target
+            if let at = target.firstIndex(of: "@") {
+                user = String(target[..<at])
+                host = String(target[
+                    target.index(after: at)...])
+            }
+            let command = rest.dropFirst()
+                .joined(separator: " ")
+            let passive = capturing
+            let client = sshClient(host: host,
+                                   port: port,
+                                   user: user,
+                                   passive: passive)
+            let wasKnown = client.knownKey != nil
+            busy = true
+            DispatchQueue.global(
+                qos: .userInitiated).async {
+                [weak self] in
+                guard let self else { return }
+                let emit = Self.netEmit(self)
+                defer {
+                    DispatchQueue.main.async {
+                        self.busy = false
+                    }
+                }
+                do {
+                    try client.handshake()
+                    if !wasKnown {
+                        CryptoSuite.NetCred
+                            .keepKnownKey(
+                                host: host,
+                                port: port,
+                                blob: client
+                                    .hostKeyBlob)
+                    }
+                    let result = try client
+                        .exec(command)
+                    client.disconnect()
+                    guard result.status == 0 else {
+                        emit("sshbackup: the "
+                             + "command ended "
+                             + "\(result.status) "
+                             + "— nothing sealed.",
+                             .err)
+                        return
+                    }
+                    if let filed = SSHClient
+                        .sealBackup(result.stdout,
+                                    host: host) {
+                        emit("sealed into the "
+                             + "Vault and filed "
+                             + "in Deliveries as "
+                             + "\(filed) — "
+                             + "\(result.stdout.count) "
+                             + "characters of it.",
+                             .ok)
+                    } else {
+                        emit("sshbackup: the "
+                             + "sealing failed — "
+                             + "the output was "
+                             + "not kept.", .err)
+                    }
+                } catch let failure as SSHFailure {
+                    if case .hostKeyChanged(
+                        let fp) = failure {
+                        Sentinel.shared
+                            .noteHostKeyChanged(
+                                host: host,
+                                fingerprint: fp)
+                    }
+                    emit("sshbackup: "
+                         + failure.description,
+                         .err)
+                    client.disconnect()
+                } catch {
+                    emit("sshbackup: \(error)",
+                         .err)
+                    client.disconnect()
+                }
+            }
+        case "sshkey":
+            if args.first == "forget" {
+                CryptoSuite.NetCred
+                    .forgetSSHIdentity()
+                out("the house SSH identity is "
+                    + "burned — hosts that "
+                    + "trusted its key will "
+                    + "refuse it now.", .sys)
+            } else if args.first == "make" {
+                let key = CryptoSuite.NetCred
+                    .makeSSHIdentity()
+                out(SSHClient.identityLine(key),
+                    .out)
+                out("made and kept in the "
+                    + "Keychain — the private "
+                    + "half never leaves it. "
+                    + "Install the line above "
+                    + "in a host's "
+                    + "authorized_keys.", .ok)
+            } else if let key = CryptoSuite
+                .NetCred.sshIdentity() {
+                out(SSHClient.identityLine(key),
+                    .out)
+                out("the house identity — a "
+                    + "host holding this line "
+                    + "in authorized_keys lets "
+                    + "her in by key.", .sys)
+            } else {
+                out("sshkey — no identity yet "
+                    + "· sshkey make — mint one "
+                    + "· sshkey forget — burn "
+                    + "it", .err)
+            }
+        case "sshhosts":
+            if args.first == "forget",
+               args.count > 1 {
+                let target = args[1]
+                var host = target
+                var port = 22
+                if let colon = target
+                    .lastIndex(of: ":"),
+                   let parsed = Int(target[
+                    target.index(after: colon)...]) {
+                    host = String(target[..<colon])
+                    port = parsed
+                }
+                CryptoSuite.NetCred
+                    .forgetKnownKey(host: host,
+                                    port: port)
+                out("the key on file for "
+                    + "\(host) is forgotten — "
+                    + "the next ssh will ask "
+                    + "again.", .sys)
+            } else {
+                let known = CryptoSuite.NetCred
+                    .knownHosts()
+                if known.isEmpty {
+                    out("no host keys on file "
+                        + "— the first ssh to a "
+                        + "host asks, and keeps "
+                        + "what you trust.",
+                        .out)
+                } else {
+                    for entry in known {
+                        out(entry
+                            .replacingOccurrences(
+                                of: "|",
+                                with: " · port "),
+                            .out)
+                    }
+                }
             }
         case "upnp":
             guard netAllowed(name) else {

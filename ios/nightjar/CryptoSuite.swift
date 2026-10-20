@@ -462,6 +462,11 @@ enum CryptoSuite {
                 "v3|" + host + "|") {
                 forget(host: account)
             }
+            for account in hosts()
+            where account.hasPrefix(
+                "ssh|" + host + "|") {
+                forget(host: account)
+            }
         }
 
         /// Host names only — never values.
@@ -545,6 +550,98 @@ enum CryptoSuite {
                 privProto: record["p"]
                     ?? "none",
                 privPass: record["pp"] ?? "")
+        }
+
+        // MARK: SSH keeping
+
+        /// The word kept for one SSH login,
+        /// under "ssh|<host>|<user>" — read
+        /// at the moment of use, never
+        /// printed, logged, or spoken.
+        static func keepSSH(host: String,
+                            user: String,
+                            word: String) {
+            keep(host: "ssh|" + host + "|"
+                 + user, secret: word)
+        }
+
+        static func sshWord(host: String,
+                            user: String) -> String? {
+            secret(for: "ssh|" + host + "|"
+                   + user)
+        }
+
+        /// A host key the operator trusted,
+        /// kept as its raw blob (base64 in
+        /// the record) under
+        /// "hostkey|<host>|<port>".
+        static func keepKnownKey(host: String,
+                                 port: Int,
+                                 blob: Data) {
+            keep(host: "hostkey|" + host + "|"
+                 + String(port),
+                 secret: blob.base64EncodedString())
+        }
+
+        static func knownKey(host: String,
+                             port: Int) -> Data? {
+            guard let text = secret(
+                for: "hostkey|" + host + "|"
+                + String(port))
+            else { return nil }
+            return Data(base64Encoded: text)
+        }
+
+        static func forgetKnownKey(host: String,
+                                   port: Int) {
+            forget(host: "hostkey|" + host + "|"
+                   + String(port))
+        }
+
+        /// The hosts with a trusted key on
+        /// file, as "host|port" names.
+        static func knownHosts() -> [String] {
+            hosts().filter {
+                $0.hasPrefix("hostkey|")
+            }.map {
+                String($0.dropFirst(
+                    "hostkey|".count))
+            }.sorted()
+        }
+
+        /// The house SSH identity (ed25519),
+        /// when the operator has made one.
+        /// The private half is the raw key,
+        /// base64 in the record; it never
+        /// leaves the Keychain.
+        static func sshIdentity()
+            -> Curve25519.Signing.PrivateKey? {
+            guard let text = secret(
+                for: "ssh-identity"),
+                  let data = Data(
+                    base64Encoded: text),
+                  let key = try?
+                    Curve25519.Signing.PrivateKey(
+                        rawRepresentation: data)
+            else { return nil }
+            return key
+        }
+
+        static func makeSSHIdentity()
+            -> Curve25519.Signing.PrivateKey {
+            if let existing = sshIdentity() {
+                return existing
+            }
+            let key = Curve25519.Signing
+                .PrivateKey()
+            keep(host: "ssh-identity",
+                 secret: key.rawRepresentation
+                    .base64EncodedString())
+            return key
+        }
+
+        static func forgetSSHIdentity() {
+            forget(host: "ssh-identity")
         }
     }
 
