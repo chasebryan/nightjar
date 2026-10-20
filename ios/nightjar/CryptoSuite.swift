@@ -389,6 +389,101 @@ enum CryptoSuite {
         }
     }
 
+    // MARK: Netadmin credentials
+
+    /// Credentials the operator supplies for
+    /// their OWN network gear (the netadmin
+    /// program, 2026-10-20): an SNMP community
+    /// today, v3 secrets when Phase 2 lands.
+    /// Kept in the Keychain under the host's
+    /// name. Only the host list ever leaves
+    /// this store — a secret is read at the
+    /// moment of use and never printed,
+    /// logged, or spoken.
+    enum NetCred {
+        private static let service =
+            "nightjar.netadmin"
+
+        static func keep(host: String,
+                         secret: String) {
+            let base: [String: Any] = [
+                kSecClass as String:
+                    kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: host,
+            ]
+            let data = Data(secret.utf8)
+            let status = SecItemUpdate(
+                base as CFDictionary,
+                [kSecValueData as String: data]
+                    as CFDictionary)
+            if status == errSecItemNotFound {
+                var query = base
+                query[kSecValueData as String] =
+                    data
+                query[kSecAttrAccessible as String] =
+                    kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+                SecItemAdd(
+                    query as CFDictionary, nil)
+            }
+        }
+
+        static func secret(
+            for host: String) -> String? {
+            let query: [String: Any] = [
+                kSecClass as String:
+                    kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: host,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String:
+                    kSecMatchLimitOne,
+            ]
+            var item: CFTypeRef?
+            guard SecItemCopyMatching(
+                    query as CFDictionary, &item)
+                    == errSecSuccess,
+                  let data = item as? Data
+            else { return nil }
+            return String(data: data,
+                          encoding: .utf8)
+        }
+
+        static func forget(host: String) {
+            let query: [String: Any] = [
+                kSecClass as String:
+                    kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: host,
+            ]
+            SecItemDelete(query as CFDictionary)
+        }
+
+        /// Host names only — never values.
+        static func hosts() -> [String] {
+            let query: [String: Any] = [
+                kSecClass as String:
+                    kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecReturnAttributes as String:
+                    true,
+                kSecMatchLimit as String:
+                    kSecMatchLimitAll,
+            ]
+            var items: CFTypeRef?
+            guard SecItemCopyMatching(
+                    query as CFDictionary, &items)
+                    == errSecSuccess,
+                  let list = items
+                    as? [[String: Any]]
+            else { return [] }
+            return list.compactMap {
+                $0[kSecAttrAccount as String]
+                    as? String
+            }.sorted()
+        }
+    }
+
     /// The Vault's own AES-256 key, made on
     /// first use and kept in the Keychain.
     static func vaultKey() -> SymmetricKey {

@@ -66,6 +66,10 @@ final class BlacksiteShell: ObservableObject {
     /// handed to the program instead of
     /// running as a command.
     private var inputWaiter: ((String) -> Void)?
+    /// The next waiter's line is a secret:
+    /// it is echoed as bullets, never as
+    /// itself (netadmin cred, 2026-10-20).
+    private var secretWaiter = false
 
     private let scanner = ScanModel()
     private let recon = Recon()
@@ -186,7 +190,8 @@ final class BlacksiteShell: ObservableObject {
         "telnet", "ifconfig", "arp",
         "netstat", "hostname", "subdomains",
         "revdns", "nbstat", "snmp", "snmpaudit",
-        "router", "mndp",
+        "router", "mndp", "cred", "snmpwalk",
+        "snmpset",
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
@@ -407,7 +412,12 @@ final class BlacksiteShell: ObservableObject {
             let typed = raw
                 .trimmingCharacters(
                     in: .newlines)
-            emit("▸ " + typed, .cmd)
+            if secretWaiter {
+                secretWaiter = false
+                emit("▸ ••••••••", .cmd)
+            } else {
+                emit("▸ " + typed, .cmd)
+            }
             waiter(typed)
             return
         }
@@ -424,6 +434,20 @@ final class BlacksiteShell: ObservableObject {
                 history.count - 200)
         }
         execLine(command, stdin: "")
+    }
+
+    /// Ask for one secret line: the prompt
+    /// shows, the answer never does — it is
+    /// echoed as bullets, kept out of the
+    /// history, and handed straight to the
+    /// asker (the cred command's Keychain
+    /// store).
+    func askSecret(
+        _ prompt: String,
+        answer: @escaping (String) -> Void) {
+        emit(prompt, .sys)
+        secretWaiter = true
+        inputWaiter = answer
     }
 
     // MARK: The language
@@ -2662,7 +2686,8 @@ final class BlacksiteShell: ObservableObject {
              "nc", "telnet", "ifconfig",
              "arp", "netstat", "hostname",
              "subdomains", "revdns",
-             "router", "mndp",
+             "router", "mndp", "cred",
+             "snmpwalk", "snmpset",
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
@@ -4417,6 +4442,11 @@ final class BlacksiteShell: ObservableObject {
                 ("snmpaudit <host>", "the NSA's five SNMP mitigations, graded from the wire"),
                 ("router", "which neighbor is the router — crowned by the default route, ranked by signs"),
                 ("mndp [seconds]", "hear MikroTik introduce itself (UDP 5678)"),
+                ("cred set <host>", "keep a credential for your own gear — typed in secret, held in the Keychain"),
+                ("cred hosts", "the hosts holding a kept credential (never the secrets)"),
+                ("cred forget <host>", "let a kept credential go"),
+                ("snmpwalk <host> [community] [root]", "walk the MIB with the kept or given community"),
+                ("snmpset <host> <oid> <s|i|t|a|o> <value>", "write one object on your own gear, then read it back"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -8995,6 +9025,99 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.mndp(
                     seconds: seconds,
+                    emit: emit, done: done)
+            }
+        case "cred":
+            let sub = args.first ?? ""
+            if sub == "hosts" {
+                let hosts = CryptoSuite.NetCred
+                    .hosts()
+                if hosts.isEmpty {
+                    out("no credentials kept "
+                        + "yet — cred set <host> "
+                        + "keeps one.", .out)
+                } else {
+                    for host in hosts {
+                        out("\(host) — credential "
+                            + "kept", .out)
+                    }
+                }
+            } else if sub == "forget",
+                      args.count > 1 {
+                CryptoSuite.NetCred.forget(
+                    host: args[1])
+                out("forgotten — \(args[1]) "
+                    + "holds nothing now.",
+                    .sys)
+            } else if sub == "set",
+                      args.count > 1 {
+                let host = args[1]
+                askSecret(
+                    "the credential for "
+                    + "\(host) — it will be "
+                    + "kept in the Keychain "
+                    + "and never shown again:"
+                ) { typed in
+                    let secret = typed
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                    guard !secret.isEmpty else {
+                        out("nothing typed — "
+                            + "nothing kept.",
+                            .err)
+                        return
+                    }
+                    CryptoSuite.NetCred.keep(
+                        host: host,
+                        secret: secret)
+                    out("kept for \(host). "
+                        + "snmpwalk and snmpset "
+                        + "will use it "
+                        + "unnamed.", .ok)
+                }
+            } else {
+                out("cred set <host> · cred "
+                    + "hosts · cred forget "
+                    + "<host>", .err)
+            }
+        case "snmpwalk":
+            guard netAllowed(name),
+                  let host = args.first
+            else { return }
+            let community = args.count > 1
+                ? args[1]
+                : CryptoSuite.NetCred.secret(
+                    for: host) ?? "public"
+            let root = args.count > 2
+                ? args[2] : "1.3.6.1.2.1"
+            netBusy { emit, done in
+                BlacksitePentest.snmpWalk(
+                    host: host,
+                    community: community,
+                    root: root,
+                    emit: emit, done: done)
+            }
+        case "snmpset":
+            guard netAllowed(name),
+                  args.count >= 4,
+                  let host = args.first
+            else {
+                if args.count < 4 {
+                    out("snmpset <host> <oid> "
+                        + "<s|i|t|a|o> <value>",
+                        .err)
+                }
+                return
+            }
+            let community = CryptoSuite.NetCred
+                .secret(for: host) ?? "public"
+            netBusy { emit, done in
+                BlacksitePentest.snmpSet(
+                    host: host,
+                    community: community,
+                    oid: args[1],
+                    type: args[2],
+                    value: args[3],
                     emit: emit, done: done)
             }
         case "upnp":
