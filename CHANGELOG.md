@@ -2,6 +2,7 @@
 
 ## 10.0 — 2026-10-20 — chorus
 - **Chorus opens.** The tenth version of the house begins: the console below is an operating system, Skelli is awake inside it, the game room plays, and every instrument the place owns sounds at once. What chorus comes to mean will be written here as it lands.
+- **Skelli, relearned.** Her hands answer to verbs now, not nouns: an ask she cannot act on is no longer answered with her one canned trick — the canary rises only when raising is what was asked, and she can knock her own decoy like a stranger and read back what it filed. Chained orders run in order — 'raise the ssh canary, then knock the canary' does both — and she reads her own inbox aloud: the newest arrival, whichever road it came by, and what it said. Questions about her instruments get her knowledge; orders get her hands.
 
 ## 9.0c — 2026-10-20 — cosmic
 - **Freedoom.** The big one is playable: the console's FREEDOOM program is the real game — Chocolate Doom compiled to WebAssembly running Freedoom Phase 1 (0.13.0), sound and all, on a virtual controller that is simply there: a stick under the left thumb, fire/use/run under the right, strafing keys, a weapon key, the map. The engine rides inside the app; the 28 MB of game data downloads once, from Freedoom's official release, the first time the room opens — a fetch the EMCON Standard counts as an update check, so it stands only at Open — and is kept on the phone from then on, playing offline under any condition.
