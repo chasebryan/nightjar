@@ -244,16 +244,21 @@ enum SkelliCrew {
 extension SkelliCenter {
     /// The crew's door in the respond chain:
     /// claims an ask only when the toggle is on
-    /// and the ask carries a plan's shape — an
-    /// explicit call to the crew, or a chain of
-    /// work joined by "then".
+    /// and the ask calls for the crew itself —
+    /// its name, or a plan's shape ("plan
+    /// this", "step by step"). Chains joined
+    /// by "then" were a trigger once; they
+    /// swallowed every ordinary multi-step
+    /// sentence into a crew run, and plain
+    /// questions ("figure out why…") went
+    /// with them. Gone 2026-10-20: a chain
+    /// of asks is hers to sequence, not the
+    /// crew's to eat.
     func crewAsk(_ q: String, raw: String) -> Bool {
         guard SkelliCrew.enabled else { return false }
         let triggers = ["crew", "agents",
-                        "plan this", "step by step",
-                        "figure out", "work out",
-                        "investigate", " and then ",
-                        " then "]
+                        "swarm", "plan this",
+                        "step by step"]
         guard triggers.contains(where: {
             q.contains($0)
         }) else { return false }

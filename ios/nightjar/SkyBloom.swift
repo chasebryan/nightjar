@@ -284,7 +284,21 @@ extension SkelliCenter {
                 return true
             }
         }
-        // Here, tonight.
+        // Here, tonight — spoken only when
+        // tonight's face is what was asked.
+        // Any other moon question this lane
+        // cannot place falls through now
+        // (2026-10-20) instead of being
+        // answered with the phase whatever
+        // was asked.
+        let phaseAsked = q.contains("phase")
+            || q.contains("tell me about")
+            || q.contains("tonight")
+            || q.contains("lit")
+            || q.contains("illuminat")
+            || q.contains("bright")
+            || q.split(separator: " ").count <= 3
+        guard phaseAsked else { return false }
         let phase = Almanac.moonPhase(at: now)
         let age = Almanac.moonAge(at: now)
         let full = Almanac.nextFullMoon(after: now)

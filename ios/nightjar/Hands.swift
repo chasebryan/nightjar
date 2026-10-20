@@ -1593,16 +1593,17 @@ extension SkelliCenter {
                     : !a.item.builtIn && b.item.builtIn
             }
         guard let hit = scored.first else {
-            let hers = book.items
-                .filter { $0.name.hasPrefix("Forged — ") }
-                .map { $0.name }
-            say("Nothing in the armory matches that."
-                + (hers.isEmpty
-                    ? ""
-                    : " Hers on the shelf: "
-                        + hers.joined(separator: "; ")
-                        + "."))
-            return true
+            // No match, no speech (2026-10-20):
+            // this hand once answered EVERY
+            // unmatched delete sentence with
+            // "Nothing in the armory matches
+            // that." — including "delete the
+            // log", which was never the
+            // armory's to answer and never
+            // reached the clear lane behind
+            // it. Silence here lets the ask
+            // fall to the hands it belongs to.
+            return false
         }
         if let index = book.items
             .firstIndex(of: hit.item) {
@@ -2673,9 +2674,22 @@ extension SkelliCenter {
                 of: "canary-", with: "")
         let clock = DateFormatter()
         clock.timeStyle = .short
-        var heard: String
+        say("Latest catch — the " + persona
+            + " canary filed a visit at "
+            + clock.string(from: filing.at)
+            + ", from " + filing.peer
+            + ". It heard: "
+            + arrivalHeard(filing.data))
+    }
+
+    /// What an arrival said, in one breath:
+    /// its first lines when it speaks text,
+    /// its size and opening bytes when it
+    /// speaks machine.
+    private func arrivalHeard(
+        _ data: Data) -> String {
         if let text = PayloadKit.printableText(
-            filing.data) {
+            data) {
             let lines = text
                 .split(separator: "\n")
                 .map { $0.trimmingCharacters(
@@ -2683,23 +2697,71 @@ extension SkelliCenter {
                 .filter { !$0.isEmpty }
             let flat = lines.prefix(3)
                 .joined(separator: " · ")
-            heard = flat.isEmpty
-                ? "\(filing.data.count) bytes of it"
-                : "\u{201C}" + flat.prefix(200)
+            return flat.isEmpty
+                ? "\(data.count) bytes of it"
+                : "\u{201C}\(flat.prefix(200))"
                     + "\u{201D}"
-        } else {
-            let head = filing.data.prefix(8)
-                .map { String(format: "%02x", $0) }
-                .joined(separator: " ")
-            heard = "\(filing.data.count) bytes "
-                + "of machine talk, opening "
-                + head
         }
-        say("Latest catch — the " + persona
-            + " canary filed a visit at "
-            + clock.string(from: filing.at)
-            + ", from " + filing.peer
-            + ". It heard: " + heard)
+        let head = data.prefix(8)
+            .map { String(format: "%02x", $0) }
+            .joined(separator: " ")
+        return "\(data.count) bytes of "
+            + "machine talk, opening " + head
+    }
+
+    /// Her inbox, read aloud (2026-10-20,
+    /// batch D): "what's in the inbox",
+    /// "read me the latest arrival" — the
+    /// newest arrival of ANY transport,
+    /// reported the way a catch is: when,
+    /// from where, what it said. She has
+    /// described her filings in the abstract
+    /// for long enough; now she reads them.
+    func inboxAsk(_ q: String) -> Bool {
+        guard q.contains("inbox")
+            || q.contains("arrival") else {
+            return false
+        }
+        // Concept shapes stay the manual's:
+        // "what is the inbox" is a lesson,
+        // and this hand stands ahead of the
+        // explanation gate to claim the
+        // CONTENTS questions ("what is in
+        // my inbox") it would otherwise
+        // answer with a description.
+        let concept = q.hasPrefix("what is the")
+            || q.hasPrefix("what's the")
+            || q.hasPrefix("what is an")
+            || q.contains("how does the inbox")
+            || q.contains("explain")
+        guard !concept else { return false }
+        let reading = q.contains("read")
+            || q.contains("latest")
+            || q.contains("newest")
+            || q.contains("last")
+            || q.contains("show")
+            || q.contains("in my inbox")
+            || q.contains("in the inbox")
+            || q.contains("arrived")
+            || q.contains("anything")
+            || q.contains("?")
+        guard reading else { return false }
+        guard let mouth else { return false }
+        guard let newest = mouth.inbox.first
+        else {
+            say("The inbox is empty — "
+                + "nothing has arrived.")
+            return true
+        }
+        let clock = DateFormatter()
+        clock.timeStyle = .short
+        say("Newest in the inbox — "
+            + newest.transport + ", at "
+            + clock.string(from: newest.at)
+            + ", from " + newest.peer
+            + ". It said: "
+            + arrivalHeard(newest.data))
+        return true
     }
 
     // MARK: her conductor hand — reflexes kept
@@ -2804,19 +2866,49 @@ extension SkelliCenter {
                     + (waking ? "awake." : "stilled."))
                 return true
             }
-            defaults.set(waking, forKey: "conductorOn")
-            say(waking
-                ? "The conductor wakes. Its reflexes "
-                    + "will fire as the wire moves."
-                : "The conductor sleeps. Its rules "
-                    + "keep, unfired.")
+            // No rule matched. The master
+            // flips only when the ask names
+            // the conductor himself — a
+            // reflex ask naming nothing
+            // known earns the book, never
+            // a flipped switch (2026-10-20:
+            // "still the reflex about the
+            // porch" once slept the whole
+            // conductor by fall-through).
+            if q.contains("conductor") {
+                defaults.set(waking,
+                             forKey: "conductorOn")
+                say(waking
+                    ? "The conductor wakes. Its "
+                        + "reflexes will fire as "
+                        + "the wire moves."
+                    : "The conductor sleeps. Its "
+                        + "rules keep, unfired.")
+                return true
+            }
+            say("No reflex by that name in "
+                + "the book. It holds: "
+                + (rules.isEmpty
+                    ? "nothing yet."
+                    : rules.map {
+                        "'" + $0.name + "'"
+                    }.joined(separator: ", ")
+                        + "."))
             return true
         }
 
-        if q.contains("off") || q.contains("sleep") {
-            defaults.set(false, forKey: "conductorOn")
-            say("The conductor sleeps. Its rules "
-                + "keep, unfired.")
+        if q.contains("conductor")
+            && (q.contains("off")
+                || q.contains("sleep")) {
+            if defaults.bool(forKey: "conductorOn") {
+                defaults.set(false,
+                             forKey: "conductorOn")
+                say("The conductor sleeps. Its "
+                    + "rules keep, unfired.")
+            } else {
+                say("The conductor already "
+                    + "sleeps.")
+            }
             return true
         }
         if q.contains("status") || q.contains("?")
@@ -3030,6 +3122,29 @@ extension SkelliCenter {
         guard q.split(whereSeparator: {
             !$0.isLetter
         }).contains("hunt") else { return false }
+        // Intent, not just the word
+        // (2026-10-20): a question ABOUT
+        // the hunt is not a hunt — the
+        // manual and her mind answer
+        // those. And there is no hunt
+        // session to stop: this hand
+        // hunts by answering.
+        if q.contains("how does")
+            || q.contains("how do")
+            || q.contains("what is the hunt")
+            || q.contains("what's the hunt")
+            || q.contains("why hunt") {
+            return false
+        }
+        if q.contains("stop")
+            || q.contains("halt")
+            || q.contains("cease") {
+            say("Nothing to stop — I hunt "
+                + "by answering. Ask, and I "
+                + "point at the strongest "
+                + "signal on the air.")
+            return true
+        }
         guard let post else { return false }
         let rows = post.rows
         guard !rows.isEmpty else {
@@ -3192,6 +3307,20 @@ extension SkelliCenter {
             }) {
                 return false
             }
+            // The rack answers questions
+            // about the wardrobe — it does
+            // not recite itself at every
+            // sentence carrying the word
+            // (2026-10-20).
+            let statusShaped = q.contains("what")
+                || q.contains("which")
+                || q.contains("current")
+                || q.contains("wearing")
+                || q.contains("wear now")
+                || q.contains("list")
+                || q.contains("show")
+                || q.contains("?")
+            guard statusShaped else { return false }
             say("The house wears "
                 + center.current.name + ". The "
                 + "rack: " + center.allThemes

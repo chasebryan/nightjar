@@ -5065,6 +5065,18 @@ extension SkelliCenter {
                 hit = q.contains(first)
             }
             if hit {
+                // Already wearing it is not
+                // a change (2026-10-20): the
+                // hand once re-applied the
+                // live theme and announced
+                // "Colours changed" over a
+                // house that hadn't moved.
+                if ThemeCenter.shared.current.id
+                    == theme.id {
+                    say("The house already wears "
+                        + theme.name + ".")
+                    return true
+                }
                 ThemeCenter.shared.apply(theme)
                 say("Colours changed — "
                     + theme.name

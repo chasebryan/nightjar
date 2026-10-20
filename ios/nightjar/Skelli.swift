@@ -568,6 +568,10 @@ final class SkelliCenter: ObservableObject {
     private var lastNudge: (feeling: SkelliFeeling,
                             at: Date)?
     var pendingAction: (() -> Void)?
+    /// Chain-running depth: while a chained
+    /// ask re-asks its remainder, the chain
+    /// runner stands aside (2026-10-20).
+    private var chainDepth = 0
     /// Set by ask() when an apology forgave a live
     /// grievance; respond() acknowledges it if no
     /// hand claimed the message first.
@@ -2543,6 +2547,91 @@ final class SkelliCenter: ObservableObject {
 
     // MARK: the routing
 
+    /// One clause against the hand lane, in
+    /// the cascade's own order — the chain
+    /// runner's single step.
+    private func handLane(_ q: String,
+                          raw: String) -> Bool {
+        if conductorAsk(q) { return true }
+        if macroAsk(q, raw: raw) { return true }
+        if cryptoAsk(q, raw: raw) { return true }
+        if crewAsk(q, raw: raw) { return true }
+        if emconOrganAsk(q) { return true }
+        if knocktalkAsk(q, raw: raw) { return true }
+        if consoleAsk(q, raw: raw) { return true }
+        if mapPlaceAsk(q) { return true }
+        if canaryAsk(q) { return true }
+        if inboxAsk(q) { return true }
+        if capsuleAsk(q, raw: raw) { return true }
+        if huntAsk(q) { return true }
+        if dressAsk(q) { return true }
+        if tomatoAsk(q) { return true }
+        if offenseAsk(q) { return true }
+        if assaultAsk(q) { return true }
+        if skyBloomAsk(q) { return true }
+        if cartomancyAsk(q) { return true }
+        if handsGate(q, raw: raw) { return true }
+        return false
+    }
+
+    /// Chained orders (2026-10-20, batch C):
+    /// "raise the canary, then knock it" is
+    /// two acts in one breath, and she does
+    /// them in order. The attempt stands at
+    /// the head of the hand lane: the ask is
+    /// split on its then-joiners, and each
+    /// clause — a self-contained order — is
+    /// walked through the hand lane. Every
+    /// clause must be a hand's work: if the
+    /// first is not, nothing is done and the
+    /// ask falls through untouched; if a
+    /// later one is not, the hands have done
+    /// what they can and the remainder is
+    /// re-asked whole, so it still gets its
+    /// answer. Bare "and" is not a joiner:
+    /// too many honest sentences carry it.
+    private func chainedHandsAsk(
+        _ q: String, raw: String) -> Bool {
+        guard chainDepth == 0 else { return false }
+        let joiners = [" and then ", " then ",
+                       ", then ", " after that "]
+        var clauses: [String]? = nil
+        for joiner in joiners {
+            if q.contains(joiner) {
+                let parts = q.components(
+                    separatedBy: joiner)
+                    .map {
+                        $0.trimmingCharacters(
+                            in: .whitespaces)
+                    }
+                    .filter { !$0.isEmpty }
+                if parts.count >= 2 {
+                    clauses = parts
+                    break
+                }
+            }
+        }
+        guard let clauses, clauses.count <= 3,
+              clauses.allSatisfy({
+                  $0.split(separator: " ").count >= 2
+              }) else { return false }
+        for (index, clause)
+                in clauses.enumerated() {
+            if handLane(clause, raw: clause) {
+                continue
+            }
+            if index == 0 { return false }
+            let rest = clauses[index...]
+                .joined(separator: " and ")
+            chainDepth += 1
+            respond(to: rest, raw: rest,
+                    again: false)
+            chainDepth -= 1
+            return true
+        }
+        return true
+    }
+
     func respond(to q: String, raw: String,
                   again: Bool = true) {
         // Claim this ask's forgiveness now, so it can
@@ -3013,7 +3102,13 @@ final class SkelliCenter: ObservableObject {
         // can recite over them. (Teaching shapes
         // — "what is the conductor" — fall
         // through his lane untouched.)
+        if chainedHandsAsk(q, raw: raw) {
+            return
+        }
         if conductorAsk(q) {
+            return
+        }
+        if inboxAsk(q) {
             return
         }
 
@@ -3357,17 +3452,53 @@ final class SkelliCenter: ObservableObject {
             say(nightReport())
             return
         }
-        if q.contains("exposed") || q.contains("posture")
-            || q.contains("score") || q.contains("visible") {
+        // The house reports answer house
+        // questions (2026-10-20): each of
+        // these once fired on its bare word —
+        // a game's score got the exposure
+        // report, "facts about the moon" got
+        // her learned-facts list, and "never
+        // mind" got the mind brief. The words
+        // now need house company.
+        let postureAsked = q.contains("exposed")
+            || q.contains("posture")
+            || (q.contains("score")
+                && (q.contains("emcon")
+                    || q.contains("exposure")
+                    || q.contains("house")))
+            || (q.contains("visible")
+                && (q.contains("how")
+                    || q.contains("are we")
+                    || q.contains("am i")))
+        if postureAsked {
             say(postureReport())
             return
         }
-        if q.contains("learned") || q.contains("facts") {
+        let factsAsked = (q.contains("learned")
+                && q.contains("you"))
+            || (q.contains("facts")
+                && !q.contains("facts about"))
+        if factsAsked {
             say(factsReport())
             return
         }
-        if q.contains("mind") || q.contains("subconscious")
-            || q.contains("brief") {
+        let mindAsked = !q.contains("never mind")
+            && !q.contains("do you mind")
+            && !q.contains("mind if")
+            && (q.contains("subconscious")
+                || q.contains("mind brief")
+                || (q.contains("mind")
+                    && (q.contains("your")
+                        || q.contains("the")
+                        || q.contains("what")
+                        || q.contains("how")
+                        || q.contains("?")))
+                || (q.contains("brief")
+                    && (q.contains("mind")
+                        || q.contains("house")
+                        || q.contains("night")
+                        || q.contains("wire"))))
+        if mindAsked {
             let mind = SubconsciousCenter.shared
             mind.refresh()
             say(mind.awake
@@ -3378,8 +3509,16 @@ final class SkelliCenter: ObservableObject {
                   + "history gives it a normal to break.")
             return
         }
-        if q.contains("serving") || q.contains("serve up")
-            || q.contains("is serve") {
+        if q.contains("serve up")
+            || q.contains("is serve")
+            || (q.contains("serving")
+                && (q.contains("you")
+                    || q.contains("still")
+                    || q.contains("now")
+                    || q.contains("is it")
+                    || q.contains("are we")
+                    || q.contains("house")
+                    || q.contains("?"))) {
             if let mouth = mouth {
                 say(mouth.serveRunning
                     ? "Serve is up"
@@ -5934,8 +6073,12 @@ final class SkelliCenter: ObservableObject {
         }
         // Throw it.
         if q.contains("throw") || q.contains("splat")
-            || q.contains("hit") || q.contains("mark")
-            || q.hasPrefix("tomato") {
+            || q.contains("hit") || q.contains("mark") {
+            // Verbs only (2026-10-20): the
+            // branch once also fired on any
+            // sentence merely STARTING with
+            // the word — "tomato soup…" got
+            // "Who gets it?" for an answer.
             if let n = resolve() {
                 noteDeviceAsk(q, n)
                 let already = marks.isMarked(n.ip)
@@ -6042,6 +6185,19 @@ final class SkelliCenter: ObservableObject {
             || q.contains("arm") || q.contains("begin")
             || q.contains("launch") || q.contains("loose")
         if !runIntent {
+            // A mention is not an order
+            // (2026-10-20): the holstered
+            // speech answers status-shaped
+            // asks only. Anything else with
+            // the word in it — talk ABOUT
+            // the module — falls through
+            // to the manual and her mind
+            // instead of being consumed
+            // by the one canned line.
+            guard q.contains("status")
+                || q.contains("?") else {
+                return false
+            }
             if EmconStandard.refused(.netAssault) {
                 noteRefusal(EmconCondition.current
                     .declared + " forbids "
