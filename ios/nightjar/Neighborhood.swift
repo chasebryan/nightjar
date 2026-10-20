@@ -515,6 +515,7 @@ struct NeighborhoodSectionView: View {
         TomatoMarks.shared
     @Binding var editing: Neighbor?
     @Binding var dossier: DossierPresentation?
+    @Binding var administer: Neighbor?
     @Binding var clearRequest: Bool
     @State private var boardOpen = false
 
@@ -571,6 +572,12 @@ struct NeighborhoodSectionView: View {
                     }
                 }
                 .contextMenu {
+                    Button {
+                        administer = neighbor
+                    } label: {
+                        Label("Administer\u{2026}",
+                              systemImage: "wrench.and.screwdriver")
+                    }
                     Button {
                         editing = neighbor
                     } label: {
@@ -730,5 +737,172 @@ struct NeighborNameEditor: View {
                 }
             }
         }
+    }
+}
+
+/// Administer one neighbor (Netadmin Phase 4b):
+/// the levers the house honestly holds for a
+/// device, on one sheet — walk its MIB, grade
+/// its SNMP posture against the NSA's sheet, or
+/// quarantine it at the gear. Every lever rides
+/// the operator's own kept credentials and the
+/// same engines the console runs; what a lever
+/// cannot do — probing dark under EMCON, no
+/// credential kept for the gear — is said on
+/// the sheet, in the open, never faked.
+struct AdministerSheetView: View {
+    let neighbor: Neighbor
+    @Environment(\.dismiss) private var dismiss
+    @State private var lines: [String] = []
+    @State private var running = false
+
+    private var gearIP: String? {
+        BlacksiteNet.defaultGatewayIP()
+    }
+    private var gearCommunity: String? {
+        gearIP.flatMap {
+            CryptoSuite.NetCred.secret(for: $0)
+        }
+    }
+    private var probingDark: Bool {
+        EmconStandard.refused(.probing)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    LabeledContent {
+                        Text(neighbor.ip)
+                    } label: {
+                        Text(L("Address"))
+                    }
+                    if let wire = neighbor.name {
+                        LabeledContent {
+                            Text(wire)
+                        } label: {
+                            Text(L("Answers as"))
+                        }
+                    }
+                }
+                Section(header: Text(L("Administer"))) {
+                    Button {
+                        walk()
+                    } label: {
+                        Label(L("Walk (SNMP)"),
+                              systemImage: "list.bullet.indent")
+                    }
+                    .disabled(running || probingDark)
+                    Button {
+                        audit()
+                    } label: {
+                        Label(L("Audit posture"),
+                              systemImage: "checklist")
+                    }
+                    .disabled(running || probingDark)
+                    if probingDark {
+                        Text(String(format: L("Probing is dark under EMCON %@."),
+                                    EmconCondition.current.name))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button(role: .destructive) {
+                        quarantine(down: true)
+                    } label: {
+                        Label(L("Quarantine this device"),
+                              systemImage: "nosign")
+                    }
+                    .disabled(running || gearCommunity == nil)
+                    Button {
+                        quarantine(down: false)
+                    } label: {
+                        Label(L("Lift the quarantine"),
+                              systemImage: "arrow.uturn.backward")
+                    }
+                    .disabled(running || gearCommunity == nil)
+                    if gearCommunity == nil {
+                        Text(L("Quarantine rides the gear's kept credential — none is kept, so the lever is dark."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if running || !lines.isEmpty {
+                    Section(header: Text(L("The run"))) {
+                        if running {
+                            Text(L("Working…"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(Array(lines.enumerated()),
+                                id: \.offset) { _, line in
+                            Text(line)
+                                .font(.caption.monospaced())
+                        }
+                    }
+                }
+            }
+            .navigationTitle(neighbor.displayName)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L("Done")) { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func append(_ text: String) {
+        DispatchQueue.main.async {
+            lines.append(text)
+        }
+    }
+
+    private func finish() {
+        DispatchQueue.main.async {
+            running = false
+        }
+    }
+
+    private func walk() {
+        lines = []
+        running = true
+        let kept = CryptoSuite.NetCred
+            .secret(for: neighbor.ip)
+        if kept == nil {
+            lines.append(L("No credential kept for this device — the walk rides the factory word."))
+        }
+        BlacksitePentest.snmpWalk(
+            host: neighbor.ip,
+            community: kept ?? "public",
+            root: "1.3.6.1.2.1",
+            emit: { text, _ in append(text) },
+            done: { finish() })
+    }
+
+    private func audit() {
+        lines = []
+        running = true
+        BlacksitePentest.snmpAudit(
+            host: neighbor.ip,
+            emit: { text, _ in append(text) },
+            done: { finish() })
+    }
+
+    private func quarantine(down: Bool) {
+        guard let gear = gearIP,
+              let community = gearCommunity
+        else { return }
+        lines = []
+        running = true
+        let target = neighbor.ip
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                let out = BlacksitePentest.quarantine(
+                    targetIP: target, gearIP: gear,
+                    community: community, down: down)
+                DispatchQueue.main.async {
+                    lines = out
+                    running = false
+                }
+            }
     }
 }

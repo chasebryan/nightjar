@@ -1499,6 +1499,7 @@ struct ScanView: View {
     @EnvironmentObject private var mouth: Mouth
     @StateObject private var model = ScanModel()
     @State private var dossierSheet: DossierPresentation?
+    @State private var administerNeighbor: Neighbor?
     @State private var mapShown = false
     @State private var editingNeighbor: Neighbor?
     @State private var clearNeighborhood = false
@@ -1767,6 +1768,7 @@ struct ScanView: View {
                     store: NeighborhoodStore.shared,
                     editing: $editingNeighbor,
                     dossier: $dossierSheet,
+                    administer: $administerNeighbor,
                     clearRequest: $clearNeighborhood)
 
                 Section(header: Text(L("Observation feed"))) {
@@ -1981,6 +1983,9 @@ struct ScanView: View {
             NeighborNameEditor(
                 store: NeighborhoodStore.shared,
                 neighbor: neighbor)
+        }
+        .sheet(item: $administerNeighbor) { neighbor in
+            AdministerSheetView(neighbor: neighbor)
         }
         .confirmationDialog(
             "Clear the Neighborhood?",
