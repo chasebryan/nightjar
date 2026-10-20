@@ -2690,11 +2690,16 @@ extension SkelliCenter {
         _ data: Data) -> String {
         if let text = PayloadKit.printableText(
             data) {
-            let lines = text
-                .split(separator: "\n")
-                .map { $0.trimmingCharacters(
-                    in: .whitespaces) }
-                .filter { !$0.isEmpty }
+            var lines: [String] = []
+            for piece in text.split(
+                separator: "\n") {
+                let line = String(piece)
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if !line.isEmpty {
+                    lines.append(line)
+                }
+            }
             let flat = lines.prefix(3)
                 .joined(separator: " · ")
             return flat.isEmpty
@@ -2979,15 +2984,30 @@ extension SkelliCenter {
         guard q.contains("capsule") else { return false }
 
         if q.contains("grind") || q.contains("open") {
-            let token = raw.split(separator: " ")
-                .map(String.init)
-                .filter {
-                    $0.count >= 40 && $0.allSatisfy {
-                        $0.isLetter || $0.isNumber
-                            || $0 == "+" || $0 == "/"
-                            || $0 == "="
-                    }
-                }.max { $0.count < $1.count }
+            // The longest base64-shaped word
+            // in the ask, walked by hand: the
+            // chained split/map/filter/max
+            // this replaces timed the type-
+            // checker out once the file grew
+            // (2026-10-20, fix170).
+            var token: String? = nil
+            for word in raw.split(separator: " ") {
+                let candidate = String(word)
+                if candidate.count < 40 {
+                    continue
+                }
+                let isBlob = candidate.allSatisfy {
+                    ch in
+                    ch.isLetter || ch.isNumber
+                        || ch == "+" || ch == "/"
+                        || ch == "="
+                }
+                if isBlob && (token == nil
+                    || candidate.count
+                        > (token?.count ?? 0)) {
+                    token = candidate
+                }
+            }
             guard let blob = token else {
                 say("Paste the capsule blob with "
                     + "the order, and I'll grind it.")

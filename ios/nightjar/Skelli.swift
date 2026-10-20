@@ -2598,13 +2598,16 @@ final class SkelliCenter: ObservableObject {
         var clauses: [String]? = nil
         for joiner in joiners {
             if q.contains(joiner) {
-                let parts = q.components(
-                    separatedBy: joiner)
-                    .map {
-                        $0.trimmingCharacters(
+                var parts: [String] = []
+                for piece in q.components(
+                    separatedBy: joiner) {
+                    let part = piece
+                        .trimmingCharacters(
                             in: .whitespaces)
+                    if !part.isEmpty {
+                        parts.append(part)
                     }
-                    .filter { !$0.isEmpty }
+                }
                 if parts.count >= 2 {
                     clauses = parts
                     break
