@@ -1448,7 +1448,7 @@ final class Emcon: ObservableObject {
             let seconds = date.timeIntervalSinceNow
             guard seconds > 60 else { return }
             let content = UNMutableNotificationContent()
-            content.title = "Dead hand"
+            content.title = L("Dead hand")
             content.body = body
             let trigger = UNTimeIntervalNotificationTrigger(
                 timeInterval: seconds, repeats: false)

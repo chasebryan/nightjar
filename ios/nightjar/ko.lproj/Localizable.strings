@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "실행은 이 블록들이 말하는 것을, 순서대로, 정확히 행한다. 대기는 목록을 붙들고; 실행할 수 없는 블록은 실행을 멈추고 그렇게 말한다.";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "형태는 클래스이지 특정 기기가 아니다 — 선반의 선은 네 천에도 적용된다.";
 "A sweep would settle me. I want to know who's lying out there." = "한 번 훑으면 진정될 거야. 밖에 누가 거짓말하는지 알고 싶어.";
-"A switch humming at 2 a.m. Nothing else is close." = "새벽 2시의 스위치 하나가 웅웅거린다. 가까운 곳엔 그뿐이다.";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "당신이 쓰는 헌장 아래의 당직 장교. 관찰: 평가하고 제안을 제출하며, 아무것도 건드리지 않는다. 학습: 당신의 네트워크 습관을 기록한다 — 조용한 시간대, 단골들의 리듬, 루틴이 깨지는 걸음. 행동: 미리 쓴 헌장에 따라 그 규칙으로 스스로 개입한다. 개입은 개입 예산(기본 하루 4회)으로 제한되며, 마스터 스위치는 EMCON에 남는다.";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "감시는 이름 아래에 레지스트리와 타임라인을 기록한 뒤, 자신의 델타와 함께 제출한다: 무엇이 왔고, 무엇이 갔고, 어떤 포트가 바뀌었고, 어떤 이름이 오늘 이미 두 번 나타났는지.";
 "A wire at night, honest and busy." = "밤의 선, 정직하고 바쁘다.";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "네트워크 공격 무장";
 "Arsenal — %lld payloads loaded" = "무기고 — 페이로드 %lld개 탑재";
 "Ask" = "묻기";
-"Ask about the house, or give an order." = "집에 대해 묻거나, 명령을 내리세요.";
 "Ask about the wire." = "와이어에 대해 묻기.";
 "Ask about your own house" = "네 집에 대해 물어봐";
 "Ask me on a different night. It changes." = "다른 밤에 물어봐. 답이 바뀌니까.";
 "Ask the house" = "집에 물어보기";
-"Ask, or give an order…" = "질문하거나, 명령을…";
 "At a time" = "시간에";
 "At ease. The perimeter is at its ordinary posture." = "편히 있어. 경계는 평상시의 자세다.";
 "Attack" = "공격";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "스윕 포트";
 "Sweep the wire" = "선 쓸기";
 "Switches" = "스위치";
-"TAP TO SKIP" = "탭하여 건너뛰기";
 "TCP" = "TCP";
 "TCP listener" = "TCP 리스너";
 "TCP port" = "TCP 포트";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "각 피어에 대해 배운 타이밍 지문이 삭제된다. 케이던스는 각 손을 맨 리듬에서 다시 배운다.";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "기록은 사라집니다. 그녀가 기억하는 것은 남습니다 — 그것을 잊는 것은 별개의 행위이며, 초기화에 있습니다.";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "집 전체가 네 언어로 — 모든 탭, 설정, 스위치, 그리고 스켈리 자신도 — 선택하는 순간, 재실행 없이. 이 문 뒤의 방은 모든 언어를 그 고유한 이름으로 나열하고, 효력 있는 것을 보여주며, 오른쪽에서 왼쪽으로 읽는 언어를 위해 집을 돌린다.";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "집 전체를 당신의 언어로 — 모든 탭, 설정, 스위치가 선택하는 순간, 재시작 없이. 아직 번역되지 않은 것은 영어로 표시되며, 결코 비어 있지 않습니다. 앱은 기기의 글꼴로 그리므로 모든 문자가 네이티브로 표시됩니다.";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "세기 시작한 뒤로 회선은 %lld번 드리프트했다. 것들은 천천히 이야기를 바꾼다.";
 "The wire hums. I'm listening." = "와이어가 웅웅거린다. 듣고 있어.";
 "The workbench" = "작업대";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "이 집의 지난 깨어남은 충돌로 끝났다 — 기록기에 남아 있다. 나는 아직 고요를 믿지 않는다.";
 "The satellites aren't answering — I can't place us right now." = "위성이 응답하지 않는다 — 지금은 우리가 어디인지 알 수 없다.";
 "The sky won't answer right now — the weather service is out of reach." = "지금 하늘은 답하지 않을 것이다 — 날씨 서비스에 닿지 않는다.";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "회선에는 아직 이름을 댈 수 없는 영혼이 %lld 있다. 이름 없는 것들은 나를 깨워 둔다.";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "회선에는 아직 이름을 댈 수 없는 영혼이 하나 있다. 이름 없는 것들은 나를 깨워 둔다.";
 "There you are. Doors are checked. Stay where I can see you." = "거기 있었구나. 문은 확인됐다. 내가 볼 수 있는 곳에 있어.";
 "Today: high " = "오늘: 최고 ";
 "Tomorrow: " = "내일: ";

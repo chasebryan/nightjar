@@ -3581,7 +3581,7 @@ extension SkelliCenter {
             return true
         }
         if clean.hasPrefix("good morning") {
-            say(vary(["Morning.",
+            say(vary([L("Morning."),
                       "Morning. The wire's up too.",
                       "First watch, morning side."]))
             return true
@@ -3616,8 +3616,8 @@ extension SkelliCenter {
             "copy that", "sounds good", "good",
             "right", "indeed", "exactly", "yes",
             "yeah", "yep"].contains(clean) {
-            say(vary(["Noted.", "Logged.", "Filed.",
-                      "So recorded.", "In the ledger.",
+            say(vary([L("Noted."), "Logged.", L("Filed."),
+                      L("So recorded."), "In the ledger.",
                       "Mm. Kept.", "Understood and kept."]))
             return true
         }
@@ -3640,8 +3640,8 @@ extension SkelliCenter {
             return true
         }
         if q.contains("thank") {
-            say(vary(["Any time.", "Always.",
-                      "The house provides.",
+            say(vary([L("Any time."), "Always.",
+                      L("The house provides."),
                       "Mm. That's the job.",
                       "Whenever. I'm here.",
                       "Kept with pleasure."]))

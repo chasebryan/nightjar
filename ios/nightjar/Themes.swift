@@ -139,19 +139,19 @@ enum BackdropSlot: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .everywhere: return "Everywhere (the default)"
-        case .listen: return "Listen"
-        case .send: return "Send"
-        case .serve: return "Serve"
-        case .sessions: return "Sessions"
-        case .scan: return "Scan"
-        case .recon: return "Recon"
-        case .emcon: return "EMCON"
-        case .knocktalk: return "Knocktalk"
-        case .about: return "About"
-        case .skelli: return "Skelli"
-        case .macros: return "Macros"
-        case .vault: return "Vault"
-        case .blacksite: return "Blacksite"
+        case .listen: return L("Listen")
+        case .send: return L("Send")
+        case .serve: return L("Serve")
+        case .sessions: return L("Sessions")
+        case .scan: return L("Scan")
+        case .recon: return L("Recon")
+        case .emcon: return L("EMCON")
+        case .knocktalk: return L("Knocktalk")
+        case .about: return L("About")
+        case .skelli: return L("Skelli")
+        case .macros: return L("Macros")
+        case .vault: return L("Vault")
+        case .blacksite: return L("Blacksite")
         }
     }
 }

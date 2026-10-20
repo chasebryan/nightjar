@@ -1,0 +1,8 @@
+/* Permission prompts, in the operator's own tongue. */
+"NSBluetoothAlwaysUsageDescription" = "nightjar-hack은 주변의 Bluetooth 기기를 수신 대기하고 들은 내용을 기록합니다. Send 탭을 사용하면, 입력한 페이로드를 광고하고 선택한 기기에 쓸 수도 있습니다. 수신 대기는 어떤 것에도 연결하지 않습니다.";
+"NSLocalNetworkUsageDescription" = "nightjar-hack은 로컬 네트워크의 기기에 페이로드를 보내고, 그 기기로부터 페이로드를 받습니다 — 입력한 주소로만, 그리고 앱이 열려 있는 동안에만 그렇습니다.";
+"NSLocationWhenInUseUsageDescription" = "nightjar-hack은 사용 중일 때 두 가지 일에 위치를 사용합니다: 사용자의 방향과 이동 방향을 이용해, 귀로 듣고 있는 Bluetooth 기기를 향해 걸어가는 동안 그 기기를 가리키는 나침반; 그리고 Skelli가 사용자가 세상 어디에 있는지 말하고 현지 시간과 날씨를 읽을 수 있게 해주는 Skelli의 장소 감각이 그것입니다. 위치는 절대 저장되지 않습니다. 좌표는 Skelli에게 날씨를 묻는 그 순간에만 날씨 서비스로 전송됩니다.";
+"NSCameraUsageDescription" = "nightjar-hack은 카메라를 이용해 Blink 전송을 수신합니다 — 다른 기기가 반복 재생되는 QR 프레임 연속으로 표시하는 메시지입니다 — 이는 Knocktalk 탭에서 Blink 수신기를 열어 둔 동안에만 가능합니다. 프레임은 그 자리에서 디코딩되며, 사진이나 동영상은 촬영되거나 저장되지 않습니다.";
+"NFCReaderUsageDescription" = "nightjar-hack은 Coin을 사용할 때 — Coin은 EMCON 탭에서 등록하는 물리적 키입니다 — 그리고 사용자의 카드와 태그에 대해 EMCON 태그 조사를 실행할 때, 휴대폰에 대는 태그를 읽습니다. 태그는 터치하는 그 순간에만 읽히며, Coin은 해시만 보관하고, 조사는 보여주는 내용 외에는 아무것도 보관하지 않습니다.";
+"NSMicrophoneUsageDescription" = "nightjar-hack은 Chirp 전송을 수신 대기합니다 — 다른 기기가 들을 수 있는 톤으로 보내는 짧은 메시지입니다 — 이는 Knocktalk 탭에서 Chirp 수신기를 열어 둔 동안에만 가능합니다. 아무것도 녹음되거나 저장되지 않으며, 톤은 그 자리에서 디코딩되고 잊힙니다.";
+"NSHealthShareUsageDescription" = "nightjar-hack은 Apple Watch가 이미 수집하는 측정값 — 심박수, 혈중 산소, 호흡, 손목 온도, 수면 — 을 읽어, 집의 상태 옆에 운영자의 상태를 보여줍니다. 읽기만 하며, 건강 데이터에 아무것도 쓰이지 않고, 어떤 정보도 이 휴대폰을 떠나지 않습니다.";

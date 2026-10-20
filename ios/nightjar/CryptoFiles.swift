@@ -45,8 +45,8 @@ enum NJCFProtection: Int, CaseIterable {
 
     var label: String {
         switch self {
-        case .password: return "Password"
-        case .vaultKey: return "Vault key"
+        case .password: return L("Password")
+        case .vaultKey: return L("Vault key")
         case .either: return "Password or vault key"
         case .bothRequired: return "Password and vault key"
         case .deadDrop: return "Dead drop — a recipient's key"

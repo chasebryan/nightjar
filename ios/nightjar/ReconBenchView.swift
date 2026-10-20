@@ -172,7 +172,7 @@ struct ReconBenchView: View {
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
             HStack {
-                Button(recon.connected ? "Close" : "Open") {
+                Button(recon.connected ? L("Close") : L("Open")) {
                     Haptics.tap()
                     recon.connected ? recon.close() : recon.open(recon.connectTarget)
                 }

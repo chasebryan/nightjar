@@ -706,7 +706,7 @@ struct CryptoPreset: Identifiable {
                 + "aloud.",
             operation: .hashDigest),
         CryptoPreset(
-            id: "fingerprint", name: "Fingerprint",
+            id: "fingerprint", name: L("Fingerprint"),
             detail: "The grouped SHA-256 alone — "
                 + "sixteen groups of four, made to "
                 + "be read over a voice channel.",

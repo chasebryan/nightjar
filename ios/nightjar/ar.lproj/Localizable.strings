@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "تشغيل يفعل بالضبط ما تقوله هذه الكتل، بالترتيب. الانتظارات تمسك القائمة؛ وكتلة لا تستطيع التشغيل توقف التشغيل وتقول ذلك.";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "الشكل فئة، لا جهازًا محددًا أبدًا — قاعدة الرف تنطبق على قماشك الخاص أيضًا.";
 "A sweep would settle me. I want to know who's lying out there." = "جولة مسح ستهدئني. أريد أن أعرف من يكذب هناك.";
-"A switch humming at 2 a.m. Nothing else is close." = "مفتاح تبديل يطنّ في الثانية فجرًا. لا شيء آخر قريب.";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "ضابط خفارة بموجب ميثاق تكتبه أنت. المراقبة: يُقيّم ويودع مقترحات، ولا يلمس شيئًا. التعلّم: يُدوّن عادات شبكتك — الساعات الهادئة، وإيقاعات المعتادين، والخطوة التي تنكسر عندها الروتينات. التصرّف: بميثاقك المكتوب سلفًا، يتدخّل بنفسه وفق تلك القواعد. التدخّل محدود بميزانية التدخّل (4 يوميًا افتراضيًا) والمفتاح الرئيسي يبقى في EMCON.";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "تسجّل خفارة السجل والخط الزمني باسم واحد، ثم تُرشف نفسها مع فرقها: ما وصل، وما غادر، وأي منافذ تغيّرت، وأي أسماء ظهرت مرتين اليوم مسبقًا.";
 "A wire at night, honest and busy." = "خط في الليل، صادق ومشغول.";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "تسليح الهجوم الشبكي";
 "Arsenal — %lld payloads loaded" = "الترسانة — تم تحميل %lld حمولة";
 "Ask" = "اسأل";
-"Ask about the house, or give an order." = "اسأل عن المنزل، أو أعطِ أمرًا.";
 "Ask about the wire." = "اسأل عن الخط.";
 "Ask about your own house" = "اسأل عن منزلك";
 "Ask me on a different night. It changes." = "اسألني في ليلة أخرى. يتغيّر.";
 "Ask the house" = "اسأل البيت";
-"Ask, or give an order…" = "اسأل، أو أعطِ أمرًا…";
 "At a time" = "في وقت ما";
 "At ease. The perimeter is at its ordinary posture." = "ارتاح. المحيط في وضعه المعتاد.";
 "Attack" = "هجوم";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "منافذ الكنس";
 "Sweep the wire" = "امسح الخط";
 "Switches" = "المفاتيح";
-"TAP TO SKIP" = "انقر للتخطي";
 "TCP" = "TCP";
 "TCP listener" = "مستمع TCP";
 "TCP port" = "منفذ TCP";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "تُحذف بصمات التوقيت المتعلمة لكل نظير. الإيقاع يتعلّم كل يد من جديد من إيقاعها العاري.";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "النص يذهب. ما تتذكره يبقى — نسيان ذلك فعل قائم بذاته، في إعادة الضبط.";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "البيت كله بلغتك — كل علامة وإعداد ومفتاح، وسكيلي نفسها — في اللحظة التي تختارها فيها، دون إعادة تشغيل. الغرفة خلف هذا الباب تسرد كل لغة باسمها الخاص، وتُظهر السارية، وتدير البيت للغات التي تُقرأ من اليمين إلى اليسار.";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "المنزل كله بلغتك — كل تبويب وإعداد ومفتاح، في اللحظة التي تختارها، دون إعادة تشغيل. ما لم يُترجم بعد يظهر بالإنجليزية، لا فارغًا أبدًا. يرسم التطبيق بخطوط جهازك، لذا تُعرض كل كتابة بشكل أصلي.";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "انحرف السلك %lld مرة منذ بدأت العد. الأشياء تغير قصصها ببطء.";
 "The wire hums. I'm listening." = "الخط يطنّ. أنا أستمع.";
 "The workbench" = "منصة العمل";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "آخر استيقاظ لهذا البيت انتهى بتحطم — إنه في المسجّل. لا أثق في الهدوء بعد.";
 "The satellites aren't answering — I can't place us right now." = "الأقمار لا تجيب — لا أستطيع تحديد موقعنا الآن.";
 "The sky won't answer right now — the weather service is out of reach." = "السماء لن تجيب الآن — خدمة الطقس بعيدة المنال.";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "على السلك %lld روحًا لا أستطيع تسميتها بعد. الأشياء بلا اسم تبقيني مستيقظة.";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "على السلك روح واحدة لا أستطيع تسميتها بعد. الأشياء بلا اسم تبقيني مستيقظة.";
 "There you are. Doors are checked. Stay where I can see you." = "ها أنت ذا. الأبواب فُحصت. ابقَ حيث أستطيع رؤيتك.";
 "Today: high " = "اليوم: العظمى ";
 "Tomorrow: " = "غدًا: ";

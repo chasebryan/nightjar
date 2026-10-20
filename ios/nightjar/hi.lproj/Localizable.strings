@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "एक रन ठीक वही करता है जो ये ब्लॉक कहते हैं, क्रम में। प्रतीक्षाएँ सूची को रोकती हैं; जो ब्लॉक नहीं चल सकता वह रन को रोकता है और कहता है।";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "एक आकृति एक वर्ग है, कभी कोई विशिष्ट उपकरण नहीं — रैक की रेखा तुम्हारे अपने कपड़े पर भी लागू होती है।";
 "A sweep would settle me. I want to know who's lying out there." = "एक स्वीप मुझे शांत कर देगा। मैं जानना चाहती हूँ कि बाहर कौन झूठ बोल रहा है।";
-"A switch humming at 2 a.m. Nothing else is close." = "सुबह 2 बजे एक स्विच गुनगुना रहा है। पास में और कुछ नहीं है।";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "आपके लिखे चार्टर के तहत एक पहरेदार अधिकारी। अवलोकन: यह आकलन करता है और प्रस्ताव दर्ज करता है, कुछ नहीं छूता। सीखना: यह आपके नेटवर्क की आदतें नोट करता है — शांत घंटे, नियमितों की लय, वह कदम जहाँ दिनचर्या टूटती है। कार्य: आपके पहले से लिखे चार्टर के साथ, यह उन नियमों के अनुसार स्वयं हस्तक्षेप करता है। हस्तक्षेप हस्तक्षेप बजट द्वारा सीमित है (डिफ़ॉल्ट रूप से प्रतिदिन 4) और मुख्य स्विच EMCON में रहता है।";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "एक पहरा नाम के नीचे रजिस्ट्री और समयरेखा दर्ज करता है, फिर अपने डेल्टा के साथ स्वयं को दर्ज करता है: क्या आया, क्या गया, कौन से पोर्ट बदले, कौन से नाम आज पहले ही दो बार आ चुके हैं।";
 "A wire at night, honest and busy." = "रात में एक तार, ईमानदार और व्यस्त।";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "नेट-हमले को सशस्त्र करें";
 "Arsenal — %lld payloads loaded" = "शस्त्रागार — %lld पेलोड लोड किए गए";
 "Ask" = "पूछें";
-"Ask about the house, or give an order." = "घर के बारे में पूछें, या आदेश दें।";
 "Ask about the wire." = "तार के बारे में पूछें।";
 "Ask about your own house" = "अपने घर के बारे में पूछो";
 "Ask me on a different night. It changes." = "किसी और रात मुझसे पूछना। यह बदलता है।";
 "Ask the house" = "घर से पूछें";
-"Ask, or give an order…" = "पूछें, या आदेश दें…";
 "At a time" = "एक समय पर";
 "At ease. The perimeter is at its ordinary posture." = "आराम से। परिधि अपनी सामान्य मुद्रा में है।";
 "Attack" = "हमला";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "स्वीप पोर्ट";
 "Sweep the wire" = "तार साफ़ करें";
 "Switches" = "स्विच";
-"TAP TO SKIP" = "छोड़ने के लिए टैप करें";
 "TCP" = "TCP";
 "TCP listener" = "TCP श्रोता";
 "TCP port" = "TCP पोर्ट";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "हर साथी के लिए सीखे गए समय के निशान हटाए जाते हैं। Cadence हर हाथ को उसके नंगे ताल से फिर सीखती है।";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "प्रतिलिपि चली जाती है। जो उसे याद है वह रहता है — उसे भूलना उसका अपना कार्य है, रीसेट के अंतर्गत।";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "पूरा घर तुम्हारी भाषा में — हर टैब, सेटिंग और स्विच, और Skelli ख़ुद — उसी क्षण जब तुम उसे चुनते हो, बिना फिर से लॉन्च किए। इस दरवाज़े के पीछे का कमरा हर भाषा को उसके अपने नाम से सूचीबद्ध करता है, लागू भाषा को दिखाता है, और दाएँ से बाएँ पढ़ी जाने वाली भाषाओं के लिए घर को घुमाता है।";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "पूरा घर आपकी भाषा में — हर टैब, सेटिंग और स्विच, जिस क्षण आप चुनते हैं, बिना फिर से शुरू किए। जो अभी अनूदित नहीं है वह अंग्रेज़ी में दिखता है, कभी खाली नहीं। ऐप आपके डिवाइस के फ़ॉन्ट से बनाता है, इसलिए हर लिपि मूल रूप से दिखती है।";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "जब से मैंने गिनना शुरू किया, लाइन %lld बार बहकी है। चीज़ें अपनी कहानियाँ धीरे-धीरे बदलती हैं।";
 "The wire hums. I'm listening." = "तार गूँज रहा है। मैं सुन रही हूँ।";
 "The workbench" = "कार्यक्षेत्र";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "इस घर की पिछली जागृति एक दुर्घटना में समाप्त हुई — वह रिकॉर्डर में है। मुझे अभी ख़ामोशी पर भरोसा नहीं है।";
 "The satellites aren't answering — I can't place us right now." = "उपग्रह उत्तर नहीं दे रहे — मैं अभी हमें स्थित नहीं कर सकती।";
 "The sky won't answer right now — the weather service is out of reach." = "आकाश अभी उत्तर नहीं देगा — मौसम सेवा पहुँच से बाहर है।";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "तार पर %lld आत्माएँ हैं जिनका मैं अभी नाम नहीं ले सकती। बेनाम चीज़ें मुझे जगाए रखती हैं।";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "तार पर एक आत्मा है जिसका मैं अभी नाम नहीं ले सकती। बेनाम चीज़ें मुझे जगाए रखती हैं।";
 "There you are. Doors are checked. Stay where I can see you." = "वहाँ हो तुम। दरवाज़े जाँच लिए गए हैं। वहीं रहो जहाँ मैं तुम्हें देख सकूँ।";
 "Today: high " = "आज: अधिकतम ";
 "Tomorrow: " = "कल: ";

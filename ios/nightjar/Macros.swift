@@ -501,9 +501,9 @@ enum MacroCatalog {
             category: "The War Rooms",
             blurb: "Open a SIGINT watch on the station.",
             fields: [
-                MacroField("name", "Watch name", .text,
+                MacroField("name", L("Watch name"), .text,
                            placeholder: "Macro watch"),
-                MacroField("scope", "Scope", .picker(
+                MacroField("scope", L("Scope"), .picker(
                     ["mixed", "air", "wire"])),
             ]),
         MacroKindSpec(

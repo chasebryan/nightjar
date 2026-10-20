@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "Une exécution fait exactement ce que ces blocs disent, dans l'ordre. Les attentes tiennent la liste ; un bloc qui ne peut pas tourner arrête l'exécution et le dit.";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "Une forme est une classe, jamais un appareil spécifique — la ligne du râtelier vaut aussi pour votre propre toile.";
 "A sweep would settle me. I want to know who's lying out there." = "Un balayage me calmerait. Je veux savoir qui ment là-dehors.";
-"A switch humming at 2 a.m. Nothing else is close." = "Un interrupteur qui bourdonne à 2 h du matin. Rien d'autre ne s'en approche.";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "Un officier de garde sous une charte que vous écrivez. OBSERVER : il évalue et dépose des propositions, et ne touche à rien. APPRENDRE : il note les habitudes de votre réseau — heures calmes, rythmes des habitués, le pas où les routines se brisent. AGIR : avec votre charte écrite d'avance, il intervient seul selon ces règles. L'intervention est plafonnée par le budget d'intervention (4 par jour par défaut) et l'interrupteur maître reste dans EMCON.";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "Une veille consigne le registre et la chronologie sous un nom, puis s'archive avec son delta : ce qui est arrivé, ce qui est parti, quels ports ont changé, quels noms sont déjà apparus deux fois aujourd'hui.";
 "A wire at night, honest and busy." = "Un fil la nuit, honnête et occupé.";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "Armer l'assaut réseau";
 "Arsenal — %lld payloads loaded" = "Arsenal — %lld charges chargées";
 "Ask" = "Demander";
-"Ask about the house, or give an order." = "Posez une question sur la maison, ou donnez un ordre.";
 "Ask about the wire." = "Demander des nouvelles du fil.";
 "Ask about your own house" = "Demandez au sujet de votre propre maison";
 "Ask me on a different night. It changes." = "Demande-moi une autre nuit. Ça change.";
 "Ask the house" = "Demander à la maison";
-"Ask, or give an order…" = "Posez une question, ou donnez un ordre…";
 "At a time" = "À une heure";
 "At ease. The perimeter is at its ordinary posture." = "À l'aise. Le périmètre est dans sa posture ordinaire.";
 "Attack" = "Attaque";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "Ports de balayage";
 "Sweep the wire" = "Balayer le câble";
 "Switches" = "Interrupteurs";
-"TAP TO SKIP" = "TOUCHEZ POUR PASSER";
 "TCP" = "TCP";
 "TCP listener" = "Écouteur TCP";
 "TCP port" = "Port TCP";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "Les empreintes de timing apprises pour chaque pair sont supprimées. Cadence réapprend chaque main depuis son rythme nu.";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "La transcription s'en va. Ce dont elle se souvient reste — l'oublier est un acte à part, sous Réinitialiser.";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "Toute la maison dans ta langue — chaque onglet, réglage et interrupteur, et Skelli elle-même — dès l'instant où tu la choisis, sans relancer. La pièce derrière cette porte liste chaque langue par son propre nom, montre celle en vigueur, et fait tourner la maison pour les langues qui se lisent de droite à gauche.";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "Toute la maison dans votre langue — chaque onglet, réglage et interrupteur, dès que vous la choisissez, sans relancer. Ce qui n'est pas encore traduit s'affiche en anglais, jamais en blanc. L'app dessine avec les polices de votre appareil, donc chaque écriture s'affiche nativement.";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "Le câble a dérivé %lld fois depuis que j'ai commencé à compter. Les choses changent leurs histoires lentement.";
 "The wire hums. I'm listening." = "Le fil bourdonne. J'écoute.";
 "The workbench" = "L'établi";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "Le dernier réveil de cette maison s'est terminé en plantage — c'est dans l'enregistreur. Je ne fais pas encore confiance à ce silence.";
 "The satellites aren't answering — I can't place us right now." = "Les satellites ne répondent pas — je ne peux pas nous situer pour le moment.";
 "The sky won't answer right now — the weather service is out of reach." = "Le ciel ne répondra pas pour le moment — le service météo est hors de portée.";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "Il y a %lld âmes sur le fil que je ne peux pas encore nommer. Les choses sans nom me tiennent éveillée.";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "Il y a une âme sur le fil que je ne peux pas encore nommer. Les choses sans nom me tiennent éveillée.";
 "There you are. Doors are checked. Stay where I can see you." = "Te voilà. Portes vérifiées. Reste où je peux te voir.";
 "Today: high " = "Aujourd'hui : max. ";
 "Tomorrow: " = "Demain : ";

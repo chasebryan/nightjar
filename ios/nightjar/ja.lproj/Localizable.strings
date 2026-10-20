@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "実行は、これらのブロックが言うとおりのことを、順番に、正確に行う。待ちはリストを保持する；実行できないブロックは実行を止めてそう言う。";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "形はクラスであって、特定のデバイスではない — ラックの線はあなたの布にも当てはまる。";
 "A sweep would settle me. I want to know who's lying out there." = "スイープすれば落ち着く。外で誰が嘘をついているか知りたい。";
-"A switch humming at 2 a.m. Nothing else is close." = "午前2時のスイッチの唸り。それ以外は近くに何もない。";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "あなたが書く憲章の下にある見張り役。観察：評価して提案を提出し、何も触らない。学習：あなたのネットワークの習慣を記録する — 静かな時間帯、常連のリズム、ルーティンが崩れる歩調。行動：事前に書かれた憲章により、その規則に沿って自ら介入する。介入は介入予算（デフォルト1日4回）で上限が決まり、マスタースイッチはEMCONに残る。";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "見張りは登録簿とタイムラインを名前の下に記録し、次にデルタと一緒に自身を保管する：何が来たか、何が去ったか、どのポートが変わったか、今日すでに二度現れた名前はどれか。";
 "A wire at night, honest and busy." = "夜の回線、正直で忙しい。";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "ネットアサルトを武装";
 "Arsenal — %lld payloads loaded" = "武器庫 — ペイロード %lld 件を搭載";
 "Ask" = "尋ねる";
-"Ask about the house, or give an order." = "家について尋ねるか、命令をどうぞ。";
 "Ask about the wire." = "ワイヤーについて聞く。";
 "Ask about your own house" = "自分の家について尋ねる";
 "Ask me on a different night. It changes." = "別の夜に聞いて。答えは変わるから。";
 "Ask the house" = "家に尋ねる";
-"Ask, or give an order…" = "質問、または命令を…";
 "At a time" = "時刻";
 "At ease. The perimeter is at its ordinary posture." = "落ち着いて。境界はいつもの姿勢。";
 "Attack" = "攻撃";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "スイープポート";
 "Sweep the wire" = "ネットワークを掃引";
 "Switches" = "スイッチ";
-"TAP TO SKIP" = "タップでスキップ";
 "TCP" = "TCP";
 "TCP listener" = "TCPリスナー";
 "TCP port" = "TCPポート";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "各ピアについて学んだタイミング指紋が削除される。ケイデンスは各手を裸のリズムから学び直す。";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "履歴は消えます。彼女が覚えていることは残ります — それを忘れるのは別の行為で、「リセット」にあります。";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "家全体があなたの言語で — すべてのタブ、設定、スイッチ、そしてスケリ自身も — 選んだ瞬間に、再起動なしで。このドアの向こうの部屋は、すべての言語をその固有の名前で並べ、効力のあるものを示し、右から左へ読む言語のために家を回す。";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "家全体をあなたの言語で — すべてのタブ、設定、スイッチが、選んだ瞬間に、再起動なしで。まだ翻訳されていないものは英語で表示され、空白には決してなりません。アプリはデバイスのフォントで描画するので、あらゆる文字がネイティブに表示されます。";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "数え始めてから回線は %lld 回ドリフトした。物はゆっくりと物語を変える。";
 "The wire hums. I'm listening." = "ワイヤーがうなっている。聞いているよ。";
 "The workbench" = "作業台";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "この家の前回の目覚めはクラッシュで終わった — 記録にある。まだ静けさを信用していない。";
 "The satellites aren't answering — I can't place us right now." = "衛星が応答しない — 今は私たちの位置が分からない。";
 "The sky won't answer right now — the weather service is out of reach." = "今は空が応答しない — 天気サービスに届かない。";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "回線には、まだ名指せない魂が %lld ある。名のないものは私を眠らせない。";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "回線には、まだ名指せない魂が一つある。名のないものは私を眠らせない。";
 "There you are. Doors are checked. Stay where I can see you." = "そこにいた。扉は確認済みだ。私の見える場所にいて。";
 "Today: high " = "今日：最高 ";
 "Tomorrow: " = "明日：";

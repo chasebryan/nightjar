@@ -139,7 +139,7 @@ struct CryptoView: View {
                             info.protection == .either
                                 ? "Password — blank uses "
                                     + "the vault key"
-                                : "Password",
+                                : L("Password"),
                             text: $filePassword)
                     }
                     Button(action: openPickedFile) {
@@ -432,7 +432,7 @@ struct CryptoView: View {
                 SecureField(
                     preset?.operation == .oneTimePad
                         ? "Pad (hex) — only to open"
-                        : "Password",
+                        : L("Password"),
                     text: $password)
             }
             if preset?.operation == .envelopeSeal {

@@ -611,7 +611,7 @@ extension SkelliKnowledge {
             body: "Two rooms need a second phone running the house. War Games: the challenger knocks a defense the other phone is serving, HELLO to CARD over the Serve inbox, and both sides can score the exchange from their own cards. Knocktalk: two paired devices speak in knock order alone, sealed under a shared pairing key kept in the Keychain — messages are knock sequences, contents are never journaled, only arrivals. Both assume the other phone is a friend's or the operator's second device; neither works at a stranger, by design."),
         SkelliEntry(
             id: "themorningbrief",
-            title: "The morning brief",
+            title: L("The morning brief"),
             home: "the Night log",
             keywords: ["morning brief", "overnight",
                        "while i was gone", "digest",

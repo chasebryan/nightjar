@@ -485,7 +485,7 @@ struct ForgeView: View {
                                 == "JavaScript" {
                                 Button(runningCode
                                        ? "Running…"
-                                       : "Run it") {
+                                       : L("Run it")) {
                                     runCode()
                                 }
                                 .disabled(runningCode)

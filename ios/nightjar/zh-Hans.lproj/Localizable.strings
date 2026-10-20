@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "一次运行严格地按照这些块所说的顺序执行。等待会保持列表；无法运行的块会停止运行并说明。";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "形态是一个类别，永远不是某个具体设备——架子的规矩对你自己的布也适用。";
 "A sweep would settle me. I want to know who's lying out there." = "扫一遍我就能安心。我想知道外面谁在撒谎。";
-"A switch humming at 2 a.m. Nothing else is close." = "凌晨两点一台交换机在嗡嗡响。附近没有别的了。";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "一位按你所写宪章行事的值守官。观察：评估并提交建议，什么都不动。学习：记录你网络的习惯——安静时段、常客的节奏、日常断裂的脚步。行动：凭借你预先写好的宪章，按这些规则自行干预。干预受干预算限制（默认每天 4 次），主开关仍在 EMCON 中。";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "一次值守将注册表和时间线记在一个名字下，然后连同它的增量一起归档：什么来了，什么走了，哪些端口变了，哪些名字今天已经出现过两次。";
 "A wire at night, honest and busy." = "夜晚的一条线，诚实而忙碌。";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "武装网络突击";
 "Arsenal — %lld payloads loaded" = "军械库——已装载 %lld 个载荷";
 "Ask" = "询问";
-"Ask about the house, or give an order." = "问问房子的事，或者下个命令。";
 "Ask about the wire." = "问问线的情况。";
 "Ask about your own house" = "问问你自己的房子";
 "Ask me on a different night. It changes." = "换个夜晚再问我。答案会变。";
 "Ask the house" = "询问房子";
-"Ask, or give an order…" = "提问，或者下命令…";
 "At a time" = "在某一时刻";
 "At ease. The perimeter is at its ordinary posture." = "安心。边界处于其通常的姿态。";
 "Attack" = "攻击";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "扫描端口";
 "Sweep the wire" = "扫掠线路";
 "Switches" = "开关";
-"TAP TO SKIP" = "点按跳过";
 "TCP" = "TCP";
 "TCP listener" = "TCP 监听器";
 "TCP port" = "TCP 端口";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "为每个对等方学到的时序指纹被删除。节奏从每个手的裸节奏重新学习。";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "记录会消失。她记得的会留下——忘记那些是另一回事，在“重置”里。";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "整个房子用你的语言——每个标签页、设置和开关，还有斯凯利本人——在你选择的瞬间，无需重新启动。这扇门后的房间按每种语言自己的名字列出它们，显示正在生效的那个，并为从右向左读的语言转动房子。";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "整座房子都用您的语言——每个标签页、设置和开关，在您选择的瞬间生效，无需重启。尚未翻译的内容以英文显示，永不空白。应用使用您设备的字体绘制，因此每种文字都原生呈现。";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "自从我开始计数，线路已漂移 %lld 次。事物慢慢改变它们的故事。";
 "The wire hums. I'm listening." = "线在嗡鸣。我在听。";
 "The workbench" = "工作台";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "这所房子上一次醒来以崩溃告终——记录仪里有。我还不信任这份安静。";
 "The satellites aren't answering — I can't place us right now." = "卫星没有回应——我现在无法定位我们。";
 "The sky won't answer right now — the weather service is out of reach." = "天空现在不会回应——天气服务够不着。";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "线路上有 %lld 个我还叫不出名字的灵魂。无名的东西让我保持清醒。";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "线路上有一个我还叫不出名字的灵魂。无名的东西让我保持清醒。";
 "There you are. Doors are checked. Stay where I can see you." = "你在这里。门已经检查过了。待在我能看见你的地方。";
 "Today: high " = "今天：最高 ";
 "Tomorrow: " = "明天：";

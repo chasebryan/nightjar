@@ -94,7 +94,6 @@
 "A run does exactly what these blocks say, in order. Waits hold the list; a block that cannot run stops the run and says why — in the run log and the night log." = "En Ablauf macht genau das, was die Blöck säge, i de Reihefolg. Warte halte d Lischte; en Block, wo ned loufe cha, stoppt de Ablauf und seit wieso — im Ablaufprotokoll und im Nachtprotokoll.";
 "A shape is a class, never a specific device — the rack's line holds for your own cloth too." = "Es Shape esch e Klass, nie es spezifischs Grät — d Linie vom Regal gilt ou für dis eigene Tüech.";
 "A sweep would settle me. I want to know who's lying out there." = "En Sweep würd mech beruhige. Ech wott wüsse, wer da dusse lügt.";
-"A switch humming at 2 a.m. Nothing else is close." = "En Switch, wo am zweii i de Nacht summt. Nüt anders esch nöch.";
 "A watch officer under a charter you write. OBSERVE: it assesses and files proposals, and touches nothing. ACT: it runs plans in proportion to confidence — high runs the whole plan, medium its first step, low is journaled and left to you. FULL: it may also approve its own drafted reflexes and raise EMCON at your usual hour. Every judgment is a sealed journal line with its score and its factors; you audit it, you amend the charter. It thinks while the app is open — every opening is a shift change." = "En Wachoffizier under ere Charta, wo du schriibsch. OBSERVE: är beurtteilt und leit Vorschläg ab, und rüehrt nüt aa. ACT: är füehrt Plän im Verhältnis zum Vertraue us — hoch füehrt de ganz Plan us, mittel de erscht Schritt, niedrig wird protokolliert und dir überloh. FULL: är darf ou sini eigene entworfene Reflex bewillige und EMCON zu dinere übliche Stund erhöhe. Jedes Urteil esch e versiegelti Protokollziile mit ihrer Punktzahl und ihre Faktore; du prüefsch es, du anpassisch d Charta. Är dänkt, während d App offe esch — jedes Öffne esch en Schichtwächsel.";
 "A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed." = "E Wacht zeichnet s Register und d Ziitlinie under eim Name uf, und leit sech dänn sälber mit ihrem Delta ab: was acho esch, was still worde esch, was sech gänderet het.";
 "A wire at night, honest and busy." = "En Draht i de Nacht, ehrlech und beschäftigt.";
@@ -165,12 +164,10 @@
 "Arm the net-assault" = "De Netz-Aagriff scharf mache";
 "Arsenal — %lld payloads loaded" = "Arsenal — %lld Nutzlaschte glade";
 "Ask" = "Frog";
-"Ask about the house, or give an order." = "Frog über s Huus, oder gib en Befähl.";
 "Ask about the wire." = "Frog über de Draht.";
 "Ask about your own house" = "Frog über dis eigene Huus";
 "Ask me on a different night. It changes." = "Frog mech inere andere Nacht. Es änderet sech.";
 "Ask the house" = "Frog s Huus";
-"Ask, or give an order…" = "Frog, oder gib en Befähl…";
 "At a time" = "Zu enere Ziit";
 "At ease. The perimeter is at its ordinary posture." = "Ruehig. De Perimeter esch i sinere gwöhnleche Haltig.";
 "Attack" = "Aagriff";
@@ -1101,7 +1098,6 @@
 "Sweep ports" = "Ports fege";
 "Sweep the wire" = "De Draht fege";
 "Switches" = "Schalter";
-"TAP TO SKIP" = "TIPPE ZUM ÜBERSPRINGE";
 "TCP" = "TCP";
 "TCP listener" = "TCP-Listener";
 "TCP port" = "TCP-Port";
@@ -1214,7 +1210,6 @@
 "The timing fingerprints learned for every peer are deleted. Cadence learns each hand again from its next knocks." = "D Ziit-Fingerabdrück, wo für jede Peer glernt worde send, wärde glöscht. D Cadence lernt jedi Hand wider neu, vo sine nächste Chlöpf a.";
 "The transcript goes. What she remembers stays — forgetting that is its own act, under Reset." = "S Transkript goot. Was si sech merkt, bliibt — das z vergässe esch en eigeni Tat, under Reset.";
 "The whole house in your language — every tab, setting and switch, and Skelli herself — the moment you choose it, with no relaunch. The room behind this door lists every tongue by its own name, shows the one in force, and turns the house for the languages that read right to left." = "S ganze Huus i dinere Sprooch — jede Tab, jedi Iistellig und jede Schalter, und d Skelli sälber — i dem Moment, wo du s uuswählsch, ohni Neustart. De Ruum hinder dere Tür listet jedi Sprooch mit irem eigene Name uf, zeigt, weli grad gilt, und dräit s Huus für d Sprooche, wo vo rächts nach links gläse wärde.";
-"The whole house in your language — every tab, setting and switch, the moment you choose it, with no relaunch. Anything not yet translated shows in English, never blank. The app draws with your device's fonts, so every script renders natively." = "S ganze Huus i dinere Sprooch — jede Tab, jedi Iistellig und jede Schalter, i dem Moment, wo du s uuswählsch, ohni Neustart. Was no ned übersetzt esch, zeigt sech uf Englisch, nie läär. D App zeichnet mit de Schrifte vo dim Grät, so rendert jedi Schrift nativ.";
 "The wire has drifted %lld time(s) since I started counting. Things change their stories slowly." = "De Droht esch %lld Mol abgwiche, sit ech zelle. D Sache verändered iri Gschichte langsam.";
 "The wire hums. I'm listening." = "De Droht summt. Ech lose zue.";
 "The workbench" = "D Wärchbank";
@@ -1537,8 +1532,6 @@
 "The last waking of this house ended in a crash — it's in the recorder. I don't trust the quiet yet." = "S letschte Ufwache vo dem Huus het mit eme Absturz gändet — es esch im Rekorder. Ech troue de Rueh no ned.";
 "The satellites aren't answering — I can't place us right now." = "D Satellite antworted ned — ech cha üs grad ned verorte.";
 "The sky won't answer right now — the weather service is out of reach." = "De Himmel antwortet grad ned — de Wätterdienscht esch unerreichbar.";
-"There are %lld souls on the wire I cannot name yet. Unnamed things keep me awake." = "Es het %lld Seele uf em Netz, wo ech no ned cha benenne. Sache ohni Name halted mech wach.";
-"There is one soul on the wire I cannot name yet. Unnamed things keep me awake." = "Es het eini Seel uf em Netz, wo ech no ned cha benenne. Sache ohni Name halted mech wach.";
 "There you are. Doors are checked. Stay where I can see you." = "Do besch jo. D Türe send gprüeft. Bliib dört, wo ech dech gseh.";
 "Today: high " = "Höt: Hoch ";
 "Tomorrow: " = "Morn: ";

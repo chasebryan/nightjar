@@ -1,0 +1,8 @@
+/* Permission prompts, in the operator's own tongue. */
+"NSBluetoothAlwaysUsageDescription" = "nightjar-hackは、あなたの周囲にあるBluetoothデバイスをリッスンし、聞き取った内容を記録します。「送信」タブを使えば、あなたが入力したペイロードをアドバタイズし、選んだデバイスに書き込むこともできます。リッスンが何かに接続することは決してありません。";
+"NSLocalNetworkUsageDescription" = "nightjar-hackは、ローカルネットワーク上のデバイスにペイロードを送信し、デバイスからペイロードを受信します。対象はあなたが入力したアドレスに限られ、アプリを開いている間に限ります。";
+"NSLocationWhenInUseUsageDescription" = "nightjar-hackは、使用中にあなたの位置情報を2つのことに使います。1つはコンパスで、あなたの向いている方向と進む方向を使い、近づきながら耳で捉えているBluetoothデバイスの方角を指し示します。もう1つはSkelliの場所の認識で、あなたが世界のどこにいるかを伝え、現地の時刻と天気を読み取ることができます。あなたの位置情報が保存されることはありません。座標が天気サービスに送信されるのは、あなたがSkelliに天気について尋ねる、その瞬間だけです。";
+"NSCameraUsageDescription" = "nightjar-hackは、カメラを使ってBlink送信を受信します。Blink送信とは、あなたの別のデバイスがQRフレームの繰り返しシーケンスとして表示するメッセージです。受信は、「Knocktalk」タブでBlinkレシーバーを開いている間に限ります。フレームはその場でデコードされ、写真や動画が撮影・保存されることはありません。";
+"NFCReaderUsageDescription" = "nightjar-hackは、Coin（「EMCON」タブで取得する物理キー）を使用するときや、自分のカードやタグに対してEMCONタグ調査を実行するときに、スマートフォンにかざしたタグを読み取ります。タグが読み取られるのは、タップしたその瞬間だけです。Coinが保持するのはハッシュのみで、調査が保持するのはあなたに表示した内容だけです。";
+"NSMicrophoneUsageDescription" = "nightjar-hackは、Chirp送信を待ち受けます。Chirp送信とは、あなたの別のデバイスが聞き取れる音として送る短いメッセージです。待ち受けは、「Knocktalk」タブでChirpリスナーを開いている間に限ります。何も録音・保存されません。音はその場でデコードされ、忘れられます。";
+"NSHealthShareUsageDescription" = "nightjar-hackは、Apple Watchがすでに収集している測定値（心拍数、血中酸素、呼吸、手首の温度、睡眠）を読み取り、家の状態と並べて操作者の状態を表示します。読み取りのみを行い、あなたのヘルスデータに書き込まれることはなく、このスマートフォンの外に出ることもありません。";

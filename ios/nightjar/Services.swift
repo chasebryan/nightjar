@@ -13,7 +13,7 @@ enum Services {
         0x1809: "Health Thermometer",
         0x180A: "Device Information",
         0x180D: "Heart Rate",
-        0x180F: "Battery",
+        0x180F: L("Battery"),
         0x1810: "Blood Pressure",
         0x1811: "Alert Notification",
         0x1812: "Human Interface Device",

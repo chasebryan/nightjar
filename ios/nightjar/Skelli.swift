@@ -67,13 +67,13 @@ enum SkelliKnowledge {
                        "pcap", "feed"],
             body: "A connect scanner and a /24 subnet sweep, a Bonjour board that resolves to addresses, an observation feed that narrates hosts coming and going, a TLS inspector, a DNS toolkit, and a pcap dissector for captures from your own machines. Everything it finds feeds the Neighborhood and the Map."),
         SkelliEntry(
-            id: "dossiers", title: "Dossiers",
+            id: "dossiers", title: L("Dossiers"),
             home: "the Scan tab, under Dossiers",
             keywords: ["dossier", "device page", "baseline",
                        "profile"],
             body: "One page per device, every organ's testimony in one place: what Scan heard, whether the ear knows the name over Bluetooth, its given name and mark, its drift — and a knock baseline you can set, so the house can say when the device stops sounding like itself."),
         SkelliEntry(
-            id: "map", title: "The Map",
+            id: "map", title: L("The Map"),
             home: "the top of the Scan tab",
             keywords: ["map", "rooms", "room", "placed",
                        "floor", "house plan", "layout"],
@@ -134,7 +134,7 @@ enum SkelliKnowledge {
                        "registry", "watch", "epoch"],
             body: "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export."),
         SkelliEntry(
-            id: "wargames", title: "War Games",
+            id: "wargames", title: L("War Games"),
             home: "the Send tab",
             keywords: ["war games", "wargames", "sparring",
                        "match", "decoys", "cards"],
@@ -146,7 +146,7 @@ enum SkelliKnowledge {
                        "be seen"],
             body: "The opposite of going dark, on purpose: one tap raises everything this phone owns — Serve listed and stealth off, the BLE beacon shouting, Net-Assault armed on the deep ladder, and a named broadcast heartbeat on the subnet. The posture it found is written down first and restored whole when the scream ceases, stealth last. Self-announcement only: it touches no one else's traffic."),
         SkelliEntry(
-            id: "spoofy", title: "Spoofy — the costume rack",
+            id: "spoofy", title: L("Spoofy — the costume rack"),
             home: "the EMCON tab",
             keywords: ["spoofy", "costume", "mimicry",
                        "persona", "disguise", "beacon name"],
@@ -170,7 +170,7 @@ enum SkelliKnowledge {
                        "who knocked", "probed"],
             body: "Silent listeners bound on the census ports: anyone who knocks this phone is logged — source, port, first words — and never answered. The prober files assemble a dossier per knocker from that log. Both fold to six with a door to the rest, and the log clears from its own section."),
         SkelliEntry(
-            id: "drill", title: "The drill",
+            id: "drill", title: L("The drill"),
             home: "the EMCON tab",
             keywords: ["drill", "prove it", "went quiet",
                        "silenced"],
@@ -189,7 +189,7 @@ enum SkelliKnowledge {
                        "latitude", "home-turf", "home turf"],
             body: "The house's judgment, on a leash: it watches and proposes — enact or dismiss, and it learns the shape of your house from three banked nights of home-turf before it proposes there. It ships at observe latitude: it asks, it does not act alone."),
         SkelliEntry(
-            id: "subconscious", title: "The Subconscious",
+            id: "subconscious", title: L("The Subconscious"),
             home: "the EMCON tab — 'Open the mind'",
             keywords: ["subconscious", "mind", "findings",
                        "facts", "learned", "verdict",
@@ -292,14 +292,14 @@ enum SkelliKnowledge {
                        "choreograph", "sequence", "routine"],
             body: "Choreography for the house: maneuvers that run the organs in sequence — scan, darken, listen — and a conductor that keeps the evening's routine in step. Schedules the house can keep while it is awake."),
         SkelliEntry(
-            id: "colours", title: "Colours",
+            id: "colours", title: L("Colours"),
             home: "the About tab — the Colours section",
             keywords: ["colours", "colors", "theme",
                        "wallpaper", "backdrop", "accent",
                        "look", "customise", "customize"],
             body: "The app's wardrobe: six built-in themes and your own — accent, glow, and tint washing every backdrop — plus per-tab backdrops: the living wallpaper, the Jolly Roger kept forever as a choice, plain colour, or your own image or GIF, copied onto the device and never leaving it."),
         SkelliEntry(
-            id: "place", title: "Place — where in the world",
+            id: "place", title: L("Place — where in the world"),
             home: "her tab, and her Options under Switches",
             keywords: ["place", "location", "where in the world",
                        "almanac", "compass rose"],
