@@ -189,7 +189,7 @@ enum TraceAnalyzer {
             preview = data.prefix(48)
                 .map { String(format: "%02x", $0) }
                 .joined(separator: " ")
-                + " — \(data.count) bytes"
+                + String(format: L(" — %lld bytes"), data.count)
         }
 
         var hint: String? = nil
@@ -209,10 +209,10 @@ enum TraceAnalyzer {
             hint = "Redis"
         } else if text.hasPrefix("-NOAUTH") {
             hint = "Redis"
-            notes.append("authentication required")
+            notes.append(L("authentication required"))
         } else if text.hasPrefix("+OK") {
             hint = "POP3"
-            notes.append("+OK greeting (POP3, or Redis answering PING)")
+            notes.append(L("+OK greeting (POP3, or Redis answering PING)"))
         } else if text.hasPrefix("220 ") || text.hasPrefix("220-") {
             if firstLine.localizedCaseInsensitiveContains("smtp")
                 || firstLine.localizedCaseInsensitiveContains("esmtp") {
@@ -229,10 +229,10 @@ enum TraceAnalyzer {
             hint = "MQTT"   // a CONNACK, answering the CONNECT probe
         } else if bytes.count == 1, bytes[0] == 0x53 {
             hint = "PostgreSQL"
-            notes.append("answered the SSLRequest with 'S' — SSL offered")
+            notes.append(L("answered the SSLRequest with 'S' — SSL offered"))
         } else if bytes.count == 1, bytes[0] == 0x4E {
             hint = "PostgreSQL"
-            notes.append("answered the SSLRequest with 'N' — no SSL")
+            notes.append(L("answered the SSLRequest with 'N' — no SSL"))
         } else if bytes.count >= 3, bytes[0] == 0xFF,
                   bytes[1] == 0xFB || bytes[1] == 0xFD
                     || bytes[1] == 0xFE {
@@ -278,7 +278,7 @@ enum TraceAnalyzer {
             let title = String(text[range])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !title.isEmpty {
-                notes.append("Title: \(String(title.prefix(120)))")
+                notes.append(String(format: L("Title: %@"), String(title.prefix(120))))
             }
         }
         return notes
@@ -1104,32 +1104,28 @@ extension Mouth {
         // whoever asks for it (a hand, a macro, a game),
         // the funnel refuses it under BRAVO and ALPHA.
         if EmconStandard.refused(.sweep) {
-            traceStatus = "The trace stays holstered — "
-                + EmconCondition.current.declared
-            ui("The trace stays holstered — "
-               + EmconCondition.current.declared, error: true)
+            traceStatus = String(format: L("The trace stays holstered — %@"),
+                                 EmconCondition.current.declared)
+            ui(String(format: L("The trace stays holstered — %@"),
+                      EmconCondition.current.declared), error: true)
             return
         }
         guard !traceBusy, !crawlBusy, !talkBusy else { return }
         let ownIP = Mouth.localIPAddress()
         guard let base = Mouth.sweepBase(scopeText, ownIP: ownIP)
         else {
-            traceStatus = "Couldn't read that scope"
-            traceLines = ["✗ Couldn't read that scope — blank "
-                + "means this phone's /24; otherwise an address "
-                + "in the /24 (192.168.2.15) or its base "
-                + "(192.168.2)."]
-            ui("Couldn't read that scope", error: true)
+            traceStatus = L("Couldn't read that scope")
+            traceLines = [L("✗ Couldn't read that scope — blank means this phone's /24; otherwise an address in the /24 (192.168.2.15) or its base (192.168.2).")]
+            ui(L("Couldn't read that scope"), error: true)
             return
         }
         let discovery = Array(Set(discoveryPorts.filter {
             (1...65535).contains($0)
         })).sorted()
         guard !discovery.isEmpty else {
-            traceStatus = "No discovery ports"
-            traceLines = ["✗ Give at least one discovery port — "
-                + "discovery is how the trace finds its hosts."]
-            ui("No discovery ports", error: true)
+            traceStatus = L("No discovery ports")
+            traceLines = [L("✗ Give at least one discovery port — discovery is how the trace finds its hosts.")]
+            ui(L("No discovery ports"), error: true)
             return
         }
         let profile = profilePorts.isEmpty
@@ -1157,11 +1153,10 @@ extension Mouth {
                 self?.stopNetworkTrace() })
         traceLatestExport = nil
         traceLines = [
-            "Network trace — \(base).0/24",
-            "Foreground, stop anytime. Endpoints outside the "
-                + "/24 are recorded, never contacted.",
+            String(format: L("Network trace — %@.0/24"), base),
+            L("Foreground, stop anytime. Endpoints outside the /24 are recorded, never contacted."),
         ]
-        traceStatus = "Tracing \(base).0/24…"
+        traceStatus = String(format: L("Tracing %@.0/24…"), base)
         line("network-trace: \(base).0/24")
 
         // All run state below lives on this serial queue;
@@ -1347,8 +1342,7 @@ extension Mouth {
                         analysis: analysis, probes: [name],
                         extraTags: tags, source: "trace-followup",
                         bonjourName: nil)
-                    self.traceNote("  ↳ follow-up \(name) → "
-                        + "\(host):\(port) · \(reply.count) B back")
+                    self.traceNote(String(format: L("  ↳ follow-up %@ → %@:%lld · %lld B back"), name, host, port, reply.count))
                     if !stop {
                         enqueueReferences(analysis.references,
                                           fromHost: host,
@@ -1356,8 +1350,7 @@ extension Mouth {
                                           depth: depth)
                     }
                 } else {
-                    self.traceNote("  ↳ follow-up \(name) → "
-                        + "\(host):\(port) · silence")
+                    self.traceNote(String(format: L("  ↳ follow-up %@ → %@:%lld · silence"), name, host, port))
                 }
                 runFollowups(names: rest, host: host, port: port,
                               depth: depth, done: done)
@@ -1425,11 +1418,14 @@ extension Mouth {
                     probes: probeName.map { [$0] } ?? [],
                     extraTags: tags, source: "trace",
                     bonjourName: nil)
-                self.traceNote("  \(host):\(port) — "
-                    + (analysis?.serviceHint
-                       ?? ScanModel.serviceName(for: port) ?? "open")
+                self.traceNote(String(format: L("  %@:%lld — %@"),
+                                      host, port,
+                                      analysis?.serviceHint
+                                        ?? ScanModel.serviceName(for: port)
+                                        ?? "open")
                     + (tags.isEmpty ? ""
-                       : " · tagged \(tags.joined(separator: ", "))"))
+                       : String(format: L(" · tagged %@"),
+                                tags.joined(separator: ", "))))
                 if !stop {
                     enqueueReferences(
                         TraceAnalyzer.references(in: combinedText),
@@ -1556,16 +1552,13 @@ extension Mouth {
                                 evidence: "answered on \(portsText)")
                         queueHost(host, depth: 0, source: "trace")
                     }
-                    self.traceNote("Discovery done — "
-                        + "\(discoveredHosts.count) host(s) answered")
+                    self.traceNote(String(format: L("Discovery done — %lld host(s) answered"), discoveredHosts.count))
                     done()
                     return
                 }
                 let port = discovery[round]
                 round += 1
-                self.traceNote("Discovery — knocking port \(port) "
-                    + "across \(base).0/24 "
-                    + "(round \(round)/\(discovery.count))…")
+                self.traceNote(String(format: L("Discovery — knocking port %lld across %@.0/24 (round %lld/%lld)…"), port, base, round, discovery.count))
                 let group = DispatchGroup()
                 let gate = DispatchSemaphore(value: 32)
                 let foundLock = NSLock()
@@ -1652,8 +1645,7 @@ extension Mouth {
                 maybeStartWorklist()
                 return
             }
-            self.traceNote("Bonjour — resolving \(items.count) "
-                + "service(s)…")
+            self.traceNote(String(format: L("Bonjour — resolving %lld service(s)…"), items.count))
             let group = DispatchGroup()
             let gate = DispatchSemaphore(value: 8)
             for item in items {
@@ -1719,8 +1711,7 @@ extension Mouth {
             guard discoveryDone, bonjourDone, !worklistStarted
             else { return }
             worklistStarted = true
-            self.traceNote("Profiling — \(queuedHosts.count) host(s) "
-                + "on the frontier")
+            self.traceNote(String(format: L("Profiling — %lld host(s) on the frontier"), queuedHosts.count))
             pump()
         }
 
@@ -1831,9 +1822,7 @@ extension Mouth {
                     centipedeRoute = lines.joined(separator: "\n")
                 }
             }
-            let statusText = "Frontier exhausted — "
-                + "\(seenHosts.count) host(s), \(doorCount) door(s), "
-                + "\(probeCount) probe(s)"
+            let statusText = String(format: L("Frontier exhausted — %lld host(s), %lld door(s), %lld probe(s)"), seenHosts.count, doorCount, probeCount)
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.traceBusy = false
@@ -1843,23 +1832,21 @@ extension Mouth {
                 self.traceStatus = statusText
                 self.traceLines.append(statusText)
                 if !diff.newHosts.isEmpty {
-                    self.traceLines.append("New since last time: "
-                        + diff.newHosts.joined(separator: ", "))
+                    self.traceLines.append(String(format: L("New since last time: %@"),
+                                                  diff.newHosts.joined(separator: ", ")))
                 }
                 if let url = url {
-                    self.traceLines.append("Trace written — "
-                        + url.lastPathComponent)
+                    self.traceLines.append(String(format: L("Trace written — %@"),
+                                                  url.lastPathComponent))
                 }
                 if centipedeArmed {
                     if let route = centipedeRoute {
                         self.traceCentipedeRoute = route
                         self.traceLines.append(
-                            "Centipede configured — \(loadedDoors) door(s) "
-                            + "on \(loadedHosts) host(s) loaded as its route")
+                            String(format: L("Centipede configured — %lld door(s) on %lld host(s) loaded as its route"), loadedDoors, loadedHosts))
                     } else {
                         self.traceLines.append(
-                            "Centipede setup — the trace found no "
-                            + "open doors to load")
+                            L("Centipede setup — the trace found no open doors to load"))
                     }
                 }
                 self.logRecon("network-trace", "\(base).0/24",
@@ -1885,8 +1872,8 @@ extension Mouth {
             traceBusy = false
             ProcessBoard.shared.endKeyed(
                 "mouth.trace", .stopped)
-            traceStatus = "Stopped — trace halted by hand"
-            traceLines.append("Stopped — trace halted by hand")
+            traceStatus = L("Stopped — trace halted by hand")
+            traceLines.append(L("Stopped — trace halted by hand"))
             line("network-trace: stopped by hand")
         }
     }

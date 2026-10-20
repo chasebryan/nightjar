@@ -93,22 +93,26 @@ struct SigintWatch: Identifiable, Codable {
         }
         var parts: [String] = []
         if newKeys.isEmpty {
-            parts.append("No new emitters.")
+            parts.append(L("No new emitters."))
         } else {
-            parts.append("\(newKeys.count) new: "
-                + newKeys.prefix(4).map(label).joined(separator: ", ")
+            parts.append(String(format: L("%lld new: %@"),
+                                newKeys.count,
+                                newKeys.prefix(4).map(label)
+                                    .joined(separator: ", "))
                 + (newKeys.count > 4 ? "…" : "") + ".")
         }
         if !vanishedKeys.isEmpty {
-            parts.append("\(vanishedKeys.count) went silent: "
-                + vanishedKeys.prefix(3).map(label)
-                    .joined(separator: ", ")
+            parts.append(String(format: L("%lld went silent: %@"),
+                                vanishedKeys.count,
+                                vanishedKeys.prefix(3).map(label)
+                                    .joined(separator: ", "))
                 + (vanishedKeys.count > 3 ? "…" : "") + ".")
         }
         if !changedDoors.isEmpty {
-            parts.append("\(changedDoors.count) door(s) answered "
-                + "differently: "
-                + changedDoors.prefix(3).joined(separator: ", ")
+            parts.append(String(format: L("%lld door(s) answered differently: %@"),
+                                changedDoors.count,
+                                changedDoors.prefix(3)
+                                    .joined(separator: ", "))
                 + (changedDoors.count > 3 ? "…" : "") + ".")
         }
         return parts.joined(separator: " ")
@@ -232,9 +236,8 @@ final class SigintStation: ObservableObject {
         seenJournalIDs = []
         lastHeardTick = [:]
         epochStart = Date()
-        addEvent(.run, "New epoch begun",
-                 detail: "The registry starts empty. What is "
-                    + "heard from here is this epoch's alone.",
+        addEvent(.run, L("New epoch begun"),
+                 detail: L("The registry starts empty. What is heard from here is this epoch's alone."),
                  source: "sigint")
     }
 
@@ -263,13 +266,13 @@ final class SigintStation: ObservableObject {
         if scope != "wire", post.session == nil {
             post.start(label: "SIGINT watch")
             startedListenForWatch = true
-            addEvent(.note, "Listen started for this watch",
-                     detail: "It stops again when the watch "
-                        + "ends, if the watch started it.",
+            addEvent(.note, L("Listen started for this watch"),
+                     detail: L("It stops again when the watch ends, if the watch started it."),
                      source: "listen")
         }
-        addEvent(.run, "Watch started — \(watch.name)",
-                 detail: "Scope: \(scope)", source: "sigint")
+        addEvent(.run, String(format: L("Watch started — %@"), watch.name),
+                 detail: String(format: L("Scope: %@"), scope),
+                 source: "sigint")
         Journal.log("sigint", "watch",
                     "watch \(watch.id) started (\(scope))")
         boardID = ProcessBoard.shared.begin(
@@ -335,7 +338,7 @@ final class SigintStation: ObservableObject {
             ProcessBoard.shared.end(
                 id, .done(watch.summaryText))
         }
-        addEvent(.run, "Watch filed — \(watch.name)",
+        addEvent(.run, String(format: L("Watch filed — %@"), watch.name),
                  detail: watch.summaryText, source: "sigint")
         Journal.log("sigint", "watch",
                     "watch \(watch.id) filed — "
@@ -371,19 +374,19 @@ final class SigintStation: ObservableObject {
             let label = row.preferredLabel ?? row.name ?? row.kind
             var claims: [String] = []
             if let name = row.name {
-                claims.append("\(name) — via BLE advertisement")
+                claims.append(String(format: L("%@ — via BLE advertisement"), name))
             }
             claims += row.details.prefix(3)
-                .map { "\($0) — via BLE decode" }
+                .map { String(format: L("%@ — via BLE decode"), $0) }
             let deviceBattery = row.batteries.first {
                 $0.component == "device" }
             if let forecast = row.batteryForecastText {
                 claims.append(forecast
-                    + " — via BLE observation")
+                    + L(" — via BLE observation"))
             }
             if let cadence = row.cadenceText {
                 claims.append(cadence
-                    + " — via BLE observation")
+                    + L(" — via BLE observation"))
             }
             // Battery events enter the timeline
             // once per crossing: under a fifth, or
@@ -393,16 +396,14 @@ final class SigintStation: ObservableObject {
                     .flatMap { emitters[$0].batteryPercent }
                 if percent <= 20, (old ?? 100) > 20 {
                     addEvent(.note,
-                             "Low battery — \(label)",
-                             detail: "battery \(percent)% "
-                                + "— via BLE decode",
+                             String(format: L("Low battery — %@"), label),
+                             detail: String(format: L("battery %lld%% — via BLE decode"), percent),
                              source: "listen")
                 } else if let old = old,
                           old - percent >= 25 {
                     addEvent(.note,
-                             "Battery fell fast — \(label)",
-                             detail: "from \(old)% to "
-                                + "\(percent)% this epoch",
+                             String(format: L("Battery fell fast — %@"), label),
+                             detail: String(format: L("from %lld%% to %lld%% this epoch"), old, percent),
                              source: "listen")
                 }
             }
@@ -432,9 +433,9 @@ final class SigintStation: ObservableObject {
                 "\($0.port)/\($0.proto) · \($0.serviceName)"
             }
             var claims = host.names
-                .map { "\($0) — via the LAN census" }
+                .map { String(format: L("%@ — via the LAN census"), $0) }
             claims += host.tags.prefix(2)
-                .map { "\($0) — via the census" }
+                .map { String(format: L("%@ — via the census"), $0) }
             upsert(key: key, kind: "lan",
                    label: host.names.first ?? host.ip,
                    claims: claims, source: "trace-logbook",
@@ -449,7 +450,7 @@ final class SigintStation: ObservableObject {
                 if sigs[doorID] == nil,
                    emitterIndex[key] != nil {
                     addEvent(.door,
-                             "Door \(host.ip):\(service.port)/\(service.proto)",
+                             String(format: L("Door %@:%lld/%@"), host.ip, service.port, service.proto),
                              detail: service.bannerFirstLine.isEmpty
                                 ? service.serviceName
                                 : service.bannerFirstLine,
@@ -457,7 +458,7 @@ final class SigintStation: ObservableObject {
                 } else if let old = sigs[doorID],
                           old != service.signature {
                     addEvent(.banner,
-                             "Banner changed \(host.ip):\(service.port)",
+                             String(format: L("Banner changed %@:%lld"), host.ip, service.port),
                              detail: service.bannerFirstLine,
                              source: "trace-logbook")
                 }
@@ -688,10 +689,10 @@ final class SigintStation: ObservableObject {
 /// How long ago, in the station's own shorthand.
 private func sigintAgo(_ date: Date) -> String {
     let secs = max(0, Int(Date().timeIntervalSince(date)))
-    if secs < 60 { return "\(secs)s ago" }
-    if secs < 3600 { return "\(secs / 60)m ago" }
-    if secs < 86400 { return "\(secs / 3600)h ago" }
-    return "\(secs / 86400)d ago"
+    if secs < 60 { return String(format: L("%llds ago"), secs) }
+    if secs < 3600 { return String(format: L("%lldm ago"), secs / 60) }
+    if secs < 86400 { return String(format: L("%lldh ago"), secs / 3600) }
+    return String(format: L("%lldd ago"), secs / 86400)
 }
 
 /// A per-emitter activity strip: BLE draws its RSSI history
@@ -819,10 +820,12 @@ struct SigintStationView: View {
                                     .font(.callout)
                                     .lineLimit(1)
                                 Text(emitter.kind == "ble"
-                                     ? "\(emitter.hearings)× · "
-                                        + sigintAgo(emitter.lastHeard)
-                                     : "\(emitter.doors.count) door(s) · "
-                                        + sigintAgo(emitter.lastHeard))
+                                     ? String(format: L("%lld× · %@"),
+                                              emitter.hearings,
+                                              sigintAgo(emitter.lastHeard))
+                                     : String(format: L("%lld door(s) · %@"),
+                                              emitter.doors.count,
+                                              sigintAgo(emitter.lastHeard)))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -875,8 +878,9 @@ struct SigintStationView: View {
                     }
                     if station.timeline.count > 40 {
                         Button(showAllTimeline
-                               ? "Fold — latest 40"
-                               : "Show all \(station.timeline.count)") {
+                               ? L("Fold — latest 40")
+                               : String(format: L("Show all %lld"),
+                                        station.timeline.count)) {
                             showAllTimeline.toggle()
                         }
                     }
@@ -1041,9 +1045,8 @@ struct SigintEmitterView: View {
                     Text(emitter.label).font(.headline)
                     SigintStripView(emitter: emitter)
                     Text(emitter.kind == "ble"
-                         ? "Signal history — RSSI is a rumor "
-                            + "of distance, not a measurement."
-                         : "Activity across this epoch's ticks.")
+                         ? L("Signal history — RSSI is a rumor of distance, not a measurement.")
+                         : L("Activity across this epoch's ticks."))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -1052,7 +1055,7 @@ struct SigintEmitterView: View {
             Section(L("The record")) {
                 LabeledContent(L("Kind"),
                                value: emitter.kind == "ble"
-                                ? "BLE advertiser" : "LAN host")
+                                ? L("BLE advertiser") : L("LAN host"))
                 LabeledContent(L("Key"), value: emitter.key)
                 LabeledContent(L("First heard"),
                                value: emitter.firstHeard.formatted(
