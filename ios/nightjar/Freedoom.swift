@@ -131,8 +131,7 @@ final class FreedoomLoader:
                     contentsOf: tempURL)
             } catch {
                 await self.fail(
-                    "the download could not "
-                    + "be read back.")
+                    L("the download could not be read back."))
                 return
             }
             do {
@@ -156,8 +155,7 @@ final class FreedoomLoader:
                 return
             } catch {
                 await self.fail(
-                    "the game data could not "
-                    + "be filed away.")
+                    L("the game data could not be filed away."))
                 return
             }
             await self.downloadDone()
@@ -180,26 +178,21 @@ final class FreedoomLoader:
         _ error: FreedoomZipError) -> String {
         switch error {
         case .notAZip:
-            return "what arrived is not "
-                + "the release zip."
+            return L("what arrived is not the release zip.")
         case .entryMissing:
-            return "the release zip holds "
-                + "no freedoom1.wad."
+            return L("the release zip holds no freedoom1.wad.")
         case .unsupportedMethod(let method):
-            return "the zip uses a packing "
-                + "this house does not read "
-                + "(method \(method))."
+            return String(
+                format: L("the zip uses a packing this house does not read (method %lld)."),
+                method)
         case .corrupt(let whereabouts):
-            return "the archive is corrupt "
-                + "at its \(whereabouts)."
+            return String(
+                format: L("the archive is corrupt at its %@."),
+                whereabouts)
         case .sizeMismatch:
-            return "the game data unpacked "
-                + "to the wrong size."
+            return L("the game data unpacked to the wrong size.")
         case .crcMismatch:
-            return "the game data failed "
-                + "its CRC check — it is "
-                + "not the archive's own "
-                + "bytes."
+            return L("the game data failed its CRC check — it is not the archive's own bytes.")
         }
     }
 }
@@ -225,8 +218,7 @@ extension FreedoomLoader:
         } catch {
             Task { @MainActor in
                 self.fail(
-                    "the download could not "
-                    + "be staged.")
+                    L("the download could not be staged."))
             }
             return
         }
@@ -268,9 +260,7 @@ extension FreedoomLoader:
         }
         Task { @MainActor in
             self.fail(
-                "the download failed — "
-                + "check the connection "
-                + "and try again.")
+                L("the download failed — check the connection and try again."))
         }
     }
 }
@@ -931,17 +921,17 @@ struct FreedoomView: View {
                 "room opened")
         }
         .confirmationDialog(
-            "Remove the game data?",
+            L("Remove the game data?"),
             isPresented: $confirmUninstall) {
-            Button("UNINSTALL",
+            Button(L("UNINSTALL"),
                    role: .destructive) {
                 FreedoomStore.uninstall()
                 loader.refresh()
             }
-            Button("KEEP IT",
+            Button(L("KEEP IT"),
                    role: .cancel) {}
         } message: {
-            Text("The 28 MB WAD goes. The engine stays in the app — you can download the data again whenever the Standard allows.")
+            Text(L("The 28 MB WAD goes. The engine stays in the app — you can download the data again whenever the Standard allows."))
         }
     }
 
@@ -954,12 +944,7 @@ struct FreedoomView: View {
                     .weight(.bold))
                 .foregroundStyle(.red)
                 .tracking(4)
-            Text("Freedoom Phase 1 · 0.13.0\n"
-                 + "Chocolate Doom in "
-                 + "WebAssembly.\n"
-                 + "The engine is in the "
-                 + "app. The game data "
-                 + "is not.")
+            Text(L("Freedoom Phase 1 · 0.13.0\nChocolate Doom in WebAssembly.\nThe engine is in the app. The game data is not."))
                 .font(.system(
                     .caption,
                     design: .monospaced))
@@ -979,7 +964,7 @@ struct FreedoomView: View {
                 .tint(.secondary)
         case .needsDownload:
             VStack(spacing: 12) {
-                Text("one download: the 24 MB release zip from Freedoom's own GitHub, unpacked here to a 28 MB WAD and kept. After that — offline, always.")
+                Text(L("one download: the 24 MB release zip from Freedoom's own GitHub, unpacked here to a 28 MB WAD and kept. After that — offline, always."))
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -991,7 +976,7 @@ struct FreedoomView: View {
                     Haptics.tap()
                     loader.beginDownload()
                 } label: {
-                    Text("DOWNLOAD FREEDOOM")
+                    Text(L("DOWNLOAD FREEDOOM"))
                         .font(.system(
                             .body,
                             design: .monospaced)
@@ -1004,23 +989,17 @@ struct FreedoomView: View {
             }
         case .refusedByStandard:
             VStack(spacing: 12) {
-                Text(EmconCondition.current
-                        .declared
-                     + " refuses the fetch "
-                     + "— the Standard "
-                     + "counts it an update "
-                     + "check, and those "
-                     + "stand only at Open. "
-                     + "A house that already "
-                     + "holds the WAD "
-                     + "plays regardless.")
+                Text(String(
+                        format: L("%@ refuses the fetch — the Standard counts it an update check, and those stand only at Open. A house that already holds the WAD plays regardless."),
+                        EmconCondition.current
+                            .declared))
                     .font(.system(
                         .caption,
                         design: .monospaced))
                     .foregroundStyle(.orange)
                     .multilineTextAlignment(
                         .center)
-                Button("CHECK AGAIN") {
+                Button(L("CHECK AGAIN")) {
                     Haptics.tap()
                     loader.beginDownload()
                 }
@@ -1041,7 +1020,7 @@ struct FreedoomView: View {
                         design: .monospaced))
                     .foregroundStyle(
                         .secondary)
-                Button("CANCEL") {
+                Button(L("CANCEL")) {
                     loader.cancelDownload()
                 }
                 .font(.system(
@@ -1053,7 +1032,7 @@ struct FreedoomView: View {
             VStack(spacing: 10) {
                 ProgressView()
                     .tint(.red)
-                Text("unpacking the WAD and checking its CRC…")
+                Text(L("unpacking the WAD and checking its CRC…"))
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -1069,7 +1048,7 @@ struct FreedoomView: View {
                     .foregroundStyle(.red)
                     .multilineTextAlignment(
                         .center)
-                Button("TRY AGAIN") {
+                Button(L("TRY AGAIN")) {
                     Haptics.tap()
                     loader.refresh()
                 }
@@ -1079,7 +1058,7 @@ struct FreedoomView: View {
             }
         case .ready:
             VStack(spacing: 12) {
-                Text("the game data is in — 28 MB, CRC-checked, yours offline under any condition.")
+                Text(L("the game data is in — 28 MB, CRC-checked, yours offline under any condition."))
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -1092,7 +1071,7 @@ struct FreedoomView: View {
                     gameSession = UUID()
                     inGame = true
                 } label: {
-                    Text("PLAY")
+                    Text(L("PLAY"))
                         .font(.system(
                             .body,
                             design: .monospaced)
@@ -1102,7 +1081,7 @@ struct FreedoomView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
-                Button("UNINSTALL") {
+                Button(L("UNINSTALL")) {
                     confirmUninstall = true
                 }
                 .font(.system(

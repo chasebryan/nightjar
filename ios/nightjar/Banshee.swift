@@ -116,7 +116,7 @@ final class BansheeCenter: ObservableObject {
         if let snap = snapshot {
             if !snap.assault, assault.running {
                 assault.disarm(
-                    reason: "the banshee ceased")
+                    reason: L("the banshee ceased"))
             }
             if !snap.beacon, mouth.beaconOn {
                 mouth.stopBeacon()
@@ -196,8 +196,9 @@ struct BansheeView: View {
                             .foregroundStyle(banshee.screaming
                                              ? .red : .secondary)
                         Text(banshee.screaming
-                             ? "SCREAMING — \(elapsed)"
-                             : "Silent")
+                             ? String(format: L("SCREAMING — %@"),
+                                      elapsed)
+                             : L("Silent"))
                             .font(.title3.weight(.bold))
                             .foregroundStyle(banshee.screaming
                                              ? .red : .primary)
@@ -211,37 +212,36 @@ struct BansheeView: View {
                 }
 
                 Section(L("The measures")) {
-                    measure("Serve, listed by name",
+                    measure(L("Serve, listed by name"),
                             on: mouth.serveRunning
                                 && !mouth.stealth,
                             detail: mouth.serveRunning
                                 ? (mouth.stealth
-                                   ? "running, but stealthed"
-                                   : "up and answering to "
-                                    + "the wire")
-                                : "down")
-                    measure("BLE beacon — “BANSHEE”",
+                                   ? L("running, but stealthed")
+                                   : L("up and answering to the wire"))
+                                : L("down"))
+                    measure(L("BLE beacon — “BANSHEE”"),
                             on: mouth.beaconOn,
                             detail: mouth.gattHostOn
-                                ? "the GATT arm holds the air "
-                                    + "instead — one voice, "
-                                    + "full volume"
+                                ? L("the GATT arm holds the air instead — one voice, full volume")
                                 : (mouth.beaconOn
-                                   ? "shouting into the room"
-                                   : "quiet"))
-                    measure("Net-Assault, armed",
+                                   ? L("shouting into the room")
+                                   : L("quiet")))
+                    measure(L("Net-Assault, armed"),
                             on: assault.running,
                             detail: assault.running
-                                ? "\(assault.phase) · pass "
-                                    + "\(assault.passes)"
-                                : "holstered")
-                    measure("Broadcast heartbeat",
+                                ? String(format: L("%@ · pass %lld"),
+                                    assault.phase,
+                                    assault.passes)
+                                : L("holstered"))
+                    measure(L("Broadcast heartbeat"),
                             on: banshee.screaming,
                             detail: banshee.screaming
-                                ? "\(banshee.shoutsSent) shout(s) "
-                                    + "· UDP \(banshee.shoutPort), "
-                                    + "subnet-wide"
-                                : "still")
+                                ? String(
+                                    format: L("%lld shout(s) · UDP %lld, subnet-wide"),
+                                    banshee.shoutsSent,
+                                    banshee.shoutPort)
+                                : L("still"))
                 }
 
                 Section {

@@ -629,26 +629,27 @@ struct DeveloperSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text("Recording")) {
+                Section(header: Text(L("Recording"))) {
                     LabeledContent(
-                        "Crash records",
+                        L("Crash records"),
                         value: "\(records.count)")
                     LabeledContent(
-                        "Flight recorder",
-                        value: "\(crumbs.count) "
-                            + "event(s)")
+                        L("Flight recorder"),
+                        value: String(
+                            format: L("%lld event(s)"),
+                            crumbs.count))
                     LabeledContent(
-                        "Memory footprint",
+                        L("Memory footprint"),
                         value: "\(DevKit.footprintMB()) MB")
                 }
-                Section(header: Text("House state")) {
+                Section(header: Text(L("House state"))) {
                     Text(stateText)
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
                 }
                 if !records.isEmpty {
                     Section(header: Text(
-                        "Crash records")) {
+                        L("Crash records"))) {
                         ForEach(records) { record in
                             NavigationLink {
                                 DeveloperRecordView(
@@ -670,19 +671,19 @@ struct DeveloperSheet: View {
                 }
                 if !crumbs.isEmpty {
                     Section(header: Text(
-                        "Flight recorder")) {
+                        L("Flight recorder"))) {
                         NavigationLink {
                             DeveloperCrumbsView(
                                 lines: crumbs)
                         } label: {
-                            Text("Recent events")
+                            Text(L("Recent events"))
                         }
                     }
                 }
-                Section(header: Text("Hand it over")) {
+                Section(header: Text(L("Hand it over"))) {
                     ShareLink(
                         item: DevKit.exportFileURL()) {
-                        Label("Share the full log",
+                        Label(L("Share the full log"),
                               systemImage: "square.and.arrow.up")
                     }
                     Button {
@@ -691,13 +692,13 @@ struct DeveloperSheet: View {
                             DevKit.exportText()
                         toasts.show(L("The developer log is copied — paste it anywhere."))
                     } label: {
-                        Label("Copy the full log",
+                        Label(L("Copy the full log"),
                               systemImage: "doc.on.doc")
                     }
                     ShareLink(
                         item: DevKit
                             .chatExportFileURL()) {
-                        Label("Share all chats",
+                        Label(L("Share all chats"),
                               systemImage: "text.bubble")
                     }
                     Button {
@@ -706,17 +707,17 @@ struct DeveloperSheet: View {
                             DevKit.chatTranscriptText()
                         toasts.show(L("Every chat is copied — the archive and the screen."))
                     } label: {
-                        Label("Copy all chats",
+                        Label(L("Copy all chats"),
                               systemImage: "doc.on.doc")
                     }
                 }
-                Section(header: Text("Prove the loop")) {
-                    Button("Write a test crash record") {
+                Section(header: Text(L("Prove the loop"))) {
+                    Button(L("Write a test crash record")) {
                         Haptics.warn()
                         CrashRecorder.writeTestRecord()
                         refresh()
                     }
-                    Button("Write a test event") {
+                    Button(L("Write a test event")) {
                         Haptics.tap()
                         DevLog.event(
                             "developer",
@@ -728,8 +729,8 @@ struct DeveloperSheet: View {
                         }
                     }
                 }
-                Section(header: Text("The Gauntlet")) {
-                    Text("A full stress run over every system in the house — decoders, crypto, her mind, her stores, the audio paths, the shared tables under parallel hands. The log is written ahead of each step, so if a step ever kills the app, the log names it.")
+                Section(header: Text(L("The Gauntlet"))) {
+                    Text(L("A full stress run over every system in the house — decoders, crypto, her mind, her stores, the audio paths, the shared tables under parallel hands. The log is written ahead of each step, so if a step ever kills the app, the log names it."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if let died = Gauntlet
@@ -752,77 +753,77 @@ struct DeveloperSheet: View {
                             value: gauntlet.currentStep)
                             .font(.caption)
                         LabeledContent(
-                            "So far",
-                            value: "\(gauntlet.passed) "
-                                + "passed · "
-                                + "\(gauntlet.failed) "
-                                + "failed")
-                        Button("Stop after this step",
+                            L("So far"),
+                            value: String(
+                                format: L("%lld passed · %lld failed"),
+                                gauntlet.passed,
+                                gauntlet.failed))
+                        Button(L("Stop after this step"),
                                role: .destructive) {
                             gauntlet.cancelRequested
                                 = true
                         }
                     } else {
-                        Button("Run the gauntlet") {
+                        Button(L("Run the gauntlet")) {
                             Haptics.press()
                             gauntlet.run()
                         }
                         LabeledContent(
-                            "Last run",
+                            L("Last run"),
                             value: Gauntlet
                                 .lastSummary()
                                 .components(
                                     separatedBy: "\n")
                                 .first ?? "—")
-                        Button("Read the latest gauntlet log") {
+                        Button(L("Read the latest gauntlet log")) {
                             showGauntletLog = true
                         }
                     }
                 }
-                Section(header: Text("Haptics test")) {
+                Section(header: Text(L("Haptics test"))) {
                     // Each button fires ONLY its
                     // named beat, straight from the
                     // tap — no UI beat of its own —
                     // so what the operator feels (or
                     // does not) maps one-to-one to a
                     // generator and a strength.
-                    Button("Tap — light impact") {
+                    Button(L("Tap — light impact")) {
                         Haptics.tap()
                     }
-                    Button("Tick — rigid at 0.3") {
+                    Button(L("Tick — rigid at 0.3")) {
                         Haptics.tick()
                     }
-                    Button("Select — rigid at 0.7") {
+                    Button(L("Select — rigid at 0.7")) {
                         Haptics.select()
                     }
-                    Button("Press — medium impact") {
+                    Button(L("Press — medium impact")) {
                         Haptics.press()
                     }
-                    Button("Heavy — heavy impact") {
+                    Button(L("Heavy — heavy impact")) {
                         Haptics.heavy()
                     }
-                    Button("Success — notification (raw test)") {
+                    Button(L("Success — notification (raw test)")) {
                         Haptics.testSuccess()
                     }
-                    Button("Error — notification (raw test)") {
+                    Button(L("Error — notification (raw test)")) {
                         Haptics.testError()
                     }
-                    Button("Raw selection — retired generator") {
+                    Button(L("Raw selection — retired generator")) {
                         Haptics.rawSelection()
                     }
                 }
                 Section {
-                    Button("Clear all developer records",
+                    Button(L("Clear all developer records"),
                            role: .destructive) {
                         Haptics.warn()
                         confirmClear = true
                     }
                 }
             }
-            .navigationTitle("Developer")
+            .navigationTitle(L("Developer"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button(L("Done")) {
                         Haptics.tap()
                         dismiss()
                     }
@@ -833,15 +834,15 @@ struct DeveloperSheet: View {
                 GauntletLogView()
             }
             .confirmationDialog(
-                "Clear every crash record and the flight recorder?",
+                L("Clear every crash record and the flight recorder?"),
                 isPresented: $confirmClear,
                 titleVisibility: .visible) {
-                Button("Clear all", role: .destructive) {
+                Button(L("Clear all"), role: .destructive) {
                     Haptics.error()
                     CrashRecorder.clearAll()
                     refresh()
                 }
-                Button("Keep them", role: .cancel) {}
+                Button(L("Keep them"), role: .cancel) {}
             }
         }
     }
@@ -882,7 +883,7 @@ private struct DeveloperCrumbsView: View {
                        alignment: .leading)
                 .padding()
         }
-        .navigationTitle("Flight recorder")
+        .navigationTitle(L("Flight recorder"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -896,19 +897,19 @@ private struct GauntletLogView: View {
         NavigationStack {
             ScrollView {
                 Text(Gauntlet.latestLogText()
-                     ?? "The gauntlet has never run.")
+                     ?? L("The gauntlet has never run."))
                     .font(.caption.monospaced())
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity,
                            alignment: .leading)
                     .padding()
             }
-            .navigationTitle("Gauntlet log")
+            .navigationTitle(L("Gauntlet log"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(
                     placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(L("Done")) { dismiss() }
                 }
                 ToolbarItem(
                     placement: .cancellationAction) {

@@ -577,23 +577,23 @@ struct SpoofyView: View {
                                    value: Spoofy.currentName)
                     LabeledContent(L("Beacon"),
                                    value: mouth.beaconOn
-                                    ? "live" : "off")
+                                    ? L("live") : L("off"))
                     LabeledContent(L("GATT host"),
                                    value: mouth.gattHostOn
-                                    ? "live" : "off")
+                                    ? L("live") : L("off"))
                     LabeledContent(L("Serve"),
                                    value: mouth.serveRunning
                                     ? (mouth.stealth
-                                       ? "up, stealthed"
-                                       : "up, listed")
-                                    : "down")
+                                       ? L("up, stealthed")
+                                       : L("up, listed"))
+                                    : L("down"))
                     if let persona = mimic.activePersona {
                         Label(String(format: L("Wearing the %@"), persona.label),
                               systemImage: "theatermasks.fill")
                             .foregroundStyle(.purple)
                         if let since = mimic.wornSince {
                             LabeledContent(
-                                "Worn since",
+                                L("Worn since"),
                                 value: since.formatted(
                                     date: .omitted,
                                     time: .shortened))
@@ -601,9 +601,10 @@ struct SpoofyView: View {
                     }
                     if rotator.rotating {
                         LabeledContent(
-                            "Name rotation",
-                            value: "every "
-                                + "\(rotator.minutes) min")
+                            L("Name rotation"),
+                            value: String(
+                                format: L("every %lld min"),
+                                rotator.minutes))
                     }
                 }
 
@@ -805,14 +806,17 @@ struct SpoofyView: View {
 
     private func serveDress(_ persona: SpoofyPersona) -> String {
         var parts: [String] = []
-        if persona.useTCP { parts.append("TCP \(persona.tcpPort)") }
-        if persona.useUDP { parts.append("UDP \(persona.udpPort)") }
+        if persona.useTCP { parts.append(String(format: L("TCP %lld"), persona.tcpPort)) }
+        if persona.useUDP { parts.append(String(format: L("UDP %lld"), persona.udpPort)) }
         if persona.useHTTP {
-            parts.append("HTTP \(persona.httpPort)")
+            parts.append(String(format: L("HTTP %lld"), persona.httpPort))
         }
-        var dress = parts.isEmpty ? "air only"
-            : "serves " + parts.joined(separator: " · ")
-        if persona.listed { dress += " · listed" }
+        var dress = parts.isEmpty ? L("air only")
+            : String(format: L("serves %@"),
+                     parts.joined(separator: " · "))
+        if persona.listed {
+            dress = String(format: L("%@ · listed"), dress)
+        }
         return dress
     }
 }

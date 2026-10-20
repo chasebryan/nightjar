@@ -81,13 +81,16 @@ enum VoiceThrowCodec {
     /// form is for machines; the thread is for the operator.
     static func displayText(_ text: String) -> String {
         if let instruction = decodeInstruction(text) {
-            return "🎙 thrown payload → \(instruction.target): "
-                + "“\(instruction.payload)”"
+            return String(
+                format: L("🎙 thrown payload → %@: “%@”"),
+                instruction.target, instruction.payload)
         }
         if let receipt = decodeReceipt(text) {
-            return "🎙 receipt — "
-                + (receipt.ok ? "thrown: " : "refused: ")
-                + receipt.detail
+            return receipt.ok
+                ? String(format: L("🎙 receipt — thrown: %@"),
+                         receipt.detail)
+                : String(format: L("🎙 receipt — refused: %@"),
+                         receipt.detail)
         }
         return text
     }
@@ -144,8 +147,7 @@ final class VoiceThrowCenter: ObservableObject {
             text) else { return false }
         guard armed else {
             reply(receipt: .init(id: instruction.id, ok: false,
-                                 detail: "this phone's mouth is "
-                                     + "not lent"),
+                                 detail: L("this phone's mouth is not lent")),
                   to: source, chat: chat)
             Journal.log("voice", "refused",
                         "throw from \(source) refused — mouth "
@@ -158,8 +160,9 @@ final class VoiceThrowCenter: ObservableObject {
                 payloadText: instruction.payload)
             reply(receipt: .init(
                     id: instruction.id, ok: true,
-                    detail: "dispatched from this phone to "
-                        + instruction.target),
+                    detail: String(
+                        format: L("dispatched from this phone to %@"),
+                        instruction.target)),
                   to: source, chat: chat)
             Journal.log("voice", "throw",
                         "threw for \(source) → "
@@ -252,19 +255,18 @@ struct VoiceThrowSection: View {
             target: target.trimmingCharacters(in: .whitespaces),
             payload: payload)
         guard let text = VoiceThrowCodec.encode(instruction) else {
-            note = "That throw would not encode."
+            note = L("That throw would not encode.")
             return
         }
         if chat.send(text: text, to: peer, key: key) {
-            note = "Thrown. The receipt rides back the same road."
+            note = L("Thrown. The receipt rides back the same road.")
             payload = ""
             Journal.log("voice", "throw",
                         "threw a payload via \(peer) → "
                         + "\(instruction.target) — this phone "
                         + "sent only knocks")
         } else {
-            note = "Too long for the knock channel — a throw is "
-                + "a signal, not a file. Shorten the payload."
+            note = L("Too long for the knock channel — a throw is a signal, not a file. Shorten the payload.")
         }
     }
 }

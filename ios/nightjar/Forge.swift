@@ -323,8 +323,8 @@ struct ForgeView: View {
                     TextField(L("Name for the armory"),
                               text: $keepName)
                     Button(keptPattern
-                           ? "Kept in the armory"
-                           : "Keep in the armory") {
+                           ? L("Kept in the armory")
+                           : L("Keep in the armory")) {
                         Haptics.tap()
                         keep(built,
                              name: keepName)
@@ -401,7 +401,7 @@ struct ForgeView: View {
                 }
                 Section(L("From a brief")) {
                     TextField(
-                        "Tell her what to build…",
+                        L("Tell her what to build…"),
                         text: $brief, axis: .vertical)
                         .lineLimit(2...4)
                     Button {
@@ -429,8 +429,8 @@ struct ForgeView: View {
                         }
                         .pickerStyle(.segmented)
                         Button(keptDraft
-                               ? "Kept in the armory"
-                               : "Keep in the armory") {
+                               ? L("Kept in the armory")
+                               : L("Keep in the armory")) {
                             keep(ForgeKit.Built(
                                 name: "Forged — "
                                     + String(brief.prefix(28)),
@@ -456,7 +456,7 @@ struct ForgeView: View {
                         }
                     }
                     TextField(
-                        "Tell her what to build…",
+                        L("Tell her what to build…"),
                         text: $codeBrief,
                         axis: .vertical)
                         .lineLimit(2...4)
@@ -484,7 +484,7 @@ struct ForgeView: View {
                             if codeLang
                                 == "JavaScript" {
                                 Button(runningCode
-                                       ? "Running…"
+                                       ? L("Running…")
                                        : L("Run it")) {
                                     runCode()
                                 }
@@ -751,8 +751,7 @@ enum JSRunner {
             }
         if semaphore.wait(
             timeout: .now() + 3) == .timedOut {
-            return "Ran past three seconds — "
-                + "the leash pulled it back."
+            return L("Ran past three seconds — the leash pulled it back.")
         }
         return result
     }
@@ -761,7 +760,7 @@ enum JSRunner {
         _ code: String,
         input: String = "") -> String {
         guard let context = JSContext() else {
-            return "The JavaScript engine would not start."
+            return L("The JavaScript engine would not start.")
         }
         var logs: [String] = []
         var failure: String?
@@ -797,7 +796,7 @@ enum JSRunner {
         let out = logs
             .filter { !$0.isEmpty }
             .joined(separator: "\n")
-        return out.isEmpty ? "(ran — no output)"
+        return out.isEmpty ? L("(ran — no output)")
             : out
     }
 }
