@@ -1718,11 +1718,18 @@ function require(spec) {
     private func fetchesPending(
         context: JSContext, gen: Int)
         -> Bool {
-        if fetchBoxes.values.contains {
+        // The pending test is spelled
+        // with contains(where:) — a
+        // trailing closure cannot serve
+        // as an if condition (Swift
+        // reads its brace as the body's,
+        // and the closure's $0s fall
+        // outside any closure at all).
+        if fetchBoxes.values.contains(where: {
             $0.context === context
                 && $0.gen == gen
                 && !$0.delivered
-        } {
+        }) {
             return true
         }
         return sendBoxes.values.contains {
