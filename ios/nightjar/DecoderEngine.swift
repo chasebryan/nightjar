@@ -325,6 +325,22 @@ enum DecoderEngine {
             }
         }
 
+        // MikroTik TG-BT5: a plain percentage
+        // in the last byte, when the frame is
+        // not the encrypted form.
+        if let payload = sighting.manufacturerData[
+            MoreDecoders.mikrotikCompany],
+           payload.count == 18, payload[0] == 1,
+           payload[1] & 0x01 == 0,
+           payload[17] <= 100 {
+            readings.append(BatteryReading(
+                component: "device",
+                percent: Int(payload[17]),
+                millivolts: nil, state: nil,
+                source: "MikroTik tag",
+                observedAt: at))
+        }
+
         // Govee: a percentage, gated by its decoder.
         if let payload = sighting.manufacturerData[
             MoreDecoders.goveeCompany],

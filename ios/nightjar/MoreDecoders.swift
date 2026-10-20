@@ -4,7 +4,9 @@ import Foundation
 /// beacons and sensors the older chain could only call "unknown":
 /// Microsoft Swift Pair (strict form), AltBeacon, RuuviTag, Govee,
 /// Xiaomi MiBeacon and BTHome v2, plus recognition for Tile trackers,
-/// Galaxy SmartTag and SwitchBot.
+/// Galaxy SmartTag and SwitchBot. Batch 1 of the decoders arc
+/// (2026-10-20) adds MikroTik's TG-BT5 tag — the one networking
+/// vendor format published in full, test vectors included.
 ///
 /// Detection is deliberately strict — exact company IDs, service UUIDs,
 /// magic bytes and length gates — because a wrong label is worse than
@@ -43,6 +45,7 @@ enum MoreDecoders {
     static let microsoftCompany: UInt16 = 0x0006
     static let ruuviCompany: UInt16 = 0x0499
     static let goveeCompany: UInt16 = 0xEC88
+    static let mikrotikCompany: UInt16 = 0x094F
 
     static let xiaomiService: UInt16 = 0xFE95
     static let btHomeService: UInt16 = 0xFCD2
@@ -74,6 +77,11 @@ enum MoreDecoders {
         }
         if let payload = sighting.manufacturerData[goveeCompany],
            let hit = decodeGovee(payload) {
+            return hit
+        }
+        if let payload = sighting
+            .manufacturerData[mikrotikCompany],
+           let hit = decodeMikrotikTag(payload) {
             return hit
         }
         if let payload = serviceData(sighting, xiaomiService),
@@ -271,6 +279,98 @@ enum MoreDecoders {
                                        details: [parts.joined(separator: ", ")],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
+    }
+
+    // MARK: - MikroTik TG-BT5 tag
+
+    /// MikroTik TG-BT5 Bluetooth tag, company
+    /// 0x094F — MikroTik's own published format
+    /// (help.mikrotik.com, Bluetooth tag docs),
+    /// the one networking-gear layout in the
+    /// decoders arc's survey published in full,
+    /// test vectors included. Exactly 18 bytes
+    /// after the company ID, all little-endian:
+    /// version (1) · user-data byte (bit 0 =
+    /// the readings block is AES-ECB encrypted
+    /// under the tag's key) · salt · accel
+    /// X/Y/Z (s16, 8.8 fixed point — motion
+    /// noise for a listener's purposes, not
+    /// reported) · temperature (s16, 8.8 fixed
+    /// point, °C) · uptime (u32, seconds) ·
+    /// trigger flags (reed, tilt, free-fall,
+    /// impact X/Y/Z) · battery %.
+    static func decodeMikrotikTag(
+        _ payload: [UInt8])
+        -> Services.Identification? {
+        guard payload.count == 18,
+              payload[0] == 1
+        else { return nil }
+        if payload[1] & 0x01 != 0 {
+            return Services.Identification(
+                kind: "MikroTik Bluetooth tag",
+                details: ["a TG-BT5 tag — its "
+                          + "readings travel "
+                          + "encrypted under the "
+                          + "tag's own key; "
+                          + "identity only"],
+                trackerShaped: false,
+                rotatingPhone: false,
+                specificity: 3)
+        }
+        var parts: [String] = []
+        let temp = Double(leS16(payload, 10))
+            / 256.0
+        parts.append(String(
+            format: "%.1f °C", temp))
+        let uptime = le16(payload, 12)
+            + le16(payload, 14) * 65536
+        let days = uptime / 86400
+        let hours = (uptime % 86400) / 3600
+        let mins = (uptime % 3600) / 60
+        if days > 0 {
+            parts.append("uptime \(days)d "
+                         + "\(hours)h")
+        } else if hours > 0 {
+            parts.append("uptime \(hours)h "
+                         + "\(mins)m")
+        } else {
+            parts.append("uptime \(mins)m")
+        }
+        let flags = payload[16]
+        var triggers: [String] = []
+        if flags & 0x01 != 0 {
+            triggers.append("reed switch")
+        }
+        if flags & 0x02 != 0 {
+            triggers.append("tilt")
+        }
+        if flags & 0x04 != 0 {
+            triggers.append("free-fall")
+        }
+        if flags & 0x08 != 0 {
+            triggers.append("impact X")
+        }
+        if flags & 0x10 != 0 {
+            triggers.append("impact Y")
+        }
+        if flags & 0x20 != 0 {
+            triggers.append("impact Z")
+        }
+        if !triggers.isEmpty {
+            parts.append("triggered: " + triggers
+                .joined(separator: ", "))
+        }
+        if payload[17] <= 100 {
+            parts.append("battery "
+                         + "\(payload[17])%")
+        }
+        return Services.Identification(
+            kind: "MikroTik Bluetooth tag",
+            details: [parts.joined(
+                separator: ", ")],
+            trackerShaped: false,
+            rotatingPhone: false,
+            specificity: 3)
     }
 
     // MARK: - Govee thermometer

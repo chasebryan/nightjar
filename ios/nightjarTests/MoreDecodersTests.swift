@@ -362,4 +362,74 @@ final class MoreDecodersTests: XCTestCase {
         let s = sighting(manufacturer: [0x004C: payload])
         XCTAssertEqual(Classification.classify(s).kind, "iBeacon")
     }
+
+    // MARK: - MikroTik TG-BT5 tag
+
+    /// MikroTik's own worked example, verbatim from
+    /// the published tag documentation: temperature
+    /// raw 0x1CA0 (8.8 fixed point) = 28.625 C,
+    /// uptime 5,703,825 s = 66d 0h, battery 0x5F.
+    func testMikrotikTagDocumentedExample() {
+        let data = hexBytes("0100cea6000000000200a01c91085700005f")
+        let s = sighting(manufacturer: [0x094F: data])
+        let hit = MoreDecoders.identify(s)
+        XCTAssertEqual(hit?.kind, "MikroTik Bluetooth tag")
+        XCTAssertEqual(hit?.details,
+                       ["28.6 °C, uptime 66d 0h, battery 95%"])
+        XCTAssertEqual(Classification.classify(s).kind,
+                       "MikroTik Bluetooth tag")
+        let batteries = DecoderEngine.batteryReadings(s)
+        XCTAssertEqual(
+            batteries.first { $0.source == "MikroTik tag" }?
+                .percent, 95)
+    }
+
+    /// A live KNOT scanner capture from the same
+    /// documentation: temperature raw 0x18CF =
+    /// 24.8 C, uptime 2,846,090 s = 32d 22h,
+    /// battery 0x64 = 100%.
+    func testMikrotikTagScannerCapture() {
+        let data = hexBytes("010079100000ffff0000cf188a6b2b000064")
+        let hit = MoreDecoders.identify(
+            sighting(manufacturer: [0x094F: data]))
+        XCTAssertEqual(hit?.details,
+                       ["24.8 °C, uptime 32d 22h, battery 100%"])
+    }
+
+    /// The second documented capture: temperature
+    /// raw 0x1AA5 = 26.6 C, uptime 2,243,073 s =
+    /// 25d 23h, battery 0x5E = 94%.
+    func testMikrotikTagSecondCapture() {
+        let data = hexBytes("0100168dfefffffffeffa51ae1362200005e")
+        let hit = MoreDecoders.identify(
+            sighting(manufacturer: [0x094F: data]))
+        XCTAssertEqual(hit?.details,
+                       ["26.6 °C, uptime 25d 23h, battery 94%"])
+    }
+
+    /// The encrypted form (user-data bit 0 set):
+    /// identity only, no readings, no battery.
+    func testMikrotikTagEncryptedIsIdentityOnly() {
+        let data = hexBytes("0101cea6000000000200a01c91085700005f")
+        let s = sighting(manufacturer: [0x094F: data])
+        let hit = MoreDecoders.identify(s)
+        XCTAssertEqual(hit?.kind, "MikroTik Bluetooth tag")
+        XCTAssertEqual(hit?.details.count, 1)
+        XCTAssertTrue(hit?.details.first?
+            .contains("encrypted") ?? false)
+        XCTAssertNil(DecoderEngine.batteryReadings(s)
+            .first { $0.source == "MikroTik tag" })
+    }
+
+    /// Wrong version and truncated frames are not
+    /// the tag's format.
+    func testMikrotikTagRejectsLookalikes() {
+        let wrongVersion = hexBytes(
+            "0200cea6000000000200a01c91085700005f")
+        XCTAssertNil(MoreDecoders.identify(
+            sighting(manufacturer: [0x094F: wrongVersion])))
+        let truncated = hexBytes("0100cea6000000000200")
+        XCTAssertNil(MoreDecoders.identify(
+            sighting(manufacturer: [0x094F: truncated])))
+    }
 }
