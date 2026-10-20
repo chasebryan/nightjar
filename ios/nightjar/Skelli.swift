@@ -572,6 +572,46 @@ final class SkelliCenter: ObservableObject {
     /// ask re-asks its remainder, the chain
     /// runner stands aside (2026-10-20).
     private var chainDepth = 0
+    /// The variation memory (2026-10-20):
+    /// each spoken pool keeps its own draw
+    /// count and its last index on the
+    /// center, so a pool never hands back
+    /// the line it just gave.
+    private var variationDraws: [String: Int] = [:]
+    private var variationLast: [String: Int] = [:]
+
+    /// Draw from a spoken pool, with a
+    /// memory (2026-10-20). The house
+    /// rotation once keyed every pool to a
+    /// call-site seed alone, so the same
+    /// lane at the same depth always said
+    /// the same line. Now the pool's own
+    /// history counts among the moment's
+    /// numbers: its draws advance the
+    /// index by a stride, and the line it
+    /// gave last is never the line it
+    /// gives next. Still no dice — her
+    /// doctrine holds — but the numbers
+    /// are hers now, and there are more
+    /// of them.
+    func vary(_ pool: [String]) -> String {
+        guard pool.count > 1 else {
+            return pool.first ?? ""
+        }
+        let key = String(
+            pool.joined().hashValue)
+        let draws = (variationDraws[key]
+            ?? 0) + 1
+        variationDraws[key] = draws
+        let span = abs(lines.count)
+            + draws * 7 + draws / 3
+        var index = span % pool.count
+        if index == variationLast[key] {
+            index = (index + 1) % pool.count
+        }
+        variationLast[key] = index
+        return pool[index]
+    }
     /// Set by ask() when an apology forgave a live
     /// grievance; respond() acknowledges it if no
     /// hand claimed the message first.
@@ -1245,7 +1285,7 @@ final class SkelliCenter: ObservableObject {
     private func personaReply(to q: String) -> String? {
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         let heart = SkelliHeart.shared
         // The thread: with her maker already the
@@ -1379,7 +1419,7 @@ final class SkelliCenter: ObservableObject {
         else { return nil }
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         // The pieces, answered straight — each
         // with one dry tail.
@@ -1503,7 +1543,7 @@ final class SkelliCenter: ObservableObject {
     private func socialReply(to q: String) -> String? {
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         let heart = SkelliHeart.shared
         let feeling = heart.feeling
@@ -1934,7 +1974,7 @@ final class SkelliCenter: ObservableObject {
         }
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         // Holy days, greeted in kind.
         if q.contains("ramadan kareem")
@@ -2064,7 +2104,7 @@ final class SkelliCenter: ObservableObject {
         }
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         let wins = ["it works", "it worked",
                     "got it working", "finally works",
@@ -2122,7 +2162,7 @@ final class SkelliCenter: ObservableObject {
     private func workReply(to q: String) -> String? {
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         // The decoder: named office phrases,
         // asked about in any form.
@@ -2301,7 +2341,7 @@ final class SkelliCenter: ObservableObject {
         let heart = SkelliHeart.shared
         let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
-            pool[seed % pool.count]
+            vary(pool)
         }
         let words = Set(q.split(separator: " ")
             .map { $0.trimmingCharacters(
