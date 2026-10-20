@@ -998,10 +998,10 @@ struct WarGamesView: View {
 
     @ViewBuilder private var defenderSection: some View {
         Section(L("Defense")) {
-            Text("You are serving: "
-                + (serveSummary.isEmpty
-                   ? "nothing — turn a listener on in Serve"
-                   : serveSummary))
+            Text(String(format: L("You are serving: %@"),
+                        serveSummary.isEmpty
+                            ? L("nothing — turn a listener on in Serve")
+                            : serveSummary))
                 .font(.callout)
             Text(L("Decoys you're flying — one name per line. Fly them from their own tabs (the BLE beacon's name in Send, the GATT host in Serve); declare them here so the scoring knows what to look for in the attacker's hearing."))
                 .font(.caption)
@@ -1093,28 +1093,30 @@ struct WarGamesView: View {
                 }
             }
             if !report.found.isEmpty {
-                Text("Found: " + report.found.map {
-                    "\($0.port)/\($0.proto)"
-                        + ($0.confirmed ? " ★" : "")
-                }.joined(separator: ", "))
+                Text(String(format: L("Found: %@"),
+                            report.found.map {
+                                "\($0.port)/\($0.proto)"
+                                    + ($0.confirmed ? " ★" : "")
+                            }.joined(separator: ", ")))
                     .font(.callout)
             }
             if !report.missed.isEmpty {
-                Text("Missed: " + report.missed.map {
-                    "\($0.port)/\($0.proto)"
-                }.joined(separator: ", "))
+                Text(String(format: L("Missed: %@"),
+                            report.missed.map {
+                                "\($0.port)/\($0.proto)"
+                            }.joined(separator: ", ")))
                     .font(.callout)
             }
             Text(String(format: L("Caught in the act: %lld arrival(s)"), report.caughtCount))
                 .font(.callout)
             if !report.decoysSeen.isEmpty {
-                Text("Decoys spotted: "
-                    + report.decoysSeen.joined(separator: ", "))
+                Text(String(format: L("Decoys spotted: %@"),
+                            report.decoysSeen.joined(separator: ", ")))
                     .font(.callout)
             }
             if !report.decoysUnseen.isEmpty {
-                Text("Decoys never seen: "
-                    + report.decoysUnseen.joined(separator: ", "))
+                Text(String(format: L("Decoys never seen: %@"),
+                            report.decoysUnseen.joined(separator: ", ")))
                     .font(.callout)
             }
             if let url = center.reportURL {

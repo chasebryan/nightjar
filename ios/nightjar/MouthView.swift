@@ -668,8 +668,8 @@ struct SendView: View {
                                 payloadNamed: payloadNamed)
                             showCentipedeSplash = true
                         } label: {
-                            Label("Release the centipede "
-                                  + "(\(centipedeHopCount) hop(s))",
+                            Label(String(format: L("Release the centipede (%lld hop(s))"),
+                                         centipedeHopCount),
                                   systemImage: "ant.fill")
                                 .frame(maxWidth: .infinity)
                         }
@@ -688,8 +688,8 @@ struct SendView: View {
                     }
                     if let home = mouth.crawlHomecoming {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("What it brought home — "
-                                 + "\(home.count) bytes")
+                            Text(String(format: L("What it brought home — %lld bytes"),
+                                        home.count))
                                 .font(.caption.weight(.semibold))
                             if let text = PayloadKit.printableText(home) {
                                 Text(text)
@@ -2040,9 +2040,9 @@ struct MouthLogSheet: View {
                 "Delete the exchange history?",
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible) {
-                Button("Delete "
-                       + (Mouth.exchangeHistoryDescription()
-                          ?? "history"),
+                Button(String(format: L("Delete %@"),
+                              Mouth.exchangeHistoryDescription()
+                                ?? L("history")),
                        role: .destructive) {
                     mouth.deleteExchangeHistory()
                     Haptics.success()
@@ -2136,14 +2136,12 @@ struct ServeView: View {
                     }
                     if mouth.serveRunning {
                         if mouth.stealth {
-                            Text("Stealth: unlisted. Reachable only at "
-                                 + "\(Mouth.localIPAddress().map { "tcp://\($0):\(tcpPort)" } ?? "this phone's IP address") "
-                                 + "for anyone who already knows it.")
+                            Text(String(format: L("Stealth: unlisted. Reachable only at %@ for anyone who already knows it."),
+                                        Mouth.localIPAddress().map { "tcp://\($0):\(tcpPort)" } ?? L("this phone's IP address")))
                                 .font(.caption).foregroundStyle(.secondary)
                         } else if useTCP {
-                            Text("Other phones see this one as "
-                                 + "'\(UIDevice.current.name)' in their "
-                                 + "Nearby phones list.")
+                            Text(String(format: L("Other phones see this one as '%@' in their Nearby phones list."),
+                                        UIDevice.current.name))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }

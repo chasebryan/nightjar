@@ -196,8 +196,8 @@ struct MacrosView: View {
                     set: { if !$0 { macroToDelete = nil } }),
                 titleVisibility: .visible
             ) {
-                Button("Delete "
-                       + (macroToDelete?.name ?? "macro"),
+                Button(String(format: L("Delete %@"),
+                              macroToDelete?.name ?? L("macro")),
                        role: .destructive) {
                     if let macro = macroToDelete {
                         macros.removeAll { $0.id == macro.id }

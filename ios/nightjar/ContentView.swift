@@ -646,9 +646,7 @@ struct UpdateBanner: View {
                 .accessibilityLabel(L("Not now"))
             }
             if let install = release.installURL {
-                Text("This release carries an over-the-air build. "
-                     + "iOS installs it over this one — your logs, "
-                     + "notes and settings stay.")
+                Text("This release carries an over-the-air build. iOS installs it over this one — your logs, notes and settings stay.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button {

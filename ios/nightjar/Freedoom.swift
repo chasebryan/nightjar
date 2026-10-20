@@ -941,12 +941,7 @@ struct FreedoomView: View {
             Button("KEEP IT",
                    role: .cancel) {}
         } message: {
-            Text("The 28 MB WAD goes. "
-                 + "The engine stays in "
-                 + "the app — you can "
-                 + "download the data "
-                 + "again whenever the "
-                 + "Standard allows.")
+            Text("The 28 MB WAD goes. The engine stays in the app — you can download the data again whenever the Standard allows.")
         }
     }
 
@@ -984,14 +979,7 @@ struct FreedoomView: View {
                 .tint(.secondary)
         case .needsDownload:
             VStack(spacing: 12) {
-                Text("one download: the "
-                     + "24 MB release zip "
-                     + "from Freedoom's own "
-                     + "GitHub, unpacked "
-                     + "here to a 28 MB "
-                     + "WAD and kept. "
-                     + "After that — "
-                     + "offline, always.")
+                Text("one download: the 24 MB release zip from Freedoom's own GitHub, unpacked here to a 28 MB WAD and kept. After that — offline, always.")
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -1046,8 +1034,8 @@ struct FreedoomView: View {
                     value: fraction)
                     .tint(.red)
                     .frame(maxWidth: 240)
-                Text("downloading… "
-                     + "\(Int(fraction * 100))%")
+                Text(String(format: L("downloading… %lld%%"),
+                            Int(fraction * 100)))
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -1065,9 +1053,7 @@ struct FreedoomView: View {
             VStack(spacing: 10) {
                 ProgressView()
                     .tint(.red)
-                Text("unpacking the WAD "
-                     + "and checking its "
-                     + "CRC…")
+                Text("unpacking the WAD and checking its CRC…")
                     .font(.system(
                         .caption,
                         design: .monospaced))
@@ -1093,11 +1079,7 @@ struct FreedoomView: View {
             }
         case .ready:
             VStack(spacing: 12) {
-                Text("the game data is "
-                     + "in — 28 MB, "
-                     + "CRC-checked, yours "
-                     + "offline under any "
-                     + "condition.")
+                Text("the game data is in — 28 MB, CRC-checked, yours offline under any condition.")
                     .font(.system(
                         .caption,
                         design: .monospaced))

@@ -745,14 +745,14 @@ private struct ThemeEditorView: View {
                 }
                 Section(header: Text(L("Judgement"))) {
                     VStack(alignment: .leading) {
-                        Text("Tint strength "
-                             + "\(Int(tintStrength * 100))%")
+                        Text(String(format: L("Tint strength %lld%%"),
+                                    Int(tintStrength * 100)))
                             .font(.callout)
                         Slider(value: $tintStrength, in: 0...0.55)
                     }
                     VStack(alignment: .leading) {
-                        Text("Backdrop dim "
-                             + "\(Int(dim * 100))%")
+                        Text(String(format: L("Backdrop dim %lld%%"),
+                                    Int(dim * 100)))
                             .font(.callout)
                         Slider(value: $dim, in: 0...0.65)
                     }

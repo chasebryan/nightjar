@@ -566,9 +566,9 @@ struct CanarySectionView: View {
                 Button(role: .destructive) {
                     host.stop()
                 } label: {
-                    Label("Stand the canary down — "
-                          + "\(CanaryHost.label(running)) on "
-                          + "\(host.runningPort ?? 0)",
+                    Label(String(format: L("Stand the canary down — %@ on %lld"),
+                                 CanaryHost.label(running),
+                                 host.runningPort ?? 0),
                           systemImage: "stop.circle.fill")
                 }
             } else {

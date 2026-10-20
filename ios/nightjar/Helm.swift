@@ -278,8 +278,8 @@ struct HelmView: View {
                     set: { if !$0 { remoteToDelete = nil } }),
                 titleVisibility: .visible
             ) {
-                Button("Delete "
-                       + (remoteToDelete?.name ?? "remote"),
+                Button(String(format: L("Delete %@"),
+                              remoteToDelete?.name ?? L("remote")),
                        role: .destructive) {
                     if let remote = remoteToDelete {
                         remotes.removeAll {

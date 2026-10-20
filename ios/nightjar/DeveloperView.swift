@@ -733,21 +733,13 @@ struct DeveloperSheet: View {
                     }
                 }
                 Section(header: Text("The Gauntlet")) {
-                    Text("A full stress run over every "
-                        + "system in the house — "
-                        + "decoders, crypto, her mind, "
-                        + "her stores, the audio paths, "
-                        + "the shared tables under "
-                        + "parallel hands. The log is "
-                        + "written ahead of each step, "
-                        + "so if a step ever kills the "
-                        + "app, the log names it.")
+                    Text("A full stress run over every system in the house — decoders, crypto, her mind, her stores, the audio paths, the shared tables under parallel hands. The log is written ahead of each step, so if a step ever kills the app, the log names it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if let died = Gauntlet
                         .interruptedStep() {
-                        Label("Last run died at: "
-                              + died,
+                        Label(String(format: L("Last run died at: %@"),
+                                     died),
                               systemImage:
                                 "exclamationmark.triangle.fill")
                             .font(.caption)
@@ -786,8 +778,7 @@ struct DeveloperSheet: View {
                                 .components(
                                     separatedBy: "\n")
                                 .first ?? "—")
-                        Button("Read the latest "
-                               + "gauntlet log") {
+                        Button("Read the latest gauntlet log") {
                             showGauntletLog = true
                         }
                     }
@@ -814,22 +805,18 @@ struct DeveloperSheet: View {
                     Button("Heavy — heavy impact") {
                         Haptics.heavy()
                     }
-                    Button("Success — notification "
-                           + "(raw test)") {
+                    Button("Success — notification (raw test)") {
                         Haptics.testSuccess()
                     }
-                    Button("Error — notification "
-                           + "(raw test)") {
+                    Button("Error — notification (raw test)") {
                         Haptics.testError()
                     }
-                    Button("Raw selection — retired "
-                           + "generator") {
+                    Button("Raw selection — retired generator") {
                         Haptics.rawSelection()
                     }
                 }
                 Section {
-                    Button("Clear all developer "
-                           + "records",
+                    Button("Clear all developer records",
                            role: .destructive) {
                         Haptics.warn()
                         confirmClear = true
@@ -850,8 +837,7 @@ struct DeveloperSheet: View {
                 GauntletLogView()
             }
             .confirmationDialog(
-                "Clear every crash record and "
-                    + "the flight recorder?",
+                "Clear every crash record and the flight recorder?",
                 isPresented: $confirmClear,
                 titleVisibility: .visible) {
                 Button("Clear all", role: .destructive) {

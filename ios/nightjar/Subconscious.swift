@@ -1277,10 +1277,8 @@ struct SubconsciousSectionView: View {
         Section(header: Text(L("The Subconscious — the mind underneath")),
                 footer: Text(L("It reads the whole house — log, wire, map, rhythms — and names what breaks the pattern. It never acts and never phones home; every finding carries the journal lines it stands on."))) {
             if !mind.awake {
-                Text("Still learning the house — "
-                     + "\(mind.eventCount) sealed events so "
-                     + "far. A sense of normal needs history; "
-                     + "it is gathering.")
+                Text(String(format: L("Still learning the house — %lld sealed events so far. A sense of normal needs history; it is gathering."),
+                            mind.eventCount))
                     .font(.callout).foregroundStyle(.secondary)
             } else if let top = mind.insights.first {
                 VStack(alignment: .leading, spacing: 2) {

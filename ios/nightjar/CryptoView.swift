@@ -162,9 +162,7 @@ struct CryptoView: View {
                     }
                     if fileProtection == .deadDrop {
                         TextField(
-                            "Recipient public key "
-                            + "(base64) — empty seals "
-                            + "to this house",
+                            "Recipient public key (base64) — empty seals to this house",
                             text: $fileRecipient)
                             .font(.system(.caption,
                                           design: .monospaced))
@@ -600,12 +598,13 @@ struct CryptoView: View {
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
-            Text("Public key — " + identityPublic)
+            Text(String(format: L("Public key — %@"),
+                        identityPublic))
                 .font(.system(.caption2,
                               design: .monospaced))
                 .textSelection(.enabled)
-            Text("Its fingerprint — "
-                 + identityFingerprint)
+            Text(String(format: L("Its fingerprint — %@"),
+                        identityFingerprint))
                 .font(.system(.caption2,
                               design: .monospaced))
                 .textSelection(.enabled)

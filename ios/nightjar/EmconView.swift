@@ -250,11 +250,9 @@ struct EmconView: View {
             if emcon.active,
                let before = emcon.scoreBeforeDark,
                before.value > live.value {
-                Text("Going dark took you from "
-                     + "\(Emcon.fmt(before.value)) "
-                     + "\(before.band) to "
-                     + "\(Emcon.fmt(live.value)) "
-                     + "\(live.band).")
+                Text(String(format: L("Going dark took you from %@ %@ to %@ %@."),
+                            Emcon.fmt(before.value), before.band,
+                            Emcon.fmt(live.value), live.band))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
             }
@@ -281,8 +279,8 @@ struct EmconView: View {
                     Text(row.label).font(.caption)
                     Spacer()
                     if row.standing {
-                        Text("standing · +"
-                             + Emcon.fmt(row.weight))
+                        Text(String(format: L("standing · %@"),
+                                    Emcon.fmt(row.weight)))
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(row.violation
                                               ? .red
@@ -303,31 +301,29 @@ struct EmconView: View {
             }
             if emcon.active {
                 if emcon.lastSilenced.isEmpty {
-                    Text("Nothing was standing — nothing "
-                         + "had to be silenced.")
+                    Text("Nothing was standing — nothing had to be silenced.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 let refused = EmconStandard.refusedLabels(
                     for: emcon.condition)
                 if !refused.isEmpty {
-                    Text("The gates now refuse: "
-                         + refused.joined(separator: ", ")
-                         + ".")
+                    Text(String(format: L("The gates now refuse: %@."),
+                                refused.joined(separator: ", ")))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if !emcon.lastSilenced.isEmpty {
-                    Text("Silenced on engage: "
-                         + emcon.lastSilenced.joined(
-                            separator: ", ") + ".")
+                    Text(String(format: L("Silenced on engage: %@."),
+                                emcon.lastSilenced.joined(
+                                    separator: ", ")))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 if !emcon.lastUnsilenced.isEmpty {
-                    Label("Still lit: "
-                          + emcon.lastUnsilenced.joined(
-                            separator: ", "),
+                    Label(String(format: L("Still lit: %@"),
+                                 emcon.lastUnsilenced.joined(
+                                    separator: ", ")),
                           systemImage: "exclamationmark.triangle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.red)
@@ -393,8 +389,8 @@ struct EmconView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "shield")
-                        Text("Engage "
-                             + chosenCondition.declared)
+                        Text(String(format: L("Engage %@"),
+                                    chosenCondition.declared))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -653,9 +649,9 @@ struct EmconView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             if !emcon.unwatched.isEmpty {
-                Text("Not watched (already in use): "
-                     + emcon.unwatched.map(String.init)
-                        .joined(separator: ", "))
+                Text(String(format: L("Not watched (already in use): %@"),
+                            emcon.unwatched.map(String.init)
+                                .joined(separator: ", ")))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Toggle(L("Answer in character"), isOn: $escalationArmed)
@@ -828,7 +824,8 @@ struct EmconView: View {
                     Label(L("Read again"), systemImage: "arrow.clockwise")
                 }
                 if let read = instrument.lastReadAt {
-                    Text("Read " + InstrumentCenter.ageLine(read) + ".")
+                    Text(String(format: L("Read %@."),
+                                InstrumentCenter.ageLine(read)))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -949,8 +946,8 @@ struct EmconView: View {
                                 seedValue: nil, read: true,
                                 timeout: 1.2)
                         } label: {
-                            Label("Spar — 60 mutations vs own Serve "
-                                  + ":\(serveTCPPort)",
+                            Label(String(format: L("Spar — 60 mutations vs own Serve :%lld"),
+                                         serveTCPPort),
                                   systemImage: "figure.fencing")
                         }
                     }
@@ -1032,9 +1029,9 @@ struct EmconView: View {
                 HStack {
                     Text(L("Vault"))
                     Spacer()
-                    Text("OPEN — seals "
-                         + until.formatted(date: .omitted,
-                                           time: .standard))
+                    Text(String(format: L("OPEN — seals %@"),
+                                until.formatted(date: .omitted,
+                                                time: .standard)))
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.green)
                 }
@@ -1061,9 +1058,8 @@ struct EmconView: View {
                 Text(L("No home subnet is marked, so there is no turf to learn."))
                     .font(.callout).foregroundStyle(.secondary)
             } else if !emcon.hometurfReady {
-                Text("Learning the pattern — "
-                     + "\(emcon.hometurf.nights) of 3 nights "
-                     + "banked.")
+                Text(String(format: L("Learning the pattern — %lld of 3 nights banked."),
+                            emcon.hometurf.nights))
                     .font(.callout).foregroundStyle(.secondary)
             } else {
                 Text(String(format: L("Pattern held: %lld nights · %lld sources · %lld "), emcon.hometurf.nights, emcon.hometurf.sources.count, emcon.hometurf.ports.count)
@@ -1093,9 +1089,9 @@ struct EmconView: View {
         Section(header: Text(L("Second sense")),
                 footer: Text(L("The perimeter tightens itself for thirty minutes when a foreign nightjar-grade probe speaks to it, or a honeydrop is taken: answer in character arms whether or not its switch is set. Nothing else changes — a tightened perimeter stays legible."))) {
             if emcon.senseActive, let until = emcon.senseUntil {
-                Label("Heightened until "
-                      + until.formatted(date: .omitted,
-                                        time: .shortened),
+                Label(String(format: L("Heightened until %@"),
+                             until.formatted(date: .omitted,
+                                             time: .shortened)),
                       systemImage: "exclamationmark.shield")
                     .font(.callout.weight(.medium))
                 Text(emcon.senseReason)

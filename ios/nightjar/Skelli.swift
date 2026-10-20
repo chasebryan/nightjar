@@ -9577,8 +9577,8 @@ struct SkelliView: View {
                         .lineLimit(1)
                     Spacer()
                     if runner.running {
-                        Text("macro: "
-                             + runner.currentMacroName)
+                        Text(String(format: L("macro: %@"),
+                                    runner.currentMacroName))
                             .font(.caption)
                             .foregroundStyle(
                                 .white.opacity(0.8))
@@ -10398,19 +10398,17 @@ struct SkelliMemoryView: View {
         NavigationStack {
             List {
                 if skelli.notes.isEmpty {
-                    Text("Nothing yet. Tell her "
-                         + "'remember …' in conversation "
-                         + "and it will be kept here — "
-                         + "and only here.")
+                    Text("Nothing yet. Tell her 'remember …' in conversation and it will be kept here — and only here.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
                 ForEach(skelli.notes) { note in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(note.text).font(.callout)
-                        Text("kept " + note.learnedAt
-                            .formatted(date: .abbreviated,
-                                       time: .shortened))
+                        Text(String(format: L("kept %@"),
+                                    note.learnedAt
+                                        .formatted(date: .abbreviated,
+                                                   time: .shortened)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

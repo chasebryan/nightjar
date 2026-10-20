@@ -397,8 +397,8 @@ struct DeliveriesView: View {
                 }
                 if !center.items.isEmpty {
                     Section {
-                        Button("Zip the chosen "
-                            + "(\(selected.count))") {
+                        Button(String(format: L("Zip the chosen (%lld)"),
+                                      selected.count)) {
                             zipItems(center.items
                                 .filter {
                                     selected.contains(
@@ -406,8 +406,8 @@ struct DeliveriesView: View {
                                 })
                         }
                         .disabled(selected.isEmpty)
-                        Button("Zip everything "
-                            + "(\(center.items.count))") {
+                        Button(String(format: L("Zip everything (%lld)"),
+                                      center.items.count)) {
                             Haptics.tap()
                             zipItems(center.items)
                         }

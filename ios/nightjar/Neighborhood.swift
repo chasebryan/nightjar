@@ -666,14 +666,16 @@ struct NeighborNameEditor: View {
         _mark = State(initialValue: neighbor.customMark)
     }
 
+    private var wireNameFooter: String {
+        String(format: L("The wire calls it %@. Your name outranks the wire's everywhere in the app."),
+               neighbor.name ?? neighbor.ip)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section(header: Text(L("Its name here")),
-                        footer: Text("The wire calls it "
-                            + "\(neighbor.name ?? neighbor.ip). "
-                            + "Your name outranks the wire's "
-                            + "everywhere in the app.")) {
+                        footer: Text(wireNameFooter)) {
                     TextField(neighbor.name ?? neighbor.ip,
                               text: $draft)
                         .disableAutocorrection(true)

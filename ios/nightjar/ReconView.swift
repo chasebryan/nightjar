@@ -1787,8 +1787,8 @@ struct ScanView: View {
                             Haptics.tap()
                             model.startWatch(port: Int(sweepPort) ?? 80)
                         } label: {
-                            Label("Watch this network "
-                                  + "(port \(sweepPort))",
+                            Label(String(format: L("Watch this network (port %@)"),
+                                         sweepPort),
                                   systemImage: "eye")
                         }
                         .disabled(model.sweeping || model.scanning)

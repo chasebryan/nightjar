@@ -4248,32 +4248,21 @@ struct WeightsView: View {
             List {
                 if !SkelliMind.benchBuiltIn {
                     Section {
-                        Text("The weights bench isn't "
-                            + "in this build — the MLX "
-                            + "package (mlx-swift-lm) "
-                            + "isn't linked into the "
-                            + "target yet. Once it is, "
-                            + "her models live here: "
-                            + "picked, downloaded, and "
-                            + "run without ever leaving "
-                            + "the app.")
+                        Text("The weights bench isn't in this build — the MLX package (mlx-swift-lm) isn't linked into the target yet. Once it is, her models live here: picked, downloaded, and run without ever leaving the app.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                 } else {
                     Section {
-                        Text("This phone carries "
-                            + String(format: "%.0f",
-                                     center.memoryGB)
-                            + " GB — her bench should "
-                            + "be the "
-                            + center.recommended.name
-                            + ".")
+                        Text(String(format: L("This phone carries %@ GB — her bench should be the %@."),
+                                    String(format: "%.0f",
+                                           center.memoryGB),
+                                    center.recommended.name))
                             .font(.callout)
                         if !center.downloaded.contains(
                             center.recommended.id) {
-                            Button("Download the "
-                                + center.recommended.name) {
+                            Button(String(format: L("Download the %@"),
+                                          center.recommended.name)) {
                                 center.download(
                                     center.recommended)
                             }
@@ -4315,21 +4304,12 @@ struct WeightsView: View {
                                 customID = ""
                             }
                         }
-                        Text("Any MLX-format model "
-                            + "on the Hugging Face "
-                            + "hub — hers to run the "
-                            + "moment it lands.")
+                        Text("Any MLX-format model on the Hugging Face hub — hers to run the moment it lands.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Section {
-                        Text("Downloads come from the "
-                            + "Hugging Face hub and "
-                            + "live in the app's own "
-                            + "cache. After that the "
-                            + "model never leaves the "
-                            + "phone, and nothing is "
-                            + "sent back.")
+                        Text("Downloads come from the Hugging Face hub and live in the app's own cache. After that the model never leaves the phone, and nothing is sent back.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

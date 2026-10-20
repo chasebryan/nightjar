@@ -2078,8 +2078,7 @@ struct BlacksiteEditorView: View {
             Button("Keep editing",
                    role: .cancel) {}
         } message: {
-            Text("This buffer holds work "
-                 + "that is not written yet.")
+            Text("This buffer holds work that is not written yet.")
         }
     }
 

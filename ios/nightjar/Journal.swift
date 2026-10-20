@@ -458,8 +458,8 @@ struct NightLogView: View {
                                         date: .abbreviated,
                                         time: .omitted))
                                     if let h = event.h {
-                                        Text("· sealed "
-                                             + String(h.prefix(10)))
+                                        Text(String(format: L("· sealed %@"),
+                                                    String(h.prefix(10))))
                                     }
                                 }
                                 .font(.caption2)

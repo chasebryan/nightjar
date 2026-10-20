@@ -275,11 +275,11 @@ struct DossierView: View {
                     }
                     if knockedOnce {
                         if let baseline = baseline {
-                            Text("Baseline kept — "
-                                 + baseline.when.formatted(
-                                    date: .abbreviated,
-                                    time: .shortened)
-                                 + ", \(baseline.lines.count) open.")
+                            Text(String(format: L("Baseline kept — %@, %lld open."),
+                                        baseline.when.formatted(
+                                            date: .abbreviated,
+                                            time: .shortened),
+                                        baseline.lines.count))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if hasDrift {
