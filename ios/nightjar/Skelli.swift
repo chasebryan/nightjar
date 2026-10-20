@@ -9944,7 +9944,7 @@ struct SkelliView: View {
             HStack(alignment: .firstTextBaseline,
                    spacing: 4) {
                 panelValue(Emcon.fmt(score.value))
-                Text(score.band.uppercased())
+                Text(L(score.band).uppercased())
                     .font(.system(size: 8.5,
                                   weight: .semibold))
                     .foregroundStyle(.secondary)

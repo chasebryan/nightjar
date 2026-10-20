@@ -689,9 +689,7 @@ struct DeveloperSheet: View {
                         Haptics.tap()
                         UIPasteboard.general.string =
                             DevKit.exportText()
-                        toasts.show("The developer log "
-                            + "is copied — paste it "
-                            + "anywhere.")
+                        toasts.show(L("The developer log is copied — paste it anywhere."))
                     } label: {
                         Label("Copy the full log",
                               systemImage: "doc.on.doc")
@@ -706,9 +704,7 @@ struct DeveloperSheet: View {
                         Haptics.tap()
                         UIPasteboard.general.string =
                             DevKit.chatTranscriptText()
-                        toasts.show("Every chat is "
-                            + "copied — the archive "
-                            + "and the screen.")
+                        toasts.show(L("Every chat is copied — the archive and the screen."))
                     } label: {
                         Label("Copy all chats",
                               systemImage: "doc.on.doc")

@@ -271,9 +271,8 @@ final class UpdateChecker: ObservableObject {
                 || settings.authorizationStatus == .provisional
         else { return }
         let content = UNMutableNotificationContent()
-        content.title = "Update available"
-        content.body = "\(release.name) is out. "
-            + "Open nightjar-hack to install it."
+        content.title = L("Update available")
+        content.body = String(format: L("%@ is out. Open nightjar-hack to install it."), release.name)
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: "nightjar.update.\(release.tag)",

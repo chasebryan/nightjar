@@ -221,8 +221,8 @@ final class AssaultCenter: ObservableObject {
             .neighbors.count
         baseDrift = Self.totalDrift()
         boardID = ProcessBoard.shared.begin(
-            label: "Net-Assault", organ: "Assault",
-            detail: "depth \(depth)", announce: false,
+            label: L("Net-Assault"), organ: "Assault",
+            detail: String(format: L("depth %lld"), depth), announce: false,
             stop: { AssaultCenter.shared.disarm() })
         Journal.log("assault", "armed",
                     "net-assault armed — depth "
@@ -1573,7 +1573,7 @@ enum Lockdown {
         if AssaultCenter.shared.running {
             AssaultCenter.shared.disarm(
                 reason: "lockdown")
-            silenced.append("Net-Assault")
+            silenced.append(L("Net-Assault"))
         }
         Journal.log("lockdown", "engaged",
                     reason + " — prior "

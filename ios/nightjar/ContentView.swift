@@ -516,8 +516,7 @@ struct ListenView: View {
                                             mouth.requestWrite(to: id,
                                                                label: name)
                                             Haptics.select()
-                                            toasts.show("Write target set: "
-                                                + "\(name) — Send tab")
+                                            toasts.show(String(format: L("Write target set: %@ — Send tab"), name))
                                             tab = 1
                                         }
                                     } label: {
@@ -857,7 +856,7 @@ struct DeviceDetailView: View {
                         let name = live.preferredLabel ?? live.kind
                         mouth.requestWrite(to: id, label: name)
                         Haptics.select()
-                        toasts.show("Write target set: \(name) — Send tab")
+                        toasts.show(String(format: L("Write target set: %@ — Send tab"), name))
                         tab = 1
                     }
                 } label: {
@@ -1089,7 +1088,7 @@ struct SessionsView: View {
         selection.remove(session.id)
         reload()
         if removed {
-            toasts.show("Session deleted")
+            toasts.show(L("Session deleted"))
         } else {
             toasts.show(L("Could not delete session"), error: true)
         }
@@ -1567,7 +1566,7 @@ struct AboutView: View {
                     Haptics.error()
                     SaneDefaults.reset(mouth: mouth,
                                        emcon: emcon)
-                    toasts.show("Settings reset — sane defaults restored")
+                    toasts.show(L("Settings reset — sane defaults restored"))
                 }
                 Button(L("Cancel"), role: .cancel) {}
             } message: {

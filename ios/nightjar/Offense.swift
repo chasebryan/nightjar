@@ -121,10 +121,9 @@ final class TomatoBarrage: ObservableObject {
             .joined(separator: ", ")
         running = true
         boardID = ProcessBoard.shared.begin(
-            label: "Tomato barrage — \(targetLabel)",
+            label: String(format: L("Tomato barrage — %@"), targetLabel),
             organ: "Net-Assault",
-            detail: "\(totalPlanned) deliveries, "
-                + "one door at a time",
+            detail: String(format: L("%lld deliveries, one door at a time"), totalPlanned),
             stop: { [weak self] in
                 _ = self?.cease()
             })

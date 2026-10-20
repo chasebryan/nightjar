@@ -260,7 +260,7 @@ struct ProcessBoardView: View {
                                         .foregroundStyle(
                                             .secondary)
                                 }
-                                Text(entry.organ)
+                                Text(L(entry.organ))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 if !entry.detail.isEmpty {

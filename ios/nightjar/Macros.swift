@@ -1360,8 +1360,8 @@ final class MacroRunner: ObservableObject {
         bench.mouth = mouth
         warBench.mouth = mouth
         boardID = ProcessBoard.shared.begin(
-            label: "Macro — \(macro.name)", organ: "Macros",
-            detail: "\(macro.blocks.count) blocks",
+            label: String(format: L("Macro — %@"), macro.name), organ: "Macros",
+            detail: String(format: L("%lld blocks"), macro.blocks.count),
             stop: { MacroRunner.shared.stop() })
         note("▶ \(macro.name) — \(macro.blocks.count) block"
             + (macro.blocks.count == 1 ? "" : "s"), mark: "▶")

@@ -852,13 +852,13 @@ final class Mouth: NSObject, ObservableObject {
                 // is printable; binary arrivals banner their size and
                 // first bytes as hex instead of staying silent.
                 let content = UNMutableNotificationContent()
-                content.title = "nightjar-hack · \(transport) from \(peer)"
+                content.title = String(format: L("nightjar-hack · %@ from %@"), transport, peer)
                 if let text = PayloadKit.printableText(data) {
                     content.body = text
                 } else {
                     let head = data.prefix(8)
                         .map { String(format: "%02x", $0) }.joined(separator: " ")
-                    content.body = "\(data.count) bytes · \(head)"
+                    content.body = String(format: L("%lld bytes · %@"), data.count, head)
                 }
                 content.sound = .default
                 UNUserNotificationCenter.current().add(

@@ -260,8 +260,9 @@ struct MacrosView: View {
         macros.append(contentsOf: imported)
         persist()
         toasts.show(imported.count == 1
-            ? "One macro imported."
-            : "\(imported.count) macros imported.")
+            ? L("One macro imported.")
+            : String(format: L("%lld macros imported."),
+                     imported.count))
     }
 }
 

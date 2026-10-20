@@ -273,8 +273,8 @@ final class SigintStation: ObservableObject {
         Journal.log("sigint", "watch",
                     "watch \(watch.id) started (\(scope))")
         boardID = ProcessBoard.shared.begin(
-            label: "Watch — \(watch.name)", organ: "SIGINT",
-            detail: "scope: \(scope)",
+            label: String(format: L("Watch — %@"), watch.name), organ: "SIGINT",
+            detail: String(format: L("scope: %@"), scope),
             stop: { [weak self] in
                 guard let self = self,
                       let post = self.postRef else { return }

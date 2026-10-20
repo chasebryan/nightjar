@@ -69,7 +69,7 @@ final class Recon: NSObject, ObservableObject {
                 ProbingBeacon.shared.begin()
                 ProcessBoard.shared.beginKeyed(
                     "recon.fuzz.\(ObjectIdentifier(self))",
-                    label: "Fuzz", organ: "Recon",
+                    label: L("Fuzz"), organ: "Recon",
                     announce: false)
             } else {
                 ProbingBeacon.shared.end()
@@ -108,8 +108,8 @@ final class Recon: NSObject, ObservableObject {
         knocking = true
         ProcessBoard.shared.beginKeyed(
             "recon.knock.\(ObjectIdentifier(self))",
-            label: "Knock — \(host)", organ: "Recon",
-            detail: "\(ports.count) ports", announce: false)
+            label: String(format: L("Knock — %@"), host), organ: "Recon",
+            detail: String(format: L("%lld ports"), ports.count), announce: false)
         hits = []
         probed = 0
         total = ports.count

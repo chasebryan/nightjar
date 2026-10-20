@@ -138,7 +138,7 @@ enum BackdropSlot: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .everywhere: return "Everywhere (the default)"
+        case .everywhere: return L("Everywhere (the default)")
         case .listen: return L("Listen")
         case .send: return L("Send")
         case .serve: return L("Serve")

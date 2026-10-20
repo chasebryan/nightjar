@@ -111,8 +111,8 @@ enum SkelliCrew {
     static func run(center: SkelliCenter,
                     ask: String) {
         let boardID = ProcessBoard.shared.begin(
-            label: "Skelli's crew", organ: "Skelli",
-            detail: "planning")
+            label: L("Skelli's crew"), organ: "Skelli",
+            detail: L("planning"))
         center.activity = "The crew is planning…"
         Task {
             // The Planner.

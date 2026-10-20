@@ -48,22 +48,21 @@ enum Spoofy {
     static func applyName(_ name: String,
                           mouth: Mouth) -> String {
         let clean = name.trimmingCharacters(in: .whitespaces)
-        guard !clean.isEmpty else { return "No name given." }
+        guard !clean.isEmpty else { return L("No name given.") }
         UserDefaults.standard.set(clean, forKey: "beaconName")
         if mouth.beaconOn {
             mouth.stopBeacon()
             mouth.startBeacon(payload: Data(clean.utf8),
                               name: clean)
-            return "The beacon already wears “\(clean)”."
+            return String(format: L("The beacon already wears “%@”."), clean)
         }
         if mouth.gattHostOn {
             mouth.stopGattHost()
             mouth.startGattHost(payload: Data(clean.utf8),
                                 name: clean)
-            return "The GATT host already wears “\(clean)”."
+            return String(format: L("The GATT host already wears “%@”."), clean)
         }
-        return "“\(clean)” is on the rack — the beacon and "
-            + "the GATT host wear it from their next start."
+        return String(format: L("“%@” is on the rack — the beacon and the GATT host wear it from their next start."), clean)
     }
 
     /// A name out of the dice cup: a room, a thing, and
@@ -308,14 +307,10 @@ final class MimicCenter: ObservableObject {
     func don(_ persona: SpoofyPersona,
              mouth: Mouth) -> String {
         if EmconStandard.refused(.persona) {
-            return "No shape is worn while "
-                + EmconCondition.current.declared
-                + " stands."
+            return String(format: L("No shape is worn while %@ stands."), EmconCondition.current.declared)
         }
         if BansheeCenter.shared.screaming {
-            return "Not while the banshee screams — its "
-                + "own snapshot owns the posture. Cease it "
-                + "first."
+            return L("Not while the banshee screams — its own snapshot owns the posture. Cease it first.")
         }
         Haptics.press()
         let prior = wardrobe
@@ -357,7 +352,7 @@ final class MimicCenter: ObservableObject {
             wasAirName: prior?.wasAirName
                 ?? mouth.currentAirName)
         let verdictSuffix = wasRotating
-            ? " The revolving rack stands still." : ""
+            ? L(" The revolving rack stands still.") : ""
 
         defaults.set(persona.beaconName, forKey: "beaconName")
         defaults.set(persona.useTCP, forKey: "serveUseTCP")
@@ -390,18 +385,15 @@ final class MimicCenter: ObservableObject {
         let live = mouth.serveRunning || mouth.beaconOn
             || mouth.gattHostOn
         return (live
-            ? "Wearing the \(persona.label) — live now, "
-            + "in character on every surface it owns."
-            : "Wearing the \(persona.label) — the dress "
-            + "is set; it goes live when Serve or the "
-            + "air organs next start.")
+            ? String(format: L("Wearing the %@ — live now, in character on every surface it owns."), persona.label)
+            : String(format: L("Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start."), persona.label))
             + verdictSuffix
     }
 
     @discardableResult
     func drop(mouth: Mouth) -> String {
         guard let persona = activePersona else {
-            return "No shape is being worn."
+            return L("No shape is being worn.")
         }
         let drifted = dressDrifted(from: persona)
         Haptics.pulse()
@@ -412,13 +404,9 @@ final class MimicCenter: ObservableObject {
         Journal.log("spoofy", "mimicry",
                     "dropped the \(persona.label) — the "
                     + "wardrobe it found is restored")
-        return "Shape dropped — the wardrobe it found is "
-            + "restored whole: settings, stealth, and the "
-            + "exact payloads the air was carrying."
+        return L("Shape dropped — the wardrobe it found is restored whole: settings, stealth, and the exact payloads the air was carrying.")
             + (drifted
-               ? " Note: the dress changed while the "
-               + "shape was worn — the restore unwound "
-               + "that too."
+               ? L(" Note: the dress changed while the shape was worn — the restore unwound that too.")
                : "")
     }
 
@@ -522,8 +510,7 @@ final class SpoofyRotator: ObservableObject {
         names = Spoofy.costumeNames
             + SpoofyStore.loadCostumes()
         guard names.count > 1 else {
-            return "The rack needs more than one name "
-                + "to rotate."
+            return L("The rack needs more than one name to rotate.")
         }
         stop()
         if let current = names.firstIndex(
@@ -539,9 +526,7 @@ final class SpoofyRotator: ObservableObject {
         Journal.log("spoofy", "rotation",
                     "the rack revolves — a new name every "
                     + "\(minutes) minutes")
-        return "The rack revolves: a new name every "
-            + "\(minutes) minutes, through \(names.count) "
-            + "costumes."
+        return String(format: L("The rack revolves: a new name every %lld minutes, through %lld costumes."), minutes, names.count)
     }
 
     func stop() {
@@ -665,9 +650,9 @@ struct SpoofyView: View {
                             let name = customName
                                 .trimmingCharacters(
                                     in: .whitespaces)
-                            toasts.show(Spoofy.applyName(
-                                name, mouth: mouth)
-                                + " Kept on your rack.")
+                            toasts.show(String(format: L("%@ Kept on your rack."),
+                                               Spoofy.applyName(
+                                                   name, mouth: mouth)))
                             SpoofyStore.addCostume(name)
                             myCostumes =
                                 SpoofyStore.loadCostumes()

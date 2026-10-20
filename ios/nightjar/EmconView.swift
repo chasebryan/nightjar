@@ -227,12 +227,11 @@ struct EmconView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(emcon.active
                          ? emcon.condition.declared
-                         : "EMCON OFF")
+                         : L("EMCON OFF"))
                         .font(.headline)
                     Text(emcon.active
                          ? emcon.condition.summary
-                         : "This device answers the network under "
-                           + "its own name.")
+                         : L("This device answers the network under its own name."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -240,7 +239,7 @@ struct EmconView: View {
                     Text(Emcon.fmt(live.value))
                         .font(.title.weight(.bold))
                         .foregroundStyle(scoreColor(live.value))
-                    Text(live.band)
+                    Text(L(live.band))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(scoreColor(live.value))
                 }
@@ -251,13 +250,13 @@ struct EmconView: View {
                let before = emcon.scoreBeforeDark,
                before.value > live.value {
                 Text(String(format: L("Going dark took you from %@ %@ to %@ %@."),
-                            Emcon.fmt(before.value), before.band,
-                            Emcon.fmt(live.value), live.band))
+                            Emcon.fmt(before.value), L(before.band),
+                            Emcon.fmt(live.value), L(live.band)))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
             }
             if !live.parts.isEmpty {
-                Text(String(format: L("Why %@:"), live.band))
+                Text(String(format: L("Why %@:"), L(live.band)))
                     .font(.caption.weight(.semibold))
                 ForEach(live.parts) { part in
                     HStack {
@@ -290,7 +289,7 @@ struct EmconView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Text(row.ruling)
+                    Text(L(row.ruling))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(
                             row.ruling == "Forbidden"
@@ -352,9 +351,7 @@ struct EmconView: View {
                             Haptics.tap()
                             emcon.activate(mouth: mouth,
                                            condition: goal)
-                            toasts.show(goal.declared
-                                        + " — the house is "
-                                        + "re-regulated.")
+                            toasts.show(String(format: L("%@ — the house is re-regulated."), goal.declared))
                         } label: {
                             Text(String(format: L("Move to %@"), goal.name))
                         }
@@ -383,9 +380,7 @@ struct EmconView: View {
                     Haptics.tap()
                     emcon.activate(mouth: mouth,
                                    condition: chosenCondition)
-                    toasts.show(chosenCondition.declared
-                                + " — emissions regulated, "
-                                + "tripwire armed.")
+                    toasts.show(String(format: L("%@ — emissions regulated, tripwire armed."), chosenCondition.declared))
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "shield")

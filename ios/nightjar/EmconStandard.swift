@@ -68,35 +68,28 @@ enum EmconCondition: Int, CaseIterable, Comparable {
 
     var name: String {
         switch self {
-        case .open: return "Open"
-        case .charlie: return "Charlie"
-        case .bravo: return "Bravo"
-        case .alpha: return "Alpha"
+        case .open: return L("Open")
+        case .charlie: return L("Charlie")
+        case .bravo: return L("Bravo")
+        case .alpha: return L("Alpha")
         }
     }
 
     /// The declared form: "EMCON ALPHA".
     var declared: String {
-        self == .open ? "EMCON off" : "EMCON \(name.uppercased())"
+        self == .open ? L("EMCON off") : "EMCON \(name.uppercased())"
     }
 
     var summary: String {
         switch self {
         case .open:
-            return "No restriction — the house runs as the "
-                + "operator sets it, organ by organ."
+            return L("No restriction — the house runs as the operator sets it, organ by organ.")
         case .charlie:
-            return "Guarded. Serve may stand, unlisted only. "
-                + "Nothing advertises, no campaigns, no update "
-                + "checks. Listening, the tripwire and the "
-                + "relay poll stand."
+            return L("Guarded. Serve may stand, unlisted only. Nothing advertises, no campaigns, no update checks. Listening, the tripwire and the relay poll stand.")
         case .bravo:
-            return "Receive only. Serve stands down too, and "
-                + "the relay poll stops. The house only hears."
+            return L("Receive only. Serve stands down too, and the relay poll stops. The house only hears.")
         case .alpha:
-            return "Total silence. Even the active sweeps "
-                + "stop; nothing the app controls transmits. "
-                + "The tripwire and the passive post remain."
+            return L("Total silence. Even the active sweeps stop; nothing the app controls transmits. The tripwire and the passive post remain.")
         }
     }
 
@@ -163,18 +156,18 @@ enum EmconOrgan: String {
 
     var label: String {
         switch self {
-        case .serveListed: return "a listed Serve"
-        case .serveStealth: return "Serve"
-        case .gattHost: return "the GATT host"
-        case .beacon: return "the beacon"
-        case .persona: return "a persona"
-        case .netAssault: return "Net-Assault"
-        case .probing: return "active probing"
-        case .warRun: return "a War Room run"
-        case .banshee: return "the Banshee"
-        case .relayPoll: return "the relay poll"
-        case .updateCheck: return "an update check"
-        case .sweep: return "an active sweep"
+        case .serveListed: return L("a listed Serve")
+        case .serveStealth: return L("Serve")
+        case .gattHost: return L("the GATT host")
+        case .beacon: return L("the beacon")
+        case .persona: return L("a persona")
+        case .netAssault: return L("Net-Assault")
+        case .probing: return L("active probing")
+        case .warRun: return L("a War Room run")
+        case .banshee: return L("the Banshee")
+        case .relayPoll: return L("the relay poll")
+        case .updateCheck: return L("an update check")
+        case .sweep: return L("an active sweep")
         }
     }
 }
@@ -273,59 +266,63 @@ enum EmconStandard {
             parts.append(Emcon.Score.Part(label: label,
                                           points: rounded))
         }
-        if s.onLan { weigh("On the wire", wPresence) }
-        if s.assaultOn { weigh("Net-Assault running", wAssault) }
-        if s.gattHostOn { weigh("GATT host", wGattHost) }
+        if s.onLan { weigh(L("On the wire"), wPresence) }
+        if s.assaultOn { weigh(L("Net-Assault running"), wAssault) }
+        if s.gattHostOn { weigh(L("GATT host"), wGattHost) }
         if s.beaconOn || s.flareOn {
             weigh(s.flareOn && !s.beaconOn
-                    ? "Flare" : "BLE beacon", wBeacon)
+                    ? L("Flare") : L("BLE beacon"), wBeacon)
         }
-        if s.personaOn { weigh("Persona worn", wPersona) }
-        if s.probingOn { weigh("Active probing", wProbing) }
+        if s.personaOn { weigh(L("Persona worn"), wPersona) }
+        if s.probingOn { weigh(L("Active probing"), wProbing) }
         if s.warKnocking {
-            weigh("War Room, knocking", wWarKnocking)
+            weigh(L("War Room, knocking"), wWarKnocking)
         } else if s.warTracing {
-            weigh("War Room, tracing", wWarTracing)
+            weigh(L("War Room, tracing"), wWarTracing)
         }
-        if s.bansheeOn { weigh("Banshee shouts", wBanshee) }
+        if s.bansheeOn { weigh(L("Banshee shouts"), wBanshee) }
         if s.writeScanning {
-            weigh("BLE write scan", wWriteScan)
+            weigh(L("BLE write scan"), wWriteScan)
         }
         if s.serveRunning {
             let extra = min(3, max(0, s.serveListeners - 1))
-            let counted = s.serveListeners > 1
-                ? " ×\(s.serveListeners)" : ""
             if s.stealth {
-                weigh("Serve, stealth" + counted,
+                weigh(s.serveListeners > 1
+                    ? String(format: L("Serve, stealth ×%lld"),
+                             s.serveListeners)
+                    : L("Serve, stealth"),
                       wServeStealth
                         + Double(extra) * wServeStealthExtra)
             } else {
-                weigh("Serve, listed" + counted,
+                weigh(s.serveListeners > 1
+                    ? String(format: L("Serve, listed ×%lld"),
+                             s.serveListeners)
+                    : L("Serve, listed"),
                       wServeListed
                         + Double(extra) * wServeListedExtra)
             }
         }
-        if s.relayPolling { weigh("Relay polling", wRelayPoll) }
+        if s.relayPolling { weigh(L("Relay polling"), wRelayPoll) }
         if s.deviceName.contains("\u{2019}s ")
             || s.deviceName.contains("'s ") {
-            weigh("Personal name", wNamePersonal)
+            weigh(L("Personal name"), wNamePersonal)
         } else if !s.hostName.isEmpty
                     && s.hostName.lowercased() != "iphone" {
-            weigh("Answers as \(s.hostName)", wNameHost)
+            weigh(String(format: L("Answers as %@"), s.hostName), wNameHost)
         } else if s.deviceName != "iPhone" {
-            weigh("Broadcast name", wNameDevice)
+            weigh(L("Broadcast name"), wNameDevice)
         }
         if s.exposureCount > 0 {
             // Evidence saturates: the first findings say
             // the most; the line's maximum is its budget.
             let evidence = wReconMax
                 * (1 - exp(-Double(s.exposureCount) / 6))
-            weigh("Recon hits ×\(s.exposureCount)", evidence)
+            weigh(String(format: L("Recon hits ×%lld"), s.exposureCount), evidence)
         }
         if s.announcerCount > 0 {
             let evidence = wBonjourMax
                 * (1 - exp(-Double(s.announcerCount) / 4))
-            weigh("Bonjour ×\(s.announcerCount)", evidence)
+            weigh(String(format: L("Bonjour ×%lld"), s.announcerCount), evidence)
         }
         let raw = parts.reduce(0) { $0 + $1.points }
         let value = (raw * 10).rounded() / 10
@@ -381,7 +378,7 @@ enum EmconStandard {
             : wServeListed
                 + Double(extra) * wServeListedExtra
         rows.append(EmconBoardRow(
-            organ: serveOrgan, label: "Serve",
+            organ: serveOrgan, label: L("Serve"),
             standing: s.serveRunning,
             weight: serveWeight, ruling: serveRuling))
         func row(_ organ: EmconOrgan, _ label: String,
@@ -391,24 +388,24 @@ enum EmconStandard {
                 standing: standing, weight: weight,
                 ruling: ruling(for: organ)))
         }
-        row(.gattHost, "GATT host",
+        row(.gattHost, L("GATT host"),
             s.gattHostOn, wGattHost)
-        row(.beacon, "BLE beacon",
+        row(.beacon, L("BLE beacon"),
             s.beaconOn || s.flareOn, wBeacon)
-        row(.persona, "Persona",
+        row(.persona, L("Persona"),
             s.personaOn, wPersona)
-        row(.netAssault, "Net-Assault",
+        row(.netAssault, L("Net-Assault"),
             s.assaultOn, wAssault)
-        row(.probing, "Active probing",
+        row(.probing, L("Active probing"),
             s.probingOn, wProbing)
-        row(.warRun, "War Room run",
+        row(.warRun, L("War Room run"),
             s.warKnocking || s.warTracing,
             s.warKnocking ? wWarKnocking : wWarTracing)
-        row(.banshee, "The Banshee",
+        row(.banshee, L("The Banshee"),
             s.bansheeOn, wBanshee)
-        row(.relayPoll, "Relay poll",
+        row(.relayPoll, L("Relay poll"),
             s.relayPolling, wRelayPoll)
-        row(.sweep, "BLE write scan",
+        row(.sweep, L("BLE write scan"),
             s.writeScanning, wWriteScan)
         return rows
     }
@@ -437,7 +434,7 @@ enum EmconStandard {
                 serveNamed = true
                 labels.append(
                     condition.permits(.serveStealth)
-                        ? "a listed Serve" : "Serve")
+                        ? L("a listed Serve") : L("Serve"))
                 continue
             }
             labels.append(organ.label)

@@ -329,11 +329,11 @@ struct CryptoView: View {
                         if let filed {
                             producedFile = filed
                             producedLabel = sealing
-                                ? "Sealed, in Deliveries"
-                                : "Opened, in Deliveries"
+                                ? L("Sealed, in Deliveries")
+                                : L("Opened, in Deliveries")
                             toasts.show(sealing
-                                ? "File sealed"
-                                : "File opened")
+                                ? L("File sealed")
+                                : L("File opened"))
                         } else {
                             fileNotice = "The work "
                                 + "finished but the "

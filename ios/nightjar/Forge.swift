@@ -374,7 +374,7 @@ struct ForgeView: View {
                         newPatternName = ""
                         newPatternTemplate = ""
                         toasts.show(
-                            "She knows it now.")
+                            L("She knows it now."))
                     }
                     ForEach(customs) { custom in
                         HStack {
@@ -495,7 +495,7 @@ struct ForgeView: View {
                                 UIPasteboard.general
                                     .string = codeDraft
                                 toasts.show(
-                                    "Copied.")
+                                    L("Copied."))
                             }
                             Button(L("Share")) {
                                 shareItem = ShareItem(
@@ -516,8 +516,7 @@ struct ForgeView: View {
                                 ForgeToolStore.save(
                                     tools)
                                 toasts.show(
-                                    "Kept as a tool — "
-                                    + "it waits below.")
+                                    L("Kept as a tool — it waits below."))
                             }
                         }
                         if !codeOutput.isEmpty {
@@ -607,7 +606,7 @@ struct ForgeView: View {
                 draftingCode = false
                 guard var text = text else {
                     toasts.show(
-                        "No bench could build it.",
+                        L("No bench could build it."),
                         error: true)
                     return
                 }
@@ -703,7 +702,7 @@ struct ForgeView: View {
                 drafting = false
                 guard var text = text else {
                     toasts.show(
-                        "No bench could draft it.",
+                        L("No bench could draft it."),
                         error: true)
                     return
                 }

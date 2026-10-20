@@ -250,8 +250,8 @@ final class WarRun: ObservableObject {
                     "run \(runID) started on \(base).0/24")
 
         boardID = ProcessBoard.shared.begin(
-            label: "War Room run", organ: "War Room",
-            detail: "on \(base).0/24",
+            label: L("War Room run"), organ: "War Room",
+            detail: String(format: L("on %@.0/24"), base),
             stop: { WarRun.shared.stop() })
         phase = .tracing
         mouth.startNetworkTrace(
@@ -820,7 +820,7 @@ struct WarRoomView: View {
                     knockTimeout: reconTimeout,
                     knockJobs: Int(reconJobs)))
         if run.phase == .failed {
-            toasts.show(run.statusLine ?? "The run did not start",
+            toasts.show(run.statusLine ?? L("The run did not start"),
                         error: true)
         }
     }

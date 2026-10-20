@@ -1151,8 +1151,8 @@ extension Mouth {
 
         traceBusy = true
         ProcessBoard.shared.beginKeyed(
-            "mouth.trace", label: "Network trace",
-            organ: "Trace", detail: "on \(base).0/24",
+            "mouth.trace", label: L("Network trace"),
+            organ: "Trace", detail: String(format: L("on %@.0/24"), base),
             stop: { [weak self] in
                 self?.stopNetworkTrace() })
         traceLatestExport = nil

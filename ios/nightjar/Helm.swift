@@ -77,8 +77,7 @@ enum HelmFire {
         guard let payload = book.items.first(where: {
             $0.name == button.payloadName
         }) else {
-            return "No payload named “\(button.payloadName)” "
-                + "is in the book"
+            return String(format: L("No payload named “%@” is in the book"), button.payloadName)
         }
         let built: Data
         do {
@@ -93,8 +92,7 @@ enum HelmFire {
                 xorSpec: payload.xorKey,
                 useGzip: payload.useGzip)
         } catch {
-            return "The payload would not build: "
-                + error.localizedDescription
+            return String(format: L("The payload would not build: %@"), error.localizedDescription)
         }
         if button.target.hasPrefix("phone:") {
             let name = String(button.target.dropFirst(6))
@@ -103,14 +101,13 @@ enum HelmFire {
                               read: true, timeout: 5)
             Journal.log("helm", "fired",
                         "\(button.label) → \(button.target)")
-            return "Fired \(button.label) at \(name)"
+            return String(format: L("Fired %@ at %@"), button.label, name)
         }
         let target: SendTarget
         do {
             target = try SendTarget.parse(button.target)
         } catch {
-            return "That target does not parse: "
-                + error.localizedDescription
+            return String(format: L("That target does not parse: %@"), error.localizedDescription)
         }
         switch target {
         case .http(_, _):
@@ -122,12 +119,11 @@ enum HelmFire {
                               framing: payload.framing,
                               read: true, timeout: 5)
         case .bleBeacon, .bleGatt, .bleWrite(_):
-            return "BLE buttons fire from the Send tab "
-                + "in this build — the Helm speaks network"
+            return L("BLE buttons fire from the Send tab in this build — the Helm speaks network")
         }
         Journal.log("helm", "fired",
                     "\(button.label) → \(button.target)")
-        return "Fired \(button.label) → \(button.target)"
+        return String(format: L("Fired %@ → %@"), button.label, button.target)
     }
 }
 

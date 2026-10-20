@@ -274,8 +274,8 @@ final class ScanModel: ObservableObject {
         lastScannedHost = host
         scanning = true
         scanBoardID = ProcessBoard.shared.begin(
-            label: "Port scan — \(host)", organ: "Scan",
-            detail: "\(ports.count) ports")
+            label: String(format: L("Port scan — %@"), host), organ: "Scan",
+            detail: String(format: L("%lld ports"), ports.count))
         results = []
         probedCount = 0
         totalCount = ports.count
@@ -411,8 +411,8 @@ final class ScanModel: ObservableObject {
         sweeping = true
         if !sweepIsWatch {
             sweepBoardID = ProcessBoard.shared.begin(
-                label: "Sweep — port \(port)", organ: "Scan",
-                detail: "across the /24",
+                label: String(format: L("Sweep — port %@"), port), organ: "Scan",
+                detail: L("across the /24"),
                 stop: { [weak self] in self?.stopSweep() })
         }
         sweepHosts = []
@@ -503,8 +503,8 @@ final class ScanModel: ObservableObject {
         guard !watching else { return }
         watching = true
         watchBoardID = ProcessBoard.shared.begin(
-            label: "Watch — port \(port)", organ: "Scan",
-            detail: "narrating the /24", announce: false,
+            label: String(format: L("Watch — port %@"), port), organ: "Scan",
+            detail: L("narrating the /24"), announce: false,
             stop: { [weak self] in self?.stopWatch() })
         feedPort = port
         baselineTaken = false

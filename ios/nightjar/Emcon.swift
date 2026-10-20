@@ -414,46 +414,46 @@ final class Emcon: ObservableObject {
         if BansheeCenter.shared.screaming {
             BansheeCenter.shared.cease(
                 mouth: mouth, assault: AssaultCenter.shared)
-            silenced.append("the Banshee")
+            silenced.append(L("the Banshee"))
         }
         if AssaultCenter.shared.running {
             AssaultCenter.shared.disarm(
                 reason: "\(goal.declared) engaged")
-            silenced.append("Net-Assault")
+            silenced.append(L("Net-Assault"))
         }
         if WarRun.shared.running {
             WarRun.shared.stop()
-            silenced.append("the War Room run")
+            silenced.append(L("the War Room run"))
         }
         if mouth.traceBusy {
             mouth.stopNetworkTrace()
-            silenced.append("the network trace")
+            silenced.append(L("the network trace"))
         }
         if ProbingBeacon.shared.active {
             ProbingBeacon.shared.silence()
-            silenced.append("active probing")
+            silenced.append(L("active probing"))
         }
         if MimicCenter.shared.activePersona != nil {
             _ = MimicCenter.shared.drop(mouth: mouth)
-            silenced.append("the worn persona")
+            silenced.append(L("the worn persona"))
         }
         if mouth.beaconOn || mouth.flareOn {
             mouth.stopBeacon()
-            silenced.append("the BLE beacon")
+            silenced.append(L("the BLE beacon"))
         }
         if mouth.gattHostOn {
             mouth.stopGattHost()
-            silenced.append("the GATT host")
+            silenced.append(L("the GATT host"))
         }
         if mouth.serveRunning {
             if goal.permits(.serveStealth) {
                 if !mouth.stealth {
                     mouth.setStealth(true)
-                    silenced.append("Serve's listing")
+                    silenced.append(L("Serve's listing"))
                 }
             } else {
                 mouth.stopServe()
-                silenced.append("Serve")
+                silenced.append(L("Serve"))
             }
         }
         // Verification: re-read every organ the condition
@@ -461,33 +461,33 @@ final class Emcon: ObservableObject {
         var lit: [String] = []
         if !goal.permits(.netAssault),
            AssaultCenter.shared.running {
-            lit.append("Net-Assault")
+            lit.append(L("Net-Assault"))
         }
         if !goal.permits(.warRun), WarRun.shared.running {
-            lit.append("the War Room run")
+            lit.append(L("the War Room run"))
         }
         if mouth.traceBusy {
-            lit.append("the network trace")
+            lit.append(L("the network trace"))
         }
         if !goal.permits(.probing),
            ProbingBeacon.shared.active {
-            lit.append("active probing")
+            lit.append(L("active probing"))
         }
         if !goal.permits(.persona),
            MimicCenter.shared.activePersona != nil {
-            lit.append("a persona")
+            lit.append(L("a persona"))
         }
         if !goal.permits(.beacon),
            mouth.beaconOn || mouth.flareOn {
-            lit.append("the BLE beacon")
+            lit.append(L("the BLE beacon"))
         }
         if !goal.permits(.gattHost), mouth.gattHostOn {
-            lit.append("the GATT host")
+            lit.append(L("the GATT host"))
         }
         if mouth.serveRunning,
            !goal.permits(mouth.stealth
                             ? .serveStealth : .serveListed) {
-            lit.append("Serve")
+            lit.append(L("Serve"))
         }
         lastSilenced = silenced
         lastUnsilenced = lit
@@ -1457,12 +1457,9 @@ final class Emcon: ObservableObject {
         }
         schedule("deadhand.warn",
                  at: deadline.addingTimeInterval(-2 * 3600),
-                 body: "Check-in due in about two hours. Miss "
-                    + "it, and the next opening burns the "
-                    + "Knocktalk threads and raises EMCON.")
+                 body: L("Check-in due in about two hours. Miss it, and the next opening burns the Knocktalk threads and raises EMCON."))
         schedule("deadhand.due", at: deadline,
-                 body: "Check-in overdue. The hand falls at "
-                    + "the next opening.")
+                 body: L("Check-in overdue. The hand falls at the next opening."))
     }
 
     private func deadHandCancelReminders() {
@@ -1793,10 +1790,10 @@ final class Emcon: ObservableObject {
 
     static func vaultActionLabel(_ action: String) -> String {
         switch action {
-        case "emcon": return "Raise EMCON"
-        case "burn": return "Burn Knocktalk threads now"
-        case "canary": return "Raise the canary (60 s)"
-        default: return "Open hidden Serve (60 s)"
+        case "emcon": return L("Raise EMCON")
+        case "burn": return L("Burn Knocktalk threads now")
+        case "canary": return L("Raise the canary (60 s)")
+        default: return L("Open hidden Serve (60 s)")
         }
     }
 
