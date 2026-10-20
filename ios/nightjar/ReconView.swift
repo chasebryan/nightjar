@@ -26,6 +26,7 @@ struct DiscoveredService: Identifiable {
     let type: String
     let label: String
     let name: String
+    var domain: String = "local."
     // Module-qualified: importing NetworkExtension alongside
     // Network makes the bare NWEndpoint ambiguous to the compiler.
     let endpoint: Network.NWEndpoint
@@ -34,6 +35,168 @@ struct DiscoveredService: Identifiable {
 /// Recon within what iOS allows an app: TCP connect scans (no raw
 /// sockets, so no SYN or UDP scans), banner grabs from whatever
 /// answers, and a Bonjour sweep of the local network.
+/// One Bonjour TXT fetch: resolve a named
+/// service just far enough to read the record
+/// it announces, then report the dictionary.
+/// Self-retained by ScanModel until it answers.
+final class TXTResolver: NSObject,
+                         NetServiceDelegate {
+    private var service: NetService?
+    private let done: ([String: String]) -> Void
+    private var finished = false
+
+    init(type: String, name: String,
+         domain: String,
+         done: @escaping ([String: String])
+            -> Void) {
+        self.done = done
+        super.init()
+        let svc = NetService(
+            domain: domain.isEmpty
+                ? "local." : domain,
+            type: type, name: name)
+        service = svc
+        svc.delegate = self
+        svc.resolve(withTimeout: 4)
+    }
+
+    private func finish(
+        _ dict: [String: String]) {
+        guard !finished else { return }
+        finished = true
+        service?.stop()
+        service?.delegate = nil
+        done(dict)
+    }
+
+    func netServiceDidResolveAddress(
+        _ sender: NetService) {
+        var out: [String: String] = [:]
+        if let data = sender.txtRecordData() {
+            let dict = NetService.dictionary(
+                fromTXTRecord: data)
+            for (key, value) in dict {
+                if let text = String(
+                    bytes: value,
+                    encoding: .utf8) {
+                    out[key] = text
+                }
+            }
+        }
+        finish(out)
+    }
+
+    func netService(_ sender: NetService,
+                    didNotResolve errorDict:
+                        [String: NSNumber]) {
+        finish([:])
+    }
+}
+
+/// What a Bonjour TXT record states, in the
+/// dossier's plain words (decoders arc,
+/// 2026-10-20). The headline announcement
+/// names a service; the TXT is where the
+/// device says what it IS: the model under
+/// whichever key its family uses (model / am
+/// / ty / a Cast's md), an AirPlay target's
+/// device id and capability bits, whether a
+/// password stands at the door, how its
+/// audio travels. Only documented keys are
+/// read; the rest of the record rides along
+/// unread rather than guessed at.
+enum BonjourTXT {
+    static func facts(type: String,
+                      txt: [String: String])
+        -> [String] {
+        guard !txt.isEmpty else { return [] }
+        var facts: [String] = []
+        var model = txt["model"] ?? txt["am"]
+            ?? txt["ty"]
+        if type == "_googlecast._tcp",
+           model == nil {
+            model = txt["md"]
+        }
+        if let model, !model.isEmpty {
+            facts.append("model \(model)")
+        }
+        if let note = txt["note"],
+           !note.isEmpty {
+            facts.append(
+                "says it lives at \(note)")
+        }
+        if type == "_airplay._tcp" {
+            if let id = txt["deviceid"],
+               !id.isEmpty {
+                facts.append("device id \(id)")
+            }
+            if let features = txt["features"] {
+                let words = capabilities(
+                    features)
+                if !words.isEmpty {
+                    facts.append("plays " + words
+                        .joined(separator: ", "))
+                }
+            }
+            if txt["pw"] == "1" {
+                facts.append("password required")
+            }
+        }
+        if type == "_raop._tcp"
+            || type == "_rair._tcp" {
+            if txt["pw"] == "1" {
+                facts.append("password required")
+            }
+            if let et = txt["et"] {
+                if et == "0" {
+                    facts.append("audio travels "
+                                 + "unencrypted")
+                } else if et.contains("1")
+                    || et.contains("3")
+                    || et.contains("5") {
+                    facts.append("audio encrypted "
+                                 + "(RSA/FairPlay)")
+                }
+            }
+            if let cn = txt["cn"],
+               cn.contains("1") {
+                facts.append("lossless audio "
+                             + "(ALAC)")
+            }
+        }
+        return facts
+    }
+
+    /// The AirPlay features bitfield — the
+    /// classic low word of the two-part value.
+    /// Only the famous bits are named; the
+    /// rest are not guessed at.
+    private static func capabilities(
+        _ features: String) -> [String] {
+        let head = features
+            .split(separator: ",").first
+            .map(String.init) ?? features
+        var hex = head
+        if hex.hasPrefix("0x")
+            || hex.hasPrefix("0X") {
+            hex = String(hex.dropFirst(2))
+        }
+        guard let value = UInt64(hex, radix: 16)
+        else { return [] }
+        let known: [(UInt64, String)] = [
+            (0x1, "video"), (0x2, "photo"),
+            (0x20, "slideshow"),
+            (0x80, "screen"), (0x200, "audio"),
+        ]
+        var words: [String] = []
+        for (bit, word) in known
+        where value & bit != 0 {
+            words.append(word)
+        }
+        return words
+    }
+}
+
 final class ScanModel: ObservableObject {
     @Published private(set) var results: [PortResult] = []
     @Published private(set) var lastScannedHost = ""
@@ -102,6 +265,7 @@ final class ScanModel: ObservableObject {
         label: "nightjar-scan-connections")
     private let lock = NSLock()
     private var browsers: [NWBrowser] = []
+    private var txtResolvers: [TXTResolver] = []
 
     func scan(host: String, ports: [Int]) {
         let host = host.trimmingCharacters(in: .whitespaces)
@@ -468,13 +632,52 @@ final class ScanModel: ObservableObject {
         connectionQueue.asyncAfter(deadline: .now() + 1.0) { finish(false) }
     }
 
+    /// Read a discovered service's Bonjour TXT
+    /// record — the paragraph the announcement's
+    /// headline never shows — and file what it
+    /// states against the address the service
+    /// resolved to. NetService does the asking
+    /// (it must live on the main run loop, so the
+    /// fetch hops there).
+    func fetchTXT(_ service: DiscoveredService,
+                  ip: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            var resolver: TXTResolver?
+            resolver = TXTResolver(
+                type: service.type,
+                name: service.name,
+                domain: service.domain) { [weak self] txt in
+                let facts = BonjourTXT.facts(
+                    type: service.type, txt: txt)
+                if !facts.isEmpty {
+                    NeighborhoodStore.shared
+                        .recordBonjourFacts(
+                            ip: ip,
+                            label: service.label,
+                            facts: facts)
+                }
+                DispatchQueue.main.async {
+                    self?.txtResolvers.removeAll {
+                        $0 === resolver
+                    }
+                }
+            }
+            if let resolver {
+                self.txtResolvers.append(resolver)
+            }
+        }
+    }
+
     // MARK: Bonjour sweep
 
     static let serviceTypes: [(String, String)] = [
         ("_ssh._tcp", "SSH"), ("_http._tcp", "HTTP"),
         ("_https._tcp", "HTTPS"), ("_smb._tcp", "SMB file sharing"),
         ("_ipp._tcp", "Printer"), ("_printer._tcp", "Printer"),
-        ("_airplay._tcp", "AirPlay"), ("_googlecast._tcp", "Chromecast"),
+        ("_airplay._tcp", "AirPlay"), ("_raop._tcp", "AirPlay audio"),
+        ("_rair._tcp", "AirPlay audio"),
+        ("_googlecast._tcp", "Chromecast"),
         ("_mqtt._tcp", "MQTT"), ("_nightjar._tcp", "nightjar-hack phone"),
     ]
 
@@ -485,10 +688,14 @@ final class ScanModel: ObservableObject {
                                     using: .tcp)
             browser.browseResultsChangedHandler = { [weak self] results, _ in
                 let mine: [DiscoveredService] = results.compactMap { result in
-                    if case .service(let name, _, _, _) = result.endpoint {
-                        return DiscoveredService(type: type, label: label,
-                                                 name: name,
-                                                 endpoint: result.endpoint)
+                    if case .service(let name, _, let domain, _)
+                        = result.endpoint {
+                        return DiscoveredService(
+                            type: type, label: label,
+                            name: name,
+                            domain: domain.isEmpty
+                                ? "local." : domain,
+                            endpoint: result.endpoint)
                     }
                     return nil
                 }
@@ -524,6 +731,8 @@ final class ScanModel: ObservableObject {
                 NeighborhoodStore.shared.recordBonjour(
                     ip: resolved.0, name: service.name,
                     label: service.label)
+                self.fetchTXT(service,
+                              ip: resolved.0)
             }
             done(resolved)
         }

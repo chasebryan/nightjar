@@ -274,6 +274,28 @@ final class NeighborhoodStore: ObservableObject {
         }
     }
 
+    /// The facts a service's Bonjour TXT record
+    /// states about itself — the model it names,
+    /// the capabilities it lists — read at resolve
+    /// time (decoders arc, 2026-10-20). Each fact
+    /// joins the announcements in the label's own
+    /// name, so the dossier reads them where the
+    /// announcement itself is told.
+    func recordBonjourFacts(ip: String, label: String,
+                            facts: [String]) {
+        guard !facts.isEmpty else { return }
+        upsert(ip: ip) { neighbor, _ in
+            for fact in facts {
+                let line = "\(label) — \(fact)"
+                if !neighbor.announcements
+                    .contains(line) {
+                    neighbor.announcements
+                        .append(line)
+                }
+            }
+        }
+    }
+
     /// It knocked US: a Serve or tripwire arrival.
     func recordArrival(ip: String) {
         upsert(ip: ip) { neighbor, _ in

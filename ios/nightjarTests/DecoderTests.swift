@@ -331,4 +331,62 @@ final class DecoderTests: XCTestCase {
         XCTAssertEqual(row.sightings, 6)
         XCTAssertEqual(row.rssiClosest, -55)
     }
+
+    // MARK: - Bonjour TXT records
+
+    /// An Apple TV's AirPlay record, keys as the
+    /// device states them: model, device id, the
+    /// two-part features word (0x5A7FFFF7 sets the
+    /// video/photo/slideshow/screen/audio bits),
+    /// and a password at the door.
+    func testBonjourTXTAirPlay() {
+        let facts = BonjourTXT.facts(
+            type: "_airplay._tcp",
+            txt: ["model": "AppleTV3,2",
+                  "deviceid": "AA:BB:CC:DD:EE:FF",
+                  "features": "0x5A7FFFF7,0x1E",
+                  "pw": "1"])
+        XCTAssertEqual(facts, [
+            "model AppleTV3,2",
+            "device id AA:BB:CC:DD:EE:FF",
+            "plays video, photo, slideshow, screen, audio",
+            "password required",
+        ])
+    }
+
+    /// An AirPort Express RAOP record: the model
+    /// rides under am, the encryption list names
+    /// RSA/FairPlay, the codec list carries ALAC.
+    func testBonjourTXTRAOP() {
+        let facts = BonjourTXT.facts(
+            type: "_raop._tcp",
+            txt: ["am": "AirPort4,107",
+                  "et": "0,1,3,5",
+                  "cn": "0,1,2",
+                  "pw": "0"])
+        XCTAssertEqual(facts, [
+            "model AirPort4,107",
+            "audio encrypted (RSA/FairPlay)",
+            "lossless audio (ALAC)",
+        ])
+    }
+
+    /// A Chromecast states its model under md;
+    /// a printer under ty, with its location in
+    /// note. An empty record states nothing.
+    func testBonjourTXTModelKeys() {
+        XCTAssertEqual(BonjourTXT.facts(
+            type: "_googlecast._tcp",
+            txt: ["md": "Chromecast",
+                  "fn": "Living Room"]),
+            ["model Chromecast"])
+        XCTAssertEqual(BonjourTXT.facts(
+            type: "_ipp._tcp",
+            txt: ["ty": "HP LaserJet Pro",
+                  "note": "Office"]),
+            ["model HP LaserJet Pro",
+             "says it lives at Office"])
+        XCTAssertEqual(BonjourTXT.facts(
+            type: "_airplay._tcp", txt: [:]), [])
+    }
 }
