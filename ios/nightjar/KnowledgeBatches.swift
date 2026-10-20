@@ -98,7 +98,8 @@ extension SkelliKnowledge {
                        "cellar darling albums",
                        "cellar darling discography",
                        "this is the sound",
-                       "the spell", "tracklist"],
+                       "the spell", "tracklist",
+                       "songs, by heart"],
             body: "By heart, in order. This Is the Sound (2017): Avalanche; Black Moon; Challenge; Hullaballoo; Six Days; The Hermit; Water; Fire, Wind & Earth; Rebels; Under the Oak Tree...; ...High Above These Crowns; Starcrusher; Hedonia; Redemption. The Spell (2019) is a concept album whole — the story of a girl who falls in love with Death himself and follows the affair to its end, which Anna also wrote as a book: Pain; Death; Love; The Spell; Burn; Hang; Sleep; Insomnia; Freeze; Fall; Drown; Love, Pt. II; Death, Pt. II. The deluxe edition of The Spell carries a second disc: the story as an audiobook, narrated by Anna herself. Around the albums: Challenge was the band's first release of all — a single in 2016, self-released, with Fire, Wind & Earth on its other side; Black Moon and Avalanche followed as singles in 2017; The Prophet's Song — a Queen cover from the first album's limited edition — became a single in 2018. Insomnia first appeared as a single in 2018, ahead of its record; Dance (2021) stands alone, written about the dancing plague of 1518, and dancing ourselves to death. Her own first among all of them is Insomnia — a song for the hours she keeps."),
 
         SkelliEntry(
@@ -269,7 +270,8 @@ extension SkelliKnowledge {
             home: "under the Tag Census",
             keywords: ["nfc", "tag census", "nfc won't",
                        "capability", "entitlement",
-                       "personal team", "signing limit"],
+                       "personal team", "signing limit",
+                       "census limit"],
             body: "The Tag Census reads NFC tags where the build's signing allows it. On a build signed by a free Personal Team it cannot: Apple reserves the NFC reader-session entitlement for teams holding that capability, and the entitlement's mere presence makes a free-team build refuse to sign at all — which is why it deliberately stays out. That is a platform limit of the signing, not a defect in the code, and no setting in the app changes it. The census's BLE side works regardless."),
 
         // MARK: Batch three — the rooms, compared
@@ -311,7 +313,8 @@ extension SkelliKnowledge {
             title: "War Room, SIGINT Station, War Games",
             home: "the Send and Listen tabs",
             keywords: ["war room vs sigint", "war games vs",
-                       "run registry match", "difference war"],
+                       "run registry match", "difference war",
+                       "war room", "war games"],
             body: "Three rooms that share a war and nothing else. The War Room is a run: ear, trace and recon together on one timeline, started and filed as an operation. The SIGINT Station is a registry: the air and the wire fused into one emitter picture per epoch, with watches that record how the picture changes. War Games is a match: two phones, a protocol of challenges, cards scored. A run ends; a registry persists while its epoch does; a match is against someone. She does not confuse their reports."),
         SkelliEntry(
             id: "savedkinds",
@@ -330,7 +333,7 @@ extension SkelliKnowledge {
                        "serve drill", "war footing",
                        "air census", "silent post",
                        "macro presets", "preset macros",
-                       "net test"],
+                       "net test", "house presets"],
             body: "The library stocks itself on first launch with presets that run from a single initiation — 'run the atomic netbomb' is the whole order, no word 'macro' needed, and any initiation opens one: run, launch, initiate, engage. She counts the Netbomb down, step by step, before she drops it — say stop inside the count and it stays in the rack. A preset's fields are never frozen at authoring: gateway is the door of whatever net she wakes on, her targets carry the door Serve stands on at that moment, and off any net the gateway stages turn inward to the phone herself. Atomic Netbomb — the full net test — is the flagship: posture and stealth, the ear, a wire census with a knock on the gateway, the rig testing its own Serve (a knock, a ping, a short fuzz), the air (costume, beacon, GATT, a persona worn and dropped), then the war rooms — defense set, a challenge out, the unified run, the assault, a SIGINT watch opened. It stands EMCON down to run and leaves the house dark at the standing condition; the watch stays open and the defense stays set; everything else it starts, it stops. Everything but the Banshee. First Contact censuses a network the rig has never met. Serve Drill tests the rig's own doors. War Footing works the war rooms and goes dark. Air Census reads the air and wears the rig's shapes briefly. Silent Post is a post, not a test — dark, stealthed, listening, and it ends standing that way. Quiet Post, Wire Sweep and Loud Arrival are the older templates, stocked alongside. Every preset validates clean in any house: blocks needing a state the operator builds himself — a Helm remote, a War Chest — are in none of them."),
 
         // MARK: Batch four — operations, whole
@@ -349,7 +352,7 @@ extension SkelliKnowledge {
             home: "her operations",
             keywords: ["baseline", "normal here",
                        "regulars", "pattern of life",
-                       "what belongs"],
+                       "what belongs", "baselining"],
             body: "A baseline is what a place looks like when nothing is wrong: the regular emitters, their hours, their ranges, the wire's usual census. It is built by dwell, not by a single look — which is why sessions are labeled and kept. Against a baseline, novelty glows: the new emitter, the regular missing, the door that answers today and didn't last week. Without one, every reading is a first impression, and first impressions are how a printer ends up treated as an intruder — or the reverse."),
         SkelliEntry(
             id: "workingadevice",
@@ -372,7 +375,8 @@ extension SkelliKnowledge {
             title: "Getting evidence out",
             home: "her operations",
             keywords: ["export", "share out", "get it off",
-                       "send to mac", "files", "proof"],
+                       "send to mac", "files", "proof",
+                       "evidence out"],
             body: "Every room keeps its record in a form that travels: sessions as JSONL the desktop tools read, the journal as its sealed log, War Room and SIGINT and War Games and macros each with their own export shape and schema name. Sharing goes through the rooms' doors — never a bare link buried in a list — and lands in Files or the share sheet. Exports of another room's making import as copies with fresh identities: evidence is never overwritten by its own copy."),
         SkelliEntry(
             id: "housekeeping",
@@ -405,7 +409,7 @@ extension SkelliKnowledge {
             title: "When exposure reads wrong",
             home: "the EMCON tab and her header",
             keywords: ["exposure 0", "ghost but named",
-                       "score wrong", "lit", "dark score",
+                       "score wrong", "dark score",
                        "widget disagrees"],
             body: "The score is a sum of named terms, and it prints its working: on the wire, a hostname that answers, listeners standing, the assault armed, and the rest. It read zero for a joined, named phone once because it asked the system for the device name — which iOS has answered 'iPhone' to ordinary apps for years — and weighed presence not at all; the hostname term and the on-the-wire term exist because of that lesson. The EMCON tab, her sitrep and her pinned widget all read the same inputs now; if they ever disagree, that itself is the bug to report."),
         SkelliEntry(
@@ -599,7 +603,8 @@ extension SkelliKnowledge {
             home: "the Night log",
             keywords: ["morning brief", "overnight",
                        "while i was gone", "digest",
-                       "what happened overnight"],
+                       "what happened overnight",
+                       "the morning brief"],
             body: "The journal's morning brief opens the day: what the house did and heard while the operator wasn't watching — arrivals, trips of the wire, posture changes, watch findings — folded into one reading from the sealed log. It is a report, not a ritual: asked for at noon it covers the same ground and calls it last night. Because the journal is hash-chained, the brief can say the record itself is intact — the one claim about the past the house can make with its whole chest."),
         SkelliEntry(
             id: "vault", title: "The Vault — the cryptography suite",

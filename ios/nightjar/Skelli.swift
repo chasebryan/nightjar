@@ -118,7 +118,7 @@ enum SkelliKnowledge {
         SkelliEntry(
             id: "tagcensus", title: "The tag census",
             home: "EMCON's census door",
-            keywords: ["tag census", "nfc", "tag", "census",
+            keywords: ["tag census", "tag", "census",
                        "apdu", "ndef"],
             body: "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room."),
         SkelliEntry(
@@ -265,7 +265,7 @@ enum SkelliKnowledge {
             id: "canary", title: "Canary & honeydrop",
             home: "the Serve and EMCON tabs",
             keywords: ["canary", "honeydrop", "bait",
-                       "drop", "lure"],
+                       "drop"],
             body: "Bait the house keeps: a canary service that should never be touched, and a honeydrop payload whose takers announce themselves — every taker joins the Neighborhood through the same LAN-guarded door as any other discovery."),
         SkelliEntry(
             id: "chirp", title: "Chirp, Blink & Flare",
