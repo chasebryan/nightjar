@@ -2794,6 +2794,7 @@ final class SkelliCenter: ObservableObject {
         if lockdownAsk(q) { return true }
         if quarantineAsk(q) { return true }
         if networkAsk(q) { return true }
+        if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
         if skyBloomAsk(q) { return true }
         if cartomancyAsk(q) { return true }
@@ -3464,6 +3465,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if dressAsk(q) {
+            return
+        }
+        if adminAsk(q) {
             return
         }
         if q.contains("go dark") || q.contains("emcon on")
@@ -6582,6 +6586,128 @@ final class SkelliCenter: ObservableObject {
                         separator: " "))
                 }
             }
+        }
+        return true
+    }
+
+    /// The admin hand (Netadmin Phase 4):
+    /// she walks a device or backs its
+    /// configuration up, on order, riding
+    /// the console's own engines. A walk
+    /// rides the kept READ user when one
+    /// is kept — never the write user
+    /// (the 2026 CSI's separation, kept by
+    /// her own hand) — and the legacy
+    /// walk otherwise; a backup rides the
+    /// console's sshbackup, which speaks
+    /// its own refusals. Verb-led and
+    /// aimed: a board name, the role words
+    /// router/gateway, or a raw address
+    /// must resolve — or, with "snmp"
+    /// spoken, she asks whom. Questions
+    /// fall through untouched: "walk me
+    /// through dhcp" is a lesson, not a
+    /// walk, and "back up my photos" is
+    /// not hers to claim.
+    private func adminAsk(_ q: String) -> Bool {
+        guard !q.contains("?"),
+              !q.hasPrefix("what"),
+              !q.hasPrefix("how"),
+              !q.hasPrefix("why"),
+              !q.contains("walk me through"),
+              !q.contains("explain")
+        else { return false }
+        let walking = q.contains("walk")
+        let backing = q.contains("back up")
+            || q.contains("backup")
+        guard walking || backing else {
+            return false
+        }
+        let store = NeighborhoodStore.shared
+        var targetIP: String? = nil
+        if let n = store.neighbors.first(
+            where: { n in
+                q.contains(n.ip)
+                    || (n.displayName.count >= 3
+                        && q.contains(
+                            n.displayName
+                                .lowercased()))
+                    || (n.name.map {
+                        $0.count >= 3
+                            && q.contains(
+                                $0.lowercased())
+                    } ?? false)
+            }) {
+            targetIP = n.ip
+        } else if q.contains("router")
+                    || q.contains("gateway"),
+                  let gateway = BlacksiteNet
+                    .defaultGatewayIP() {
+            targetIP = gateway
+        } else {
+            let tokens = q.split(
+                whereSeparator: {
+                    !$0.isNumber && $0 != "."
+                }).map(String.init)
+            if let ip = tokens.first(where: {
+                tok in
+                let parts = tok.split(
+                    separator: ".")
+                return parts.count == 4
+                    && parts.allSatisfy {
+                        !$0.isEmpty
+                            && $0.allSatisfy {
+                                $0.isNumber
+                            }
+                    }
+            }) {
+                targetIP = ip
+            }
+        }
+        guard let ip = targetIP else {
+            if q.contains("snmp") {
+                say(walking
+                    ? "Walk what? Nothing on "
+                      + "the board answers to "
+                      + "that name."
+                    : "Back what up? Nothing "
+                      + "on the board answers "
+                      + "to that name.")
+                return true
+            }
+            return false
+        }
+        guard let shell = blacksiteShell else {
+            say("The console hasn't woken in "
+                + "this run of the app — open "
+                + "the Blacksite tab once and "
+                + "the hand is mine from then "
+                + "on.")
+            return true
+        }
+        let command: String
+        if backing {
+            command = "sshbackup \(ip)"
+        } else {
+            let readers = CryptoSuite.NetCred
+                .v3Users(host: ip)
+                .filter { $0.role != "write" }
+            if let reader = readers.first {
+                command = "snmp3walk \(ip) \(reader.user)"
+            } else {
+                command = "snmpwalk \(ip)"
+            }
+        }
+        let out = shell.runForSkelli(command)
+        if out.isEmpty {
+            say("Ran it — nothing came back "
+                + "on the line. The console "
+                + "holds the full run.")
+        } else if out.count > 700 {
+            say(String(out.prefix(700))
+                + "\n…the console holds the rest.")
+        } else {
+            say(out)
         }
         return true
     }
