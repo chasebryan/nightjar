@@ -1050,7 +1050,7 @@ final class SSHClient {
     /// the host until it returns nil (the operator's ~.) or
     /// the host ends the session.
     func shell(nextLine: () -> String?,
-               output: (String) -> Void) throws {
+               output: @escaping (String) -> Void) throws {
         try openChannel()
         var pty = Data([98])
         pty.append(SSHWire.uint32(serverChannel))
