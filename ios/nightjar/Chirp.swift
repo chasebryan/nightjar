@@ -192,7 +192,7 @@ final class ChirpDecoder {
                         symbols = []
                         nextWindow = i + sym
                         huntTrail = []
-                        onStatus?("locked — receiving…")
+                        onStatus?(L("locked — receiving…"))
                         consumed = i
                         return processReceiving()
                     }
@@ -215,7 +215,7 @@ final class ChirpDecoder {
                 state = .hunting
                 consumed = nextWindow
                 symbols = []
-                onStatus?("lost that chirp mid-frame")
+                onStatus?(L("lost that chirp mid-frame"))
                 return nil
             }
             symbols.append(probe.symbol)
@@ -226,7 +226,7 @@ final class ChirpDecoder {
                     state = .hunting
                     consumed = nextWindow
                     symbols = []
-                    onStatus?("that was not a chirp")
+                    onStatus?(L("that was not a chirp"))
                     return nil
                 }
                 if let payload = attempt.payload {
@@ -474,8 +474,7 @@ final class ChirpListener: ObservableObject {
                 if granted {
                     self.begin()
                 } else {
-                    self.status = "microphone permission denied — "
-                        + "iOS Settings is where that changes"
+                    self.status = L("microphone permission denied — iOS Settings is where that changes")
                 }
             }
         }
@@ -489,7 +488,7 @@ final class ChirpListener: ObservableObject {
         let format = input.outputFormat(forBus: 0)
         let decoder = ChirpDecoder(rate: format.sampleRate)
         decoder.onStatus = { [weak self] text in
-            self?.status = text + " — still listening"
+            self?.status = String(format: L("%@ — still listening"), text)
         }
         self.decoder = decoder
         lock.lock()
@@ -508,11 +507,11 @@ final class ChirpListener: ObservableObject {
             self.lock.unlock()
         }
         guard (try? engine.start()) != nil else {
-            status = "microphone would not start"
+            status = L("microphone would not start")
             return
         }
         listening = true
-        status = "listening — hold the phones near each other"
+        status = L("listening — hold the phones near each other")
         processTimer = Timer.scheduledTimer(
             withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             self?.drain()
@@ -539,9 +538,8 @@ final class ChirpListener: ObservableObject {
         if let payload = decoder.append(chunk) {
             let opened = onPayload?(payload) ?? false
             status = opened
-                ? "decoded — filed in the Chirp thread below"
-                : "heard a chirp that does not open with "
-                    + "your pairing key"
+                ? L("decoded — filed in the Chirp thread below")
+                : L("heard a chirp that does not open with your pairing key")
         }
     }
 }

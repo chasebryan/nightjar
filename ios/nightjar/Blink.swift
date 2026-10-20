@@ -166,15 +166,12 @@ final class BlinkReceiver: NSObject, ObservableObject {
                     if granted {
                         self?.begin()
                     } else {
-                        self?.status = "camera permission "
-                            + "denied — iOS Settings is where "
-                            + "that changes"
+                        self?.status = L("camera permission denied — iOS Settings is where that changes")
                     }
                 }
             }
         default:
-            status = "camera permission denied — iOS Settings "
-                + "is where that changes"
+            status = L("camera permission denied — iOS Settings is where that changes")
         }
     }
 
@@ -183,7 +180,7 @@ final class BlinkReceiver: NSObject, ObservableObject {
               let input = try? AVCaptureDeviceInput(
                 device: device)
         else {
-            status = "no camera available"
+            status = L("no camera available")
             return
         }
         session.beginConfiguration()
@@ -202,7 +199,7 @@ final class BlinkReceiver: NSObject, ObservableObject {
         got = 0
         want = 0
         running = true
-        status = "watching — hold the phones face to face"
+        status = L("watching — hold the phones face to face")
         DispatchQueue.global(qos: .userInitiated).async {
             [weak self] in
             self?.session.startRunning()
@@ -236,9 +233,8 @@ extension BlinkReceiver: AVCaptureMetadataOutputObjectsDelegate {
                 let opened = onPayload?(
                     payload, collector.suite ?? 0) ?? false
                 let message = opened
-                    ? "decoded — filed in the Blink thread"
-                    : "saw a whole blink that does not open "
-                        + "with your pairing key"
+                    ? L("decoded — filed in the Blink thread")
+                    : L("saw a whole blink that does not open with your pairing key")
                 stop()
                 status = message
                 return
@@ -294,7 +290,7 @@ struct BlinkReceiverView: View {
                     Text(String(format: L("frames: %lld of %lld"), receiver.got, receiver.want))
                         .font(.callout.weight(.semibold))
                 }
-                Text(receiver.status)
+                Text(L(receiver.status))
                     .font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Spacer()

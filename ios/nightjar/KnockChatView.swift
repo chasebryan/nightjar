@@ -174,7 +174,7 @@ struct KnockChatView: View {
             ShareSheet(items: item.items)
         }
         .confirmationDialog(
-            "Clear every Knocktalk thread?",
+            L("Clear every Knocktalk thread?"),
             isPresented: $confirmClearThreads,
             titleVisibility: .visible) {
             Button(L("Delete all threads"), role: .destructive) {
@@ -185,7 +185,7 @@ struct KnockChatView: View {
             Text(L("Every conversation and cadence note is deleted. The pairing key stays — the house forgets the conversations, not how to have them."))
         }
         .confirmationDialog(
-            "Forget every cadence profile?",
+            L("Forget every cadence profile?"),
             isPresented: $confirmForgetCadence,
             titleVisibility: .visible) {
             Button(L("Forget all profiles"), role: .destructive) {
@@ -200,7 +200,7 @@ struct KnockChatView: View {
             allowedContentTypes: [.wav, .mp3, .mpeg4Audio,
                                   .audio]) { result in
             guard case .success(let url) = result else { return }
-            chirpFileNote = "decoding…"
+            chirpFileNote = L("decoding…")
             DispatchQueue.global(qos: .userInitiated).async {
                 let scoped = url
                     .startAccessingSecurityScopedResource()
@@ -211,14 +211,10 @@ struct KnockChatView: View {
                 DispatchQueue.main.async {
                     if let payload = payload {
                         chirpFileNote = openChirpPayload(payload)
-                            ? "decoded — filed in the Chirp "
-                                + "thread below"
-                            : "that file carries a chirp that "
-                                + "does not open with your "
-                                + "pairing key"
+                            ? L("decoded — filed in the Chirp thread below")
+                            : L("that file carries a chirp that does not open with your pairing key")
                     } else {
-                        chirpFileNote = "no complete chirp "
-                            + "heard in that file"
+                        chirpFileNote = L("no complete chirp heard in that file")
                     }
                 }
             }
@@ -325,13 +321,12 @@ struct KnockChatView: View {
     private func cadenceStatus(_ peer: String) -> String {
         if let note = chat.cadenceNotes[peer] { return note }
         guard let profile = CadenceSeal.profile(for: peer) else {
-            return "not enrolled"
+            return L("not enrolled")
         }
         if profile.samples >= CadenceSeal.enrollSamples {
-            return "enrolled — watching the hands"
+            return L("enrolled — watching the hands")
         }
-        return "learning \(profile.samples)/"
-            + "\(CadenceSeal.enrollSamples)"
+        return String(format: L("learning %lld/%lld"), profile.samples, CadenceSeal.enrollSamples)
     }
 
     @AppStorage("knocktalkRelayEnabled") private var relayEnabled = false
@@ -365,7 +360,7 @@ struct KnockChatView: View {
     private func boardLabel(_ box: String) -> String {
         guard boardChecked else { return "—" }
         guard let date = boardSeen[box] else {
-            return "never seen by the relay"
+            return L("never seen by the relay")
         }
         let fmt = RelativeDateTimeFormatter()
         fmt.unitsStyle = .full
@@ -399,7 +394,7 @@ struct KnockChatView: View {
                     ForEach(boardBoxes, id: \.self) { box in
                         LabeledContent(
                             box == KnockRelay.mailbox
-                                ? "\(box) (this phone)" : box,
+                                ? String(format: L("%@ (this phone)"), box) : box,
                             value: boardLabel(box))
                     }
                 }
@@ -453,7 +448,7 @@ struct KnockChatView: View {
                     Button(L("Stop singing")) { chirpSender.stop() }
                 }
                 Button(chirpListener.listening
-                       ? "Stop listening" : "Listen for a chirp") {
+                       ? L("Stop listening") : L("Listen for a chirp")) {
                     if chirpListener.listening {
                         chirpListener.stop()
                     } else {
@@ -462,7 +457,7 @@ struct KnockChatView: View {
                 }
                 if chirpListener.listening
                     || chirpListener.status != "idle" {
-                    Text(chirpListener.status)
+                    Text(L(chirpListener.status))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button(L("Sing it to a file instead")) {
@@ -472,10 +467,8 @@ struct KnockChatView: View {
                         chirpWavURL = ChirpMail.export(
                             payload: sealed)
                         chirpFileNote = chirpWavURL == nil
-                            ? "the .wav would not render"
-                            : "rendered — share it through "
-                                + "anything that moves audio; "
-                                + "it decodes on arrival"
+                            ? L("the .wav would not render")
+                            : L("rendered — share it through anything that moves audio; it decodes on arrival")
                         if chirpWavURL != nil { chirpDraft = "" }
                     }
                 }
@@ -537,7 +530,7 @@ struct KnockChatView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Button(brushVisitor.hunting
-                       ? "Stop hunting" : "Hunt for a drop") {
+                       ? L("Stop hunting") : L("Hunt for a drop")) {
                     if brushVisitor.hunting {
                         brushVisitor.stop()
                     } else {
@@ -546,7 +539,7 @@ struct KnockChatView: View {
                 }
                 if brushVisitor.hunting
                     || brushVisitor.status != "idle" {
-                    Text(brushVisitor.status)
+                    Text(L(brushVisitor.status))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             } else {
@@ -648,8 +641,7 @@ struct KnockChatView: View {
         grindControl = GrindControl()
         let control = grindControl
         capsuleProgress = 0
-        capsuleNote = "Grinding — the squarings are sequential; "
-            + "that's the lock working."
+        capsuleNote = L("Grinding — the squarings are sequential; that's the lock working.")
         DispatchQueue.global(qos: .userInitiated).async {
             TimeCapsule.grind(
                 blob: blob, control: control,
@@ -660,19 +652,13 @@ struct KnockChatView: View {
                     DispatchQueue.main.async {
                         capsuleProgress = nil
                         if control.cancelled {
-                            capsuleNote = "Grind stopped. The "
-                                + "capsule keeps — grind it any "
-                                + "time; the work restarts from "
-                                + "the first squaring."
+                            capsuleNote = L("Grind stopped. The capsule keeps — grind it any time; the work restarts from the first squaring.")
                         } else if let text {
                             chat.receiveCapsule(text: text)
                             capsulePaste = ""
-                            capsuleNote = "Opened — filed in "
-                                + "the capsule thread below."
+                            capsuleNote = L("Opened — filed in the capsule thread below.")
                         } else {
-                            capsuleNote = "That didn't open — "
-                                + "damaged in transit, or not a "
-                                + "capsule."
+                            capsuleNote = L("That didn't open — damaged in transit, or not a capsule.")
                         }
                     }
                 })
@@ -698,8 +684,8 @@ struct KnockChatView: View {
                     Haptics.tap()
                     sealCapsule()
                 } label: {
-                    Label(capsuleBusy ? "Sealing…"
-                                      : "Seal the capsule",
+                    Label(capsuleBusy ? L("Sealing…")
+                                      : L("Seal the capsule"),
                           systemImage: "lock.badge.clock")
                 }
                 .disabled(capsuleDraft.isEmpty || capsuleBusy
@@ -977,9 +963,8 @@ struct ConversationView: View {
                 HStack {
                     Text(draftSealedBytes
                          <= Knocktalk.maxSealedBytes
-                         ? "≈\(draft.utf8.count + 28) sealed bytes "
-                           + "of \(Knocktalk.maxSealedBytes)"
-                         : "too long for one knock stream")
+                         ? String(format: L("≈%lld sealed bytes of %lld"), draft.utf8.count + 28, Knocktalk.maxSealedBytes)
+                         : L("too long for one knock stream"))
                         .font(.caption2)
                         .foregroundStyle(tooLong ? .red : .secondary)
                     Spacer()
@@ -1001,10 +986,10 @@ struct ConversationView: View {
                                            time: .shortened)
         guard message.outgoing else { return time }
         switch message.state {
-        case "sending": return "\(time) · knocking…"
-        case "awaiting": return "\(time) · sent, awaiting ACK"
-        case "delivered": return "\(time) · delivered ✓"
-        case "failed": return "\(time) · not confirmed"
+        case "sending": return String(format: L("%@ · knocking…"), time)
+        case "awaiting": return String(format: L("%@ · sent, awaiting ACK"), time)
+        case "delivered": return String(format: L("%@ · delivered ✓"), time)
+        case "failed": return String(format: L("%@ · not confirmed"), time)
         default: return time
         }
     }

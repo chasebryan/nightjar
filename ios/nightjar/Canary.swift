@@ -83,10 +83,7 @@ final class CanaryHost: ObservableObject {
             listener.stateUpdateHandler = { [weak self] state in
                 if case .failed(let err) = state {
                     DispatchQueue.main.async {
-                        self?.error = "the canary could not "
-                            + "hold port \(port) — the tripwire "
-                            + "or Serve may already be on it "
-                            + "(\(err.localizedDescription))"
+                        self?.error = String(format: L("the canary could not hold port %lld — the tripwire or Serve may already be on it (%@)"), port, err.localizedDescription)
                         self?.runningPersona = nil
                         self?.runningPort = nil
                     }
@@ -105,8 +102,7 @@ final class CanaryHost: ObservableObject {
                             + "armed" : ""))
         } catch {
             DispatchQueue.main.async {
-                self.error = "canary failed to start: "
-                    + error.localizedDescription
+                self.error = String(format: L("canary failed to start: %@"), error.localizedDescription)
             }
         }
     }
@@ -649,8 +645,8 @@ struct CanarySectionView: View {
                 }
                 if lessons.count > 8 {
                     Button(showAllLessons
-                           ? "Show fewer lessons"
-                           : "Show all \(lessons.count) lessons") {
+                           ? L("Show fewer lessons")
+                           : String(format: L("Show all %lld lessons"), lessons.count)) {
                         Haptics.tap()
                         showAllLessons.toggle()
                     }

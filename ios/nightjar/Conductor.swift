@@ -52,11 +52,17 @@ enum Conductor {
     ]
 
     static func triggerLabel(_ id: String) -> String {
-        triggers.first { $0.id == id }?.label ?? id
+        guard let hit = triggers.first(where: {
+            $0.id == id
+        }) else { return id }
+        return L(hit.label)
     }
 
     static func actionLabel(_ id: String) -> String {
-        actions.first { $0.id == id }?.label ?? id
+        guard let hit = actions.first(where: {
+            $0.id == id
+        }) else { return id }
+        return L(hit.label)
     }
 
     // MARK: - store
@@ -307,7 +313,7 @@ enum Conductor {
             }
         case "tighten":
             emcon.raiseSense(
-                reason: "the conductor's rule: \(rule.name)")
+                reason: String(format: L("the conductor's rule: %@"), rule.name))
             detail = "the second sense is up for 30 minutes"
         case "burnThreads":
             emcon.chat.burnNow()

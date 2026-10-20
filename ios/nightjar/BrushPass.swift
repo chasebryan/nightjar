@@ -33,14 +33,13 @@ final class BrushVisitor: NSObject, ObservableObject {
                                        queue: .main)
         }
         hunting = true
-        status = "hunting — walk within BLE range of the host"
+        status = L("hunting — walk within BLE range of the host")
         deadline?.invalidate()
         deadline = Timer.scheduledTimer(
             withTimeInterval: 120, repeats: false) { [weak self] _ in
             guard let self = self, self.hunting else { return }
             self.stop()
-            self.status = "no drop found in two minutes — "
-                + "stood down"
+            self.status = L("no drop found in two minutes — stood down")
         }
         if central?.state == .poweredOn { beginScan() }
     }
@@ -54,7 +53,7 @@ final class BrushVisitor: NSObject, ObservableObject {
         }
         candidate = nil
         hunting = false
-        if status.hasPrefix("hunting") { status = "idle" }
+        if status == L("hunting — walk within BLE range of the host") { status = "idle" }
     }
 
     private func beginScan() {
@@ -83,7 +82,7 @@ extension BrushVisitor: CBCentralManagerDelegate {
         if central.state == .poweredOn, hunting {
             beginScan()
         } else if central.state != .poweredOn, hunting {
-            status = "Bluetooth is not ready"
+            status = L("Bluetooth is not ready")
         }
     }
 
@@ -95,7 +94,7 @@ extension BrushVisitor: CBCentralManagerDelegate {
         candidate = peripheral
         peripheral.delegate = self
         central.stopScan()
-        status = "found a nightjar host — connecting"
+        status = L("found a nightjar host — connecting")
         central.connect(peripheral)
     }
 
@@ -107,14 +106,14 @@ extension BrushVisitor: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager,
                         didFailToConnect peripheral: CBPeripheral,
                         error: Error?) {
-        finish("the host would not connect — stood down")
+        finish(L("the host would not connect — stood down"))
     }
 
     func centralManager(_ central: CBCentralManager,
                         didDisconnectPeripheral peripheral:
                         CBPeripheral, error: Error?) {
         if hunting, candidate != nil {
-            finish("the host dropped the connection")
+            finish(L("the host dropped the connection"))
         }
     }
 }
@@ -125,7 +124,7 @@ extension BrushVisitor: CBPeripheralDelegate {
         guard let service = peripheral.services?.first(
             where: { $0.uuid == Mouth.serviceUUID })
         else {
-            finish("that host carries no nightjar service")
+            finish(L("that host carries no nightjar service"))
             return
         }
         peripheral.discoverCharacteristics([Mouth.charUUID],
@@ -138,10 +137,10 @@ extension BrushVisitor: CBPeripheralDelegate {
         guard let characteristic = service.characteristics?.first(
             where: { $0.uuid == Mouth.charUUID })
         else {
-            finish("that host has no drop slot")
+            finish(L("that host has no drop slot"))
             return
         }
-        status = "reading the drop"
+        status = L("reading the drop")
         peripheral.readValue(for: characteristic)
     }
 
@@ -150,7 +149,7 @@ extension BrushVisitor: CBPeripheralDelegate {
                     CBCharacteristic, error: Error?) {
         guard let value = characteristic.value, !value.isEmpty
         else {
-            finish("the host's drop slot is empty")
+            finish(L("the host's drop slot is empty"))
             return
         }
         // The same drop, re-read inside the hour, is the same
@@ -161,7 +160,7 @@ extension BrushVisitor: CBPeripheralDelegate {
         if defaults.string(forKey: "brushLastHash") == hash,
            Date().timeIntervalSince1970
             - defaults.double(forKey: "brushLastAt") < 3600 {
-            finish("same drop as last time — already filed")
+            finish(L("same drop as last time — already filed"))
             return
         }
         let opened = onPayload?(value) ?? false
@@ -169,10 +168,9 @@ extension BrushVisitor: CBPeripheralDelegate {
             defaults.set(hash, forKey: "brushLastHash")
             defaults.set(Date().timeIntervalSince1970,
                          forKey: "brushLastAt")
-            finish("drop opened — filed in the Brush thread")
+            finish(L("drop opened — filed in the Brush thread"))
         } else {
-            finish("read a payload that does not open with "
-                   + "your pairing key — not a drop for you")
+            finish(L("read a payload that does not open with your pairing key — not a drop for you"))
         }
     }
 }
