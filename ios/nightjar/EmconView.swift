@@ -189,6 +189,7 @@ struct EmconView: View {
         }
         .onAppear {
             emcon.restoreIfNeeded()
+            WireWatch.restoreIfNeeded()
             emcon.mouth = mouth
         }
         .onChange(of: spar.fuzzing) { now in

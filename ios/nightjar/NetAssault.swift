@@ -676,6 +676,229 @@ final class AssaultCenter: ObservableObject {
     }
 }
 
+// MARK: - The Watch — safe passives, standing
+
+/// The watch (Sentinel program, 2026-10-20):
+/// the passives that stand when the operator
+/// toggles them on — a standing Bonjour
+/// browse, an MNDP ear, a gateway heartbeat,
+/// and a diff of the neighborhood — receiving
+/// and remembering, never transmitting a
+/// campaign. Net-Assault campaigns; the watch
+/// is how the house keeps learning the wire
+/// between campaigns and notices what changed.
+/// It files everything into one ledger the
+/// Sentinel reads. Under EMCON Bravo or
+/// Alpha it will not stand (the sweep organ
+/// covers its browse); lockdown stands it
+/// down with everything else.
+final class WireWatch: ObservableObject {
+    static let shared = WireWatch()
+
+    @Published var on = false
+    /// The ledger: timestamped lines, oldest
+    /// first, capped at 200, persisted — a
+    /// relaunch keeps what the watch learned.
+    @Published private(set) var events: [String] = []
+    @Published private(set) var gatewayIP: String?
+
+    private var model: ScanModel?
+    private var listener: NWListener?
+    private var timer: Timer?
+    private var knownIPs: Set<String> = []
+    private var firedSigns: Set<String> = []
+    private let watchQueue = DispatchQueue(
+        label: "nightjar.wirewatch")
+    private static let onKey = "wirewatch.on"
+    private static let eventsKey =
+        "wirewatch.events"
+
+    private init() {
+        events = UserDefaults.standard
+            .stringArray(forKey: Self.eventsKey)
+            ?? []
+    }
+
+    static func restoreIfNeeded() {
+        if UserDefaults.standard.bool(
+            forKey: onKey) {
+            WireWatch.shared.start()
+        }
+    }
+
+    /// Stand the passives up. Returns true
+    /// when they stand (or already stood).
+    @discardableResult
+    func start() -> Bool {
+        guard !EmconStandard.refused(.sweep)
+        else { return false }
+        guard !on else { return true }
+        let scan = ScanModel()
+        scan.startDiscovery()
+        model = scan
+        startMNDPEar()
+        gatewayIP = BlacksiteNet
+            .defaultGatewayIP()
+        knownIPs = Set(NeighborhoodStore.shared
+            .neighbors.map(\.ip))
+        timer = Timer.scheduledTimer(
+            withTimeInterval: 60,
+            repeats: true) { [weak self] _ in
+            self?.heartbeat()
+        }
+        on = true
+        UserDefaults.standard.set(
+            true, forKey: Self.onKey)
+        note("the watch stands — Bonjour "
+             + "browse, an MNDP ear, a gateway "
+             + "heartbeat, a neighbor diff")
+        return true
+    }
+
+    func stop() {
+        model?.stopDiscovery()
+        model = nil
+        listener?.cancel()
+        listener = nil
+        timer?.invalidate()
+        timer = nil
+        if on {
+            note("the watch stands down")
+        }
+        on = false
+        UserDefaults.standard.set(
+            false, forKey: Self.onKey)
+    }
+
+    private func startMNDPEar() {
+        let params = NWParameters.udp
+        params.allowLocalEndpointReuse = true
+        guard let ear = try? NWListener(
+            using: params,
+            on: NWEndpoint.Port(
+                rawValue: 5678)!)
+        else { return }
+        ear.newConnectionHandler = {
+            [weak self] connection in
+            guard let self else {
+                connection.cancel()
+                return
+            }
+            connection.start(
+                queue: self.watchQueue)
+            func receiveMore() {
+                connection.receiveMessage {
+                    data, _, _, error in
+                    if let data, !data.isEmpty,
+                       let facts =
+                        BlacksitePentest
+                        .parseMNDP(
+                            [UInt8](data)) {
+                        let ip = String(
+                            describing:
+                                connection
+                                .endpoint)
+                            .split(
+                                separator: ":")
+                            .first.map(
+                                String.init)
+                            ?? "?"
+                        NeighborhoodStore.shared
+                            .recordBonjourFacts(
+                                ip: ip,
+                                label: "MNDP",
+                                facts: facts)
+                        self.note("MNDP: "
+                                  + "\(ip) — "
+                                  + facts.joined(
+                                    separator:
+                                        " · "))
+                    }
+                    if error == nil {
+                        receiveMore()
+                    } else {
+                        connection.cancel()
+                    }
+                }
+            }
+            receiveMore()
+        }
+        ear.start(queue: watchQueue)
+        listener = ear
+    }
+
+    /// One heartbeat: the crown re-read, the
+    /// neighborhood diffed, the standing
+    /// signs checked. Sixty seconds apart.
+    private func heartbeat() {
+        let now = BlacksiteNet
+            .defaultGatewayIP()
+        if let now, let was = gatewayIP,
+           now != was {
+            note("the default gateway MOVED: "
+                 + "\(was) → \(now) — a "
+                 + "gateway that changes "
+                 + "without the operator's hand "
+                 + "is a sign to read hard")
+            gatewayIP = now
+        } else if gatewayIP == nil {
+            gatewayIP = now
+        }
+        let store = NeighborhoodStore.shared
+        for neighbor in store.neighbors
+        where !knownIPs.contains(neighbor.ip) {
+            knownIPs.insert(neighbor.ip)
+            let named = neighbor.name.map {
+                " — \($0)"
+            } ?? ""
+            note("a new neighbor at "
+                 + "\(neighbor.ip)\(named)")
+        }
+        if let crown = gatewayIP ?? now {
+            for neighbor in store.neighbors
+            where neighbor.ports.contains(67)
+                && neighbor.ip != crown {
+                let key = "rogue-dhcp-"
+                    + neighbor.ip
+                if !firedSigns.contains(key) {
+                    firedSigns.insert(key)
+                    note("SIGN — \(neighbor.ip) "
+                         + "answers DHCP but "
+                         + "is not the gateway: "
+                         + "a second "
+                         + "address-giver on "
+                         + "the wire is how "
+                         + "quiet intercepts "
+                         + "begin")
+                }
+            }
+        }
+    }
+
+    private static let clock: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm"
+        return fmt
+    }()
+
+    private func note(_ line: String) {
+        let stamped = Self.clock.string(
+            from: Date()) + " — " + line
+        DispatchQueue.main.async {
+            [weak self] in
+            guard let self else { return }
+            self.events.append(stamped)
+            if self.events.count > 200 {
+                self.events.removeFirst(
+                    self.events.count - 200)
+            }
+            UserDefaults.standard.set(
+                self.events,
+                forKey: Self.eventsKey)
+        }
+    }
+}
+
 // MARK: - The section
 
 struct NetAssaultSectionView: View {

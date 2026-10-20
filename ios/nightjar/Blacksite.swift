@@ -9084,10 +9084,19 @@ final class BlacksiteShell: ObservableObject {
             guard netAllowed(name),
                   let host = args.first
             else { return }
+            let kept = CryptoSuite.NetCred
+                .secret(for: host)
             let community = args.count > 1
                 ? args[1]
-                : CryptoSuite.NetCred.secret(
-                    for: host) ?? "public"
+                : kept ?? "public"
+            if args.count == 1, kept == nil {
+                out("no credential kept for "
+                    + "\(host) — trying the "
+                    + "factory word "
+                    + "\u{201C}public\u{201D}. "
+                    + "cred set \(host) keeps "
+                    + "yours.", .sys)
+            }
             let root = args.count > 2
                 ? args[2] : "1.3.6.1.2.1"
             netBusy { emit, done in
@@ -9109,8 +9118,17 @@ final class BlacksiteShell: ObservableObject {
                 }
                 return
             }
-            let community = CryptoSuite.NetCred
-                .secret(for: host) ?? "public"
+            let keptSet = CryptoSuite.NetCred
+                .secret(for: host)
+            if keptSet == nil {
+                out("no credential kept for "
+                    + "\(host) — the write "
+                    + "rides the factory word "
+                    + "\u{201C}public\u{201D}. "
+                    + "cred set \(host) keeps "
+                    + "yours.", .sys)
+            }
+            let community = keptSet ?? "public"
             netBusy { emit, done in
                 BlacksitePentest.snmpSet(
                     host: host,
