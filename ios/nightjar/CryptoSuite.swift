@@ -497,17 +497,22 @@ enum CryptoSuite {
         /// host: the protocols by their
         /// wire names ("md5" / "sha" /
         /// "none" for auth, "des" / "aes" /
-        /// "none" for privacy) and the two
-        /// words themselves. Stored as one
-        /// JSON record under a v3 account,
-        /// so the hosts list shows the
-        /// shape of what is kept, never a
-        /// word.
+        /// "none" for privacy), the two
+        /// words themselves, and the
+        /// user's ROLE — "read", "write",
+        /// or "both" (the 2026 CSI's role
+        /// separation; records kept before
+        /// roles existed read as "both").
+        /// Stored as one JSON record under
+        /// a v3 account, so the hosts list
+        /// shows the shape of what is
+        /// kept, never a word.
         struct V3 {
             var authProto: String
             var authPass: String
             var privProto: String
             var privPass: String
+            var role: String = "both"
         }
 
         static func keepV3(
@@ -518,6 +523,7 @@ enum CryptoSuite {
                 "ap": cred.authPass,
                 "p": cred.privProto,
                 "pp": cred.privPass,
+                "r": cred.role,
             ]
             guard let data = try?
                 JSONSerialization.data(
@@ -549,7 +555,31 @@ enum CryptoSuite {
                 authPass: record["ap"] ?? "",
                 privProto: record["p"]
                     ?? "none",
-                privPass: record["pp"] ?? "")
+                privPass: record["pp"] ?? "",
+                role: record["r"] ?? "both")
+        }
+
+        /// The v3 users kept for a host,
+        /// with their roles — names and
+        /// roles only, never words.
+        static func v3Users(
+            host: String) -> [(user: String,
+                                role: String)] {
+            var found: [(user: String,
+                          role: String)] = []
+            for account in hosts()
+            where account.hasPrefix(
+                "v3|" + host + "|") {
+                let user = String(
+                    account.dropFirst(
+                        3 + host.count + 1))
+                let role = v3(host: host,
+                              user: user)?.role
+                    ?? "both"
+                found.append((user: user,
+                              role: role))
+            }
+            return found
         }
 
         // MARK: SSH keeping

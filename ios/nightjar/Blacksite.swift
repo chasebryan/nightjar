@@ -4638,7 +4638,7 @@ final class BlacksiteShell: ObservableObject {
                 ("router", "which neighbor is the router — crowned by the default route, ranked by signs"),
                 ("mndp [seconds]", "hear MikroTik introduce itself (UDP 5678)"),
                 ("cred set <host>", "keep a credential for your own gear — typed in secret, held in the Keychain"),
-                ("cred set3 <host> <user> <md5|sha> [des|aes]", "keep an SNMPv3 user — its auth and privacy words, typed in secret"),
+                ("cred set3 <host> <user> <md5|sha> [des|aes] [read|write]", "keep an SNMPv3 user — its auth and privacy words, typed in secret; read and write are kept apart"),
                 ("cred hosts", "the hosts holding a kept credential (never the secrets)"),
                 ("cred forget <host>", "let a kept credential go"),
                 ("snmpwalk <host> [community] [root]", "walk the MIB with the kept or given community"),
@@ -9247,8 +9247,42 @@ final class BlacksiteShell: ObservableObject {
                         + "yet — cred set <host> "
                         + "keeps one.", .out)
                 } else {
-                    for host in hosts {
-                        out("\(host) — credential "
+                    for account in hosts {
+                        if account.hasPrefix(
+                            "v3|") {
+                            let parts = account
+                                .split(
+                                    separator: "|",
+                                    omittingEmptySubsequences: false)
+                            if parts.count == 3 {
+                                let h = String(
+                                    parts[1])
+                                let u = String(
+                                    parts[2])
+                                let keptRole =
+                                    CryptoSuite
+                                    .NetCred.v3(
+                                        host: h,
+                                        user: u)?
+                                    .role ?? "both"
+                                let label =
+                                    keptRole
+                                        == "read"
+                                    ? "the read user"
+                                    : keptRole
+                                        == "write"
+                                    ? "the write user"
+                                    : "read+write, "
+                                      + "unseparated"
+                                out("\(h) — \(u), "
+                                    + "SNMPv3 "
+                                    + "\(label)",
+                                    .out)
+                                continue
+                            }
+                        }
+                        out("\(account) — "
+                            + "credential "
                             + "kept", .out)
                     }
                 }
@@ -9291,9 +9325,32 @@ final class BlacksiteShell: ObservableObject {
                 let user = args[2]
                 let authProto = args[3]
                     .lowercased()
-                let privProto = args.count > 4
-                    ? args[4].lowercased()
-                    : "none"
+                // The tail after the auth
+                // protocol: an optional
+                // privacy protocol and an
+                // optional role word, in
+                // either order of writing —
+                // [des|aes|none] [read|write].
+                // A lone "read"/"write" IS
+                // the role, privacy "none".
+                var privProto = "none"
+                var role = "both"
+                let tail = Array(
+                    args.dropFirst(4))
+                if let first = tail.first {
+                    if first == "read"
+                        || first == "write" {
+                        role = first
+                    } else {
+                        privProto = first
+                            .lowercased()
+                        if tail.count > 1,
+                           tail[1] == "read"
+                            || tail[1] == "write" {
+                            role = tail[1]
+                        }
+                    }
+                }
                 let authOK = authProto == "md5"
                     || authProto == "sha"
                     || authProto == "none"
@@ -9306,7 +9363,8 @@ final class BlacksiteShell: ObservableObject {
                 else {
                     out("cred set3 <host> "
                         + "<user> <md5|sha|none> "
-                        + "[des|aes|none] — "
+                        + "[des|aes|none] "
+                        + "[read|write] — "
                         + "privacy needs auth "
                         + "beneath it.", .err)
                     return
@@ -9320,13 +9378,38 @@ final class BlacksiteShell: ObservableObject {
                                 authProto: authProto,
                                 authPass: authWord,
                                 privProto: privProto,
-                                privPass: privWord))
+                                privPass: privWord,
+                                role: role))
+                    let roleLine: String
+                    switch role {
+                    case "read":
+                        roleLine = " Kept as "
+                            + "the READ user — "
+                            + "walks ride it; "
+                            + "sets refuse it."
+                    case "write":
+                        roleLine = " Kept as "
+                            + "the WRITE user — "
+                            + "sets ride it; a "
+                            + "walk that names "
+                            + "it says so."
+                    default:
+                        roleLine = " Kept for "
+                            + "both roles — "
+                            + "the 2026 CSI asks "
+                            + "for them "
+                            + "separated; keep "
+                            + "a second user "
+                            + "when the device "
+                            + "allows."
+                    }
                     out("kept — \(user)@\(host) "
                         + "speaks SNMPv3 "
                         + "\(authProto)"
                         + (privProto == "none"
                            ? "."
-                           : " + \(privProto)."),
+                           : " + \(privProto).")
+                        + roleLine,
                         .ok)
                 }
                 if authProto == "none" {
@@ -9417,7 +9500,8 @@ final class BlacksiteShell: ObservableObject {
             } else {
                 out("cred set <host> · cred "
                     + "set3 <host> <user> "
-                    + "<md5|sha> [des|aes] · "
+                    + "<md5|sha> [des|aes] "
+                    + "[read|write] · "
                     + "cred setssh <host> "
                     + "<user> · cred hosts · "
                     + "cred forget <host>",
@@ -9504,6 +9588,14 @@ final class BlacksiteShell: ObservableObject {
                     .err)
                 return
             }
+            if cred.role == "write" {
+                out("note: \(user) is kept "
+                    + "as the WRITE user, and "
+                    + "this walk rides it "
+                    + "anyway — the 2026 CSI "
+                    + "gives walks the read "
+                    + "user.", .sys)
+            }
             let root = args.count > 2
                 ? args[2] : "1.3.6.1.2.1"
             netBusy { emit, done in
@@ -9534,6 +9626,15 @@ final class BlacksiteShell: ObservableObject {
                     + "\(user)@\(host) — "
                     + "cred set3 keeps one.",
                     .err)
+                return
+            }
+            guard cred.role != "read" else {
+                out("\(user)@\(host) is "
+                    + "kept as the READ user "
+                    + "— a set needs the "
+                    + "write user. cred set3 "
+                    + "with the write word "
+                    + "keeps one.", .err)
                 return
             }
             netBusy { emit, done in
