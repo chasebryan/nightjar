@@ -180,6 +180,7 @@ final class BlacksiteShell: ObservableObject {
         "bigtext", "env",
         "export", "unset", "which", "history",
         "watch", "sentinel", "lockdown",
+        "quarantine",
         "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "python3", "python",
         "sh", "source", "pkg",
@@ -2893,6 +2894,56 @@ final class BlacksiteShell: ObservableObject {
                     emit(line, .out)
                 }
             }
+        case "quarantine":
+            var downQ = true
+            var rest = args
+            if rest.first == "lift" {
+                downQ = false
+                rest = Array(rest.dropFirst())
+            }
+            var gearQ = BlacksiteNet
+                .defaultGatewayIP()
+            if let via = rest.firstIndex(
+                of: "via"),
+               via + 1 < rest.count {
+                gearQ = rest[via + 1]
+                rest = Array(rest.prefix(via))
+            }
+            guard netAllowed(name),
+                  let targetQ = rest.first,
+                  let gearFinal = gearQ
+            else {
+                emit("quarantine <ip> [via "
+                     + "<gear>] — the gear "
+                     + "defaults to the "
+                     + "gateway.", .err)
+                return
+            }
+            guard let communityQ =
+                CryptoSuite.NetCred.secret(
+                    for: gearFinal)
+            else {
+                emit("no credential kept "
+                     + "for \(gearFinal) — "
+                     + "quarantine rides your "
+                     + "own keys. cred set "
+                     + "\(gearFinal) keeps "
+                     + "one, in secret.",
+                     .err)
+                return
+            }
+            netBusy { emit, done in
+                let lines = BlacksitePentest
+                    .quarantine(
+                        targetIP: targetQ,
+                        gearIP: gearFinal,
+                        community: communityQ,
+                        down: downQ)
+                for line in lines {
+                    emit(line, .out)
+                }
+                done()
+            }
         case "lockdown":
             if args.first == "lift" {
                 emit(Lockdown.lift(), .sys)
@@ -4613,6 +4664,8 @@ final class BlacksiteShell: ObservableObject {
                 ("sentinel clear", "clear the alert ledger and its baselines"),
                 ("lockdown", "go dark: EMCON Alpha, assault and watch stood down, all of it journaled"),
                 ("lockdown lift", "lift the lockdown and restore the condition that stood before"),
+                ("quarantine <ip> [via <gear>]", "remove a device through your own credentialed gear — its port shut, read back"),
+                ("quarantine lift <ip> [via <gear>]", "open the port again"),
                 ("date", "when it is"),
                 ("which <cmd>", "where a command lives"),
                 ("ver", "what this is"),

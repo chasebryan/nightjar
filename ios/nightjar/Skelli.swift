@@ -2687,6 +2687,7 @@ final class SkelliCenter: ObservableObject {
         if tomatoAsk(q) { return true }
         if offenseAsk(q) { return true }
         if lockdownAsk(q) { return true }
+        if quarantineAsk(q) { return true }
         if networkAsk(q) { return true }
         if assaultAsk(q) { return true }
         if skyBloomAsk(q) { return true }
@@ -6308,6 +6309,103 @@ final class SkelliCenter: ObservableObject {
             return true
         }
         return false
+    }
+
+    /// The quarantine hand (Sentinel S6):
+    /// netadmin removes the attacker, at
+    /// her hand — but a port shutting is a
+    /// state change, so it is always a
+    /// spoken confirmation first. The
+    /// target defaults to the Sentinel's
+    /// standing severe addressee when the
+    /// ask names none.
+    private func quarantineAsk(_ q: String)
+        -> Bool {
+        let ip = q.split(
+            whereSeparator: {
+                " ,;".contains($0)
+            }).map(String.init).first {
+                token in
+                let parts = token.split(
+                    separator: ".")
+                return parts.count == 4
+                    && parts.allSatisfy {
+                        Int($0) != nil
+                    }
+            }
+        let lifting = q.contains("lift")
+            || q.contains("let back")
+            || q.contains("unquarantine")
+        let verb = q.contains("quarantine")
+            || q.contains("kick")
+            || q.contains("remove")
+            || q.contains("block")
+        let aimed = ip != nil
+            || q.contains("attacker")
+            || q.contains("intruder")
+            || q.contains("them")
+        guard verb && aimed else {
+            return false
+        }
+        let down = !lifting
+        let target = ip ?? Sentinel.shared
+            .standingSevere.last?.ip
+        guard let target else {
+            say("Quarantine whom? Name "
+                + "the address — or let "
+                + "the Sentinel judge "
+                + "something first.")
+            return true
+        }
+        guard let gear = BlacksiteNet
+            .defaultGatewayIP() else {
+            say("I can't read the gateway "
+                + "from here, so there's no "
+                + "gear to ride.")
+            return true
+        }
+        guard let community = CryptoSuite
+            .NetCred.secret(for: gear) else {
+            say("No credential is kept "
+                + "for the gear at "
+                + "\(gear) — quarantine "
+                + "rides your own keys. "
+                + "cred set \(gear) at the "
+                + "console, typed in "
+                + "secret, and then ask me "
+                + "again.")
+            return true
+        }
+        if down {
+            say("Quarantine \(target)? "
+                + "I'll shut its switch "
+                + "port on \(gear) — it "
+                + "leaves this network "
+                + "until you lift it. Say "
+                + "yes and it's done.")
+        } else {
+            say("Lift the quarantine on "
+                + "\(target)? Its port on "
+                + "\(gear) opens again. "
+                + "Say yes.")
+        }
+        pendingAction = {
+            DispatchQueue.global(
+                qos: .userInitiated).async {
+                let lines = BlacksitePentest
+                    .quarantine(
+                        targetIP: target,
+                        gearIP: gear,
+                        community: community,
+                        down: down)
+                DispatchQueue.main.async {
+                    [weak self] in
+                    self?.say(lines.joined(
+                        separator: " "))
+                }
+            }
+        }
+        return true
     }
 
     /// The wire brief hand (Sentinel S4):
