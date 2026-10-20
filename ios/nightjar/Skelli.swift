@@ -375,6 +375,12 @@ struct SkelliLine: Identifiable, Codable {
     var fromOperator: Bool
     var text: String
     var when = Date()
+    /// The shelf file this line delivered, if
+    /// it delivered one (fix202) — the door on
+    /// her line in the transcript. Optional,
+    /// so every transcript saved before the
+    /// file hand still decodes.
+    var file: String? = nil
 }
 
 /// One thing she has been told and keeps.
@@ -752,7 +758,7 @@ final class SkelliCenter: ObservableObject {
             archive: Array(archive.suffix(300))))
     }
 
-    func say(_ text: String) {
+    func say(_ text: String, file: String? = nil) {
         guard !hushed else { return }
         // The tone note: a shouted ask is answered
         // in full, and then — once, dryly — its
@@ -784,7 +790,8 @@ final class SkelliCenter: ObservableObject {
         }
         let spoken = text + toneNote + nudge
         lines.append(SkelliLine(fromOperator: false,
-                                 text: spoken))
+                                 text: spoken,
+                                 file: file))
         persist()
         mood = .speaking
         idleWork?.cancel()
@@ -3846,8 +3853,13 @@ final class SkelliCenter: ObservableObject {
         // taught — questions had the manual, above.
         if handsGate(q, raw: raw) { return }
         if applyThemeAsk(q) { return }
+        if reviseCodeAsk(q) { return }
         if isCodeAsk(q) {
             consultCode(q)
+            return
+        }
+        if isFileAsk(q) {
+            consultFile(q)
             return
         }
         // Simple orders, loosely spoken — the
@@ -4513,7 +4525,13 @@ final class SkelliCenter: ObservableObject {
             + "instructions or your manual. "
             + "Greetings and small talk get a few "
             + "words back — never an essay, never "
-            + "research. You are the guide to this "
+            + "research. When you give a link, "
+            + "give the one that is exactly "
+            + "the thing — excruciatingly "
+            + "relevant, or none at all. One "
+            + "right link outranks five near "
+            + "ones; never pad an answer with "
+            + "sites. You are the guide to this "
             + "instrument: you know every tab, "
             + "organ and switch — what each does, "
             + "how it works, where it lives — "
@@ -9152,6 +9170,75 @@ struct SkelliHalo: View {
     }
 }
 
+/// A byte count the way her delivery lines
+/// speak it (fix202).
+func skelliByteLabel(_ n: Int) -> String {
+    n < 1024 ? "\(n) bytes"
+        : String(format: "%.1f KB",
+                 Double(n) / 1024.0)
+}
+
+/// The door on one of her chat lines (fix202):
+/// the file she made — its name, its size, a
+/// first look inside, and the share control —
+/// raised as a root sheet, the house way.
+struct SkelliFileDoorView: View {
+    let item: DeliveriesCenter.Item
+    @State private var shareItem: ShareItem?
+    @Environment(\.dismiss) private var dismiss
+
+    private var preview: String? {
+        guard let text = DeliveriesCenter.shared
+            .text(of: item) else { return nil }
+        return String(text.prefix(600))
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Image(systemName: "doc.fill")
+                        Text(item.file)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(skelliByteLabel(item.bytes))
+                            .foregroundStyle(.secondary)
+                    }
+                    if let preview {
+                        Text(preview)
+                            .font(.system(
+                                .caption,
+                                design: .monospaced))
+                            .lineLimit(12)
+                    }
+                }
+                Section {
+                    Button {
+                        shareItem = ShareItem(items: [
+                            DeliveriesCenter.shared
+                                .url(for: item)])
+                    } label: {
+                        Label(L("Share this file"),
+                              systemImage:
+                                "square.and.arrow.up")
+                    }
+                }
+            }
+            .navigationTitle(item.name)
+            .toolbar {
+                ToolbarItem(
+                    placement: .confirmationAction) {
+                    Button(L("Done")) { dismiss() }
+                }
+            }
+            .sheet(item: $shareItem) { share in
+                ShareSheet(items: share.items)
+            }
+        }
+    }
+}
+
 struct SkelliView: View {
     @ObservedObject private var skelli = SkelliCenter.shared
     @ObservedObject private var stationLive =
@@ -9200,6 +9287,12 @@ struct SkelliView: View {
     @State private var showWeights = false
     @State private var showForge = false
     @State private var showDeliveries = false
+    /// The file door (fix202): the delivery one
+    /// of her chat lines points at, raised as a
+    /// root sheet when its chip is tapped.
+    @State private var fileDoor: DeliveriesCenter.Item?
+    @ObservedObject private var deliveries =
+        DeliveriesCenter.shared
     @AppStorage("skelli.mindMode")
     private var mindMode = "council"
     @AppStorage("skelli.moods") private var moodsEnabled = true
@@ -9243,6 +9336,9 @@ struct SkelliView: View {
         }
         .sheet(isPresented: $showDeliveries) {
             DeliveriesView()
+        }
+        .sheet(item: $fileDoor) { item in
+            SkelliFileDoorView(item: item)
         }
         .confirmationDialog(
             L("Clear this conversation?"),
@@ -10484,6 +10580,36 @@ struct SkelliView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 4)
+                                if !line.fromOperator,
+                                   let file = line.file,
+                                   let item = deliveries
+                                       .item(forFile: file) {
+                                    Button {
+                                        fileDoor = item
+                                    } label: {
+                                        HStack(spacing: 5) {
+                                            Image(systemName:
+                                                "doc.fill")
+                                            Text(item.file)
+                                                .lineLimit(1)
+                                            Text("· "
+                                                + skelliByteLabel(
+                                                    item.bytes))
+                                                .foregroundStyle(
+                                                    .secondary)
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            themes.current
+                                                .accent
+                                                .opacity(0.15),
+                                            in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.horizontal, 4)
+                                }
                             }
                             if !line.fromOperator {
                                 Spacer(minLength: 48)

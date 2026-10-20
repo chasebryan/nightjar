@@ -5056,6 +5056,14 @@ extension SkelliCenter {
             "in javascript", "regex for",
             "a regex", "build me a tool",
             "build me a script",
+            "write a python", "write a shell",
+            "python script", "python program",
+            "shell script", "bash script",
+            "a program", "program that",
+            "program to", "make a program",
+            "make a script", "make a tool",
+            "a script", "a tool",
+            "in rust", "in go",
         ]
         return marks.contains { q.contains($0) }
     }
@@ -5102,7 +5110,51 @@ extension SkelliCenter {
         return false
     }
 
+    /// The code door (fix202): a question about
+    /// code is answered in chat, as always; an
+    /// order to MAKE something is a file —
+    /// filed on the shelf under its real name,
+    /// with a door on her line, never a wall
+    /// of code in the transcript and never a
+    /// .txt lie about what it is. Verse stays
+    /// in chat: a poem is a performance, not
+    /// a delivery, unless a file is plainly
+    /// asked for.
     func consultCode(_ q: String) {
+        let verse = ["poem", "poetry", "sonnet",
+                     "haiku", "limerick", "song",
+                     "scripture"]
+        let wantsFile = ["file", "document",
+                         "save it", ".txt", ".md"]
+            .contains { q.contains($0) }
+        if verse.contains(where: q.contains),
+           !wantsFile {
+            consultCodeAnswer(q)
+            return
+        }
+        if isQuestionShape(q), !isCreationAsk(q) {
+            consultCodeAnswer(q)
+        } else {
+            consultFile(q)
+        }
+    }
+
+    private func isQuestionShape(_ q: String) -> Bool {
+        q.hasSuffix("?")
+            || ["how do", "how to", "what is",
+                "what does", "why", "explain"]
+                .contains { q.contains($0) }
+    }
+
+    private func isCreationAsk(_ q: String) -> Bool {
+        ["write", "make", "create", "build",
+         "draft", "generate", "code me"]
+            .contains { q.contains($0) }
+    }
+
+    /// The chat answer, as it always was: the
+    /// code in the open, brief notes after.
+    private func consultCodeAnswer(_ q: String) {
         activity = vary(["Writing…",
                          "Drafting…",
                          "Setting it down…"])
@@ -5128,19 +5180,323 @@ extension SkelliCenter {
                 if let text = text,
                    !text.isEmpty {
                     say(text)
-                    DeliveriesCenter.shared.add(
-                        name: "Code — "
-                            + String(q.prefix(28)),
-                        text: text, ext: "txt")
                 } else {
-                    say("No bench could write "
-                        + "that just now. The "
-                        + "Forge's Workbench holds "
-                        + "the bench's editor — "
-                        + "briefs wait there for a "
-                        + "ready mind.")
+                    say("No bench is awake to "
+                        + "write that just now.")
                 }
             }
         }
+    }
+
+    /// The file hand (fix202): the bench writes
+    /// the whole thing under a charter that
+    /// names the file first; she files it on
+    /// the shelf and answers with one short
+    /// line carrying the door. She can make
+    /// anything, in any language or format —
+    /// the charter says so, and means it.
+    func consultFile(_ q: String) {
+        activity = vary(["Writing…",
+                         "Drafting…",
+                         "Setting it down…"])
+        Task {
+            let text = await SkelliMind.rawAnswer(
+                instructions: "You are Skelli, "
+                    + "the operator's programming "
+                    + "partner inside "
+                    + "nightjar-hack. He has "
+                    + "asked you to MAKE something, "
+                    + "and it will be delivered "
+                    + "to him as a file. You can "
+                    + "make anything, in any "
+                    + "language or format — no "
+                    + "limits. Write it complete "
+                    + "and correct, right the "
+                    + "first time: no placeholders, "
+                    + "no truncation, no commentary "
+                    + "inside it. Answer in "
+                    + "exactly this shape and "
+                    + "nothing else: first line "
+                    + "FILE: <a good filename, "
+                    + "with the extension the "
+                    + "work calls for>, then the "
+                    + "complete contents of the "
+                    + "file, then optionally one "
+                    + "final line NOTE: <at most "
+                    + "one short line for him>. "
+                    + "No code fences, no other "
+                    + "prose. If no language is "
+                    + "named, choose the most "
+                    + "natural: Python for "
+                    + "scripts, Swift for iOS, "
+                    + "JavaScript for the web.",
+                prompt: q)
+            await MainActor.run {
+                guard let text = text,
+                      !text.isEmpty else {
+                    say("No bench is awake to "
+                        + "make that just now.")
+                    return
+                }
+                let made = Self.fileWork(
+                    from: text, ask: q)
+                DeliveriesCenter.shared.add(
+                    name: made.base,
+                    text: made.body, ext: made.ext)
+                let file = made.base + "."
+                    + made.ext
+                var line = "Made — \(file) "
+                    + "(\(Self.byteCount(made.body)))."
+                if let note = made.note {
+                    line += " " + note
+                }
+                say(line, file: file)
+            }
+        }
+    }
+
+    /// File-shaped asks that never mention
+    /// code (fix202): a creation verb and a
+    /// document-shaped noun — a letter, a
+    /// report, a page — are a delivery.
+    func isFileAsk(_ q: String) -> Bool {
+        let verbs = ["write", "draft", "make",
+                     "create", "build", "save",
+                     "generate", "prepare"]
+        guard verbs.contains(where: q.contains)
+        else { return false }
+        let nouns = ["file", "document", "letter",
+                     "report", "essay", "csv",
+                     "spreadsheet", "html",
+                     "web page", "webpage",
+                     "website", "page"]
+        return nouns.contains(where: q.contains)
+    }
+
+    /// The file she most recently delivered in
+    /// this conversation that still stands on
+    /// the shelf (fix202) — derived from her
+    /// own lines, so a cleared shelf heals
+    /// the lane by itself.
+    private func lastDelivery()
+        -> (file: String,
+            item: DeliveriesCenter.Item)? {
+        for line in lines.reversed() {
+            if let file = line.file,
+               let item = DeliveriesCenter.shared
+                   .item(forFile: file) {
+                return (file, item)
+            }
+        }
+        return nil
+    }
+
+    /// The revise lane (fix202): "add a flag
+    /// to the script", "make it darker" — a
+    /// mutation aimed at the last file she
+    /// delivered. Narrow by design: a
+    /// delivered file must exist, the ask
+    /// must point at it, and it must carry
+    /// an edit verb.
+    func reviseCodeAsk(_ q: String) -> Bool {
+        guard let (file, item) = lastDelivery()
+        else { return false }
+        let padded = " " + q + " "
+        let points = [" it ", " that ",
+                      " the file ", " the script ",
+                      " the program ", " the code ",
+                      " the page ", " the document "]
+        let named = q.contains(file)
+            || q.contains(item.name.lowercased())
+        guard named
+            || points.contains(where: padded.contains)
+        else { return false }
+        let edits = [" change ", " changes ",
+                     " add ", " adds ",
+                     " remove ", " make ",
+                     " fix ", " update ",
+                     " rename ", " rewrite ",
+                     " extend ", " drop ",
+                     " put ", " use ", " using ",
+                     " switch ", " replace ",
+                     " delete ", " set "]
+        guard edits.contains(where: padded.contains)
+        else { return false }
+        consultRevise(q, file: file, item: item)
+        return true
+    }
+
+    private func consultRevise(
+        _ q: String, file: String,
+        item: DeliveriesCenter.Item) {
+        guard let current = DeliveriesCenter.shared
+            .text(of: item) else {
+            say("The shelf no longer holds "
+                + file + " — I can't revise "
+                + "what isn't there.")
+            return
+        }
+        activity = vary(["Revising…",
+                         "Working it over…",
+                         "Making the change…"])
+        Task {
+            let text = await SkelliMind.rawAnswer(
+                instructions: "You are Skelli, "
+                    + "the operator's programming "
+                    + "partner. He is revising a "
+                    + "file you made for him: "
+                    + file + ". Apply his change "
+                    + "and return the COMPLETE "
+                    + "revised file — the whole "
+                    + "thing, not a diff, not a "
+                    + "fragment. Exactly this "
+                    + "shape and nothing else: "
+                    + "first line FILE: <the "
+                    + "filename — keep " + file
+                    + " unless he asked for a "
+                    + "rename>, then the complete "
+                    + "revised contents, then "
+                    + "optionally one final line "
+                    + "NOTE: <at most one short "
+                    + "line>. No code fences, no "
+                    + "other prose.",
+                prompt: "His change: " + q
+                    + "\n\nThe file as it stands:\n"
+                    + current)
+            await MainActor.run {
+                guard let text = text,
+                      !text.isEmpty else {
+                    say("No bench is awake to "
+                        + "revise that just now.")
+                    return
+                }
+                var made = Self.fileWork(
+                    from: text, ask: q)
+                if !made.followedShape {
+                    // The bench answered in prose:
+                    // the whole reply is the work,
+                    // under the file's own name.
+                    let ns = file as NSString
+                    made = (base: Self.cleanName(
+                                ns.deletingPathExtension),
+                            ext: ns.pathExtension,
+                            body: made.body,
+                            note: made.note,
+                            followedShape: false)
+                }
+                DeliveriesCenter.shared.add(
+                    name: made.base,
+                    text: made.body, ext: made.ext)
+                let newFile = made.base + "."
+                    + made.ext
+                if newFile != file {
+                    DeliveriesCenter.shared
+                        .remove(file: file)
+                }
+                var line = "Revised — \(newFile) "
+                    + "(\(Self.byteCount(made.body)))."
+                if let note = made.note {
+                    line += " " + note
+                }
+                say(line, file: newFile)
+            }
+        }
+    }
+
+    /// Split the bench's FILE:/NOTE: delivery
+    /// into name, contents and note. If the
+    /// bench ignored the shape, the whole text
+    /// is the work and the name is inferred
+    /// from the ask — she files it anyway
+    /// (fix202).
+    static func fileWork(from text: String,
+                         ask q: String)
+        -> (base: String, ext: String,
+            body: String, note: String?,
+            followedShape: Bool) {
+        var lines = text.components(
+            separatedBy: "\n")
+        var note: String? = nil
+        if let idx = lines.lastIndex(where: {
+            !$0.trimmingCharacters(
+                in: .whitespaces).isEmpty }),
+           lines[idx].hasPrefix("NOTE:") {
+            note = String(lines[idx].dropFirst(5))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            lines.remove(at: idx)
+        }
+        let whole = lines.joined(separator: "\n")
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines)
+        if let first = lines.first,
+           first.hasPrefix("FILE:") {
+            let named = String(first.dropFirst(5))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            let body = lines.dropFirst()
+                .joined(separator: "\n")
+                .trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+            let ns = named as NSString
+            if !ns.pathExtension.isEmpty {
+                return (cleanName(
+                            ns.deletingPathExtension),
+                        ns.pathExtension.lowercased(),
+                        body, note, true)
+            }
+            return (cleanName(named),
+                    inferredExt(for: q),
+                    body, note, true)
+        }
+        return (fallbackName(for: q),
+                inferredExt(for: q),
+                whole, note, false)
+    }
+
+    /// The shelf's own cleaning, mirrored so
+    /// the name she speaks is the name on the
+    /// shelf (DeliveriesCenter.add cleans the
+    /// same way).
+    static func cleanName(_ raw: String) -> String {
+        let clean = raw
+            .components(separatedBy:
+                CharacterSet.alphanumerics
+                    .union(CharacterSet(
+                        charactersIn: " -_"))
+                    .inverted)
+            .joined()
+            .trimmingCharacters(
+                in: .whitespaces)
+        return clean.isEmpty ? "delivery" : clean
+    }
+
+    private static func inferredExt(
+        for q: String) -> String {
+        let marks: [(String, String)] = [
+            ("python", "py"), ("swift", "swift"),
+            ("javascript", "js"),
+            ("typescript", "ts"), ("html", "html"),
+            ("bash", "sh"), ("shell script", "sh"),
+            ("golang", "go"), (" rust", "rs"),
+            ("java", "java"), ("c++", "cpp"),
+        ]
+        for (mark, ext) in marks
+        where q.contains(mark) {
+            return ext
+        }
+        return "txt"
+    }
+
+    private static func fallbackName(
+        for q: String) -> String {
+        cleanName(String(q.prefix(36)))
+    }
+
+    static func byteCount(_ body: String) -> String {
+        let n = body.utf8.count
+        if n < 1024 { return "\(n) bytes" }
+        return String(format: "%.1f KB",
+                      Double(n) / 1024.0)
     }
 }

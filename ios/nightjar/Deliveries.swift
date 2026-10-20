@@ -173,6 +173,31 @@ final class DeliveriesCenter: ObservableObject {
         try? Data(contentsOf: url(for: item))
     }
 
+    /// The shelf's entry for a file name, if
+    /// it still stands there (fix202).
+    func item(forFile file: String) -> Item? {
+        items.first { $0.file == file }
+    }
+
+    /// A filed delivery read back as text —
+    /// her revise lane works on what she
+    /// actually filed, not on a memory of
+    /// it (fix202).
+    func text(of item: Item) -> String? {
+        guard let data = data(for: item) else {
+            return nil
+        }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Take one file off the shelf by name
+    /// (fix202).
+    func remove(file: String) {
+        if let item = item(forFile: file) {
+            remove(item)
+        }
+    }
+
     func remove(_ item: Item) {
         try? FileManager.default.removeItem(
             at: url(for: item))
