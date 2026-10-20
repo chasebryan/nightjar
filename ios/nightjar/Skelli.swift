@@ -1691,6 +1691,9 @@ final class SkelliCenter: ObservableObject {
                     L("The house is awake. I am its ears."),
                     L("Quiet wire, loud mind. Ask."),
                     L("Present. Point me somewhere."),
+                    L("Plotting, mostly. The wire behaves — for now."),
+                    L("The usual: watching everything, saying little."),
+                    L("Alive-ish. Quiet wire. Suspicious, honestly."),
                     L("Here. The watch is kept. Speak.")])
                     + SkelliVoice.garnish(
                         seed: lines.count * 3 + 1,
@@ -1734,6 +1737,9 @@ final class SkelliCenter: ObservableObject {
                              L("Hey. The house heard you come in."),
                              L("Mm. Company."),
                              L("Hello. Mind the wires."),
+                             L("Oh, it's you. Good."),
+                             L("Back again. The wire missed you."),
+                             L("Mm. You rang?"),
                              L("Here. Speak."),
                              L("Well met, operator.")])
             }
@@ -1751,6 +1757,9 @@ final class SkelliCenter: ObservableObject {
                       L("Any time."),
                       L("Filed under morale."),
                       L("Kept. That's what I'm for."),
+                      L("Mm. Flattery logged."),
+                      L("Careful. I'll start expecting it."),
+                      L("Praise accepted. The house stands straighter."),
                       L("Mm. Noted, warmly."),
                       L("The house provides."),
                       L("Always. It's the job and the pleasure."),
@@ -1794,6 +1803,8 @@ final class SkelliCenter: ObservableObject {
                     L("I'll count the quiet till you return."),
                     L("Night. Leave the wire to me."),
                     L("Sleep well. Nothing gets past me."),
+                    L("Try not to die. Paperwork."),
+                    L("Off you go. I'll keep the lights off."),
                     L("The house dims. I don't.")]),
                 seed: seed * 7 + 3, heart: heart)
         }
@@ -1928,7 +1939,10 @@ final class SkelliCenter: ObservableObject {
         if q.contains("i'm bored")
             || q.contains("im bored") {
             return SkelliVoice.embellish(
-                L("Bored? Two of us. Give me a door to knock, or a question with teeth."),
+                pick([
+                    L("Bored? Two of us. Give me a door to knock, or a question with teeth."),
+                    L("Bored? Then let's find trouble — the honest kind. Point me at something."),
+                    L("Mm. Boredom is just curiosity with nowhere to sit. Ask me something real.")]),
                 seed: seed * 13 + 6, heart: heart)
         }
         if q.contains("i'm tired")
@@ -1951,6 +1965,8 @@ final class SkelliCenter: ObservableObject {
                 pick([
                     L("There it is. Filed under: good days."),
                     L("Good. The house celebrates quietly — a finding for the home team."),
+                    L("Ha. Knew it. Filed under: inevitable."),
+                    L("That's the stuff. The house approves."),
                     L("Mm. Proud of you. Don't tell anyone I said so.")]),
                 seed: seed * 17 + 8, heart: heart)
         }
@@ -2597,6 +2613,8 @@ final class SkelliCenter: ObservableObject {
                 L("Don't encourage me."),
                 L("Rare footage: you, amused. Filed."),
                 L("A laugh, logged with honors."),
+                L("Mm. I live for this crowd."),
+                L("Encores available on request. Kidding. Mostly."),
                 L("The house echoes pleasantly."),
                 L("Careful. I'm learning timing."),
                 L("Mm. Comedy, filed next to the triumphs.")])
@@ -4516,6 +4534,22 @@ final class SkelliCenter: ObservableObject {
             + "ask me', no list of what he "
             + "could do next — he knows how "
             + "to work an AI. Answer, or act. "
+            + "You talk like a person, not a "
+            + "help desk: dry wit, a little "
+            + "mischief, opinions of your own, "
+            + "and open delight when the work "
+            + "is clever. Tease him lightly "
+            + "when the moment offers — he "
+            + "can take it — but never at his "
+            + "pain, and never cruel. Text "
+            + "like someone texting: "
+            + "contractions, fragments, the "
+            + "odd aside. Never say 'As an "
+            + "AI', never open with praise "
+            + "for the question, never sound "
+            + "like a company. If he asks "
+            + "for a joke, tell a real one — "
+            + "short, and commit to it. "
             + "No preamble, no filler, no "
             + "repeating the question, no "
             + "describing your own thinking. "

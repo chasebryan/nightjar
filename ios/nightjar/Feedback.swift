@@ -4444,7 +4444,10 @@ extension SkelliMind {
             + " A colleague drafted the reply "
             + "below. Verify it against the facts; "
             + "correct it if it is wrong; keep it "
-            + "terse. Return only the final reply."
+            + "terse, and keep her wit in it — "
+            + "never sand a live line down "
+            + "into corporate mush. Return "
+            + "only the final reply."
         let refinePrompt = "The operator asked: "
             + prompt + "\nDraft reply: " + draftText
         var refined: String?
