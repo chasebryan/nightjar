@@ -919,6 +919,44 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    /// A program running inside a
+    /// capture owes the pipeline its
+    /// whole output before the next
+    /// stage may run — programs are
+    /// asynchronous, pipelines are
+    /// not, so the stage parks on
+    /// this latch until the program's
+    /// completion signals it (fix147).
+    private final class StageLatch {
+        private let sem =
+            DispatchSemaphore(value: 0)
+        func signal() { sem.signal() }
+        func wait() { sem.wait() }
+    }
+
+    /// What a piped program reads
+    /// from stdin: the stage's input,
+    /// line by line, then EOF.
+    private func stageInputProvider()
+        -> () -> String? {
+        var rest = stageInput
+        return {
+            if rest.isEmpty { return nil }
+            if let cut = rest.firstIndex(
+                of: "\n") {
+                let line = String(
+                    rest[..<cut])
+                rest = String(rest[
+                    rest.index(
+                        after: cut)...])
+                return line
+            }
+            let line = rest
+            rest = ""
+            return line
+        }
+    }
+
     /// The stage's verdict: an exact
     /// status when a construct set one
     /// (return N), else the error bit.
@@ -3498,15 +3536,12 @@ final class BlacksiteShell: ObservableObject {
                  + "or run a file.", .err)
             return
         }
-        guard !capturing else {
-            emit("the engine runs live — it "
-                 + "cannot be piped.", .err)
-            return
-        }
+        let background = stageBackground
+        let latch = StageLatch()
         guard let proc = admitOrSay(
             "js " + String(source.prefix(40)),
             .javascript,
-            background: stageBackground)
+            background: background)
         else { return }
         installExecBridge()
         let out = kernelEmit(for: proc)
@@ -3523,6 +3558,10 @@ final class BlacksiteShell: ObservableObject {
                 self.emit(result, .out)
             }
             self.updateBusy()
+            latch.signal()
+        }
+        if capturing && !background {
+            latch.wait()
         }
     }
 
@@ -3647,11 +3686,7 @@ final class BlacksiteShell: ObservableObject {
             }
             return
         }
-        guard !capturing else {
-            emit("programs run live — they "
-                 + "cannot be piped.", .err)
-            return
-        }
+        let latch = StageLatch()
         let path = BlacksiteFS.normalize(
             typed, cwd: cwd)
         guard BlacksiteFS.exists(path),
@@ -3670,8 +3705,10 @@ final class BlacksiteShell: ObservableObject {
         BlacksitePy.runFile(
             path, args: args,
             inputProvider: background
-                ? nil : makeInputProvider(
-                    for: proc),
+                ? nil : (capturing
+                    ? stageInputProvider()
+                    : makeInputProvider(
+                        for: proc)),
             cancel: proc.cancel,
             emit: kernelEmit(for: proc)) {
                 [weak self] in
@@ -3681,7 +3718,11 @@ final class BlacksiteShell: ObservableObject {
                     self?.inputWaiter = nil
                 }
                 self?.updateBusy()
+                latch.signal()
             }
+        if capturing && !background {
+            latch.wait()
+        }
     }
 
     private func runFileCommand(_ args: [String]) {
@@ -3698,11 +3739,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         if target.hasSuffix(".js") {
-            guard !capturing else {
-                emit("programs run live — they "
-                     + "cannot be piped.", .err)
-                return
-            }
+            let latch = StageLatch()
             let background = stageBackground
             guard let proc = admitOrSay(
                 "run " + args.joined(
@@ -3730,13 +3767,13 @@ final class BlacksiteShell: ObservableObject {
                               .err)
                 }
                 self.updateBusy()
+                latch.signal()
+            }
+            if capturing && !background {
+                latch.wait()
             }
         } else if target.hasSuffix(".py") {
-            guard !capturing else {
-                emit("programs run live — they "
-                     + "cannot be piped.", .err)
-                return
-            }
+            let latch = StageLatch()
             let background = stageBackground
             guard let proc = admitOrSay(
                 "run " + args.joined(
@@ -3749,8 +3786,10 @@ final class BlacksiteShell: ObservableObject {
                     + Array(
                         args.dropFirst()),
                 inputProvider: background
-                    ? nil : makeInputProvider(
-                        for: proc),
+                    ? nil : (capturing
+                        ? stageInputProvider()
+                        : makeInputProvider(
+                            for: proc)),
                 cancel: proc.cancel,
                 emit: kernelEmit(
                     for: proc)) {
@@ -3762,14 +3801,13 @@ final class BlacksiteShell: ObservableObject {
                         self?.inputWaiter = nil
                     }
                     self?.updateBusy()
+                    latch.signal()
                 }
+            if capturing && !background {
+                latch.wait()
+            }
         } else if target
                     .hasSuffix(".wasm") {
-            guard !capturing else {
-                emit("programs run live — they "
-                     + "cannot be piped.", .err)
-                return
-            }
             let data: Data?
             if target == "/bin/linuxbox.wasm" {
                 data = BlacksiteWasm
@@ -3810,11 +3848,6 @@ final class BlacksiteShell: ObservableObject {
     private func wasmAppletCommand(
         _ head: String, _ args: [String],
         stdin: String) {
-        guard !capturing else {
-            emit("programs run live — they "
-                 + "cannot be piped.", .err)
-            return
-        }
         guard let data = BlacksiteWasm
             .linuxboxData() else {
             emit("the linux userspace is "
@@ -3842,6 +3875,7 @@ final class BlacksiteShell: ObservableObject {
         data: Data, displayName: String,
         argv: [String], stdin: String) {
         let background = stageBackground
+        let latch = StageLatch()
         guard let proc = admitOrSay(
             displayName, .wasm,
             background: background)
@@ -3867,12 +3901,16 @@ final class BlacksiteShell: ObservableObject {
                     self.stageError = true
                 }
                 self.updateBusy()
+                latch.signal()
             }
         wasmMachines[proc.pid] = machine
         machine.launch(
             data: data, argv: argv,
             env: guestEnv, cwd: cwd,
             stdin: stdin)
+        if capturing && !background {
+            latch.wait()
+        }
     }
 
     private func scriptCommand(_ args: [String]) {
@@ -4018,15 +4056,11 @@ final class BlacksiteShell: ObservableObject {
 
     private func jsInvoke(_ name: String,
                           _ args: [String]) {
-        guard !capturing else {
-            emit("\(name) runs live — package "
-                 + "commands cannot be "
-                 + "piped.", .err)
-            return
-        }
+        let background = stageBackground
+        let latch = StageLatch()
         guard let proc = admitOrSay(
             name, .javascript,
-            background: stageBackground)
+            background: background)
         else { return }
         installExecBridge()
         let out = kernelEmit(for: proc)
@@ -4050,6 +4084,10 @@ final class BlacksiteShell: ObservableObject {
                 self.emit(text, .out)
             }
             self.updateBusy()
+            latch.signal()
+        }
+        if capturing && !background {
+            latch.wait()
         }
     }
 
