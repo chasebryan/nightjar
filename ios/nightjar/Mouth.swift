@@ -392,7 +392,7 @@ enum SendTarget {
             return .bleWrite(address: String(rest))
         case "tcp", "udp", "tls", "tcp+tls", "ssl":
             guard let colon = rest.lastIndex(of: ":") else {
-                throw MouthError.message(String(format: L("%@:// target needs host:port, got %@"), scheme, rest))
+                throw MouthError.message(String(format: L("%@:// target needs host:port, got %@"), scheme, String(rest)))
             }
             let host = String(rest[..<colon])
             guard !host.isEmpty,
