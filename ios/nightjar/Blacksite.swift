@@ -185,7 +185,8 @@ final class BlacksiteShell: ObservableObject {
         "whois", "curl", "wget", "nc",
         "telnet", "ifconfig", "arp",
         "netstat", "hostname", "subdomains",
-        "revdns", "nbstat", "snmp", "upnp",
+        "revdns", "nbstat", "snmp", "snmpaudit",
+        "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
     ]
@@ -2660,7 +2661,8 @@ final class BlacksiteShell: ObservableObject {
              "nc", "telnet", "ifconfig",
              "arp", "netstat", "hostname",
              "subdomains", "revdns",
-             "nbstat", "snmp", "upnp",
+             "nbstat", "snmp", "snmpaudit",
+             "upnp",
              "bonjour", "cert", "webaudit",
              "methods", "dirb", "wol":
             netCommand(head, args)
@@ -4410,6 +4412,7 @@ final class BlacksiteShell: ObservableObject {
                 ("revdns [a.b.c] [server]", "reverse-walk a /24"),
                 ("nbstat <host>", "NetBIOS names and the adapter"),
                 ("snmp <host> [community]", "ask the agent (default public)"),
+                ("snmpaudit <host>", "the NSA's five SNMP mitigations, graded from the wire"),
                 ("upnp", "who runs UPnP on this wire"),
                 ("bonjour", "service announcements, censused"),
                 ("cert <host> [port]", "audit the TLS papers"),
@@ -8957,6 +8960,21 @@ final class BlacksiteShell: ObservableObject {
                 BlacksitePentest.snmp(
                     host: host,
                     community: community,
+                    emit: emit, done: done)
+            }
+        case "snmpaudit":
+            guard netAllowed(name),
+                  let host = args.first
+            else {
+                if args.isEmpty {
+                    emit("snmpaudit needs a "
+                         + "host.", .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksitePentest.snmpAudit(
+                    host: host,
                     emit: emit, done: done)
             }
         case "upnp":
