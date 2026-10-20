@@ -2951,6 +2951,840 @@ final class PyInterp {
     /// /packages; its top level runs
     /// once, in its own scope, and that
     /// scope is the module's face.
+    /// Modules the house ships in
+    /// its own tree, written in
+    /// python itself (fix148): the
+    /// loader reads these before
+    /// the disk, so `import datetime`
+    /// works in every room.
+    static let bundledSources:
+        [String: String] = [
+            "datetime": """
+# datetime - dates and times for the
+# house python (fix148), written in
+# python itself on the language's own
+# classes and dunders. The calendar
+# math is exact proleptic-Gregorian
+# (ordinal 1 is 0001-01-01, a Monday).
+# Today and now come from the device
+# clock through the time module's
+# localtime; there are no timezones.
+
+import time as _time
+
+MINYEAR = 1
+MAXYEAR = 9999
+
+_MONTH_DAYS = [31, 28, 31, 30, 31,
+               30, 31, 31, 30, 31,
+               30, 31]
+_MONTH_NAMES = ["January", "February",
+                "March", "April", "May",
+                "June", "July", "August",
+                "September", "October",
+                "November", "December"]
+_MONTH_SHORT = ["Jan", "Feb", "Mar",
+                "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep",
+                "Oct", "Nov", "Dec"]
+_DAY_NAMES = ["Monday", "Tuesday",
+              "Wednesday", "Thursday",
+              "Friday", "Saturday",
+              "Sunday"]
+_DAY_SHORT = ["Mon", "Tue", "Wed",
+              "Thu", "Fri", "Sat", "Sun"]
+
+
+def _is_leap(y):
+    if y % 400 == 0:
+        return True
+    if y % 100 == 0:
+        return False
+    return y % 4 == 0
+
+
+def _days_in_month(y, m):
+    if m == 2 and _is_leap(y):
+        return 29
+    return _MONTH_DAYS[m - 1]
+
+
+def _days_before_year(y):
+    n = y - 1
+    return n * 365 + n // 4 - n // 100 + n // 400
+
+
+def _ordinal_of(y, m, d):
+    total = _days_before_year(y) + d
+    i = 1
+    while i < m:
+        total = total + _days_in_month(
+            y, i)
+        i = i + 1
+    return total
+
+
+def _from_ordinal(n):
+    if n < 1 or n > 3652059:
+        raise OverflowError(
+            "date out of range")
+    y = (n - 1) // 365 + 1
+    while _days_before_year(y) + 1 > n:
+        y = y - 1
+    while _days_before_year(
+            y + 1) + 1 <= n:
+        y = y + 1
+    rest = n - (_days_before_year(y) + 1)
+    m = 1
+    while rest >= _days_in_month(y, m):
+        rest = rest - _days_in_month(
+            y, m)
+        m = m + 1
+    return [y, m, rest + 1]
+
+
+def _floor_div(a, b):
+    # Floor division built on positive
+    # operands only, so it is exact no
+    # matter how the host divides.
+    q = abs(a) // abs(b)
+    r = abs(a) % abs(b)
+    if (a < 0) != (b < 0):
+        if r != 0:
+            return -(q + 1)
+        return -q
+    return q
+
+
+def _pad(n, w):
+    s = str(n)
+    if len(s) < w:
+        return s.zfill(w)
+    return s
+
+
+def _format(fmt, y, mo, d, h, mi, sec,
+            micro, wday, yday):
+    out = ""
+    i = 0
+    while i < len(fmt):
+        ch = fmt[i]
+        if ch != "%":
+            out = out + ch
+            i = i + 1
+            continue
+        i = i + 1
+        if i >= len(fmt):
+            out = out + "%"
+            break
+        c = fmt[i]
+        i = i + 1
+        if c == "%":
+            out = out + "%"
+        elif c == "Y":
+            out = out + _pad(y, 4)
+        elif c == "y":
+            out = out + _pad(y % 100, 2)
+        elif c == "m":
+            out = out + _pad(mo, 2)
+        elif c == "d":
+            out = out + _pad(d, 2)
+        elif c == "H":
+            out = out + _pad(h, 2)
+        elif c == "I":
+            hh = h % 12
+            if hh == 0:
+                hh = 12
+            out = out + _pad(hh, 2)
+        elif c == "M":
+            out = out + _pad(mi, 2)
+        elif c == "S":
+            out = out + _pad(sec, 2)
+        elif c == "f":
+            out = out + _pad(micro, 6)
+        elif c == "j":
+            out = out + _pad(yday, 3)
+        elif c == "A":
+            out = out + _DAY_NAMES[wday]
+        elif c == "a":
+            out = out + _DAY_SHORT[wday]
+        elif c == "B":
+            out = out + _MONTH_NAMES[
+                mo - 1]
+        elif c == "b":
+            out = out + _MONTH_SHORT[
+                mo - 1]
+        elif c == "p":
+            if h < 12:
+                out = out + "AM"
+            else:
+                out = out + "PM"
+        else:
+            out = out + "%" + c
+    return out
+
+
+class timedelta:
+    def __init__(self, days=0, seconds=0,
+                 microseconds=0,
+                 milliseconds=0,
+                 minutes=0, hours=0,
+                 weeks=0):
+        us = microseconds
+        us = us + milliseconds * 1000
+        us = us + seconds * 1000000
+        us = us + minutes * 60000000
+        us = us + hours * 3600000000
+        us = us + (days + weeks * 7) * 86400000000
+        self.days = _floor_div(
+            us, 86400000000)
+        rem = us - self.days * 86400000000
+        self.seconds = rem // 1000000
+        self.microseconds = rem % 1000000
+
+    def _total_us(self):
+        return self.days * 86400000000 + self.seconds * 1000000 + self.microseconds
+
+    def total_seconds(self):
+        return self._total_us() / 1000000
+
+    def __add__(self, other):
+        if type(other) == timedelta:
+            return timedelta(microseconds=self._total_us() + other._total_us())
+        if type(other) == date or type(other) == datetime:
+            return other.__add__(self)
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+    def __radd__(self, other):
+        if type(other) == timedelta:
+            return timedelta(microseconds=self._total_us() + other._total_us())
+        if type(other) == date or type(other) == datetime:
+            return other.__add__(self)
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+    def __sub__(self, other):
+        if type(other) == timedelta:
+            return timedelta(microseconds=self._total_us() - other._total_us())
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+    def __rsub__(self, other):
+        if type(other) == date or type(other) == datetime:
+            return other.__sub__(self)
+        if type(other) == timedelta:
+            return timedelta(microseconds=other._total_us() - self._total_us())
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+    def __mul__(self, k):
+        if type(k) == int:
+            return timedelta(
+                microseconds=self
+                ._total_us() * k)
+        if type(k) == float:
+            return timedelta(
+                microseconds=int(
+                    self._total_us() * k))
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+
+    def __rmul__(self, k):
+        return self.__mul__(k)
+
+    def __truediv__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() / other._total_us()
+        if type(other) == int or type(other) == float:
+            return timedelta(
+                microseconds=int(
+                    self._total_us()
+                    / other))
+        raise TypeError(
+            "unsupported operand for timedelta")
+
+
+    def __neg__(self):
+        return timedelta(
+            microseconds=-self
+            ._total_us())
+
+    def __abs__(self):
+        if self._total_us() < 0:
+            return timedelta(
+                microseconds=-self
+                ._total_us())
+        return self
+
+    def __eq__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() == other._total_us()
+        return False
+
+    def __lt__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() < other._total_us()
+        raise TypeError(
+            "'<' not supported between 'timedelta' and "
+            "another type")
+
+    def __le__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() <= other._total_us()
+        raise TypeError(
+            "'<' not supported between 'timedelta' and "
+            "another type")
+
+    def __gt__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() > other._total_us()
+        raise TypeError(
+            "'<' not supported between 'timedelta' and "
+            "another type")
+
+    def __ge__(self, other):
+        if type(other) == timedelta:
+            return self._total_us() >= other._total_us()
+        raise TypeError(
+            "'<' not supported between 'timedelta' and "
+            "another type")
+
+    def __str__(self):
+        out = ""
+        if self.days != 0:
+            out = str(self.days)
+            if self.days == 1 or self.days == -1:
+                out = out + " day, "
+            else:
+                out = out + " days, "
+        h = self.seconds // 3600
+        m = (self.seconds % 3600) // 60
+        s = self.seconds % 60
+        out = out + str(h) + ":"
+        out = out + _pad(m, 2) + ":"
+        out = out + _pad(s, 2)
+        if self.microseconds != 0:
+            out = out + "." + _pad(
+                self.microseconds, 6)
+        return out
+
+    def __repr__(self):
+        parts = []
+        if self.days != 0:
+            parts.append(
+                "days=" + str(self.days))
+        if self.seconds != 0:
+            parts.append(
+                "seconds="
+                + str(self.seconds))
+        if self.microseconds != 0:
+            parts.append(
+                "microseconds="
+                + str(self.microseconds))
+        if len(parts) == 0:
+            return "datetime.timedelta(0)"
+        return "datetime.timedelta(" + ", ".join(parts) + ")"
+
+
+class date:
+    def __init__(self, year, month, day):
+        if year < 1 or year > 9999:
+            raise ValueError(
+                "year out of range")
+        if month < 1 or month > 12:
+            raise ValueError(
+                "month must be in 1..12")
+        if day < 1 or day > _days_in_month(
+                year, month):
+            raise ValueError(
+                "day is out of range "
+                "for month")
+        self.year = year
+        self.month = month
+        self.day = day
+
+    def today():
+        lt = _time.localtime()
+        return date(lt[0], lt[1], lt[2])
+
+    def fromordinal(n):
+        parts = _from_ordinal(n)
+        return date(parts[0], parts[1],
+                    parts[2])
+
+    def fromisoformat(text):
+        if len(text) != 10 or text[4] != "-" or text[7] != "-":
+            raise ValueError(
+                "bad isoformat date: "
+                + text)
+        return date(int(text[0:4]),
+                    int(text[5:7]),
+                    int(text[8:10]))
+
+    def toordinal(self):
+        return _ordinal_of(
+            self.year, self.month,
+            self.day)
+
+    def weekday(self):
+        return (self.toordinal()
+                - 1) % 7
+
+    def isoweekday(self):
+        return (self.toordinal()
+                - 1) % 7 + 1
+
+    def _yearday(self):
+        return self.toordinal() - _ordinal_of(
+                self.year, 1, 1) + 1
+
+    def replace(self, year=None,
+                month=None, day=None):
+        y = self.year
+        m = self.month
+        d = self.day
+        if year is not None:
+            y = year
+        if month is not None:
+            m = month
+        if day is not None:
+            d = day
+        return date(y, m, d)
+
+    def isoformat(self):
+        return _pad(self.year, 4) + "-" + _pad(self.month, 2) + "-" + _pad(self.day, 2)
+
+    def ctime(self):
+        return _format(
+            "%a %b %d %H:%M:%S %Y",
+            self.year, self.month,
+            self.day, 0, 0, 0, 0,
+            self.weekday(),
+            self._yearday())
+
+    def strftime(self, fmt):
+        return _format(
+            fmt, self.year, self.month,
+            self.day, 0, 0, 0, 0,
+            self.weekday(),
+            self._yearday())
+
+    def __str__(self):
+        return self.isoformat()
+
+    def __repr__(self):
+        return "datetime.date(" + str(self.year) + ", " + str(self.month) + ", " + str(self.day) + ")"
+
+    def __eq__(self, other):
+        if type(other) == date:
+            return self.year == other.year and self.month == other.month and self.day == other.day
+        return False
+
+    def __lt__(self, other):
+        if type(other) == date:
+            return self.toordinal() < other.toordinal()
+        raise TypeError(
+            "'<' not supported between 'date' and "
+            "another type")
+
+    def __le__(self, other):
+        if type(other) == date:
+            return self.toordinal() <= other.toordinal()
+        raise TypeError(
+            "'<' not supported between 'date' and "
+            "another type")
+
+    def __gt__(self, other):
+        if type(other) == date:
+            return self.toordinal() > other.toordinal()
+        raise TypeError(
+            "'<' not supported between 'date' and "
+            "another type")
+
+    def __ge__(self, other):
+        if type(other) == date:
+            return self.toordinal() >= other.toordinal()
+        raise TypeError(
+            "'<' not supported between 'date' and "
+            "another type")
+
+    def __add__(self, other):
+        if type(other) == timedelta:
+            return date.fromordinal(self.toordinal() + other.days)
+        raise TypeError("unsupported operand for date +")
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        if type(other) == timedelta:
+            return date.fromordinal(
+                self.toordinal()
+                - other.days)
+        if type(other) == date:
+            return timedelta(
+                days=self.toordinal()
+                - other.toordinal())
+        raise TypeError("unsupported operand for date -")
+
+
+class time:
+    def __init__(self, hour=0, minute=0,
+                 second=0, microsecond=0):
+        if hour < 0 or hour > 23:
+            raise ValueError(
+                "hour must be in 0..23")
+        if minute < 0 or minute > 59:
+            raise ValueError(
+                "minute must be in "
+                "0..59")
+        if second < 0 or second > 59:
+            raise ValueError(
+                "second must be in "
+                "0..59")
+        if microsecond < 0 or microsecond > 999999:
+            raise ValueError(
+                "microsecond must be "
+                "in 0..999999")
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+        self.microsecond = microsecond
+
+    def _key(self):
+        return (self.hour * 3600
+                + self.minute * 60
+                + self.second) * 1000000 + self.microsecond
+
+    def fromisoformat(text):
+        parts = text.split(":")
+        if len(parts) < 2 or len(parts) > 3:
+            raise ValueError(
+                "bad isoformat time: "
+                + text)
+        h = int(parts[0])
+        m = int(parts[1])
+        s = 0
+        us = 0
+        if len(parts) == 3:
+            tail = parts[2]
+            dot = tail.find(".")
+            if dot >= 0:
+                s = int(tail[0:dot])
+                frac = tail[dot + 1:]
+                while len(frac) < 6:
+                    frac = frac + "0"
+                us = int(frac[0:6])
+            else:
+                s = int(tail)
+        return time(h, m, s, us)
+
+    def replace(self, hour=None,
+                minute=None, second=None,
+                microsecond=None):
+        h = self.hour
+        m = self.minute
+        s = self.second
+        us = self.microsecond
+        if hour is not None:
+            h = hour
+        if minute is not None:
+            m = minute
+        if second is not None:
+            s = second
+        if microsecond is not None:
+            us = microsecond
+        return time(h, m, s, us)
+
+    def isoformat(self):
+        out = _pad(self.hour, 2) + ":"
+        out = out + _pad(self.minute, 2)
+        out = out + ":" + _pad(
+            self.second, 2)
+        if self.microsecond != 0:
+            out = out + "." + _pad(
+                self.microsecond, 6)
+        return out
+
+    def strftime(self, fmt):
+        return _format(
+            fmt, 1900, 1, 1, self.hour,
+            self.minute, self.second,
+            self.microsecond, 0, 1)
+
+    def __str__(self):
+        return self.isoformat()
+
+    def __repr__(self):
+        out = "datetime.time("
+        out = out + str(self.hour)
+        out = out + ", " + str(
+            self.minute)
+        out = out + ", " + str(
+            self.second)
+        if self.microsecond != 0:
+            out = out + ", " + str(
+                self.microsecond)
+        return out + ")"
+
+    def __eq__(self, other):
+        if type(other) == time:
+            return self._key() == other._key()
+        return False
+
+    def __lt__(self, other):
+        if type(other) == time:
+            return self._key() < other._key()
+        raise TypeError(
+            "'<' not supported between 'time' and "
+            "another type")
+
+    def __le__(self, other):
+        if type(other) == time:
+            return self._key() <= other._key()
+        raise TypeError(
+            "'<' not supported between 'time' and "
+            "another type")
+
+    def __gt__(self, other):
+        if type(other) == time:
+            return self._key() > other._key()
+        raise TypeError(
+            "'<' not supported between 'time' and "
+            "another type")
+
+    def __ge__(self, other):
+        if type(other) == time:
+            return self._key() >= other._key()
+        raise TypeError(
+            "'<' not supported between 'time' and "
+            "another type")
+
+
+class datetime:
+    def __init__(self, year, month, day,
+                 hour=0, minute=0,
+                 second=0, microsecond=0):
+        probe = date(year, month, day)
+        tick = time(hour, minute, second,
+                    microsecond)
+        self.year = probe.year
+        self.month = probe.month
+        self.day = probe.day
+        self.hour = tick.hour
+        self.minute = tick.minute
+        self.second = tick.second
+        self.microsecond = tick.microsecond
+
+    def _date_part(self):
+        return date(self.year, self.month,
+                    self.day)
+
+    def _key(self):
+        days = _ordinal_of(
+            self.year, self.month,
+            self.day)
+        secs = self.hour * 3600 + self.minute * 60 + self.second
+        return days * 86400000000 + secs * 1000000 + self.microsecond
+
+    def now():
+        lt = _time.localtime()
+        return datetime(
+            lt[0], lt[1], lt[2], lt[3],
+            lt[4], lt[5])
+
+    def today():
+        return datetime.now()
+
+    def fromtimestamp(ts):
+        lt = _time.localtime(ts)
+        us = int((ts - int(ts))
+                 * 1000000)
+        return datetime(
+            lt[0], lt[1], lt[2], lt[3],
+            lt[4], lt[5], us)
+
+    def fromordinal(n):
+        parts = _from_ordinal(n)
+        return datetime(parts[0],
+                        parts[1], parts[2])
+
+    def fromisoformat(text):
+        day_part = text
+        tick = time(0, 0, 0, 0)
+        if len(text) > 10:
+            day_part = text[0:10]
+            tick = time.fromisoformat(
+                text[11:])
+        d = date.fromisoformat(day_part)
+        return datetime(
+            d.year, d.month, d.day,
+            tick.hour, tick.minute,
+            tick.second, tick.microsecond)
+
+    def combine(d, t):
+        return datetime(
+            d.year, d.month, d.day,
+            t.hour, t.minute, t.second,
+            t.microsecond)
+
+    def date(self):
+        return self._date_part()
+
+    def time(self):
+        return time(self.hour, self.minute,
+                    self.second,
+                    self.microsecond)
+
+    def toordinal(self):
+        return _ordinal_of(
+            self.year, self.month,
+            self.day)
+
+    def weekday(self):
+        return self._date_part().weekday()
+
+    def isoweekday(self):
+        return self._date_part() .isoweekday()
+
+    def replace(self, year=None,
+                month=None, day=None,
+                hour=None, minute=None,
+                second=None,
+                microsecond=None):
+        y = self.year
+        mo = self.month
+        d = self.day
+        h = self.hour
+        mi = self.minute
+        s = self.second
+        us = self.microsecond
+        if year is not None:
+            y = year
+        if month is not None:
+            mo = month
+        if day is not None:
+            d = day
+        if hour is not None:
+            h = hour
+        if minute is not None:
+            mi = minute
+        if second is not None:
+            s = second
+        if microsecond is not None:
+            us = microsecond
+        return datetime(y, mo, d, h, mi,
+                        s, us)
+
+    def isoformat(self, sep="T"):
+        out = self._date_part() .isoformat()
+        out = out + sep
+        out = out + _pad(self.hour, 2)
+        out = out + ":" + _pad(
+            self.minute, 2)
+        out = out + ":" + _pad(
+            self.second, 2)
+        if self.microsecond != 0:
+            out = out + "." + _pad(
+                self.microsecond, 6)
+        return out
+
+    def strftime(self, fmt):
+        d = self._date_part()
+        return _format(
+            fmt, self.year, self.month,
+            self.day, self.hour,
+            self.minute, self.second,
+            self.microsecond,
+            d.weekday(), d._yearday())
+
+    def __str__(self):
+        return self.isoformat(" ")
+
+    def __repr__(self):
+        out = "datetime.datetime("
+        out = out + str(self.year)
+        out = out + ", " + str(
+            self.month)
+        out = out + ", " + str(self.day)
+        out = out + ", " + str(self.hour)
+        out = out + ", " + str(
+            self.minute)
+        out = out + ", " + str(
+            self.second)
+        if self.microsecond != 0:
+            out = out + ", " + str(
+                self.microsecond)
+        return out + ")"
+
+    def __eq__(self, other):
+        if type(other) == datetime:
+            return self._key() == other._key()
+        return False
+
+    def __lt__(self, other):
+        if type(other) == datetime:
+            return self._key() < other._key()
+        raise TypeError(
+            "'<' not supported between 'datetime' and "
+            "another type")
+
+    def __le__(self, other):
+        if type(other) == datetime:
+            return self._key() <= other._key()
+        raise TypeError(
+            "'<' not supported between 'datetime' and "
+            "another type")
+
+    def __gt__(self, other):
+        if type(other) == datetime:
+            return self._key() > other._key()
+        raise TypeError(
+            "'<' not supported between 'datetime' and "
+            "another type")
+
+    def __ge__(self, other):
+        if type(other) == datetime:
+            return self._key() >= other._key()
+        raise TypeError(
+            "'<' not supported between 'datetime' and "
+            "another type")
+
+    def __add__(self, other):
+        if type(other) == timedelta:
+            total = self._key() + other._total_us()
+            days = _floor_div(
+                total, 86400000000)
+            rem = total - days * 86400000000
+            parts = _from_ordinal(days)
+            secs = rem // 1000000
+            us = rem % 1000000
+            return datetime(
+                parts[0], parts[1],
+                parts[2], secs // 3600,
+                (secs % 3600) // 60,
+                secs % 60, us)
+        raise TypeError("unsupported operand for datetime +")
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        if type(other) == timedelta:
+            return self.__add__(
+                timedelta(
+                    microseconds=-other
+                    ._total_us()))
+        if type(other) == datetime:
+            return timedelta(
+                microseconds=self._key()
+                - other._key())
+        raise TypeError("unsupported operand for datetime -")
+""",
+        ]
+
     func loadUserModule(_ name: String)
         throws -> PyUserModule {
         if let cached =
@@ -2966,14 +3800,24 @@ final class PyInterp {
                 name + ".py",
                 cwd: "/packages"),
         ]
-        guard let file = candidates.first(
-            where: {
+        let file: String
+        let source: String
+        if let bundled =
+            Self.bundledSources[name] {
+            file = "<house>/" + name
+                + ".py"
+            source = bundled
+        } else if let found =
+            candidates.first(where: {
                 BlacksiteFS.exists($0)
                     && !BlacksiteFS
                         .isDirectory($0)
             }),
-              let source = BlacksiteFS
-                .readText(file) else {
+                  let text = BlacksiteFS
+                    .readText(found) {
+            file = found
+            source = text
+        } else {
             throw PyError(
                 "ModuleNotFoundError",
                 "No module named "
@@ -3123,6 +3967,16 @@ final class PyInterp {
                     "copy", "count",
                     "index", "remove",
                     "__len__", "__iter__",
+                    "__contains__",
+                    "__getitem__",
+                    "__setitem__"]
+        case "array":
+            return ["append", "extend",
+                    "insert", "pop",
+                    "remove", "index",
+                    "count", "reverse",
+                    "tolist", "__len__",
+                    "__iter__",
                     "__contains__",
                     "__getitem__",
                     "__setitem__"]
@@ -3695,7 +4549,8 @@ final class PyInterp {
          "itertools", "functools", "os",
          "os.path", "time", "base64",
          "hashlib", "statistics",
-         "string"].contains(name)
+         "string", "heapq", "bisect",
+         "array"].contains(name)
     }
 
     func raiseError(_ expr: PyExpr?,
@@ -5291,6 +6146,22 @@ extension PyInterp {
     func textOf(_ value: PyValue)
         -> String {
         if case .instance(let obj) = value,
+           obj.cls.nativeKind == "array",
+           case .list(let items)? =
+            obj.attrs["__items__"],
+           case .str(let code)? =
+            obj.attrs["typecode"] {
+            if items.items.isEmpty {
+                return "array('"
+                    + code + "')"
+            }
+            let inner = items.items.map {
+                reprOf($0)
+            }.joined(separator: ", ")
+            return "array('" + code
+                + "', [" + inner + "])"
+        }
+        if case .instance(let obj) = value,
            obj.cls.nativeKind == "re.Match",
            case .str(let matched)? =
             obj.attrs["__matched__"] {
@@ -5313,6 +6184,10 @@ extension PyInterp {
     /// __repr__ first, then __str__.
     func reprOf(_ value: PyValue)
         -> String {
+        if case .instance(let obj) = value,
+           obj.cls.nativeKind == "array" {
+            return textOf(value)
+        }
         if case .instance(let obj) = value {
             if let said = try? dunderText(
                 obj, "__repr__") {
@@ -6774,7 +7649,8 @@ extension PyInterp {
         -> PyValue {
         if case .module(let name) = base {
             return try moduleFunction(
-                name, method, args, line)
+                name, method, args,
+                kwargs, line)
         }
         if case .instance(let obj) = base,
            let kind = obj.cls.nativeKind {
@@ -8508,6 +9384,17 @@ extension PyInterp {
                        _ line: Int) throws
         -> PyValue {
         switch kind {
+        case "array":
+            guard let items = nativeItems(
+                obj) else {
+                throw attrError(
+                    "array", "__getitem__",
+                    line)
+            }
+            let at = try listIndex(
+                index, items.items.count,
+                line)
+            return items.items[at]
         case "deque":
             guard let items = nativeItems(
                 obj) else {
@@ -8560,6 +9447,19 @@ extension PyInterp {
                        _ value: PyValue,
                        _ line: Int) throws {
         switch kind {
+        case "array":
+            guard let items = nativeItems(
+                obj),
+                  case .str(
+                    let typecode)? =
+                    obj.attrs["typecode"]
+            else { return }
+            let at = try listIndex(
+                index, items.items.count,
+                line)
+            items.items[at] =
+                try arrayCoerce(
+                    value, typecode, line)
         case "deque":
             guard let items = nativeItems(
                 obj) else { return }
@@ -8586,7 +9486,7 @@ extension PyInterp {
                    _ line: Int) throws
         -> Int {
         switch kind {
-        case "deque":
+        case "array", "deque":
             return nativeItems(obj)?.items
                 .count ?? 0
         case "Counter", "defaultdict":
@@ -8612,7 +9512,7 @@ extension PyInterp {
                        _ obj: PyInstance)
         throws -> [PyValue] {
         switch kind {
-        case "deque":
+        case "array", "deque":
             return nativeItems(obj)?.items
                 ?? []
         case "Counter", "defaultdict":
@@ -8638,7 +9538,7 @@ extension PyInterp {
                         _ line: Int) throws
         -> Bool {
         switch kind {
-        case "deque":
+        case "array", "deque":
             return nativeItems(obj)?.items
                 .contains {
                     PyFormat.equals(
@@ -8951,6 +9851,168 @@ extension PyInterp {
 
     /// The method calls of the house's
     /// native classes.
+    func arrayMethod(
+        _ obj: PyInstance,
+        _ method: String,
+        _ args: [PyValue],
+        _ line: Int) throws -> PyValue {
+        guard let items = nativeItems(obj),
+              case .str(let typecode)? =
+                obj.attrs["typecode"]
+        else {
+            throw attrError(
+                "array", method, line)
+        }
+        switch method {
+        case "append":
+            guard let value = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "append() needs a value",
+                    line: line)
+            }
+            items.items.append(
+                try arrayCoerce(
+                    value, typecode, line))
+            return .none
+        case "extend":
+            guard let source = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "extend() needs an "
+                        + "iterable",
+                    line: line)
+            }
+            for value in try iterate(
+                source) {
+                items.items.append(
+                    try arrayCoerce(
+                        value, typecode,
+                        line))
+            }
+            return .none
+        case "insert":
+            guard args.count > 1,
+                  let at = asInt(args[0])
+            else {
+                throw PyError(
+                    "TypeError",
+                    "insert() needs an "
+                        + "index and a value",
+                    line: line)
+            }
+            var spot = at
+            if spot < 0 {
+                spot = max(
+                    0, items.items.count
+                        + spot)
+            }
+            if spot > items.items.count {
+                spot = items.items.count
+            }
+            items.items.insert(
+                try arrayCoerce(
+                    args[1], typecode, line),
+                at: spot)
+            return .none
+        case "pop":
+            guard !items.items.isEmpty
+            else {
+                throw PyError(
+                    "IndexError",
+                    "pop from empty array",
+                    line: line)
+            }
+            var at = items.items.count - 1
+            if let wanted = args.first {
+                at = try listIndex(
+                    wanted,
+                    items.items.count, line)
+            }
+            return items.items.remove(
+                at: at)
+        case "remove":
+            guard let value = args.first,
+                  let at = items.items
+                    .firstIndex(where: {
+                        PyFormat.equals(
+                            $0, value)
+                    }) else {
+                throw PyError(
+                    "ValueError",
+                    "array.remove(x): x "
+                        + "not in array",
+                    line: line)
+            }
+            items.items.remove(at: at)
+            return .none
+        case "index":
+            guard let value = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "index() needs a value",
+                    line: line)
+            }
+            var start = 0
+            var stop = items.items.count
+            if args.count > 1,
+               let from = asInt(args[1]) {
+                start = from < 0
+                    ? max(0,
+                          items.items.count
+                            + from)
+                    : from
+            }
+            if args.count > 2,
+               let until = asInt(args[2]) {
+                stop = until < 0
+                    ? max(0,
+                          items.items.count
+                            + until)
+                    : until
+            }
+            var at = start
+            while at < stop
+                && at < items.items.count {
+                if PyFormat.equals(
+                    items.items[at], value) {
+                    return .int(at)
+                }
+                at += 1
+            }
+            throw PyError(
+                "ValueError",
+                "array.index(x): x not "
+                    + "in array",
+                line: line)
+        case "count":
+            guard let value = args.first
+            else {
+                throw PyError(
+                    "TypeError",
+                    "count() needs a value",
+                    line: line)
+            }
+            return .int(items.items
+                .filter {
+                    PyFormat.equals(
+                        $0, value)
+                }.count)
+        case "reverse":
+            items.items.reverse()
+            return .none
+        case "tolist":
+            return .list(
+                PyList(items.items))
+        default:
+            throw attrError(
+                "array", method, line)
+        }
+    }
+
     func nativeMethod(
         _ kind: String, _ obj: PyInstance,
         _ method: String,
@@ -8965,6 +10027,9 @@ extension PyInterp {
             return try counterMethod(
                 obj, method, args, kwargs,
                 line)
+        case "array":
+            return try arrayMethod(
+                obj, method, args, line)
         case "defaultdict":
             guard let store = nativeStore(
                 obj) else {
@@ -10014,6 +11079,22 @@ extension PyInterp {
                         PyValue.str($0)
                     }))
             }
+            if field == "platform" {
+                return .str("blacksite")
+            }
+            if field == "version" {
+                return .str(
+                    "3.11.0 (house python)")
+            }
+            if field == "maxsize" {
+                return .int(Int.max)
+            }
+            if field == "path" {
+                return .list(PyList([
+                    .str(osCwd()),
+                    .str("/packages"),
+                ]))
+            }
             throw PyError(
                 "AttributeError",
                 "module 'sys' has no "
@@ -10198,6 +11279,19 @@ extension PyInterp {
                            "harmonic_mean",
                            "geometric_mean"],
             "string": ["capwords"],
+            "heapq": ["heapify", "heappush",
+                      "heappop",
+                      "heapreplace",
+                      "heappushpop",
+                      "nlargest",
+                      "nsmallest"],
+            "bisect": ["bisect",
+                       "bisect_left",
+                       "bisect_right",
+                       "insort",
+                       "insort_left",
+                       "insort_right"],
+            "array": ["array"],
         ]
         if known[module]?.contains(field)
             == true {
@@ -10211,9 +11305,171 @@ extension PyInterp {
             line: line)
     }
 
+    /// heapq's comparison: an
+    /// incomparable pair is Python's
+    /// TypeError, as everywhere else.
+    func heapLess(_ a: PyValue,
+                  _ b: PyValue,
+                  _ line: Int) throws
+        -> Bool {
+        guard let order = ordering(a, b)
+        else {
+            throw PyError(
+                "TypeError",
+                "'<' not supported "
+                    + "between those "
+                    + "values",
+                line: line)
+        }
+        return order < 0
+    }
+
+    func heapSiftUp(_ list: PyList,
+                    _ child0: Int,
+                    _ line: Int) throws {
+        var child = child0
+        let item = list.items[child]
+        while child > 0 {
+            let parent = (child - 1) >> 1
+            if try heapLess(
+                item, list.items[parent],
+                line) {
+                list.items[child] =
+                    list.items[parent]
+                child = parent
+            } else {
+                break
+            }
+        }
+        list.items[child] = item
+    }
+
+    func heapSiftDown(_ list: PyList,
+                      _ root0: Int,
+                      _ line: Int) throws {
+        var root = root0
+        let count = list.items.count
+        guard count > 0 else { return }
+        let item = list.items[root]
+        while true {
+            var child = 2 * root + 1
+            if child >= count { break }
+            if child + 1 < count,
+               try heapLess(
+                list.items[child + 1],
+                list.items[child], line) {
+                child += 1
+            }
+            if try heapLess(
+                list.items[child], item,
+                line) {
+                list.items[root] =
+                    list.items[child]
+                root = child
+            } else {
+                break
+            }
+        }
+        list.items[root] = item
+    }
+
+    /// bisect's search over a
+    /// materialized sequence. With a
+    /// key function the ELEMENTS are
+    /// keyed and x is compared raw —
+    /// CPython's rule for the search
+    /// functions.
+    func bisectIndex(
+        _ items: [PyValue],
+        _ x: PyValue, _ lo0: Int,
+        _ hi0: Int, _ right: Bool,
+        _ keyFn: PyValue?,
+        _ line: Int) throws -> Int {
+        var lo = max(0, lo0)
+        var hi = max(lo, hi0)
+        while lo < hi {
+            let mid = (lo + hi) >> 1
+            var probe = items[mid]
+            if let keyFn = keyFn {
+                probe = try callValue(
+                    keyFn, [probe], [],
+                    line)
+            }
+            let order = ordering(probe, x)
+            guard let order = order else {
+                throw PyError(
+                    "TypeError",
+                    "'<' not supported "
+                        + "between those "
+                        + "values",
+                    line: line)
+            }
+            if right
+                ? order <= 0 : order < 0 {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        return lo
+    }
+
+    /// array's per-item gate: the
+    /// typecode decides what may be
+    /// stored, with Python's errors.
+    func arrayCoerce(
+        _ value: PyValue,
+        _ typecode: String,
+        _ line: Int) throws -> PyValue {
+        if typecode == "f"
+            || typecode == "d" {
+            guard let d = asDouble(value)
+            else {
+                throw PyError(
+                    "TypeError",
+                    "array item must be "
+                        + "a number",
+                    line: line)
+            }
+            return .float(d)
+        }
+        guard let n = asInt(value) else {
+            throw PyError(
+                "TypeError",
+                "array item must be "
+                    + "an integer",
+                line: line)
+        }
+        let ranges: [String: (Int, Int)] = [
+            "b": (-128, 127),
+            "B": (0, 255),
+            "h": (-32768, 32767),
+            "H": (0, 65535),
+            "i": (Int(Int32.min),
+                  Int(Int32.max)),
+            "I": (0, Int(UInt32.max)),
+            "l": (Int.min, Int.max),
+            "L": (0, Int.max),
+            "q": (Int.min, Int.max),
+            "Q": (0, Int.max),
+        ]
+        if let range = ranges[typecode],
+           n < range.0 || n > range.1 {
+            throw PyError(
+                "OverflowError",
+                "array item out of range "
+                    + "for typecode '"
+                    + typecode + "'",
+                line: line)
+        }
+        return .int(n)
+    }
+
     func moduleFunction(_ module: String,
                         _ field: String,
                         _ args: [PyValue],
+                        _ kwargs: [(String,
+                                    PyValue)],
                         _ line: Int) throws
         -> PyValue {
         func num(_ at: Int) throws
@@ -10840,10 +12096,10 @@ extension PyInterp {
             let raw = try needStr(0)
             let head = try moduleFunction(
                 "os.path", "dirname",
-                [.str(raw)], line)
+                [.str(raw)], [], line)
             let tail = try moduleFunction(
                 "os.path", "basename",
-                [.str(raw)], line)
+                [.str(raw)], [], line)
             return .tuple([head, tail])
         case ("os.path", "splitext"):
             let raw = try needStr(0)
@@ -11390,6 +12646,282 @@ extension PyInterp {
                         + $0.dropFirst()
                             .lowercased()
                 }.joined(separator: " "))
+
+        // heapq — a list kept as a
+        // binary heap, in place.
+        case ("heapq", "heapify"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first else {
+                throw PyError(
+                    "TypeError",
+                    "heapify() needs a list",
+                    line: line)
+            }
+            if list.items.count > 1 {
+                for i in stride(
+                    from: list.items.count
+                        / 2 - 1,
+                    through: 0, by: -1) {
+                    try heapSiftDown(
+                        list, i, line)
+                }
+            }
+            return .none
+        case ("heapq", "heappush"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first,
+                  args.count > 1 else {
+                throw PyError(
+                    "TypeError",
+                    "heappush() needs a "
+                        + "list and an item",
+                    line: line)
+            }
+            list.items.append(args[1])
+            try heapSiftUp(
+                list, list.items.count - 1,
+                line)
+            return .none
+        case ("heapq", "heappop"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first else {
+                throw PyError(
+                    "TypeError",
+                    "heappop() needs a list",
+                    line: line)
+            }
+            guard !list.items.isEmpty else {
+                throw PyError(
+                    "IndexError",
+                    "pop from empty list",
+                    line: line)
+            }
+            let top = list.items[0]
+            let last = list.items
+                .removeLast()
+            if !list.items.isEmpty {
+                list.items[0] = last
+                try heapSiftDown(
+                    list, 0, line)
+            }
+            return top
+        case ("heapq", "heapreplace"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first,
+                  args.count > 1 else {
+                throw PyError(
+                    "TypeError",
+                    "heapreplace() needs "
+                        + "a list and an item",
+                    line: line)
+            }
+            guard !list.items.isEmpty else {
+                throw PyError(
+                    "IndexError",
+                    "heapreplace on an "
+                        + "empty heap",
+                    line: line)
+            }
+            let top = list.items[0]
+            list.items[0] = args[1]
+            try heapSiftDown(list, 0, line)
+            return top
+        case ("heapq", "heappushpop"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first,
+                  args.count > 1 else {
+                throw PyError(
+                    "TypeError",
+                    "heappushpop() needs "
+                        + "a list and an item",
+                    line: line)
+            }
+            var item = args[1]
+            if !list.items.isEmpty,
+               try heapLess(
+                list.items[0], item, line) {
+                swap(&item,
+                     &list.items[0])
+                try heapSiftDown(
+                    list, 0, line)
+            }
+            return item
+        case ("heapq", "nlargest"),
+             ("heapq", "nsmallest"):
+            guard args.count > 1,
+                  let n = asInt(args[0])
+            else {
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs a "
+                        + "count and an "
+                        + "iterable",
+                    line: line)
+            }
+            let values = try iterate(
+                args[1])
+            let keyFn = kwarg(
+                kwargs, "key")
+            var pairs: [(PyValue,
+                          PyValue)] = []
+            for value in values {
+                var key = value
+                if let keyFn = keyFn {
+                    key = try callValue(
+                        keyFn, [value], [],
+                        line)
+                }
+                pairs.append((key, value))
+            }
+            let largest =
+                field == "nlargest"
+            pairs = try pairs.sorted {
+                let order = ordering(
+                    $0.0, $1.0)
+                guard let order = order
+                else {
+                    throw PyError(
+                        "TypeError",
+                        "'<' not supported "
+                            + "between those "
+                            + "values",
+                        line: line)
+                }
+                return largest
+                    ? order > 0 : order < 0
+            }
+            return .list(PyList(
+                pairs.prefix(max(0, n))
+                    .map { $0.1 }))
+
+        // bisect — binary search over
+        // a sorted sequence.
+        case ("bisect", "bisect"),
+             ("bisect", "bisect_left"),
+             ("bisect", "bisect_right"):
+            guard args.count > 1 else {
+                throw PyError(
+                    "TypeError",
+                    "\(field)() needs a "
+                        + "sequence and a "
+                        + "value",
+                    line: line)
+            }
+            let items = try iterate(
+                args[0])
+            let lo = (args.count > 2
+                ? asInt(args[2]) : nil)
+                ?? kwarg(kwargs, "lo")
+                    .flatMap { asInt($0) }
+                ?? 0
+            let hi = (args.count > 3
+                ? asInt(args[3]) : nil)
+                ?? kwarg(kwargs, "hi")
+                    .flatMap { asInt($0) }
+                ?? items.count
+            let at = try bisectIndex(
+                items, args[1], lo, hi,
+                field != "bisect_left",
+                kwarg(kwargs, "key"), line)
+            return .int(at)
+        case ("bisect", "insort"),
+             ("bisect", "insort_left"),
+             ("bisect", "insort_right"):
+            guard let first = args.first,
+                  case .list(let list) =
+                    first,
+                  args.count > 1 else {
+                throw PyError(
+                    "TypeError",
+                    "insort() needs a list "
+                        + "and a value",
+                    line: line)
+            }
+            let keyFn = kwarg(
+                kwargs, "key")
+            var probe = args[1]
+            if let keyFn = keyFn {
+                // CPython keys the
+                // inserted value once
+                // for the search; the
+                // value itself is what
+                // lands in the list.
+                probe = try callValue(
+                    keyFn, [probe], [],
+                    line)
+            }
+            let lo = (args.count > 2
+                ? asInt(args[2]) : nil)
+                ?? kwarg(kwargs, "lo")
+                    .flatMap { asInt($0) }
+                ?? 0
+            let hi = (args.count > 3
+                ? asInt(args[3]) : nil)
+                ?? kwarg(kwargs, "hi")
+                    .flatMap { asInt($0) }
+                ?? list.items.count
+            // With a key, the search
+            // compares keyed elements
+            // against the keyed probe:
+            // bisectIndex keys elements
+            // itself, so hand it the
+            // raw probe when keying is
+            // on and the keyed one when
+            // it is not — they are the
+            // same value here.
+            let at = try bisectIndex(
+                list.items, probe, lo, hi,
+                field != "insort_left",
+                keyFn, line)
+            list.items.insert(
+                args[1], at: at)
+            return .none
+
+        // array — the typed array
+        // constructor; the kind's
+        // methods live with the other
+        // native kinds.
+        case ("array", "array"):
+            let typecode = try needStr(0)
+            let sizes: [String: Int] = [
+                "b": 1, "B": 1, "h": 2,
+                "H": 2, "i": 4, "I": 4,
+                "f": 4, "l": 8, "L": 8,
+                "q": 8, "Q": 8, "d": 8,
+            ]
+            guard let size = sizes[
+                typecode] else {
+                throw PyError(
+                    "ValueError",
+                    "bad typecode "
+                        + "(must be one of "
+                        + "b, B, h, H, i, I, "
+                        + "l, L, q, Q, f, d)",
+                    line: line)
+            }
+            let items = PyList()
+            if args.count > 1 {
+                for value in try iterate(
+                    args[1]) {
+                    items.items.append(
+                        try arrayCoerce(
+                            value, typecode,
+                            line))
+                }
+            }
+            return nativeInstance(
+                "array", "array", [
+                    "__items__":
+                        .list(items),
+                    "typecode":
+                        .str(typecode),
+                    "itemsize": .int(size),
+                ])
 
         // hashlib — objects from E2, and
         // the pbkdf2 the bench asks for.
@@ -12264,6 +13796,8 @@ enum BlacksitePy {
             + "functools",
         "  os + os.path, time, base64, "
             + "hashlib, statistics, "
+            + "heapq, bisect, array, "
+            + "datetime, "
             + "string, house (the console "
             + "itself)",
         "  import your own .py files "
