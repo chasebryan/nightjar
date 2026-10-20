@@ -202,8 +202,8 @@ final class AssaultCenter: ObservableObject {
         postcardedThisRun = []
         guard !running else { return }
         if EmconStandard.refused(.netAssault) {
-            note("Net-Assault stays dark — "
-                 + EmconCondition.current.declared)
+            note(String(format: L("Net-Assault stays dark — %@"),
+                        EmconCondition.current.declared))
             return
         }
         Haptics.start()
@@ -229,7 +229,7 @@ final class AssaultCenter: ObservableObject {
                     + "\(depth), rest "
                     + "\(Int(restSeconds))s. The operator was "
                     + "warned it is loud.")
-        note("Armed. The wire will hear this phone coming.")
+        note(L("Armed. The wire will hear this phone coming."))
         startPass()
         timer = Timer.scheduledTimer(withTimeInterval: 1,
                                      repeats: true) { [weak self] _ in
@@ -237,7 +237,7 @@ final class AssaultCenter: ObservableObject {
         }
     }
 
-    func disarm(reason: String = "the operator stood it down") {
+    func disarm(reason: String = L("the operator stood it down")) {
         guard running else { return }
         running = false
         timer?.invalidate()
@@ -250,10 +250,10 @@ final class AssaultCenter: ObservableObject {
         TomatoBarrage.shared.stop()
         knockingNow = nil
         stage = .idle
-        phase = "Stood down"
+        phase = L("Stood down")
         if let boardID {
             ProcessBoard.shared.end(boardID,
-                                    .done("Stood down"))
+                                    .done(L("Stood down")))
             self.boardID = nil
         }
         Journal.log("assault", "disarmed",
@@ -262,7 +262,8 @@ final class AssaultCenter: ObservableObject {
                     + "\(newThisRun) new device(s), "
                     + "\(driftThisRun) drift line(s), "
                     + "\(probedThisRun) ports knocked.")
-        note("Stood down after \(passes) pass(es).")
+        note(String(format: L("Stood down after %lld pass(es)."),
+                    passes))
         // The after-action survives the run — and the
         // relaunch: it is filed before anything resets.
         let text = buildReport(reason: reason)
@@ -306,8 +307,8 @@ final class AssaultCenter: ObservableObject {
 
     private func sweepNext() {
         guard let port = sweepQueue.first else { return }
-        phase = "Pass \(cycle): sweeping the wire on "
-            + "port \(port)"
+        phase = String(format: L("Pass %lld: sweeping the wire on port %lld"),
+                       cycle, port)
         model.sweep(port: port)
     }
 
@@ -316,8 +317,7 @@ final class AssaultCenter: ObservableObject {
         // The background check comes FIRST: a sleeping
         // house does no arithmetic at all.
         if UIApplication.shared.applicationState != .active {
-            phase = "Paused — the house sleeps; "
-                + "it resumes when you return"
+            phase = L("Paused — the house sleeps; it resumes when you return")
             return
         }
         newThisRun = max(0, NeighborhoodStore.shared
@@ -326,8 +326,8 @@ final class AssaultCenter: ObservableObject {
         if maxHours > 0, let startedAt,
            Date().timeIntervalSince(startedAt)
             > maxHours * 3600 {
-            disarm(reason: "the run reached its set length "
-                   + "of \(Int(maxHours))h")
+            disarm(reason: String(format: L("the run reached its set length of %lldh"),
+                                  Int(maxHours)))
             return
         }
         switch stage {
@@ -382,10 +382,10 @@ final class AssaultCenter: ObservableObject {
                 startPass()
             } else {
                 phase = quietStreak > 0
-                    ? "Resting — the wire is quiet; next "
-                      + "pass in \(left)s."
-                    : "Resting — next pass in \(left)s. "
-                      + "The ear stays up."
+                    ? String(format: L("Resting — the wire is quiet; next pass in %llds."),
+                             left)
+                    : String(format: L("Resting — next pass in %llds. The ear stays up."),
+                             left)
             }
         case .idle:
             break
@@ -401,18 +401,17 @@ final class AssaultCenter: ObservableObject {
         var found: [String] = []
         for neighbor in neighbors
         where !passIPs.contains(neighbor.ip) {
-            found.append("Arrived on the wire: "
-                         + "\(neighbor.displayName) "
-                         + "(\(neighbor.ip))")
+            found.append(String(format: L("Arrived on the wire: %@ (%@)"),
+                                neighbor.displayName,
+                                neighbor.ip))
         }
         for neighbor in neighbors {
             let before = passDrift[neighbor.ip]
                 ?? neighbor.drift.count
             if neighbor.drift.count > before {
-                found.append("Drift at "
-                             + "\(neighbor.displayName): "
-                             + "+\(neighbor.drift.count - before) "
-                             + "line(s)")
+                found.append(String(format: L("Drift at %@: +%lld line(s)"),
+                                    neighbor.displayName,
+                                    neighbor.drift.count - before))
             }
         }
         for line in found { addFinding(line) }
@@ -421,9 +420,8 @@ final class AssaultCenter: ObservableObject {
         } else {
             quietStreak = 0
         }
-        let line = "Pass \(cycle) swept: "
-            + "\(neighbors.count) devices known, "
-            + "\(newThisRun) new this run"
+        let line = String(format: L("Pass %lld swept: %lld devices known, %lld new this run"),
+                          cycle, neighbors.count, newThisRun)
             + (found.isEmpty ? "."
                : " — " + found.joined(separator: "; ") + ".")
         note(line)
@@ -433,8 +431,7 @@ final class AssaultCenter: ObservableObject {
             stageEnds = Date().addingTimeInterval(12)
             browseStarted = Date()
             browseCountAtStart = model.discovered.count
-            phase = "Listening to the wire announce "
-                + "itself (Bonjour)"
+            phase = L("Listening to the wire announce itself (Bonjour)")
             model.startDiscovery()
         } else {
             rest()
@@ -462,8 +459,8 @@ final class AssaultCenter: ObservableObject {
             ports = known.isEmpty ? census : known.sorted()
         }
         probedThisRun += ports.count
-        phase = "Knocking \(next.displayName) — "
-            + "\(ports.count) ports"
+        phase = String(format: L("Knocking %@ — %lld ports"),
+                       next.displayName, ports.count)
         var updated = records
         updated[next.ip] = KnockRecord(
             lastKnocked: Date().timeIntervalSince1970,
@@ -495,10 +492,11 @@ final class AssaultCenter: ObservableObject {
                 return "\($0.port) \($0.service)"
                     + (said.isEmpty
                         ? ""
-                        : " says '\(said.prefix(64))'")
+                        : String(format: L(" says '%@'"),
+                                 String(said.prefix(64))))
             }.joined(separator: " · ")
-            addFinding("\(neighbor.displayName) answers: "
-                       + doors)
+            addFinding(String(format: L("%@ answers: %@"),
+                              neighbor.displayName, doors))
             // The tomato, made literal: one
             // postcard per marked device per run,
             // on its first open door.
@@ -513,12 +511,9 @@ final class AssaultCenter: ObservableObject {
                     ip: neighbor.ip,
                     port: first.port,
                     bytes: Postcard.tomatoBytes)
-                addFinding("🍅 The tomato, made "
-                           + "literal: a postcard "
-                           + "left on "
-                           + "\(neighbor.displayName)'s "
-                           + "door at port "
-                           + "\(first.port).")
+                addFinding(String(format: L("🍅 The tomato, made literal: a postcard left on %@'s door at port %lld."),
+                                  neighbor.displayName,
+                                  first.port))
             }
             // News is news: the governor's rest snaps
             // back when the knock stage finds something,
@@ -527,8 +522,8 @@ final class AssaultCenter: ObservableObject {
         } else if let record =
                     Self.loadKnockRecords()[neighbor.ip],
                   !record.ports.isEmpty {
-            addFinding("\(neighbor.displayName) went silent "
-                       + "— none of its known doors answered")
+            addFinding(String(format: L("%@ went silent — none of its known doors answered"),
+                              neighbor.displayName))
             quietStreak = 0
         }
         // The record learns what the knock actually
@@ -612,12 +607,11 @@ final class AssaultCenter: ObservableObject {
             return
         }
         stage = .knocking
-        phase = "Knocking the cast — "
-            + "\(knockQueue.count) device(s) this pass, "
-            + (markedFirst.isEmpty
-                ? "in order of significance"
-                : "the marked first, then "
-                  + "by significance")
+        phase = String(format: L("Knocking the cast — %lld device(s) this pass, %@"),
+                       knockQueue.count,
+                       markedFirst.isEmpty
+                           ? L("in order of significance")
+                           : L("the marked first, then by significance"))
     }
 
     /// The governor: rest is the operator's setting,
@@ -633,35 +627,30 @@ final class AssaultCenter: ObservableObject {
         let seconds = min(600, restSeconds * stretch)
         stageEnds = Date().addingTimeInterval(seconds)
         if quietStreak > 0 {
-            phase = "Resting — the wire is quiet "
-                + "(\(quietStreak) empty pass(es)); "
-                + "next pass in \(Int(seconds))s."
+            phase = String(format: L("Resting — the wire is quiet (%lld empty pass(es)); next pass in %llds."),
+                           quietStreak, Int(seconds))
         }
     }
 
     /// The after-action report: the run, on one page —
     /// the tallies, the findings by name, then the log.
     private func buildReport(reason: String) -> String {
-        var lines = ["NET-ASSAULT — after-action report",
-                     "Stood down: \(reason).",
-                     "Passes: \(passes) · new devices: "
-                        + "\(newThisRun) · drift: "
-                        + "\(driftThisRun) · ports knocked: "
-                        + "\(probedThisRun)",
+        var lines = [L("NET-ASSAULT — after-action report"),
+                     String(format: L("Stood down: %@."), reason),
+                     String(format: L("Passes: %lld · new devices: %lld · drift: %lld · ports knocked: %lld"),
+                            passes, newThisRun, driftThisRun,
+                            probedThisRun),
                      ""]
         if findings.isEmpty {
-            lines.append("Findings: none — the wire "
-                         + "said nothing new.")
+            lines.append(L("Findings: none — the wire said nothing new."))
         } else {
-            lines.append("Findings:")
+            lines.append(L("Findings:"))
             lines += findings.map { "  · " + $0 }
         }
         lines.append("")
         lines += log
         lines.append("")
-        lines.append("The sealed journal carries the same "
-                     + "run under module 'assault', citable "
-                     + "line by line.")
+        lines.append(L("The sealed journal carries the same run under module 'assault', citable line by line."))
         return lines.joined(separator: "\n")
     }
 
@@ -670,8 +659,8 @@ final class AssaultCenter: ObservableObject {
     var report: String {
         if running || lastReport == nil {
             return buildReport(reason: running
-                ? "report taken mid-run"
-                : "no run yet — it has never taken the wire")
+                ? L("report taken mid-run")
+                : L("no run yet — it has never taken the wire"))
         }
         return lastReport!
     }
@@ -750,9 +739,7 @@ final class WireWatch: ObservableObject {
         on = true
         UserDefaults.standard.set(
             true, forKey: Self.onKey)
-        note("the watch stands — Bonjour "
-             + "browse, an MNDP ear, a gateway "
-             + "heartbeat, a neighbor diff")
+        note(L("the watch stands — Bonjour browse, an MNDP ear, a gateway heartbeat, a neighbor diff"))
         return true
     }
 
@@ -764,7 +751,7 @@ final class WireWatch: ObservableObject {
         timer?.invalidate()
         timer = nil
         if on {
-            note("the watch stands down")
+            note(L("the watch stands down"))
         }
         on = false
         UserDefaults.standard.set(
@@ -852,10 +839,10 @@ final class WireWatch: ObservableObject {
         where !knownIPs.contains(neighbor.ip) {
             knownIPs.insert(neighbor.ip)
             let named = neighbor.name.map {
-                " — \($0)"
+                String(format: L(" — %@"), $0)
             } ?? ""
-            note("a new neighbor at "
-                 + "\(neighbor.ip)\(named)")
+            note(String(format: L("a new neighbor at %@%@"),
+                        neighbor.ip, named))
         }
         Sentinel.shared.evaluate(
             store: store,
@@ -869,9 +856,8 @@ final class WireWatch: ObservableObject {
                 let why = severe.map { $0.line }
                     .joined(separator: " · ")
                 let summary = Lockdown.engage(
-                    reason: "two severe signs "
-                        + "inside ten minutes: "
-                        + why)
+                    reason: String(format: L("two severe signs inside ten minutes: %@"),
+                                   why))
                 Journal.log("lockdown",
                             "automatic",
                             summary)
@@ -885,14 +871,8 @@ final class WireWatch: ObservableObject {
                     + neighbor.ip
                 if !firedSigns.contains(key) {
                     firedSigns.insert(key)
-                    note("SIGN — \(neighbor.ip) "
-                         + "answers DHCP but "
-                         + "is not the gateway: "
-                         + "a second "
-                         + "address-giver on "
-                         + "the wire is how "
-                         + "quiet intercepts "
-                         + "begin")
+                    note(String(format: L("SIGN — %@ answers DHCP but is not the gateway: a second address-giver on the wire is how quiet intercepts begin"),
+                                neighbor.ip))
                 }
             }
         }
@@ -1074,12 +1054,8 @@ final class Sentinel: ObservableObject {
         raise(key: "gateway-moved-"
                 + from + "-" + to,
               severity: .severe,
-              line: "the default gateway "
-                + "moved: \(from) → \(to) "
-                + "— a gateway that changes "
-                + "without the operator's "
-                + "hand is a sign to read "
-                + "hard",
+              line: String(format: L("the default gateway moved: %@ → %@ — a gateway that changes without the operator's hand is a sign to read hard"),
+                           from, to),
               ip: to, watch: watch)
     }
 
@@ -1094,12 +1070,8 @@ final class Sentinel: ObservableObject {
                             fingerprint: String) {
         raise(key: "ssh-key-changed-" + host,
               severity: .severe,
-              line: "the SSH host key for "
-                + "\(host) changed — now "
-                + "\(fingerprint). The client "
-                + "refused it. If the gear "
-                + "was not replaced, read "
-                + "this hard",
+              line: String(format: L("the SSH host key for %@ changed — now %@. The client refused it. If the gear was not replaced, read this hard"),
+                           host, fingerprint),
               ip: nil, watch: WireWatch.shared)
     }
 
@@ -1122,10 +1094,8 @@ final class Sentinel: ObservableObject {
                 raise(key: "rogue-dhcp-"
                         + neighbor.ip,
                       severity: .severe,
-                      line: "\(neighbor.ip) "
-                        + "answers DHCP but is "
-                        + "not the gateway — a "
-                        + "second address-giver",
+                      line: String(format: L("%@ answers DHCP but is not the gateway — a second address-giver"),
+                                   neighbor.ip),
                       ip: neighbor.ip,
                       watch: watch)
             }
@@ -1136,11 +1106,8 @@ final class Sentinel: ObservableObject {
                 raise(key: "impersonation-"
                         + neighbor.ip,
                       severity: .severe,
-                      line: "\(neighbor.ip) "
-                        + "wears the gateway's "
-                        + "name (\u{201C}"
-                        + "\(crownName)"
-                        + "\u{201D})",
+                      line: String(format: L("%@ wears the gateway's name (“%@”)"),
+                                   neighbor.ip, crownName),
                       ip: neighbor.ip,
                       watch: watch)
             }
@@ -1157,10 +1124,8 @@ final class Sentinel: ObservableObject {
                     raise(key: "new-dns-"
                             + neighbor.ip,
                           severity: .suspicious,
-                          line: "\(neighbor.ip) "
-                            + "has begun serving "
-                            + "DNS — it did not "
-                            + "before",
+                          line: String(format: L("%@ has begun serving DNS — it did not before"),
+                                       neighbor.ip),
                           ip: neighbor.ip,
                           watch: watch)
                 }
@@ -1175,13 +1140,8 @@ final class Sentinel: ObservableObject {
                             + neighbor.ip
                             + "-\(arrivals)",
                           severity: .severe,
-                          line: "\(neighbor.ip) "
-                            + "has knocked this "
-                            + "phone "
-                            + "\(delta) times in "
-                            + "a minute — that "
-                            + "is a probe pour, "
-                            + "not a visit",
+                          line: String(format: L("%@ has knocked this phone %lld times in a minute — that is a probe pour, not a visit"),
+                                       neighbor.ip, delta),
                           ip: neighbor.ip,
                           watch: watch)
                 } else if delta >= 5 {
@@ -1189,11 +1149,8 @@ final class Sentinel: ObservableObject {
                             + neighbor.ip
                             + "-\(arrivals)",
                           severity: .suspicious,
-                          line: "\(neighbor.ip) "
-                            + "knocked this "
-                            + "phone \(delta) "
-                            + "times in a "
-                            + "minute",
+                          line: String(format: L("%@ knocked this phone %lld times in a minute"),
+                                       neighbor.ip, delta),
                           ip: neighbor.ip,
                           watch: watch)
                 }
@@ -1215,28 +1172,25 @@ final class Sentinel: ObservableObject {
                     }
                     var parts: [String] = []
                     if !gained.isEmpty {
-                        parts.append("opened "
-                            + gained.map(
+                        parts.append(String(format: L("opened %@"),
+                            gained.map(
                                 String.init)
                             .joined(
-                                separator: ", "))
+                                separator: ", ")))
                     }
                     if !lost.isEmpty {
-                        parts.append("closed "
-                            + lost.map(
-                                String.init)
+                        parts.append(String(format: L("closed %@"),
+                            lost.map(String.init)
                             .joined(
-                                separator: ", "))
+                                separator: ", ")))
                     }
                     raise(key: "router-doors-"
                             + neighbor.ip + "-"
                             + "\(neighbor.ports)",
                           severity: .suspicious,
-                          line: "the router's "
-                            + "own doors "
-                            + "changed: "
-                            + parts.joined(
-                                separator: "; "),
+                          line: String(format: L("the router's own doors changed: %@"),
+                                       parts.joined(
+                                           separator: "; ")),
                           ip: neighbor.ip,
                           watch: watch)
                 }
@@ -1251,11 +1205,8 @@ final class Sentinel: ObservableObject {
                 raise(key: "many-doors-"
                         + neighbor.ip,
                       severity: .notice,
-                      line: "\(neighbor.ip) "
-                        + "stands with "
-                        + "\(doors) doors "
-                        + "open — worth "
-                        + "knowing",
+                      line: String(format: L("%@ stands with %lld doors open — worth knowing"),
+                                   neighbor.ip, doors),
                       ip: neighbor.ip,
                       watch: watch)
             }
@@ -1289,43 +1240,34 @@ enum WireBrief {
             where: { $0.weight == .certain }),
            let gateway {
             let n = crown.neighbor
-            var line = "Your router is "
+            var line: String
             if let name = n.name {
-                line += "\(name) at "
+                line = String(format: L("Your router is %@ at %@ — crowned, not guessed: this phone's default route lands there."),
+                              name, gateway)
+            } else {
+                line = String(format: L("Your router is %@ — crowned, not guessed: this phone's default route lands there."),
+                              gateway)
             }
-            line += "\(gateway) — crowned, "
-                + "not guessed: this phone's "
-                + "default route lands there."
             if !n.ports.isEmpty {
                 let doors = n.ports.prefix(5)
                     .map(String.init)
                     .joined(separator: ", ")
-                line += " It holds doors "
-                    + "\(doors)."
+                line += String(format: L(" It holds doors %@."),
+                               doors)
             }
             return line
         }
         if let best = rows.first {
             let n = best.neighbor
             let verdict = best.weight == .likely
-                ? "Likely" : "Possibly"
-            return "The gateway itself did "
-                + "not read, so no crown — by "
-                + "signs the strongest "
-                + "candidate is "
-                + "\(n.displayName) at "
-                + "\(n.ip): "
-                + best.signs.joined(
-                    separator: "; ")
-                + ". \(verdict) the router."
+                ? L("Likely") : L("Possibly")
+            return String(format: L("The gateway itself did not read, so no crown — by signs the strongest candidate is %@ at %@: %@. %@ the router."),
+                          n.displayName, n.ip,
+                          best.signs.joined(
+                              separator: "; "),
+                          verdict)
         }
-        return "I can't crown a router on "
-            + "this wire yet — the gateway "
-            + "didn't read and no neighbor "
-            + "carries router signs. A "
-            + "Net-Assault pass and a minute "
-            + "of the watch would give me "
-            + "the evidence."
+        return L("I can't crown a router on this wire yet — the gateway didn't read and no neighbor carries router signs. A Net-Assault pass and a minute of the watch would give me the evidence.")
     }
 
     static func alertAnswer() -> String {
@@ -1334,12 +1276,9 @@ enum WireBrief {
         if !severe.isEmpty {
             let lines = severe.suffix(3)
                 .map { $0.line }
-            return "Yes — the Sentinel has "
-                + "judged, and it isn't "
-                + "quiet: "
-                + lines.joined(
-                    separator: " · ")
-                + ". Read those hard."
+            return String(format: L("Yes — the Sentinel has judged, and it isn't quiet: %@. Read those hard."),
+                          lines.joined(
+                              separator: " · "))
         }
         let others = sentinel.alerts.filter {
             $0.severity == .suspicious
@@ -1347,41 +1286,23 @@ enum WireBrief {
         if !others.isEmpty {
             let lines = others.suffix(3)
                 .map { $0.line }
-            return "Nothing severe, but not "
-                + "nothing: "
-                + lines.joined(
-                    separator: " · ") + "."
+            return String(format: L("Nothing severe, but not nothing: %@."),
+                          lines.joined(
+                              separator: " · "))
         }
         let watch = WireWatch.shared
         if watch.on {
             let count = watch.events.count
-            return "Nothing the Sentinel "
-                + "judges — and the watch has "
-                + "been standing over the "
-                + "wire (\(count) events in "
-                + "its ledger, none rising "
-                + "to an alert). The wire "
-                + "looks like itself."
+            return String(format: L("Nothing the Sentinel judges — and the watch has been standing over the wire (%lld events in its ledger, none rising to an alert). The wire looks like itself."),
+                          count)
         }
         if watch.start() {
-            return "Nothing judged yet — "
-                + "but the watch wasn't "
-                + "standing, so any answer "
-                + "would have been a guess. "
-                + "I've stood it up: browse, "
-                + "an MNDP ear, a gateway "
-                + "heartbeat. Ask me again as "
-                + "it learns and the answer "
-                + "will be evidence."
+            return L("Nothing judged yet — but the watch wasn't standing, so any answer would have been a guess. I've stood it up: browse, an MNDP ear, a gateway heartbeat. Ask me again as it learns and the answer will be evidence.")
         }
         let declared = EmconCondition.current
             .declared
-        return "Nothing judged yet, and "
-            + "the watch won't stand under "
-            + "EMCON \(declared) — the "
-            + "condition forbids its browse. "
-            + "The ledger holds what "
-            + "earlier standing learned."
+        return String(format: L("Nothing judged yet, and the watch won't stand under %@ — the condition forbids its browse. The ledger holds what earlier standing learned."),
+                      declared)
     }
 
     static func newcomerAnswer() -> String {
@@ -1394,22 +1315,19 @@ enum WireBrief {
                 $0.firstSeen > $1.firstSeen
             }
         if fresh.isEmpty {
-            return "No new faces in the "
-                + "last day — the cast on "
-                + "this wire is the cast."
+            return L("No new faces in the last day — the cast on this wire is the cast.")
         }
         let fmt = RelativeDateTimeFormatter()
         fmt.unitsStyle = .full
         let lines = fresh.prefix(4).map { n in
-            "\(n.displayName) at \(n.ip) "
-                + "(first seen "
-                + fmt.localizedString(
-                    for: n.firstSeen,
-                    relativeTo: Date()) + ")"
+            String(format: L("%@ at %@ (first seen %@)"),
+                   n.displayName, n.ip,
+                   fmt.localizedString(
+                       for: n.firstSeen,
+                       relativeTo: Date()))
         }
-        return "New in the last day: "
-            + lines.joined(separator: "; ")
-            + "."
+        return String(format: L("New in the last day: %@."),
+                      lines.joined(separator: "; "))
     }
 
     static func briefAnswer() -> String {
@@ -1417,33 +1335,17 @@ enum WireBrief {
         if store.neighbors.isEmpty {
             let center = AssaultCenter.shared
             if center.running {
-                return "Net-Assault is "
-                    + "mid-pass right now ("
-                    + center.phase
-                    + ") — the census is "
-                    + "being taken as we "
-                    + "speak."
+                return String(format: L("Net-Assault is mid-pass right now (%@) — the census is being taken as we speak."),
+                              center.phase)
             }
             center.arm()
             if center.running {
-                return "This wire is a blank "
-                    + "page to me — no "
-                    + "neighbors on the "
-                    + "board at all. I've "
-                    + "armed Net-Assault for "
-                    + "a pass to census it; "
-                    + "give it a breath and "
-                    + "ask me again."
+                return L("This wire is a blank page to me — no neighbors on the board at all. I've armed Net-Assault for a pass to census it; give it a breath and ask me again.")
             }
             let declared = EmconCondition
                 .current.declared
-            return "This wire is a blank "
-                + "page to me, and "
-                + "Net-Assault stays dark "
-                + "under EMCON \(declared) "
-                + "— the census waits on "
-                + "the condition, or on "
-                + "Recon's own eyes."
+            return String(format: L("This wire is a blank page to me, and Net-Assault stays dark under %@ — the census waits on the condition, or on Recon's own eyes."),
+                          declared)
         }
         var parts: [String] = []
         let gateway = BlacksiteNet
@@ -1453,26 +1355,24 @@ enum WireBrief {
                 .first { $0.ip == gateway }
             if let crown, let name =
                 crown.name {
-                parts.append("The router is "
-                             + "\(name) at "
-                             + "\(gateway).")
+                parts.append(String(format: L("The router is %@ at %@."),
+                                    name, gateway))
             } else {
-                parts.append("The router is "
-                             + "at \(gateway).")
+                parts.append(String(format: L("The router is at %@."),
+                                    gateway))
             }
         }
         let count = store.neighbors.count
-        parts.append("\(count) neighbor(s) "
-                     + "known.")
+        parts.append(String(format: L("%lld neighbor(s) known."),
+                            count))
         let named = store.neighbors
             .filter { $0.name != nil }
             .prefix(3)
             .map { $0.displayName }
         if !named.isEmpty {
-            parts.append("Named among them: "
-                         + named.joined(
-                            separator: ", ")
-                         + ".")
+            parts.append(String(format: L("Named among them: %@."),
+                                named.joined(
+                                    separator: ", ")))
         }
         let severe = Sentinel.shared
             .standingSevere.count
@@ -1481,25 +1381,17 @@ enum WireBrief {
                 $0.severity == .suspicious
             }.count
         if severe > 0 {
-            parts.append("The Sentinel "
-                         + "holds \(severe) "
-                         + "severe alert(s) — "
-                         + "ask me what's "
-                         + "strange and I'll "
-                         + "read them.")
+            parts.append(String(format: L("The Sentinel holds %lld severe alert(s) — ask me what's strange and I'll read them."),
+                                severe))
         } else if suspicious > 0 {
-            parts.append("The Sentinel "
-                         + "holds \(suspicious) "
-                         + "suspicious "
-                         + "alert(s).")
+            parts.append(String(format: L("The Sentinel holds %lld suspicious alert(s)."),
+                                suspicious))
         } else {
-            parts.append("The Sentinel "
-                         + "judges nothing "
-                         + "amiss.")
+            parts.append(L("The Sentinel judges nothing amiss."))
         }
         parts.append(WireWatch.shared.on
-            ? "The watch stands."
-            : "The watch is down.")
+            ? L("The watch stands.")
+            : L("The watch is down."))
         return parts.joined(separator: " ")
     }
 }
@@ -1550,9 +1442,7 @@ enum Lockdown {
     static func engage(reason: String)
         -> String {
         if active {
-            return "Lockdown is already "
-                + "standing — the house is "
-                + "dark."
+            return L("Lockdown is already standing — the house is dark.")
         }
         let prior = EmconCondition.current
         UserDefaults.standard.set(
@@ -1578,24 +1468,16 @@ enum Lockdown {
         Journal.log("lockdown", "engaged",
                     reason + " — prior "
                     + prior.declared)
-        var line = "Lockdown. EMCON Alpha — "
-            + "total silence. "
+        var line = L("Lockdown. EMCON Alpha — total silence. ")
         if silenced.isEmpty {
-            line += "Nothing was standing "
-                + "to silence. "
+            line += L("Nothing was standing to silence. ")
         } else {
-            line += "Silenced: "
-                + silenced.joined(
-                    separator: ", ") + ". "
+            line += String(format: L("Silenced: %@. "),
+                           silenced.joined(
+                               separator: ", "))
         }
-        line += "The watch stands down too. "
-            + "Why: " + reason + ". The "
-            + "phone itself is beyond my "
-            + "hands — airplane mode and "
-            + "forgetting the network are "
-            + "yours. Say \u{201C}lift the "
-            + "lockdown\u{201D} when you "
-            + "want the house back."
+        line += String(format: L("The watch stands down too. Why: %@. The phone itself is beyond my hands — airplane mode and forgetting the network are yours. Say “lift the lockdown” when you want the house back."),
+                       reason)
         return line
     }
 
@@ -1604,7 +1486,7 @@ enum Lockdown {
     @discardableResult
     static func lift() -> String {
         guard active else {
-            return "No lockdown is standing."
+            return L("No lockdown is standing.")
         }
         UserDefaults.standard.set(
             false, forKey: activeKey)
@@ -1623,11 +1505,8 @@ enum Lockdown {
         Journal.log("lockdown", "lifted",
                     "restored "
                     + prior.declared)
-        return "Lockdown lifted — the "
-            + "house returns to "
-            + "\(prior.declared). The watch "
-            + "stays down until you stand "
-            + "it; nothing resumes itself."
+        return String(format: L("Lockdown lifted — the house returns to %@. The watch stays down until you stand it; nothing resumes itself."),
+                      prior.declared)
     }
 }
 
@@ -1800,7 +1679,7 @@ struct NetAssaultSectionView: View {
             Text(value)
                 .font(.headline.monospaced())
                 .foregroundStyle(themeCenter.current.accent)
-            Text(name)
+            Text(L(name))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

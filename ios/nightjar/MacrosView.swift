@@ -110,7 +110,7 @@ struct MacrosView: View {
                             persist()
                             editingMacro = macro
                         } label: {
-                            Label(String(format: L("New — %@"), template.title),
+                            Label(String(format: L("New — %@"), L(template.title)),
                                   systemImage: "square.stack.3d.up")
                         }
                         .foregroundStyle(.primary)
@@ -639,7 +639,7 @@ struct MacroBlockCard: View {
                     Image(systemName: spec.icon)
                         .frame(width: 26)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(spec.title)
+                        Text(L(spec.title))
                             .font(.callout.weight(.semibold))
                         Text(MacroSummary.line(for: block))
                             .font(.caption)
@@ -732,10 +732,10 @@ struct MacroBlockCard: View {
         case .text:
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(field.label)
+                    Text(L(field.label))
                         .font(.callout)
                     Spacer()
-                    TextField(field.placeholder,
+                    TextField(L(field.placeholder),
                               text: textBinding(field.key))
                         .multilineTextAlignment(.trailing)
                         .font(.callout)
@@ -767,10 +767,10 @@ struct MacroBlockCard: View {
             }
         case .number:
             HStack {
-                Text(field.label)
+                Text(L(field.label))
                     .font(.callout)
                 Spacer()
-                TextField(field.placeholder,
+                TextField(L(field.placeholder),
                           text: textBinding(field.key))
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
@@ -778,20 +778,20 @@ struct MacroBlockCard: View {
                     .frame(maxWidth: 120)
             }
         case .toggle:
-            Toggle(field.label,
+            Toggle(L(field.label),
                    isOn: flagBinding(field.key))
                 .font(.callout)
         case .picker(let options):
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 ForEach(options, id: \.self) { option in
-                    Text(option).tag(option)
+                    Text(L(option)).tag(option)
                 }
             }
             .pickerStyle(.menu)
             .font(.callout)
         case .payloadPicker:
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 Text(L("None")).tag("")
                 ForEach(book.items, id: \.name) { payload in
@@ -801,7 +801,7 @@ struct MacroBlockCard: View {
             .pickerStyle(.menu)
             .font(.callout)
         case .chestPicker:
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 Text(L("None")).tag("")
                 ForEach(MacroNames.chestNames(),
@@ -812,7 +812,7 @@ struct MacroBlockCard: View {
             .pickerStyle(.menu)
             .font(.callout)
         case .personaPicker:
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 Text(L("None")).tag("")
                 ForEach(MacroNames.personaNames(),
@@ -823,7 +823,7 @@ struct MacroBlockCard: View {
             .pickerStyle(.menu)
             .font(.callout)
         case .remotePicker:
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 Text(L("None")).tag("")
                 ForEach(MacroNames.remoteNames(),
@@ -834,7 +834,7 @@ struct MacroBlockCard: View {
             .pickerStyle(.menu)
             .font(.callout)
         case .helmButtonPicker:
-            Picker(field.label,
+            Picker(L(field.label),
                    selection: textBinding(field.key)) {
                 Text(L("None")).tag("")
                 ForEach(MacroNames.helmButtons(
@@ -860,7 +860,7 @@ struct MacroPaletteSheet: View {
             List {
                 ForEach(MacroCatalog.categories,
                         id: \.self) { category in
-                    Section(category) {
+                    Section(L(category)) {
                         ForEach(MacroCatalog.specs.filter {
                             $0.category == category
                         }, id: \.kind) { spec in
@@ -874,10 +874,10 @@ struct MacroPaletteSheet: View {
                                         .frame(width: 26)
                                     VStack(alignment: .leading,
                                            spacing: 1) {
-                                        Text(spec.title)
+                                        Text(L(spec.title))
                                             .font(.callout
                                                 .weight(.semibold))
-                                        Text(spec.blurb)
+                                        Text(L(spec.blurb))
                                             .font(.caption)
                                             .foregroundStyle(
                                                 .secondary)

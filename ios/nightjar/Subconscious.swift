@@ -126,9 +126,8 @@ final class SubconsciousCenter: ObservableObject {
         let right = v.first ?? 0
         let wrong = v.count > 1 ? v[1] : 0
         guard right + wrong > 0 else { return nil }
-        return "Your verdicts on findings like this: "
-            + "\(right) right, \(wrong) wrong — its "
-            + "confidence is bent accordingly."
+        return String(format: L("Your verdicts on findings like this: %lld right, %lld wrong — its confidence is bent accordingly."),
+                      right, wrong)
     }
 
     private static var fileURL: URL {
@@ -233,10 +232,11 @@ final class SubconsciousCenter: ObservableObject {
             if bestLen >= 4 {
                 derived.append(HouseFact(
                     id: "fact-quiet",
-                    text: "The house is quiet between "
-                        + "\(bestStart % 24):00 and "
-                        + "\((bestStart + bestLen) % 24):00.",
-                    evidence: "\(days) days of record",
+                    text: String(format: L("The house is quiet between %lld:00 and %lld:00."),
+                                 bestStart % 24,
+                                 (bestStart + bestLen) % 24),
+                    evidence: String(format: L("%lld days of record"),
+                                     days),
                     learnedAt: now,
                     windowStart: bestStart % 24,
                     windowEnd: (bestStart + bestLen) % 24))
@@ -269,13 +269,12 @@ final class SubconsciousCenter: ObservableObject {
                 rhythms += 1
                 derived.append(HouseFact(
                     id: "fact-rhythm-\(neighbor.ip)",
-                    text: "\(neighbor.displayName) keeps "
-                        + "the hours \(bestW):00–"
-                        + "\((bestW + 6) % 24):00 — "
-                        + "\(Int(share * 100))% of its "
-                        + "appearances fall there.",
-                    evidence: "\(seen.count) appearances "
-                        + "in the log",
+                    text: String(format: L("%@ keeps the hours %lld:00–%lld:00 — %lld%% of its appearances fall there."),
+                                 neighbor.displayName, bestW,
+                                 (bestW + 6) % 24,
+                                 Int(share * 100)),
+                    evidence: String(format: L("%lld appearances in the log"),
+                                     seen.count),
                     learnedAt: now, ip: neighbor.ip,
                     windowStart: bestW,
                     windowEnd: (bestW + 6) % 24))
@@ -308,14 +307,11 @@ final class SubconsciousCenter: ObservableObject {
                        >= 0.6 * Double(min(daysA, daysB)) {
                     derived.append(HouseFact(
                         id: "fact-pair-\(a.0.ip)-\(b.0.ip)",
-                        text: "\(a.0.displayName) and "
-                            + "\(b.0.displayName) stir "
-                            + "together — on \(coDays.count) "
-                            + "days of record they were never "
-                            + "far apart. One wakes the "
-                            + "other, or both answer the "
-                            + "same master.",
-                        evidence: "\(coDays.count) shared days",
+                        text: String(format: L("%@ and %@ stir together — on %lld days of record they were never far apart. One wakes the other, or both answer the same master."),
+                                     a.0.displayName,
+                                     b.0.displayName, coDays.count),
+                        evidence: String(format: L("%lld shared days"),
+                                         coDays.count),
                         learnedAt: now))
                     break pairSearch
                 }
@@ -331,17 +327,17 @@ final class SubconsciousCenter: ObservableObject {
                     cal.component(.weekday, from: $0.when)) }) {
                 derived.append(HouseFact(
                     id: "fact-foreign",
-                    text: "Foreign hands have only ever "
-                        + "come on weekdays.",
-                    evidence: "\(cadence.count) cadence flags",
+                    text: L("Foreign hands have only ever come on weekdays."),
+                    evidence: String(format: L("%lld cadence flags"),
+                                     cadence.count),
                     learnedAt: now))
             } else if cadence.allSatisfy({
                 cal.component(.hour, from: $0.when) < 5 }) {
                 derived.append(HouseFact(
                     id: "fact-foreign",
-                    text: "Foreign hands have only ever "
-                        + "come in the small hours.",
-                    evidence: "\(cadence.count) cadence flags",
+                    text: L("Foreign hands have only ever come in the small hours."),
+                    evidence: String(format: L("%lld cadence flags"),
+                                     cadence.count),
                     learnedAt: now,
                     windowStart: 0, windowEnd: 5))
             }
@@ -416,12 +412,15 @@ final class SubconsciousCenter: ObservableObject {
                 id: "new-faces",
                 when: fresh.map(\.firstSeen).max() ?? now,
                 title: fresh.count == 1
-                    ? "A new face on the wire"
-                    : "\(fresh.count) new faces on the wire",
+                    ? L("A new face on the wire")
+                    : String(format: L("%lld new faces on the wire"),
+                             fresh.count),
                 body: fresh.map {
-                    "\($0.displayName) (\($0.ip)) first seen "
-                        + $0.firstSeen.formatted(
-                            date: .abbreviated, time: .shortened)
+                    String(format: L("%@ (%@) first seen %@"),
+                           $0.displayName, $0.ip,
+                           $0.firstSeen.formatted(
+                               date: .abbreviated,
+                               time: .shortened))
                 }.joined(separator: ". ") + ".",
                 citations: events
                     .filter { $0.module == "neighborhood"
@@ -440,7 +439,8 @@ final class SubconsciousCenter: ObservableObject {
                 found.append(Insight(
                     id: "drift-\(neighbor.ip)",
                     when: neighbor.lastSeen,
-                    title: "\(neighbor.displayName) has drifted",
+                    title: String(format: L("%@ has drifted"),
+                                  neighbor.displayName),
                     body: newLines.joined(separator: " "),
                     citations: events
                         .filter { $0.module == "neighborhood"
@@ -460,13 +460,12 @@ final class SubconsciousCenter: ObservableObject {
             found.append(Insight(
                 id: "foreign-hands",
                 when: cadenceFlags.last?.when ?? now,
-                title: "Hands that were not the usual hands",
-                body: "The cadence seal spoke "
-                    + "\(cadenceFlags.count) time"
-                    + (cadenceFlags.count == 1 ? "" : "s")
-                    + " this week. The key was right; the "
-                    + "rhythm was not. Worth a look before it "
-                    + "is worth a worry.",
+                title: L("Hands that were not the usual hands"),
+                body: cadenceFlags.count == 1
+                    ? String(format: L("The cadence seal spoke %lld time this week. The key was right; the rhythm was not. Worth a look before it is worth a worry."),
+                             cadenceFlags.count)
+                    : String(format: L("The cadence seal spoke %lld times this week. The key was right; the rhythm was not. Worth a look before it is worth a worry."),
+                             cadenceFlags.count),
                 citations: cadenceFlags.suffix(3).map(Self.cite),
                 confidence: 0.8))
         }
@@ -491,24 +490,21 @@ final class SubconsciousCenter: ObservableObject {
                 if nightEvents.contains(where: {
                     $0.when >= window.start && $0.when <= window.end
                 }) {
-                    sleepClause = " The instrument says you "
-                        + "were asleep for it (" + span
-                        + ") — so it was not you."
+                    sleepClause = String(format: L(" The instrument says you were asleep for it (%@) — so it was not you."),
+                                         span)
                 } else if let last = nightEvents.last?.when,
                           window.start > last {
-                    sleepClause = " The instrument says you "
-                        + "were still up for it — you slept "
-                        + span + "."
+                    sleepClause = String(format: L(" The instrument says you were still up for it — you slept %@."),
+                                         span)
                 }
             }
             found.append(Insight(
                 id: "night-hours",
                 when: nightEvents.last?.when ?? now,
-                title: "The house was awake after midnight",
-                body: "\(nightEvents.count) sealed events "
-                    + "between midnight and five — \(modules). "
-                    + "If that was you, it is a rhythm. If it "
-                    + "was not, it is a question." + sleepClause,
+                title: L("The house was awake after midnight"),
+                body: String(format: L("%lld sealed events between midnight and five — %@. If that was you, it is a rhythm. If it was not, it is a question."),
+                             nightEvents.count, modules)
+                    + sleepClause,
                 citations: nightEvents.suffix(3).map(Self.cite),
                 confidence: 0.6))
         }
@@ -520,7 +516,7 @@ final class SubconsciousCenter: ObservableObject {
             found.append(Insight(
                 id: "season-verdict",
                 when: verdict.when,
-                title: "The season has a grade",
+                title: L("The season has a grade"),
                 body: verdict.text,
                 citations: [Self.cite(verdict)],
                 confidence: 1.0))
@@ -538,12 +534,8 @@ final class SubconsciousCenter: ObservableObject {
                     found.append(Insight(
                         id: "dead-hand",
                         when: now,
-                        title: "The dead hand is more than "
-                            + "halfway down",
-                        body: "Armed, and the last check-in is "
-                            + "older than half the fuse. A tap "
-                            + "of the coin — or a manual check-in "
-                            + "— buys the whole window back.",
+                        title: L("The dead hand is more than halfway down"),
+                        body: L("Armed, and the last check-in is older than half the fuse. A tap of the coin — or a manual check-in — buys the whole window back."),
                         citations: [],
                         confidence: 0.95))
                 }
@@ -580,26 +572,19 @@ final class SubconsciousCenter: ObservableObject {
             if ratio >= 1.8 {
                 found.append(Insight(
                     id: "tempo", when: now,
-                    title: "The house ran loud",
-                    body: "\(last24Count) sealed events in "
-                        + "the last day against a habit of "
-                        + "about \(Int(priorMean)) a day over "
-                        + "the fortnight — \(String(format: "%.1f", ratio))× "
-                        + "its own normal. Loud days have "
-                        + "authors; the log knows them.",
+                    title: L("The house ran loud"),
+                    body: String(format: L("%lld sealed events in the last day against a habit of about %lld a day over the fortnight — %@× its own normal. Loud days have authors; the log knows them."),
+                                 last24Count, Int(priorMean),
+                                 String(format: "%.1f", ratio)),
                     citations: events.filter { $0.when > dayAgo }
                         .suffix(3).map(Self.cite),
                     confidence: 0.7))
             } else if ratio <= 0.45 {
                 found.append(Insight(
                     id: "tempo", when: now,
-                    title: "The house ran quiet",
-                    body: "Only \(last24Count) sealed events "
-                        + "in the last day against a habit of "
-                        + "about \(Int(priorMean)) a day. "
-                        + "Quiet is a finding too — a feed "
-                        + "down, a device gone, or a house "
-                        + "holding its breath.",
+                    title: L("The house ran quiet"),
+                    body: String(format: L("Only %lld sealed events in the last day against a habit of about %lld a day. Quiet is a finding too — a feed down, a device gone, or a house holding its breath."),
+                                 last24Count, Int(priorMean)),
                     citations: [],
                     confidence: 0.6))
             }
@@ -620,14 +605,12 @@ final class SubconsciousCenter: ObservableObject {
             else { continue }
             found.append(Insight(
                 id: "absent-\(neighbor.ip)", when: now,
-                title: "\(neighbor.displayName) has gone quiet",
-                body: "A regular — seen "
-                    + "\(neighbor.sightings) times, roughly "
-                    + "every \(Self.hours(interval)) — has "
-                    + "not been seen for "
-                    + "\(Self.hours(silence)). Silence from "
-                    + "a regular is itself a signal: unplugged, "
-                    + "moved, replaced, or gone.",
+                title: String(format: L("%@ has gone quiet"),
+                              neighbor.displayName),
+                body: String(format: L("A regular — seen %lld times, roughly every %@ — has not been seen for %@. Silence from a regular is itself a signal: unplugged, moved, replaced, or gone."),
+                             neighbor.sightings,
+                             Self.hours(interval),
+                             Self.hours(silence)),
                 citations: events
                     .filter { $0.text.contains(neighbor.ip) }
                     .suffix(2).map(Self.cite),
@@ -656,14 +639,11 @@ final class SubconsciousCenter: ObservableObject {
             by: { $0.1 < $1.1 }) {
             found.append(Insight(
                 id: "due-\(neighbor.ip)", when: now,
-                title: "On its habit, "
-                    + "\(neighbor.displayName) is due back",
-                body: "Its rhythm says around "
-                    + due.formatted(date: .omitted,
-                                    time: .shortened)
-                    + ". A forecast, printed as one — if it "
-                    + "does not come, the absence finding "
-                    + "will have something to stand on.",
+                title: String(format: L("On its habit, %@ is due back"),
+                              neighbor.displayName),
+                body: String(format: L("Its rhythm says around %@. A forecast, printed as one — if it does not come, the absence finding will have something to stand on."),
+                             due.formatted(date: .omitted,
+                                           time: .shortened)),
                 citations: [],
                 confidence: 0.55))
         }
@@ -684,38 +664,32 @@ final class SubconsciousCenter: ObservableObject {
             var cites: [String] = []
             if nightEvents.contains(where: {
                 window($0.when) }) {
-                threads.append("the house was awake after "
-                               + "midnight in the same hours")
+                threads.append(L("the house was awake after midnight in the same hours"))
                 cites += nightEvents.filter { window($0.when) }
                     .suffix(2).map(Self.cite)
             }
             if cadenceFlags.contains(where: {
                 window($0.when) }) {
-                threads.append("the cadence seal felt hands "
-                               + "that were not the usual "
-                               + "hands nearby in time")
+                threads.append(L("the cadence seal felt hands that were not the usual hands nearby in time"))
                 cites += cadenceFlags.filter { window($0.when) }
                     .suffix(2).map(Self.cite)
             }
             if !face.drift.isEmpty {
-                threads.append("the newcomer itself has "
-                               + "already drifted: "
-                               + (face.drift.first ?? ""))
+                threads.append(String(format: L("the newcomer itself has already drifted: %@"),
+                                      face.drift.first ?? ""))
             }
             guard !threads.isEmpty else { continue }
             found.append(Insight(
                 id: "pattern-\(face.ip)",
                 when: face.firstSeen,
-                title: "Read together: "
-                    + "\(face.displayName)'s arrival",
-                body: "\(face.displayName) (\(face.ip)) "
-                    + "first appeared "
-                    + face.firstSeen.formatted(
-                        date: .abbreviated, time: .shortened)
-                    + ". In the same three hours: "
-                    + threads.joined(separator: "; ")
-                    + ". Separately, small things. Together, "
-                    + "a story worth your eyes.",
+                title: String(format: L("Read together: %@'s arrival"),
+                              face.displayName),
+                body: String(format: L("%@ (%@) first appeared %@. In the same three hours: %@. Separately, small things. Together, a story worth your eyes."),
+                             face.displayName, face.ip,
+                             face.firstSeen.formatted(
+                                 date: .abbreviated,
+                                 time: .shortened),
+                             threads.joined(separator: "; ")),
                 citations: Array(cites.prefix(4)),
                 confidence: min(0.95, 0.62
                     + 0.11 * Double(threads.count))))
@@ -739,15 +713,9 @@ final class SubconsciousCenter: ObservableObject {
                     found.append(Insight(
                         id: "against-fact-quiet",
                         when: inside.last?.when ?? now,
-                        title: "Against its own record",
-                        body: "The house knows itself quiet "
-                            + "between \(start):00 and "
-                            + "\(end):00 — but "
-                            + "\(inside.count) events landed "
-                            + "inside those hours in the "
-                            + "last day. Either the rhythm "
-                            + "is changing, or something new "
-                            + "is keeping the hours.",
+                        title: L("Against its own record"),
+                        body: String(format: L("The house knows itself quiet between %lld:00 and %lld:00 — but %lld events landed inside those hours in the last day. Either the rhythm is changing, or something new is keeping the hours."),
+                                     start, end, inside.count),
                         citations: inside.suffix(3)
                             .map(Self.cite),
                         confidence: 0.6))
@@ -770,15 +738,13 @@ final class SubconsciousCenter: ObservableObject {
                     found.append(Insight(
                         id: "against-" + fact.id,
                         when: neighbor.lastSeen,
-                        title: "Against its own record",
-                        body: "\(neighbor.displayName) was "
-                            + "seen at "
-                            + neighbor.lastSeen.formatted(
-                                date: .omitted,
-                                time: .shortened)
-                            + " — outside the hours the "
-                            + "house knows it by (\(start)"
-                            + ":00–\(end):00).",
+                        title: L("Against its own record"),
+                        body: String(format: L("%@ was seen at %@ — outside the hours the house knows it by (%lld:00–%lld:00)."),
+                                     neighbor.displayName,
+                                     neighbor.lastSeen.formatted(
+                                         date: .omitted,
+                                         time: .shortened),
+                                     start, end),
                         citations: [],
                         confidence: 0.55))
                 }
@@ -821,15 +787,9 @@ final class SubconsciousCenter: ObservableObject {
                         found.append(Insight(
                             id: "against-" + fact.id,
                             when: now,
-                            title: "Against its own record",
-                            body: "\(nameA) and \(nameB) "
-                                + "were never far apart — "
-                                + "but these last four days "
-                                + "both have been about, on "
-                                + "their own days, and never "
-                                + "together once. Whatever "
-                                + "woke the one no longer "
-                                + "wakes the other.",
+                            title: L("Against its own record"),
+                            body: String(format: L("%@ and %@ were never far apart — but these last four days both have been about, on their own days, and never together once. Whatever woke the one no longer wakes the other."),
+                                         nameA, nameB),
                             citations: [],
                             confidence: 0.5))
                     }
@@ -858,17 +818,12 @@ final class SubconsciousCenter: ObservableObject {
                         found.append(Insight(
                             id: "against-fact-foreign",
                             when: rogue.when,
-                            title: "Against its own record",
-                            body: "Foreign hands were only "
-                                + "ever known in the small "
-                                + "hours (\(start):00–"
-                                + "\(end):00) — but a cadence "
-                                + "flag landed at "
-                                + rogue.when.formatted(
-                                    date: .omitted,
-                                    time: .shortened)
-                                + ". The habit is broken, "
-                                + "or new hands have arrived.",
+                            title: L("Against its own record"),
+                            body: String(format: L("Foreign hands were only ever known in the small hours (%lld:00–%lld:00) — but a cadence flag landed at %@. The habit is broken, or new hands have arrived."),
+                                         start, end,
+                                         rogue.when.formatted(
+                                             date: .omitted,
+                                             time: .shortened)),
                             citations: [Self.cite(rogue)],
                             confidence: 0.55))
                     }
@@ -887,16 +842,11 @@ final class SubconsciousCenter: ObservableObject {
                         found.append(Insight(
                             id: "against-fact-foreign",
                             when: rogue.when,
-                            title: "Against its own record",
-                            body: "Foreign hands were only "
-                                + "ever known on weekdays — "
-                                + "but a cadence flag landed "
-                                + "on a weekend, at "
-                                + rogue.when.formatted(
-                                    date: .abbreviated,
-                                    time: .shortened)
-                                + ". The habit is broken, "
-                                + "or new hands have arrived.",
+                            title: L("Against its own record"),
+                            body: String(format: L("Foreign hands were only ever known on weekdays — but a cadence flag landed on a weekend, at %@. The habit is broken, or new hands have arrived."),
+                                         rogue.when.formatted(
+                                             date: .abbreviated,
+                                             time: .shortened)),
                             citations: [Self.cite(rogue)],
                             confidence: 0.55))
                     }
@@ -912,16 +862,14 @@ final class SubconsciousCenter: ObservableObject {
             found.append(Insight(
                 id: "operator-body",
                 when: now,
-                title: "The operator ran hot",
-                body: "Your resting heart read "
-                    + "\(Int(latest.rounded())) against "
-                    + "your own fortnight baseline of "
-                    + "\(Int(base.rounded()))"
+                title: L("The operator ran hot"),
+                body: String(format: L("Your resting heart read %lld against your own fortnight baseline of %lld"),
+                             Int(latest.rounded()),
+                             Int(base.rounded()))
                     + (nightEvents.count >= 3
-                       ? ", on a night the house was "
-                         + "awake after midnight" : "")
-                    + ". A correlation, printed as one — "
-                    + "not a cause.",
+                       ? L(", on a night the house was awake after midnight")
+                       : "")
+                    + L(". A correlation, printed as one — not a cause."),
                 citations: [],
                 confidence: 0.55))
         } else if let baseHours = instrument.sleepBaselineHours,
@@ -932,18 +880,15 @@ final class SubconsciousCenter: ObservableObject {
                 found.append(Insight(
                     id: "operator-sleep",
                     when: window.end,
-                    title: "A short night",
-                    body: "You slept "
-                        + InstrumentCenter.durationLine(window)
-                        + " against your usual "
-                        + String(format: "%.1f", baseHours)
-                        + " hours"
+                    title: L("A short night"),
+                    body: String(format: L("You slept %@ against your usual %@ hours"),
+                                 InstrumentCenter
+                                     .durationLine(window),
+                                 String(format: "%.1f", baseHours))
                         + (nightEvents.count >= 3
-                           ? ", and the house was awake "
-                             + "for much of it" : "")
-                        + ". Noted because tired operators "
-                        + "and busy houses so often arrive "
-                        + "together.",
+                           ? L(", and the house was awake for much of it")
+                           : "")
+                        + L(". Noted because tired operators and busy houses so often arrive together."),
                     citations: [],
                     confidence: 0.5))
             }
@@ -958,16 +903,10 @@ final class SubconsciousCenter: ObservableObject {
             found.append(Insight(
                 id: "operator-hrv",
                 when: now,
-                title: "The operator's variability dipped",
-                body: "Heart-rate variability read "
-                    + "\(Int(latest.rounded())) ms "
-                    + "against your own fortnight "
-                    + "baseline of \(Int(base.rounded())) "
-                    + "ms — the nervous system's ledger, "
-                    + "read against itself. Strain, "
-                    + "short sleep, and coming illness "
-                    + "all write in it. A correlation, "
-                    + "printed as one — not a cause.",
+                title: L("The operator's variability dipped"),
+                body: String(format: L("Heart-rate variability read %lld ms against your own fortnight baseline of %lld ms — the nervous system's ledger, read against itself. Strain, short sleep, and coming illness all write in it. A correlation, printed as one — not a cause."),
+                             Int(latest.rounded()),
+                             Int(base.rounded())),
                 citations: [],
                 confidence: 0.5))
         }
@@ -977,14 +916,10 @@ final class SubconsciousCenter: ObservableObject {
             found.append(Insight(
                 id: "operator-temp",
                 when: now,
-                title: "The operator ran warm in the night",
-                body: "Sleeping wrist temperature read "
-                    + String(format: "%.1f", latest - base)
-                    + "° above your own fortnight "
-                    + "baseline — the deviation the "
-                    + "watch itself treats as worth a "
-                    + "second look. A correlation, "
-                    + "printed as one — not a cause.",
+                title: L("The operator ran warm in the night"),
+                body: String(format: L("Sleeping wrist temperature read %@° above your own fortnight baseline — the deviation the watch itself treats as worth a second look. A correlation, printed as one — not a cause."),
+                             String(format: "%.1f",
+                                    latest - base)),
                 citations: [],
                 confidence: 0.5))
         }
@@ -1031,9 +966,8 @@ final class SubconsciousCenter: ObservableObject {
             let wrong = v.count > 1 ? v[1] : 0
             if right + wrong >= 3,
                Double(right) / Double(right + wrong) >= 0.75 {
-                brief += " It leads with the kind of "
-                    + "finding you have confirmed "
-                    + "\(right) of \(right + wrong) times."
+                brief += String(format: L(" It leads with the kind of finding you have confirmed %lld of %lld times."),
+                                right, right + wrong)
                 break
             }
         }
@@ -1068,36 +1002,37 @@ final class SubconsciousCenter: ObservableObject {
         }
         var lines: [String] = []
         lines.append(
-            "The last day held \(last24.count) sealed events, "
-            + "\(knocks) of them at the tripwire. The wire "
-            + "knows \(neighbors.count) device"
-            + (neighbors.count == 1 ? "" : "s")
+            (neighbors.count == 1
+             ? String(format: L("The last day held %lld sealed events, %lld of them at the tripwire. The wire knows %lld device"),
+                      last24.count, knocks, neighbors.count)
+             : String(format: L("The last day held %lld sealed events, %lld of them at the tripwire. The wire knows %lld devices"),
+                      last24.count, knocks, neighbors.count))
             + (placed.isEmpty
                ? "."
-               : ", \(placed.count) of them placed in "
-                 + "their rooms on the Map."))
+               : String(format: L(", %lld of them placed in their rooms on the Map."),
+                        placed.count)))
         if let pattern = insights.first(where: {
             $0.id.hasPrefix("pattern-") }) {
-            lines.append("Read together, first: "
+            lines.append(L("Read together, first: ")
                          + pattern.body)
         } else if let top = insights.first {
-            lines.append("First among findings: \(top.title). "
-                         + top.body)
+            lines.append(String(format: L("First among findings: %@. %@"),
+                                top.title, top.body))
         } else {
-            lines.append("Nothing in the house broke its "
-                         + "pattern. The pattern held.")
+            lines.append(L("Nothing in the house broke its pattern. The pattern held."))
         }
         if let tempo = insights.first(where: {
             $0.id == "tempo" }) {
-            lines.append(tempo.title + " — " + tempo.body)
+            lines.append(String(format: L("%@ — %@"),
+                                tempo.title, tempo.body))
         }
         if let absent = insights.first(where: {
             $0.id.hasPrefix("absent-") }) {
-            lines.append("And a silence: " + absent.body)
+            lines.append(L("And a silence: ") + absent.body)
         }
         if let due = insights.first(where: {
             $0.id.hasPrefix("due-") }) {
-            lines.append("Ahead: " + due.body)
+            lines.append(L("Ahead: ") + due.body)
         }
         return lines.joined(separator: " ")
     }

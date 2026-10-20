@@ -698,60 +698,66 @@ enum MacroSummary {
                     doors.append("http \(v("httpPort"))")
                 }
                 return doors.isEmpty
-                    ? "custom — no doors open"
+                    ? L("custom — no doors open")
                     : doors.joined(separator: ", ")
             }
-            return "standing settings"
+            return L("standing settings")
         case "beaconStart", "gattStart":
             let source = block.value("payload").isEmpty
-                ? "“\(v("text"))”" : v("payload")
-            return "\(source) as “\(v("name"))”"
+                ? String(format: L("“%@”"), L(v("text")))
+                : v("payload")
+            return String(format: L("%@ as “%@”"),
+                          source, v("name"))
         case "helmFire":
             return "\(v("remote")) · \(v("button"))"
         case "chestApply":
             return v("chest")
         case "stealth":
-            return block.flag("on") ? "on" : "off"
+            return block.flag("on") ? L("on") : L("off")
         case "banshee":
             return v("mode").lowercased()
         case "costume":
-            return "“\(v("name"))”"
+            return String(format: L("“%@”"), v("name"))
         case "persona":
             return block.value("mode") == "Drop"
-                ? "drop the shape"
-                : "don “\(v("name"))”"
+                ? L("drop the shape")
+                : String(format: L("don “%@”"), v("name"))
         case "listenStart":
-            return "“\(v("label", "Macro watch"))”"
+            return String(format: L("“%@”"),
+                          v("label", L("Macro watch")))
         case "knock":
             return "\(v("host")) · \(v("ports"))"
                 + (block.flag("udp") ? " · udp" : "")
         case "fuzzStart":
-            return "\(v("target")) · "
-                + "\(Int(block.number("count", 50))) packets"
+            return String(format: L("%@ · %lld packets"),
+                          v("target"),
+                          Int(block.number("count", 50)))
         case "assault", "warRoom":
             return v("mode").lowercased()
         case "sigintWatch":
-            return "“\(v("name", "Macro watch"))” · "
-                + v("scope", "mixed")
+            return String(format: L("“%@”"),
+                          v("name", L("Macro watch")))
+                + " · " + v("scope", "mixed")
         case "warChallenge":
             return "\(v("ip")):\(v("port"))"
         case "warDefense":
-            return "doors \(v("doors")) · decoys "
-                + v("decoys", "none")
+            return String(format: L("doors %@ · decoys %@"),
+                          v("doors"), v("decoys", L("none")))
         case "wait":
             return "\(Int(block.number("seconds", 10)))s"
         case "waitInbox":
-            return "up to \(Int(block.number("seconds", 60)))s"
+            return String(format: L("up to %llds"),
+                          Int(block.number("seconds", 60)))
         case "waitSighting":
             let match = block.value("match")
-            return (match.isEmpty ? "any new device"
-                    : "“\(match)”")
-                + " · up to "
-                + "\(Int(block.number("seconds", 60)))s"
+            return (match.isEmpty ? L("any new device")
+                    : String(format: L("“%@”"), match))
+                + String(format: L(" · up to %llds"),
+                         Int(block.number("seconds", 60)))
         case "note", "announce":
-            return "“\(v("text"))”"
+            return String(format: L("“%@”"), L(v("text")))
         default:
-            return spec.blurb
+            return L(spec.blurb)
         }
     }
 }
@@ -843,34 +849,37 @@ enum MacroValidator {
                          book: PayloadBook) -> [String] {
         var problems: [String] = []
         if macro.blocks.isEmpty {
-            problems.append("The playlist is empty — "
-                + "add a block first.")
+            problems.append(L("The playlist is empty — add a block first."))
             return problems
         }
         for (index, block) in macro.blocks.enumerated() {
             let spec = MacroCatalog.spec(block.kind)
-            let at = "Block \(index + 1) (\(spec.title))"
+            let at = String(format: L("Block %lld (%@)"),
+                            index + 1, L(spec.title))
             func need(_ condition: Bool, _ message: String) {
-                if !condition { problems.append("\(at): \(message)") }
+                if !condition {
+                    problems.append(String(format: L("%@: %@"),
+                                           at, message))
+                }
             }
             switch block.kind {
             case "sendPayload":
                 let name = block.value("payload")
                 need(book.items.contains { $0.name == name },
-                     "no payload named “\(name)” is in the book")
+                     String(format: L("no payload named “%@” is in the book"), name))
                 let target = block.value("target")
                 need(target.hasPrefix("phone:")
                      || (try? SendTarget.parse(
                         MacroResolve.target(target))) != nil,
-                     "the target “\(target)” does not parse")
+                     String(format: L("the target “%@” does not parse"), target))
             case "beaconStart", "gattStart":
                 let name = block.value("payload")
                 if !name.isEmpty {
                     need(book.items.contains { $0.name == name },
-                         "no payload named “\(name)” is in the book")
+                         String(format: L("no payload named “%@” is in the book"), name))
                 } else {
                     need(!block.value("text").isEmpty,
-                         "pick a payload or give literal text")
+                         L("pick a payload or give literal text"))
                 }
             case "helmFire":
                 let remotes = HelmStore.load()
@@ -878,28 +887,28 @@ enum MacroValidator {
                     $0.name == block.value("remote")
                 }
                 need(remote != nil,
-                     "no remote named “\(block.value("remote"))”")
+                     String(format: L("no remote named “%@”"), block.value("remote")))
                 if let remote {
                     need(remote.buttons.contains {
                         $0.label == block.value("button")
-                    }, "the remote has no button “\(block.value("button"))”")
+                    }, String(format: L("the remote has no button “%@”"), block.value("button")))
                 }
             case "chestApply":
                 need(NJChestStore.load().contains {
                     $0.name == block.value("chest")
-                }, "no chest named “\(block.value("chest"))”")
+                }, String(format: L("no chest named “%@”"), block.value("chest")))
             case "persona":
                 if block.value("mode") != "Drop" {
                     need(MacroNames.persona(
                         named: block.value("name")) != nil,
-                        "no persona named “\(block.value("name"))”")
+                        String(format: L("no persona named “%@”"), block.value("name")))
                 }
             case "costume":
                 need(!block.value("name").isEmpty,
-                     "give the costume a name")
+                     L("give the costume a name"))
             case "knock":
                 need(!block.value("host").isEmpty,
-                     "give the knock a host")
+                     L("give the knock a host"))
                 // Judged resolved, as the
                 // runner fires: "{serve}" is
                 // a port the moment either
@@ -911,18 +920,18 @@ enum MacroValidator {
                             in: .whitespaces))
                     }.filter { (1...65535).contains($0) }
                 need(!ports.isEmpty,
-                     "give the knock at least one port")
+                     L("give the knock at least one port"))
             case "fuzzStart":
                 need((try? SendTarget.parse(
                     MacroResolve.target(
                         block.value("target")))) != nil,
-                    "the target “\(block.value("target"))” does not parse")
+                    String(format: L("the target “%@” does not parse"), block.value("target")))
             case "warChallenge":
                 need(!block.value("ip").isEmpty,
-                     "give the challenge a defender address")
+                     L("give the challenge a defender address"))
             case "note", "announce":
                 need(!block.value("text").isEmpty,
-                     "give it its text")
+                     L("give it its text"))
             default:
                 break
             }
@@ -1363,8 +1372,12 @@ final class MacroRunner: ObservableObject {
             label: String(format: L("Macro — %@"), macro.name), organ: "Macros",
             detail: String(format: L("%lld blocks"), macro.blocks.count),
             stop: { MacroRunner.shared.stop() })
-        note("▶ \(macro.name) — \(macro.blocks.count) block"
-            + (macro.blocks.count == 1 ? "" : "s"), mark: "▶")
+        note(macro.blocks.count == 1
+            ? String(format: L("▶ %@ — %lld block"),
+                     macro.name, macro.blocks.count)
+            : String(format: L("▶ %@ — %lld blocks"),
+                     macro.name, macro.blocks.count),
+            mark: "▶")
         Journal.log("macro", "run",
                     "\(macro.name) started "
                     + "(\(macro.blocks.count) blocks)")
@@ -1386,10 +1399,11 @@ final class MacroRunner: ObservableObject {
     func stop() {
         guard running else { return }
         task?.cancel()
-        note("Stopped by the operator.", mark: "✗")
+        note(L("Stopped by the operator."), mark: "✗")
         Journal.log("macro", "run",
                     "\(currentMacroName) stopped by the operator")
-        finish(summary: "\(currentMacroName): stopped.")
+        finish(summary: String(format: L("%@: stopped."),
+                               currentMacroName))
     }
 
     private func finish(summary: String) {
@@ -1417,8 +1431,9 @@ final class MacroRunner: ObservableObject {
         for (index, block) in macro.blocks.enumerated() {
             if Task.isCancelled { return }
             let spec = MacroCatalog.spec(block.kind)
-            let stepLabel = "\(index + 1). \(spec.title) — "
-                + MacroSummary.line(for: block)
+            let stepLabel = String(format: L("%lld. %@ — %@"),
+                                   index + 1, L(spec.title),
+                                   MacroSummary.line(for: block))
             currentStep = stepLabel
             note(stepLabel, mark: "▶")
             let times = max(1, block.repeatCount)
@@ -1427,7 +1442,8 @@ final class MacroRunner: ObservableObject {
             for rep in 0..<times {
                 if Task.isCancelled { return }
                 if times > 1 {
-                    note("pass \(rep + 1) of \(times)", mark: "·")
+                    note(String(format: L("pass %lld of %lld"),
+                                rep + 1, times), mark: "·")
                 }
                 do {
                     let outcome = try await perform(
@@ -1465,10 +1481,12 @@ final class MacroRunner: ObservableObject {
         Journal.log("macro", "run",
                     "\(macro.name) finished "
                     + "(\(completed) of \(macro.blocks.count) blocks)")
-        note("Done — \(completed) of \(macro.blocks.count) blocks.",
+        note(String(format: L("Done — %lld of %lld blocks."),
+                    completed, macro.blocks.count),
              mark: "✓")
-        finish(summary: "\(macro.name): finished, "
-               + "\(completed) of \(macro.blocks.count) blocks.")
+        finish(summary: String(format: L("%@: finished, %lld of %lld blocks."),
+                               macro.name, completed,
+                               macro.blocks.count))
     }
 
     // MARK: one block
@@ -1485,31 +1503,33 @@ final class MacroRunner: ObservableObject {
                                          book: book))
         case "serveStart":
             serveStart(block, mouth: mouth)
-            return .done("Serve is up — "
-                + MacroSummary.line(for: block) + ".")
+            return .done(String(format: L("Serve is up — %@."),
+                                MacroSummary.line(for: block)))
         case "serveStop":
             mouth.stopServe()
-            return .done("Serve is down.")
+            return .done(L("Serve is down."))
         case "beaconStart":
             let data = try airPayload(block, book: book)
             let name = block.value("name").isEmpty
                 ? block.value("payload", block.value("text"))
                 : block.value("name")
             mouth.startBeacon(payload: data, name: name)
-            return .done("The beacon wears “\(name)”.")
+            return .done(String(format: L("The beacon wears “%@”."),
+                                name))
         case "beaconStop":
             mouth.stopBeacon()
-            return .done("The beacon is down.")
+            return .done(L("The beacon is down."))
         case "gattStart":
             let data = try airPayload(block, book: book)
             let name = block.value("name").isEmpty
                 ? block.value("payload", block.value("text"))
                 : block.value("name")
             mouth.startGattHost(payload: data, name: name)
-            return .done("GATT hosting wears “\(name)”.")
+            return .done(String(format: L("GATT hosting wears “%@”."),
+                                name))
         case "gattStop":
             mouth.stopGattHost()
-            return .done("GATT hosting is down.")
+            return .done(L("GATT hosting is down."))
         case "helmFire":
             return .done(try helmFire(block, mouth: mouth,
                                       book: book))
@@ -1517,30 +1537,27 @@ final class MacroRunner: ObservableObject {
             return .done(try chestApply(block, mouth: mouth))
         case "emconOn":
             emcon.activate(mouth: mouth)
-            return .done("Dark — emissions silenced, "
-                + "tripwire armed.")
+            return .done(L("Dark — emissions silenced, tripwire armed."))
         case "emconOff":
             emcon.deactivate()
-            return .done("EMCON stood down.")
+            return .done(L("EMCON stood down."))
         case "stealth":
             mouth.setStealth(block.flag("on"))
             return .done(block.flag("on")
-                ? "Stealth on." : "Stealth off.")
+                ? L("Stealth on.") : L("Stealth off."))
         case "banshee":
             if block.value("mode") == "Cease" {
                 BansheeCenter.shared.cease(
                     mouth: mouth, assault: AssaultCenter.shared)
-                return .done("The banshee is silent; the "
-                    + "posture it found is restored.")
+                return .done(L("The banshee is silent; the posture it found is restored."))
             }
             BansheeCenter.shared.scream(
                 mouth: mouth, assault: AssaultCenter.shared)
-            return .done("The banshee screams.")
+            return .done(L("The banshee screams."))
         case "costume":
             let name = block.value("name")
             guard !name.isEmpty else {
-                throw MacroProblem(message: "The costume "
-                    + "block has no name.")
+                throw MacroProblem(message: L("The costume block has no name."))
             }
             return .done(Spoofy.applyName(name, mouth: mouth))
         case "persona":
@@ -1550,8 +1567,8 @@ final class MacroRunner: ObservableObject {
             }
             guard let persona = MacroNames.persona(
                 named: block.value("name")) else {
-                throw MacroProblem(message: "No persona named "
-                    + "“\(block.value("name"))”.")
+                throw MacroProblem(message: String(format: L("No persona named “%@”."),
+                                                  block.value("name")))
             }
             return .done(MimicCenter.shared.don(
                 persona, mouth: mouth))
@@ -1560,13 +1577,13 @@ final class MacroRunner: ObservableObject {
                 post.start(label: block.value(
                     "label", "Macro watch"))
             }
-            return .done("The ear is open.")
+            return .done(L("The ear is open."))
         case "listenStop":
             post.stop()
-            return .done("The ear is closed.")
+            return .done(L("The ear is closed."))
         case "sweep":
             try await sweep(mouth: mouth)
-            return .done("The sweep finished.")
+            return .done(L("The sweep finished."))
         case "knock":
             return .done(try await knock(block))
         case "fuzzStart":
@@ -1578,31 +1595,31 @@ final class MacroRunner: ObservableObject {
                 mutations: Int(block.number("mutations", 8)),
                 seedValue: nil, read: true,
                 timeout: standingReconTimeout())
-            return .done("The fuzzer is running at "
-                + "\(block.value("target")).")
+            return .done(String(format: L("The fuzzer is running at %@."),
+                                block.value("target")))
         case "fuzzStop":
             bench.stopFuzz()
-            return .done("The fuzzer stood down.")
+            return .done(L("The fuzzer stood down."))
         case "assault":
             if block.value("mode") == "Disarm" {
                 AssaultCenter.shared.disarm(reason: "macro")
-                return .done("The assault stood down.")
+                return .done(L("The assault stood down."))
             }
             AssaultCenter.shared.arm()
-            return .done("The assault is armed.")
+            return .done(L("The assault is armed."))
         case "warRoom":
             if block.value("mode") == "Stop" {
                 WarRun.shared.stop()
-                return .done("The War Room run stood down.")
+                return .done(L("The War Room run stood down."))
             }
             WarRun.shared.start(
                 mouth: mouth, post: post, recon: warBench,
                 book: book, config: standingWarConfig())
             return .done(WarRun.shared.running
-                ? "The War Room run is up."
-                : "The run would not start — "
-                    + (WarRun.shared.statusLine
-                       ?? "no reason given"))
+                ? L("The War Room run is up.")
+                : String(format: L("The run would not start — %@"),
+                         WarRun.shared.statusLine
+                            ?? L("no reason given")))
         case "sigintWatch":
             let station = SigintStation.shared
             station.attach(post: post)
@@ -1611,8 +1628,8 @@ final class MacroRunner: ObservableObject {
                 scope: block.value("scope", "mixed"),
                 post: post)
             return .done(station.currentWatch != nil
-                ? "The watch is open."
-                : "A watch is already running — left as it was.")
+                ? L("The watch is open.")
+                : L("A watch is already running — left as it was."))
         case "warChallenge":
             let games = WarGamesCenter.shared
             games.attachForHands(mouth: mouth, post: post)
@@ -1623,8 +1640,8 @@ final class MacroRunner: ObservableObject {
                 myControlPort: Int(block.number("control", 9000)),
                 myLabel: Mouth.wireHostName().isEmpty
                     ? "nightjar" : Mouth.wireHostName())
-            return .done("Challenge out to "
-                + "\(block.value("ip")).")
+            return .done(String(format: L("Challenge out to %@."),
+                                block.value("ip")))
         case "warDefense":
             let games = WarGamesCenter.shared
             games.attachForHands(mouth: mouth, post: post)
@@ -1637,11 +1654,12 @@ final class MacroRunner: ObservableObject {
                                     $0.trimmingCharacters(
                                         in: .whitespaces)
                                 }.filter { !$0.isEmpty })
-            return .done("Defense set — "
-                + MacroSummary.line(for: block) + ".")
+            return .done(String(format: L("Defense set — %@."),
+                                MacroSummary.line(for: block)))
         case "wait":
             await sleep(block.number("seconds", 10))
-            return .done("Waited \(Int(block.number("seconds", 10)))s.")
+            return .done(String(format: L("Waited %llds."),
+                                Int(block.number("seconds", 10))))
         case "waitInbox":
             return try await waitInbox(block, mouth: mouth)
         case "waitSighting":
@@ -1649,16 +1667,15 @@ final class MacroRunner: ObservableObject {
         case "note":
             Journal.log("macro", "note",
                         "\(macroName): \(block.value("text"))")
-            return .done("Noted in the night log.")
+            return .done(L("Noted in the night log."))
         case "announce":
             announce(block.value("text"))
-            return .done("Announced.")
+            return .done(L("Announced."))
         case "stop":
-            return .endPlaylist("The playlist ends here, "
-                + "by its own stop block.")
+            return .endPlaylist(L("The playlist ends here, by its own stop block."))
         default:
-            throw MacroProblem(message: "Unknown block kind "
-                + "“\(block.kind)”.")
+            throw MacroProblem(message: String(format: L("Unknown block kind “%@”."),
+                                              block.kind))
         }
     }
 
@@ -1672,8 +1689,8 @@ final class MacroRunner: ObservableObject {
         guard let payload = book.items.first(where: {
             $0.name == name
         }) else {
-            throw MacroProblem(message: "No payload named "
-                + "“\(name)” is in the book.")
+            throw MacroProblem(message: String(format: L("No payload named “%@” is in the book."),
+                                              name))
         }
         do {
             return try PayloadKit.build(
@@ -1688,8 +1705,8 @@ final class MacroRunner: ObservableObject {
                 xorSpec: payload.xorKey,
                 useGzip: payload.useGzip)
         } catch {
-            throw MacroProblem(message: "The payload would "
-                + "not build: \(error.localizedDescription)")
+            throw MacroProblem(message: String(format: L("The payload would not build: %@"),
+                                              error.localizedDescription))
         }
     }
 
@@ -1705,22 +1722,22 @@ final class MacroRunner: ObservableObject {
         guard let payload = book.items.first(where: {
             $0.name == name
         }) else {
-            throw MacroProblem(message: "No payload named "
-                + "“\(name)” is in the book.")
+            throw MacroProblem(message: String(format: L("No payload named “%@” is in the book."),
+                                              name))
         }
         if targetText.hasPrefix("phone:") {
             let phone = String(targetText.dropFirst(6))
             mouth.sendToPhone(name: phone, payload: data,
                               framing: payload.framing,
                               read: true, timeout: 5)
-            return "Sent \(name) to \(phone)."
+            return String(format: L("Sent %@ to %@."), name, phone)
         }
         let target: SendTarget
         do {
             target = try SendTarget.parse(targetText)
         } catch {
-            throw MacroProblem(message: "That target does "
-                + "not parse: \(error.localizedDescription)")
+            throw MacroProblem(message: String(format: L("That target does not parse: %@"),
+                                              error.localizedDescription))
         }
         switch target {
         case .http(_, _):
@@ -1734,11 +1751,9 @@ final class MacroRunner: ObservableObject {
                 read: block.flag("readReply", true),
                 timeout: 5)
         case .bleBeacon, .bleGatt, .bleWrite(_):
-            throw MacroProblem(message: "That target is a "
-                + "BLE door — a macro sends it with a "
-                + "beacon or GATT block instead.")
+            throw MacroProblem(message: L("That target is a BLE door — a macro sends it with a beacon or GATT block instead."))
         }
-        return "Sent \(name) → \(targetText)."
+        return String(format: L("Sent %@ → %@."), name, targetText)
     }
 
     private func airPayload(_ block: MacroBlock,
@@ -1751,8 +1766,7 @@ final class MacroRunner: ObservableObject {
         }
         let text = block.value("text")
         guard !text.isEmpty else {
-            throw MacroProblem(message: "The block needs "
-                + "a payload or literal text.")
+            throw MacroProblem(message: L("The block needs a payload or literal text."))
         }
         return Data(text.utf8)
     }
@@ -1763,14 +1777,14 @@ final class MacroRunner: ObservableObject {
         guard let remote = remotes.first(where: {
             $0.name == block.value("remote")
         }) else {
-            throw MacroProblem(message: "No remote named "
-                + "“\(block.value("remote"))”.")
+            throw MacroProblem(message: String(format: L("No remote named “%@”."),
+                                              block.value("remote")))
         }
         guard let button = remote.buttons.first(where: {
             $0.label == block.value("button")
         }) else {
-            throw MacroProblem(message: "The remote has no "
-                + "button “\(block.value("button"))”.")
+            throw MacroProblem(message: String(format: L("The remote has no button “%@”."),
+                                              block.value("button")))
         }
         return HelmFire.fire(button, book: book, mouth: mouth)
     }
@@ -1780,12 +1794,12 @@ final class MacroRunner: ObservableObject {
         guard let chest = NJChestStore.load().first(where: {
             $0.name == block.value("chest")
         }) else {
-            throw MacroProblem(message: "No chest named "
-                + "“\(block.value("chest"))”.")
+            throw MacroProblem(message: String(format: L("No chest named “%@”."),
+                                              block.value("chest")))
         }
         chest.apply(mouth: mouth)
-        return "The rig wears “\(chest.name)” — dressed, "
-            + "nothing started."
+        return String(format: L("The rig wears “%@” — dressed, nothing started."),
+                      chest.name)
     }
 
     private func serveStart(_ block: MacroBlock,
@@ -1819,9 +1833,7 @@ final class MacroRunner: ObservableObject {
     @MainActor
     private func sweep(mouth: Mouth) async throws {
         guard !mouth.traceBusy else {
-            throw MacroProblem(message: "The trace is "
-                + "already working — a sweep waits for "
-                + "the wire to free.")
+            throw MacroProblem(message: L("The trace is already working — a sweep waits for the wire to free."))
         }
         let config = standingWarConfig()
         mouth.startNetworkTrace(
@@ -1866,8 +1878,7 @@ final class MacroRunner: ObservableObject {
                     in: .whitespaces))
             }.filter { (1...65535).contains($0) }
         guard !host.isEmpty, !ports.isEmpty else {
-            throw MacroProblem(message: "The knock needs "
-                + "a host and at least one port.")
+            throw MacroProblem(message: L("The knock needs a host and at least one port."))
         }
         bench.knock(host: host, ports: ports,
                     udp: block.flag("udp"),
@@ -1879,11 +1890,13 @@ final class MacroRunner: ObservableObject {
         }
         let open = bench.hits.filter { $0.isOpen }
         if open.isEmpty {
-            return "Knocked \(host) — no door answered."
+            return String(format: L("Knocked %@ — no door answered."),
+                          host)
         }
-        return "Knocked \(host) — answered: "
-            + open.map { "\($0.port)" }
-                .joined(separator: ", ") + "."
+        return String(format: L("Knocked %@ — answered: %@."),
+                      host,
+                      open.map { "\($0.port)" }
+                          .joined(separator: ", "))
     }
 
     @MainActor
@@ -1902,23 +1915,21 @@ final class MacroRunner: ObservableObject {
             block.number("seconds", 60))
         while Date() < deadline {
             if Task.isCancelled {
-                return .done("The wait ended early.")
+                return .done(L("The wait ended early."))
             }
             if mouth.inbox.first?.id != baseline {
                 let item = mouth.inbox.first
-                return .done("An arrival landed — "
-                    + "\(item?.transport ?? "") from "
-                    + "\(item?.peer ?? "the wire").")
+                return .done(String(format: L("An arrival landed — %@ from %@."),
+                                    item?.transport ?? "",
+                                    item?.peer ?? L("the wire")))
             }
             try? await Task.sleep(nanoseconds: 250_000_000)
         }
         if block.value("onTimeout") == "Stop the playlist" {
-            return .endPlaylist("No arrival in time — "
-                + "the playlist stops here, as configured.")
+            return .endPlaylist(L("No arrival in time — the playlist stops here, as configured."))
         }
-        return .done("No arrival in "
-            + "\(Int(block.number("seconds", 60)))s — "
-            + "continuing, as configured.")
+        return .done(String(format: L("No arrival in %llds — continuing, as configured."),
+                            Int(block.number("seconds", 60))))
     }
 
     @MainActor
@@ -1926,9 +1937,7 @@ final class MacroRunner: ObservableObject {
                               post: ListeningPost) async throws
         -> MacroStepOutcome {
         guard post.session != nil else {
-            throw MacroProblem(message: "The ear is not "
-                + "listening — a sighting wait needs a "
-                + "listen block (or the Listen tab) first.")
+            throw MacroProblem(message: L("The ear is not listening — a sighting wait needs a listen block (or the Listen tab) first."))
         }
         let baseline = Set(post.rows.map { $0.id })
         let match = block.value("match").lowercased()
@@ -1936,25 +1945,24 @@ final class MacroRunner: ObservableObject {
             block.number("seconds", 60))
         while Date() < deadline {
             if Task.isCancelled {
-                return .done("The wait ended early.")
+                return .done(L("The wait ended early."))
             }
             for row in post.rows where !baseline.contains(row.id) {
                 let label = row.preferredLabel ?? row.name
                     ?? row.id
                 if match.isEmpty
                     || label.lowercased().contains(match) {
-                    return .done("Sighted: \(label).")
+                    return .done(String(format: L("Sighted: %@."),
+                                        label))
                 }
             }
             try? await Task.sleep(nanoseconds: 250_000_000)
         }
         if block.value("onTimeout") == "Stop the playlist" {
-            return .endPlaylist("No sighting in time — "
-                + "the playlist stops here, as configured.")
+            return .endPlaylist(L("No sighting in time — the playlist stops here, as configured."))
         }
-        return .done("No sighting in "
-            + "\(Int(block.number("seconds", 60)))s — "
-            + "continuing, as configured.")
+        return .done(String(format: L("No sighting in %llds — continuing, as configured."),
+                            Int(block.number("seconds", 60))))
     }
 
     @MainActor
@@ -1972,7 +1980,7 @@ final class MacroRunner: ObservableObject {
     private func announce(_ text: String) {
         let content = UNMutableNotificationContent()
         content.title = "nightjar-hack — macro"
-        content.body = text
+        content.body = L(text)
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: "macro-\(UUID().uuidString)",
