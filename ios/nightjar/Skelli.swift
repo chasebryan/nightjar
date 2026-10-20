@@ -1126,7 +1126,7 @@ final class SkelliCenter: ObservableObject {
     /// knows how to work an AI; she answers.
     private func tellEntry(_ entry: SkelliEntry,
                            prefix: String? = nil) {
-        let (lead, rest) = leadOf(entry.body)
+        let (lead, rest) = leadOf(L(entry.body))
         lastEntryRest = rest.map {
             (title: entry.title, rest: $0) }
         var text = lead
@@ -3359,7 +3359,7 @@ final class SkelliCenter: ObservableObject {
             if let entry = SkelliKnowledge.lookup(q) {
                 lastSubject = ("entry", entry.title,
                                entry.body, entry.home)
-                let (lead, rest) = leadOf(entry.body)
+                let (lead, rest) = leadOf(L(entry.body))
                 lastEntryRest = rest.map {
                     (title: entry.title, rest: $0) }
                 var answer = lead
@@ -3859,7 +3859,7 @@ final class SkelliCenter: ObservableObject {
                     keywords: [],
                     body: subject.body))
             } else {
-                let (lead, rest) = leadOf(subject.body)
+                let (lead, rest) = leadOf(L(subject.body))
                 if let rest {
                     pendingAction = { [weak self] in
                         self?.say(rest)
@@ -5200,7 +5200,7 @@ final class SkelliCenter: ObservableObject {
                     in: .whitespacesAndNewlines)
             if let entry = SkelliKnowledge
                 .lookup(topic.isEmpty ? s : topic) {
-                return "\(entry.title): \(entry.body)"
+                return "\(entry.title): \(L(entry.body))"
             }
             return "The manual holds nothing "
                 + "under that name."
@@ -10878,10 +10878,10 @@ struct SkelliDirectoryView: View {
                     skelli.askAbout(entry)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(entry.title)
+                        Text(L(entry.title))
                             .font(.callout.weight(.medium))
                             .foregroundStyle(.primary)
-                        Text(entry.home)
+                        Text(L(entry.home))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
