@@ -2224,3 +2224,14 @@
 "Mm. I live for this crowd." = "Мм. Ради такой публики и живу.";
 
 "Encores available on request. Kidding. Mostly." = "Бис — по запросу. Шучу. В основном.";
+"Answers as" = "Отвечает как";
+"Administer" = "Управление";
+"Walk (SNMP)" = "Обход (SNMP)";
+"Audit posture" = "Аудит защиты";
+"Probing is dark under EMCON %@." = "Зондирование недоступно при EMCON %@.";
+"Quarantine this device" = "Поместить устройство в карантин";
+"Lift the quarantine" = "Снять карантин";
+"Quarantine rides the gear's kept credential — none is kept, so the lever is dark." = "Карантин использует сохранённые учётные данные оборудования — ничего не сохранено, поэтому рычаг недоступен.";
+"The run" = "Прогон";
+"Working…" = "Выполняется…";
+"No credential kept for this device — the walk rides the factory word." = "Учётные данные для этого устройства не сохранены — обход использует заводское слово.";
