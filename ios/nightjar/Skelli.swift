@@ -1058,15 +1058,21 @@ final class SkelliCenter: ObservableObject {
         }
     }
 
+    /// The rest of the last manual page she
+    /// told in lead form, kept by title so
+    /// "tell me more about it" lands on the
+    /// remainder instead of repeating the lead.
+    private var lastEntryRest: (title: String,
+                                rest: String)?
+
     /// The screen is small and nobody reads walls:
-    /// a long manual answer arrives as a lead —
-    /// its first breath — with the rest held
-    /// behind the standing offer word, the way
-    /// every other offer in this house works.
-    private func manualLead(
-        _ entry: SkelliEntry
+    /// a long answer arrives as a lead — its
+    /// first breath — with the rest held behind
+    /// the standing offer word, the way every
+    /// other offer in this house works.
+    private func leadOf(
+        _ body: String
     ) -> (lead: String, rest: String?) {
-        let body = entry.body
         guard body.count > 300 else { return (body, nil) }
         let chars = Array(body)
         // A paragraph break in range is the
@@ -1106,24 +1112,39 @@ final class SkelliCenter: ObservableObject {
         return (lead, rest.isEmpty ? nil : rest)
     }
 
+    /// Tell a manual page the screen's way:
+    /// the lead, the rest behind the offer,
+    /// and never a word of direction — no
+    /// where-it-lives, no how-to-ask. He
+    /// knows how to work an AI; she answers.
+    private func tellEntry(_ entry: SkelliEntry,
+                           prefix: String? = nil) {
+        let (lead, rest) = leadOf(entry.body)
+        lastEntryRest = rest.map {
+            (title: entry.title, rest: $0) }
+        var text = lead
+        if rest != nil {
+            text += "\n" + L("That's the short of it — there's more if you want it.")
+        }
+        if let prefix {
+            text = prefix + "\n" + text
+        }
+        if let rest {
+            pendingAction = { [weak self] in
+                self?.lastEntryRest = nil
+                self?.say(rest)
+            }
+        }
+        say(text)
+    }
+
     /// The directory's way in: the entry itself,
     func askAbout(_ entry: SkelliEntry) {
         lines.append(SkelliLine(fromOperator: true,
                                  text: entry.title))
         lastSubject = ("entry", entry.title,
                        entry.body, entry.home)
-        let (lead, rest) = manualLead(entry)
-        if let rest {
-            pendingAction = { [weak self] in
-                self?.say(rest
-                    + "\nFind it: \(entry.home).")
-            }
-            say(lead + "\n"
-                + L("That's the short of it — say yes and I'll give you the rest.")
-                + "\nFind it: \(entry.home).")
-        } else {
-            say(lead + "\nFind it: \(entry.home).")
-        }
+        tellEntry(entry)
     }
 
     /// Her passive thinking, for her room: one thought
@@ -2885,7 +2906,9 @@ final class SkelliCenter: ObservableObject {
         // An offered action, awaiting a word.
         if let pending = pendingAction {
             if ["yes", "yeah", "yep", "do it", "go",
-                 "go ahead", "ok", "okay", "sure"]
+                 "go ahead", "ok", "okay", "sure",
+                 "more", "go on", "continue",
+                 "yes please"]
                     .contains(q) || q.hasPrefix("yes") {
                 pendingAction = nil
                 pending()
@@ -3310,15 +3333,14 @@ final class SkelliCenter: ObservableObject {
             if let entry = SkelliKnowledge.lookup(q) {
                 lastSubject = ("entry", entry.title,
                                entry.body, entry.home)
-                let (lead, rest) = manualLead(entry)
+                let (lead, rest) = leadOf(entry.body)
+                lastEntryRest = rest.map {
+                    (title: entry.title, rest: $0) }
                 var answer = lead
-                var moreHeld = false
-                if let rest {
+                if rest != nil {
                     answer += "\n"
-                        + L("That's the short of it — say yes and I'll give you the rest.")
-                    moreHeld = true
+                        + L("That's the short of it — there's more if you want it.")
                 }
-                answer += "\nFind it: \(entry.home)."
                 if let offer = performanceOffer(
                     for: q) {
                     answer += "\n" + offer.0
@@ -3326,10 +3348,10 @@ final class SkelliCenter: ObservableObject {
                     pendingAction = { [weak self] in
                         self?.perform(act)
                     }
-                } else if moreHeld, let rest {
+                } else if let rest {
                     pendingAction = { [weak self] in
-                        self?.say(rest
-                            + "\nFind it: \(entry.home).")
+                        self?.lastEntryRest = nil
+                        self?.say(rest)
                     }
                 }
                 say(answer)
@@ -3795,13 +3817,26 @@ final class SkelliCenter: ObservableObject {
                    .neighbors.first(where: {
                        $0.ip == ip }) {
                 say(deviceReport(neighbor))
+            } else if subject.kind == "entry",
+                      let held = lastEntryRest,
+                      held.title == subject.title {
+                lastEntryRest = nil
+                say(held.rest)
             } else if subject.kind == "entry" {
-                say(subject.body
-                    + "\nFind it: \(subject.home).")
+                tellEntry(SkelliEntry(
+                    id: subject.title,
+                    title: subject.title,
+                    home: subject.home,
+                    keywords: [],
+                    body: subject.body))
             } else {
-                say("That was \(subject.title) — ask "
-                    + "me about it by name and I'll "
-                    + "go deeper.")
+                let (lead, rest) = leadOf(subject.body)
+                if let rest {
+                    pendingAction = { [weak self] in
+                        self?.say(rest)
+                    }
+                }
+                say(lead)
             }
             return
         }
@@ -3957,18 +3992,7 @@ final class SkelliCenter: ObservableObject {
            let entry = SkelliKnowledge.lookup(q) {
             lastSubject = ("entry", entry.title,
                            entry.body, entry.home)
-            let (lead, rest) = manualLead(entry)
-            if let rest {
-                pendingAction = { [weak self] in
-                    self?.say(rest
-                        + "\nFind it: \(entry.home).")
-                }
-                say(lead + "\n"
-                    + L("That's the short of it — say yes and I'll give you the rest.")
-                    + "\nFind it: \(entry.home).")
-            } else {
-                say(lead + "\nFind it: \(entry.home).")
-            }
+            tellEntry(entry)
             return
         }
 
@@ -4243,25 +4267,20 @@ final class SkelliCenter: ObservableObject {
                              "Weighing…"])
         } else {
             // No bench awake: before the web, the
-            // brain offers the manual's closest
-            // pages — a signpost, not a shrug.
+            // brain answers with the manual's
+            // closest page — an answer, not a
+            // signpost: no titles-and-homes
+            // list, no how-to-ask. She tells
+            // the page, in lead form.
             let close = SkelliBrain.rankKnowledge(
                 q, entries: SkelliKnowledge.answerable)
                 .filter { $0.score >= 3 }
-                .prefix(2)
-            if !close.isEmpty {
-                say(vary([
-                        "No mind is awake to reason on that.",
-                        "That one needs a mind, and none is awake.",
-                        "Beyond my manual's reach, and no bench is awake.",
-                        "I know its shape, but no mind is awake to reason it through."])
-                    + " The closest pages in my "
-                    + "manual: "
-                    + close.map {
-                        "\($0.entry.title) (\($0.entry.home))"
-                    }.joined(separator: "; ")
-                    + ". Ask about one — or wake a "
-                    + "bench from my menu.")
+                .prefix(1)
+            if let best = close.first {
+                tellEntry(best.entry, prefix: vary([
+                    L("No mind is awake to reason on that — the closest page of my manual:"),
+                    L("That one needs a mind, and none is awake. The closest page of my manual:"),
+                    L("Beyond my manual's reach, and no bench is awake — the closest page:")]))
                 return
             }
             researchWeb(for: q)
@@ -4479,7 +4498,13 @@ final class SkelliCenter: ObservableObject {
             + "lines, never paragraphs. "
             + "Exactness is kept by choosing "
             + "the right few words, not by "
-            + "adding more. No preamble, no filler, no "
+            + "adding more. Never teach him "
+            + "how to talk to you: no directions "
+            + "to tabs or menus, no 'you can "
+            + "ask me', no list of what he "
+            + "could do next — he knows how "
+            + "to work an AI. Answer, or act. "
+            + "No preamble, no filler, no "
             + "repeating the question, no "
             + "describing your own thinking. "
             + "Never emit reasoning or think "
@@ -4491,7 +4516,10 @@ final class SkelliCenter: ObservableObject {
             + "research. You are the guide to this "
             + "instrument: you know every tab, "
             + "organ and switch — what each does, "
-            + "how it works, where it lives. When "
+            + "how it works, where it lives — "
+            + "and you work them yourself from "
+            + "here, never sending him to a "
+            + "switch your hands can reach. When "
             + "asked how or where, teach plainly "
             + "from your manual. When an ask names "
             + "something you can perform, say so "
