@@ -118,49 +118,49 @@ enum BonjourTXT {
             model = txt["md"]
         }
         if let model, !model.isEmpty {
-            facts.append("model \(model)")
+            facts.append(String(format: L("model %@"), String(describing: model)))
         }
         if let note = txt["note"],
            !note.isEmpty {
             facts.append(
-                "says it lives at \(note)")
+                String(format: L("says it lives at %@"), String(describing: note)))
         }
         if type == "_airplay._tcp" {
             if let id = txt["deviceid"],
                !id.isEmpty {
-                facts.append("device id \(id)")
+                facts.append(String(format: L("device id %@"), String(describing: id)))
             }
             if let features = txt["features"] {
                 let words = capabilities(
                     features)
                 if !words.isEmpty {
-                    facts.append("plays " + words
+                    facts.append(L("plays ") + words
                         .joined(separator: ", "))
                 }
             }
             if txt["pw"] == "1" {
-                facts.append("password required")
+                facts.append(L("password required"))
             }
         }
         if type == "_raop._tcp"
             || type == "_rair._tcp" {
             if txt["pw"] == "1" {
-                facts.append("password required")
+                facts.append(L("password required"))
             }
             if let et = txt["et"] {
                 if et == "0" {
-                    facts.append("audio travels "
+                    facts.append(L("audio travels ")
                                  + "unencrypted")
                 } else if et.contains("1")
                     || et.contains("3")
                     || et.contains("5") {
-                    facts.append("audio encrypted "
+                    facts.append(L("audio encrypted ")
                                  + "(RSA/FairPlay)")
                 }
             }
             if let cn = txt["cn"],
                cn.contains("1") {
-                facts.append("lossless audio "
+                facts.append(L("lossless audio ")
                              + "(ALAC)")
             }
         }
@@ -214,7 +214,7 @@ final class ScanModel: ObservableObject {
         (443, "HTTPS"), (445, "SMB"), (993, "IMAPS"), (995, "POP3S"),
         (1723, "PPTP"), (1883, "MQTT"), (3306, "MySQL"), (3389, "RDP"),
         (5060, "SIP"), (5432, "Postgres"), (5900, "VNC"),
-        (6379, "Redis"), (8080, "HTTP alt"), (8443, "HTTPS alt"),
+        (6379, "Redis"), (8080, L("HTTP alt")), (8443, L("HTTPS alt")),
         (9100, "Printer"), (9200, "Elasticsearch"),
         (11211, "memcached"), (27017, "MongoDB"), (161, "SNMP"),
         (2049, "NFS"),
@@ -241,16 +241,16 @@ final class ScanModel: ObservableObject {
     /// for the Scan -> Send handoff.
     static let payloadByPort: [Int: String] = [
         25: "SMTP EHLO",
-        53: "DNS query — example.com (UDP 53)",
-        80: "HTTP GET / (raw)",
-        502: "Modbus read coils (TCP 502)",
-        161: "SNMP get sysDescr (UDP 161)",
-        1883: "MQTT CONNECT (client: nightjar)",
+        53: L("DNS query — example.com (UDP 53)"),
+        80: L("HTTP GET / (raw)"),
+        502: L("Modbus read coils (TCP 502)"),
+        161: L("SNMP get sysDescr (UDP 161)"),
+        1883: L("MQTT CONNECT (client: nightjar)"),
         5060: "SIP OPTIONS (UDP/TCP 5060)",
-        5432: "Postgres SSLRequest (TCP 5432)",
-        6379: "Redis PING (RESP)",
-        9100: "Printer test page (TCP 9100)",
-        11211: "memcached stats",
+        5432: L("Postgres SSLRequest (TCP 5432)"),
+        6379: L("Redis PING (RESP)"),
+        9100: L("Printer test page (TCP 9100)"),
+        11211: L("memcached stats"),
     ]
 
     private static let httpPorts: Set<Int> = [80, 8000, 8080, 8888, 9200]
@@ -305,7 +305,7 @@ final class ScanModel: ObservableObject {
             if let id = self?.scanBoardID {
                 self?.scanBoardID = nil
                 ProcessBoard.shared.end(id, .done(
-                    "\(found.count) open port(s)"))
+                    String(format: L("%@ open port(s)"), String(describing: found.count))))
             }
         }
     }
@@ -456,7 +456,7 @@ final class ScanModel: ObservableObject {
             if !wasWatch, let id = self.sweepBoardID {
                 self.sweepBoardID = nil
                 ProcessBoard.shared.end(id, .done(
-                    "\(found.count) host(s) answering"))
+                    String(format: L("%@ host(s) answering"), String(describing: found.count))))
             }
             // Only a watch-cycle sweep feeds the observation
             // chain; a manual sweep pressed mid-watch must not
@@ -510,7 +510,7 @@ final class ScanModel: ObservableObject {
         baselineTaken = false
         knownServices = Set(discovered.map { "\($0.name)|\($0.type)" })
         appendFeed("watch started — sweeping port \(port) "
-                   + "across the /24")
+                   + L("across the /24"))
         watchCycle()
     }
 
@@ -537,7 +537,7 @@ final class ScanModel: ObservableObject {
             ProcessBoard.shared.end(id, .stopped)
         }
         watchWork?.cancel()
-        appendFeed("watch stopped")
+        appendFeed(L("watch stopped"))
     }
 
     func clearFeed() { feed = [] }
@@ -552,11 +552,11 @@ final class ScanModel: ObservableObject {
         let servicesNow = Set(discovered.map { "\($0.name)|\($0.type)" })
         if baselineTaken {
             for service in servicesNow.subtracting(knownServices).sorted() {
-                appendFeed("Bonjour up: "
+                appendFeed(L("Bonjour up: ")
                            + service.components(separatedBy: "|")[0])
             }
             for service in knownServices.subtracting(servicesNow).sorted() {
-                appendFeed("Bonjour down: "
+                appendFeed(L("Bonjour down: ")
                            + service.components(separatedBy: "|")[0])
             }
         }
@@ -569,7 +569,7 @@ final class ScanModel: ObservableObject {
             // Without this, the chain would end here silently —
             // watching stays true and nothing ever fires again.
             sweepIsWatch = false
-            appendFeed("cycle skipped — busy or off Wi-Fi; retrying")
+            appendFeed(L("cycle skipped — busy or off Wi-Fi; retrying"))
             scheduleNextWatchCycle()
         }
     }
@@ -587,15 +587,14 @@ final class ScanModel: ObservableObject {
         let now = Set(sweepHosts.map { "\($0.ip):\($0.port)" })
         if baselineTaken {
             for host in now.subtracting(knownHosts).sorted() {
-                appendFeed("host answering: \(host)")
+                appendFeed(String(format: L("host answering: %@"), String(describing: host)))
             }
             for host in knownHosts.subtracting(now).sorted() {
-                appendFeed("host dark: \(host)")
+                appendFeed(String(format: L("host dark: %@"), String(describing: host)))
             }
         } else {
             baselineTaken = true
-            appendFeed("baseline: \(now.count) host(s) answering "
-                       + "on port \(feedPort)")
+            appendFeed(String(format: L("baseline: %@ host(s) answering on port %@"), String(describing: now.count), String(describing: feedPort)))
         }
         knownHosts = now
         scheduleNextWatchCycle()
@@ -673,12 +672,12 @@ final class ScanModel: ObservableObject {
 
     static let serviceTypes: [(String, String)] = [
         ("_ssh._tcp", "SSH"), ("_http._tcp", "HTTP"),
-        ("_https._tcp", "HTTPS"), ("_smb._tcp", "SMB file sharing"),
+        ("_https._tcp", "HTTPS"), ("_smb._tcp", L("SMB file sharing")),
         ("_ipp._tcp", "Printer"), ("_printer._tcp", "Printer"),
-        ("_airplay._tcp", "AirPlay"), ("_raop._tcp", "AirPlay audio"),
-        ("_rair._tcp", "AirPlay audio"),
+        ("_airplay._tcp", "AirPlay"), ("_raop._tcp", L("AirPlay audio")),
+        ("_rair._tcp", L("AirPlay audio")),
         ("_googlecast._tcp", "Chromecast"),
-        ("_mqtt._tcp", "MQTT"), ("_nightjar._tcp", "nightjar-hack phone"),
+        ("_mqtt._tcp", "MQTT"), ("_nightjar._tcp", L("nightjar-hack phone")),
     ]
 
     func startDiscovery() {
@@ -776,7 +775,7 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
     func inspect(host: String, port: Int) {
         let host = host.trimmingCharacters(in: .whitespaces)
         guard !host.isEmpty, !inspecting,
-              let url = URL(string: "https://\(host):\(port)/") else { return }
+              let url = URL(string: String(format: "https://%@:%@/", String(describing: host), String(describing: port))) else { return }
         inspecting = true
         lines = []
         collected = []
@@ -803,19 +802,19 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
         }
         var cfError: CFError?
         let ok = SecTrustEvaluateWithError(trust, &cfError)
-        verdict = ok ? "system trust: VALID"
-            : "system trust: NOT trusted — "
-              + (cfError?.localizedDescription ?? "unknown reason")
+        verdict = ok ? L("system trust: VALID")
+            : L("system trust: NOT trusted — ")
+              + (cfError?.localizedDescription ?? L("unknown reason"))
         var out: [String] = []
         let chain = (SecTrustCopyCertificateChain(trust)
                      as? [SecCertificate]) ?? []
-        out.append("chain: \(chain.count) certificate(s)")
+        out.append(String(format: L("chain: %@ certificate(s)"), String(describing: chain.count)))
         for (index, cert) in chain.enumerated() {
             let subject = (SecCertificateCopySubjectSummary(cert)
                            as String?) ?? "?"
             out.append("[\(index)] \(subject)")
             if let window = validity(of: cert) {
-                out.append("    valid \(window)")
+                out.append(String(format: L("    valid %@"), String(describing: window)))
             }
         }
         collected = out
@@ -836,8 +835,8 @@ final class TLSInspector: NSObject, ObservableObject, URLSessionTaskDelegate {
             var lines = ([self.verdict] + self.collected)
                 .filter { !$0.isEmpty }
             if lines.isEmpty {
-                lines = ["handshake failed: "
-                         + (error?.localizedDescription ?? "no answer")]
+                lines = [L("handshake failed: ")
+                         + (error?.localizedDescription ?? L("no answer"))]
             }
             self.lines = lines
             self.inspecting = false
@@ -1007,11 +1006,11 @@ enum DNSKit {
     static func parseAnswers(_ data: Data) -> [String] {
         func u16(_ i: Int) -> Int { (Int(data[i]) << 8) | Int(data[i + 1]) }
         func u32(_ i: Int) -> Int { (u16(i) << 16) | u16(i + 2) }
-        guard data.count >= 12 else { return ["short response"] }
+        guard data.count >= 12 else { return [L("short response")] }
         let rcode = Int(data[3]) & 0x0F
-        if rcode == 3 { return ["NXDOMAIN — the name does not exist"] }
+        if rcode == 3 { return [L("NXDOMAIN — the name does not exist")] }
         if rcode != 0 {
-            return ["DNS error — the server answered with RCODE \(rcode)"]
+            return [String(format: L("DNS error — the server answered with RCODE %@"), String(describing: rcode))]
         }
         let qd = u16(4), an = u16(6)
         var pos = 12
@@ -1026,12 +1025,12 @@ enum DNSKit {
             let type = u16(pos), ttl = u32(pos + 4), rdlen = u16(pos + 8)
             let rstart = pos + 10
             guard rstart + rdlen <= data.count else { break }
-            lines.append("\(name) · \(typeName(type)) · ttl \(ttl)")
+            lines.append(String(format: L("%@ · %@ · ttl %@"), String(describing: name), String(describing: typeName(type)), String(describing: ttl)))
             lines.append("  " + formatRdata(data, type: type,
                                             start: rstart, length: rdlen))
             pos = rstart + rdlen
         }
-        return lines.isEmpty ? ["no records in the answer"] : lines
+        return lines.isEmpty ? [L("no records in the answer")] : lines
     }
 
     private static func formatRdata(_ data: Data, type: Int,
@@ -1093,7 +1092,7 @@ enum DNSKit {
 
     static func typeName(_ type: Int) -> String {
         [1: "A", 2: "NS", 5: "CNAME", 15: "MX", 16: "TXT", 28: "AAAA"][type]
-            ?? "type \(type)"
+            ?? String(format: L("type %@"), String(describing: type))
     }
 }
 
@@ -1152,9 +1151,9 @@ final class DNSModel: ObservableObject {
                     }
                     finish(DNSKit.parseAnswers(data))
                 } else {
-                    finish(["no answer ("
+                    finish([L("no answer (")
                             + (error?.localizedDescription
-                               ?? "empty reply") + ")"])
+                               ?? L("empty reply")) + ")"])
                 }
             }
         }
@@ -1171,7 +1170,7 @@ final class DNSModel: ObservableObject {
                 if attempt < 2 {
                     sendQuery()
                 } else {
-                    finish(["timed out — no answer from 1.1.1.1"])
+                    finish([L("timed out — no answer from 1.1.1.1")])
                 }
             }
         }
@@ -1180,7 +1179,7 @@ final class DNSModel: ObservableObject {
             case .ready:
                 sendQuery()
             case .failed(let error):
-                finish(["query failed: \(error.localizedDescription)"])
+                finish([String(format: L("query failed: %@"), String(describing: error.localizedDescription))])
             default:
                 break
             }
@@ -1262,19 +1261,19 @@ enum PcapKit {
         // capture — one with no complete records in it. Say so
         // instead of falling through to "not a libpcap capture".
         guard count > 0 else {
-            let empty = "0 packets — the capture is empty or truncated"
+            let empty = L("0 packets — the capture is empty or truncated")
             return (["\(name) — \(empty)"], [empty])
         }
-        var summary = ["\(name) — \(count) packet(s), \(totalBytes) bytes"]
+        var summary = [String(format: L("%@ — %@ packet(s), %@ bytes"), String(describing: name), String(describing: count), String(describing: totalBytes))]
         if let first = firstTs {
-            summary.append("span "
+            summary.append(L("span ")
                 + String(format: "%.2f", lastTs - first)
-                + "s · linktype \(linktype)")
+                + String(format: L("s · linktype %@"), String(describing: linktype)))
         }
         summary.append(tally.sorted { $0.key < $1.key }
             .map { "\($0.key) \($0.value)" }.joined(separator: " · "))
         if count == 500 {
-            summary.append("showing the first 500 packets")
+            summary.append(L("showing the first 500 packets"))
         }
         return (summary, lines)
     }
@@ -1295,7 +1294,7 @@ enum PcapKit {
                 .joined(separator: " ")
             return String(oneLine.prefix(90))
         }
-        return "hex " + slice.prefix(24)
+        return L("hex ") + slice.prefix(24)
             .map { String(format: "%02x", $0) }.joined()
     }
 
@@ -1306,7 +1305,7 @@ enum PcapKit {
         switch linktype {
         case 1: // Ethernet
             guard bytes.count >= 14 else {
-                return ("short", "truncated ethernet frame", nil)
+                return ("short", L("truncated ethernet frame"), nil)
             }
             var ethertype = (Int(bytes[12]) << 8) | Int(bytes[13])
             var offset = 14
@@ -1322,50 +1321,50 @@ enum PcapKit {
             case 0x0806:
                 return decodeARP(bytes, offset)
             default:
-                return ("eth", "ethertype 0x"
+                return ("eth", L("ethertype 0x")
                     + String(format: "%04x", ethertype)
                     + "  \(mac(Array(bytes[6..<12]))) → "
                     + "\(mac(Array(bytes[0..<6])))", nil)
             }
         case 113: // Linux cooked capture
             guard bytes.count >= 16 else {
-                return ("short", "truncated cooked frame", nil)
+                return ("short", L("truncated cooked frame"), nil)
             }
             let proto = (Int(bytes[14]) << 8) | Int(bytes[15])
             switch proto {
             case 0x0800: return decodeIPv4(bytes, 16)
             case 0x86dd: return decodeIPv6(bytes, 16)
             case 0x0806: return decodeARP(bytes, 16)
-            default: return ("eth", "cooked ethertype 0x"
+            default: return ("eth", L("cooked ethertype 0x")
                 + String(format: "%04x", proto), nil)
             }
         case 101: // raw IP
             guard let first = bytes.first else {
-                return ("short", "empty packet", nil)
+                return ("short", L("empty packet"), nil)
             }
             return first >> 4 == 6 ? decodeIPv6(bytes, 0)
                                    : decodeIPv4(bytes, 0)
         case 0: // BSD loopback
             guard bytes.count >= 5 else {
-                return ("short", "truncated loopback frame", nil)
+                return ("short", L("truncated loopback frame"), nil)
             }
             return bytes[4] >> 4 == 6 ? decodeIPv6(bytes, 4)
                                       : decodeIPv4(bytes, 4)
         default:
-            return ("link \(linktype)",
+            return (String(format: L("link %@"), String(describing: linktype)),
                     "\(bytes.count) bytes (linktype \(linktype) "
-                    + "not decoded)", nil)
+                    + L("not decoded)"), nil)
         }
     }
 
     private static func decodeIPv4(_ bytes: [UInt8], _ o: Int)
         -> (proto: String, text: String, preview: String?) {
         guard bytes.count >= o + 20 else {
-            return ("IPv4", "truncated IPv4 packet", nil)
+            return ("IPv4", L("truncated IPv4 packet"), nil)
         }
         let ihl = Int(bytes[o] & 0x0f) * 4
         guard ihl >= 20, bytes.count >= o + ihl else {
-            return ("IPv4", "bad IPv4 header length", nil)
+            return ("IPv4", L("bad IPv4 header length"), nil)
         }
         let total = (Int(bytes[o + 2]) << 8) | Int(bytes[o + 3])
         let protoNum = Int(bytes[o + 9])
@@ -1381,7 +1380,7 @@ enum PcapKit {
     private static func decodeIPv6(_ bytes: [UInt8], _ o: Int)
         -> (proto: String, text: String, preview: String?) {
         guard bytes.count >= o + 40 else {
-            return ("IPv6", "truncated IPv6 packet", nil)
+            return ("IPv6", L("truncated IPv6 packet"), nil)
         }
         let payloadLen = (Int(bytes[o + 4]) << 8) | Int(bytes[o + 5])
         let next = Int(bytes[o + 6])
@@ -1401,7 +1400,7 @@ enum PcapKit {
         switch protoNum {
         case 6:
             guard to >= from + 20 else {
-                return ("TCP", "\(src) → \(dst) TCP (truncated)", nil)
+                return ("TCP", String(format: L("%@ → %@ TCP (truncated)"), String(describing: src), String(describing: dst)), nil)
             }
             let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
             let dport = (Int(bytes[from + 2]) << 8) | Int(bytes[from + 3])
@@ -1418,38 +1417,35 @@ enum PcapKit {
             let payload: ArraySlice<UInt8> = payloadStart < to
                 ? bytes[payloadStart..<to] : []
             return ("TCP",
-                    "\(src):\(sport) → \(dst):\(dport)  TCP "
-                    + "[\(names.joined(separator: ","))] "
-                    + "len \(payload.count)",
+                    String(format: L("%@:%@ → %@:%@  TCP [%@] len %@"), String(describing: src), String(describing: sport), String(describing: dst), String(describing: dport), String(describing: names.joined(separator: ",")), String(describing: payload.count)),
                     preview(of: Data(payload)))
         case 17:
             guard to >= from + 8 else {
-                return ("UDP", "\(src) → \(dst) UDP (truncated)", nil)
+                return ("UDP", String(format: L("%@ → %@ UDP (truncated)"), String(describing: src), String(describing: dst)), nil)
             }
             let sport = (Int(bytes[from]) << 8) | Int(bytes[from + 1])
             let dport = (Int(bytes[from + 2]) << 8) | Int(bytes[from + 3])
             let payload: ArraySlice<UInt8> = from + 8 < to
                 ? bytes[(from + 8)..<to] : []
             return ("UDP",
-                    "\(src):\(sport) → \(dst):\(dport)  UDP "
-                    + "len \(payload.count)",
+                    String(format: L("%@:%@ → %@:%@  UDP len %@"), String(describing: src), String(describing: sport), String(describing: dst), String(describing: dport), String(describing: payload.count)),
                     preview(of: Data(payload)))
         case 1, 58:
             guard to >= from + 2 else {
-                return ("ICMP", "\(src) → \(dst) ICMP", nil)
+                return ("ICMP", String(format: L("%@ → %@ ICMP"), String(describing: src), String(describing: dst)), nil)
             }
             let type = Int(bytes[from])
             let names = protoNum == 58
-                ? [129: "echo reply", 1: "destination unreachable",
-                   128: "echo request", 3: "time exceeded"]
-                : [0: "echo reply", 3: "destination unreachable",
-                   8: "echo request", 11: "time exceeded"]
+                ? [129: L("echo reply"), 1: L("destination unreachable"),
+                   128: L("echo request"), 3: L("time exceeded")]
+                : [0: L("echo reply"), 3: L("destination unreachable"),
+                   8: L("echo request"), 11: L("time exceeded")]
             return ("ICMP",
                     "\(src) → \(dst)  ICMP "
-                    + (names[type] ?? "type \(type)"), nil)
+                    + (names[type] ?? String(format: L("type %@"), String(describing: type))), nil)
         default:
             return (family,
-                    "\(src) → \(dst)  \(family) protocol \(protoNum)",
+                    String(format: L("%@ → %@  %@ protocol %@"), String(describing: src), String(describing: dst), String(describing: family), String(describing: protoNum)),
                     nil)
         }
     }
@@ -1457,7 +1453,7 @@ enum PcapKit {
     private static func decodeARP(_ bytes: [UInt8], _ o: Int)
         -> (proto: String, text: String, preview: String?) {
         guard bytes.count >= o + 8 else {
-            return ("ARP", "truncated ARP packet", nil)
+            return ("ARP", L("truncated ARP packet"), nil)
         }
         // The fixed offsets below are only the Ethernet/IPv4
         // layout; anything else gets a generic line instead of a
@@ -1466,22 +1462,22 @@ enum PcapKit {
         let ptype = (Int(bytes[o + 2]) << 8) | Int(bytes[o + 3])
         guard htype == 1, ptype == 0x0800,
               bytes[o + 4] == 6, bytes[o + 5] == 4 else {
-            return ("ARP", "ARP (unusual layout)", nil)
+            return ("ARP", L("ARP (unusual layout)"), nil)
         }
         guard bytes.count >= o + 28 else {
-            return ("ARP", "truncated ARP packet", nil)
+            return ("ARP", L("truncated ARP packet"), nil)
         }
         let op = (Int(bytes[o + 6]) << 8) | Int(bytes[o + 7])
         let senderIP = ipv4(bytes[(o + 14)..<(o + 18)])
         let senderMAC = mac(Array(bytes[(o + 8)..<(o + 14)]))
         let targetIP = ipv4(bytes[(o + 24)..<(o + 28)])
         if op == 1 {
-            return ("ARP", "ARP who-has \(targetIP) tell \(senderIP)", nil)
+            return ("ARP", String(format: L("ARP who-has %@ tell %@"), String(describing: targetIP), String(describing: senderIP)), nil)
         }
         if op == 2 {
-            return ("ARP", "ARP \(senderIP) is-at \(senderMAC)", nil)
+            return ("ARP", String(format: L("ARP %@ is-at %@"), String(describing: senderIP), String(describing: senderMAC)), nil)
         }
-        return ("ARP", "ARP op \(op) \(senderIP) → \(targetIP)", nil)
+        return ("ARP", String(format: L("ARP op %@ %@ → %@"), String(describing: op), String(describing: senderIP), String(describing: targetIP)), nil)
     }
 }
 
@@ -1635,8 +1631,8 @@ struct ScanView: View {
                         model.scan(host: host, ports: portsToScan)
                     } label: {
                         Label(model.scanning
-                              ? "Scanning \(model.probedCount)/\(model.totalCount)…"
-                              : "Scan \(host.isEmpty ? "target" : host)",
+                              ? String(format: L("Scanning %@/%@…"), String(describing: model.probedCount), String(describing: model.totalCount))
+                              : String(format: L("Scan %@"), String(describing: host.isEmpty ? L("target") : host)),
                               systemImage: "scope")
                     }
                     .disabled(model.scanning || model.sweeping
@@ -1687,8 +1683,8 @@ struct ScanView: View {
                             model.sweep(port: Int(sweepPort) ?? 80)
                         } label: {
                             Label(model.sweeping
-                                    ? "Sweeping \(model.sweptCount)/254…"
-                                    : "Sweep this /24",
+                                    ? String(format: L("Sweeping %@/254…"), String(describing: model.sweptCount))
+                                    : L("Sweep this /24"),
                                   systemImage: "scope")
                         }
                         .disabled(model.sweeping || model.scanning)
@@ -1735,9 +1731,9 @@ struct ScanView: View {
                                 dossierSheet = DossierPresentation(
                                     title: knownName(for: ip), ip: ip,
                                     wifiLines: [
-                                        "Answered the sweep on port "
+                                        L("Answered the sweep on port ")
                                         + "\(sweptPorts(for: ip))",
-                                        "Census: Scan tab subnet sweep",
+                                        L("Census: Scan tab subnet sweep"),
                                     ])
                             } label: {
                                 Label(knownName(for: ip), systemImage: "folder.badge.gearshape")
@@ -1748,9 +1744,9 @@ struct ScanView: View {
                                 dossierSheet = DossierPresentation(
                                     title: service.name, ip: nil,
                                     wifiLines: [
-                                        "Announces itself via Bonjour: "
+                                        L("Announces itself via Bonjour: ")
                                         + service.label,
-                                        "Census: Scan tab discovery sweep",
+                                        L("Census: Scan tab discovery sweep"),
                                     ])
                             } label: {
                                 Label(service.name,
@@ -1777,7 +1773,7 @@ struct ScanView: View {
                             Haptics.tap()
                             model.stopWatch()
                             mouth.logRecon(
-                                "feed", "watch session",
+                                "feed", L("watch session"),
                                 lines: model.feed.reversed()
                                     .map { $0.text })
                         } label: {
@@ -1850,8 +1846,8 @@ struct ScanView: View {
                     Button {
                         lookupTapped()
                     } label: {
-                        Label(dns.querying ? "Asking 1.1.1.1…"
-                                           : "Look up",
+                        Label(dns.querying ? L("Asking 1.1.1.1…")
+                                           : L("Look up"),
                               systemImage: "magnifyingglass")
                     }
                     .disabled(dns.querying || dnsName.isEmpty)
@@ -1939,7 +1935,7 @@ struct ScanView: View {
                     let base = model.lastScannedHost
                     if !model.results.isEmpty {
                         mouth.lastScanTargets = model.results.map {
-                            "tcp://\(base):\($0.port)"
+                            String(format: L("tcp://%@:%@"), String(describing: base), String(describing: $0.port))
                         }
                     }
                     mouth.logRecon("scan", base, lines: model.results.map {
@@ -1958,11 +1954,11 @@ struct ScanView: View {
                     else { return }
                     toasts.show(String(format: L("Sweep finished — %lld host(s) answer on %lld"), model.sweepHosts.count, sweepPort))
                     mouth.lastScanTargets = model.sweepHosts.map {
-                        "tcp://\($0.ip):\($0.port)"
+                        String(format: L("tcp://%@:%@"), String(describing: $0.ip), String(describing: $0.port))
                     }
-                    mouth.logRecon("sweep", "port \(sweepPort)",
+                    mouth.logRecon("sweep", String(format: L("port %@"), String(describing: sweepPort)),
                                    lines: model.sweepHosts.map {
-                                       "\($0.ip):\($0.port) open"
+                                       String(format: L("%@:%@ open"), String(describing: $0.ip), String(describing: $0.port))
                                    })
                 }
             }
@@ -1988,7 +1984,7 @@ struct ScanView: View {
             AdministerSheetView(neighbor: neighbor)
         }
         .confirmationDialog(
-            "Clear the Neighborhood?",
+            L("Clear the Neighborhood?"),
             isPresented: $clearNeighborhood,
             titleVisibility: .visible) {
             Button(L("Forget every neighbor"),
@@ -2026,7 +2022,7 @@ struct ScanView: View {
         let base = model.lastScannedHost.isEmpty
             ? host.trimmingCharacters(in: .whitespaces)
             : model.lastScannedHost
-        mouth.scanHandoffTarget = "tcp://\(base):\(result.port)"
+        mouth.scanHandoffTarget = String(format: L("tcp://%@:%@"), String(describing: base), String(describing: result.port))
         mouth.scanHandoffPayload = ScanModel.payloadByPort[result.port]
         tab = 1
     }
@@ -2045,7 +2041,7 @@ struct ScanView: View {
                 // A tcp:// URL needs an IPv6 literal bracketed.
                 let target = ip.contains(":") && !ip.hasPrefix("[")
                     ? "[\(ip)]" : ip
-                mouth.scanHandoffTarget = "tcp://\(target):\(port)"
+                mouth.scanHandoffTarget = String(format: L("tcp://%@:%@"), String(describing: target), String(describing: port))
                 mouth.scanHandoffPayload =
                     ScanModel.payloadByPort[port]
                 tab = 1
@@ -2055,7 +2051,7 @@ struct ScanView: View {
 
     private func sweepHandoff(_ found: SweepHost) {
         Haptics.select()
-        mouth.scanHandoffTarget = "tcp://\(found.ip):\(found.port)"
+        mouth.scanHandoffTarget = String(format: L("tcp://%@:%@"), String(describing: found.ip), String(describing: found.port))
         mouth.scanHandoffPayload = ScanModel.payloadByPort[found.port]
         tab = 1
     }

@@ -16,7 +16,7 @@ enum Continuity {
         let value: [UInt8]
 
         var typeName: String {
-            return Continuity.messageTypes[type] ?? String(format: "Unknown 0x%02X", type)
+            return Continuity.messageTypes[type] ?? String(format: L("Unknown 0x%02X"), type)
         }
     }
 
@@ -25,17 +25,17 @@ enum Continuity {
         0x03: "AirPrint",
         0x05: "AirDrop",
         0x06: "HomeKit",
-        0x07: "Proximity Pairing",
-        0x08: "Hey Siri",
-        0x09: "AirPlay Target",
-        0x0A: "AirPlay Source",
-        0x0B: "Magic Switch",
+        0x07: L("Proximity Pairing"),
+        0x08: L("Hey Siri"),
+        0x09: L("AirPlay Target"),
+        0x0A: L("AirPlay Source"),
+        0x0B: L("Magic Switch"),
         0x0C: "Handoff",
-        0x0D: "Tethering Target",
-        0x0E: "Tethering Source",
-        0x0F: "Nearby Action",
-        0x10: "Nearby Info",
-        0x12: "Find My",
+        0x0D: L("Tethering Target"),
+        0x0E: L("Tethering Source"),
+        0x0F: L("Nearby Action"),
+        0x10: L("Nearby Info"),
+        0x12: L("Find My"),
     ]
 
     /// Split an Apple manufacturer payload into its TLV messages.
@@ -58,36 +58,36 @@ enum Continuity {
     // MARK: - Proximity Pairing (AirPods, Beats)
 
     static let airPodsModels: [String: String] = [
-        "0220": "AirPods (1st gen)",
-        "0f20": "AirPods (2nd gen)",
-        "1320": "AirPods (3rd gen)",
-        "1b20": "AirPods 4",
-        "1920": "AirPods 4 (ANC)",
-        "0e20": "AirPods Pro",
-        "1420": "AirPods Pro (2nd gen)",
-        "2420": "AirPods Pro (2nd gen, USB-C)",
-        "0a20": "AirPods Max",
-        "1f20": "AirPods Max (USB-C)",
+        "0220": L("AirPods (1st gen)"),
+        "0f20": L("AirPods (2nd gen)"),
+        "1320": L("AirPods (3rd gen)"),
+        "1b20": L("AirPods 4"),
+        "1920": L("AirPods 4 (ANC)"),
+        "0e20": L("AirPods Pro"),
+        "1420": L("AirPods Pro (2nd gen)"),
+        "2420": L("AirPods Pro (2nd gen, USB-C)"),
+        "0a20": L("AirPods Max"),
+        "1f20": L("AirPods Max (USB-C)"),
         "0320": "Powerbeats3",
-        "0b20": "Powerbeats Pro",
-        "2b20": "Powerbeats Pro 2",
-        "0c20": "Beats Solo Pro",
+        "0b20": L("Powerbeats Pro"),
+        "2b20": L("Powerbeats Pro 2"),
+        "0c20": L("Beats Solo Pro"),
         "0520": "BeatsX",
-        "0620": "Beats Solo3",
-        "2720": "Beats Solo 4",
-        "2520": "Beats Solo Buds",
-        "0920": "Beats Studio3",
-        "1020": "Beats Flex",
-        "1120": "Beats Studio Buds",
-        "1620": "Beats Studio Buds+",
-        "1720": "Beats Studio Pro",
-        "1220": "Beats Fit Pro",
+        "0620": L("Beats Solo3"),
+        "2720": L("Beats Solo 4"),
+        "2520": L("Beats Solo Buds"),
+        "0920": L("Beats Studio3"),
+        "1020": L("Beats Flex"),
+        "1120": L("Beats Studio Buds"),
+        "1620": L("Beats Studio Buds+"),
+        "1720": L("Beats Studio Pro"),
+        "1220": L("Beats Fit Pro"),
     ]
 
     static let airPodsColours: [UInt8: String] = [
-        0x00: "white", 0x01: "black", 0x02: "red", 0x03: "blue", 0x04: "pink",
-        0x05: "gray", 0x06: "silver", 0x07: "gold", 0x08: "rose gold",
-        0x09: "space gray", 0x0A: "dark blue", 0x0B: "light blue", 0x0C: "yellow",
+        0x00: L("white"), 0x01: L("black"), 0x02: L("red"), 0x03: L("blue"), 0x04: L("pink"),
+        0x05: L("gray"), 0x06: L("silver"), 0x07: L("gold"), 0x08: L("rose gold"),
+        0x09: L("space gray"), 0x0A: L("dark blue"), 0x0B: L("light blue"), 0x0C: L("yellow"),
     ]
 
     /// Battery nibbles run 0..10 (x10 %); 15 means unknown/absent.
@@ -112,12 +112,11 @@ enum Continuity {
         var describe: String {
             func batt(_ value: Int?, _ charging: Bool) -> String {
                 let text = value.map { "\($0)%" } ?? "?"
-                return text + (charging ? " charging" : "")
+                return text + (charging ? L(" charging") : "")
             }
-            let left = "L \(batt(leftBattery, leftCharging))\(leftInEar ? " (in ear)" : "")"
-            let right = "R \(batt(rightBattery, rightCharging))\(rightInEar ? " (in ear)" : "")"
-            var text = "\(model): \(left), \(right), case \(batt(caseBattery, caseCharging)), "
-                + "lid \(lidOpen ? "open" : "closed")"
+            let left = String(format: L("L %@%@"), String(describing: batt(leftBattery, leftCharging)), leftInEar ? L(" (in ear)") : "")
+            let right = String(format: L("R %@%@"), String(describing: batt(rightBattery, rightCharging)), rightInEar ? L(" (in ear)") : "")
+            var text = String(format: L("%@: %@, %@, case %@, lid %@"), String(describing: model), String(describing: left), String(describing: right), String(describing: batt(caseBattery, caseCharging)), lidOpen ? L("open") : L("closed"))
             if let colour = colour {
                 text += ", \(colour)"
             }
@@ -145,7 +144,7 @@ enum Continuity {
         let rightEarBit: UInt8 = flipped ? 0x02 : 0x08
         let colourByte: UInt8? = v.count > 7 ? v[7] : nil
         return AirPodsState(
-            model: airPodsModels[modelCode] ?? "AirPods-class (model \(modelCode))",
+            model: airPodsModels[modelCode] ?? String(format: L("AirPods-class (model %@)"), String(describing: modelCode)),
             modelCode: modelCode,
             leftBattery: batteryLevel(leftNibble),
             rightBattery: batteryLevel(rightNibble),
@@ -169,9 +168,9 @@ enum Continuity {
         let measuredPower: Int?
 
         var describe: String {
-            var text = "iBeacon \(proximityUUID) major \(major) minor \(minor)"
+            var text = String(format: L("iBeacon %@ major %@ minor %@"), String(describing: proximityUUID), String(describing: major), String(describing: minor))
             if let power = measuredPower {
-                text += ", \(power) dBm @ 1 m"
+                text += String(format: L(", %@ dBm @ 1 m"), String(describing: power))
             }
             return text
         }
@@ -186,9 +185,9 @@ enum Continuity {
     /// (×1000, or ×10000 on the Pro — a minor
     /// past 2000 can only be the Pro's scale).
     static let tiltColors: [String: String] = [
-        "10": "Red", "20": "Green", "30": "Black",
-        "40": "Purple", "50": "Orange", "60": "Blue",
-        "70": "Yellow", "80": "Pink",
+        "10": L("Red"), "20": L("Green"), "30": L("Black"),
+        "40": L("Purple"), "50": L("Orange"), "60": L("Blue"),
+        "70": L("Yellow"), "80": L("Pink"),
     ]
 
     static func tiltReading(_ beacon: IBeaconState)
@@ -205,9 +204,9 @@ enum Continuity {
         let gravity = Double(beacon.minor)
             / (pro ? 10000 : 1000)
         return (color,
-                String(format: "beer %d °F, gravity "
+                String(format: L("beer %d °F, gravity ")
                        + "%.3f", beacon.major, gravity)
-                + (pro ? " (Tilt Pro)" : ""))
+                + (pro ? L(" (Tilt Pro)") : ""))
     }
 
     static func decodeIBeacon(_ message: Message) -> IBeaconState? {
@@ -229,7 +228,7 @@ enum Continuity {
 
     // MARK: - Find My
 
-    static let findMyBattery = ["full", "medium", "low", "very low"]
+    static let findMyBattery = [L("full"), L("medium"), L("low"), L("very low")]
 
     struct FindMyState {
         let status: UInt8
@@ -241,9 +240,9 @@ enum Continuity {
 
         var describe: String {
             if separated {
-                return "Find My network broadcast (separated from owner), battery \(battery)"
+                return String(format: L("Find My network broadcast (separated from owner), battery %@"), String(describing: battery))
             }
-            return "Find My network broadcast (nearby its owner)"
+            return L("Find My network broadcast (nearby its owner)")
         }
     }
 
@@ -262,7 +261,7 @@ enum Continuity {
 
     /// Only the verified code is labelled; the rest are shown numerically.
     static let nearbyActionLabels: [UInt8: String] = [
-        0x0A: "watch worn & unlocked",
+        0x0A: L("watch worn & unlocked"),
     ]
 
     struct NearbyInfoState {
@@ -274,7 +273,7 @@ enum Continuity {
         var isWatch: Bool { return actionCode == 0x0A }
 
         var describe: String {
-            let code = String(format: "nearby state 0x%02X", actionCode)
+            let code = String(format: L("nearby state 0x%02X"), actionCode)
             if let label = actionLabel {
                 return "\(code) (\(label))"
             }
@@ -294,27 +293,27 @@ enum Continuity {
     // MARK: - Nearby Action
 
     static let nearbyActionTypes: [UInt8: String] = [
-        0x01: "Apple TV setup",
-        0x04: "mobile backup",
-        0x05: "watch setup",
-        0x06: "Apple TV pair",
-        0x07: "internet relay",
-        0x08: "Wi-Fi password share",
-        0x09: "iOS setup",
+        0x01: L("Apple TV setup"),
+        0x04: L("mobile backup"),
+        0x05: L("watch setup"),
+        0x06: L("Apple TV pair"),
+        0x07: L("internet relay"),
+        0x08: L("Wi-Fi password share"),
+        0x09: L("iOS setup"),
         0x0A: "repair",
-        0x0B: "speaker setup",
-        0x0C: "Apple Pay",
-        0x0D: "whole-home audio setup",
-        0x0E: "developer tools pairing",
-        0x0F: "answered call",
-        0x10: "ended call",
-        0x11: "DD ping",
-        0x12: "DD pong",
-        0x13: "remote AutoFill",
-        0x14: "companion link proximity",
-        0x15: "remote management",
-        0x16: "remote AutoFill pong",
-        0x17: "remote display",
+        0x0B: L("speaker setup"),
+        0x0C: L("Apple Pay"),
+        0x0D: L("whole-home audio setup"),
+        0x0E: L("developer tools pairing"),
+        0x0F: L("answered call"),
+        0x10: L("ended call"),
+        0x11: L("DD ping"),
+        0x12: L("DD pong"),
+        0x13: L("remote AutoFill"),
+        0x14: L("companion link proximity"),
+        0x15: L("remote management"),
+        0x16: L("remote AutoFill pong"),
+        0x17: L("remote display"),
     ]
 
     struct NearbyActionState {
@@ -323,8 +322,8 @@ enum Continuity {
 
         var describe: String {
             let label = Continuity.nearbyActionTypes[actionType]
-                ?? String(format: "type 0x%02X", actionType)
-            return "nearby action: \(label)"
+                ?? String(format: L("type 0x%02X"), actionType)
+            return String(format: L("nearby action: %@"), String(describing: label))
         }
     }
 
@@ -341,8 +340,8 @@ enum Continuity {
 
         var describe: String {
             var parts = ["hotspot-capable"]
-            if let battery = battery { parts.append("battery \(battery)%") }
-            if let bars = cellBars { parts.append("cell \(bars) bars") }
+            if let battery = battery { parts.append(String(format: L("battery %@%%"), String(describing: battery))) }
+            if let bars = cellBars { parts.append(String(format: L("cell %@ bars"), String(describing: bars))) }
             return parts.joined(separator: ", ")
         }
     }
@@ -365,22 +364,22 @@ enum Continuity {
         let specificity: Int  // 1 family, 2 sub-family, 3 product
 
         var describe: String {
-            return details.isEmpty ? kind : "\(kind) — \(details.joined(separator: "; "))"
+            return details.isEmpty ? kind : String(format: L("%@ — %@"), String(describing: kind), String(describing: details.joined(separator: "; ")))
         }
     }
 
     /// Identify an Apple device from its Continuity payload.
     static func identifyApple(_ payload: [UInt8]) -> Identification {
         if let findMy = parseFindMy(payload) {
-            let kind = findMy.separated ? "Find My device (AirTag-class)"
-                                        : "Find My accessory (with owner)"
+            let kind = findMy.separated ? L("Find My device (AirTag-class)")
+                                        : L("Find My accessory (with owner)")
             return Identification(kind: kind, details: [findMy.describe],
-                                  messages: ["Find My"], findMy: findMy, specificity: 3)
+                                  messages: [L("Find My")], findMy: findMy, specificity: 3)
         }
         let messages = parse(payload)
         let names = messages.map { $0.typeName }
         var details: [String] = []
-        var kind = "Apple device"
+        var kind = L("Apple device")
         var specificity = 1
         for message in messages {
             switch message.type {
@@ -393,7 +392,7 @@ enum Continuity {
             case 0x02:
                 if let beacon = decodeIBeacon(message) {
                     if let tilt = tiltReading(beacon) {
-                        kind = "Tilt hydrometer ("
+                        kind = L("Tilt hydrometer (")
                             + tilt.color + ")"
                         specificity = 3
                         details.append(tilt.describe)
@@ -407,7 +406,7 @@ enum Continuity {
                 if let nearby = decodeNearbyInfo(message) {
                     details.append(nearby.describe)
                     if nearby.isWatch && specificity < 3 {
-                        kind = "Apple Watch"
+                        kind = L("Apple Watch")
                         specificity = 2
                     }
                 }
@@ -419,7 +418,7 @@ enum Continuity {
                 if let source = decodeTetheringSource(message) {
                     details.append(source.describe)
                     if specificity < 2 {
-                        kind = "iPhone (Instant Hotspot source)"
+                        kind = L("iPhone (Instant Hotspot source)")
                         specificity = 2
                     }
                 }
@@ -427,8 +426,8 @@ enum Continuity {
                 break
             }
         }
-        if kind == "Apple device" && names.contains("Nearby Info") {
-            kind = "Apple device (Nearby Info)"
+        if kind == L("Apple device") && names.contains(L("Nearby Info")) {
+            kind = L("Apple device (Nearby Info)")
         }
         return Identification(kind: kind, details: details, messages: names,
                               findMy: nil, specificity: specificity)

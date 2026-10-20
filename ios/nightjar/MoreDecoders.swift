@@ -98,7 +98,7 @@ enum MoreDecoders {
         // still gets its product name; the bare services earn the
         // family label instead of Services' "Device advertising Huami".
         if advertises(sighting, huamiService) || advertises(sighting, huamiAltService) {
-            return Services.Identification(kind: "Mi Band / Amazfit", details: [],
+            return Services.Identification(kind: L("Mi Band / Amazfit"), details: [],
                                            trackerShaped: false, rotatingPhone: false,
                                            specificity: 2)
         }
@@ -106,18 +106,18 @@ enum MoreDecoders {
         // (0xFDF0, Google's published ASHA specification). Only hearing
         // aids advertise it.
         if advertises(sighting, ashaService) {
-            return Services.Identification(kind: "Hearing aid (ASHA)",
-                                           details: ["Audio Streaming for Hearing Aids (Google ASHA)"],
+            return Services.Identification(kind: L("Hearing aid (ASHA)"),
+                                           details: [L("Audio Streaming for Hearing Aids (Google ASHA)")],
                                            trackerShaped: false, rotatingPhone: false,
                                            specificity: 2)
         }
         for uuid in tileServices where advertises(sighting, uuid) {
-            return Services.Identification(kind: "Tile tracker", details: [],
+            return Services.Identification(kind: L("Tile tracker"), details: [],
                                            trackerShaped: true, rotatingPhone: false,
                                            specificity: 3)
         }
         if advertises(sighting, smartTagService) {
-            return Services.Identification(kind: "SmartThings Find device (Samsung tag or Galaxy)", details: [],
+            return Services.Identification(kind: L("SmartThings Find device (Samsung tag or Galaxy)"), details: [],
                                            trackerShaped: true, rotatingPhone: false,
                                            specificity: 2)
         }
@@ -176,14 +176,14 @@ enum MoreDecoders {
         guard payload.count >= 3,
               payload[0] == 0x03, payload[1] == 0x00, payload[2] == 0x80
         else { return nil }
-        var details = ["in pairing mode (Swift Pair)"]
+        var details = [L("in pairing mode (Swift Pair)")]
         let nameBytes = Array(payload.dropFirst(3))
         let name = String(bytes: nameBytes, encoding: .utf8)?
             .trimmingCharacters(in: CharacterSet(charactersIn: "\0").union(.whitespaces))
         if let name = name, !name.isEmpty {
-            details.append("announces itself as '\(name)'")
+            details.append(String(format: L("announces itself as '%@'"), String(describing: name)))
         }
-        return Services.Identification(kind: "Microsoft Swift Pair", details: details,
+        return Services.Identification(kind: L("Microsoft Swift Pair"), details: details,
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 2)
     }
@@ -201,7 +201,7 @@ enum MoreDecoders {
         else { return nil }
         let idHead = JSONL.hex(Array(payload[2..<10]))
         let rssi = Int(Int8(bitPattern: payload[22]))
-        let detail = "beacon id \(idHead)..., \(rssi) dBm @ 1 m"
+        let detail = String(format: L("beacon id %@..., %@ dBm @ 1 m"), String(describing: idHead), String(describing: rssi))
         return Services.Identification(kind: "AltBeacon", details: [detail],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
@@ -236,20 +236,20 @@ enum MoreDecoders {
         }
         let presRaw = be16(payload, 5)
         if presRaw != 0xFFFF {
-            parts.append(String(format: "%.1f hPa", Double(presRaw + 50000) / 100.0))
+            parts.append(String(format: L("%.1f hPa"), Double(presRaw + 50000) / 100.0))
         }
         let accX = beS16(payload, 7)
         let accY = beS16(payload, 9)
         let accZ = beS16(payload, 11)
         if accX != -32768 || accY != -32768 || accZ != -32768 {
-            parts.append("accel \(accX)/\(accY)/\(accZ) mG")
+            parts.append(String(format: L("accel %@/%@/%@ mG"), String(describing: accX), String(describing: accY), String(describing: accZ)))
         }
         let power = be16(payload, 13)
         if (power >> 5) != 2047 {
-            parts.append("battery \((power >> 5) + 1600) mV")
+            parts.append(String(format: L("battery %@ mV"), String(describing: (power >> 5) + 1600)))
         }
         guard !parts.isEmpty else { return nil }
-        return Services.Identification(kind: "RuuviTag sensor",
+        return Services.Identification(kind: L("RuuviTag sensor"),
                                        details: [parts.joined(separator: ", ")],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
@@ -271,11 +271,11 @@ enum MoreDecoders {
             parts.append(String(format: "%.1f%% RH", Double(humRaw) * 0.5))
         }
         let presRaw = be16(payload, 4)
-        parts.append(String(format: "%.1f hPa", Double(presRaw + 50000) / 100.0))
-        let accel = "accel \(beS16(payload, 6))/\(beS16(payload, 8))/\(beS16(payload, 10)) mG"
+        parts.append(String(format: L("%.1f hPa"), Double(presRaw + 50000) / 100.0))
+        let accel = String(format: L("accel %@/%@/%@ mG"), String(describing: beS16(payload, 6)), String(describing: beS16(payload, 8)), String(describing: beS16(payload, 10)))
         parts.append(accel)
-        parts.append("battery \(be16(payload, 12)) mV")
-        return Services.Identification(kind: "RuuviTag sensor",
+        parts.append(String(format: L("battery %@ mV"), String(describing: be16(payload, 12))))
+        return Services.Identification(kind: L("RuuviTag sensor"),
                                        details: [parts.joined(separator: ", ")],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
@@ -307,12 +307,12 @@ enum MoreDecoders {
         else { return nil }
         if payload[1] & 0x01 != 0 {
             return Services.Identification(
-                kind: "MikroTik Bluetooth tag",
-                details: ["a TG-BT5 tag — its "
-                          + "readings travel "
-                          + "encrypted under the "
-                          + "tag's own key; "
-                          + "identity only"],
+                kind: L("MikroTik Bluetooth tag"),
+                details: [L("a TG-BT5 tag — its ")
+                          + L("readings travel ")
+                          + L("encrypted under the ")
+                          + L("tag's own key; ")
+                          + L("identity only")],
                 trackerShaped: false,
                 rotatingPhone: false,
                 specificity: 3)
@@ -328,44 +328,42 @@ enum MoreDecoders {
         let hours = (uptime % 86400) / 3600
         let mins = (uptime % 3600) / 60
         if days > 0 {
-            parts.append("uptime \(days)d "
-                         + "\(hours)h")
+            parts.append(String(format: L("uptime %@d %@h"), String(describing: days), String(describing: hours)))
         } else if hours > 0 {
-            parts.append("uptime \(hours)h "
-                         + "\(mins)m")
+            parts.append(String(format: L("uptime %@h %@m"), String(describing: hours), String(describing: mins)))
         } else {
-            parts.append("uptime \(mins)m")
+            parts.append(String(format: L("uptime %@m"), String(describing: mins)))
         }
         let flags = payload[16]
         var triggers: [String] = []
         if flags & 0x01 != 0 {
-            triggers.append("reed switch")
+            triggers.append(L("reed switch"))
         }
         if flags & 0x02 != 0 {
-            triggers.append("tilt")
+            triggers.append(L("tilt"))
         }
         if flags & 0x04 != 0 {
-            triggers.append("free-fall")
+            triggers.append(L("free-fall"))
         }
         if flags & 0x08 != 0 {
-            triggers.append("impact X")
+            triggers.append(L("impact X"))
         }
         if flags & 0x10 != 0 {
-            triggers.append("impact Y")
+            triggers.append(L("impact Y"))
         }
         if flags & 0x20 != 0 {
-            triggers.append("impact Z")
+            triggers.append(L("impact Z"))
         }
         if !triggers.isEmpty {
-            parts.append("triggered: " + triggers
+            parts.append(L("triggered: ") + triggers
                 .joined(separator: ", "))
         }
         if payload[17] <= 100 {
-            parts.append("battery "
+            parts.append(L("battery ")
                          + "\(payload[17])%")
         }
         return Services.Identification(
-            kind: "MikroTik Bluetooth tag",
+            kind: L("MikroTik Bluetooth tag"),
             details: [parts.joined(
                 separator: ", ")],
             trackerShaped: false,
@@ -405,10 +403,10 @@ enum MoreDecoders {
             if temp >= -40, temp <= 85,
                hum <= 100, battery <= 100 {
                 return Services.Identification(
-                    kind: "Govee thermometer",
+                    kind: L("Govee thermometer"),
                     details: [String(
                         format: "%.2f °C, %.2f%% RH, "
-                            + "battery %d%%",
+                            + L("battery %d%%"),
                         temp, hum, battery)],
                     trackerShaped: false,
                     rotatingPhone: false,
@@ -430,13 +428,13 @@ enum MoreDecoders {
         guard temp >= -40, temp <= 80, hum <= 100, battery <= 100 else { return nil }
         var parts: [String] = []
         if sensorError {
-            parts.append("sensor error")
+            parts.append(L("sensor error"))
         } else {
             parts.append(String(format: "%.1f °C", temp))
             parts.append(String(format: "%.1f%% RH", hum))
         }
-        parts.append("battery \(battery)%")
-        return Services.Identification(kind: "Govee thermometer",
+        parts.append(String(format: L("battery %@%%"), String(describing: battery)))
+        return Services.Identification(kind: L("Govee thermometer"),
                                        details: [parts.joined(separator: ", ")],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
@@ -448,18 +446,18 @@ enum MoreDecoders {
     /// else falls back to "Xiaomi MiBeacon device 0xXXXX" — a made-up
     /// product name would be worse than the bare ID.
     static let miProducts: [UInt16: String] = [
-        0x01AA: "Mijia temperature/humidity sensor",
-        0x055B: "Mijia temperature/humidity sensor 2",
-        0x05BC: "Mijia temperature/humidity clock (MJWSD05MMC)",
-        0x0098: "HHCC flower care plant sensor",
-        0x0387: "Mijia e-ink temperature/humidity sensor (MHO-C401)",
-        0x03DD: "Mijia alarm clock (MHO-C303)",
-        0x0A8D: "Mijia motion sensor 2 (RTCGQ02LM)",
-        0x0113: "Mijia door/window sensor 2 (MCCGQ02HL)",
-        0x040A: "Yeelight remote control (YLYK01YL)",
-        0x04E9: "Yeelight smart button (YLAI003)",
-        0x07F5: "Linptech switch, 1-button (K9B)",
-        0x08B4: "Linptech switch, 2-button (K9B)",
+        0x01AA: L("Mijia temperature/humidity sensor"),
+        0x055B: L("Mijia temperature/humidity sensor 2"),
+        0x05BC: L("Mijia temperature/humidity clock (MJWSD05MMC)"),
+        0x0098: L("HHCC flower care plant sensor"),
+        0x0387: L("Mijia e-ink temperature/humidity sensor (MHO-C401)"),
+        0x03DD: L("Mijia alarm clock (MHO-C303)"),
+        0x0A8D: L("Mijia motion sensor 2 (RTCGQ02LM)"),
+        0x0113: L("Mijia door/window sensor 2 (MCCGQ02HL)"),
+        0x040A: L("Yeelight remote control (YLYK01YL)"),
+        0x04E9: L("Yeelight smart button (YLAI003)"),
+        0x07F5: L("Linptech switch, 1-button (K9B)"),
+        0x08B4: L("Linptech switch, 2-button (K9B)"),
     ]
 
     /// MiBeacon (service data 0xFE95): frame control u16 LE (version
@@ -483,7 +481,7 @@ enum MoreDecoders {
             let macBytes = Array(payload[index..<(index + 6)])
             let mac = macBytes.map { String(format: "%02x", Int($0)) }
                 .joined(separator: ":")
-            details.append("device MAC \(mac)")
+            details.append(String(format: L("device MAC %@"), String(describing: mac)))
             index += 6
         }
         if capabilityIncluded {
@@ -494,7 +492,7 @@ enum MoreDecoders {
             guard payload.count >= index else { return nil }
         }
         if encrypted {
-            details.append("encrypted, readings not decoded (bindkey required)")
+            details.append(L("encrypted, readings not decoded (bindkey required)"))
         } else if objectIncluded, index <= payload.count {
             let readings = miReadings(Array(payload[index...]))
             if !readings.isEmpty {
@@ -502,11 +500,11 @@ enum MoreDecoders {
             }
         }
         if let name = miProducts[product] {
-            return Services.Identification(kind: "Xiaomi " + name, details: details,
+            return Services.Identification(kind: L("Xiaomi ") + name, details: details,
                                            trackerShaped: false, rotatingPhone: false,
                                            specificity: 3)
         }
-        let fallback = String(format: "Xiaomi MiBeacon device 0x%04X", Int(product))
+        let fallback = String(format: L("Xiaomi MiBeacon device 0x%04X"), Int(product))
         return Services.Identification(kind: fallback, details: details,
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 2)
@@ -539,7 +537,7 @@ enum MoreDecoders {
             case 0x1007 where length == 3:
                 parts.append("\(le24(v, 0)) lx")
             case 0x100A where length == 1:
-                parts.append("battery \(Int(v[0]))%")
+                parts.append(String(format: L("battery %@%%"), String(describing: Int(v[0]))))
             default:
                 break
             }
@@ -571,8 +569,8 @@ enum MoreDecoders {
         if (info & 0x02) != 0 { index += 6 }
         guard payload.count >= index else { return nil }
         if encrypted {
-            let note = "encrypted, readings not decoded (bindkey required)"
-            return Services.Identification(kind: "BTHome sensor", details: [note],
+            let note = L("encrypted, readings not decoded (bindkey required)")
+            return Services.Identification(kind: L("BTHome sensor"), details: [note],
                                            trackerShaped: false, rotatingPhone: false,
                                            specificity: 2)
         }
@@ -584,7 +582,7 @@ enum MoreDecoders {
             let v = Array(payload[(index + 1)..<(index + 1 + length)])
             switch objectID {
             case 0x01:
-                parts.append("battery \(Int(v[0]))%")
+                parts.append(String(format: L("battery %@%%"), String(describing: Int(v[0]))))
             case 0x02:
                 let raw = leS16(v, 0)
                 parts.append(String(format: "%.2f °C", Double(raw) * 0.01))
@@ -593,13 +591,13 @@ enum MoreDecoders {
                 parts.append(String(format: "%.2f%% RH", Double(raw) * 0.01))
             case 0x04:
                 let raw = le24(v, 0)
-                parts.append(String(format: "%.1f hPa", Double(raw) * 0.01))
+                parts.append(String(format: L("%.1f hPa"), Double(raw) * 0.01))
             case 0x05:
                 let raw = le24(v, 0)
                 parts.append(luxText(Double(raw) * 0.01))
             case 0x0A:
                 let raw = le24(v, 0)
-                parts.append(String(format: "%.3f kWh", Double(raw) * 0.001))
+                parts.append(String(format: L("%.3f kWh"), Double(raw) * 0.001))
             case 0x0B:
                 let raw = le24(v, 0)
                 parts.append(String(format: "%.2f W", Double(raw) * 0.01))
@@ -607,24 +605,24 @@ enum MoreDecoders {
                 let raw = le16(v, 0)
                 parts.append(String(format: "%.3f V", Double(raw) * 0.001))
             case 0x0D:
-                parts.append("pm2.5 \(le16(v, 0)) µg/m³")
+                parts.append(String(format: L("pm2.5 %@ µg/m³"), String(describing: le16(v, 0))))
             case 0x0E:
-                parts.append("pm10 \(le16(v, 0)) µg/m³")
+                parts.append(String(format: L("pm10 %@ µg/m³"), String(describing: le16(v, 0))))
             case 0x12:
-                parts.append("CO2 \(le16(v, 0)) ppm")
+                parts.append(String(format: L("CO2 %@ ppm"), String(describing: le16(v, 0))))
             case 0x13:
-                parts.append("VOC \(le16(v, 0)) µg/m³")
+                parts.append(String(format: L("VOC %@ µg/m³"), String(describing: le16(v, 0))))
             default:
                 break  // known length, not displayed (packet id, weight, switches...)
             }
             index += 1 + length
         }
         if parts.isEmpty {
-            return Services.Identification(kind: "BTHome sensor", details: [],
+            return Services.Identification(kind: L("BTHome sensor"), details: [],
                                            trackerShaped: false, rotatingPhone: false,
                                            specificity: 2)
         }
-        return Services.Identification(kind: "BTHome sensor",
+        return Services.Identification(kind: L("BTHome sensor"),
                                        details: [parts.joined(separator: ", ")],
                                        trackerShaped: false, rotatingPhone: false,
                                        specificity: 3)
@@ -650,7 +648,7 @@ enum MoreDecoders {
     /// fallback shape, "<maker> device".
     static let floorCompanies: [UInt16: String] = [
         0x03FF: "Withings", 0x0600: "iRobot", 0x08AA: "DJI",
-        0x08C3: "Chipolo", 0x067C: "Tile", 0x01D1: "August Home",
+        0x08C3: "Chipolo", 0x067C: "Tile", 0x01D1: L("August Home"),
         0x018E: "Google", 0x0111: "SteelSeries", 0x065A: "Marshall",
         0x068E: "Razer", 0x07C9: "Skullcandy", 0x0CC2: "Anker",
         0x0CE9: "JLab", 0x0CCB: "Nothing", 0x079A: "Oppo",
@@ -664,9 +662,9 @@ enum MoreDecoders {
     /// GATT list), and the Withings (0xFD77–0xFD7A) and Chipolo
     /// (0xFE33, 0xFE65) member ranges.
     static let lateServiceNames: [UInt16: String] = [
-        0xFE24: "August Home",
-        0x184F: "Broadcast Audio Scan (LE Audio)",
-        0x1856: "Public Broadcast Announcement (LE Audio)",
+        0xFE24: L("August Home"),
+        0x184F: L("Broadcast Audio Scan (LE Audio)"),
+        0x1856: L("Public Broadcast Announcement (LE Audio)"),
         0xFD77: "Withings", 0xFD78: "Withings",
         0xFD79: "Withings", 0xFD7A: "Withings",
         0xFE33: "Chipolo", 0xFE65: "Chipolo",
@@ -681,7 +679,7 @@ enum MoreDecoders {
         for company in sighting.manufacturerData.keys.sorted() {
             if let maker = floorCompanies[company] {
                 let tracker = company == 0x08C3 || company == 0x067C
-                return Services.Identification(kind: maker + " device", details: [],
+                return Services.Identification(kind: maker + L(" device"), details: [],
                                                trackerShaped: tracker,
                                                rotatingPhone: false, specificity: 1)
             }
@@ -693,7 +691,7 @@ enum MoreDecoders {
         let named = Set(shorts.compactMap { lateServiceNames[$0] }).sorted()
         if !named.isEmpty {
             return Services.Identification(
-                kind: "Device advertising " + named.joined(separator: ", "),
+                kind: L("Device advertising ") + named.joined(separator: ", "),
                 details: [], trackerShaped: false, rotatingPhone: false,
                 specificity: 1)
         }

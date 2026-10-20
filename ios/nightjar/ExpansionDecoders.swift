@@ -98,19 +98,19 @@ enum ExpansionDecoders {
     /// Device type by the vendor's own rule: the
     /// type byte, never layout similarity.
     static let switchBotTypes: [UInt8: String] = [
-        0x48: "Bot", 0x54: "Meter", 0x69: "Meter Plus",
-        0x49: "Meter Plus", 0x35: "Meter Pro CO2",
-        0x15: "Meter Pro CO2", 0x77: "Outdoor Meter",
-        0x57: "Outdoor Meter", 0x65: "Humidifier",
-        0x63: "Curtain", 0x43: "Curtain",
-        0x7B: "Curtain 3", 0x5B: "Curtain 3",
-        0x73: "Motion sensor", 0x64: "Contact sensor",
-        0x75: "Color Bulb", 0x72: "LED Strip",
-        0x71: "Ceiling Light", 0x51: "Ceiling Light",
-        0x6E: "Ceiling Light Pro",
-        0x4E: "Ceiling Light Pro", 0x6F: "Lock",
-        0x67: "Plug Mini", 0x47: "Plug Mini",
-        0x6A: "Plug Mini", 0x4A: "Plug Mini",
+        0x48: L("Bot"), 0x54: L("Meter"), 0x69: L("Meter Plus"),
+        0x49: L("Meter Plus"), 0x35: L("Meter Pro CO2"),
+        0x15: L("Meter Pro CO2"), 0x77: L("Outdoor Meter"),
+        0x57: L("Outdoor Meter"), 0x65: L("Humidifier"),
+        0x63: L("Curtain"), 0x43: L("Curtain"),
+        0x7B: L("Curtain 3"), 0x5B: L("Curtain 3"),
+        0x73: L("Motion sensor"), 0x64: L("Contact sensor"),
+        0x75: L("Color Bulb"), 0x72: L("LED Strip"),
+        0x71: L("Ceiling Light"), 0x51: L("Ceiling Light"),
+        0x6E: L("Ceiling Light Pro"),
+        0x4E: L("Ceiling Light Pro"), 0x6F: L("Lock"),
+        0x67: L("Plug Mini"), 0x47: L("Plug Mini"),
+        0x6A: L("Plug Mini"), 0x4A: L("Plug Mini"),
     ]
 
     static func switchBotType(
@@ -127,8 +127,7 @@ enum ExpansionDecoders {
                 sighting, MoreDecoders.switchBotService),
               let type = switchBotType(payload)
         else { return nil }
-        var details = ["battery \(payload[2] & 0x7F)% "
-            + "(SwitchBot)"]
+        var details = [String(format: L("battery %@%% (SwitchBot)"), String(describing: payload[2] & 0x7F))]
         switch payload[0] & 0x7F {
         case 0x54, 0x69, 0x49:
             // Meter / Meter Plus: temperature and
@@ -141,31 +140,30 @@ enum ExpansionDecoders {
                     ? whole + fraction
                     : -(whole + fraction)
                 details.append(String(
-                    format: "temperature %.1f °C", temp))
-                details.append("humidity "
-                    + "\(payload[5] & 0x7F)%")
+                    format: L("temperature %.1f °C"), temp))
+                details.append(String(format: L("humidity %@%%"), String(describing: payload[5] & 0x7F)))
             }
         case 0x64:
             // Contact: the HAL state says open or
             // closed, in the sensor's own words.
             if payload.count >= 4 {
                 let hal = (payload[3] >> 1) & 0x03
-                details.append(hal == 0 ? "door closed"
-                    : hal == 1 ? "door open"
-                    : hal == 2 ? "door open too long"
-                    : "door state unknown")
+                details.append(hal == 0 ? L("door closed")
+                    : hal == 1 ? L("door open")
+                    : hal == 2 ? L("door open too long")
+                    : L("door state unknown"))
                 details.append((payload[3] & 0x01) != 0
-                    ? "light present" : "dark")
+                    ? L("light present") : "dark")
             }
         case 0x73:
             if payload.count >= 2 {
                 details.append((payload[1] & 0x40) != 0
-                    ? "motion detected" : "no motion")
+                    ? L("motion detected") : L("no motion"))
             }
         default:
             break
         }
-        return Identification(kind: "SwitchBot " + type, details: details, specificity: 2)
+        return Identification(kind: L("SwitchBot ") + type, details: details, specificity: 2)
     }
 
     // MARK: Estimote Telemetry
@@ -179,12 +177,12 @@ enum ExpansionDecoders {
               (payload[0] & 0x0F) == 2
         else { return nil }
         let subframe = (payload[9] >> 0) & 0x03
-        var details = ["Estimote telemetry, subframe "
+        var details = [L("Estimote telemetry, subframe ")
             + (subframe == 0 ? "A" : "B")]
         if let reading = estimoteBattery(payload) {
             details.append(reading.summary)
         }
-        return Identification(kind: "Estimote beacon", details: details, specificity: 2)
+        return Identification(kind: L("Estimote beacon"), details: details, specificity: 2)
     }
 
     /// Subframe B carries the richest passive
@@ -239,10 +237,10 @@ enum ExpansionDecoders {
                     | UInt16(payload[9]) << 8) / 100
             guard temp > -60, temp < 120,
                   humidity <= 100 else { return nil }
-            return Identification(kind: "Mi thermometer (PVVX firmware)", details: [
-                    String(format: "temperature %.2f °C",
+            return Identification(kind: L("Mi thermometer (PVVX firmware)"), details: [
+                    String(format: L("temperature %.2f °C"),
                            temp),
-                    String(format: "humidity %.1f %%",
+                    String(format: L("humidity %.1f %%"),
                            humidity),
                 ], specificity: 3)
         }
@@ -254,10 +252,10 @@ enum ExpansionDecoders {
             let humidity = Double(payload[8])
             guard temp > -60, temp < 120,
                   humidity <= 100 else { return nil }
-            return Identification(kind: "Mi thermometer (ATC firmware)", details: [
-                    String(format: "temperature %.1f °C",
+            return Identification(kind: L("Mi thermometer (ATC firmware)"), details: [
+                    String(format: L("temperature %.1f °C"),
                            temp),
-                    "humidity \(Int(humidity))%",
+                    String(format: L("humidity %@%%"), String(describing: Int(humidity))),
                 ], specificity: 2)
         }
         return nil
@@ -309,16 +307,15 @@ enum ExpansionDecoders {
             let humidity = Double(
                 UInt16(payload[12])
                     | UInt16(payload[13]) << 8) / 10
-            return Identification(kind: "Qingping weather station", details: [
-                    String(format: "temperature %.1f °C",
+            return Identification(kind: L("Qingping weather station"), details: [
+                    String(format: L("temperature %.1f °C"),
                            Double(rawTemp) / 10),
-                    String(format: "humidity %.0f %%",
+                    String(format: L("humidity %.0f %%"),
                            humidity),
-                    "battery \(payload[20] & 0x7F)% "
-                        + "(Qingping)",
+                    String(format: L("battery %@%% (Qingping)"), String(describing: payload[20] & 0x7F)),
                 ], specificity: 3)
         }
-        return Identification(kind: "Qingping / ClearGrass sensor", details: [], specificity: 1)
+        return Identification(kind: L("Qingping / ClearGrass sensor"), details: [], specificity: 1)
     }
 
     // MARK: BTHome v1 — opt-in, replay caveat
@@ -360,9 +357,9 @@ enum ExpansionDecoders {
     ) -> Identification? {
         if serviceData(sighting,
                        bthomeV1EncryptedService) != nil {
-            return Identification(kind: "BTHome v1 sensor (encrypted)", details: ["encrypted — contents not "
-                    + "readable; v1 encryption has no "
-                    + "replay protection"], specificity: 1)
+            return Identification(kind: L("BTHome v1 sensor (encrypted)"), details: [L("encrypted — contents not ")
+                    + L("readable; v1 encryption has no ")
+                    + L("replay protection")], specificity: 1)
         }
         guard let payload = serviceData(
                 sighting, bthomeV1Service),
@@ -373,19 +370,18 @@ enum ExpansionDecoders {
         if let raw = objects[0x02] {
             let signed = raw > 0x7FFF ? raw - 0x10000 : raw
             details.append(String(
-                format: "temperature %.2f °C",
+                format: L("temperature %.2f °C"),
                 Double(signed) / 100))
         }
         if let raw = objects[0x03] {
             details.append(String(
-                format: "humidity %.1f %%",
+                format: L("humidity %.1f %%"),
                 Double(raw) / 100))
         }
         if let percent = objects[0x01] {
-            details.append("battery \(percent)% "
-                + "(BTHome v1)")
+            details.append(String(format: L("battery %@%% (BTHome v1)"), String(describing: percent)))
         }
-        return Identification(kind: "BTHome v1 sensor", details: details, specificity: 2)
+        return Identification(kind: L("BTHome v1 sensor"), details: details, specificity: 2)
     }
 
     // MARK: BAS 1.1 — the standard's broadcast form
@@ -467,14 +463,14 @@ enum ExpansionDecoders {
             | Int(payload[2]) << 8
         let deviceClass = payload[4]
         let kind = deviceClass == 0x01
-            ? "Victron solar charger"
-            : "Victron Energy device"
+            ? L("Victron solar charger")
+            : L("Victron Energy device")
         var details = [String(
-            format: "model 0x%04X, device class "
+            format: L("model 0x%04X, device class ")
                 + "0x%02X", model, deviceClass)]
-        details.append("readings are encrypted "
-            + "under the device's own key — "
-            + "identity only")
+        details.append(L("readings are encrypted ")
+            + L("under the device's own key — ")
+            + L("identity only"))
         return Identification(kind: kind,
                               details: details,
                               specificity: 2)
@@ -504,13 +500,13 @@ enum ExpansionDecoders {
         let sensorType = hw & 0x7F
         let levelExtended = (hw & 0x80) != 0
         let names: [UInt8: String] = [
-            0x03: "Mopeka tank sensor (propane)",
-            0x04: "Mopeka tank sensor (top-down)",
-            0x05: "Mopeka tank sensor (water)",
-            0x08: "Mopeka Pro+ tank sensor",
-            0x09: "Mopeka Pro+ tank sensor",
-            0x0A: "Mopeka TD-40 tank sensor",
-            0x0B: "Mopeka TD-40 tank sensor",
+            0x03: L("Mopeka tank sensor (propane)"),
+            0x04: L("Mopeka tank sensor (top-down)"),
+            0x05: L("Mopeka tank sensor (water)"),
+            0x08: L("Mopeka Pro+ tank sensor"),
+            0x09: L("Mopeka Pro+ tank sensor"),
+            0x0A: L("Mopeka TD-40 tank sensor"),
+            0x0B: L("Mopeka TD-40 tank sensor"),
         ]
         guard let kind = names[sensorType]
         else { return nil }
@@ -536,14 +532,13 @@ enum ExpansionDecoders {
             let mm = Double(levelUS)
                 * (c.0 + c.1 * tt + c.2 * tt * tt)
             details.append(String(
-                format: "tank level ≈ %.0f mm", mm))
+                format: L("tank level ≈ %.0f mm"), mm))
         } else {
-            details.append("level \(levelUS) µs "
-                + "(top-down)")
+            details.append(String(format: L("level %@ µs (top-down)"), String(describing: levelUS)))
         }
         details.append(String(
-            format: "battery %.2f V (%d%%), "
-                + "%d °C, reading quality %d of 3",
+            format: L("battery %.2f V (%d%%), ")
+                + L("%d °C, reading quality %d of 3"),
             volts, battery, tempC, quality))
         return Identification(kind: kind,
                               details: details,
@@ -571,13 +566,13 @@ enum ExpansionDecoders {
               payload[1] == 0xEA, payload[2] == 0xCA
         else { return nil }
         let wheel = Int(payload[0]) - 0x80 + 1
-        var details = ["wheel \(wheel) sensor",
-                       "battery \(payload[14])%"]
+        var details = [String(format: L("wheel %@ sensor"), String(describing: wheel)),
+                       String(format: L("battery %@%%"), String(describing: payload[14]))]
         if payload[15] == 1 {
-            details.append("alarm: no pressure")
+            details.append(L("alarm: no pressure"))
         }
         return Identification(
-            kind: "TPMS wheel sensor",
+            kind: L("TPMS wheel sensor"),
             details: details, specificity: 2)
     }
 
@@ -591,12 +586,12 @@ enum ExpansionDecoders {
         var details: [String] = []
         if let percent = reading.percent {
             details.append("battery \(percent)% "
-                + "(Battery Service broadcast)")
+                + L("(Battery Service broadcast)"))
         }
         if let state = reading.state {
-            details.append("battery " + state)
+            details.append(L("battery ") + state)
         }
-        return Identification(kind: "Battery Service broadcaster", details: details, specificity: 1)
+        return Identification(kind: L("Battery Service broadcaster"), details: details, specificity: 1)
     }
 
     // MARK: Inkbird & ThermoPro — name-gated families
@@ -614,19 +609,18 @@ enum ExpansionDecoders {
         let temp = Double(rawTemp) / 100
         guard temp > -60, temp < 150 else { return nil }
         var details = [String(
-            format: "temperature %.2f °C", temp)]
+            format: L("temperature %.2f °C"), temp)]
         let rawHumidity = UInt16(payload[2])
             | UInt16(payload[3]) << 8
         if rawHumidity != 0xFFFF, rawHumidity != 0 {
             details.append(String(
-                format: "humidity %.1f %%",
+                format: L("humidity %.1f %%"),
                 Double(rawHumidity) / 100))
         }
         if payload[7] <= 100 {
-            details.append("battery \(payload[7])% "
-                + "(Inkbird)")
+            details.append(String(format: L("battery %@%% (Inkbird)"), String(describing: payload[7])))
         }
-        return Identification(kind: "Inkbird thermo-hygrometer", details: details, specificity: 3)
+        return Identification(kind: L("Inkbird thermo-hygrometer"), details: details, specificity: 3)
     }
 
     private static func thermoPro(
@@ -643,15 +637,15 @@ enum ExpansionDecoders {
         let rawTemp = Int16(bitPattern:
             UInt16(payload[1]) | UInt16(payload[2]) << 8)
         var details = [String(
-            format: "temperature %.1f °C",
+            format: L("temperature %.1f °C"),
             Double(rawTemp) / 10),
-            "humidity \(payload[3])%"]
+            String(format: L("humidity %@%%"), String(describing: payload[3]))]
         // The flag reads backwards: bit set means
         // the battery is fine.
         if (payload[4] & 0x02) == 0 {
-            details.append("battery low (ThermoPro)")
+            details.append(L("battery low (ThermoPro)"))
         }
-        return Identification(kind: "ThermoPro sensor", details: details, specificity: 3)
+        return Identification(kind: L("ThermoPro sensor"), details: details, specificity: 3)
     }
 
     // MARK: Microsoft Connected Devices
@@ -664,9 +658,9 @@ enum ExpansionDecoders {
               payload.count >= 10,
               payload[0] == 0x01
         else { return nil }
-        return Identification(kind: "Windows / Android device", details: ["Microsoft Connected Devices "
-                + "presence beacon — a device class "
-                + "claim, no battery carried"], specificity: 1)
+        return Identification(kind: L("Windows / Android device"), details: [L("Microsoft Connected Devices ")
+                + L("presence beacon — a device class ")
+                + L("claim, no battery carried")], specificity: 1)
     }
 
     // MARK: - Batteries for the engine
@@ -721,7 +715,7 @@ enum ExpansionDecoders {
                     component: "device",
                     percent: objects[0x01],
                     millivolts: objects[0x0C],
-                    state: state, source: "BTHome v1",
+                    state: state, source: L("BTHome v1"),
                     observedAt: 0)))
             }
         }
@@ -732,7 +726,7 @@ enum ExpansionDecoders {
                 component: "device",
                 percent: reading.percent,
                 millivolts: nil, state: reading.state,
-                source: "Battery Service",
+                source: L("Battery Service"),
                 observedAt: 0)))
         }
         if let name = sighting.name?.lowercased(),

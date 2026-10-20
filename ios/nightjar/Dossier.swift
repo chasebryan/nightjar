@@ -140,11 +140,11 @@ struct DossierView: View {
                 date: .abbreviated, time: .shortened)
             var parts: [String] = []
             if !opened.isEmpty {
-                parts.append("opened "
+                parts.append(L("opened ")
                     + opened.joined(separator: ", "))
             }
             if !closed.isEmpty {
-                parts.append("closed "
+                parts.append(L("closed ")
                     + closed.joined(separator: ", "))
             }
             Journal.log(
@@ -163,28 +163,26 @@ struct DossierView: View {
         driftOpened = []
         driftClosed = []
         Journal.log("dossier", "baseline",
-                    "\(title) (\(ip)) baselined — "
-                    + "\(knockSignature.count) open")
+                    String(format: L("%@ (%@) baselined — %@ open"), String(describing: title), String(describing: ip), String(describing: knockSignature.count)))
     }
 
     private var dossierText: String {
-        var lines = ["DOSSIER — \(title)", ""]
-        lines.append("Wi-Fi (Scan):")
+        var lines = [String(format: L("DOSSIER — %@"), String(describing: title)), ""]
+        lines.append(L("Wi-Fi (Scan):"))
         lines += wifiLines.map { "  \($0)" }
-        lines.append("Bluetooth (Listen):")
+        lines.append(L("Bluetooth (Listen):"))
         if bleMatches.isEmpty {
-            lines.append("  not heard advertising under this name")
+            lines.append(L("  not heard advertising under this name"))
         } else {
             for row in bleMatches {
-                lines.append("  possible match by name — \(row.kind), "
-                             + "\(row.sightings) sightings")
+                lines.append(String(format: L("  possible match by name — %@, %@ sightings"), String(describing: row.kind), String(describing: row.sightings)))
             }
         }
-        lines.append("Knock (Recon):")
+        lines.append(L("Knock (Recon):"))
         if recon.hits.isEmpty {
-            lines.append("  not knocked from this page")
+            lines.append(L("  not knocked from this page"))
         } else if openHits.isEmpty {
-            lines.append("  knocked \(recon.lastKnocked) — nothing open")
+            lines.append(String(format: L("  knocked %@ — nothing open"), String(describing: recon.lastKnocked)))
         } else {
             for hit in openHits {
                 lines.append("  \(hit.label) \(hit.service)"
@@ -196,16 +194,16 @@ struct DossierView: View {
         if let baseline = baseline {
             let stamp = baseline.when.formatted(
                 date: .abbreviated, time: .shortened)
-            lines.append("Baseline (\(stamp)):")
+            lines.append(String(format: L("Baseline (%@):"), String(describing: stamp)))
             if baseline.lines.isEmpty {
-                lines.append("  nothing open")
+                lines.append(L("  nothing open"))
             } else {
                 lines += baseline.lines.map { "  \($0)" }
             }
             if hasDrift {
-                lines.append("Drift since baseline:")
-                lines += driftOpened.map { "  opened: \($0)" }
-                lines += driftClosed.map { "  closed: \($0)" }
+                lines.append(L("Drift since baseline:"))
+                lines += driftOpened.map { String(format: L("  opened: %@"), String(describing: $0)) }
+                lines += driftClosed.map { String(format: L("  closed: %@"), String(describing: $0)) }
             }
         }
         return lines.joined(separator: "\n")

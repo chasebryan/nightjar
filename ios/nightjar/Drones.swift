@@ -20,22 +20,22 @@ enum Drones {
     static let epoch2019: TimeInterval = 1_546_300_800
 
     static let idTypes: [Int: String] = [
-        0: "none", 1: "serial number", 2: "CAA registration",
-        3: "UTM UUID", 4: "specific session ID",
+        0: "none", 1: L("serial number"), 2: L("CAA registration"),
+        3: "UTM UUID", 4: L("specific session ID"),
     ]
     static let uaTypes: [Int: String] = [
-        0: "none", 1: "aeroplane", 2: "helicopter/multirotor", 3: "gyroplane",
-        4: "hybrid lift (VTOL)", 5: "ornithopter", 6: "glider", 7: "kite",
-        8: "free balloon", 9: "captive balloon", 10: "airship",
-        11: "free fall / parachute", 12: "rocket",
-        13: "tethered powered aircraft", 14: "ground obstacle", 15: "other",
+        0: "none", 1: L("aeroplane"), 2: L("helicopter/multirotor"), 3: L("gyroplane"),
+        4: L("hybrid lift (VTOL)"), 5: L("ornithopter"), 6: L("glider"), 7: L("kite"),
+        8: L("free balloon"), 9: L("captive balloon"), 10: L("airship"),
+        11: L("free fall / parachute"), 12: L("rocket"),
+        13: L("tethered powered aircraft"), 14: L("ground obstacle"), 15: L("other"),
     ]
     static let operationalStatus: [Int: String] = [
-        0: "undeclared", 1: "ground", 2: "airborne", 3: "emergency",
-        4: "RID system failure",
+        0: L("undeclared"), 1: L("ground"), 2: L("airborne"), 3: L("emergency"),
+        4: L("RID system failure"),
     ]
     static let operatorLocationTypes: [Int: String] = [
-        0: "takeoff point", 1: "live GPS", 2: "fixed",
+        0: L("takeoff point"), 1: L("live GPS"), 2: L("fixed"),
     ]
 
     // MARK: - Messages
@@ -44,8 +44,8 @@ enum Drones {
         var idType: Int
         var uaType: Int
         var uasID: String
-        var idTypeName: String { Drones.idTypes[idType] ?? "type \(idType)" }
-        var uaTypeName: String { Drones.uaTypes[uaType] ?? "type \(uaType)" }
+        var idTypeName: String { Drones.idTypes[idType] ?? String(format: L("type %@"), String(describing: idType)) }
+        var uaTypeName: String { Drones.uaTypes[uaType] ?? String(format: L("type %@"), String(describing: uaType)) }
         /// Serial number or CAA registration: stable, device-identifying.
         var isSerial: Bool { (idType == 1 || idType == 2) && !uasID.isEmpty }
     }
@@ -62,9 +62,9 @@ enum Drones {
         var height: Double?
         var heightType: Int
         var timestampTenths: Int?
-        var statusName: String { Drones.operationalStatus[status] ?? "status \(status)" }
+        var statusName: String { Drones.operationalStatus[status] ?? String(format: L("status %@"), String(describing: status)) }
         var airborne: Bool { status == 2 }
-        var heightRef: String { heightType == 1 ? "AGL" : "above takeoff" }
+        var heightRef: String { heightType == 1 ? "AGL" : L("above takeoff") }
     }
 
     struct SystemInfo {
@@ -80,7 +80,7 @@ enum Drones {
         var operatorAltitude: Double?
         var timestampUnix: TimeInterval?
         var operatorLocationName: String {
-            Drones.operatorLocationTypes[operatorLocationType] ?? "type \(operatorLocationType)"
+            Drones.operatorLocationTypes[operatorLocationType] ?? String(format: L("type %@"), String(describing: operatorLocationType))
         }
     }
 
@@ -272,14 +272,14 @@ enum Drones {
 
     static func describe(_ report: Report) -> String {
         var parts: [String] = []
-        if let serial = report.serial { parts.append("serial \(serial)") }
+        if let serial = report.serial { parts.append(String(format: L("serial %@"), String(describing: serial))) }
         if let ua = report.uaType, ua != 0 { parts.append(report.uaTypeName) }
         if let loc = report.location {
             parts.append(loc.statusName)
             if let alt = loc.altitudeGeo {
-                parts.append(String(format: "alt %.0f m", alt))
+                parts.append(String(format: L("alt %.0f m"), alt))
             } else if let alt = loc.altitudeBaro {
-                parts.append(String(format: "baro alt %.0f m", alt))
+                parts.append(String(format: L("baro alt %.0f m"), alt))
             }
             if let speed = loc.speedH, let dir = loc.direction {
                 parts.append(String(format: "%.1f m/s %@", speed, compass(dir)))
@@ -287,15 +287,15 @@ enum Drones {
                 parts.append(String(format: "%.1f m/s", speed))
             }
             if let height = loc.height {
-                parts.append(String(format: "height %.0f m %@", height, loc.heightRef))
+                parts.append(String(format: L("height %.0f m %@"), height, loc.heightRef))
             }
         }
         if let sys = report.system, let lat = sys.operatorLatitude, let lon = sys.operatorLongitude {
-            parts.append(String(format: "operator %.5f,%.5f (%@)", lat, lon, sys.operatorLocationName))
+            parts.append(String(format: L("operator %.5f,%.5f (%@)"), lat, lon, sys.operatorLocationName))
         }
         if let text = report.selfIDText {
             parts.append("\u{201C}\(text)\u{201D}")
         }
-        return parts.isEmpty ? "Drone (Remote ID)" : "Drone (Remote ID): " + parts.joined(separator: ", ")
+        return parts.isEmpty ? L("Drone (Remote ID)") : L("Drone (Remote ID): ") + parts.joined(separator: ", ")
     }
 }

@@ -14,7 +14,7 @@ struct Classification {
     static let rankSubfamily = 20
     static let rankProduct = 30
 
-    var kind: String = "Unknown device"
+    var kind: String = L("Unknown device")
     var details: [String] = []
     var rank: Int = Classification.rankUnknown
     var trackerShaped: Bool = false
@@ -50,7 +50,7 @@ struct Classification {
         if let apple = sighting.manufacturerData[Continuity.appleCompanyID], !apple.isEmpty {
             let ident = Continuity.identifyApple(apple)
             var rankValue = rankFor(specificity: ident.specificity)
-            if ident.kind == "Apple device (Nearby Info)" {
+            if ident.kind == L("Apple device (Nearby Info)") {
                 rankValue = rankFamilyHint
             }
             let tracker = ident.findMy?.separated ?? false
@@ -134,7 +134,7 @@ struct Classification {
         }
 
         if sighting.name != nil {
-            candidates.append(Classification(kind: "Named device"))
+            candidates.append(Classification(kind: L("Named device")))
         }
         guard let winnerIndex = candidates.indices.max(
             by: { candidates[$0].rank < candidates[$1].rank })
@@ -194,46 +194,45 @@ struct Classification {
             if let short = Services.short(first) {
                 let hex = String(format: "0x%04X",
                                  short)
-                kind = "BLE device — service "
+                kind = L("BLE device — service ")
                     + hex
-                details.append("advertises service "
-                    + hex + " — unnamed in the "
-                    + "SIG registry")
+                details.append(L("advertises service ")
+                    + hex + L(" — unnamed in the ")
+                    + L("SIG registry"))
             } else if let wide = Services
                 .short32(first) {
                 let hex = String(format: "0x%08X",
                                  wide)
-                kind = "BLE device — service "
+                kind = L("BLE device — service ")
                     + hex
-                details.append("advertises service "
-                    + hex + " — a 32-bit SIG-base "
-                    + "UUID, unnamed in the SIG "
+                details.append(L("advertises service ")
+                    + hex + L(" — a 32-bit SIG-base ")
+                    + L("UUID, unnamed in the SIG ")
                     + "registry")
             } else {
-                kind = "BLE device — custom service"
-                details.append("advertises custom "
-                    + "service " + first)
+                kind = L("BLE device — custom service")
+                details.append(L("advertises custom ")
+                    + L("service ") + first)
             }
             if advertised.count > 1 {
-                details.append("+\(advertised.count - 1) "
-                    + "more advertised")
+                details.append(String(format: L("+%@ more advertised"), String(describing: advertised.count - 1)))
             }
         }
         if kind == nil,
            let company = sighting.manufacturerData
                .keys.sorted().first {
             let hex = String(format: "0x%04X", company)
-            kind = "BLE device — maker code " + hex
-            details.append("company code " + hex
-                + " — not in the SIG registry")
+            kind = L("BLE device — maker code ") + hex
+            details.append(L("company code ") + hex
+                + L(" — not in the SIG registry"))
         }
         for uuid in sighting.solicitedUUIDs {
-            details.append("seeking service "
+            details.append(L("seeking service ")
                 + (Services.name(uuid) ?? uuid))
         }
         if kind == nil,
            !sighting.solicitedUUIDs.isEmpty {
-            kind = "BLE device — seeking a service"
+            kind = L("BLE device — seeking a service")
         }
         guard let kind else { return nil }
         return Classification(kind: kind,
@@ -247,7 +246,7 @@ struct DeviceRow: Identifiable {
     let id: String  // the address
     var name: String?
     var preferredLabel: String?
-    var kind: String = "Unknown device"
+    var kind: String = L("Unknown device")
     var details: [String] = []
     var rank: Int = Classification.rankUnknown
     var trackerShaped: Bool = false
@@ -304,20 +303,14 @@ struct DeviceRow: Identifiable {
         if dwell > 900 {
             stood += 1
             let minutes = Int(dwell / 60)
-            lines.append("heard steadily for "
-                         + "\(minutes) minutes — "
-                         + "infrastructure does "
-                         + "not sleep")
+            lines.append(String(format: L("heard steadily for %@ minutes — infrastructure does not sleep"), String(describing: minutes)))
         }
         if rssiHistory.count >= 8,
            let low = rssiHistory.min(),
            let high = rssiHistory.max(),
            high - low <= 6 {
             stood += 1
-            lines.append("its strength barely "
-                         + "moves — a fixed "
-                         + "position, not a "
-                         + "pocket")
+            lines.append(L("its strength barely moves — a fixed position, not a pocket"))
         }
         if sightingIntervals.count >= 8 {
             let mean = sightingIntervals
@@ -328,17 +321,17 @@ struct DeviceRow: Identifiable {
                 .max() ?? 0
             if mean > 0, spread < mean * 0.25 {
                 stood += 1
-                lines.append("advertises on a "
-                             + "metronome — a "
-                             + "machine rhythm")
+                lines.append(L("advertises on a ")
+                             + L("metronome — a ")
+                             + L("machine rhythm"))
             }
         }
         if stood >= 2 {
-            lines.append("signs of fixed "
-                         + "infrastructure — "
-                         + "likely an access "
-                         + "point or other "
-                         + "always-on gear")
+            lines.append(L("signs of fixed ")
+                         + L("infrastructure — ")
+                         + L("likely an access ")
+                         + L("point or other ")
+                         + L("always-on gear"))
         }
         return lines
     }
@@ -480,9 +473,8 @@ struct DeviceRow: Identifiable {
             extras += analysis.shape
         }
         if payloadChanges > 0 {
-            extras.append("advertisement shape "
-                + "changed \(payloadChanges)× this "
-                + "session")
+            extras.append(L("advertisement shape ")
+                + String(format: L("changed %@× this session"), String(describing: payloadChanges)))
         }
         for line in extras where !details.contains(line) {
             details.append(line)
@@ -500,9 +492,9 @@ struct DeviceRow: Identifiable {
                     if !flare {
                         Journal.log(
                             "listen", "flare",
-                            "a flare answered — a holder of the "
-                            + "pairing key is in radio range "
-                            + "(address \(id))")
+                            L("a flare answered — a holder of the ")
+                            + L("pairing key is in radio range ")
+                            + String(format: L("(address %@)"), String(describing: id)))
                     }
                     flare = true
                     flareLastSeen = sighting.seenAt
@@ -538,10 +530,10 @@ struct DeviceRow: Identifiable {
 
     var rangeBand: String {
         guard let rssi = rssiLast else { return "?" }
-        if rssi >= -55 { return "immediate" }
-        if rssi >= -70 { return "near" }
-        if rssi >= -85 { return "far" }
-        return "faint"
+        if rssi >= -55 { return L("immediate") }
+        if rssi >= -70 { return L("near") }
+        if rssi >= -85 { return L("far") }
+        return L("faint")
     }
 
     /// Rough range from the smoothed RSSI and the advertised
@@ -601,10 +593,10 @@ struct DeviceRow: Identifiable {
             ? String(format: "%.1f s", median)
             : "\(Int(median.rounded())) s"
         if high - low > median * 0.6 {
-            return "irregular cadence — heard about "
-                + "every " + period + " between bursts"
+            return L("irregular cadence — heard about ")
+                + L("every ") + period + L(" between bursts")
         }
-        return "heard about every " + period
+        return L("heard about every ") + period
     }
 
     /// How long the device has been in earshot this session.

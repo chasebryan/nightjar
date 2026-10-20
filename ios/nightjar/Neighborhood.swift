@@ -47,7 +47,7 @@ struct Neighbor: Codable, Identifiable {
     var lastSeenLine: String {
         let fmt = RelativeDateTimeFormatter()
         fmt.unitsStyle = .full
-        return "last seen " + fmt.localizedString(
+        return L("last seen ") + fmt.localizedString(
             for: lastSeen, relativeTo: Date())
     }
 }
@@ -68,10 +68,10 @@ enum RouterSigns {
         case certain, likely, possible, none
         var line: String {
             switch self {
-            case .certain: return "THE ROUTER"
-            case .likely: return "likely the router"
+            case .certain: return L("THE ROUTER")
+            case .likely: return L("likely the router")
             case .possible:
-                return "possibly router or access point"
+                return L("possibly router or access point")
             case .none: return ""
             }
         }
@@ -92,13 +92,11 @@ enum RouterSigns {
         var signs: [String] = []
         if ports.contains(67) {
             points += 3
-            signs.append("answers DHCP — it "
-                         + "hands out the "
-                         + "addresses")
+            signs.append(L("answers DHCP — it hands out the addresses"))
         }
         if ports.contains(53) {
             points += 2
-            signs.append("serves DNS")
+            signs.append(L("serves DNS"))
         }
         let adminDoors = [80, 443, 8080, 8443,
                           7547].filter {
@@ -106,15 +104,13 @@ enum RouterSigns {
         }
         if let door = adminDoors.first {
             points += 1
-            signs.append("holds a web-admin "
-                         + "door (\(door))")
+            signs.append(L("holds a web-admin ")
+                         + String(format: L("door (%@)"), String(describing: door)))
         }
         if let last = ip.split(separator: ".")
             .last, last == "1" || last == "254" {
             points += 1
-            signs.append("sits at .\(last) — "
-                         + "the router's "
-                         + "usual chair")
+            signs.append(String(format: L("sits at .%@ — the router's usual chair"), String(describing: last)))
         }
         let gearWords = ["router", "gateway",
                          "fritz", "asus",
@@ -131,8 +127,8 @@ enum RouterSigns {
             if gearWords.contains(
                 where: { low.contains($0) }) {
                 points += 2
-                signs.append("answers to a "
-                             + "network-gear name "
+                signs.append(L("answers to a ")
+                             + L("network-gear name ")
                              + "(\u{201C}\(name)"
                              + "\u{201D})")
             }
@@ -143,17 +139,17 @@ enum RouterSigns {
                 where: { lowLine.contains($0) }),
                name == nil {
                 points += 1
-                signs.append("announces "
-                             + "network gear in "
-                             + "its own words")
+                signs.append(L("announces ")
+                             + L("network gear in ")
+                             + L("its own words"))
                 break
             }
         }
         for line in announcements {
             if line.contains("MikroTik") {
                 points += 3
-                signs.append("speaks MikroTik's "
-                             + "own discovery "
+                signs.append(L("speaks MikroTik's ")
+                             + L("own discovery ")
                              + "(MNDP)")
                 break
             }
@@ -244,10 +240,10 @@ final class NeighborhoodStore: ObservableObject {
         save()
         if let given = neighbors[index].customName {
             Journal.log("neighborhood", "named",
-                        "\(ip) answers to '\(given)' now")
+                        String(format: L("%@ answers to '%@' now"), String(describing: ip), String(describing: given)))
         } else {
             Journal.log("neighborhood", "named",
-                        "\(ip)'s given name was cleared")
+                        String(format: L("%@'s given name was cleared"), String(describing: ip)))
         }
     }
 
@@ -287,8 +283,7 @@ final class NeighborhoodStore: ObservableObject {
             neighbor.sightings = 1
             neighbors.append(neighbor)
             Journal.log("neighborhood", "new",
-                        "a new neighbor at \(ip) — the wire "
-                        + "has one more character")
+                        String(format: L("a new neighbor at %@ — the wire has one more character"), String(describing: ip)))
         }
     }
 
@@ -322,13 +317,12 @@ final class NeighborhoodStore: ObservableObject {
                 if !isNew {
                     self.noteDrift(
                         &neighbor,
-                        "answered on port \(port) "
-                        + "for the first time")
+                        String(format: L("answered on port %@ for the first time"), String(describing: port)))
                 }
             }
             if isNew {
                 Journal.log("neighborhood", "discovery",
-                            "\(ip) found by \(via)")
+                            String(format: L("%@ found by %@"), String(describing: ip), String(describing: via)))
             }
         }
     }
@@ -352,10 +346,10 @@ final class NeighborhoodStore: ObservableObject {
                         neighbor.ports.sort()
                         if !isNew {
                             self.noteDrift(&neighbor,
-                                      "answered on port "
+                                      L("answered on port ")
                                       + "\(answer.port) "
                                       + "(\(ScanModel.serviceName(for: answer.port) ?? "unknown")) "
-                                      + "for the first time")
+                                      + L("for the first time"))
                         }
                     }
                 }
@@ -382,9 +376,9 @@ final class NeighborhoodStore: ObservableObject {
                neighbor.ip == gatewayIP {
                 rows.append((neighbor,
                     .certain,
-                    ["this phone's default "
-                     + "route lands here — "
-                     + "the router by "
+                    [L("this phone's default ")
+                     + L("route lands here — ")
+                     + L("the router by ")
                      + "definition"]))
                 continue
             }
@@ -413,8 +407,7 @@ final class NeighborhoodStore: ObservableObject {
         upsert(ip: ip) { neighbor, isNew in
             if let old = neighbor.name, old != name, !isNew {
                 self.noteDrift(&neighbor,
-                          "announces itself as \u{201C}\(name)\u{201D} now — "
-                          + "it was \u{201C}\(old)\u{201D}")
+                          String(format: L("announces itself as “%@” now — it was “%@”"), String(describing: name), String(describing: old)))
             }
             if neighbor.name == nil || neighbor.name != name {
                 neighbor.name = name
@@ -424,7 +417,7 @@ final class NeighborhoodStore: ObservableObject {
                 neighbor.announcements.append(line)
                 if !isNew {
                     self.noteDrift(&neighbor,
-                              "began announcing \(label)")
+                              String(format: L("began announcing %@"), String(describing: label)))
                 }
             }
         }
@@ -463,7 +456,7 @@ final class NeighborhoodStore: ObservableObject {
     /// label, or nothing: the ghost, relay peers, this device,
     /// and loopback are not neighbors.
     static func lanIPv4(from source: String) -> String? {
-        guard !source.contains("(this device)"),
+        guard !source.contains(L("(this device)")),
               !source.hasPrefix("relay:") else { return nil }
         let head = source.split(separator: ":").first
             .map(String.init) ?? source
@@ -483,26 +476,23 @@ final class NeighborhoodStore: ObservableObject {
         var lines: [String] = []
         let stamp = neighbor.firstSeen.formatted(
             date: .abbreviated, time: .shortened)
-        lines.append("On the wire since \(stamp) — "
-                     + "\(neighbor.sightings) sightings, "
-                     + neighbor.lastSeenLine)
+        lines.append(String(format: L("On the wire since %@ — %@ sightings, %@"), String(describing: stamp), String(describing: neighbor.sightings), String(describing: neighbor.lastSeenLine)))
         for port in neighbor.ports {
-            lines.append("Answered on \(port)/tcp "
-                         + "(\(ScanModel.serviceName(for: port) ?? "unknown"))")
+            lines.append(String(format: L("Answered on %@/tcp (%@)"), String(describing: port), String(describing: ScanModel.serviceName(for: port) ?? L("unknown"))))
         }
         for announcement in neighbor.announcements {
-            lines.append("Announces itself via Bonjour: "
+            lines.append(L("Announces itself via Bonjour: ")
                          + announcement)
         }
         if neighbor.arrivals > 0 {
-            lines.append("Knocked this phone "
-                         + "\(neighbor.arrivals) time(s)")
+            lines.append(L("Knocked this phone ")
+                         + String(format: L("%@ time(s)"), String(describing: neighbor.arrivals)))
         }
         for line in neighbor.drift.prefix(5) {
-            lines.append("Drift: " + line)
+            lines.append(L("Drift: ") + line)
         }
-        lines.append("Census: the neighborhood — observed, "
-                     + "never knocked for this page")
+        lines.append(L("Census: the neighborhood — observed, ")
+                     + L("never knocked for this page"))
         return lines
     }
 }
@@ -581,7 +571,7 @@ struct NeighborhoodSectionView: View {
                     Button {
                         editing = neighbor
                     } label: {
-                        Label("Name this device\u{2026}",
+                        Label(L("Name this device…"),
                               systemImage: "pencil")
                     }
                     Button {
@@ -600,8 +590,8 @@ struct NeighborhoodSectionView: View {
                         }
                     } label: {
                         Label(tomato.isMarked(neighbor.ip)
-                                ? "Wipe the tomato off"
-                                : "Throw a tomato",
+                                ? L("Wipe the tomato off")
+                                : L("Throw a tomato"),
                               systemImage: tomato
                                 .isMarked(neighbor.ip)
                                 ? "arrow.uturn.backward"
@@ -626,22 +616,22 @@ struct NeighborhoodSectionView: View {
         if neighbor.customName != nil {
             parts.append(neighbor.ip)
             if let wire = neighbor.name {
-                parts.append("answers as \(wire)")
+                parts.append(String(format: L("answers as %@"), String(describing: wire)))
             }
         } else if neighbor.name != nil {
             parts.append(neighbor.ip)
         }
-        parts.append("\(neighbor.sightings) sightings")
+        parts.append(String(format: L("%@ sightings"), String(describing: neighbor.sightings)))
         parts.append(neighbor.lastSeenLine)
         if !neighbor.ports.isEmpty {
-            parts.append("ports " + neighbor.ports
+            parts.append(L("ports ") + neighbor.ports
                 .map(String.init).joined(separator: ", "))
         }
         if neighbor.arrivals > 0 {
-            parts.append("knocked us \(neighbor.arrivals)×")
+            parts.append(String(format: L("knocked us %@×"), String(describing: neighbor.arrivals)))
         }
         if let latest = neighbor.drift.first {
-            parts.append("drift: " + latest)
+            parts.append(L("drift: ") + latest)
         }
         return parts.joined(separator: " · ")
     }

@@ -16,7 +16,7 @@ struct BatteryReading: Equatable {
 
     var summary: String {
         var head = component == "device"
-            ? "battery" : "\(component) battery"
+            ? L("battery") : String(format: L("%@ battery"), String(describing: L(component)))
         if let percent = percent {
             head += " \(percent)%"
         } else if let millivolts = millivolts {
@@ -24,7 +24,7 @@ struct BatteryReading: Equatable {
         }
         if let state = state {
             head += percent == nil && millivolts == nil
-                ? " \(state)" : ", \(state)"
+                ? " " + L(state) : ", " + L(state)
         }
         return head + " (\(source))"
     }
@@ -86,7 +86,7 @@ enum BatteryForecaster {
 
     private static func hoursText(_ hours: Double) -> String {
         if hours < 2 {
-            return "\(Int((hours * 60).rounded())) min"
+            return String(format: L("%@ min"), String(describing: Int((hours * 60).rounded())))
         }
         if hours < 48 {
             return String(format: "%.1f h", hours)
@@ -107,8 +107,8 @@ enum BatteryForecaster {
             return Forecast(
                 ratePerHour: fit.slopePerHour, etaLowHours: nil,
                 etaHighHours: nil,
-                text: "battery holding — no drain "
-                    + "measurable over "
+                text: L("battery holding — no drain ")
+                    + L("measurable over ")
                     + hoursText(fit.spanHours))
         }
         // Noise swallows the slope: no ETA.
@@ -121,10 +121,9 @@ enum BatteryForecaster {
         return Forecast(
             ratePerHour: fit.slopePerHour,
             etaLowHours: low, etaHighHours: high,
-            text: String(format: "draining ≈%.1f %%/h — ",
+            text: String(format: L("draining ≈%.1f %%/h — "),
                          rate)
-                + "empty in roughly \(hoursText(low))"
-                + "–\(hoursText(high)) at this rate")
+                + String(format: L("empty in roughly %@–%@ at this rate"), String(describing: hoursText(low)), String(describing: hoursText(high))))
     }
 
     static func voltageForecast(
@@ -137,21 +136,21 @@ enum BatteryForecaster {
             return Forecast(
                 ratePerHour: fit.slopePerHour,
                 etaLowHours: nil, etaHighHours: nil,
-                text: String(format: "voltage falling "
+                text: String(format: L("voltage falling ")
                              + "≈%.0f mV/h", abs(fit.slopePerHour)))
         }
         if fit.slopePerHour >= 5 {
             return Forecast(
                 ratePerHour: fit.slopePerHour,
                 etaLowHours: nil, etaHighHours: nil,
-                text: "voltage rising — charging, or a "
-                    + "fresh battery")
+                text: L("voltage rising — charging, or a ")
+                    + L("fresh battery"))
         }
         guard fit.spanHours >= 1 else { return nil }
         return Forecast(
             ratePerHour: fit.slopePerHour,
             etaLowHours: nil, etaHighHours: nil,
-            text: "voltage steady over "
+            text: L("voltage steady over ")
                 + hoursText(fit.spanHours))
     }
 }
@@ -194,16 +193,12 @@ enum DecoderEngine {
            let uptime = frame.uptimeS {
             let hours = uptime / 3600
             out.evidence.append(hours >= 1
-                ? "beacon bookkeeping: \(count) "
-                    + "advertisements over \(hours) h "
-                    + "of uptime"
-                : "beacon bookkeeping: \(count) "
-                    + "advertisements since power-up")
+                ? String(format: L("beacon bookkeeping: %@ advertisements over %@ h of uptime"), String(describing: count), String(describing: hours))
+                : String(format: L("beacon bookkeeping: %@ advertisements since power-up"), String(describing: count)))
         }
         if sighting.isConnectable == false {
             out.evidence.append(
-                "broadcast only — does not accept "
-                + "connections")
+                L("broadcast only — does not accept connections"))
         }
         out.shape = payloadShape(sighting)
         // And the radio's own facts, when no
@@ -216,12 +211,12 @@ enum DecoderEngine {
            sighting.serviceUUIDs.isEmpty {
             if sighting.isConnectable == true {
                 out.shape.append(
-                    "connectable — it accepts "
+                    L("connectable — it accepts ")
                     + "connections")
             }
             if let tx = sighting.txPower {
                 out.shape.append(
-                    "transmits at \(tx) dBm")
+                    String(format: L("transmits at %@ dBm"), String(describing: tx)))
             }
         }
         return out
@@ -270,7 +265,7 @@ enum DecoderEngine {
                 readings.append(BatteryReading(
                     component: "device", percent: nil,
                     millivolts: nil, state: findMy.battery,
-                    source: "Find My", observedAt: at))
+                    source: L("Find My"), observedAt: at))
             }
             // Instant Hotspot reports the phone's
             // own battery as a plain percentage.
@@ -282,7 +277,7 @@ enum DecoderEngine {
                     readings.append(BatteryReading(
                         component: "device",
                         percent: percent, millivolts: nil,
-                        state: nil, source: "Instant Hotspot",
+                        state: nil, source: L("Instant Hotspot"),
                         observedAt: at))
                 }
             }
@@ -337,7 +332,7 @@ enum DecoderEngine {
                 component: "device",
                 percent: Int(payload[17]),
                 millivolts: nil, state: nil,
-                source: "MikroTik tag",
+                source: L("MikroTik tag"),
                 observedAt: at))
         }
 
@@ -350,7 +345,7 @@ enum DecoderEngine {
                 percent: Int(payload[4] & 0x7F),
                 millivolts: nil,
                 state: (payload[4] & 0x80) != 0
-                    ? "sensor error" : nil,
+                    ? L("sensor error") : nil,
                 source: "Govee", observedAt: at))
         }
 
@@ -372,7 +367,7 @@ enum DecoderEngine {
             readings.append(BatteryReading(
                 component: "device", percent: percent,
                 millivolts: nil, state: nil,
-                source: "BTHome v2", observedAt: at))
+                source: L("BTHome v2"), observedAt: at))
         }
         // The expansion batch's formats, read the
         // same way.
@@ -446,32 +441,32 @@ enum DecoderEngine {
 
     private static let capabilityPhrases:
         [UInt16: String] = [
-        0x180F: "carries a battery service — its "
-            + "level reads on connection, not "
-            + "from the air",
-        0x180D: "heart-rate capable",
-        0x1808: "glucose capable",
-        0x1810: "blood-pressure capable",
-        0x1822: "pulse-oximeter capable",
-        0x1809: "health-thermometer capable",
-        0x181A: "environmental-sensing capable",
-        0x181B: "body-composition capable",
-        0x181D: "weight-scale capable",
-        0x1812: "a human-interface device "
-            + "(keyboard, mouse, controller)",
-        0x180A: "carries device information",
-        0x1805: "carries the current time",
-        0x1815: "automation I/O capable",
-        0x1816: "cycling speed and cadence",
-        0x1814: "running speed and cadence",
-        0x1818: "cycling-power capable",
-        0x1819: "location and navigation capable",
-        0x1826: "fitness-machine capable",
-        0x1827: "a Bluetooth Mesh node "
+        0x180F: L("carries a battery service — its ")
+            + L("level reads on connection, not ")
+            + L("from the air"),
+        0x180D: L("heart-rate capable"),
+        0x1808: L("glucose capable"),
+        0x1810: L("blood-pressure capable"),
+        0x1822: L("pulse-oximeter capable"),
+        0x1809: L("health-thermometer capable"),
+        0x181A: L("environmental-sensing capable"),
+        0x181B: L("body-composition capable"),
+        0x181D: L("weight-scale capable"),
+        0x1812: L("a human-interface device ")
+            + L("(keyboard, mouse, controller)"),
+        0x180A: L("carries device information"),
+        0x1805: L("carries the current time"),
+        0x1815: L("automation I/O capable"),
+        0x1816: L("cycling speed and cadence"),
+        0x1814: L("running speed and cadence"),
+        0x1818: L("cycling-power capable"),
+        0x1819: L("location and navigation capable"),
+        0x1826: L("fitness-machine capable"),
+        0x1827: L("a Bluetooth Mesh node ")
             + "(provisioning)",
-        0x1828: "a Bluetooth Mesh proxy",
-        0x1811: "alert-notification capable",
-        0x181C: "carries user data",
+        0x1828: L("a Bluetooth Mesh proxy"),
+        0x1811: L("alert-notification capable"),
+        0x181C: L("carries user data"),
     ]
 
     private static let leAudioServices: Set<UInt16> = [
@@ -495,7 +490,7 @@ enum DecoderEngine {
             lines.append(capabilityPhrases[id]!)
         }
         if !shorts.isDisjoint(with: leAudioServices) {
-            lines.append("carries LE Audio services")
+            lines.append(L("carries LE Audio services"))
         }
         return Array(lines.prefix(3))
     }
@@ -520,18 +515,18 @@ enum DecoderEngine {
         let entropy = shannonEntropy(payload)
         if entropy > 7.0 {
             return ["payload \(payload.count) bytes, "
-                + "near-random — consistent with "
-                + "encrypted or rotating data; the "
-                + "contents are not readable from "
-                + "the air"]
+                + L("near-random — consistent with ")
+                + L("encrypted or rotating data; the ")
+                + L("contents are not readable from ")
+                + L("the air")]
         }
         if let run = longestPrintableRun(payload),
            run.count >= 4 {
-            return ["payload carries the text "
+            return [L("payload carries the text ")
                 + "'\(run)'"]
         }
         return ["payload \(payload.count) bytes, "
-            + "no known format"]
+            + L("no known format")]
     }
 
     static func shannonEntropy(_ bytes: [UInt8]) -> Double {
