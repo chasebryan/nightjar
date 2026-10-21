@@ -201,10 +201,38 @@ struct LanguageSheet: View {
 
     var body: some View {
         NavigationStack {
+            sheetContent
+                .navigationTitle(welcome
+                                 ? L("Choose your language")
+                                 : L("Language"))
+                .toolbar {
+                    ToolbarItem(placement:
+                        .confirmationAction) {
+                        Button(welcome ? L("Continue")
+                               : L("Done")) {
+                            Haptics.tap()
+                            if welcome {
+                                center.markWelcomed()
+                            }
+                            dismiss()
+                        }
+                    }
+                }
+        }
+    }
+
+    /// The sheet's content, spelled per platform.
+    /// The branch cannot sit inline in the stack:
+    /// a modifier chained after #endif loses its
+    /// base, because the two branches' shapes
+    /// differ — so the branch lives here and the
+    /// title and toolbar ride the one result.
+    @ViewBuilder
+    private var sheetContent: some View {
 #if os(macOS)
-            macSheet
+        macSheet
 #else
-            List {
+        List {
                 if welcome {
                     Section {
                         Text(L("One choice, now — the whole house speaks it, Skelli included. Change it any time in About."))
@@ -270,22 +298,6 @@ struct LanguageSheet: View {
                 }
             }
 #endif
-            .navigationTitle(welcome
-                             ? L("Choose your language")
-                             : L("Language"))
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(welcome ? L("Continue")
-                           : L("Done")) {
-                        Haptics.tap()
-                        if welcome {
-                            center.markWelcomed()
-                        }
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 
