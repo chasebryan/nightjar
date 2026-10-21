@@ -266,6 +266,28 @@ struct ContentView: View {
     }
     @ObservedObject private var themes = ThemeCenter.shared
 
+    /// The room the operator is standing in, named
+    /// for the Mac's toolbar (fix261): the window
+    /// says where you are, the way a Mac app's does.
+    private var roomTitle: String {
+        switch tab {
+        case 9: return L("Skelli")
+        case 0: return L("Listen")
+        case 1: return L("Send")
+        case 2: return L("Serve")
+        case 5: return L("About")
+        case 12: return L("Blacksite")
+        case 3: return L("Sessions")
+        case 4: return L("Scan")
+        case 6: return L("Recon")
+        case 7: return L("EMCON")
+        case 8: return L("Knocktalk")
+        case 10: return L("Macros")
+        case 11: return L("Vault")
+        default: return L("nightjar")
+        }
+    }
+
     /// The house's rooms, with everything hung
     /// on them — the tab view, its watches, its
     /// overlays and its sheets. One navigator
@@ -375,6 +397,10 @@ struct ContentView: View {
     }
     .tint(themes.current.accent)
     .houseMacTabStyle()
+    .macShellBar(title: roomTitle,
+                 processes: board.active.count) {
+        showBoard = true
+    }
     .onReceive(
         NotificationCenter.default.publisher(
             for: Blacksite.openTabNotification)
@@ -521,6 +547,32 @@ struct ListenView: View {
                     }
                 }
 #endif
+#if os(macOS)
+                if let session = post.session {
+                    Section {
+                        // The Mac dashboard (fix261):
+                        // the session at a glance,
+                        // as tiles over the detail.
+                        HStack(spacing: 10) {
+                            macStatTile(
+                                value: "\(post.deviceCount)",
+                                label: L("In earshot"))
+                            macStatTile(
+                                value: "\(post.sightingCount)",
+                                label: L("Sightings"))
+                            macStatTile(
+                                value: elapsed(
+                                    since: session.startedAt),
+                                label: bluetoothText)
+                        }
+                        .listRowInsets(EdgeInsets(
+                            top: 6, leading: 0,
+                            bottom: 6, trailing: 0))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+                }
+#endif
                 Section {
                     statusRow
                     if let session = post.session {
@@ -580,6 +632,7 @@ struct ListenView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("nightjar"))
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
@@ -588,6 +641,27 @@ struct ListenView: View {
                     .environmentObject(post)
             }
         }
+    }
+
+    /// One dashboard tile (Mac, fix261): a big
+    /// number over a small caption, in the panel
+    /// dress.
+    private func macStatTile(value: String,
+                             label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+                .lineLimit(1)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity,
+               alignment: .leading)
+        .padding(10)
+        .macPanel()
     }
 
     @ViewBuilder private var statusRow: some View {

@@ -357,6 +357,133 @@ extension Scene {
 #if os(macOS)
         self.defaultSize(width: 1240, height: 820)
             .windowResizability(.contentMinSize)
+            .windowToolbarStyle(.unified)
+#else
+        self
+#endif
+    }
+}
+
+// MARK: - The Mac skin (fix261)
+//
+// The port gave the Mac the phone's bones; this is
+// its own skin. A Mac-first nightjar is a console:
+// dark, calm, dense — working rooms on a quiet
+// charcoal ground, prose in a reading column,
+// panels with hairline edges, and the theme's
+// accent spent like a spice. The living wallpaper
+// keeps the boot and Skelli's room; it does not
+// sit behind forms and tables. Every helper here
+// is identity on iOS — the phone keeps its skin.
+
+#if os(macOS)
+/// The console ground: what the Mac's working
+/// rooms sit on. A near-black charcoal washed
+/// faintly with the theme's tint from the top,
+/// so the chosen theme still breathes without
+/// art behind the work.
+struct MacGround: View {
+    @ObservedObject private var themes =
+        ThemeCenter.shared
+
+    var body: some View {
+        let theme = themes.current
+        ZStack {
+            Color(red: 0.052, green: 0.058,
+                  blue: 0.068)
+            LinearGradient(
+                colors: [theme.tint.opacity(0.13),
+                         theme.tint.opacity(0.0)],
+                startPoint: .top,
+                endPoint: .center)
+            Rectangle()
+                .fill(Color.black
+                    .opacity(theme.dim * 0.4))
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
+/// The window's own bar, dressed as a Mac app's:
+/// the room's name as the principal item, and a
+/// running-work button at the trailing end while
+/// the process board has anything on it.
+struct MacShellBar: ViewModifier {
+    let title: String
+    let processes: Int
+    let onProcesses: () -> Void
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(title)
+                    .font(.system(size: 13,
+                                  weight: .semibold))
+            }
+            if processes > 0 {
+                ToolbarItem(
+                    placement: .primaryAction) {
+                    Button(action: onProcesses) {
+                        Label("\(processes)",
+                              systemImage:
+                                "circle.grid.2x2.fill")
+                    }
+                    .help(L("Running work"))
+                }
+            }
+        }
+    }
+}
+#endif
+
+extension View {
+    /// The shell's Mac bar (see MacShellBar); the
+    /// phone's strip needs no second dress.
+    func macShellBar(title: String, processes: Int,
+                     onProcesses: @escaping () -> Void)
+        -> some View {
+#if os(macOS)
+        modifier(MacShellBar(title: title,
+                             processes: processes,
+                             onProcesses: onProcesses))
+#else
+        self
+#endif
+    }
+
+    /// A reading measure: on the Mac the content
+    /// stands in a centered column of the given
+    /// width instead of stretching edge to edge
+    /// across a laptop window; the phone's layout
+    /// is already the width it wants.
+    func macColumn(_ width: CGFloat) -> some View {
+#if os(macOS)
+        frame(maxWidth: width)
+            .frame(maxWidth: .infinity)
+#else
+        self
+#endif
+    }
+
+    /// The panel dress: a quiet fill and a hairline
+    /// edge, the dark console's card. On the phone
+    /// the lists already dress their own rows.
+    func macPanel() -> some View {
+#if os(macOS)
+        background(
+            RoundedRectangle(cornerRadius: 10,
+                             style: .continuous)
+                .fill(Color.white.opacity(0.045)))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10,
+                                 style: .continuous)
+                    .strokeBorder(
+                        Color.white.opacity(0.09),
+                        lineWidth: 1))
+            .clipShape(
+                RoundedRectangle(cornerRadius: 10,
+                                 style: .continuous))
 #else
         self
 #endif

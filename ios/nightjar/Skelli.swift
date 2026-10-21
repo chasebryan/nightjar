@@ -9366,6 +9366,19 @@ struct SkelliView: View {
         }
     }
 
+    /// The header's headroom: on the phone it
+    /// clears the status bar she reaches under;
+    /// on the Mac the window's own toolbar is
+    /// already there, so the room starts near
+    /// the top like a Mac room does (fix261).
+    private var headerTopPad: CGFloat {
+#if os(macOS)
+        12
+#else
+        50
+#endif
+    }
+
     private var screen: some View {
 #if os(macOS)
         screenCore
@@ -9388,8 +9401,16 @@ struct SkelliView: View {
     private var screenCore: some View {
         VStack(spacing: 0) {
             pinnedHeader
+            // The Mac skin (fix261): her words are
+            // prose, and prose keeps a measure —
+            // the transcript and the composer stand
+            // in a column on the laptop instead of
+            // stretching across the whole window.
+            // On the phone the helper is identity.
             transcript
+                .macColumn(780)
             inputBar
+                .macColumn(780)
         }
         .background { SkelliBackdrop() }
         .overlay(alignment: .bottomLeading) {
@@ -9414,7 +9435,7 @@ struct SkelliView: View {
                 .transition(.opacity)
             }
         }
-        .padding(.top, 50)
+        .padding(.top, headerTopPad)
         .background {
             ZStack {
                 // Glass with a visible tint

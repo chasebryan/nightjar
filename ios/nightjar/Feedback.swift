@@ -270,13 +270,32 @@ struct AppBackdrop: View {
     }
 
     var body: some View {
+#if os(macOS)
+        // The Mac skin (fix261): the wallpaper is
+        // ceremony and presence, not wallpaper
+        // behind work. Her room keeps her art, and
+        // the console keeps its own ground; every
+        // other room sits on the console ground.
+        if resolvedSlot == .skelli
+            || themes.effectiveChoice(
+                for: resolvedSlot) == .console {
+            fullBackdrop
+        } else {
+            MacGround()
+        }
+#else
+        fullBackdrop
+#endif
+    }
+
+    private var fullBackdrop: some View {
         // GeometryReader pins the backdrop to exactly the size
         // it is offered. A bare scaledToFill image inside a
         // ZStack reports its natural size and blows the whole
         // layout out to match — frame + clip keep it tame.
         let theme = themes.current
         let choice = themes.effectiveChoice(for: resolvedSlot)
-        GeometryReader { geo in
+        return GeometryReader { geo in
             ZStack {
                 Color(white: 0.03)
                 backdrop(choice: choice, theme: theme, geo: geo)
