@@ -59,6 +59,16 @@ struct BFFrame: Identifiable {
     var dstPort: Int? = nil
     var isTCP = false
     var isUDP = false
+    /// The TCP stream facts — sequence
+    /// number, the nine flag bits (NS in
+    /// bit 8, then CWR down to FIN), and
+    /// where the payload sits in the
+    /// frame's bytes. Driftnet's stream
+    /// reassembly is built from these.
+    var tcpSeq: Int? = nil
+    var tcpAck: Int? = nil
+    var tcpFlags: Int = 0
+    var tcpPayloadRange: Range<Int>? = nil
     /// Lowercased info line plus the
     /// payload rendered as text — what a
     /// `contains` filter searches.
@@ -569,6 +579,11 @@ extension Betafisch {
         var dstPort: Int? = nil
         var isTCP = false
         var isUDP = false
+        var tcpSeq: Int? = nil
+        var tcpAck: Int? = nil
+        var tcpFlags: Int = 0
+        var tcpPayloadAt: Int? = nil
+        var tcpPayloadLen: Int = 0
     }
 
     static func dissect(bytes: [UInt8], origLen: Int,
@@ -660,6 +675,15 @@ extension Betafisch {
         frame.dstPort = acc.dstPort
         frame.isTCP = acc.isTCP
         frame.isUDP = acc.isUDP
+        frame.tcpSeq = acc.tcpSeq
+        frame.tcpAck = acc.tcpAck
+        frame.tcpFlags = acc.tcpFlags
+        if let payloadAt = acc.tcpPayloadAt {
+            let end = min(bytes.count,
+                          payloadAt + acc.tcpPayloadLen)
+            frame.tcpPayloadRange =
+                payloadAt..<max(payloadAt, end)
+        }
         frame.searchText = (acc.info + "\n"
             + textRender(bytes)).lowercased()
         return frame
@@ -1530,6 +1554,9 @@ extension Betafisch {
         let urgent = u16be(b, at + 18) ?? 0
         acc.srcPort = sport
         acc.dstPort = dport
+        acc.tcpSeq = seq
+        acc.tcpAck = ack
+        acc.tcpFlags = (nsBit << 8) | flagByte
         var flagWords: [String] = []
         if nsBit == 1 { flagWords.append("NS") }
         if flagByte & 0x80 != 0 { flagWords.append("CWR") }
@@ -1588,6 +1615,8 @@ extension Betafisch {
         }
         let payloadAt = at + headerLen
         let payloadLen = max(0, end - payloadAt)
+        acc.tcpPayloadAt = payloadAt
+        acc.tcpPayloadLen = payloadLen
         acc.info = String(
             format: L("%lld → %lld [%@] Seq=%lld Ack=%lld Win=%lld Len=%lld"),
             sport, dport, flagText, seq, ack, window,
@@ -2496,14 +2525,16 @@ extension Betafisch {
 
     // MARK: The sample capture
     //
-    // Eight frames built byte by byte in
+    // Fifteen frames built byte by byte in
     // code — an ARP exchange, a DNS
     // question and its answer, a TCP
-    // handshake opening, a ping, and an
-    // HTTP request — so the room can be
-    // tried with no file at all. The
-    // addresses are the textbook ones:
-    // a house at 192.168.1.x asking after
+    // handshake opening, a ping, an HTTP
+    // request, and a second connection
+    // that fetches a small PNG picture —
+    // so the room can be tried with no
+    // file at all. The addresses are the
+    // textbook ones: a house at
+    // 192.168.1.x asking after
     // example.com.
 
     static func sampleCapture() -> BFCapture {
@@ -2641,6 +2672,129 @@ extension Betafisch {
                               src: phoneMAC,
                               type: 0x0800,
                               payload: get), 0.900))
+
+        // A second errand, told whole:
+        // a fresh connection opens, asks
+        // for /moon.png, and the server
+        // sends the picture in two pieces
+        // before it hangs up — the catch
+        // driftnet's sample run lifts.
+        let moonPort = 52312
+        let moonSYN = ipv4Bytes(
+            src: phoneIP, dst: serverIP, proto: 6,
+            ident: 0x1007,
+            payload: tcpBytes(src: phoneIP,
+                              dst: serverIP,
+                              sport: moonPort, dport: 80,
+                              seq: 2000, ack: 0,
+                              flags: 0x02, window: 65535,
+                              options: synOptions,
+                              payload: []))
+        raws.append((ethFrame(dst: routerMAC,
+                              src: phoneMAC,
+                              type: 0x0800,
+                              payload: moonSYN), 1.000))
+        let moonSYNACK = ipv4Bytes(
+            src: serverIP, dst: phoneIP, proto: 6,
+            ident: 0x2005,
+            payload: tcpBytes(src: serverIP,
+                              dst: phoneIP,
+                              sport: 80, dport: moonPort,
+                              seq: 8000, ack: 2001,
+                              flags: 0x12, window: 65160,
+                              options: synAckOptions,
+                              payload: []))
+        raws.append((ethFrame(dst: phoneMAC,
+                              src: routerMAC,
+                              type: 0x0800,
+                              payload: moonSYNACK), 1.038))
+        let moonACK = ipv4Bytes(
+            src: phoneIP, dst: serverIP, proto: 6,
+            ident: 0x1008,
+            payload: tcpBytes(src: phoneIP,
+                              dst: serverIP,
+                              sport: moonPort, dport: 80,
+                              seq: 2001, ack: 8001,
+                              flags: 0x10, window: 65535,
+                              options: [],
+                              payload: []))
+        raws.append((ethFrame(dst: routerMAC,
+                              src: phoneMAC,
+                              type: 0x0800,
+                              payload: moonACK), 1.039))
+        let moonAskText = "GET /moon.png HTTP/1.1\r\n"
+            + "Host: example.com\r\n"
+            + "Accept: image/png\r\n\r\n"
+        let moonAsk = Array(moonAskText.utf8)
+        let moonGET = ipv4Bytes(
+            src: phoneIP, dst: serverIP, proto: 6,
+            ident: 0x1009,
+            payload: tcpBytes(src: phoneIP,
+                              dst: serverIP,
+                              sport: moonPort, dport: 80,
+                              seq: 2001, ack: 8001,
+                              flags: 0x18, window: 65535,
+                              options: [],
+                              payload: moonAsk))
+        raws.append((ethFrame(dst: routerMAC,
+                              src: phoneMAC,
+                              type: 0x0800,
+                              payload: moonGET), 1.052))
+        let moon = moonPNGBytes()
+        let moonHead = "HTTP/1.1 200 OK\r\n"
+            + "Content-Type: image/png\r\n"
+            + "Content-Length: \(moon.count)\r\n"
+            + "Connection: close\r\n\r\n"
+        var moonAnswer = Array(moonHead.utf8)
+        moonAnswer += moon
+        let moonSplit = moonAnswer.count / 2
+        let moonPart1 = Array(moonAnswer[..<moonSplit])
+        let moonPart2 = Array(moonAnswer[moonSplit...])
+        let moonAck = 2001 + moonAsk.count
+        let moonReply1 = ipv4Bytes(
+            src: serverIP, dst: phoneIP, proto: 6,
+            ident: 0x2006,
+            payload: tcpBytes(src: serverIP,
+                              dst: phoneIP,
+                              sport: 80, dport: moonPort,
+                              seq: 8001, ack: moonAck,
+                              flags: 0x18, window: 65160,
+                              options: [],
+                              payload: moonPart1))
+        raws.append((ethFrame(dst: phoneMAC,
+                              src: routerMAC,
+                              type: 0x0800,
+                              payload: moonReply1), 1.118))
+        let moonReply2 = ipv4Bytes(
+            src: serverIP, dst: phoneIP, proto: 6,
+            ident: 0x2007,
+            payload: tcpBytes(src: serverIP,
+                              dst: phoneIP,
+                              sport: 80, dport: moonPort,
+                              seq: 8001 + moonSplit,
+                              ack: moonAck,
+                              flags: 0x18, window: 65160,
+                              options: [],
+                              payload: moonPart2))
+        raws.append((ethFrame(dst: phoneMAC,
+                              src: routerMAC,
+                              type: 0x0800,
+                              payload: moonReply2), 1.143))
+        let moonFIN = ipv4Bytes(
+            src: serverIP, dst: phoneIP, proto: 6,
+            ident: 0x2008,
+            payload: tcpBytes(src: serverIP,
+                              dst: phoneIP,
+                              sport: 80, dport: moonPort,
+                              seq: 8001 + moonAnswer.count,
+                              ack: moonAck,
+                              flags: 0x11, window: 65160,
+                              options: [],
+                              payload: []))
+        raws.append((ethFrame(dst: phoneMAC,
+                              src: routerMAC,
+                              type: 0x0800,
+                              payload: moonFIN), 1.158))
 
         let base = 1_760_000_000.0
         var capture = BFCapture(
@@ -2792,6 +2946,108 @@ extension Betafisch {
         out += [0xc0, 0x0c, 0, 1, 0, 1,
                 0, 0, 0x01, 0x2c, 0, 4]
         out += addr
+        return out
+    }
+
+    /// The sample's picture: a sixteen-
+    /// pixel moon, built byte by byte —
+    /// a dark field, a pale disc with a
+    /// bite taken out of it. RGB rows
+    /// under a stored (uncompressed)
+    /// zlib stream, so every byte can be
+    /// accounted for by hand; the chunk
+    /// CRCs and the Adler word are
+    /// worked out here, in the open.
+    static func moonPNGBytes() -> [UInt8] {
+        let side = 16
+        var raw: [UInt8] = []
+        for y in 0..<side {
+            raw.append(0)
+            for x in 0..<side {
+                let dx = Double(x) - 10.0
+                let dy = Double(y) - 7.5
+                let discD2 = dx * dx + dy * dy
+                let inDisc = discD2 <= 20.25
+                let bx = Double(x) - 12.5
+                let by = Double(y) - 6.0
+                let biteD2 = bx * bx + by * by
+                let inBite = biteD2 <= 14.44
+                if inDisc && !inBite {
+                    raw += [232, 230, 210]
+                } else {
+                    raw += [10, 12, 28]
+                }
+            }
+        }
+        // zlib: the no-compression
+        // header, one stored block (the
+        // raw rows sit far under its
+        // 65535-byte limit), and the
+        // Adler-32 of the rows, big-end
+        // first as the format asks.
+        var idat: [UInt8] = [0x78, 0x01, 0x01]
+        idat.append(UInt8(raw.count & 0xff))
+        idat.append(UInt8((raw.count >> 8) & 0xff))
+        let nlen = raw.count ^ 0xffff
+        idat.append(UInt8(nlen & 0xff))
+        idat.append(UInt8((nlen >> 8) & 0xff))
+        idat += raw
+        var adlerA: UInt32 = 1
+        var adlerB: UInt32 = 0
+        for byte in raw {
+            adlerA = (adlerA + UInt32(byte)) % 65521
+            adlerB = (adlerB + adlerA) % 65521
+        }
+        let adlerWord = (adlerB << 16) | adlerA
+        for shift in [24, 16, 8, 0] {
+            idat.append(UInt8(
+                (adlerWord >> UInt32(shift)) & 0xff))
+        }
+        var png: [UInt8] = [0x89, 0x50, 0x4e, 0x47,
+                            0x0d, 0x0a, 0x1a, 0x0a]
+        var ihdr: [UInt8] = []
+        for shift in [24, 16, 8, 0] {
+            ihdr.append(UInt8((side >> shift) & 0xff))
+        }
+        for shift in [24, 16, 8, 0] {
+            ihdr.append(UInt8((side >> shift) & 0xff))
+        }
+        ihdr += [8, 2, 0, 0, 0]
+        png += pngChunk("IHDR", ihdr)
+        png += pngChunk("IDAT", idat)
+        png += pngChunk("IEND", [])
+        return png
+    }
+
+    /// One PNG chunk: length, type,
+    /// data, and the CRC-32 the format
+    /// keeps over type and data both.
+    static func pngChunk(_ type: String,
+                         _ data: [UInt8]) -> [UInt8] {
+        var out: [UInt8] = []
+        for shift in [24, 16, 8, 0] {
+            out.append(UInt8(
+                (data.count >> shift) & 0xff))
+        }
+        let typeBytes = Array(type.utf8)
+        out += typeBytes
+        out += data
+        var crc: UInt32 = 0xffff_ffff
+        for byte in typeBytes + data {
+            crc ^= UInt32(byte)
+            for _ in 0..<8 {
+                if (crc & 1) != 0 {
+                    crc = (crc >> 1) ^ 0xedb8_8320
+                } else {
+                    crc = crc >> 1
+                }
+            }
+        }
+        crc ^= 0xffff_ffff
+        for shift in [24, 16, 8, 0] {
+            out.append(UInt8(
+                (crc >> UInt32(shift)) & 0xff))
+        }
         return out
     }
 }
