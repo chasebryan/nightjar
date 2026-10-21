@@ -10661,7 +10661,8 @@ struct SkelliView: View {
                                     .font(.callout)
                                     .foregroundStyle(
                                         line.fromOperator
-                                            ? .white
+                                            ? themes.current
+                                                .onAccent
                                             : .primary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 9)
@@ -10781,7 +10782,8 @@ struct SkelliView: View {
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.body.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(
+                        themes.current.onAccent)
                     .frame(width: 34, height: 34)
                     .background(themes.current.accent,
                                 in: Circle())
