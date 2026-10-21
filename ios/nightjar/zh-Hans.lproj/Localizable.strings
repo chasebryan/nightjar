@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10分钟的研磨";
 "100,000" = "100,000";
 "15 min" = "15 分钟";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210,000";
 "3 hours" = "3 小时";
 "3 min" = "3分钟";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff:一个被点名的文件无法读取。";
 "diff: name two texts, or one and a pipe." = "diff:请指定两个文本,或者一个加一个管道。";
 "diff: too large for this room." = "diff:对这间屋子来说太大了。";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig 需要一个名字——'dig example.com'、'dig @192.168.4.1 x.local AAAA'。";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig 需要一个名字——'dig example.com'、'dig @192.168.1.1 x.local AAAA'。";
 "dig: no answer from %@ — the wire stayed quiet." = "dig:%@ 没有应答——线路保持沉默。";
 "dirb: that is not a URL." = "dirb:这不是 URL。";
 "dirb: the host is not answering at all — called off." = "dirb:主机完全没有应答——已取消。";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel:[%@] %@ — 已停止。";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> ——'ps' 列出内核的进程表。";
 "kill: no live process %@." = "kill:没有存活的进程 %@。";
-"knock needs a host — 'knock 192.168.4.1'." = "knock 需要一个主机——'knock 192.168.4.1'。";
+"knock needs a host — 'knock 192.168.1.1'." = "knock 需要一个主机——'knock 192.168.1.1'。";
 "knock runs live — it cannot be piped or captured." = "knock 是实时运行的——无法管道传输或捕获。";
 "knocking on %@ doors at %@ — anything but 404 is news" = "正在 %@ 敲 %@ 扇门——只要不是 404 就是新闻";
 "limits — what this room honestly cannot do:" = "limits ——这间屋子诚实地说做不到的事:";
@@ -2874,7 +2874,7 @@
 "connected" = "已连接";
 "device" = "设备";
 "diagnose: %@/%@ — %@" = "诊断:%@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb 需要 URL — 'dirb http://192.168.4.1'。";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb 需要 URL — 'dirb http://192.168.1.1'。";
 "down" = "已断开";
 "factory write community live" = "出厂写入团体字可用";
 "features ride at their defaults." = "功能按默认值运行。";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "她的拒绝是读数,不是心情。一个\"还没准备好\"的宏会点名它第一个未就绪的块以及原因——一个不在书里的载荷、一个解析不了的目标——因为一个跑了一半的播放列表比一个从不开始的更糟。一只说某个器官\"还没到我这里\"的手,意味着它的标签页自启动以来没有被打开过;打开一次就为这个会话把它接上了线。一项读作平台限制的能力——免费团队上的 NFC——明天也会是同样的读法;她不让操作员把追当成一个 bug。";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "把一个标签贴近手机,普查就会读它:类型、标识符、技术、它携带的 NDEF,以及一个 ISO 7816 标签会给探索者的 APDU 应答。它读取并识别——从不写入或克隆;一次读取的记录留在房间里。";
 "Home network hardening — the NSA's sheet" = "家庭网络加固——NSA 的单子";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "家庭线路几乎总是一个 /24:一个前缀之下的 254 个地址,网关在 .1(这里的 eero),广播在 .255,一声喊在那里能同时到达每一台主机。手机在这条线路上的地址是 192.168.4.20。一次扫查走过这 254 个地址,敲每一个的一个端口——是普查,不是猛击。离开 /24 会完全改变规则:远程目标是别人的网络,About 里的宪章适用。";
 "Housekeeping — clears and folds" = "内务——清除与折叠";
 "How operators actually phrase orders" = "操作员实际如何措辞命令";
 "How the exams are actually passed" = "考试到底是怎么通过的";
@@ -3915,7 +3914,7 @@
 "But I can " = "但我可以 ";
 "Called off — the Netbomb stays in the rack." = "取消了——Netbomb 留在架子上。";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "挑战已发给 %@——防守方必须开着服务并打开它的战争游戏房间。等 READY 到了，这一局在 Send 标签页的战争游戏房间里设定。";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "挑战谁？给我防守方的地址——比如 challenge 192.168.4.31。";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "挑战谁？给我防守方的地址——比如 challenge 192.168.1.31。";
 "Currently wearing %@. The rack holds: %@." = "现在穿着 %@。架子上有：%@。";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "防线已设：Serve 的门有 %@ 扇当作真的守着，%@ 个诱饵在飞";
 "Deleted “%@”." = "删掉了“%@”。";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@ 已完成:%lld/%lld 个模块。";
 "%@: stopped." = "%@:已停止。";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 或网关";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 或 phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 或网关";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 或 phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "对当前范围做一次完整追踪,然后报一声完成。";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "是驻守,不是测试:全屋熄灯、隐身开启、耳朵敞开——最终就以这个姿态收尾,本就如此设计。";
 "A watch is already running — left as it was." = "已有监视在运行——保持原样。";
