@@ -6236,3 +6236,6 @@
 "this network" = "이 네트워크";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: 이 기기 자체의 TLS 스택은 이전 버전을 제공하지 않습니다 — 서버의 구식 잠금을 여기서는 입증할 수 없습니다.";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — 이 기기에서는 테스트할 수 없습니다: 해당 스택이 대신 %@를 협상했습니다.";
+"the house answers to %lld commands:" = "이 집은 %lld개의 명령에 답합니다:";
+"— %@ — %lld commands" = "— %@ — %lld개 명령";
+"help <section> opens one section whole; help <word> searches every command." = "help <섹션>은 섹션 전체를 열고, help <단어>는 모든 명령을 검색합니다.";
