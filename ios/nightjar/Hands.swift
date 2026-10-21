@@ -2101,13 +2101,40 @@ extension SkelliCenter {
                         .trimmingCharacters(
                             in: .whitespaces)
                 }
+            } else if let fixed =
+                fuzzyBuiltin(first) {
+                payloadQ = fixed + String(
+                    rest.dropFirst(first.count))
+                let rawTrimmed = raw
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if rawTrimmed.lowercased()
+                    .hasPrefix("run ") {
+                    let rawRest = String(
+                        rawTrimmed.dropFirst(4))
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                    rawPayload =
+                        replacingFirstWord(
+                            of: rawRest,
+                            with: fixed)
+                }
             }
         }
         if payloadQ == nil
             && !q.contains("canary") {
             let tokens = q.split(separator: " ")
                 .map(String.init)
-            if let first = tokens.first,
+            var first = tokens.first ?? ""
+            var fuzzed = false
+            if !first.isEmpty,
+               !BlacksiteShell.builtinNames
+                   .contains(first),
+               let fixed = fuzzyBuiltin(first) {
+                first = fixed
+                fuzzed = true
+            }
+            if !first.isEmpty,
                first != "run",
                BlacksiteShell.builtinNames
                    .contains(first) {
@@ -2139,10 +2166,20 @@ extension SkelliCenter {
                         })
                 }
                 if claims {
-                    payloadQ = q
-                    rawPayload = raw
-                        .trimmingCharacters(
-                            in: .whitespaces)
+                    if fuzzed {
+                        payloadQ = first + String(
+                            q.dropFirst(
+                                tokens[0].count))
+                        rawPayload =
+                            replacingFirstWord(
+                                of: raw,
+                                with: first)
+                    } else {
+                        payloadQ = q
+                        rawPayload = raw
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                    }
                 }
             }
         }
@@ -2197,6 +2234,69 @@ extension SkelliCenter {
             }
         }
         return true
+    }
+
+    /// A near-miss tool name (fix269): one
+    /// letter off a builtin, five letters or
+    /// longer, with exactly one candidate —
+    /// "whosis" is whois with a slipped
+    /// finger, and she runs the tool he meant
+    /// instead of lecturing him about the
+    /// domain. Short words never fuzz: "send"
+    /// is one letter from sed, and her send
+    /// hand owns that word outright. Two
+    /// candidates or none: the word stands
+    /// as typed.
+    private func fuzzyBuiltin(
+        _ token: String) -> String? {
+        guard token.count >= 5 else {
+            return nil
+        }
+        let hits = BlacksiteShell.builtinNames
+            .filter {
+                $0.count >= 3
+                    && abs($0.count
+                        - token.count) <= 1
+                    && editDistance(token, $0)
+                        == 1
+            }
+        return hits.count == 1 ? hits[0] : nil
+    }
+
+    /// Plain Levenshtein — one insertion,
+    /// deletion, or substitution is one.
+    private func editDistance(
+        _ a: String, _ b: String) -> Int {
+        let xs = Array(a), ys = Array(b)
+        if xs.isEmpty { return ys.count }
+        if ys.isEmpty { return xs.count }
+        var row = Array(0...ys.count)
+        for i in 1...xs.count {
+            var next = [i]
+            for j in 1...ys.count {
+                let cost = xs[i - 1] == ys[j - 1]
+                    ? 0 : 1
+                next.append(min(
+                    row[j] + 1,
+                    next[j - 1] + 1,
+                    row[j - 1] + cost))
+            }
+            row = next
+        }
+        return row[ys.count]
+    }
+
+    /// Swap a line's first word for the name
+    /// she settled on, keeping the rest of
+    /// the line — and its casing — as typed.
+    private func replacingFirstWord(
+        of line: String, with word: String)
+        -> String {
+        let trimmed = line.trimmingCharacters(
+            in: .whitespaces)
+        guard let space = trimmed.firstIndex(
+            of: " ") else { return word }
+        return word + String(trimmed[space...])
     }
 
     /// Her vault hand (fix154): seal a
