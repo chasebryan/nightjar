@@ -526,7 +526,7 @@ struct SendView: View {
                               systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(HouseProminentStyle())
                     .disabled(mouth.fanoutBusy || fanoutList.isEmpty)
                     if mouth.fanoutBusy {
                         ProgressView()
@@ -714,7 +714,7 @@ struct SendView: View {
                                   systemImage: "ant.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                         .disabled(centipedeLines.isEmpty)
                     }
                     ForEach(mouth.crawlLines, id: \.self) { trailLine in
@@ -934,7 +934,7 @@ struct SendView: View {
                                   systemImage: "point.3.connected.trianglepath.dotted")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                         .disabled(mouth.crawlBusy || mouth.talkBusy)
                         Button {
                             Haptics.tap()
@@ -1028,7 +1028,7 @@ struct SendView: View {
                                   systemImage: "phone.down.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                     } else {
                         Button {
                             Haptics.success()
@@ -1044,7 +1044,7 @@ struct SendView: View {
                                   systemImage: "bubble.left.and.bubble.right.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                         .disabled(mouth.crawlBusy
                                   || talkA.trimmingCharacters(
                                         in: .whitespaces).isEmpty
@@ -1091,7 +1091,7 @@ struct SendView: View {
                               systemImage: "hand.raised.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(HouseProminentStyle())
                     .disabled(mouth.snatchBusy)
                     if let result = mouth.snatchResult {
                         VStack(alignment: .leading, spacing: 4) {
@@ -1143,7 +1143,7 @@ struct SendView: View {
                               systemImage: "leaf.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(HouseProminentStyle())
                     Button {
                         Haptics.tap()
                         verifyPlant()
@@ -1284,7 +1284,7 @@ struct SendView: View {
                     Label(String(format: L("Send to %@"), phone), systemImage: "paperplane.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HouseProminentStyle())
                 lastReplyView
             }
         } else {
@@ -1309,7 +1309,7 @@ struct SendView: View {
                         Label(String(format: L("Send to %@"), target), systemImage: "paperplane.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(HouseProminentStyle())
                     lastReplyView
                 }
             case .success(.bleBeacon):
@@ -1333,7 +1333,7 @@ struct SendView: View {
                         } label: {
                             Label(L("Start beacon"), systemImage: "dot.radiowaves.left.and.right")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                     }
                 }
             case .success(.bleGatt):
@@ -1357,7 +1357,7 @@ struct SendView: View {
                         } label: {
                             Label(L("Host payload"), systemImage: "server.rack")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                     }
                 }
             case .success(.bleWrite(_)):
