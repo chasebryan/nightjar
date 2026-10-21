@@ -3628,8 +3628,22 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if q.contains("audit") {
-            runAudit()
-            return
+            // An exact console line names its
+            // own tool, not the Bonjour audit
+            // (fix278): dnsaudit and snmpaudit
+            // contain the word but belong to
+            // the console hand below.
+            let words = q.split(separator: " ")
+            var head = words.first
+                .map(String.init) ?? ""
+            if head == "run", words.count > 1 {
+                head = String(words[1])
+            }
+            if head != "dnsaudit"
+                && head != "snmpaudit" {
+                runAudit()
+                return
+            }
         }
         if emconOrganAsk(q) {
             return
