@@ -187,6 +187,7 @@
 "Battery voltage" = "बैटरी वोल्टेज";
 "Beacon" = "बीकन";
 "Bedrock — iOS %@" = "आधारशिला — iOS %@";
+"Bedrock — macOS %@" = "आधारशिला — macOS %@";
 "Beeps quicken and rise as the signal strengthens; a thump means you're near. The pitch bends up while you're closing and down while you drift away. Walk slow — RSSI is a compass that points in loudness, not direction." = "सिग्नल मज़बूत होने पर बीप तेज़ और ऊँची होती जाती है; एक धमाका मतलब आप पास हैं। पास आते समय ध्वनि ऊपर झुकती है और दूर जाते समय नीचे — किसी यंत्र से खोजने की अंतर्ज्ञान।";
 "Before and after agree: nothing was exposed in the first place." = "पहले और बाद सहमत हैं: पहले से ही कुछ उजागर नहीं हुआ था।";
 "Begin" = "शुरू करें";
