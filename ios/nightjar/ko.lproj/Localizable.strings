@@ -6008,3 +6008,9 @@
 "Walk to a room" = "방으로 이동";
 "%.1f seconds" = "%.1f초";
 "Running work" = "실행 중인 작업";
+"Firing %@ at %@ — %@ bytes." = "%@을(를) %@에 발사 — %@바이트.";
+"It answered — %@ bytes back." = "응답이 왔다 — %@바이트 돌아옴.";
+"Sent. No reply came back." = "보냈다. 응답은 돌아오지 않았다.";
+"Nothing landed at %@ — the door never opened." = "%@에 아무것도 닿지 않았다 — 문이 열리지 않았다.";
+"I have no send wire just now." = "지금은 보낼 회선이 없다.";
+"Here — %@: %@ bytes, filed in Deliveries." = "여기 — %@: %@바이트, Deliveries에 보관했다.";
