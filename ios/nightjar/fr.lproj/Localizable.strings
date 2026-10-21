@@ -6008,3 +6008,9 @@
 "Walk to a room" = "Aller dans une pièce";
 "%.1f seconds" = "%.1f secondes";
 "Running work" = "Tâches en cours";
+"Firing %@ at %@ — %@ bytes." = "Tir de %@ sur %@ — %@ octets.";
+"It answered — %@ bytes back." = "Il a répondu — %@ octets en retour.";
+"Sent. No reply came back." = "Envoyé. Aucune réponse revenue.";
+"Nothing landed at %@ — the door never opened." = "Rien n'a atterri sur %@ — la porte ne s'est jamais ouverte.";
+"Here — %@: %@ bytes, filed in Deliveries." = "Voici — %@ : %@ octets, classé dans Deliveries.";
+"I have no send wire just now." = "Je n'ai aucun fil d'envoi pour l'instant.";
