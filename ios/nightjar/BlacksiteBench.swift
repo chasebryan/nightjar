@@ -510,6 +510,7 @@ extension BlacksiteBench {
                 ("TLS 1.3", .TLSv13),
             ]
             var accepted: [String] = []
+            var untestable = false
             for (label, version) in versions {
                 let options = NWProtocolTLS.Options()
                 sec_protocol_options_set_min_tls_protocol_version(
@@ -533,10 +534,14 @@ extension BlacksiteBench {
                 let sem = DispatchSemaphore(
                     value: 0)
                 var ready = false
+                var negotiated: tls_protocol_version_t? = nil
                 connection.stateUpdateHandler = {
                     state in
                     switch state {
                     case .ready:
+                        if let meta = connection.metadata(definition: NWProtocolTLS.definition) as? NWProtocolTLS.Metadata {
+                            negotiated = sec_protocol_metadata_get_negotiated_protocol_version(meta.securityProtocolMetadata)
+                        }
                         ready = true
                         sem.signal()
                     case .failed, .cancelled:
@@ -551,7 +556,11 @@ extension BlacksiteBench {
                 _ = sem.wait(
                     timeout: .now() + 5)
                 connection.cancel()
-                if ready {
+                if ready, let got = negotiated, got != version {
+                    untestable = true
+                    let gotLabel = versions.first(where: { $0.1 == got })?.0 ?? "?"
+                    emit(String(format: L("%@ — cannot be tested from this device: its own stack negotiated %@ instead."), String(describing: label), String(describing: gotLabel)), .out)
+                } else if ready {
                     accepted.append(label)
                     let old = version == .TLSv10
                         || version == .TLSv11
@@ -563,10 +572,13 @@ extension BlacksiteBench {
             if accepted.contains("TLS 1.0")
                 || accepted.contains("TLS 1.1") {
                 emit(L("verdict: locks that should have been retired still turn — anything older than TLS 1.2 is a finding."), .err)
-            } else if accepted.isEmpty {
+            } else if accepted.isEmpty && !untestable {
                 emit(L("verdict: no TLS answered at all on that door."), .err)
-            } else {
+            } else if !accepted.isEmpty {
                 emit(String(format: L("verdict: modern locks only — %@."), String(describing: accepted.joined(separator: ", "))), .ok)
+            }
+            if untestable {
+                emit(L("tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here."), .out)
             }
             done()
         }
