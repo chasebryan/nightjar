@@ -1277,7 +1277,7 @@ extension SkelliCenter {
                         }
                 }
                 guard let ip = ip else {
-                    say(L("Challenge whom? Give me the defender's address — challenge 192.168.4.31."))
+                    say(L("Challenge whom? Give me the defender's address — challenge 192.168.1.31."))
                     return true
                 }
                 let port = Int(UserDefaults.standard.string(
@@ -1606,7 +1606,7 @@ extension SkelliCenter {
             built = ForgeKit.mqtt(clientID: "nightjar")
         } else if q.contains("http") {
             built = ForgeKit.http(method: q.contains(" post ") ? "POST" : "GET",
-                                  host: host ?? domain ?? "192.168.4.1",
+                                  host: host ?? domain ?? gateway ?? "127.0.0.1",
                                   path: "/", body: "")
         } else if q.contains("banner") || q.contains("probe") {
             built = ForgeKit.probe()
@@ -1615,7 +1615,7 @@ extension SkelliCenter {
         }) {
             var text = custom.template
             let swaps: [(String, String)] = [
-                ("{host}", host ?? "192.168.4.1"), ("{path}", "/"),
+                ("{host}", host ?? gateway ?? "127.0.0.1"), ("{path}", "/"),
                 ("{domain}", domain ?? "example.com"),
                 ("{client}", "nightjar"), ("{method}", "GET"),
             ]
@@ -1911,8 +1911,13 @@ extension SkelliCenter {
         if host == nil && kind == "ssdp" {
             host = "239.255.255.250"
         }
+        // The build host falls: named target,
+        // then this wire's own gateway, then
+        // loopback — never a baked address
+        // (fix277: the app is for everyone's
+        // wire, not one house's).
         let buildHost = host ?? gateway
-            ?? "192.168.4.1"
+            ?? "127.0.0.1"
 
         // Build the pick.
         var name = ""
@@ -2117,7 +2122,7 @@ extension SkelliCenter {
         // The verb and bare forms (fix266): she
         // is plugged into the Blacksite, so a
         // line that IS a console line runs —
-        // "run scan 192.168.4.1", or the line
+        // "run scan 192.168.1.1", or the line
         // itself, its first word naming a tool
         // and the rest reading as arguments.
         // Prose that merely starts with a tool's

@@ -276,7 +276,7 @@ extension SkelliKnowledge {
             home: "under Scan",
             keywords: ["subnet", "/24", "gateway",
                        "broadcast", "own ip", "lan"],
-            body: "Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies."),
+            body: "Home wires are almost always a /24: 254 addresses under one prefix, the gateway usually at .1, broadcast at .255 where a shout reaches every host at once. Your phone's own address sits somewhere in that range — ask me and I read it off the wire you are standing on. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies."),
         SkelliEntry(
             id: "gattplain",
             title: "GATT in plain words",

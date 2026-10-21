@@ -226,6 +226,20 @@ struct ForgeView: View {
         pattern >= patterns.count
     }
 
+    /// The host an empty field means: this
+    /// wire's own gateway, derived live from
+    /// the device's address — never a baked
+    /// address (fix277); loopback when the
+    /// wire gives nothing.
+    private var gatewayGuess: String {
+        guard let local = Mouth.localIPAddress()
+        else { return "127.0.0.1" }
+        var parts = local.split(separator: ".")
+        guard parts.count == 4 else { return local }
+        parts[3] = "1"
+        return parts.joined(separator: ".")
+    }
+
     private var built: ForgeKit.Built {
         if isCustom {
             let custom = customs[
@@ -233,7 +247,7 @@ struct ForgeView: View {
             var text = custom.template
             let swaps: [(String, String)] = [
                 ("{host}", host.isEmpty
-                    ? "192.168.4.1" : host),
+                    ? gatewayGuess : host),
                 ("{path}", path.isEmpty
                     ? "/" : path),
                 ("{domain}", domain.isEmpty
@@ -255,7 +269,7 @@ struct ForgeView: View {
             return ForgeKit.http(
                 method: method,
                 host: host.isEmpty
-                    ? "192.168.4.1" : host,
+                    ? gatewayGuess : host,
                 path: path, body: "")
         case 1:
             return ForgeKit.dns(
