@@ -406,21 +406,18 @@ struct MacGround: View {
 }
 
 /// The window's own bar, dressed as a Mac app's:
-/// the room's name as the principal item, and a
-/// running-work button at the trailing end while
-/// the process board has anything on it.
+/// the room's own title stands in it once (each
+/// room's stack names it — fix264 took the
+/// shell's duplicate principal title out), and
+/// a running-work button rides at the trailing
+/// end while the process board has anything
+/// on it.
 struct MacShellBar: ViewModifier {
-    let title: String
     let processes: Int
     let onProcesses: () -> Void
 
     func body(content: Content) -> some View {
         content.toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(title)
-                    .font(.system(size: 13,
-                                  weight: .semibold))
-            }
             if processes > 0 {
                 ToolbarItem(
                     placement: .primaryAction) {
@@ -440,13 +437,55 @@ struct MacShellBar: ViewModifier {
 extension View {
     /// The shell's Mac bar (see MacShellBar); the
     /// phone's strip needs no second dress.
-    func macShellBar(title: String, processes: Int,
+    func macShellBar(processes: Int,
                      onProcesses: @escaping () -> Void)
         -> some View {
 #if os(macOS)
-        modifier(MacShellBar(title: title,
-                             processes: processes,
-                             onProcesses: onProcesses))
+        modifier(MacShellBar(
+            processes: processes,
+            onProcesses: onProcesses))
+#else
+        self
+#endif
+    }
+
+    /// A pane of the Mac's detail (fix264): the
+    /// shown room stands; a hidden one takes no
+    /// touches and stays silent for VoiceOver,
+    /// but stays alive — its work is not lost
+    /// for being looked away from.
+    func macRoomVisible(_ shown: Bool) -> some View {
+#if os(macOS)
+        opacity(shown ? 1 : 0)
+            .allowsHitTesting(shown)
+            .accessibilityHidden(!shown)
+#else
+        self
+#endif
+    }
+
+    /// The Mac's form dress (fix264): grouped —
+    /// sections stand as cards with their labels
+    /// over their fields, the way System Settings
+    /// is built — instead of the wide two-column
+    /// sprawl a phone form stretches into across
+    /// a laptop window. The phone's forms are
+    /// already the shape it wants.
+    func macFormStyle() -> some View {
+#if os(macOS)
+        formStyle(.grouped)
+#else
+        self
+#endif
+    }
+
+    /// The Mac's list dress (fix264): inset —
+    /// rows stand in a margined, rounded group
+    /// instead of running bleed-edge across the
+    /// window. Identity on the phone.
+    func macListStyle() -> some View {
+#if os(macOS)
+        listStyle(.inset)
 #else
         self
 #endif
@@ -687,33 +726,11 @@ extension View {
     }
 }
 
-#if os(macOS)
-extension View {
-    /// The Mac's one navigator: the tab view in
-    /// its sidebar dress. macOS draws a tab view's
-    /// items twice over by default — a segmented
-    /// strip in the toolbar and nothing else —
-    /// and a house with two identical navigators
-    /// has one too many. The sidebar dress draws
-    /// the same items once, at the left, with
-    /// their symbols: where a Mac operator looks
-    /// for the rooms of an app. Below macOS 15
-    /// the dress does not exist and the strip
-    /// stands alone, as it did.
-    func houseMacTabStyle() -> some View {
-        if #available(macOS 15.0, *) {
-            return AnyView(
-                self.tabViewStyle(.sidebarAdaptable))
-        }
-        return AnyView(self)
-    }
-}
-#else
-extension View {
-    /// The phone's tab strip needs no dress.
-    func houseMacTabStyle() -> some View { self }
-}
-#endif
+// houseMacTabStyle retired (fix264): the tab
+// view's sidebar dress went with the tab view
+// itself — the Mac's navigator is a native
+// split view now (ContentView's macShell),
+// and no caller remains.
 
 #if os(macOS)
 /// A clear pane that hears scroll-wheel turns

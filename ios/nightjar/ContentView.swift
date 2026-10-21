@@ -232,6 +232,11 @@ struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter
     @ObservedObject private var board = ProcessBoard.shared
     @State private var showBoard = false
+    /// The Mac detail's mounted rooms (fix264):
+    /// a room is built on its first visit and
+    /// kept alive after, so switching panes
+    /// never loses a room's work.
+    @State private var visitedRooms: Set<Int> = []
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var emcon: Emcon
     @EnvironmentObject private var post: ListeningPost
@@ -266,38 +271,10 @@ struct ContentView: View {
     }
     @ObservedObject private var themes = ThemeCenter.shared
 
-    /// The room the operator is standing in, named
-    /// for the Mac's toolbar (fix261): the window
-    /// says where you are, the way a Mac app's does.
-    private var roomTitle: String {
-        switch tab {
-        case 9: return L("Skelli")
-        case 0: return L("Listen")
-        case 1: return L("Send")
-        case 2: return L("Serve")
-        case 5: return L("About")
-        case 12: return L("Blacksite")
-        case 3: return L("Sessions")
-        case 4: return L("Scan")
-        case 6: return L("Recon")
-        case 7: return L("EMCON")
-        case 8: return L("Knocktalk")
-        case 10: return L("Macros")
-        case 11: return L("Vault")
-        default: return L("nightjar")
-        }
-    }
-
-    /// The house's rooms, with everything hung
-    /// on them — the tab view, its watches, its
-    /// overlays and its sheets. One navigator
-    /// only: on the phone, the tab strip; on the
-    /// Mac, the tab view's own sidebar dress
-    /// (houseMacTabStyle) — the toolbar strip the
-    /// Mac also drew was the same thirteen rooms
-    /// a second time, and two navigators is one
-    /// too many.
-    private var tabShell: some View {
+    /// The house's rooms on the phone: the tab
+    /// strip, each room a tab, everything hung
+    /// on the shell below.
+    private var phoneShell: some View {
         TabView(selection: $tab) {
         SkelliView()
             .appThemed(.skelli)
@@ -394,13 +371,174 @@ struct ContentView: View {
             .tag(11)
             .onAppear { TabBeat.appeared(11) }
             .onDisappear { TabBeat.vanished(11) }
+        }
     }
-    .tint(themes.current.accent)
-    .houseMacTabStyle()
-    .macShellBar(title: roomTitle,
-                 processes: board.active.count) {
-        showBoard = true
+
+#if os(macOS)
+    /// One room of the Mac's detail pane
+    /// (fix264), mounted on its first visit
+    /// and kept alive after: a Mac operator
+    /// switches panes, and a pane does not
+    /// lose its work for being looked away
+    /// from — the console's session, the
+    /// Send room's typed target. Hidden
+    /// panes take no touches and stay
+    /// silent for VoiceOver.
+    @ViewBuilder
+    private func macRoom(_ tag: Int) -> some View {
+        if visitedRooms.contains(tag) {
+            Group {
+                if tag == 9 {
+                    AnyView(SkelliView()
+                        .appThemed(.skelli))
+                } else if tag == 0 {
+                    AnyView(ListenView(tab: $tab)
+                        .appThemed(.listen))
+                } else if tag == 1 {
+                    AnyView(SendView()
+                        .appThemed(.send))
+                } else if tag == 2 {
+                    AnyView(ServeView()
+                        .appThemed(.serve))
+                } else if tag == 5 {
+                    AnyView(AboutView()
+                        .appThemed(.about))
+                } else if tag == 12 {
+                    AnyView(BlacksiteView()
+                        .appThemed(.blacksite))
+                } else if tag == 3 {
+                    AnyView(SessionsView()
+                        .appThemed(.sessions))
+                } else if tag == 4 {
+                    AnyView(ScanView(tab: $tab)
+                        .appThemed(.scan))
+                } else if tag == 6 {
+                    AnyView(ReconBenchView(tab: $tab)
+                        .appThemed(.recon))
+                } else if tag == 7 {
+                    AnyView(EmconView()
+                        .appThemed(.emcon))
+                } else if tag == 8 {
+                    AnyView(KnockChatView()
+                        .appThemed(.knocktalk))
+                } else if tag == 10 {
+                    AnyView(MacrosView()
+                        .appThemed(.macros))
+                } else if tag == 11 {
+                    AnyView(CryptoView()
+                        .appThemed(.vault))
+                }
+            }
+            .macRoomVisible(tab == tag)
+        }
     }
+
+    /// The Mac's navigator (fix264): a native
+    /// split view — a sidebar of rooms, the
+    /// room itself as the detail. A Mac app's
+    /// window is a sidebar and a pane, and the
+    /// toolbar belongs to the pane: the room's
+    /// own title stands there once, the way
+    /// Mail and Settings are built. (fix261 put
+    /// a title of its own on the tab view's
+    /// toolbar while every room's stack claimed
+    /// the same bar — two titles, one of them
+    /// floating over the content.)
+    private var macShell: some View {
+        NavigationSplitView {
+            List(selection: $tab) {
+                Section {
+                    Label(L("Skelli"),
+                          systemImage: "brain.head.profile")
+                        .tag(9)
+                    Label(L("Listen"),
+                          systemImage: "dot.radiowaves.left.and.right")
+                        .tag(0)
+                    Label(L("Send"),
+                          systemImage: "paperplane")
+                        .tag(1)
+                    Label(L("Serve"),
+                          systemImage: "tray.and.arrow.down")
+                        .tag(2)
+                }
+                Section {
+                    Label(L("Blacksite"),
+                          systemImage: "terminal.fill")
+                        .tag(12)
+                    Label(L("Sessions"),
+                          systemImage: "list.bullet.rectangle")
+                        .tag(3)
+                    Label(L("Scan"),
+                          systemImage: "scope")
+                        .tag(4)
+                    Label(L("Recon"),
+                          systemImage: "target")
+                        .tag(6)
+                    Label(L("EMCON"),
+                          systemImage: "shield")
+                        .symbolVariant(.slash)
+                        .tag(7)
+                    Label(L("Knocktalk"),
+                          systemImage: "message.badge.waveform")
+                        .tag(8)
+                    Label(L("Macros"),
+                          systemImage: "puzzlepiece.extension.fill")
+                        .tag(10)
+                    Label(L("Vault"),
+                          systemImage: "lock.fill")
+                        .tag(11)
+                }
+                Section {
+                    Label(L("About"),
+                          systemImage: "info.circle")
+                        .tag(5)
+                }
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(
+                min: 200, ideal: 232, max: 300)
+        } detail: {
+            ZStack {
+                macRoom(9)
+                macRoom(0)
+                macRoom(1)
+                macRoom(2)
+                macRoom(5)
+                macRoom(12)
+                macRoom(3)
+                macRoom(4)
+                macRoom(6)
+                macRoom(7)
+                macRoom(8)
+                macRoom(10)
+                macRoom(11)
+            }
+        }
+        .onAppear { visitedRooms.insert(tab) }
+        .onChange(of: tab) { newTab in
+            visitedRooms.insert(newTab)
+            TabBeat.appeared(newTab)
+        }
+    }
+#endif
+
+    /// The shell both platforms hang their
+    /// house on: the navigator (the phone's
+    /// tab strip, the Mac's split view), its
+    /// tint, its watches, its overlays and
+    /// its sheets.
+    private var tabShell: some View {
+        Group {
+#if os(macOS)
+            macShell
+#else
+            phoneShell
+#endif
+        }
+        .tint(themes.current.accent)
+        .macShellBar(processes: board.active.count) {
+            showBoard = true
+        }
     .onReceive(
         NotificationCenter.default.publisher(
             for: Blacksite.openTabNotification)
@@ -633,6 +771,7 @@ struct ListenView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macListStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("nightjar"))
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
@@ -1134,6 +1273,7 @@ struct SessionsView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macListStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("Sessions"))
             .toolbar {
@@ -1637,6 +1777,7 @@ struct AboutView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macListStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("About"))
             .sheet(isPresented: $showColours) {

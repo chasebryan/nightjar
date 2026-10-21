@@ -148,6 +148,7 @@ struct MacrosView: View {
             // backdrop played). Same recipe as Knocktalk.
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macListStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("Macros"))
             .toolbar {

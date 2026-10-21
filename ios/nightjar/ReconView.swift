@@ -1920,6 +1920,7 @@ struct ScanView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macFormStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("Scan"))
             .onAppear {

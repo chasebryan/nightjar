@@ -127,6 +127,7 @@ struct EmconView: View {
         // as the tabs that play.
         .scrollContentBackground(.hidden)
         .macColumn(880)
+        .macListStyle()
         .background { AppBackdrop() }
         .sheet(isPresented: $showMind) {
             SubconsciousView()

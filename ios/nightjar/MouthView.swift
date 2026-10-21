@@ -1122,6 +1122,7 @@ struct SendView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macFormStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("Send"))
             .fileImporter(isPresented: $showImporter,
@@ -2213,6 +2214,7 @@ struct ServeView: View {
             }
             .scrollContentBackground(.hidden)
             .macColumn(880)
+            .macFormStyle()
             .background { AppBackdrop() }
             .navigationTitle(L("Serve"))
             .toolbar {
