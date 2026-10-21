@@ -7,9 +7,9 @@
             "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
             "name": "nightjar",
             "tintColor": "1DB35A",
-            "version": "10.0",
-            "versionDate": "2026-10-20",
-            "versionDescription": "v10- chorus. The tenth version opens: the console is an operating system, Skelli is awake inside it, and every instrument in the house plays at once. What chorus comes to mean, it will say as it lands."
+            "version": "11.0",
+            "versionDate": "2026-10-21",
+            "versionDescription": "v11- churring. The eleventh version: the pentest bench and the EAZY battery stand in the console, Skelli runs it herself, the house stands on macOS too — and every instrument grades only what it truly saw."
         }
     ],
     "identifier": "net.nosuchmachine.nightjarhack.source",

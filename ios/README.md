@@ -1,4 +1,4 @@
-# nightjar for iOS — 10.0
+# nightjar for iOS — 11.0
 
 This is the flagship: the nightjar listening post — a
 receive-only scanner, a wide decoder bench and session

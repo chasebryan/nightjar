@@ -4,7 +4,7 @@
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
 </p>
 
-**10.0**
+**11.0**
 
 **No jailbreak required**
 
