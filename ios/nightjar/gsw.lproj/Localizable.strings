@@ -6029,3 +6029,5 @@
 "Use a collected address" = "E gsammleti Adrässe bruuche";
 "\n…the rest is filed in Deliveries." = "\n…de Räschte ligt bi de Lieferige.";
 "…still running — that's what's printed so far." = "…louft no — das isch de bisherig Uusdruck.";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "D Batterie für %@ gschmiedet: %@ — 3 Ladige im Arsenal verwahrt und in Deliveries abgleit, bereit zum Füüre.";
