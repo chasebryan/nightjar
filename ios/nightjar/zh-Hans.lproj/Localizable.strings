@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "什么都没落到 %@ — 门从未打开。";
 "Here — %@: %@ bytes, filed in Deliveries." = "给你 — %@：%@ 字节，已存入 Deliveries。";
 "I have no send wire just now." = "我现在没有发送通道。";
+"Census — collecting addresses" = "普查 — 正在收集地址";
+"%@ address(es) collected" = "已收集 %@ 个地址";
+"Collect addresses" = "收集地址";
+"Collecting…" = "收集…";
+"A census is already running — the wire is being knocked." = "普查已经在运行 — 正在敲击网络。";
+"The Standard forbids sweeps at this condition — the census stays silent." = "Standard 在此状态下禁止扫描 — 普查保持沉默。";
+"No wire under this phone — join the Wi-Fi and the census can run." = "这部手机下没有网络 — 加入 Wi-Fi 后普查即可运行。";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "正在收集此网络的地址 — 敲遍整个 /24 的发现之门。";
+"Nothing collected yet — the board is empty." = "尚未收集任何内容 — 面板是空的。";
+", and %@ more" = ",还有 %@ 个";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "已收集 %@ 个地址:%@。列表已存入 Deliveries。";
+"Collected addresses" = "已收集的地址";
+"Use a collected address" = "使用已收集的地址";
