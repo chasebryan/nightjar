@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ Hop %lld/%lld (%@) %@ — cha s Ziil nid parse";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ Hop %lld/%lld (%@) %@ — keis Netzwärch-Ziil";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ Hop %lld/%lld (%@) %@ — Payload-Bou isch fählgschlage";
+"The Mac bench" = "D Mac-Wärchbank";
+"Window" = "Fänschter";
+"Display" = "Bildschirm";
+"Catalog" = "Katalog";
+"missing" = "fählt";
+"App icon" = "App-Symbol";
+"Mac boot film" = "Mac-Startfilm";
+"Phone boot film" = "Telefon-Startfilm";
+"Boot film length" = "Lengi vom Startfilm";
+"Replay the boot" = "Start nomol abspile";
+"Walk to a room" = "Zu-n-ere Ruum goh";
+"%.1f seconds" = "%.1f Sekunde";
