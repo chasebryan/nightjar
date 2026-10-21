@@ -187,6 +187,7 @@
 "Battery voltage" = "电池电压";
 "Beacon" = "信标";
 "Bedrock — iOS %@" = "基岩 — iOS %@";
+"Bedrock — macOS %@" = "基岩 — macOS %@";
 "Beeps quicken and rise as the signal strengthens; a thump means you're near. The pitch bends up while you're closing and down while you drift away. Walk slow — RSSI is a compass that points in loudness, not direction." = "信号越强，哔声越快越高；一声闷响表示你近了。靠近时音调上弯，远离时下沉——像用乐器寻找。";
 "Before and after agree: nothing was exposed in the first place." = "前后一致：从一开始就什么都没暴露。";
 "Begin" = "开始";
