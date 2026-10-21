@@ -4,6 +4,7 @@ import PDFKit
 import SwiftUI
 #if os(iOS)
 import UIKit
+import AVFoundation
 #else
 import AppKit
 #endif
@@ -939,18 +940,49 @@ struct BootView: View {
         enum Tone { case cmd, ok, warn, off }
     }
 
-    /// The boot reel, by either road in: a "BootReel" data
-    /// asset, or boot-reel.gif in the bundle.
+    /// A named film out of the bundle, when it
+    /// is aboard.
+    private func bundleFilm(_ name: String) -> Data? {
+        guard let url = Bundle.main.url(
+            forResource: name, withExtension: "mp4")
+        else { return nil }
+        return try? Data(contentsOf: url)
+    }
+
+    /// The boot reel, chosen for the glass it
+    /// plays on (Chase's selection, 2026-10-20):
+    /// the laptop's wide film on the Mac, the
+    /// tablet's two cuts on an iPad — landscape
+    /// or portrait by the window it wakes in —
+    /// and the phone's portrait film on a phone.
+    /// Behind every one of them stands the old
+    /// road in: a "BootReel" data asset, or
+    /// boot-reel.gif in the bundle, so a house
+    /// missing its new films still boots on the
+    /// reel it has always known.
     private var providedData: Data? {
 #if os(macOS)
-        // The laptop's own reel: a wide film cut
-        // for a wide screen. The phone's portrait
-        // reel stands down here — stretched or
-        // boxed, it never sat right on the Mac.
-        if let url = Bundle.main.url(
-            forResource: "boot-reel-mac",
-            withExtension: "mp4") {
-            return try? Data(contentsOf: url)
+        if let film = bundleFilm(
+            "nightjar-boot-laptop-1920x1080") {
+            return film
+        }
+        if let film = bundleFilm("boot-reel-mac") {
+            return film
+        }
+#elseif os(iOS)
+        if UIDevice.current.userInterfaceIdiom
+            == .pad {
+            let bounds = UIScreen.main.bounds
+            let wide = bounds.width > bounds.height
+            if let film = bundleFilm(wide
+                ? "nightjar-boot-tablet-landscape-2048x1536"
+                : "nightjar-boot-tablet-portrait-1536x2048") {
+                return film
+            }
+        }
+        if let film = bundleFilm(
+            "nightjar-boot-phone-1080x1920") {
+            return film
         }
 #endif
         if let asset = NSDataAsset(name: "BootReel") {
@@ -1375,13 +1407,11 @@ struct BootView: View {
                                 .ignoresSafeArea()
                         }
                 } else if BootMedia.isVideo(data) {
-                    // Real video — the Mac's own boot
-                    // film. Only the Mac's player can
-                    // ride it (its AVPlayer road); the
-                    // phone's player speaks GIF alone,
-                    // so there these bytes show
-                    // nothing, exactly as they did
-                    // before this branch existed.
+                    // Real video — the platform films
+                    // (fix259). Both players ride it
+                    // now: the Mac's AVPlayerView and
+                    // the phone's own AVPlayer layer
+                    // inside the film container.
                     filmPlayer(data: data)
                         .ignoresSafeArea()
                 } else if let image = UIImage(
@@ -1474,10 +1504,9 @@ struct BootView: View {
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
             }
-#if os(macOS)
             if let data = data,
                BootMedia.isVideo(data) {
-                // The Mac's film is a video, and the
+                // The film is a video, and the
                 // ceremony is timed against the
                 // film: measure it, so the text,
                 // the print and the finale stretch
@@ -1488,7 +1517,6 @@ struct BootView: View {
                     await BootFilmMeasure
                         .videoSeconds(for: data)
             }
-#endif
             // The ceremony's minutes are working
             // minutes: while the film plays, warm
             // the machinery every tab is about to
@@ -2233,6 +2261,9 @@ struct GIFPlayerView: UIViewRepresentable {
 /// container's centre.
 final class BootFilmContainer: UIView {
     let imageView = UIImageView()
+    /// The video road's stage (fix259), framed
+    /// by the same hand as the image view.
+    let playerLayer = AVPlayerLayer()
     var focus = CGPoint(x: 0.5, y: 0.5)
     var zoom: CGFloat = 1
     var imageAspect: CGFloat = 0
@@ -2244,6 +2275,9 @@ final class BootFilmContainer: UIView {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         addSubview(imageView)
+        playerLayer.videoGravity = .resizeAspectFill
+        playerLayer.isHidden = true
+        layer.addSublayer(playerLayer)
     }
 
     @available(*, unavailable)
@@ -2254,6 +2288,7 @@ final class BootFilmContainer: UIView {
         guard imageAspect > 0, bounds.width > 0,
               bounds.height > 0 else {
             imageView.frame = bounds
+            playerLayer.frame = bounds
             return
         }
         var w = bounds.height * imageAspect
@@ -2268,6 +2303,7 @@ final class BootFilmContainer: UIView {
             x: bounds.width / 2 - focus.x * w,
             y: bounds.height / 2 - focus.y * h,
             width: w, height: h)
+        playerLayer.frame = imageView.frame
     }
 }
 
@@ -2326,12 +2362,19 @@ struct BootFilmPlayer: UIViewRepresentable {
         private var duration = 0.0
         private var lastReported = -1.0
         private var cancelled = false
+        private var player: AVPlayer?
+        private var timeObserver: Any?
 
         func begin(in view: BootFilmContainer, data: Data,
                    maxPixel: Int,
                    onProgress: @escaping (Double) -> Void) {
             self.view = view
             self.onProgress = onProgress
+            if BootMedia.isVideo(data) {
+                beginVideo(in: view, data: data,
+                           onProgress: onProgress)
+                return
+            }
             DispatchQueue.global(qos: .userInitiated)
                 .async {
                 let film = UIImage.gifFrames(
@@ -2367,6 +2410,64 @@ struct BootFilmPlayer: UIViewRepresentable {
             }
         }
 
+        /// The video road (fix259): the film is
+        /// written to a scratch file and an
+        /// AVPlayer rides it inside the container's
+        /// own layer — the Mac twin's shape, in
+        /// UIKit's clothes. The films are cut for
+        /// their screens, so the layer fills the
+        /// container and its aspect-fill gravity
+        /// does the framing; the last frame holds
+        /// when the film ends, and a small clock
+        /// reports progress, as on the GIF road.
+        private func beginVideo(
+            in view: BootFilmContainer, data: Data,
+            onProgress: @escaping (Double) -> Void
+        ) {
+            DispatchQueue.global(qos: .userInitiated)
+                .async {
+                let url = FileManager.default
+                    .temporaryDirectory
+                    .appendingPathComponent(
+                        "nightjar-bootfilm.mp4")
+                guard (try? data.write(
+                    to: url, options: .atomic)) != nil
+                else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self,
+                          !self.cancelled,
+                          let view = self.view
+                    else { return }
+                    let player = AVPlayer(url: url)
+                    player.actionAtItemEnd = .pause
+                    self.player = player
+                    view.playerLayer.player = player
+                    view.playerLayer.isHidden = false
+                    view.setNeedsLayout()
+                    view.layoutIfNeeded()
+                    UIView.animate(
+                        withDuration: 0.35) {
+                        view.alpha = 1
+                    }
+                    let report = onProgress
+                    self.timeObserver = player
+                        .addPeriodicTimeObserver(
+                        forInterval: CMTime(
+                            seconds: 0.1,
+                            preferredTimescale: 600),
+                        queue: .main) { time in
+                        if let duration = player
+                            .currentItem?.duration
+                            .seconds, duration > 0 {
+                            report(min(1,
+                                time.seconds / duration))
+                        }
+                    }
+                    player.play()
+                }
+            }
+        }
+
         @objc private func tick() {
             guard duration > 0 else { return }
             let progress = min(1,
@@ -2393,6 +2494,13 @@ struct BootFilmPlayer: UIViewRepresentable {
             link?.invalidate()
             link = nil
             view?.imageView.stopAnimating()
+            if let player = player,
+               let observer = timeObserver {
+                player.removeTimeObserver(observer)
+            }
+            timeObserver = nil
+            player?.pause()
+            player = nil
         }
     }
 }
