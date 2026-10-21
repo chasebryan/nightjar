@@ -1,0 +1,65 @@
+name: Bug report
+description: Something broke, crashed, or behaved wrong — tell us here.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. The more exact this is, the faster it gets fixed.
+        **Never paste passwords, keys, tokens, or private keys into an issue** — issues are public.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did the app do — or fail to do? Quote the exact words it showed, if it showed any.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      description: |
+        Numbered, like:
+        1. Open the Blacksite tab
+        2. Type `sweep`
+        3. The app …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in the About tab, or type `ver` in the Blacksite console (for example "nightjar 10.0").
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and iOS version
+      description: For example "iPhone 17 Pro Max, iOS 26.6" — or "MacBook Air M1, macOS 27" for the Mac build.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots (optional)
+      description: |
+        In the Blacksite console, `log` shows the flight recorder and `journal` the house journal —
+        the last lines before the problem are gold. Screenshots of the exact screen help too.
+        **Redact anything private first** (addresses of people who are not you, keys, tokens).
+    validations:
+      required: false
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before sending
+      options:
+        - label: This issue contains no passwords, keys, tokens, or anyone else's private information.
+          required: true

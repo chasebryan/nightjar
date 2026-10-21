@@ -325,6 +325,20 @@ If you would rather not unzip anything, use
 nightjar-single.py: it writes the same files into the
 checkout and then calls apply_overlay.py.
 
+## Reporting problems
+
+Something broke, or something should exist? **[Open an issue](../../issues/new/choose)** —
+there's a bug-report form (what happened, the steps, your version and device)
+and a feature-request form. The version is in the About tab, or type `ver` in
+the Blacksite console; the console's `log` command shows the flight recorder,
+whose last lines before a problem are the most useful thing you can attach.
+Please don't paste passwords, keys, or anyone else's private information into
+an issue — issues are public.
+
+**Security vulnerabilities are different:** never post those publicly. See
+[SECURITY.md](SECURITY.md) — report privately through the Security tab so a
+fix can ship before the flaw is public.
+
 ## Documents
 
 - [HACKER.md](HACKER.md) — the CLI manual
