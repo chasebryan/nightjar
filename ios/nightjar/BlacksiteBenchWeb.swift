@@ -1185,7 +1185,7 @@ extension BlacksiteBench {
                 }
             }
             if let times = BlacksitePentest.certTimes(leaf) {
-                let days = Int(times.until.timeIntervalSinceNow / 86400)
+                let days = Int(times.1.timeIntervalSinceNow / 86400)
                 webSay(emit, String(format: L("valid for %lld more days"), days))
                 if days < 0 {
                     webSay(emit, L("the paper has EXPIRED"), .err)
@@ -1232,7 +1232,7 @@ extension BlacksiteBench {
                     ?? L("an unnamed issuer")
                 var daysText = ""
                 if let times = BlacksitePentest.certTimes(cert) {
-                    let days = Int(times.until.timeIntervalSinceNow / 86400)
+                    let days = Int(times.1.timeIntervalSinceNow / 86400)
                     daysText = String(format: L(", %lld days left"), days)
                     if days < 0 { expired += 1 }
                 }
@@ -1762,8 +1762,9 @@ extension BlacksiteBench {
                 webSay(emit, L("compressprobe: give a URL — compressprobe https://example.com"), .err)
                 return
             }
-            guard let (squeezed, http) = webFetch(target, follow: true,
-                                                  headers: ["Accept-Encoding": "gzip, deflate, br"]) else {
+            guard let (squeezed, http) = webFetch(target,
+                                                  headers: ["Accept-Encoding": "gzip, deflate, br"],
+                                                  follow: true) else {
                 webSay(emit, L("nothing answered — the name may not resolve, or the door is shut"), .err)
                 return
             }
@@ -2166,7 +2167,7 @@ extension BlacksiteBench {
                 }
             }
             for (label, origin) in origins {
-                if let (_, http) = webFetch(target, follow: true, headers: ["Origin": origin]) {
+                if let (_, http) = webFetch(target, headers: ["Origin": origin], follow: true) {
                     grade(origin: origin, label: label, http: http)
                 }
             }
