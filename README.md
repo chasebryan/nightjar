@@ -341,6 +341,7 @@ fix can ship before the flaw is public.
 
 ## Documents
 
+- [docs/blacksite/](docs/blacksite/README.md) — **the Blacksite OS manual**: the full command reference, the pentest bench, EAZY, Skelli at the console, programs, and the gates
 - [HACKER.md](HACKER.md) — the CLI manual
 - [HACKER-RECON.md](HACKER-RECON.md) — the Recon bench
 - [ios/README.md](ios/README.md) — building the iOS app
