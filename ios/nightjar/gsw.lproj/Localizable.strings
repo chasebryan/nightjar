@@ -6008,3 +6008,9 @@
 "Walk to a room" = "Zu-n-ere Ruum goh";
 "%.1f seconds" = "%.1f Sekunde";
 "Running work" = "Laufendi Arbeit";
+"Firing %@ at %@ — %@ bytes." = "Schüss %@ uf %@ — %@ Bytes.";
+"It answered — %@ bytes back." = "Es het gantwortet — %@ Bytes zrugg.";
+"Sent. No reply came back." = "Gschickt. Kei Antwort isch zruggcho.";
+"Nothing landed at %@ — the door never opened." = "Nüt isch bi %@ glandet — d Tür isch nie ufgange.";
+"I have no send wire just now." = "Ich ha grad kei Sänleitung.";
+"Here — %@: %@ bytes, filed in Deliveries." = "Do — %@: %@ Bytes, in Deliveries abgleit.";
