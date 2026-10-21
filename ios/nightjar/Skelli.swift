@@ -7212,7 +7212,7 @@ enum SkelliMind {
 
     static var isAvailable: Bool {
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             return SkelliModelBox.available
         }
         #endif
@@ -7242,7 +7242,7 @@ enum SkelliMind {
     /// Wake Apple's model before it is needed.
     static func warm() {
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *) {
             SkelliModelBox.warm()
         }
         #endif
@@ -7290,7 +7290,7 @@ enum SkelliMind {
             ? question
             : recent + "\nOperator: " + question
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *),
+        if #available(iOS 26.0, macOS 26.0, *),
            SkelliModelBox.available {
             runCascade(prompt: prompt,
                        grounding: grounding,
@@ -7319,7 +7319,7 @@ enum SkelliMind {
     /// The modes, and a thirty-second watchdog
     /// over all of them: a stalled mind must
     /// never hold her answer hostage.
-    @available(iOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, *)
     private static func runCascade(
         prompt: String, grounding: String,
         completion: @escaping (Verdict) -> Void) {
@@ -7448,7 +7448,7 @@ enum SkelliMindSanitizer {
 
 #if canImport(FoundationModels)
 /// Apple's model itself, behind the gate.
-@available(iOS 26.0, *)
+@available(iOS 26.0, macOS 26.0, *)
 enum SkelliModelBox {
     static var available: Bool {
         if case .available = SystemLanguageModel
@@ -7613,7 +7613,7 @@ enum SkelliWeights {
                         // reliance on the warning
                         // arriving in time.
                         if tokens % 32 == 0,
-                           os_proc_available_memory()
+                           platformAvailableMemory()
                             < 402_653_184 {
                             starved = true
                             break
@@ -7798,7 +7798,7 @@ enum SkelliWeights {
         // optimistic arithmetic and the
         // generation still outgrew the room.)
         let needed = modelBytes() + 1_342_177_280
-        let headroom = os_proc_available_memory()
+        let headroom = platformAvailableMemory()
         if headroom > 0, Int64(headroom) < needed {
             DevLog.event(
                 "weights",
@@ -8786,8 +8786,7 @@ extension View {
             .listRowInsets(EdgeInsets(
                 top: 3, leading: 16,
                 bottom: 3, trailing: 16))
-            .toolbarBackground(.hidden,
-                               for: .navigationBar)
+            .houseBarBackgroundHidden()
     }
 }
 
@@ -9378,7 +9377,7 @@ struct SkelliView: View {
                 .frame(width: 2, height: 2)
                 .allowsHitTesting(false)
         }
-        .toolbar(.hidden, for: .navigationBar)
+        .houseBarHidden()
     }
 
     /// Her pinned presence: film, name, activity,
@@ -9727,8 +9726,7 @@ struct SkelliView: View {
             }
             .navigationTitle(L("Options"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden,
-                               for: .navigationBar)
+            .houseBarBackgroundHidden()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("Done")) { showOptions = false }

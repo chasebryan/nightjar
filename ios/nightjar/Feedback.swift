@@ -308,7 +308,7 @@ struct AppBackdrop: View {
         case .custom:
             if let image = BackdropMedia.image(
                 for: resolvedSlot) {
-                if image.images != nil {
+                if platformImageIsAnimated(image) {
                     AnimatedImageView(image: image)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -1931,6 +1931,14 @@ extension UIImage {
     /// Decode an animated GIF's frames and delays the ImageIO
     /// way, so a bundled .gif plays as authored.
     static func animatedGIF(data: Data) -> UIImage? {
+#if os(macOS)
+        // The Mac's image type carries an animated
+        // GIF's frames natively and decodes them
+        // lazily; the ImageIO hand decode below —
+        // and its frame budget — is the phone's
+        // road, where every frame lands resident.
+        return NSImage(data: data)
+#endif
         guard let source = CGImageSourceCreateWithData(
             data as CFData, nil) else { return nil }
         let count = CGImageSourceGetCount(source)
@@ -1966,10 +1974,14 @@ extension UIImage {
                     ?? 0.1
             }
             total += max(delay, 0.02)
-            frames.append(UIImage(cgImage: cg))
+            frames.append(platformImage(cgImage: cg))
         }
         guard !frames.isEmpty else { return nil }
+#if os(macOS)
+        return NSImage(data: data)
+#else
         return UIImage.animatedImage(with: frames, duration: total)
+#endif
     }
 
     /// The authored delay of every frame, read from
@@ -2052,7 +2064,7 @@ extension UIImage {
                     break
                 }
             }
-            frames.append(UIImage(cgImage: cg))
+            frames.append(platformImage(cgImage: cg))
         }
         if thumbnailsHold, frames.count == count {
             return (frames, duration)
@@ -2066,7 +2078,7 @@ extension UIImage {
             let scale = min(1, CGFloat(maxPixel)
                 / CGFloat(max(cg.width, cg.height)))
             if scale >= 1 {
-                frames.append(UIImage(cgImage: cg))
+                frames.append(platformImage(cgImage: cg))
                 continue
             }
             let w = Int(CGFloat(cg.width) * scale)
@@ -2079,13 +2091,13 @@ extension UIImage {
                     bitmapInfo: CGImageAlphaInfo
                         .premultipliedLast.rawValue)
             else {
-                frames.append(UIImage(cgImage: cg))
+                frames.append(platformImage(cgImage: cg))
                 continue
             }
             ctx.draw(cg, in: CGRect(x: 0, y: 0,
                                     width: w, height: h))
             if let scaled = ctx.makeImage() {
-                frames.append(UIImage(cgImage: scaled))
+                frames.append(platformImage(cgImage: scaled))
             }
         }
         return (frames, duration)
@@ -4600,7 +4612,7 @@ extension SkelliMind {
         }
         #endif
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *),
+        if #available(iOS 26.0, macOS 26.0, *),
            SkelliModelBox.available,
            let text = await SkelliModelBox.run(
                instructions: instructions,
@@ -4696,7 +4708,7 @@ extension SkelliMind {
             + " action, answer NONE. One token,"
             + " one line, no explanation."
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *),
+        if #available(iOS 26.0, macOS 26.0, *),
            SkelliModelBox.available,
            let raw = await SkelliModelBox.run(
                instructions: charter,

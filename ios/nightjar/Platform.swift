@@ -369,3 +369,67 @@ extension View {
 #endif
     }
 }
+
+// MARK: - Images and memory, in both houses' spellings
+
+/// A platform image from a CGImage: the phone's
+/// initializer spells it bare; the Mac's wants
+/// the size spoken.
+func platformImage(cgImage cg: CGImage) -> UIImage {
+#if os(macOS)
+    NSImage(cgImage: cg,
+            size: NSSize(width: cg.width,
+                         height: cg.height))
+#else
+    UIImage(cgImage: cg)
+#endif
+}
+
+/// Whether a platform image carries animation:
+/// the phone's image keeps a frames array; the
+/// Mac's keeps a frame count on its bitmap rep.
+func platformImageIsAnimated(_ image: UIImage) -> Bool {
+#if os(macOS)
+    for rep in image.representations {
+        if let frames = rep.value(
+            forProperty: NSBitmapImageRep
+                .PropertyKey.frameCount) as? Int,
+           frames > 1 { return true }
+    }
+    return false
+#else
+    image.images != nil
+#endif
+}
+
+/// The kernel's free-memory figure: the phone
+/// asks os_proc directly; the Mac reads the
+/// host's VM statistics (the shim above).
+func platformAvailableMemory() -> Int {
+#if os(macOS)
+    macAvailableMemoryBytes()
+#else
+    os_proc_available_memory()
+#endif
+}
+
+extension View {
+    /// Hide the bar itself: the navigation bar on
+    /// the phone, the window toolbar on the Mac.
+    func houseBarHidden() -> some View {
+#if os(macOS)
+        toolbar(.hidden, for: .windowToolbar)
+#else
+        toolbar(.hidden, for: .navigationBar)
+#endif
+    }
+
+    /// Hide the bar's background, likewise.
+    func houseBarBackgroundHidden() -> some View {
+#if os(macOS)
+        toolbarBackground(.hidden, for: .windowToolbar)
+#else
+        toolbarBackground(.hidden, for: .navigationBar)
+#endif
+    }
+}

@@ -223,7 +223,7 @@ final class BlacksiteGFX {
                         .premultipliedLast.rawValue),
                   let cg = ctx.makeImage()
             else { return nil }
-            return UIImage(cgImage: cg)
+            return platformImage(cgImage: cg)
         }
     }
 

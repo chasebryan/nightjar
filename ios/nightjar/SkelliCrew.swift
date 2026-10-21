@@ -50,7 +50,7 @@ enum SkelliCrew {
         #endif
         #if canImport(FoundationModels)
         if mode != "weights",
-           #available(iOS 26.0, *),
+           #available(iOS 26.0, macOS 26.0, *),
            SkelliModelBox.available {
             if let text = await SkelliModelBox.run(
                 instructions: instructions,
