@@ -17,6 +17,14 @@ import UniformTypeIdentifiers
 struct BetafischView: View {
     var seedName: String? = nil
     var seedData: Data? = nil
+    /// Driftnet's seed: when set, the
+    /// room opens already walking to the
+    /// gallery — the seeded capture (or
+    /// the sample, when the seed says
+    /// so) is loaded and its pictures
+    /// lifted without another touch.
+    var seedDrift: Bool = false
+    var seedDriftSample: Bool = false
 
     @Environment(\.dismiss) private var dismiss
     @State private var capture: BFCapture?
@@ -27,9 +35,13 @@ struct BetafischView: View {
     @State private var filterError: String?
     @State private var showImporter = false
     @State private var didSeed = false
+    @State private var path: [DriftRoute] = []
+    @State private var driftObjects: [DriftObject] = []
+    @State private var driftStats: DriftStats?
+    @State private var driftRunning = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 controls
                 Divider()
@@ -37,6 +49,15 @@ struct BetafischView: View {
             }
             .navigationTitle(L("betafisch"))
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(
+                for: DriftRoute.self) { route in
+                switch route {
+                case .gallery:
+                    DriftGalleryView(
+                        objects: driftObjects,
+                        stats: driftStats)
+                }
+            }
             .toolbar {
                 ToolbarItem(
                     placement: .confirmationAction) {
@@ -53,6 +74,16 @@ struct BetafischView: View {
                 load(data: seedData,
                      name: seedName
                          ?? L("a capture"))
+            }
+            if seedDrift {
+                if capture == nil, seedDriftSample {
+                    capture = Betafisch.sampleCapture()
+                    errorLine = nil
+                    resetFilter()
+                }
+                if capture != nil {
+                    runDrift()
+                }
             }
         }
         .fileImporter(
@@ -104,12 +135,30 @@ struct BetafischView: View {
                     capture = Betafisch.sampleCapture()
                     errorLine = nil
                     resetFilter()
+                    resetDrift()
                 } label: {
                     Label(L("the sample"),
                           systemImage: "play.rectangle")
                 }
+                Button {
+                    runDrift()
+                } label: {
+                    Label(L("driftnet"),
+                          systemImage:
+                            "photo.on.rectangle.angled")
+                }
+                .disabled(capture == nil || driftRunning)
             }
             .font(.system(.caption, design: .monospaced))
+            if driftRunning {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(L("lifting the pictures…"))
+                        .font(.system(.caption,
+                                      design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
             if let capture {
                 Text(String(format: L("%@ — %lld frames, %@"),
                             capture.name,
@@ -246,6 +295,7 @@ struct BetafischView: View {
                 data: data, name: name)
             errorLine = nil
             resetFilter()
+            resetDrift()
         } catch let failure as Betafisch.LoadError {
             errorLine = failure.message
         } catch {
@@ -263,6 +313,44 @@ struct BetafischView: View {
     private func resetFilter() {
         appliedFilter = nil
         filterError = nil
+    }
+
+    // MARK: Driftnet
+
+    /// A new capture on the table means
+    /// the old catch no longer belongs
+    /// to it: the wall is cleared and the
+    /// room walks back to the list.
+    private func resetDrift() {
+        driftObjects = []
+        driftStats = nil
+        driftRunning = false
+        path = []
+    }
+
+    /// Run the extraction off the main
+    /// thread — a big capture's streams
+    /// take real work to lay out — and
+    /// walk to the gallery when the
+    /// catch is in.
+    private func runDrift() {
+        guard let capture, !driftRunning else {
+            return
+        }
+        driftRunning = true
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+                let extraction = BetafischDrift
+                    .extractDetailed(capture)
+                DispatchQueue.main.async {
+                    driftObjects = extraction.objects
+                    driftStats = extraction.stats
+                    driftRunning = false
+                    if !path.contains(.gallery) {
+                        path.append(.gallery)
+                    }
+                }
+            }
     }
 }
 
@@ -442,5 +530,251 @@ struct BFNodeRow: View {
                     .foregroundStyle(.tertiary)
             }
         }
+    }
+}
+
+// MARK: - Driftnet's wall
+
+/// Where the room can walk: the
+/// gallery driftnet lifts.
+enum DriftRoute: Hashable {
+    case gallery
+}
+
+/// The wall: every picture the capture
+/// carried, pinned up as it was found.
+struct DriftGalleryView: View {
+    let objects: [DriftObject]
+    let stats: DriftStats?
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 104),
+                 spacing: 10),
+    ]
+
+    var body: some View {
+        Group {
+            if objects.isEmpty {
+                VStack {
+                    Spacer()
+                    Text(L("this capture carries no pictures."))
+                        .font(.system(.caption,
+                                      design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                    Spacer()
+                }
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading,
+                           spacing: 10) {
+                        Text(String(format:
+                            L("%lld pictures lifted"),
+                                    objects.count))
+                            .font(.system(
+                                .caption,
+                                design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        if let stats,
+                           stats.cappedStreams > 0 {
+                            Text(L("some streams ran past the reading limit — only their first stretch was searched."))
+                                .font(.system(
+                                    .caption,
+                                    design: .monospaced))
+                                .foregroundStyle(
+                                    .secondary)
+                        }
+                        LazyVGrid(columns: columns,
+                                  spacing: 10) {
+                            ForEach(objects) { object in
+                                NavigationLink {
+                                    DriftDetailView(
+                                        object: object)
+                                } label: {
+                                    tile(object)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity,
+                           alignment: .leading)
+                    .padding(12)
+                }
+            }
+        }
+        .navigationTitle(L("driftnet"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func tile(
+        _ object: DriftObject) -> some View {
+        VStack(spacing: 4) {
+            tileImage(object)
+                .frame(height: 92)
+                .frame(maxWidth: .infinity)
+                .clipped()
+            Text(String(format: L("%@ · %lld bytes"),
+                        object.kind.displayName,
+                        object.byteCount))
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    @ViewBuilder
+    private func tileImage(
+        _ object: DriftObject) -> some View {
+        if let thumb = object.thumbnail,
+           let image = UIImage(data: thumb) {
+            Image.platformImage(image)
+                .resizable()
+                .scaledToFill()
+        } else if let image = UIImage(
+            data: object.data) {
+            Image.platformImage(image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            Image(systemName: "photo")
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// One lifted picture, full-size, with
+/// where it came from told plainly.
+struct DriftDetailView: View {
+    let object: DriftObject
+    @State private var filedNote: String?
+
+    var body: some View {
+        List {
+            Section(L("the picture")) {
+                picture
+                    .frame(maxWidth: .infinity)
+                    .listRowInsets(EdgeInsets())
+            }
+            Section(L("where it was found")) {
+                row(L("kind"),
+                    object.kind.displayName)
+                row(L("size"),
+                    String(format: L("%lld bytes"),
+                           object.byteCount))
+                row(L("stream"), object.source)
+                if let host = object.host {
+                    row(L("host"), host)
+                }
+                if let path = object.path {
+                    row(L("path"), path)
+                }
+                if let method = object.method {
+                    row(L("method"), method)
+                }
+                row(L("frames"),
+                    String(format:
+                        L("frames %lld–%lld"),
+                           object.firstFrame,
+                           object.lastFrame))
+                row(L("sha-256"), object.shortSHA)
+                row(L("times seen"),
+                    String(format: "%lld",
+                           object.hitCount))
+                row(L("found"),
+                    object.viaHTTP
+                        ? L("served over HTTP")
+                        : L("carved from the stream"))
+                if object.torn {
+                    Text(L("torn stream — some of its bytes never arrived"))
+                        .font(.system(.caption,
+                                      design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section {
+                Button {
+                    fileIt()
+                } label: {
+                    Label(L("file it in Deliveries"),
+                          systemImage:
+                            "tray.and.arrow.down")
+                }
+                if let filedNote {
+                    Text(filedNote)
+                        .font(.system(.caption,
+                                      design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle(object.kind.displayName)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder private var picture: some View {
+        if object.kind == .gif {
+            gifPicture
+        } else if let image = UIImage(
+            data: object.data) {
+            Image.platformImage(image)
+                .resizable()
+                .scaledToFit()
+                .frame(height: 280)
+        } else {
+            Image(systemName: "photo")
+                .frame(height: 120)
+        }
+    }
+
+    /// A GIF rides the house road — the
+    /// platform player, never a hand-
+    /// rolled one.
+    @ViewBuilder private var gifPicture: some View {
+        #if os(iOS)
+        GIFPlayerView(data: object.data,
+                      contentMode: .scaleAspectFit)
+            .frame(height: 280)
+        #else
+        GIFPlayerView(data: object.data)
+            .frame(height: 280)
+        #endif
+    }
+
+    private func row(_ title: String,
+                     _ value: String) -> some View {
+        HStack {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .lineLimit(2)
+        }
+        .font(.system(.caption, design: .monospaced))
+    }
+
+    /// File the picture with the house
+    /// hand: DeliveriesCenter writes it
+    /// to the shelf under a name drawn
+    /// from where it was found.
+    private func fileIt() {
+        var name = "drift " + object.kind.rawValue
+            + " " + object.shortSHA
+        if let path = object.path {
+            let base = (path as NSString)
+                .lastPathComponent
+            let stem = (base as NSString)
+                .deletingPathExtension
+            if !stem.isEmpty {
+                name = stem
+            }
+        }
+        DeliveriesCenter.shared.add(
+            name: name, data: object.data,
+            ext: object.kind.fileExtension)
+        filedNote = L("filed in Deliveries")
     }
 }

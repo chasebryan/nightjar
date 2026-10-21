@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**174 commands in 9 sections.**
+**201 commands in 9 sections.**
 
 ## the house (29)
 
@@ -231,7 +231,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `view <file>` | pictures shown, text read |
 | `wallpaper [stars\|plasma\|mandelbrot]` | the room's own wallpaper — generated, changeable |
 
-## the room (12)
+## the room (14)
 
 | Command | What it does |
 | --- | --- |
@@ -245,5 +245,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `quarantine lift <ip> [via <gear>]` | open the port again |
 | `date` | when it is |
 | `which <cmd>` | where a command lives |
+| `betafisch [file]` | betafisch — the packet dissector: open a capture, read every frame |
+| `driftnet [file]` | driftnet — the pictures in a capture, lifted off the wire and pinned to a wall |
 | `ver` | what this is |
 | `clear` | wipe this screen |
