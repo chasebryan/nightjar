@@ -6029,3 +6029,5 @@
 "Use a collected address" = "استخدام عنوان مجموع";
 "\n…the rest is filed in Deliveries." = "\n…والباقي محفوظ في التسليمات.";
 "…still running — that's what's printed so far." = "…ما زال يعمل — هذا ما طُبع حتى الآن.";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "تم تشكيل البطارية لـ %@: %@ — 3 حمولات محفوظة في الترسانة ومودعة في Deliveries، جاهزة للإطلاق.";
