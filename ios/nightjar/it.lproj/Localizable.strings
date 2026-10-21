@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ hop %lld/%lld (%@) %@ — destinazione illeggibile";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ hop %lld/%lld (%@) %@ — non è una destinazione di rete";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ hop %lld/%lld (%@) %@ — creazione del payload fallita";
+"The Mac bench" = "Il banco Mac";
+"Window" = "Finestra";
+"Display" = "Schermo";
+"Catalog" = "Catalogo";
+"missing" = "mancante";
+"App icon" = "Icona dell'app";
+"Mac boot film" = "Filmato di avvio del Mac";
+"Phone boot film" = "Filmato di avvio del telefono";
+"Boot film length" = "Durata del filmato di avvio";
+"Replay the boot" = "Riproduci l'avvio";
+"Walk to a room" = "Vai in una stanza";
+"%.1f seconds" = "%.1f secondi";
