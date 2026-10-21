@@ -1235,7 +1235,7 @@
 "This house finds things. I keep the list." = "यह घर चीज़ें खोजता है। सूची मैं रखती हूँ।";
 "This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them." = "यह शोर वाला है। यह इस फ़ोन को तार पर हर डिवाइस — और हर देखने वाले — के सामने घोषित करता है। उन नेटवर्कों पर जो आपके नहीं हैं, दस्तक का जवाब यहाँ आता है।";
 "This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for." = "यह ध्यान आकर्षित करने के लिए है — नेटवर्क पर हर व्यवस्थापक माप से: DHCP और प्रवाह लॉग, नियंत्रक की सत्र तालिका, NMS अपने गेजों को चढ़ते देख रहा है।";
-"This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "यह nightjar-hack है: nightjar की श्रवण चौकी, और साथ में एक मुँह। सुनें टैब शुद्धतावादी आधा है — यह विज्ञापनों को स्कैन और लॉग करता है और कभी कनेक्ट, पेयर या भेजता नहीं है, बिल्कुल अपस्ट्रीम ऐप की तरह। भेजें और सर्व करें टैब हैक आधा हैं: वे संचारित करते हैं, लेकिन केवल तब जब आप उनके बटन दबाते हैं, उन लक्ष्यों पर जो आप टाइप करते हैं। दोनों आधे कोई रेडियो स्थिति साझा नहीं करते; कान शुद्ध रहता है, मुँह एक ";
+"This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "यह nightjar है: nightjar की श्रवण चौकी, और साथ में एक मुँह। सुनें टैब शुद्धतावादी आधा है — यह विज्ञापनों को स्कैन और लॉग करता है और कभी कनेक्ट, पेयर या भेजता नहीं है, बिल्कुल अपस्ट्रीम ऐप की तरह। भेजें और सर्व करें टैब हैक आधा हैं: वे संचारित करते हैं, लेकिन केवल तब जब आप उनके बटन दबाते हैं, उन लक्ष्यों पर जो आप टाइप करते हैं। दोनों आधे कोई रेडियो स्थिति साझा नहीं करते; कान शुद्ध रहता है, मुँह एक ";
 "This network" = "यह नेटवर्क";
 "This post" = "यह पोस्ट";
 "Throw Your Voice — the ventriloquist" = "अपनी आवाज़ फेंको — वेंट्रिलोक्विस्ट";
@@ -1402,10 +1402,10 @@
 "memcached set" = "memcached set";
 "never" = "कभी नहीं";
 "new in the house" = "घर में नई";
-"nightjar-hack" = "nightjar-hack";
-"nightjar-hack for iOS %@ · log format 1" = "nightjar-hack for iOS %@ · लॉग प्रारूप 1";
-"nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar-hack उन डिवाइसों और नेटवर्कों के लिए एक परीक्षण यंत्र है जो आपके अपने हैं या जिनका परीक्षण करने के लिए आप लगे हुए हैं। यह जो कुछ भेजता है, स्कैन करता है, रोपता है या रिकॉर्ड करता है उसे केवल उन्हीं लक्ष्यों पर निशाना बनाएँ जिनके लिए आप अधिकृत हैं। अपने प्राधिकरण के लिए आप ज़िम्मेदार हैं; लेखक उन डिवाइसों या नेटवर्कों के विरुद्ध दुरुपयोग के लिए ज़िम्मेदार नहीं है जिनका परीक्षण करने के लिए आप अधिकृत नहीं थे।";
-"nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar-hack मुफ़्त है, और किसी भी तरह मुफ़्त ही रहेगा — इसमें मौजूद हर उपकरण पहले से ही आपका है। यहाँ कोई पेवॉल नहीं है, और कभी नहीं होगी।";
+"nightjar" = "nightjar";
+"nightjar for iOS %@ · log format 1" = "nightjar for iOS %@ · लॉग प्रारूप 1";
+"nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar उन डिवाइसों और नेटवर्कों के लिए एक परीक्षण यंत्र है जो आपके अपने हैं या जिनका परीक्षण करने के लिए आप लगे हुए हैं। यह जो कुछ भेजता है, स्कैन करता है, रोपता है या रिकॉर्ड करता है उसे केवल उन्हीं लक्ष्यों पर निशाना बनाएँ जिनके लिए आप अधिकृत हैं। अपने प्राधिकरण के लिए आप ज़िम्मेदार हैं; लेखक उन डिवाइसों या नेटवर्कों के विरुद्ध दुरुपयोग के लिए ज़िम्मेदार नहीं है जिनका परीक्षण करने के लिए आप अधिकृत नहीं थे।";
+"nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar मुफ़्त है, और किसी भी तरह मुफ़्त ही रहेगा — इसमें मौजूद हर उपकरण पहले से ही आपका है। यहाँ कोई पेवॉल नहीं है, और कभी नहीं होगी।";
 "no releases published yet" = "अभी कोई रिलीज़ प्रकाशित नहीं";
 "not advertised" = "विज्ञापित नहीं";
 "open" = "खुला";
@@ -2069,7 +2069,7 @@
 " Note: the dress changed while the shape was worn — the restore unwound that too." = " नोट: जब आकार पहना हुआ था तब पोशाक बदल गई थी — बहाली ने उसे भी खोल दिया।";
 " The revolving rack stands still." = " घूमती रैक ठहरी हुई है।";
 "%@ Kept on your rack." = "%@ आपकी रैक पर रखा गया।";
-"%@ is out. Open nightjar-hack to install it." = "%@ आ गया है। इसे इंस्टॉल करने के लिए nightjar-hack खोलें।";
+"%@ is out. Open nightjar to install it." = "%@ आ गया है। इसे इंस्टॉल करने के लिए nightjar खोलें।";
 "%@ — emissions regulated, tripwire armed." = "%@ — उत्सर्जन नियंत्रित, tripwire तैयार।";
 "%@ — the house is re-regulated." = "%@ — घर फिर से नियंत्रित है।";
 "%lld blocks" = "%lld ब्लॉक";
@@ -2174,7 +2174,7 @@
 "an update check" = "एक अपडेट जांच";
 "depth %lld" = "गहराई %lld";
 "narrating the /24" = "/24 का वर्णन करते हुए";
-"nightjar-hack · %@ from %@" = "nightjar-hack · %@ की ओर से %@";
+"nightjar · %@ from %@" = "nightjar · %@ की ओर से %@";
 "on %@.0/24" = "%@.0/24 पर";
 "planning" = "योजना बना रहे हैं";
 "scope: %@" = "दायरा: %@";
@@ -2512,7 +2512,7 @@
 "; referred to %@" = "; %@ को भेजा गया";
 "; whois %@ via %@" = "; whois %@, %@ के ज़रिए";
 "; … the rest is boilerplate." = "; … बाकी सब boilerplate है।";
-"BLACKSITE OS — nightjar-hack %@" = "BLACKSITE OS — nightjar-hack %@";
+"BLACKSITE OS — nightjar %@" = "BLACKSITE OS — nightjar %@";
 "EMCON %@ set." = "EMCON %@ सेट।";
 "EMCON forbids the watch under this condition — it stays down." = "EMCON इस स्थिति में पहरे को रोकता है — वह बंद रहता है।";
 "EMCON off — the house is open." = "EMCON बंद — घर खुला है।";
@@ -2884,7 +2884,7 @@
 "is readmitted." = "फिर से अंदर लिया गया।";
 "kept — %@@%@ speaks SNMPv3 %@" = "रखा गया — %@@%@ SNMPv3 %@ बोलता है";
 "legacy versions live" = "legacy versions चालू";
-"nightjar-hack %@ on %@ — source %@" = "nightjar-hack %@ on %@ — source %@";
+"nightjar %@ on %@ — source %@" = "nightjar %@ on %@ — source %@";
 "no %@ at %@ answers to “%@”." = "%@ पर कोई %@ “%@” नाम से जवाब नहीं देता।";
 "no CSP; the browser trusts whatever loads." = "CSP नहीं; browser जो भी load हो, उसी पर भरोसा करता है।";
 "no HSTS; downgrade stays possible." = "HSTS नहीं; downgrade संभव रहता है।";
@@ -3408,7 +3408,7 @@
 "network gear in " = "नेटवर्क गियर ";
 "network-gear name " = "नेटवर्क-गियर नाम ";
 "never knocked for this page" = "इस पेज के लिए कभी खटखटाया नहीं गया";
-"nightjar-hack phone" = "nightjar-hack फ़ोन";
+"nightjar phone" = "nightjar फ़ोन";
 "no answer" = "कोई जवाब नहीं";
 "no answer (" = "कोई जवाब नहीं (";
 "no known format" = "कोई ज्ञात प्रारूप नहीं";
@@ -3707,7 +3707,7 @@
 "The certifications — the map of the ladder" = "Certifications — सीढ़ी का नक्शा";
 "The decoder engine — batteries and evidence" = "Decoder engine — batteries और सबूत";
 "The expansion formats" = "Expansion formats";
-"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "पहला संदिग्ध, हमेशा: iOS की Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on। उसके बिना wire एक विनम्र शून्य जैसा पढ़ता है: sweeps ख़त्म होती हैं, कुछ जवाब नहीं देता, और कोई error वजह नहीं कहता। दूसरा संदिग्ध: phone असल में उस wire पर नहीं जिस पर वह सोचता है कि है — VPN up, या किसी guest network से जुड़ा जो clients को एक-दूसरे से अलग करता है। तीसरा: wire वाक़ई ख़ामोश है। वह उस क्रम में check करती है और कहती है कि वह किस संदिग्ध पर है।";
+"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "पहला संदिग्ध, हमेशा: iOS की Local Network permission — Settings, Privacy & Security, Local Network, nightjar on। उसके बिना wire एक विनम्र शून्य जैसा पढ़ता है: sweeps ख़त्म होती हैं, कुछ जवाब नहीं देता, और कोई error वजह नहीं कहता। दूसरा संदिग्ध: phone असल में उस wire पर नहीं जिस पर वह सोचता है कि है — VPN up, या किसी guest network से जुड़ा जो clients को एक-दूसरे से अलग करता है। तीसरा: wire वाक़ई ख़ामोश है। वह उस क्रम में check करती है और कहती है कि वह किस संदिग्ध पर है।";
 "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export." = "Fusion desk: कान की rows, wire census और journal की activity, एक emitter registry में claimed — हवा और wire, हर दावा उस channel के label के साथ जिसने उसे सुना और एक stated formula से priority। एक watch baseline record करती है, और उसे रोकना delta पढ़ता है: क्या आया, क्या ग़ायब हुआ, कौन-से दरवाज़े बदले। सबसे ऊपर एक नियम: emitters सिर्फ़ एक epoch के अंदर merge होते हैं — desk किसी अजनबी को दिनों के पार कभी नहीं सिलता, और हर export पर ऐसा कहता है।";
 "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten." = "घर एक canvas पर: तुम rooms के नाम देते हो और हर neighbor को वहाँ रखते हो जहाँ device भौतिक रूप से बैठता है; nodes freshness से चमकते हैं, अपना drift लिए हैं, और अपने dossiers खोलते हैं। Placement तुम्हारी गवाही है — app उसे रखता है और कभी अपनी location नहीं गढ़ता। Map अपने More menu से reset होता है; devices रहते हैं, बैठक भूल जाती है।";
 "The house presets" = "House presets";
