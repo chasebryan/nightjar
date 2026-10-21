@@ -3953,8 +3953,13 @@ final class SkelliCenter: ObservableObject {
             return
         }
 
-        // A device, in depth — every organ's word
-        if let neighbor = matchDevice(q) {
+        // A device, in depth — every organ's word.
+        // The dossier answers questions ABOUT a
+        // device; an order naming one (build for
+        // it, send to it, place it) belongs to the
+        // hands and is fenced out (fix271).
+        if let neighbor = matchDevice(q),
+           !deviceActionClaim(q) {
             lastDeviceIP = neighbor.ip
             lastSubject = ("device", neighbor.displayName,
                            "", "")
@@ -5123,6 +5128,45 @@ final class SkelliCenter: ObservableObject {
                 || ($0.name.map {
                     q.contains($0.lowercased()) } ?? false)
         }
+    }
+
+    /// An ask that names a device but ORDERS
+    /// work on it — build for it, send to it,
+    /// place it — belongs to the hands, not to
+    /// the dossier (fix271): the device report
+    /// answers questions about a device, and
+    /// never swallows an order naming one.
+    private func deviceActionClaim(
+        _ q: String) -> Bool {
+        if q.contains("forge") { return true }
+        let words = Set(q.split(separator: " ")
+            .map {
+                $0.trimmingCharacters(
+                    in: CharacterSet(
+                        charactersIn: ".,;:!?\"'"))
+            })
+        if words.contains("payload")
+            || words.contains("packet") {
+            if words.contains("build")
+                || words.contains("make")
+                || words.contains("craft")
+                || words.contains("create") {
+                return true
+            }
+            if words.contains("send")
+                || words.contains("fire")
+                || words.contains("throw")
+                || words.contains("shoot")
+                || words.contains("deliver") {
+                return true
+            }
+        }
+        if words.contains("put")
+            || words.contains("place")
+            || words.contains("move") {
+            return true
+        }
+        return false
     }
 
     private func roomLine(_ neighbor: Neighbor) -> String {
