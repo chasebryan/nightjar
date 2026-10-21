@@ -413,7 +413,7 @@ final class ScanModel: ObservableObject {
         sweeping = true
         if !sweepIsWatch {
             sweepBoardID = ProcessBoard.shared.begin(
-                label: String(format: L("Sweep — port %@"), port), organ: "Scan",
+                label: String(format: L("Sweep — port %lld"), port), organ: "Scan",
                 detail: L("across the /24"),
                 stop: { [weak self] in self?.stopSweep() })
         }
@@ -505,7 +505,7 @@ final class ScanModel: ObservableObject {
         guard !watching else { return }
         watching = true
         watchBoardID = ProcessBoard.shared.begin(
-            label: String(format: L("Watch — port %@"), port), organ: "Scan",
+            label: String(format: L("Watch — port %lld"), port), organ: "Scan",
             detail: L("narrating the /24"), announce: false,
             stop: { [weak self] in self?.stopWatch() })
         feedPort = port
