@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ endereço(s) recolhido(s): %@. A lista fica guardada em Entregas.";
 "Collected addresses" = "Endereços recolhidos";
 "Use a collected address" = "Usar um endereço recolhido";
+"\n…the rest is filed in Deliveries." = "\n…o resto fica guardado em Entregas.";
