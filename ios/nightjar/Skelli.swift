@@ -10193,7 +10193,7 @@ struct SkelliView: View {
                             Text("Let her")
                                 .font(.caption.weight(.bold))
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                         .controlSize(.small)
                     }
                 }
