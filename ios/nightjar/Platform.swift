@@ -17,6 +17,7 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+import ImageIO
 
 /// Photos and artwork cross as NSImage on the Mac.
 /// Display-side uses (size, data) line up; anything
@@ -203,10 +204,13 @@ struct GIFPlayerView: NSViewRepresentable {
     func updateNSView(_ view: NSImageView, context: Context) {}
 }
 
-/// The boot film on the Mac: an AVPlayer view with
-/// no controls, playing the film data from a
-/// scratch file, reporting progress on a clock —
-/// the same contract the phone's player keeps.
+/// The boot film on the Mac. The reel's bytes are
+/// a GIF, which no AVPlayer can decode — so the
+/// film takes the animated-image road, its length
+/// measured off the frames and its progress told
+/// on a clock, the same contract the phone's
+/// player keeps. A film the operator brings as
+/// real video still rides the AVPlayer road.
 struct BootFilmPlayer: NSViewRepresentable {
     let data: Data
     var focusX: CGFloat = 0.5
@@ -215,7 +219,20 @@ struct BootFilmPlayer: NSViewRepresentable {
     var maxPixel: Int = 1024
     var onProgress: (Double) -> Void
 
-    func makeNSView(context: Context) -> AVPlayerView {
+    private var isGIF: Bool {
+        data.starts(with: [0x47, 0x49, 0x46, 0x38])
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        if isGIF {
+            let view = NSImageView()
+            view.image = NSImage(data: data)
+            view.animates = true
+            view.imageScaling =
+                .scaleProportionallyUpOrDown
+            reportGIFProgress()
+            return view
+        }
         let view = AVPlayerView()
         view.controlsStyle = .none
         view.videoGravity = .resizeAspectFill
@@ -237,7 +254,36 @@ struct BootFilmPlayer: NSViewRepresentable {
         player.play()
         return view
     }
-    func updateNSView(_ view: AVPlayerView, context: Context) {}
+    func updateNSView(_ view: NSView, context: Context) {}
+
+    /// The GIF's own length, summed from its frame
+    /// delays, and a clock that tells the boot how
+    /// much of it has played.
+    private func reportGIFProgress() {
+        guard let source = CGImageSourceCreateWithData(
+            data as CFData, nil) else { return }
+        var total = 0.0
+        for i in 0..<CGImageSourceGetCount(source) {
+            if let props = CGImageSourceCopyPropertiesAtIndex(
+                source, i, nil) as? [String: Any],
+               let gif = props[kCGImagePropertyGIFDictionary
+                as String] as? [String: Any],
+               let delay = gif[kCGImagePropertyGIFDelayTime
+                as String] as? Double {
+                total += max(delay, 0.02)
+            }
+        }
+        guard total > 0 else { return }
+        let report = onProgress
+        let start = Date()
+        Timer.scheduledTimer(withTimeInterval: 0.1,
+                             repeats: true) { timer in
+            let value = min(1, Date()
+                .timeIntervalSince(start) / total)
+            report(value)
+            if value >= 1 { timer.invalidate() }
+        }
+    }
 }
 
 /// Capitalization is a phone-keyboard concern; the

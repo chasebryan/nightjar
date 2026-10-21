@@ -201,6 +201,9 @@ struct LanguageSheet: View {
 
     var body: some View {
         NavigationStack {
+#if os(macOS)
+            macSheet
+#else
             List {
                 if welcome {
                     Section {
@@ -266,6 +269,7 @@ struct LanguageSheet: View {
                         text: L("Every tab, setting and switch — and Skelli herself, who answers in it too. Anything not yet translated shows in English, never blank. No fonts to install: the device's own fonts carry every script, at every size. Languages that read right to left turn the whole house with them."))
                 }
             }
+#endif
             .navigationTitle(welcome
                              ? L("Choose your language")
                              : L("Language"))
@@ -282,5 +286,90 @@ struct LanguageSheet: View {
                 }
             }
         }
+    }
+}
+
+extension LanguageSheet {
+    /// The Mac's sheet: the same choices as a
+    /// scrolling stack of rows — a table in a Mac
+    /// sheet sizes itself to an empty room, so the
+    /// laptop gets this instead. Same taps, same
+    /// checkmark, same readouts, same prose.
+    var macSheet: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                if welcome {
+                    Text(L("One choice, now — the whole house speaks it, Skelli included. Change it any time in About."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(LanguageCenter.languages) {
+                        language in
+                        macRow(language)
+                    }
+                }
+                Divider()
+                HStack {
+                    Text(L("Speaking now"))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(center.effectiveNativeName)
+                }
+                HStack {
+                    Text(L("Text direction"))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(center.isRTL
+                         ? L("Right to left")
+                         : L("Left to right"))
+                }
+                Divider()
+                ExplainToggle(
+                    text: L("Every tab, setting and switch — and Skelli herself, who answers in it too. Anything not yet translated shows in English, never blank. No fonts to install: the device's own fonts carry every script, at every size. Languages that read right to left turn the whole house with them."))
+            }
+            .padding(20)
+        }
+        .frame(minWidth: 460, minHeight: 540)
+    }
+
+    @ViewBuilder
+    func macRow(
+        _ language: LanguageCenter.Language
+    ) -> some View {
+        Button {
+            Haptics.select()
+            center.code = language.code
+            if welcome {
+                center.markWelcomed()
+                dismiss()
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(language.name)
+                        .foregroundStyle(.primary)
+                    if language.code != "system" {
+                        Text(LanguageCenter
+                            .englishName(
+                                for: language.code))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(L("Follow the device"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if center.code == language.code {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.green)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 4)
     }
 }
