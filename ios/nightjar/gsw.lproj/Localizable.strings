@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "Nüt isch bi %@ glandet — d Tür isch nie ufgange.";
 "I have no send wire just now." = "Ich ha grad kei Sänleitung.";
 "Here — %@: %@ bytes, filed in Deliveries." = "Do — %@: %@ Bytes, in Deliveries abgleit.";
+"Census — collecting addresses" = "Zäälig — Adrässe wärde gsammlet";
+"%@ address(es) collected" = "%@ Adrässe(n) gsammlet";
+"Collect addresses" = "Adrässe sammle";
+"Collecting…" = "Am Sammle…";
+"A census is already running — the wire is being knocked." = "E Zäälig louft scho — as Netz wird gchlopft.";
+"The Standard forbids sweeps at this condition — the census stays silent." = "De Standard verbietet Sweeps i däm Zuestand — d Zäälig schwygt.";
+"No wire under this phone — join the Wi-Fi and the census can run." = "Käs Netz under däm Telefon — gang is WLAN, de cha d Zäälig laufe.";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "D Adrässe vo däm Netz wärde gsammlet — a d Entdeckigstüre im ganze /24 wird gchlopft.";
+"Nothing collected yet — the board is empty." = "No nüt gsammlet — d Tafele isch läär.";
+", and %@ more" = ", und %@ wyteri";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ Adrässe(n) gsammlet: %@. D Liste ligt bi de Lieferige.";
+"Collected addresses" = "Gsammleti Adrässe";
+"Use a collected address" = "E gsammleti Adrässe bruuche";
