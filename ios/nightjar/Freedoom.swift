@@ -1,6 +1,9 @@
 import SwiftUI
 import WebKit
 import GameController
+#if os(macOS)
+import AppKit
+#endif
 
 // Freedoom — the big demo. Chocolate Doom
 // compiled to WebAssembly (cloudflare/
@@ -536,13 +539,23 @@ final class FreedoomKeyWebView: WKWebView {
     override var canBecomeFirstResponder:
         Bool { true }
 
+#if os(iOS)
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
             becomeFirstResponder()
         }
     }
+#else
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            window?.makeFirstResponder(self)
+        }
+    }
+#endif
 
+#if os(iOS)
     override func pressesBegan(
         _ presses: Set<UIPress>,
         with event: UIPressesEvent?) {
@@ -638,6 +651,67 @@ final class FreedoomKeyWebView: WKWebView {
         }
     }
 
+#endif
+
+#if os(macOS)
+    override func keyDown(with event: NSEvent) {
+        if FreedoomKeyboardRouter.shared
+            .active { return }
+        guard let code = Self.domCode(
+            forMacEvent: event)
+        else { super.keyDown(with: event); return }
+        dispatch(code, down: true)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        if FreedoomKeyboardRouter.shared
+            .active { return }
+        guard let code = Self.domCode(
+            forMacEvent: event)
+        else { super.keyUp(with: event); return }
+        dispatch(code, down: false)
+    }
+
+    private func dispatch(_ code: Int, down: Bool) {
+        let type = down ? "keydown" : "keyup"
+        evaluateJavaScript(
+            "window.sendkey && "
+            + "window.sendkey(["
+            + String(code) + "], \""
+            + type + "\")",
+            completionHandler: nil)
+    }
+
+    /// Mac virtual key codes and characters in,
+    /// DOM key codes out — the same contract the
+    /// press path keeps on the phone.
+    static func domCode(
+        forMacEvent event: NSEvent) -> Int? {
+        switch event.keyCode {
+        case 126: return 38  // up
+        case 125: return 40  // down
+        case 123: return 37  // left
+        case 124: return 39  // right
+        case 53: return 27   // esc
+        case 48: return 9    // tab
+        case 36, 76: return 13  // return / keypad enter
+        case 49: return 32   // space
+        case 51: return 8    // delete
+        case 56, 60: return 16  // shift
+        case 59, 62: return 17  // control
+        case 58, 61: return 18  // option
+        default:
+            guard let ch = event
+                .charactersIgnoringModifiers?.first,
+                  ch.isLetter || ch.isNumber,
+                  let scalar = ch.uppercased()
+                    .unicodeScalars.first
+            else { return nil }
+            return Int(scalar.value)
+        }
+    }
+#endif
+
     /// HID usage code in, DOM key code
     /// out — the GameController router's
     /// half of the map. GCKeyCode raw
@@ -670,61 +744,62 @@ final class FreedoomKeyWebView: WKWebView {
     }
 }
 
+final class FreedoomCoordinator: NSObject,
+    WKNavigationDelegate,
+    WKScriptMessageHandler {
+
+    func userContentController(
+        _ userContentController:
+            WKUserContentController,
+        didReceive message:
+            WKScriptMessage) {
+        FreedoomTrail.shared.log(
+            "page: "
+            + (message.body as? String
+                ?? "?"))
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        didFinish navigation:
+            WKNavigation!) {
+        FreedoomTrail.shared.log(
+            "nav finished")
+    }
+    func webView(
+        _ webView: WKWebView,
+        webContentProcessDidTerminate
+            notification: WKWebView) {
+        // WebKit kills the content
+        // process under memory
+        // pressure; the room's answer
+        // is to stand back up.
+        webView.reload()
+    }
+
+    func webView(_ webView: WKWebView,
+                 decidePolicyFor
+                    action:
+                    WKNavigationAction,
+                 decisionHandler:
+                    @escaping (
+                        WKNavigationActionPolicy
+                    ) -> Void) {
+        if action.navigationType
+                == .linkActivated {
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
+    }
+}
+
+#if os(iOS)
 struct FreedoomWebView:
     UIViewRepresentable {
 
-    final class Coordinator: NSObject,
-        WKNavigationDelegate,
-        WKScriptMessageHandler {
-
-        func userContentController(
-            _ userContentController:
-                WKUserContentController,
-            didReceive message:
-                WKScriptMessage) {
-            FreedoomTrail.shared.log(
-                "page: "
-                + (message.body as? String
-                    ?? "?"))
-        }
-
-        func webView(
-            _ webView: WKWebView,
-            didFinish navigation:
-                WKNavigation!) {
-            FreedoomTrail.shared.log(
-                "nav finished")
-        }
-        func webView(
-            _ webView: WKWebView,
-            webContentProcessDidTerminate
-                notification: WKWebView) {
-            // WebKit kills the content
-            // process under memory
-            // pressure; the room's answer
-            // is to stand back up.
-            webView.reload()
-        }
-
-        func webView(_ webView: WKWebView,
-                     decidePolicyFor
-                        action:
-                        WKNavigationAction,
-                     decisionHandler:
-                        @escaping (
-                            WKNavigationActionPolicy
-                        ) -> Void) {
-            if action.navigationType
-                    == .linkActivated {
-                decisionHandler(.cancel)
-                return
-            }
-            decisionHandler(.allow)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
+    func makeCoordinator() -> FreedoomCoordinator {
+        FreedoomCoordinator()
     }
 
     func makeUIView(
@@ -772,7 +847,7 @@ struct FreedoomWebView:
 
     static func dismantleUIView(
         _ uiView: FreedoomKeyWebView,
-        coordinator: Coordinator) {
+        coordinator: FreedoomCoordinator) {
         FreedoomKeyboardRouter.shared
             .detach()
     }
@@ -781,6 +856,62 @@ struct FreedoomWebView:
         _ uiView: FreedoomKeyWebView,
         context: Context) {}
 }
+
+#endif
+
+#if os(macOS)
+struct FreedoomWebView: NSViewRepresentable {
+
+    func makeCoordinator() -> FreedoomCoordinator {
+        FreedoomCoordinator()
+    }
+
+    func makeNSView(
+        context: Context)
+        -> FreedoomKeyWebView {
+        let config = WKWebViewConfiguration()
+        config.setURLSchemeHandler(
+            FreedoomSchemeHandler(),
+            forURLScheme:
+                FreedoomSchemeHandler.scheme)
+        config.userContentController.add(
+            context.coordinator,
+            name: "doom")
+        config.websiteDataStore =
+            .nonPersistent()
+        let view = FreedoomKeyWebView(
+            frame: .zero,
+            configuration: config)
+        view.navigationDelegate =
+            context.coordinator
+        view.setValue(false, forKey: "drawsBackground")
+        if let page = URL(
+            string: FreedoomSchemeHandler
+                .scheme + "://room/doom.html"
+                + "?launch="
+                + UUID().uuidString) {
+            view.load(URLRequest(
+                url: page,
+                cachePolicy:
+                    .reloadIgnoringLocalCacheData))
+        }
+        FreedoomKeyboardRouter.shared
+            .attach(webView: view)
+        return view
+    }
+
+    static func dismantleNSView(
+        _ nsView: FreedoomKeyWebView,
+        coordinator: FreedoomCoordinator) {
+        FreedoomKeyboardRouter.shared
+            .detach()
+    }
+
+    func updateNSView(
+        _ nsView: FreedoomKeyWebView,
+        context: Context) {}
+}
+#endif
 
 /// Hardware keys at the app level.
 /// GameController reports every press

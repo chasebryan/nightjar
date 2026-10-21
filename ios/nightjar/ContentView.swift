@@ -955,7 +955,9 @@ struct DeviceDetailView: View {
 struct SessionsView: View {
     @EnvironmentObject private var post: ListeningPost
     @EnvironmentObject private var toasts: ToastCenter
+#if os(iOS)
     @Environment(\.editMode) private var editMode
+#endif
     @State private var sessions: [SessionSummary] = []
     @State private var selection = Set<String>()
     @State private var showClearConfirm = false
@@ -1038,6 +1040,7 @@ struct SessionsView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { reload() } label: { Image(systemName: "arrow.clockwise") }
                 }
+#if os(iOS)
                 if editMode?.wrappedValue.isEditing == true,
                    selectedDeletableCount > 0 {
                     ToolbarItem(placement: .bottomBar) {
@@ -1047,6 +1050,16 @@ struct SessionsView: View {
                         }
                     }
                 }
+#else
+                if selectedDeletableCount > 0 {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button(String(format: L("Delete selected (%lld)"), selectedDeletableCount),
+                               role: .destructive) {
+                            deleteSelected()
+                        }
+                    }
+                }
+#endif
             }
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)

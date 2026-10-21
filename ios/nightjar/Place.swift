@@ -119,6 +119,7 @@ final class PlaceCenter: NSObject, ObservableObject,
 
     func locationManagerDidChangeAuthorization(
         _ manager: CLLocationManager) {
+#if os(iOS)
         if (manager.authorizationStatus
                 == .authorizedWhenInUse
                 || manager.authorizationStatus
@@ -126,6 +127,13 @@ final class PlaceCenter: NSObject, ObservableObject,
             wantsFix = false
             Task { _ = await fix() }
         }
+#else
+        if manager.authorizationStatus
+            == .authorizedAlways, wantsFix {
+            wantsFix = false
+            Task { _ = await fix() }
+        }
+#endif
     }
 
     func locationManager(_ manager: CLLocationManager,

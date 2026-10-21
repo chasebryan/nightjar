@@ -6,6 +6,9 @@ import FoundationModels
 #endif
 import Foundation
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// Skelli — the house's specialist.
 
@@ -8317,6 +8320,7 @@ struct SkelliLiveView: View {
     }
 }
 
+#if os(iOS)
 struct SkelliFilm: UIViewRepresentable {
     var name: String
 
@@ -8626,6 +8630,102 @@ final class SkelliFilmView: UIView {
 
     deinit { stop() }
 }
+#endif
+
+#if os(macOS)
+struct SkelliFilm: NSViewRepresentable {
+    var name: String
+
+    func makeNSView(context: Context) -> SkelliFilmView {
+        let view = SkelliFilmView()
+        view.play(name)
+        return view
+    }
+
+    func updateNSView(_ view: SkelliFilmView,
+                      context: Context) {
+        view.play(name)
+    }
+
+    static func dismantleNSView(_ view: SkelliFilmView,
+                                coordinator: ()) {
+        view.stop()
+    }
+}
+
+/// Her films on the Mac: one player layer, looped —
+/// the crossfade is the phone's theatre for now;
+/// the reel and its variants are shared code above.
+final class SkelliFilmView: NSView {
+    private let filmLayer = AVPlayerLayer()
+    private var player: AVPlayer?
+    private var current: String?
+    private var endToken: NSObjectProtocol?
+    private static var missingNoted = Set<String>()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        filmLayer.videoGravity = .resizeAspectFill
+        layer?.addSublayer(filmLayer)
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        filmLayer.videoGravity = .resizeAspectFill
+        layer?.addSublayer(filmLayer)
+    }
+
+    override func layout() {
+        super.layout()
+        filmLayer.frame = bounds
+    }
+
+    func play(_ name: String) {
+        guard name != current else { return }
+        guard let url = Bundle.main.url(
+            forResource: name, withExtension: "mp4") else {
+            if Self.missingNoted.insert(name).inserted {
+                Journal.log("film", "missing",
+                            "\(name).mp4 is not in the bundle")
+            }
+            return
+        }
+        current = name
+        retirePlayer()
+        let item = AVPlayerItem(url: url)
+        let player = AVPlayer(playerItem: item)
+        self.player = player
+        filmLayer.player = player
+        endToken = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item, queue: .main) { _ in
+                player.seek(to: .zero)
+                player.play()
+            }
+        player.play()
+    }
+
+    func stop() {
+        current = nil
+        retirePlayer()
+    }
+
+    private func retirePlayer() {
+        player?.pause()
+        player = nil
+        filmLayer.player = nil
+        if let endToken {
+            NotificationCenter.default
+                .removeObserver(endToken)
+            self.endToken = nil
+        }
+    }
+
+    deinit { stop() }
+}
+#endif
 
 // MARK: - Her tab
 

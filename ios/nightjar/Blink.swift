@@ -55,7 +55,13 @@ enum BlinkFraming {
             by: CGAffineTransform(scaleX: 12, y: 12))
         guard let cg = CIContext().createCGImage(
             scaled, from: scaled.extent) else { return nil }
+#if os(iOS)
         return UIImage(cgImage: cg)
+#else
+        return UIImage(cgImage: cg,
+                       size: NSSize(width: cg.width,
+                                    height: cg.height))
+#endif
     }
 }
 
@@ -116,7 +122,7 @@ struct BlinkSenderView: View {
             VStack(spacing: 16) {
                 if let image = BlinkFraming.qrImage(
                     for: frames[index]) {
-                    Image(uiImage: image)
+                    Image.platformImage(image)
                         .interpolation(.none)
                         .resizable()
                         .scaledToFit()
@@ -249,6 +255,7 @@ extension BlinkReceiver: AVCaptureMetadataOutputObjectsDelegate {
     }
 }
 
+#if os(iOS)
 final class PreviewView: UIView {
     var previewLayer: AVCaptureVideoPreviewLayer? {
         didSet {
@@ -276,6 +283,38 @@ struct BlinkPreview: UIViewRepresentable {
 
     func updateUIView(_ uiView: PreviewView, context: Context) {}
 }
+#endif
+
+#if os(macOS)
+final class PreviewView: NSView {
+    var previewLayer: AVCaptureVideoPreviewLayer? {
+        didSet {
+            if let previewLayer = previewLayer {
+                wantsLayer = true
+                layer?.addSublayer(previewLayer)
+            }
+        }
+    }
+    override func layout() {
+        super.layout()
+        previewLayer?.frame = bounds
+    }
+}
+
+struct BlinkPreview: NSViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeNSView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        view.previewLayer = layer
+        return view
+    }
+
+    func updateNSView(_ view: PreviewView, context: Context) {}
+}
+#endif
 
 /// The receiver's screen: the camera's eye, the count, the
 /// verdict.

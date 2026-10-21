@@ -624,7 +624,7 @@ private struct BackdropRow: View {
             if themes.effectiveChoice(for: slot) == .custom {
                 HStack(spacing: 12) {
                     if let image = BackdropMedia.image(for: slot) {
-                        Image(uiImage: image)
+                        Image.platformImage(image)
                             .resizable().scaledToFill()
                             .frame(width: 44, height: 44)
                             .clipShape(RoundedRectangle(
@@ -854,7 +854,7 @@ private struct BootRow: View {
                     if let data = BootMedia.data(),
                        let image = UIImage(
                            data: data) {
-                        Image(uiImage: image)
+                        Image.platformImage(image)
                             .resizable().scaledToFill()
                             .frame(width: 44,
                                    height: 44)

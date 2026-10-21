@@ -186,8 +186,13 @@ enum DevKit {
             + "\(MacroStore.load().count) saved, "
             + "\(MacroTemplates.all.count) "
             + "house presets")
+#if os(iOS)
         let headroomMB = os_proc_available_memory()
             / 1_048_576
+#else
+        let headroomMB = macAvailableMemoryBytes()
+            / 1_048_576
+#endif
         lines.append("Weights headroom: ~"
             + "\(headroomMB) MB free")
         lines.append("Developer options: "

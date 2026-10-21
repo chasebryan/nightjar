@@ -1705,6 +1705,7 @@ struct NetAssaultSectionView: View {
 /// The system's share sheet as a plain view controller, so
 /// it can hang off a screen's root like every other working
 /// presenter in the house.
+#if os(iOS)
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
@@ -1718,6 +1719,29 @@ struct ShareSheet: UIViewControllerRepresentable {
         _ controller: UIActivityViewController,
         context: Context) {}
 }
+#endif
+
+#if os(macOS)
+/// The Mac's share sheet: the system's sharing
+/// picker, raised over the window when the sheet
+/// is presented.
+struct ShareSheet: NSViewRepresentable {
+    let items: [Any]
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        let offered = items
+        DispatchQueue.main.async {
+            let picker = NSSharingServicePicker(items: offered)
+            picker.show(relativeTo: .zero, of: view,
+                        preferredEdge: .minY)
+        }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {}
+}
+#endif
 
 // MARK: - The ignition
 

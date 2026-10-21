@@ -57,6 +57,14 @@ final class UIDevice {
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
     }
+
+    /// The battery surface, answered honestly for a
+    /// laptop: state unknown, level unread — the
+    /// Gauntlet's battery derate simply never bites.
+    enum BatteryState { case unknown, unplugged, charging, full }
+    var batteryState: BatteryState { .unknown }
+    var batteryLevel: Float { -1 }
+    var isBatteryMonitoringEnabled = false
 }
 
 /// One screen use exists in the house (the virtual
@@ -71,6 +79,51 @@ final class UIScreen {
         NSScreen.main?.backingScaleFactor ?? 2
     }
     var nativeScale: CGFloat { scale }
+}
+
+/// The application object, in the narrow shape the
+/// shared sources use on iOS: a state that is simply
+/// always active (a Mac app that is running is in
+/// front of its operator), and the memory-warning
+/// notice's name (posted by UIKit on the phone; on
+/// the Mac it simply never arrives).
+final class UIApplication {
+    static let shared = UIApplication()
+    enum State { case active, inactive, background }
+    var applicationState: State { .active }
+    static let didReceiveMemoryWarningNotification =
+        Notification.Name("UIApplicationDidReceiveMemoryWarning")
+}
+
+/// Free memory, the macOS way: the host's VM
+/// statistics, free plus inactive pages.
+func macAvailableMemoryBytes() -> Int {
+    var stats = vm_statistics64()
+    var count = mach_msg_type_number_t(
+        MemoryLayout<vm_statistics64>.size
+            / MemoryLayout<integer_t>.size)
+    let kr = withUnsafeMutablePointer(to: &stats) { ptr in
+        ptr.withMemoryRebound(to: integer_t.self,
+                              capacity: Int(count)) {
+            host_statistics64(mach_host_self(),
+                              HOST_VM_INFO64, $0, &count)
+        }
+    }
+    guard kr == KERN_SUCCESS else { return 0 }
+    let pages = Int(stats.free_count)
+        + Int(stats.inactive_count)
+    return pages * Int(vm_page_size)
+}
+
+extension NSImage {
+    /// PNG bytes, the spelling the shared sources
+    /// use on the phone.
+    func pngData() -> Data? {
+        guard let tiff = tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff)
+        else { return nil }
+        return rep.representation(using: .png, properties: [:])
+    }
 }
 #endif
 
@@ -181,6 +234,21 @@ struct BootFilmPlayer: NSViewRepresentable {
     }
     func updateNSView(_ view: AVPlayerView, context: Context) {}
 }
+
+/// Capitalization is a phone-keyboard concern; the
+/// Mac has a real keyboard. The spelling exists so
+/// shared text fields keep theirs — and does nothing.
+enum TextInputAutocapitalization {
+    case never, words, sentences, characters
+}
+
+
+extension View {
+    func textInputAutocapitalization(
+        _ style: TextInputAutocapitalization?) -> some View {
+        self
+    }
+}
 #endif
 
 // MARK: - The Mac window's shape (fix240)
@@ -213,3 +281,19 @@ struct MacWindowSizing: ViewModifier {
 #endif
     }
 }
+
+// MARK: - One image spelling
+
+extension Image {
+    /// The platform's own image type, wrapped: on the
+    /// phone a UIImage, on the Mac an NSImage — one
+    /// spelling at every call site.
+    static func platformImage(_ image: UIImage) -> Image {
+#if os(macOS)
+        Image(nsImage: image)
+#else
+        Image(uiImage: image)
+#endif
+    }
+}
+

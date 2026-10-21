@@ -193,6 +193,7 @@ enum Wallpaper {
 /// already proves — and updateUIView restarts a view
 /// that stopped (a tab switch, a recycled hierarchy),
 /// so coming back to a screen always finds it playing.
+#if os(iOS)
 struct AnimatedImageView: UIViewRepresentable {
     let image: UIImage
 
@@ -226,6 +227,32 @@ struct AnimatedImageView: UIViewRepresentable {
         }
     }
 }
+#endif
+
+#if os(macOS)
+/// The Mac's animated image: NSImageView animates
+/// a GIF natively, which is all the phone's
+/// frame-walking view was reaching for.
+struct AnimatedImageView: NSViewRepresentable {
+    let image: NSImage
+
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.imageScaling = .scaleProportionallyUpOrDown
+        view.animates = true
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.black.cgColor
+        view.image = image
+        return view
+    }
+
+    func updateNSView(_ view: NSImageView,
+                      context: Context) {
+        if view.image !== image { view.image = image }
+        if !view.animates { view.animates = true }
+    }
+}
+#endif
 
 /// The app's backdrop, wearing whatever Colours says this
 /// slot wears: the living wallpaper, the Jolly Roger, the
@@ -287,7 +314,7 @@ struct AppBackdrop: View {
                                height: geo.size.height)
                         .clipped()
                 } else {
-                    Image(uiImage: image)
+                    Image.platformImage(image)
                         .resizable().scaledToFill()
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -1329,7 +1356,7 @@ struct BootView: View {
                         }
                 } else if let image = UIImage(
                     data: data) {
-                    Image(uiImage: image)
+                    Image.platformImage(image)
                         .resizable()
                         .scaledToFill()
                         .ignoresSafeArea()
@@ -3474,6 +3501,7 @@ final class SkelliWebRenderer: NSObject,
     }
 }
 
+#if os(iOS)
 struct SkelliWebHost: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -3492,6 +3520,27 @@ struct SkelliWebHost: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView,
                       context: Context) { }
 }
+#endif
+
+#if os(macOS)
+struct SkelliWebHost: NSViewRepresentable {
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        config.defaultWebpagePreferences
+            .allowsContentJavaScript = true
+        let view = WKWebView(
+            frame: CGRect(x: 0, y: 0, width: 2, height: 2),
+            configuration: config)
+        view.alphaValue = 0.02
+        SkelliWebRenderer.shared.attach(view)
+        return view
+    }
+
+    func updateNSView(_ view: WKWebView,
+                      context: Context) { }
+}
+#endif
 
 // MARK: - Her small favors
 
