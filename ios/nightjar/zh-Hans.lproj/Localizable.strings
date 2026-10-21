@@ -6008,3 +6008,9 @@
 "Walk to a room" = "前往房间";
 "%.1f seconds" = "%.1f 秒";
 "Running work" = "正在运行的工作";
+"Firing %@ at %@ — %@ bytes." = "向 %@ 发射 %@ — %@ 字节。";
+"It answered — %@ bytes back." = "对方回应了 — 回了 %@ 字节。";
+"Sent. No reply came back." = "已发送。没有回音。";
+"Nothing landed at %@ — the door never opened." = "什么都没落到 %@ — 门从未打开。";
+"Here — %@: %@ bytes, filed in Deliveries." = "给你 — %@：%@ 字节，已存入 Deliveries。";
+"I have no send wire just now." = "我现在没有发送通道。";
