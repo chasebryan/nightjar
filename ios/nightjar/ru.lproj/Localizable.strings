@@ -6008,3 +6008,9 @@
 "Walk to a room" = "Перейти в комнату";
 "%.1f seconds" = "%.1f с";
 "Running work" = "Выполняющиеся задачи";
+"Firing %@ at %@ — %@ bytes." = "Стреляю %@ по %@ — %@ байт.";
+"It answered — %@ bytes back." = "Ответ пришёл — %@ байт обратно.";
+"Sent. No reply came back." = "Отправлено. Ответа не пришло.";
+"Nothing landed at %@ — the door never opened." = "Ничего не долетело до %@ — дверь так и не открылась.";
+"Here — %@: %@ bytes, filed in Deliveries." = "Вот — %@: %@ байт, сохранено в Deliveries.";
+"I have no send wire just now." = "У меня сейчас нет канала отправки.";
