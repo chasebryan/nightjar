@@ -517,6 +517,30 @@ final class SkelliCenter: ObservableObject {
     /// it; she borrows the hand while
     /// the room stands.
     weak var blacksiteShell: BlacksiteShell?
+    /// Her own console (fix266, Chase: "plug
+    /// Skelli into blacksite through her chat
+    /// interface so she can use all of the
+    /// tools present inside of the blacksite"):
+    /// she no longer waits for the room to be
+    /// opened once — when no room shell stands,
+    /// she wakes one herself and keeps it. The
+    /// room's shell, once its view appears,
+    /// registers over hers as before.
+    private var herBlacksite: BlacksiteShell?
+    func blacksite() -> BlacksiteShell {
+        if let shell = blacksiteShell {
+            return shell
+        }
+        if let hers = herBlacksite {
+            blacksiteShell = hers
+            return hers
+        }
+        let shell = BlacksiteShell()
+        shell.bootIfNeeded()
+        herBlacksite = shell
+        blacksiteShell = shell
+        return shell
+    }
     private let scanner = ScanModel()
     private var sweepWatch: AnyCancellable?
     /// Her interrogation bench — a Recon of her
