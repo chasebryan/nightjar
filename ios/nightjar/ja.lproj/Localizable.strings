@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "%@ には何も届かなかった — ドアは開かなかった。";
 "Here — %@: %@ bytes, filed in Deliveries." = "どうぞ — %@：%@ バイト、Deliveries に保管した。";
 "I have no send wire just now." = "今は送信の回線がない。";
+"Census — collecting addresses" = "センサス — アドレスを収集中";
+"%@ address(es) collected" = "%@ 件のアドレスを収集";
+"Collect addresses" = "アドレスを収集";
+"Collecting…" = "収集中…";
+"A census is already running — the wire is being knocked." = "センサスはすでに実行中です — ネットワークをノックしています。";
+"The Standard forbids sweeps at this condition — the census stays silent." = "この状態では Standard によりスイープが禁止されています — センサスは沈黙します。";
+"No wire under this phone — join the Wi-Fi and the census can run." = "この電話の下にネットワークがありません — Wi-Fi に接続すればセンサスを実行できます。";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "このネットワークのアドレスを収集中 — /24 全体の検出ドアをノックしています。";
+"Nothing collected yet — the board is empty." = "まだ何も収集されていません — ボードは空です。";
+", and %@ more" = "、ほか %@ 件";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ 件のアドレスを収集: %@。リストは Deliveries に保管されました。";
+"Collected addresses" = "収集済みアドレス";
+"Use a collected address" = "収集済みアドレスを使う";
