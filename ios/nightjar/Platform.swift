@@ -491,20 +491,32 @@ func platformAvailableMemory() -> Int {
 }
 
 extension View {
-    /// Hide the bar itself: the navigation bar on
-    /// the phone, the window toolbar on the Mac.
+    /// Hide the bar itself: the navigation bar
+    /// on the phone. On the Mac this is a no-op
+    /// BY DESIGN: there is no bar inside a room
+    /// to hide, and the window toolbar belongs
+    /// to the house — it carries the sidebar's
+    /// chrome, and a room that hides it takes
+    /// the navigator down with it (Skelli's
+    /// room did exactly that, 2026-10-20: her
+    /// panel lost its chrome and blended into
+    /// her backdrop while every other room kept
+    /// its). A room's full-bleed wish is already
+    /// granted by the tab's own content area.
     func houseBarHidden() -> some View {
 #if os(macOS)
-        toolbar(.hidden, for: .windowToolbar)
+        self
 #else
         toolbar(.hidden, for: .navigationBar)
 #endif
     }
 
-    /// Hide the bar's background, likewise.
+    /// Hide the bar's background, likewise —
+    /// and likewise the house's, not a room's,
+    /// to strip on the Mac.
     func houseBarBackgroundHidden() -> some View {
 #if os(macOS)
-        toolbarBackground(.hidden, for: .windowToolbar)
+        self
 #else
         toolbarBackground(.hidden, for: .navigationBar)
 #endif
