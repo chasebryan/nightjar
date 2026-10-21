@@ -2142,7 +2142,7 @@
 "She knows it now." = "باتت تعرفه الآن.";
 "Skelli's crew" = "طاقم Skelli";
 "Stealth only" = "الخفاء فقط";
-"Sweep — port %@" = "تمشيط — المنفذ %@";
+"Sweep — port %lld" = "تمشيط — المنفذ %lld";
 "That target does not parse: %@" = "ذلك الهدف لا يُحلَّل: %@";
 "The GATT host already wears “%@”." = "مضيف GATT يرتدي أصلًا “%@”.";
 "The beacon already wears “%@”." = "المنارة ترتدي أصلًا “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room، يطرق";
 "War Room, tracing" = "War Room، يتتبّع";
 "Watch — %@" = "مراقبة — %@";
-"Watch — port %@" = "مراقبة — المنفذ %@";
+"Watch — port %lld" = "مراقبة — المنفذ %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "يرتدي %@ — حيّ الآن، في الشخصية على كل سطح يملكه.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "يرتدي %@ — الزيّ جاهز؛ يصبح حيًّا حين يبدأ Serve أو أعضاء الهواء في المرة التالية.";
 "Write target set: %@ — Send tab" = "تعيين هدف الكتابة: %@ — علامة Send";
