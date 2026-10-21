@@ -220,7 +220,9 @@ extension Mouth {
             route: rawLines, perDevice: perDevice,
             returnLeg: returnLeg)
         guard !hops.isEmpty else {
-            crawlLines = invalid.map { "✗ \($0) — invalid range" }
+            crawlLines = invalid.map {
+                String(format: L("✗ %@ — invalid range"), $0)
+            }
             return
         }
         crawlGeneration += 1
@@ -230,11 +232,14 @@ extension Mouth {
         crawlBusy = true
         crawlHomecoming = nil
         crawlFindings = []
-        crawlLines = ["Centipede released — \(total) hop(s)"
-                      + (returnLeg ? ", out and back" : "")
-                      + (perDevice ? ", per device" : "")]
+        var release = String(format: L("Centipede released — %lld hop(s)"),
+                             total)
+        if returnLeg { release += L(", out and back") }
+        if perDevice { release += L(", per device") }
+        crawlLines = [release]
         for text in invalid {
-            crawlLines.append("✗ \(text) — invalid range")
+            crawlLines.append(
+                String(format: L("✗ %@ — invalid range"), text))
         }
         line("centipede: \(total) hops, mode \(mode)")
         var index = 0
@@ -253,12 +258,15 @@ extension Mouth {
                let first = spoken.split(separator: "\n").first {
                 preview = String(first)
             } else {
-                preview = "\(reply.count) bytes · " + reply.prefix(8)
-                    .map { String(format: "%02x", $0) }
-                    .joined(separator: " ")
+                preview = String(format: L("%lld bytes · %@"),
+                                 reply.count,
+                                 reply.prefix(8)
+                                    .map { String(format: "%02x", $0) }
+                                    .joined(separator: " "))
             }
-            let finding = "\(text) (\(leg)) — "
-                + String(preview.prefix(70))
+            let finding = String(format: L("%@ (%@) — %@"),
+                                 text, leg,
+                                 String(preview.prefix(70)))
             DispatchQueue.main.async { [weak self] in
                 self?.crawlFindings.append(finding)
             }
@@ -277,12 +285,15 @@ extension Mouth {
                 self.crawlBusy = false
                 self.crawlHomecoming = carried
                 self.crawlLines.append(
-                    "Home — carrying \(carried?.count ?? 0) byte(s)")
+                    String(format: L("Home — carrying %lld byte(s)"),
+                           carried?.count ?? 0))
                 if !self.crawlFindings.isEmpty {
                     self.crawlLines.append(
-                        "Harvest — \(self.crawlFindings.count) "
-                        + (self.crawlFindings.count == 1
-                           ? "reply" : "replies") + " kept:")
+                        self.crawlFindings.count == 1
+                        ? String(format: L("Harvest — %lld reply kept:"),
+                                 self.crawlFindings.count)
+                        : String(format: L("Harvest — %lld replies kept:"),
+                                 self.crawlFindings.count))
                     self.crawlLines += self.crawlFindings
                         .map { "  \($0)" }
                 }
@@ -325,8 +336,8 @@ extension Mouth {
                 payload = payloadFor(text)
             }
             guard let payload = payload else {
-                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
-                      + "payload failed to build")
+                trail(String(format: L("✗ hop %lld/%lld (%@) %@ — payload failed to build"),
+                             hopNumber, total, leg, text))
                 DispatchQueue.main.async { step() }
                 return
             }
@@ -387,22 +398,29 @@ extension Mouth {
                     carried = stopCarry ? nil : reply
                     harvest(text, leg: leg, reply: reply, tags: tags)
                     if !tags.isEmpty {
-                        trail("  ↳ tagged: "
-                              + tags.joined(separator: ", "))
+                        trail(String(format: L("  ↳ tagged: %@"),
+                                     tags.joined(separator: ", ")))
                     }
                     if stopCarry {
-                        ruleNote = " · rule: stop — reply left here"
+                        ruleNote = L(" · rule: stop — reply left here")
                     }
                 }
                 let elapsed = Date().timeIntervalSince(hopStart)
-                let trailLine = "\(ok ? "✓" : "✗") "
-                    + "hop \(hopNumber)/\(total) "
-                    + "(\(leg)) \(text) · \(payload.count) B out"
-                    + (probeName.map { " · spoke \($0)" } ?? "")
-                    + (reply.map { " · \($0.count) B back" }
-                       ?? " · no reply")
-                    + String(format: " · %.2fs", elapsed)
-                    + ruleNote
+                var trailLine = String(format: L("%@ hop %lld/%lld (%@) %@ · %lld B out"),
+                                       ok ? "✓" : "✗", hopNumber,
+                                       total, leg, text, payload.count)
+                if let probeName = probeName {
+                    trailLine += String(format: L(" · spoke %@"),
+                                        probeName)
+                }
+                if let reply = reply {
+                    trailLine += String(format: L(" · %lld B back"),
+                                        reply.count)
+                } else {
+                    trailLine += L(" · no reply")
+                }
+                trailLine += String(format: " · %.2fs", elapsed)
+                trailLine += ruleNote
                 guard let name = followName,
                       let followPayload = payloadNamed?(name)
                 else {
@@ -415,16 +433,19 @@ extension Mouth {
                     _ in
                     guard generation == self.crawlGeneration
                     else { return }
-                    var note = " · follow-up: \(name)"
+                    var note = String(format: L(" · follow-up: %@"),
+                                      name)
                     if let followReply = self.replyData(
                         since: followStart) {
-                        harvest("\(text) (follow-up: \(name))",
+                        harvest(String(format: L("%@ (follow-up: %@)"),
+                                       text, name),
                                 leg: leg, reply: followReply,
                                 source: "centipede-followup",
                                 recordTarget: text)
-                        note += " · \(followReply.count) B back"
+                        note += String(format: L(" · %lld B back"),
+                                       followReply.count)
                     } else {
-                        note += " · silence"
+                        note += L(" · silence")
                     }
                     trail(trailLine + note)
                     DispatchQueue.main.async { step() }
@@ -437,8 +458,8 @@ extension Mouth {
                 return
             }
             guard let parsed = try? SendTarget.parse(text) else {
-                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
-                      + "cannot parse target")
+                trail(String(format: L("✗ hop %lld/%lld (%@) %@ — cannot parse target"),
+                             hopNumber, total, leg, text))
                 DispatchQueue.main.async { step() }
                 return
             }
@@ -452,8 +473,8 @@ extension Mouth {
                             framing: framing, read: true, timeout: 3,
                             completion: report)
             default:
-                trail("✗ hop \(hopNumber)/\(total) (\(leg)) \(text) — "
-                      + "not a network target")
+                trail(String(format: L("✗ hop %lld/%lld (%@) %@ — not a network target"),
+                             hopNumber, total, leg, text))
                 DispatchQueue.main.async { step() }
             }
         }
@@ -467,7 +488,7 @@ extension Mouth {
         crawlGeneration += 1
         if crawlBusy {
             crawlBusy = false
-            crawlLines.append("Stopped — called home early")
+            crawlLines.append(L("Stopped — called home early"))
             line("centipede: stopped by hand")
         }
     }
@@ -479,7 +500,8 @@ extension Mouth {
         let note: (Bool) -> Void = { [weak self] ok in
             DispatchQueue.main.async {
                 self?.crawlLines.append(
-                    "\(ok ? "✓" : "✗") homecoming delivered to \(home)")
+                    String(format: L("%@ homecoming delivered to %@"),
+                           ok ? "✓" : "✗", home))
             }
         }
         if home.hasPrefix("phone:") {
@@ -555,14 +577,13 @@ extension Mouth {
         guard let base = Mouth.sweepBase(target, ownIP: own) else {
             crawlSweepStatus =
                 target.trimmingCharacters(in: .whitespaces).isEmpty
-                ? "No Wi-Fi address to sweep from"
-                : "Couldn't read that subnet — use the "
-                  + "192.168.2.0/24 form"
+                ? L("No Wi-Fi address to sweep from")
+                : L("Couldn't read that subnet — use the 192.168.2.0/24 form")
             completion([])
             return
         }
         crawlSweepBusy = true
-        crawlSweepStatus = "Discovering on \(base).0/24…"
+        crawlSweepStatus = String(format: L("Discovering on %@.0/24…"), base)
         let lock = NSLock()
         var openByOctet: [Int: [Int]] = [:]
         func knockRound(port: Int, done: @escaping () -> Void) {
@@ -598,18 +619,18 @@ extension Mouth {
                          ports: openByOctet[octet]?.sorted() ?? [])
                     }
                 crawlSweepStatus = found.isEmpty
-                    ? "Discovery done — nothing answered on "
-                      + "\(base).0/24"
-                    : "Discovery done — \(found.count) host(s) "
-                      + "answered on \(base).0/24"
+                    ? String(format: L("Discovery done — nothing answered on %@.0/24"),
+                             base)
+                    : String(format: L("Discovery done — %lld host(s) answered on %@.0/24"),
+                             found.count, base)
                 completion(found)
                 return
             }
             let port = ports[round]
             round += 1
-            crawlSweepStatus = "Discovering \(base).0/24 — port "
-                + "\(port) (\(round)/\(ports.count)), "
-                + "\(openByOctet.count) host(s) so far"
+            crawlSweepStatus = String(format: L("Discovering %@.0/24 — port %lld (%lld/%lld), %lld host(s) so far"),
+                                      base, port, round, ports.count,
+                                      openByOctet.count)
             knockRound(port: port) { nextRound() }
         }
         nextRound()
@@ -673,10 +694,7 @@ extension Mouth {
         talkLines = []
         talkHomecoming = nil
         guard let doorA = doorA, let doorB = doorB else {
-            talkLines = ["✗ Both doors must be targets the route "
-                         + "parser accepts — tcp://, udp://, "
-                         + "http(s)://, phone:NAME, a train, "
-                         + "a range."]
+            talkLines = [L("✗ Both doors must be targets the route parser accepts — tcp://, udp://, http(s)://, phone:NAME, a train, a range.")]
             return
         }
         talkBusy = true
@@ -684,12 +702,12 @@ extension Mouth {
         var openerNote = ""
         if smartSeed, let probe = probeFor(doorA) {
             opener = probe.data
-            openerNote = " · spoke \(probe.name)"
+            openerNote = String(format: L(" · spoke %@"), probe.name)
         } else {
             opener = seed
         }
-        talkLines.append("Crosstalk — \(doorA) ⇄ \(doorB), "
-                         + "up to \(rounds) round(s)")
+        talkLines.append(String(format: L("Crosstalk — %@ ⇄ %@, up to %lld round(s)"),
+                                doorA, doorB, rounds))
         line("crosstalk: \(doorA) ⇄ \(doorB)")
 
         var legsLeft = max(1, rounds) * 2
@@ -711,8 +729,8 @@ extension Mouth {
                  message: Data, note: String) {
             guard talkGeneration == gen else { return }
             guard legsLeft > 0 else {
-                finish("Rounds done — \(exchanges) exchange(s), "
-                       + "\(carriedBytes) byte(s) carried",
+                finish(String(format: L("Rounds done — %lld exchange(s), %lld byte(s) carried"),
+                              exchanges, carriedBytes),
                        lastWord: message)
                 return
             }
@@ -728,30 +746,30 @@ extension Mouth {
                         Date().timeIntervalSince(started))
                     guard let reply = reply, !reply.isEmpty else {
                         self.talkLines.append(
-                            "→ \(door) · \(message.count) B out"
-                            + "\(note) · silence · \(secs)s")
-                        finish("\(door) had nothing to say — "
-                               + "conversation over after "
-                               + "\(exchanges) exchange(s)",
+                            String(format: L("→ %@ · %lld B out%@ · silence · %@s"),
+                                   door, message.count, note, secs))
+                        finish(String(format: L("%@ had nothing to say — conversation over after %lld exchange(s)"),
+                                      door, exchanges),
                                lastWord: nil)
                         return
                     }
                     exchanges += 1
                     carriedBytes += reply.count
                     self.talkLines.append(
-                        "→ \(door) · \(message.count) B out\(note)"
-                        + " · \(reply.count) B back · \(secs)s")
+                        String(format: L("→ %@ · %lld B out%@ · %lld B back · %@s"),
+                               door, message.count, note, reply.count,
+                               secs))
                     self.talkLines.append(
                         "   \(Mouth.talkSummary(reply))")
                     if reply == message {
-                        finish("\(door) echoed the words straight "
-                               + "back — loop; conversation over",
+                        finish(String(format: L("%@ echoed the words straight back — loop; conversation over"),
+                                      door),
                                lastWord: reply)
                         return
                     }
                     if lastByDoor[door] == reply {
-                        finish("\(door) repeated itself — loop; "
-                               + "conversation over",
+                        finish(String(format: L("%@ repeated itself — loop; conversation over"),
+                                      door),
                                lastWord: reply)
                         return
                     }
@@ -771,7 +789,7 @@ extension Mouth {
         talkGeneration += 1
         if talkBusy {
             talkBusy = false
-            talkLines.append("Stopped — hung up on them both")
+            talkLines.append(L("Stopped — hung up on them both"))
             line("crosstalk: stopped by hand")
         }
     }
