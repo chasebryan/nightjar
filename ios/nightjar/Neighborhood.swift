@@ -333,10 +333,17 @@ final class NeighborhoodStore: ObservableObject {
     /// Scan's /24 sweep answered: who is up, on this port.
     /// One door for the whole sweep: a single main-queue
     /// pass, a single sort, a single coalesced save —
-    /// not one of each per host.
-    func recordSweep(_ hosts: [SweepHost]) {
+    /// not one of each per host. The completion fires
+    /// AFTER the pass lands — a reader who asks the
+    /// moment the sweep returns (her census hand,
+    /// fix270) must not read the board from before it.
+    func recordSweep(_ hosts: [SweepHost],
+                     completion: (@escaping () -> Void)? = nil) {
         let byIP = Dictionary(grouping: hosts, by: { $0.ip })
-        guard !byIP.isEmpty else { return }
+        guard !byIP.isEmpty else {
+            completion?()
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             for (ip, answers) in byIP {
@@ -357,6 +364,7 @@ final class NeighborhoodStore: ObservableObject {
             }
             self.neighbors.sort { $0.lastSeen > $1.lastSeen }
             self.scheduleSave()
+            completion?()
         }
     }
 
@@ -603,23 +611,37 @@ final class AddressCensus: ObservableObject {
         group.notify(queue: .main) {
             self.running = false
             self.lastRun = Date()
-            NeighborhoodStore.shared.recordSweep(found)
-            let wire = NeighborhoodStore.shared
-                .neighbors
-                .filter { $0.ip.hasPrefix(prefix) }
-                .sorted { lhs, rhs in
-                    let lo = Int(lhs.ip
-                        .split(separator: ".")
-                        .last ?? "") ?? 0
-                    let ro = Int(rhs.ip
-                        .split(separator: ".")
-                        .last ?? "") ?? 0
-                    return lo < ro
+            // Read the board only once the
+            // recording pass has landed
+            // (fix270): recordSweep settles on
+            // its own main-queue pass, and a
+            // read taken in this breath sees
+            // the board from before the run —
+            // an empty report over a full wire.
+            NeighborhoodStore.shared
+                .recordSweep(found) {
+                    let wire = NeighborhoodStore
+                        .shared.neighbors
+                        .filter {
+                            $0.ip.hasPrefix(prefix)
+                        }
+                        .sorted { lhs, rhs in
+                            let lo = Int(lhs.ip
+                                .split(
+                                    separator: ".")
+                                .last ?? "") ?? 0
+                            let ro = Int(rhs.ip
+                                .split(
+                                    separator: ".")
+                                .last ?? "") ?? 0
+                            return lo < ro
+                        }
+                    self.lastCount = wire.count
+                    ProcessBoard.shared.end(
+                        boardID, .done(
+                            String(format: L("%@ address(es) collected"), String(describing: wire.count))))
+                    completion?(wire)
                 }
-            self.lastCount = wire.count
-            ProcessBoard.shared.end(boardID, .done(
-                String(format: L("%@ address(es) collected"), String(describing: wire.count))))
-            completion?(wire)
         }
     }
 
