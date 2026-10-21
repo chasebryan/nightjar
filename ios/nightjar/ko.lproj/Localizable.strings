@@ -6029,3 +6029,5 @@
 "Use a collected address" = "수집된 주소 사용";
 "\n…the rest is filed in Deliveries." = "\n…나머지는 Deliveries에 보관되었습니다.";
 "…still running — that's what's printed so far." = "…아직 실행 중 — 지금까지 출력된 내용입니다.";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "%@용 배터리를 제작했습니다: %@ — 페이로드 3개가 무기고에 보관되고 Deliveries에 제출되어 발사 준비를 마쳤습니다.";
