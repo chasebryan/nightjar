@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ 件のアドレスを収集: %@。リストは Deliveries に保管されました。";
 "Collected addresses" = "収集済みアドレス";
 "Use a collected address" = "収集済みアドレスを使う";
+"\n…the rest is filed in Deliveries." = "\n…残りは Deliveries に保管されました。";
