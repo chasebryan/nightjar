@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy: 당신이 그 위에 서 있습니다 — 그 네트워크에 대해 전체 배터리를 실행합니다.";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "전체 배터리 — 문, 그 다음 각 문에 속한 프로브, 그리고 제출되는 보고서. 표적이 없으면 이 네트워크, 이름이면 액세스 포인트를 뜻합니다";
 "this network" = "이 네트워크";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: 이 기기 자체의 TLS 스택은 이전 버전을 제공하지 않습니다 — 서버의 구식 잠금을 여기서는 입증할 수 없습니다.";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — 이 기기에서는 테스트할 수 없습니다: 해당 스택이 대신 %@를 협상했습니다.";
