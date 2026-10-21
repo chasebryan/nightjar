@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy: あなたはその上に立っています — そのネットワークに対してフルバッテリーを実行します。";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "フルバッテリー — ドア、次に各ドアに属するプローブ、それから提出されるレポート。標的なしはこのネットワーク、名前はアクセスポイントを意味します";
 "this network" = "このネットワーク";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: このデバイス自身のTLSスタックは古いバージョンを提供しません — サーバーの旧式の鍵をここから証明することはできません。";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — このデバイスからはテストできません: そのスタックは代わりに %@ を交渉しました。";
