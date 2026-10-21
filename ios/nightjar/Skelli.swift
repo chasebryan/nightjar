@@ -9367,13 +9367,31 @@ struct SkelliView: View {
     }
 
     private var screen: some View {
+#if os(macOS)
+        screenCore
+#else
+        screenCore
+            .ignoresSafeArea(edges: .top)
+#endif
+    }
+
+    /// Her room's frame. On the phone the room
+    /// reaches under the navigation bar (the
+    /// branch above) for its full-bleed look;
+    /// on the Mac that reach is refused — her
+    /// stack's bar there is the window's own
+    /// toolbar, and reaching under it collapses
+    /// the toolbar strip the sidebar's chrome
+    /// lives in (fix258: her tab alone lost the
+    /// panel's titlebar and toggle while every
+    /// other room kept theirs).
+    private var screenCore: some View {
         VStack(spacing: 0) {
             pinnedHeader
             transcript
             inputBar
         }
         .background { SkelliBackdrop() }
-        .ignoresSafeArea(edges: .top)
         .overlay(alignment: .bottomLeading) {
             SkelliWebHost()
                 .frame(width: 2, height: 2)
