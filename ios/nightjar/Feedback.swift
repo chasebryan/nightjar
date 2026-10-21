@@ -1474,6 +1474,21 @@ struct BootView: View {
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
             }
+#if os(macOS)
+            if let data = data,
+               BootMedia.isVideo(data) {
+                // The Mac's film is a video, and the
+                // ceremony is timed against the
+                // film: measure it, so the text,
+                // the print and the finale stretch
+                // across its whole play and land on
+                // its last frame — the film plays
+                // fully, never cut short.
+                loadedFilmSeconds =
+                    await BootFilmMeasure
+                        .videoSeconds(for: data)
+            }
+#endif
             // The ceremony's minutes are working
             // minutes: while the film plays, warm
             // the machinery every tab is about to
@@ -1481,10 +1496,12 @@ struct BootView: View {
             // against the disk, her saved words
             // read in, the house key derived — so
             // the first real ask meets a warm
-            // house. Detached and quiet: the boot
-            // never waits on it, and none of it
-            // touches the film or the text.
-            Task.detached(priority: .utility) {
+            // house. It starts first and runs
+            // beside the film, and the ceremony
+            // JOINS it before the finale: the
+            // curtain does not lift on a cold
+            // house.
+            let warm = Task.detached(priority: .utility) {
                 _ = WeightsCenter.shared
                 _ = SkelliStore.load()
                 _ = CryptoSuite.identity()
@@ -1605,6 +1622,16 @@ struct BootView: View {
                     waited += 0.05
                 }
             }
+            // The warm start, joined: everything
+            // the house needs is loaded before the
+            // curtain lifts. The film has had its
+            // full play by now; if the warming is
+            // somehow the slower of the two, the
+            // boot holds here until it lands —
+            // that time is the point of the
+            // ceremony.
+            _ = await warm.value
+            if Task.isCancelled { return }
             // The finale: the title stands assembled,
             // the closing line takes the subtitle's
             // place, and the house holds its breath
