@@ -244,6 +244,9 @@ final class BlacksiteShell: ObservableObject {
         "upnp",
         "bonjour", "cert", "webaudit",
         "methods", "dirb", "wol",
+        "robots", "vhost", "axfr",
+        "tlsgrade", "reflect", "mqttprobe",
+        "dnsaudit",
     ]
 
     // MARK: Output
@@ -2876,7 +2879,10 @@ final class BlacksiteShell: ObservableObject {
              "nbstat", "snmp", "snmpaudit",
              "upnp",
              "bonjour", "cert", "webaudit",
-             "methods", "dirb", "wol":
+             "methods", "dirb", "wol",
+             "robots", "vhost", "axfr",
+             "tlsgrade", "reflect",
+             "mqttprobe", "dnsaudit":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4736,6 +4742,13 @@ final class BlacksiteShell: ObservableObject {
                 ("bonjour", L("service announcements, censused")),
                 ("cert <host> [port]", L("audit the TLS papers")),
                 ("webaudit <url>", L("headers, cookies, posture")),
+                ("robots <url>", L("the map the site posts of itself — disallowed paths and the sitemap")),
+                ("vhost <host> [domain]", L("who else lives at this address — virtual hosts by their answers")),
+                ("axfr <domain> <server>", L("ask a nameserver for its whole zone — handed over is critical")),
+                ("tlsgrade <host>[:port]", L("which TLS versions still turn — anything under 1.2 is a finding")),
+                ("reflect <host>", L("the amplification audit — one packet at the old UDP doors, graded by the answer")),
+                ("mqttprobe <host>[:port]", L("does the broker let an unnamed guest in, and what does it tell them")),
+                ("dnsaudit <domain>", L("do the resolvers agree — your router against three public witnesses")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10092,6 +10105,107 @@ final class BlacksiteShell: ObservableObject {
                 BlacksitePentest.wol(
                     macText: mac, emit: emit,
                     done: done)
+            }
+        case "robots":
+            guard netAllowed(name),
+                  let url = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("robots needs a URL."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.robots(
+                    urlText: url, emit: emit,
+                    done: done)
+            }
+        case "vhost":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("vhost needs a host."), .err)
+                }
+                return
+            }
+            let domain = args.count > 1
+                ? args[1] : nil
+            netBusy { emit, done in
+                BlacksiteBench.vhost(
+                    target: target,
+                    domain: domain,
+                    emit: emit, done: done)
+            }
+        case "axfr":
+            guard netAllowed(name),
+                  args.count >= 2 else {
+                if args.count < 2 {
+                    emit(L("axfr needs a domain and a server — 'axfr example.com 192.168.1.1'."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.axfr(
+                    domain: args[0],
+                    server: args[1],
+                    emit: emit, done: done)
+            }
+        case "tlsgrade":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("tlsgrade needs a host."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.tlsgrade(
+                    target: target,
+                    emit: emit, done: done)
+            }
+        case "reflect":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("reflect needs a host."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.reflect(
+                    target: target,
+                    emit: emit, done: done)
+            }
+        case "mqttprobe":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("mqttprobe needs a host."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.mqttprobe(
+                    target: target,
+                    emit: emit, done: done)
+            }
+        case "dnsaudit":
+            guard netAllowed(name),
+                  let domain = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("dnsaudit needs a domain."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.dnsaudit(
+                    domain: domain,
+                    emit: emit, done: done)
             }
         default:
             break
