@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy:你就站在它上面——正在对它的网络运行整轮测试。";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "整轮测试——先看门,再用属于每扇门的探测,最后提交报告;无目标指本网络,名字指接入点";
 "this network" = "本网络";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: 此设备自身的 TLS 协议栈不提供旧版本 — 无法从这里证明服务器的旧式锁。";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — 无法从此设备测试:其协议栈改为协商了 %@。";
