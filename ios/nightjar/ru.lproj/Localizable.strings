@@ -6236,3 +6236,6 @@
 "this network" = "эта сеть";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: собственный TLS-стек этого устройства не предлагает старые версии — унаследованные замки сервера отсюда не доказать.";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — нельзя проверить с этого устройства: его стек договорился о %@ вместо этого.";
+"the house answers to %lld commands:" = "дом отвечает на %lld команд:";
+"— %@ — %lld commands" = "— %@ — команд: %lld";
+"help <section> opens one section whole; help <word> searches every command." = "help <раздел> открывает раздел целиком; help <слово> ищет по всем командам.";
