@@ -2951,6 +2951,7 @@ final class SkelliCenter: ObservableObject {
         if offenseAsk(q) { return true }
         if lockdownAsk(q) { return true }
         if quarantineAsk(q) { return true }
+        if censusAsk(q) { return true }
         if networkAsk(q) { return true }
         if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
@@ -3492,6 +3493,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if inboxAsk(q) {
+            return
+        }
+        if censusAsk(q) {
             return
         }
 
