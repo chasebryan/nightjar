@@ -2142,7 +2142,7 @@
 "She knows it now." = "Теперь она это знает.";
 "Skelli's crew" = "Команда Skelli";
 "Stealth only" = "Только скрытно";
-"Sweep — port %@" = "Проход — порт %@";
+"Sweep — port %lld" = "Проход — порт %lld";
 "That target does not parse: %@" = "Эта цель не разбирается: %@";
 "The GATT host already wears “%@”." = "Хост GATT уже носит “%@”.";
 "The beacon already wears “%@”." = "Маяк уже носит “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, стучится";
 "War Room, tracing" = "War Room, трассирует";
 "Watch — %@" = "Наблюдение — %@";
-"Watch — port %@" = "Наблюдение — порт %@";
+"Watch — port %lld" = "Наблюдение — порт %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Надет %@ — в эфире сейчас, в образе на каждой поверхности, которой владеет.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Надет %@ — костюм готов; он оживёт, когда в следующий раз запустятся Serve или органы эфира.";
 "Write target set: %@ — Send tab" = "Цель записи задана: %@ — вкладка Send";
