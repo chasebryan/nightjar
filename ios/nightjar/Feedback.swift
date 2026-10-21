@@ -4525,7 +4525,7 @@ extension SkelliMind {
     /// and speaks the final word. A draft that
     /// asks for research is escalated untouched —
     /// a referee doesn't answer for it.
-    @available(iOS 26.0, *)
+    @available(iOS 26.0, macOS 26.0, *)
     static func council(
         prompt: String, grounding: String,
         finish: @escaping (Verdict) -> Void) async {
