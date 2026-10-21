@@ -348,8 +348,14 @@ final class NeighborhoodStore: ObservableObject {
             guard let self = self else { return }
             for (ip, answers) in byIP {
                 self.applyUpsert(ip: ip) { neighbor, isNew in
+                    // Port 0 is a liveness row
+                    // (fix275): the host is up —
+                    // it refused a closed door,
+                    // fast — but no door stands
+                    // open to record.
                     for answer in answers
-                    where !neighbor.ports.contains(answer.port) {
+                    where answer.port > 0
+                        && !neighbor.ports.contains(answer.port) {
                         neighbor.ports.append(answer.port)
                         neighbor.ports.sort()
                         if !isNew {
@@ -508,20 +514,31 @@ final class NeighborhoodStore: ObservableObject {
 
 /// Scan's neighborhood board: every character on the wire,
 /// each opening into its full dossier.
-/// The census (fix265): one deliberate pass over
-/// this phone's own /24, knocking the house's
-/// discovery doors on every address and collecting
-/// whoever answers into the Neighborhood — the
-/// collection the Scan room shows, Send offers as
-/// targets, and Skelli reads aloud (Chase,
-/// 2026-10-21: "i should be able to collect ip
-/// addresses with the mobile ios version also" —
-/// all three shapes). The doors are the standing
-/// trace's discovery set, read from its stored key,
-/// so the census and the trace knock the same
-/// doors. A census is a sweep under the Standard:
-/// where sweeps are forbidden, it does not run.
-final class AddressCensus: ObservableObject {
+/// The census (fix265, widened fix275): one
+/// deliberate pass over this phone's own /24,
+/// collecting whoever is there into the
+/// Neighborhood — the collection the Scan
+/// room shows, Send offers as targets, and
+/// Skelli reads aloud (Chase, 2026-10-21:
+/// "i should be able to collect ip addresses
+/// with the mobile ios version also" — all
+/// three shapes). The first cut knocked eight
+/// doors and missed most of the house: gear
+/// that answers no TCP door stayed invisible
+/// even awake. The wide net (fix275): first a
+/// closed-door knock on every address — a
+/// fast refusal is a live host, and live
+/// hosts are collected even with no door
+/// open; then the full door list on the live
+/// hosts only; meanwhile a Bonjour battery
+/// (the service types the house declares)
+/// resolves names to addresses, and an SSDP
+/// round calls the UPnP gear. A census is a
+/// sweep under the Standard: where sweeps
+/// are forbidden, it does not run.
+final class AddressCensus: NSObject, ObservableObject,
+                           NetServiceBrowserDelegate,
+                           NetServiceDelegate {
     static let shared = AddressCensus()
 
     @Published private(set) var running = false
@@ -559,6 +576,63 @@ final class AddressCensus: ObservableObject {
         return ports.isEmpty ? [80, 443, 22] : ports
     }
 
+    /// The wide net's extra doors (fix275):
+    /// DNS, NetBIOS, AFP, printing, RDP, media
+    /// servers, cast receivers, and 62078 —
+    /// the lockdown door every Apple device
+    /// answers. Knocked on live hosts only.
+    private static let extraDoors: [Int] = [
+        53, 139, 548, 631, 3389, 3689, 5000,
+        5001, 5555, 7000, 8008, 8009, 8888,
+        9090, 32400, 62078,
+    ]
+
+    /// A door nobody keeps: the liveness knock.
+    private static let closedDoor = 59999
+
+    /// The Bonjour battery: the service types
+    /// the house declares in its Info.plist,
+    /// each with the name she files it under.
+    private static let serviceTypes:
+        [(type: String, label: String)] = [
+        ("_nightjar._tcp", "nightjar"),
+        ("_http._tcp", "HTTP"),
+        ("_https._tcp", "HTTPS"),
+        ("_airplay._tcp", "AirPlay"),
+        ("_raop._tcp", "AirPlay audio"),
+        ("_googlecast._tcp", "Google Cast"),
+        ("_printer._tcp", "Printer"),
+        ("_ipp._tcp", "Printer (IPP)"),
+        ("_device-info._tcp", "Device info"),
+        ("_apple-mobdev2._tcp", "Apple device"),
+        ("_companion-link._tcp", "Apple companion"),
+        ("_ssh._tcp", "SSH"),
+        ("_smb._tcp", "SMB share"),
+        ("_afpovertcp._tcp", "AFP share"),
+        ("_hap._tcp", "HomeKit"),
+        ("_sonos._tcp", "Sonos"),
+        ("_spotify-connect._tcp", "Spotify Connect"),
+        ("_mqtt._tcp", "MQTT"),
+        ("_airdrop._tcp", "AirDrop"),
+    ]
+
+    // One run's service finds (Bonjour + SSDP),
+    // recorded in the settle, in order.
+    private var browsers: [NetServiceBrowser] = []
+    private var resolving: [String: NetService] = [:]
+    private var serviceLabels: [String: String] = [:]
+    private var serviceResults:
+        [(ip: String, name: String, label: String)] = []
+    private let serviceLock = NSLock()
+    private var censusPrefix: String?
+    private var censusOwn: String?
+    private var ssdpListener: NWListener?
+    private var ssdpSender: NWConnection?
+
+    private enum Knock {
+        case open, refused, silent
+    }
+
     /// Run the pass. The completion receives the
     /// neighbors standing on this wire, ordered
     /// by address — the collection as it stands
@@ -577,49 +651,141 @@ final class AddressCensus: ObservableObject {
         else { completion?(standing); return }
         let prefix = parts.dropLast()
             .joined(separator: ".") + "."
-        let ports = Self.discoveryPorts
+        censusPrefix = prefix
+        censusOwn = own
+        let doors = Array(Set(Self.discoveryPorts
+            + Self.extraDoors)).sorted()
         running = true
         let boardID = ProcessBoard.shared.begin(
             label: L("Census — collecting addresses"),
             organ: "Scan",
             detail: L("across the /24"),
             stop: nil)
-        var found: [SweepHost] = []
-        let foundLock = NSLock()
-        let group = DispatchGroup()
-        let semaphore = DispatchSemaphore(value: 48)
+
+        var openAnswers: [SweepHost] = []
+        var liveOctets: Set<Int> = []
+        let resultsLock = NSLock()
+        let outer = DispatchGroup()
+        // Three legs ride the group: the door
+        // work, the Bonjour window, the SSDP
+        // window.
+        outer.enter()
+        outer.enter()
+        outer.enter()
+
+        // The service legs open first; they
+        // listen while the knocks fly.
+        startServiceBattery()
+        startSSDP()
+        queue.asyncAfter(deadline: .now() + 7.0) {
+            outer.leave()
+        }
+        queue.asyncAfter(deadline: .now() + 4.5) {
+            outer.leave()
+        }
+
+        // Phase A: who is alive at all — one
+        // closed-door knock per address. A
+        // refusal comes back at wire speed; a
+        // dead address costs the deadline.
+        let phaseA = DispatchGroup()
+        let semA = DispatchSemaphore(value: 64)
         for octet in 1...254 {
             let ip = prefix + "\(octet)"
-            for port in ports {
-                group.enter()
-                queue.async {
-                    semaphore.wait()
-                    self.probe(host: ip, port: port) { alive in
-                        if alive {
-                            foundLock.lock()
-                            found.append(SweepHost(
-                                ip: ip, octet: octet,
-                                port: port))
-                            foundLock.unlock()
-                        }
-                        semaphore.signal()
-                        group.leave()
+            if ip == own { continue }
+            phaseA.enter()
+            queue.async {
+                semA.wait()
+                self.knock(host: ip,
+                           port: Self.closedDoor,
+                           deadline: 0.55) { outcome in
+                    if outcome != .silent {
+                        resultsLock.lock()
+                        liveOctets.insert(octet)
+                        resultsLock.unlock()
                     }
+                    semA.signal()
+                    phaseA.leave()
                 }
             }
         }
-        group.notify(queue: .main) {
+        // Phase B: the full door list, live
+        // hosts only — fast, because the dead
+        // two hundred are already excused.
+        phaseA.notify(queue: queue) {
+            resultsLock.lock()
+            let live = liveOctets
+            resultsLock.unlock()
+            let phaseB = DispatchGroup()
+            let semB = DispatchSemaphore(value: 48)
+            for octet in live {
+                let ip = prefix + "\(octet)"
+                for port in doors {
+                    phaseB.enter()
+                    queue.async {
+                        semB.wait()
+                        self.knock(host: ip,
+                                   port: port,
+                                   deadline: 0.45) {
+                            outcome in
+                            if outcome == .open {
+                                resultsLock.lock()
+                                openAnswers.append(
+                                    SweepHost(
+                                        ip: ip,
+                                        octet: octet,
+                                        port: port))
+                                resultsLock.unlock()
+                            }
+                            semB.signal()
+                            phaseB.leave()
+                        }
+                    }
+                }
+            }
+            phaseB.notify(queue: queue) {
+                outer.leave()
+            }
+        }
+
+        outer.notify(queue: .main) {
             self.running = false
             self.lastRun = Date()
-            // Read the board only once the
-            // recording pass has landed
-            // (fix270): recordSweep settles on
-            // its own main-queue pass, and a
-            // read taken in this breath sees
-            // the board from before the run —
-            // an empty report over a full wire.
+            self.stopServiceBattery()
+            self.stopSSDP()
+            self.serviceLock.lock()
+            let services = self.serviceResults
+            self.serviceResults = []
+            self.serviceLock.unlock()
+            // The recording order is the fix270
+            // discipline, kept: service finds
+            // first — each recordBonjour pass is
+            // enqueued ahead of the sweep pass
+            // below (the main queue is FIFO), so
+            // the board read inside its
+            // completion sees every door's work
+            // landed.
+            var seen = Set<String>()
+            for result in services {
+                let key = result.ip + "|"
+                    + result.label
+                guard seen.insert(key).inserted
+                else { continue }
+                NeighborhoodStore.shared
+                    .recordBonjour(ip: result.ip,
+                                   name: result.name,
+                                   label: result.label)
+            }
+            resultsLock.lock()
+            var rows = openAnswers
+            for octet in liveOctets {
+                rows.append(SweepHost(
+                    ip: prefix + "\(octet)",
+                    octet: octet, port: 0))
+            }
+            resultsLock.unlock()
             NeighborhoodStore.shared
-                .recordSweep(found) {
+                .recordSweep(rows) {
                     let wire = NeighborhoodStore
                         .shared.neighbors
                         .filter {
@@ -645,39 +811,259 @@ final class AddressCensus: ObservableObject {
         }
     }
 
-    /// One knock, the sweep's own semantics: a
-    /// door that opens is a collected address;
-    /// silence and refusal are not.
-    private func probe(host: String, port: Int,
-                       done: @escaping (Bool) -> Void) {
+    /// One knock, three outcomes (fix275): a
+    /// door that opens; a refusal that lands
+    /// well inside the deadline — a live host
+    /// with the door shut; or silence — nobody
+    /// there, or a host dropping everything.
+    private func knock(host: String, port: Int,
+                       deadline: TimeInterval,
+                       done: @escaping (Knock) -> Void) {
         guard let nwPort = NWEndpoint.Port(
             rawValue: UInt16(clamping: port))
-        else { done(false); return }
+        else { done(.silent); return }
         let connection = NWConnection(
             host: NWEndpoint.Host(host),
             port: nwPort, using: .tcp)
+        let started = Date()
         let finishLock = NSLock()
         var finished = false
-        let finish: (Bool) -> Void = { alive in
+        let finish: (Knock) -> Void = { outcome in
             finishLock.lock()
             defer { finishLock.unlock() }
             guard !finished else { return }
             finished = true
             connection.cancel()
-            done(alive)
+            done(outcome)
         }
         connection.stateUpdateHandler = { state in
             switch state {
-            case .ready: finish(true)
-            case .failed, .cancelled: finish(false)
+            case .ready: finish(.open)
+            case .failed, .cancelled:
+                finish(Date().timeIntervalSince(started)
+                       < deadline * 0.8
+                       ? .refused : .silent)
             default: break
             }
         }
         connection.start(queue: connectionQueue)
         connectionQueue.asyncAfter(
-            deadline: .now() + 0.6) {
-            finish(false)
+            deadline: .now() + deadline) {
+            finish(.silent)
         }
+    }
+
+    // MARK: the Bonjour battery
+
+    private func startServiceBattery() {
+        for entry in Self.serviceTypes {
+            let browser = NetServiceBrowser()
+            browser.delegate = self
+            browser.schedule(in: .main,
+                             forMode: .default)
+            browser.searchForServices(
+                ofType: entry.type, inDomain: "local.")
+            browsers.append(browser)
+        }
+    }
+
+    private func stopServiceBattery() {
+        for browser in browsers {
+            browser.stop()
+            browser.remove(from: .main,
+                           forMode: .default)
+        }
+        browsers = []
+        for service in resolving.values {
+            service.stop()
+        }
+        resolving = [:]
+        serviceLabels = [:]
+    }
+
+    private func label(forType type: String) -> String {
+        Self.serviceTypes.first {
+            $0.type == type
+        }?.label ?? type
+    }
+
+    func netServiceBrowser(
+        _ browser: NetServiceBrowser,
+        didFind service: NetService,
+        moreComing: Bool) {
+        let key = service.type + "|" + service.name
+        serviceLabels[key] = label(forType: service.type)
+        resolving[key] = service
+        service.delegate = self
+        service.resolve(withTimeout: 5)
+    }
+
+    func netServiceDidResolveAddress(
+        _ sender: NetService) {
+        let key = sender.type + "|" + sender.name
+        let label = serviceLabels[key]
+            ?? label(forType: sender.type)
+        resolving.removeValue(forKey: key)
+        serviceLabels.removeValue(forKey: key)
+        guard let prefix = censusPrefix else { return }
+        for address in sender.addresses ?? [] {
+            guard let ip = ipv4String(from: address),
+                  ip.hasPrefix(prefix),
+                  ip != censusOwn
+            else { continue }
+            serviceLock.lock()
+            serviceResults.append(
+                (ip: ip, name: sender.name,
+                 label: label))
+            serviceLock.unlock()
+        }
+    }
+
+    func netService(
+        _ sender: NetService,
+        didNotResolve errorDict: [String: NSNumber]) {
+        let key = sender.type + "|" + sender.name
+        resolving.removeValue(forKey: key)
+        serviceLabels.removeValue(forKey: key)
+    }
+
+    /// A resolved service address, read as an
+    /// IPv4 string — the sockaddr's own bytes.
+    private func ipv4String(from address: Data)
+        -> String? {
+        address.withUnsafeBytes { raw -> String? in
+            guard let base = raw.baseAddress
+            else { return nil }
+            let family = base.assumingMemoryBound(
+                to: sockaddr.self).pointee.sa_family
+            guard family == sa_family_t(AF_INET)
+            else { return nil }
+            var sin = base.assumingMemoryBound(
+                to: sockaddr_in.self).pointee
+            var buffer = [CChar](
+                repeating: 0,
+                count: Int(INET_ADDRSTRLEN))
+            guard inet_ntop(AF_INET,
+                            &sin.sin_addr,
+                            &buffer,
+                            socklen_t(INET_ADDRSTRLEN))
+                    != nil
+            else { return nil }
+            return String(cString: buffer)
+        }
+    }
+
+    // MARK: the SSDP round
+
+    /// One M-SEARCH call into the multicast
+    /// dark, shouted twice: the listener takes
+    /// an ephemeral UDP port, the sender binds
+    /// that same port and calls — so replies
+    /// land on the listener as connections
+    /// whose far end names the responder.
+    private func startSSDP() {
+        let listener: NWListener
+        do {
+            listener = try NWListener(using: .udp)
+        } catch { return }
+        ssdpListener = listener
+        listener.newConnectionHandler = {
+            [weak self] connection in
+            guard let self else {
+                connection.cancel()
+                return
+            }
+            connection.start(queue: self.connectionQueue)
+            connection.receiveMessage {
+                data, _, _, _ in
+                if let data {
+                    self.noteSSDP(data,
+                                  from: connection)
+                }
+                connection.cancel()
+            }
+        }
+        listener.stateUpdateHandler = {
+            [weak self] state in
+            guard let self else { return }
+            if case .ready = state,
+               let port = listener.port {
+                let params = NWParameters.udp
+                params.allowLocalEndpointReuse = true
+                params.requiredLocalEndpoint =
+                    .hostPort(host: "0.0.0.0",
+                              port: port)
+                let sender = NWConnection(
+                    host: NWEndpoint.Host(
+                        "239.255.255.250"),
+                    port: 1900, using: params)
+                self.ssdpSender = sender
+                sender.stateUpdateHandler = { s in
+                    if case .ready = s {
+                        let search = "M-SEARCH * HTTP/1.1\r\n"
+                            + "HOST: 239.255.255.250:1900\r\n"
+                            + "MAN: \"ssdp:discover\"\r\n"
+                            + "MX: 2\r\n"
+                            + "ST: ssdp:all\r\n\r\n"
+                        sender.send(
+                            content: Data(search.utf8),
+                            completion:
+                                .contentProcessed { _ in })
+                        self.connectionQueue.asyncAfter(
+                            deadline: .now() + 1.4) {
+                            sender.send(
+                                content: Data(
+                                    search.utf8),
+                                completion:
+                                    .contentProcessed { _ in })
+                        }
+                    }
+                }
+                sender.start(queue: self.connectionQueue)
+            }
+        }
+        listener.start(queue: connectionQueue)
+    }
+
+    private func stopSSDP() {
+        ssdpSender?.cancel()
+        ssdpSender = nil
+        ssdpListener?.cancel()
+        ssdpListener = nil
+    }
+
+    private func noteSSDP(_ data: Data,
+                          from connection: NWConnection) {
+        guard let text = String(data: data,
+                                encoding: .utf8),
+              let endpoint = connection.currentPath?
+                .remoteEndpoint,
+              case .hostPort(let host, _) = endpoint
+        else { return }
+        let ip = "\(host)"
+        guard let prefix = censusPrefix,
+              ip.hasPrefix(prefix),
+              ip != censusOwn
+        else { return }
+        var name = "SSDP device"
+        for line in text.components(
+            separatedBy: "\r\n") {
+            let low = line.lowercased()
+            if low.hasPrefix("server:") {
+                name = String(line.dropFirst(7))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+            } else if low.hasPrefix("st:"),
+                      name == "SSDP device" {
+                name = String(line.dropFirst(3))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+            }
+        }
+        serviceLock.lock()
+        serviceResults.append(
+            (ip: ip, name: name, label: "SSDP"))
+        serviceLock.unlock()
     }
 }
 
