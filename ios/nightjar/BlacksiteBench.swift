@@ -1707,18 +1707,17 @@ extension BlacksiteBench {
             default: band = L("band unknown")
             }
             say(emit, String(format: L("eazy: '%@' — channel %lld (%@), signal %lld dBm."), name, channel?.channelNumber ?? 0, band, net.rssiValue))
-            switch net.securityMode {
-            case .none:
-                emit(L("eazy: it is OPEN — no password at all. Anyone may join, and everything said on it is plain. Critical."), .err)
-            case .WEP:
-                emit(L("eazy: WEP — a lock from another century, opened in minutes by known tools. Critical."), .err)
-            case .wpaPersonal:
-                emit(L("eazy: WPA (the first) — long superseded; TKIP-era gear should be retired."), .out)
-            case .wpa2Personal, .wpaPersonalMixed, .wpa2Enterprise, .wpaEnterprise, .wpaEnterpriseMixed:
-                emit(L("eazy: WPA2 — sound, provided the password is. The air cannot judge the password."), .ok)
-            case .wpa3Personal, .wpa3Enterprise:
+            if net.supportsSecurity(.wpa3Personal) || net.supportsSecurity(.wpa3Enterprise) || net.supportsSecurity(.wpa3Transition) {
                 emit(L("eazy: WPA3 — the current standard, worn properly."), .ok)
-            default:
+            } else if net.supportsSecurity(.wpa2Personal) || net.supportsSecurity(.wpaPersonalMixed) || net.supportsSecurity(.wpa2Enterprise) || net.supportsSecurity(.wpaEnterprise) || net.supportsSecurity(.wpaEnterpriseMixed) {
+                emit(L("eazy: WPA2 — sound, provided the password is. The air cannot judge the password."), .ok)
+            } else if net.supportsSecurity(.wpaPersonal) {
+                emit(L("eazy: WPA (the first) — long superseded; TKIP-era gear should be retired."), .out)
+            } else if net.supportsSecurity(.WEP) || net.supportsSecurity(.dynamicWEP) {
+                emit(L("eazy: WEP — a lock from another century, opened in minutes by known tools. Critical."), .err)
+            } else if net.supportsSecurity(.none) {
+                emit(L("eazy: it is OPEN — no password at all. Anyone may join, and everything said on it is plain. Critical."), .err)
+            } else {
                 emit(L("eazy: a security mode this build does not name — read it in the Wi-Fi menu."), .out)
             }
             if joined {
