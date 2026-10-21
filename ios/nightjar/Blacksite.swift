@@ -199,6 +199,14 @@ final class BlacksiteShell: ObservableObject {
     @Published var programRequest:
         BlacksiteView.Program?
 
+    /// The betafisch seed: a capture the
+    /// console had already read, named in
+    /// its own tree when the verb carried
+    /// a file; the dissector's room opens
+    /// with it loaded.
+    @Published var betafischSeedName: String?
+    @Published var betafischSeedData: Data?
+
     var capturing: Bool { !captureStack.isEmpty }
 
     static let builtinNames: [String] = [
@@ -209,7 +217,7 @@ final class BlacksiteShell: ObservableObject {
         "scan", "knock", "census", "eazy", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
-        "freedoom", "doom",
+        "freedoom", "doom", "betafisch",
         "theme", "haptics", "skelli", "open",
         "halt", "stop", "pwd", "cd", "ls", "mkdir",
         "touch", "cat", "echo", "cp", "mv",
@@ -263,6 +271,37 @@ final class BlacksiteShell: ObservableObject {
         "robotsdeep", "apicensus", "urlextract",
         "wayback", "corsdeep",
     ]
+
+    /// betafisch [file] — raise the
+    /// dissector. A name that resolves in
+    /// the console's own tree rides along
+    /// as the seed; anything else opens
+    /// the room empty, where the picker
+    /// lives.
+    private func betafischCommand(_ args: [String]) {
+        betafischSeedName = nil
+        betafischSeedData = nil
+        if let name = args.first {
+            let path = BlacksiteFS.normalize(
+                name, cwd: cwd)
+            let url = BlacksiteFS.url(
+                forVirtual: path)
+            if let data = try? Data(contentsOf: url),
+               (try? Betafisch.load(
+                   data: data,
+                   name: url.lastPathComponent)) != nil {
+                betafischSeedName =
+                    url.lastPathComponent
+                betafischSeedData = data
+                emit(String(format: L("betafisch opens — %@ is loaded from the tree."), url.lastPathComponent), .ok)
+            } else {
+                emit(String(format: L("no capture named %@ in the tree — betafisch opens; pick the file there."), name), .sys)
+            }
+        } else {
+            emit(L("betafisch opens — the packet dissector."), .ok)
+        }
+        programRequest = .betafisch
+    }
 
     // MARK: Output
 
@@ -2914,6 +2953,13 @@ final class BlacksiteShell: ObservableObject {
                 emit(L("the room opens. rip and tear."),
                      .ok)
             }
+        case "betafisch":
+            if capturing {
+                emit(L("betafisch opens live — it cannot be piped."),
+                     .err)
+            } else {
+                betafischCommand(args)
+            }
         case "gauntlet":
             if capturing {
                 emit(L("the gauntlet runs live — it cannot be piped."),
@@ -4897,6 +4943,7 @@ final class BlacksiteShell: ObservableObject {
                 ("quarantine lift <ip> [via <gear>]", L("open the port again")),
                 ("date", L("when it is")),
                 ("which <cmd>", L("where a command lives")),
+                ("betafisch [file]", L("betafisch — the packet dissector: open a capture, read every frame")),
                 ("ver", L("what this is")),
                 ("clear", L("wipe this screen")),
             ]),
@@ -10784,7 +10831,8 @@ struct BlacksiteView: View {
 
     enum Program: String, Identifiable {
         case processes, sys, journal, gauntlet,
-             macros, decode, files, freedoom
+             macros, decode, files, freedoom,
+             betafisch
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -10796,6 +10844,7 @@ struct BlacksiteView: View {
             case .decode: return "DECODER BENCH"
             case .files: return "FILES"
             case .freedoom: return "FREEDOOM"
+            case .betafisch: return "BETAFISCH"
             }
         }
         var icon: String {
@@ -10809,6 +10858,8 @@ struct BlacksiteView: View {
             case .files: return "folder"
             case .freedoom:
                 return "gamecontroller.fill"
+            case .betafisch:
+                return "waveform"
             }
         }
     }
@@ -10850,7 +10901,10 @@ struct BlacksiteView: View {
             }
         }
         .sheet(item: $program) { program in
-            BlacksiteProgramSheet(program: program)
+            BlacksiteProgramSheet(
+                program: program,
+                betafischSeedName: shell.betafischSeedName,
+                betafischSeedData: shell.betafischSeedData)
         }
         .onChange(of: shell.programRequest) {
             _, requested in
@@ -11650,23 +11704,33 @@ extension BlacksiteView.Program: CaseIterable {}
 
 private struct BlacksiteProgramSheet: View {
     let program: BlacksiteView.Program
+    var betafischSeedName: String? = nil
+    var betafischSeedData: Data? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        // betafisch carries its own
+        // NavigationStack — it is the
+        // sheet's whole room, not a page
+        // inside this one.
+        if program == .betafisch {
             content
-                .navigationTitle(program.title)
-                .navigationBarTitleDisplayMode(
-                    .inline)
-                .toolbar {
-                    ToolbarItem(
-                        placement: .confirmationAction) {
-                        Button("Done") {
-                            Haptics.tap()
-                            dismiss()
+        } else {
+            NavigationStack {
+                content
+                    .navigationTitle(program.title)
+                    .navigationBarTitleDisplayMode(
+                        .inline)
+                    .toolbar {
+                        ToolbarItem(
+                            placement: .confirmationAction) {
+                            Button("Done") {
+                                Haptics.tap()
+                                dismiss()
+                            }
                         }
                     }
-                }
+            }
         }
     }
 
@@ -11688,6 +11752,10 @@ private struct BlacksiteProgramSheet: View {
             BlacksiteFilesProgram()
         case .freedoom:
             FreedoomView()
+        case .betafisch:
+            BetafischView(
+                seedName: betafischSeedName,
+                seedData: betafischSeedData)
         }
     }
 }
