@@ -847,3 +847,695 @@ extension BlacksiteBench {
         }
     }
 }
+
+extension BlacksiteBench {
+
+    /// Wave two speaks through the house emit; a kindless call reads .out.
+    private static func say(_ emit: BlacksiteEmit, _ text: String, _ kind: BlacksiteShell.Line.Kind = .out) {
+        emit(text, kind)
+    }
+
+
+    /// A buffered line talker for the banner protocols (FTP, SMTP).
+    private final class LineTalk {
+        let fd: Int32
+        private var buffer: [UInt8] = []
+        init(fd: Int32) { self.fd = fd }
+        /// Read until a newline lands (or the peer goes quiet) and return
+        /// everything read, so multi-line greetings ride whole.
+        func readReply() -> String {
+            var out: [UInt8] = []
+            var quietRounds = 0
+            while quietRounds < 2 {
+                var chunk = [UInt8](repeating: 0, count: 4096)
+                let n = recv(fd, &chunk, chunk.count, 0)
+                if n > 0 {
+                    out.append(contentsOf: chunk[0..<n])
+                    if out.contains(0x0A) { break }
+                    quietRounds = 0
+                } else {
+                    quietRounds += 1
+                }
+            }
+            return String(bytes: out, encoding: .utf8) ?? ""
+        }
+        func say(_ line: String) {
+            _ = sendAll(fd: fd, Array(line.utf8))
+        }
+        func code(_ reply: String) -> Int {
+            let digits = reply.prefix(3)
+            return Int(digits) ?? 0
+        }
+    }
+
+    // MARK: corsprobe — cross-origin policy, graded
+
+    static func corsprobe(url: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+            guard let norm = BlacksitePentest.normalizedURL(url) else {
+                say(emit, L("corsprobe: give a URL — corsprobe https://example.com"), .err)
+                return
+            }
+            let (session, _) = BlacksitePentest.webSession(follow: false)
+            defer { session.invalidateAndCancel() }
+            for origin in ["https://nightjar-probe.invalid", "null"] {
+                var req = URLRequest(url: norm)
+                req.timeoutInterval = 8
+                req.setValue(origin, forHTTPHeaderField: "Origin")
+                req.setValue("GET", forHTTPHeaderField: "Access-Control-Request-Method")
+                guard let r = BlacksitePentest.syncFetch(session, req), let http = r.1 else {
+                    say(emit, String(format: L("corsprobe: %@ — no answer."), origin))
+                    continue
+                }
+                let acao = http.value(forHTTPHeaderField: "Access-Control-Allow-Origin") ?? ""
+                let creds = (http.value(forHTTPHeaderField: "Access-Control-Allow-Credentials") ?? "").lowercased() == "true"
+                if acao == origin {
+                    if creds {
+                        say(emit, String(format: L("corsprobe: %@ is REFLECTED and credentials are allowed — any site can read this with the visitor's session. The dangerous combination."), origin), .err)
+                    } else {
+                        say(emit, String(format: L("corsprobe: %@ is reflected in Access-Control-Allow-Origin — cross-origin reads are allowed for that origin."), origin), .err)
+                    }
+                } else if acao == "*" {
+                    if creds {
+                        say(emit, String(format: L("corsprobe: %@ got a wildcard WITH credentials — browsers reject the pairing, but permissive clients and tools will not."), origin), .err)
+                    } else {
+                        say(emit, String(format: L("corsprobe: %@ got the wildcard — the endpoint is world-readable by design or by accident."), origin))
+                    }
+                } else if acao.isEmpty {
+                    say(emit, String(format: L("corsprobe: %@ — no Access-Control-Allow-Origin. Cross-origin reads are refused."), origin), .ok)
+                } else {
+                    say(emit, String(format: L("corsprobe: %@ — answered for a fixed origin: %@"), origin, acao))
+                }
+            }
+        }
+    }
+
+    // MARK: openredirect — do the exits leave the site?
+
+    static func openredirect(url: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+            guard let norm = BlacksitePentest.normalizedURL(url), var comps = URLComponents(url: norm, resolvingAgainstBaseURL: false) else {
+                say(emit, L("openredirect: give a URL — openredirect https://example.com/login?next=/home"), .err)
+                return
+            }
+            let marker = "https://example.org/nightjar-open"
+            let (session, _) = BlacksitePentest.webSession(follow: false)
+            defer { session.invalidateAndCancel() }
+            var candidates: [(String, URL)] = []
+            let items = comps.queryItems ?? []
+            for (i, item) in items.enumerated() {
+                var copy = items
+                copy[i] = URLQueryItem(name: item.name, value: marker)
+                comps.queryItems = copy
+                if let u = comps.url { candidates.append((item.name, u)) }
+            }
+            if candidates.isEmpty {
+                for name in ["next", "redirect", "url", "return", "returnUrl", "continue", "dest"] {
+                    comps.queryItems = [URLQueryItem(name: name, value: marker)]
+                    if let u = comps.url { candidates.append((name, u)) }
+                }
+            }
+            say(emit, String(format: L("openredirect: trying %lld doors on %@"), candidates.count, norm.host ?? norm.absoluteString))
+            var hits = 0
+            for (name, u) in candidates.prefix(12) {
+                var req = URLRequest(url: u)
+                req.timeoutInterval = 8
+                guard let r = BlacksitePentest.syncFetch(session, req), let http = r.1, [301, 302, 303, 307, 308].contains(http.statusCode) else { continue }
+                let loc = http.value(forHTTPHeaderField: "Location") ?? ""
+                if loc.hasPrefix("https://example.org") {
+                    say(emit, String(format: L("openredirect: the %@ parameter walks off the site → %@ — an attacker supplies that link and the site's name vouches for it."), name, loc), .err)
+                    hits += 1
+                }
+            }
+            if hits == 0 {
+                say(emit, L("openredirect: no tested parameter leaves the site."), .ok)
+            }
+        }
+    }
+
+    // MARK: graphqlprobe — is the schema on the door?
+
+    static func graphqlprobe(url: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+            guard let norm = BlacksitePentest.normalizedURL(url) else {
+                say(emit, L("graphqlprobe: give a URL — graphqlprobe https://example.com/graphql"), .err)
+                return
+            }
+            var targets: [URL] = [norm]
+            if norm.path.isEmpty || norm.path == "/" {
+                for path in ["/graphql", "/api/graphql", "/query"] {
+                    var c = URLComponents(url: norm, resolvingAgainstBaseURL: false)
+                    c?.path = path
+                    if let u = c?.url { targets.append(u) }
+                }
+            }
+            let (session, _) = BlacksitePentest.webSession(follow: false)
+            defer { session.invalidateAndCancel() }
+            var found = false
+            for target in targets {
+                var req = URLRequest(url: target)
+                req.httpMethod = "POST"
+                req.timeoutInterval = 8
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.httpBody = Data(#"{"query":"{__schema{types{name}}}"}"#.utf8)
+                guard let r = BlacksitePentest.syncFetch(session, req), let http = r.1 else { continue }
+                let body = String(data: r.0, encoding: .utf8) ?? ""
+                if http.statusCode == 200 && (body.contains("__schema") || body.contains("\"types\"")) {
+                    let count = body.components(separatedBy: "\"name\"").count - 1
+                    say(emit, String(format: L("graphqlprobe: %@ hands its whole schema to strangers — introspection is ON (%lld type names counted). The API's map is public."), target.absoluteString, count), .err)
+                    found = true
+                    break
+                }
+                if body.contains("errors") || http.statusCode == 400 {
+                    say(emit, String(format: L("graphqlprobe: %@ answers like a GraphQL endpoint but refused the introspection — the door exists, the map is not posted."), target.absoluteString))
+                    found = true
+                    break
+                }
+            }
+            if !found { say(emit, L("graphqlprobe: no GraphQL endpoint answered at the expected doors."), .ok) }
+        }
+    }
+
+    // MARK: jwtcheck — the token, read and graded (no wire)
+
+    static func jwtcheck(token: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        let parts = token.split(separator: ".", omittingEmptySubsequences: false).map(String.init)
+        guard parts.count == 3 else {
+            say(emit, L("jwtcheck: a JWT has three dotted parts — header.payload.signature."))
+            return
+        }
+        func decode(_ s: String) -> [String: Any]? {
+            var b = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+            while b.count % 4 != 0 { b += "=" }
+            guard let d = Data(base64Encoded: b),
+                  let obj = try? JSONSerialization.jsonObject(with: d),
+                  let dict = obj as? [String: Any] else { return nil }
+            return dict
+        }
+        func pretty(_ dict: [String: Any]) -> String {
+            let keys = dict.keys.sorted()
+            return keys.map { "\($0): \(String(describing: dict[$0]!))" }.joined(separator: "  ")
+        }
+        guard let header = decode(parts[0]), let payload = decode(parts[1]) else {
+            say(emit, L("jwtcheck: the header and payload do not decode as base64url JSON."))
+            return
+        }
+        let alg = (header["alg"] as? String) ?? "?"
+        say(emit, String(format: L("jwtcheck: alg %@ · header: %@"), alg, pretty(header)))
+        say(emit, String(format: L("jwtcheck: claims: %@"), pretty(payload)))
+        if alg.lowercased() == "none" {
+            say(emit, L("jwtcheck: alg=none — the token is UNSIGNED by design. Any hand can rewrite its claims."), .err)
+        } else if parts[2].isEmpty {
+            say(emit, L("jwtcheck: the signature is EMPTY under a signing algorithm — forged on sight."), .err)
+        } else if alg.hasPrefix("HS") {
+            say(emit, L("jwtcheck: an HMAC algorithm — the whole strength rests on one shared secret, and anyone who can verify can also mint."), .out)
+        } else {
+            say(emit, String(format: L("jwtcheck: asymmetric %@ — minting needs the private key; verification is public."), alg), .ok)
+        }
+        let now = Int(Date().timeIntervalSince1970)
+        if let exp = payload["exp"] as? NSNumber {
+            let e = exp.intValue
+            if e < now { say(emit, L("jwtcheck: EXPIRED — a reader that still honors it is the finding."), .err) }
+            else { say(emit, String(format: L("jwtcheck: expires in %lld minutes."), (e - now) / 60)) }
+        } else {
+            say(emit, L("jwtcheck: no exp claim — the token never expires."), .err)
+        }
+        let sensitive = ["password", "secret", "ssn", "credit", "card", "cvv", "api_key", "apikey"]
+        let hits = payload.keys.filter { k in sensitive.contains { k.lowercased().contains($0) } }
+        if !hits.isEmpty {
+            say(emit, String(format: L("jwtcheck: sensitive claims ride in cleartext for anyone holding the token: %@"), hits.joined(separator: ", ")), .err)
+        }
+    
+        }
+    }
+
+    // MARK: proxyprobe — will it fetch for strangers?
+
+    static func proxyprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        let halves = target.split(separator: ":").map(String.init)
+        guard let hostArg = halves.first, !hostArg.isEmpty else {
+            say(emit, L("proxyprobe: give host[:port] — proxyprobe 203.0.113.7:3128"))
+            return
+        }
+        let port = halves.count > 1 ? (Int(halves[1]) ?? 8080) : 8080
+        let ip = BlacksiteNet.resolve4(hostArg)?.ip ?? hostArg
+        let request = "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nUser-Agent: nightjar\r\nConnection: close\r\n\r\n"
+        var reply = ""
+        let sem = DispatchSemaphore(value: 0)
+        BlacksiteNet.tcpExchange(host: ip, port: port, udp: false, payload: request, telnet: false, idleSeconds: 5) { text, _ in
+            reply = text ?? ""
+            sem.signal()
+        }
+        _ = sem.wait(timeout: .now() + 8)
+        if reply.contains("Example Domain") {
+            say(emit, L("proxyprobe: it fetched example.com for a stranger — an OPEN PROXY. The world can wear this address."), .err)
+        } else if reply.hasPrefix("HTTP/") {
+            let first = reply.split(separator: "\n").first.map(String.init) ?? ""
+            say(emit, String(format: L("proxyprobe: it answered (%@) but did not hand back the outside page — not an open proxy for this ask."), first.trimmingCharacters(in: .whitespaces)), .ok)
+        } else {
+            say(emit, L("proxyprobe: nothing answered in proxy form."))
+        }
+    
+        }
+    }
+}
+
+extension BlacksiteBench {
+
+    private static func hostPort(_ target: String, _ defaultPort: Int) -> (String, Int)? {
+        let halves = target.split(separator: ":").map(String.init)
+        guard let h = halves.first, !h.isEmpty else { return nil }
+        let ip = BlacksiteNet.resolve4(h)?.ip ?? h
+        return (ip, halves.count > 1 ? (Int(halves[1]) ?? defaultPort) : defaultPort)
+    }
+
+    // MARK: vncprobe — the framebuffer's front door
+
+    static func vncprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 5900) else {
+            say(emit, L("vncprobe: give host[:port] — vncprobe 192.168.1.10"))
+            return
+        }
+        guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else {
+            say(emit, L("vncprobe: nothing answers on the VNC door."))
+            return
+        }
+        defer { close(fd) }
+        guard let version = readExact(fd, 12), version.count == 12 else {
+            say(emit, L("vncprobe: it answered but not in RFB."))
+            return
+        }
+        say(emit, String(format: L("vncprobe: %@"), String(bytes: version, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "RFB"))
+        _ = sendAll(fd: fd, version)
+        BlacksiteNet.setRecvTimeout(fd, seconds: 3)
+        var countByte = [UInt8](repeating: 0, count: 1)
+        guard recv(fd, &countByte, 1, 0) == 1 else {
+            say(emit, L("vncprobe: the handshake stopped after the greeting."))
+            return
+        }
+        let n = Int(countByte[0])
+        if n == 0 {
+            var lenBytes = [UInt8](repeating: 0, count: 4)
+            var got = 0
+            while got < 4 { let r = recv(fd, &lenBytes + got, 4 - got, 0); if r <= 0 { break }; got += r }
+            let len = lenBytes.reduce(0) { ($0 << 8) | Int($1) }
+            var reason = ""
+            if len > 0 && len < 512, let rb = readExact(fd, len) { reason = String(bytes: rb, encoding: .utf8) ?? "" }
+            say(emit, String(format: L("vncprobe: the server refused the handshake — %@"), reason.isEmpty ? L("no reason given") : reason), .ok)
+            return
+        }
+        guard let types = readExact(fd, n) else {
+            say(emit, L("vncprobe: the security list never arrived."))
+            return
+        }
+        let names: [UInt8: String] = [1: "None", 2: "VNC password", 5: "RA2", 6: "RA2ne", 16: "Tight", 19: "VeNCrypt", 18: "TLS", 17: "SASL"]
+        say(emit, String(format: L("vncprobe: security types on offer: %@"), types.map { names[$0] ?? String(format: L("type %lld"), Int($0)) }.joined(separator: ", ")))
+        if types.contains(1) {
+            say(emit, L("vncprobe: 'None' is on the list — the framebuffer opens for anyone who asks. Critical."), .err)
+        } else {
+            say(emit, L("vncprobe: no empty-handed entry — every road in asks for proof."), .ok)
+        }
+    
+        }
+    }
+
+    // MARK: rdpprobe — which dialect of RDP will it speak?
+
+    static func rdpprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 3389) else {
+            say(emit, L("rdpprobe: give host[:port] — rdpprobe 192.168.1.10"))
+            return
+        }
+        func ask(_ protocols: UInt32) -> (Int, UInt32)? {
+            guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else { return nil }
+            defer { close(fd) }
+            var req: [UInt8] = [0x03, 0x00, 0x00, 0x13, 0x0E, 0xE0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x08, 0x00]
+            req.append(UInt8(protocols & 0xFF))
+            req.append(UInt8((protocols >> 8) & 0xFF))
+            req.append(UInt8((protocols >> 16) & 0xFF))
+            req.append(UInt8((protocols >> 24) & 0xFF))
+            guard sendAll(fd: fd, req) else { return nil }
+            guard let resp = readExact(fd, 19), resp.count == 19, resp[11] == 0x02 || resp[11] == 0x03 else { return nil }
+            let value = UInt32(resp[15]) | (UInt32(resp[16]) << 8) | (UInt32(resp[17]) << 16) | (UInt32(resp[18]) << 24)
+            return (Int(resp[11]), value)
+        }
+        guard let legacy = ask(0x00000000) else {
+            say(emit, L("rdpprobe: no RDP negotiation answered."))
+            return
+        }
+        if legacy.0 == 0x02 && legacy.1 == 0 {
+            say(emit, L("rdpprobe: plain legacy RDP security is ACCEPTED — the session can start with no TLS and no Network Level Authentication."), .err)
+        } else if legacy.0 == 0x03 {
+            say(emit, String(format: L("rdpprobe: plain RDP refused (failure %lld) — the server demands a stronger dialect."), legacy.1), .ok)
+        }
+        if let modern = ask(0x00000003) {
+            if modern.0 == 0x02 {
+                let picked = modern.1 == 1 ? "TLS" : (modern.1 == 2 ? "CredSSP (NLA)" : String(format: "protocol %lld", modern.1))
+                say(emit, String(format: L("rdpprobe: offered TLS+NLA, it chose %@."), picked))
+            } else if modern.0 == 0x03 && modern.1 == 5 {
+                say(emit, L("rdpprobe: CredSSP is REQUIRED — Network Level Authentication stands at the door."), .ok)
+            } else if modern.0 == 0x03 {
+                say(emit, String(format: L("rdpprobe: the modern offer was refused (failure %lld)."), modern.1))
+            }
+        }
+    
+        }
+    }
+
+    // MARK: ftpprobe — banner, and the conventional anonymous word
+
+    static func ftpprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 21) else {
+            say(emit, L("ftpprobe: give host[:port] — ftpprobe 192.168.1.10"))
+            return
+        }
+        guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else {
+            say(emit, L("ftpprobe: nothing answers on the FTP door."))
+            return
+        }
+        defer { close(fd) }
+        BlacksiteNet.setRecvTimeout(fd, seconds: 3)
+        let talk = LineTalk(fd: fd)
+        let greeting = talk.readReply()
+        say(emit, String(format: L("ftpprobe: %@"), greeting.split(separator: "\n").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""))
+        talk.say("USER anonymous\r\n")
+        let r1 = talk.readReply()
+        let c1 = talk.code(r1)
+        if c1 == 230 {
+            say(emit, L("ftpprobe: anonymous walks straight in — no password was even asked. The archive is public."), .err)
+            return
+        }
+        guard c1 == 331 else {
+            say(emit, String(format: L("ftpprobe: the anonymous word was refused at the first step (%lld)."), c1), .ok)
+            return
+        }
+        talk.say("PASS nightjar@probe.invalid\r\n")
+        let r2 = talk.readReply()
+        if talk.code(r2) == 230 {
+            say(emit, L("ftpprobe: anonymous + any password OPENS the archive. Whoever keeps files here has published them."), .err)
+        } else {
+            say(emit, String(format: L("ftpprobe: the password step refused (%lld) — anonymous is not simply let in."), talk.code(r2)), .ok)
+        }
+        talk.say("QUIT\r\n")
+    
+        }
+    }
+
+    // MARK: smtpprobe — the mail door's manners (never sends mail)
+
+    static func smtpprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 25) else {
+            say(emit, L("smtpprobe: give host[:port] — smtpprobe 192.168.1.10"))
+            return
+        }
+        guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else {
+            say(emit, L("smtpprobe: nothing answers on the mail door."))
+            return
+        }
+        defer { close(fd) }
+        BlacksiteNet.setRecvTimeout(fd, seconds: 3)
+        let talk = LineTalk(fd: fd)
+        let greeting = talk.readReply()
+        say(emit, String(format: L("smtpprobe: %@"), greeting.split(separator: "\n").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""))
+        talk.say("EHLO nightjar.probe\r\n")
+        let ehlo = talk.readReply()
+        let upper = ehlo.uppercased()
+        say(emit, String(format: L("smtpprobe: STARTTLS %@ · AUTH %@"), upper.contains("STARTTLS") ? L("offered") : L("absent"), upper.contains("AUTH") ? L("offered") : L("absent")))
+        talk.say("VRFY root\r\n")
+        let vrfy = talk.code(talk.readReply())
+        if vrfy == 250 || vrfy == 252 {
+            say(emit, L("smtpprobe: VRFY confirms addresses for strangers — the directory leaks who has mail here."), .err)
+        } else {
+            say(emit, String(format: L("smtpprobe: VRFY refused (%lld)."), vrfy), .ok)
+        }
+        talk.say("MAIL FROM: <probe@nightjar.invalid>\r\n")
+        let mail = talk.code(talk.readReply())
+        if mail == 250 {
+            talk.say("RCPT TO: <relaytest@example.com>\r\n")
+            let rcpt = talk.code(talk.readReply())
+            if rcpt == 250 || rcpt == 251 {
+                say(emit, L("smtpprobe: it ACCEPTED an outside recipient from an outside sender — an open relay posture. (Stopped before DATA; no mail was sent.)"), .err)
+            } else {
+                say(emit, String(format: L("smtpprobe: the outside recipient was refused (%lld) — not a relay. (No mail was sent.)"), rcpt), .ok)
+            }
+        } else {
+            say(emit, String(format: L("smtpprobe: the outside sender was refused at MAIL FROM (%lld) — not a relay."), mail), .ok)
+        }
+        talk.say("QUIT\r\n")
+    
+        }
+    }
+}
+
+extension BlacksiteBench {
+
+    // MARK: ldapprobe — the directory's front hall (tiny BER by hand)
+
+    private static func berLen(_ n: Int) -> [UInt8] {
+        if n < 128 { return [UInt8(n)] }
+        if n < 256 { return [0x81, UInt8(n)] }
+        return [0x82, UInt8((n >> 8) & 0xFF), UInt8(n & 0xFF)]
+    }
+    private static func berTLV(_ tag: UInt8, _ body: [UInt8]) -> [UInt8] {
+        [tag] + berLen(body.count) + body
+    }
+    private static func readBERLen(_ bytes: [UInt8], _ pos: inout Int) -> Int {
+        guard pos < bytes.count else { return 0 }
+        let first = bytes[pos]
+        pos += 1
+        if first < 0x80 { return Int(first) }
+        let n = Int(first & 0x7F)
+        var value = 0
+        for _ in 0..<n {
+            guard pos < bytes.count else { return value }
+            value = (value << 8) | Int(bytes[pos])
+            pos += 1
+        }
+        return value
+    }
+    private static func readMessage(_ fd: Int32) -> [UInt8]? {
+        guard let tag = readExact(fd, 1), tag.count == 1, tag[0] == 0x30 else { return nil }
+        guard let lb = readExact(fd, 1), lb.count == 1 else { return nil }
+        var header: [UInt8] = [0x30, lb[0]]
+        let len: Int
+        if lb[0] < 0x80 {
+            len = Int(lb[0])
+        } else {
+            let n = Int(lb[0] & 0x7F)
+            guard n >= 1, n <= 2, let extra = readExact(fd, n), extra.count == n else { return nil }
+            header += extra
+            len = extra.reduce(0) { ($0 << 8) | Int($1) }
+        }
+        guard let body = readExact(fd, len) else { return nil }
+        return header + body
+    }
+    private static func ldapAttr(_ entry: [UInt8], _ name: String) -> String? {
+        let needle = Array(name.utf8)
+        guard needle.count > 2, entry.count > needle.count else { return nil }
+        var i = 0
+        while i + needle.count < entry.count {
+            if Array(entry[i..<(i + needle.count)]) == needle {
+                var j = i + needle.count
+                // After the type's own TLV comes a SET (0x31) of values.
+                while j < entry.count && entry[j] != 0x31 { j += 1 }
+                guard j + 2 < entry.count else { return nil }
+                j += 1
+                var pos = j
+                _ = readBERLen(entry, &pos)
+                guard pos < entry.count, entry[pos] == 0x04 else { return nil }
+                pos += 1
+                var vpos = pos
+                let vlen = readBERLen(entry, &vpos)
+                guard vpos + vlen <= entry.count else { return nil }
+                return String(bytes: entry[vpos..<(vpos + vlen)], encoding: .utf8)
+            }
+            i += 1
+        }
+        return nil
+    }
+
+    static func ldapprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 389) else {
+            say(emit, L("ldapprobe: give host[:port] — ldapprobe 192.168.1.10"))
+            return
+        }
+        guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else {
+            say(emit, L("ldapprobe: nothing answers on the directory door."))
+            return
+        }
+        defer { close(fd) }
+        BlacksiteNet.setRecvTimeout(fd, seconds: 3)
+        let bind: [UInt8] = [0x30, 0x0C, 0x02, 0x01, 0x01, 0x60, 0x07, 0x02, 0x01, 0x03, 0x04, 0x00, 0x80, 0x00]
+        guard sendAll(fd: fd, bind), let resp = readMessage(fd) else {
+            say(emit, L("ldapprobe: the bind was never answered."))
+            return
+        }
+        // Walk: SEQUENCE { INTEGER msgid, [APPLICATION 1] { ENUMERATED result } }
+        var pos = 0
+        _ = resp[pos]; pos += 1
+        _ = readBERLen(resp, &pos)
+        guard pos < resp.count else { return }
+        _ = resp[pos]; pos += 1
+        let idLen = readBERLen(resp, &pos)
+        pos += idLen
+        guard pos + 1 < resp.count, resp[pos] == 0x61 else {
+            say(emit, L("ldapprobe: the answer was not a bind response."))
+            return
+        }
+        pos += 1
+        _ = readBERLen(resp, &pos)
+        guard pos + 2 < resp.count, resp[pos] == 0x0A else { return }
+        let result = resp[pos + 2]
+        guard result == 0 else {
+            say(emit, String(format: L("ldapprobe: anonymous bind REFUSED (result %lld) — the directory wants credentials at its door."), Int(result)), .ok)
+            return
+        }
+        say(emit, L("ldapprobe: anonymous bind ACCEPTED — the directory lets strangers in the front hall."), .err)
+        // RootDSE: base-object search, filter (objectClass=*)
+        var searchBody: [UInt8] = []
+        searchBody += berTLV(0x04, [])
+        searchBody += berTLV(0x0A, [0x00])
+        searchBody += berTLV(0x0A, [0x00])
+        searchBody += berTLV(0x02, [0x00])
+        searchBody += berTLV(0x02, [0x00])
+        searchBody += berTLV(0x01, [0x00])
+        searchBody += berTLV(0x87, Array("objectClass".utf8))
+        var attrs: [UInt8] = []
+        for a in ["namingContexts", "defaultNamingContext", "vendorName", "vendorVersion"] {
+            attrs += berTLV(0x04, Array(a.utf8))
+        }
+        searchBody += berTLV(0x30, attrs)
+        let search = berTLV(0x30, berTLV(0x02, [0x02]) + berTLV(0x63, searchBody))
+        guard sendAll(fd: fd, search) else { return }
+        var facts: [String] = []
+        for _ in 0..<3 {
+            guard let msg = readMessage(fd) else { break }
+            if let nc = ldapAttr(msg, "namingContexts") { facts.append(String(format: L("naming context %@"), nc)) }
+            if let vn = ldapAttr(msg, "vendorName") { facts.append(String(format: L("vendor %@"), vn)) }
+            if let vv = ldapAttr(msg, "vendorVersion") { facts.append(String(format: L("version %@"), vv)) }
+            // The done marker (0x65 protocol op, after the header and
+            // the message-id INTEGER) ends the search.
+            if msg.count > 5 && msg[5] == 0x65 { break }
+            if msg.count > 6 && msg[6] == 0x65 { break }
+        }
+        if !facts.isEmpty {
+            say(emit, String(format: L("ldapprobe: the RootDSE tells strangers: %@"), facts.joined(separator: " · ")), .err)
+        } else {
+            say(emit, L("ldapprobe: the RootDSE read gave nothing back."))
+        }
+    
+        }
+    }
+
+    // MARK: redisprobe — one PING
+
+    static func redisprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+        guard let (ip, port) = hostPort(target, 6379) else {
+            say(emit, L("redisprobe: give host[:port] — redisprobe 192.168.1.10"))
+            return
+        }
+        guard let fd = streamSocket(ip: ip, port: port, timeout: 4) else {
+            say(emit, L("redisprobe: nothing answers on the Redis door."))
+            return
+        }
+        defer { close(fd) }
+        BlacksiteNet.setRecvTimeout(fd, seconds: 3)
+        guard sendAll(fd: fd, Array("PING\r\n".utf8)) else { return }
+        var buf = [UInt8](repeating: 0, count: 4096)
+        let n = recv(fd, &buf, buf.count, 0)
+        let text = n > 0 ? (String(bytes: buf[0..<n], encoding: .utf8) ?? "") : ""
+        if text.hasPrefix("+PONG") {
+            say(emit, L("redisprobe: PONG with NO password asked — an unauthenticated Redis. Anyone on this wire can read and write the whole store, and its config. Critical."), .err)
+            _ = sendAll(fd: fd, Array("INFO server\r\n".utf8))
+            var buf2 = [UInt8](repeating: 0, count: 8192)
+            let n2 = recv(fd, &buf2, buf2.count, 0)
+            if n2 > 0, let info = String(bytes: buf2[0..<n2], encoding: .utf8) {
+                for line in info.split(separator: "\n") {
+                    if line.hasPrefix("redis_version:") || line.hasPrefix("os:") {
+                        say(emit, String(format: L("redisprobe: %@"), line.trimmingCharacters(in: .whitespaces)))
+                    }
+                }
+            }
+        } else if text.contains("NOAUTH") {
+            say(emit, L("redisprobe: it demands authentication first — the password stands at the door."), .ok)
+        } else if text.hasPrefix("-") {
+            say(emit, String(format: L("redisprobe: it answered (%@) — speaking, but not simply open."), text.split(separator: "\r").first.map(String.init) ?? ""))
+        } else {
+            say(emit, L("redisprobe: silence — not Redis, or not awake."))
+        }
+    
+        }
+    }
+
+    // MARK: dockerprobe — the orchestrator's API
+
+    static func dockerprobe(target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            defer { done() }
+            let halves = target.split(separator: ":").map(String.init)
+            guard let hostArg = halves.first, !hostArg.isEmpty else {
+                say(emit, L("dockerprobe: give host[:port] — dockerprobe 192.168.1.10"), .err)
+                return
+            }
+            let port = halves.count > 1 ? (Int(halves[1]) ?? 2375) : 2375
+            guard let url = URL(string: "http://\(hostArg):\(port)/version") else { return }
+            let (session, _) = BlacksitePentest.webSession(follow: false)
+            defer { session.invalidateAndCancel() }
+            var req = URLRequest(url: url)
+            req.timeoutInterval = 8
+            guard let r = BlacksitePentest.syncFetch(session, req), let http = r.1 else {
+                say(emit, L("dockerprobe: nothing answered on the Docker API door."))
+                return
+            }
+            if http.statusCode == 200,
+               let obj = try? JSONSerialization.jsonObject(with: r.0), let dict = obj as? [String: Any],
+               dict["ApiVersion"] != nil || dict["Version"] != nil {
+                let ver = (dict["Version"] as? String) ?? "?"
+                let api = (dict["ApiVersion"] as? String) ?? "?"
+                let osName = (dict["Os"] as? String) ?? "?"
+                say(emit, String(format: L("dockerprobe: the Docker API answered a STRANGER — engine %@, API %@, on %@. Unauthenticated Docker is the host itself: containers, files, everything. Critical."), ver, api, osName), .err)
+            } else {
+                say(emit, String(format: L("dockerprobe: door answered with %lld but not a Docker version — not an open API here."), http.statusCode), .ok)
+            }
+        }
+    }
+}
+
+extension BlacksiteBench {
+    /// Wave two's switchboard — one door in the console, twelve engines.
+    static func benchTwo(_ name: String, _ target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        switch name {
+        case "corsprobe": corsprobe(url: target, emit: emit, done: done)
+        case "openredirect": openredirect(url: target, emit: emit, done: done)
+        case "graphqlprobe": graphqlprobe(url: target, emit: emit, done: done)
+        case "proxyprobe": proxyprobe(target: target, emit: emit, done: done)
+        case "vncprobe": vncprobe(target: target, emit: emit, done: done)
+        case "rdpprobe": rdpprobe(target: target, emit: emit, done: done)
+        case "ftpprobe": ftpprobe(target: target, emit: emit, done: done)
+        case "smtpprobe": smtpprobe(target: target, emit: emit, done: done)
+        case "ldapprobe": ldapprobe(target: target, emit: emit, done: done)
+        case "redisprobe": redisprobe(target: target, emit: emit, done: done)
+        case "dockerprobe": dockerprobe(target: target, emit: emit, done: done)
+        default: done()
+        }
+    }
+}

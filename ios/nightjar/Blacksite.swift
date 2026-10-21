@@ -247,6 +247,11 @@ final class BlacksiteShell: ObservableObject {
         "robots", "vhost", "axfr",
         "tlsgrade", "reflect", "mqttprobe",
         "dnsaudit",
+        "corsprobe", "openredirect",
+        "graphqlprobe", "jwtcheck", "proxyprobe",
+        "vncprobe", "rdpprobe", "ftpprobe",
+        "smtpprobe", "ldapprobe", "redisprobe",
+        "dockerprobe",
     ]
 
     // MARK: Output
@@ -2818,7 +2823,7 @@ final class BlacksiteShell: ObservableObject {
         }
         switch head {
         case "help", "?":
-            help()
+            help(filter: args.first)
         case "clear":
             if !capturing {
                 DispatchQueue.main.async {
@@ -2882,7 +2887,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4657,7 +4662,7 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
-    private func help() {
+    private func help(filter: String? = nil) {
         let sections: [(String,
                          [(String, String)])] = [
             (L("the house"), [
@@ -4749,6 +4754,18 @@ final class BlacksiteShell: ObservableObject {
                 ("reflect <host>", L("the amplification audit — one packet at the old UDP doors, graded by the answer")),
                 ("mqttprobe <host>[:port]", L("does the broker let an unnamed guest in, and what does it tell them")),
                 ("dnsaudit <domain>", L("do the resolvers agree — your router against three public witnesses")),
+                ("corsprobe <url>", L("cross-origin policy — reflected origins, wildcards, credentials")),
+                ("openredirect <url>", L("do the exit parameters walk off the site")),
+                ("graphqlprobe <url>", L("is the schema posted on the door")),
+                ("jwtcheck <token>", L("a JWT, decoded and graded — no wire")),
+                ("proxyprobe <host[:port]>", L("will it fetch the outside for strangers")),
+                ("vncprobe <host>", L("the framebuffer's security types — 'None' is critical")),
+                ("rdpprobe <host>", L("which RDP dialect it will speak — legacy, TLS, or NLA")),
+                ("ftpprobe <host>", L("banner, and the conventional anonymous word")),
+                ("smtpprobe <host>", L("the mail door's manners — VRFY, STARTTLS, relay posture")),
+                ("ldapprobe <host>", L("anonymous bind, and what the RootDSE tells strangers")),
+                ("redisprobe <host>", L("one PING — PONG without a password is critical")),
+                ("dockerprobe <host>", L("an unauthenticated Docker API is the host itself")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -4846,12 +4863,43 @@ final class BlacksiteShell: ObservableObject {
                 ("clear", L("wipe this screen")),
             ]),
         ]
+        let needle = (filter ?? "").lowercased()
+        var shown = 0
         for (title, rows) in sections {
+            let picked = needle.isEmpty ? rows : rows.filter { $0.0.lowercased().contains(needle) || $0.1.lowercased().contains(needle) }
+            if picked.isEmpty { continue }
+            emit("", .sys)
             emit("— " + title + " —", .sys)
-            for (name, what) in rows {
-                emit(pad(name, 30) + what, .sys)
+            for (name, what) in picked {
+                emit("  " + name, .sys)
+                for line in wrapHelp(what) { emit(line, .sys) }
+                shown += 1
             }
         }
+        if shown == 0 && !needle.isEmpty {
+            emit(String(format: L("help: nothing answers to '%@'."), filter ?? ""), .sys)
+        }
+    }
+
+    /// Word-wrap a help description at a measure the narrowest phone
+    /// console still shows whole — entries stack (signature, then the
+    /// description indented under it) instead of running off the edge.
+    private func wrapHelp(_ text: String) -> [String] {
+        var lines: [String] = []
+        var current = ""
+        for word in text.split(separator: " ") {
+            let w = String(word)
+            if current.isEmpty {
+                current = w
+            } else if current.count + 1 + w.count <= 58 {
+                current += " " + w
+            } else {
+                lines.append("    " + current)
+                current = w
+            }
+        }
+        if !current.isEmpty { lines.append("    " + current) }
+        return lines
     }
 
     private func pad(_ s: String, _ width: Int)
@@ -8706,6 +8754,14 @@ final class BlacksiteShell: ObservableObject {
         _ name: String, _ args: [String]) {
         let out = Self.netEmit(self)
         let stopCheck = self.stopCheck
+        if name == "jwtcheck" {
+            guard let token = args.first else {
+                emit(L("jwtcheck needs a token."), .err)
+                return
+            }
+            BlacksiteBench.jwtcheck(token: token, emit: out, done: {})
+            return
+        }
         switch name {
         case "ifconfig":
             BlacksiteNet.ifconfig(emit: out)
@@ -10205,6 +10261,20 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.dnsaudit(
                     domain: domain,
+                    emit: emit, done: done)
+            }
+        case "corsprobe", "openredirect", "graphqlprobe", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("the bench tools each want a target."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.benchTwo(
+                    name, target,
                     emit: emit, done: done)
             }
         default:
