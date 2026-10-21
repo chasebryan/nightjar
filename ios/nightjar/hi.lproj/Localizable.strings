@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ पते एकत्र किए गए: %@। सूची Deliveries में दर्ज है।";
 "Collected addresses" = "एकत्र किए गए पते";
 "Use a collected address" = "एकत्र किया गया पता उपयोग करें";
+"\n…the rest is filed in Deliveries." = "\n…बाकी Deliveries में दर्ज है।";
