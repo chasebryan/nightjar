@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Platform.swift — the macOS bridge (fix237).
 //
@@ -181,3 +182,34 @@ struct BootFilmPlayer: NSViewRepresentable {
     func updateNSView(_ view: AVPlayerView, context: Context) {}
 }
 #endif
+
+// MARK: - The Mac window's shape (fix240)
+//
+// The house was drawn for a phone in the hand; opened
+// cold on a laptop it would inherit that portrait shape.
+// On macOS the app's scene and root view carry a laptop's
+// proportions instead — a wide default window with a
+// floor it will not shrink below. On iOS both helpers
+// are pass-throughs: the phone keeps its own shape.
+
+extension Scene {
+    func macWindowDefaults() -> some Scene {
+#if os(macOS)
+        self.defaultSize(width: 1240, height: 820)
+            .windowResizability(.contentMinSize)
+#else
+        self
+#endif
+    }
+}
+
+struct MacWindowSizing: ViewModifier {
+    func body(content: Content) -> some View {
+#if os(macOS)
+        content.frame(minWidth: 920, idealWidth: 1240,
+                      minHeight: 620, idealHeight: 820)
+#else
+        content
+#endif
+    }
+}

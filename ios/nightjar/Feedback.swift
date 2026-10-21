@@ -990,11 +990,19 @@ struct BootView: View {
         // not load; it derives itself, names its
         // keyholder and its witnesses, and seals
         // the manifest with its own provenance.
+#if os(iOS)
+        let bedrockLine = BootLine(
+            text: String(format: L("Bedrock — iOS %@"), UIDevice.current.systemVersion),
+            tone: .ok)
+#else
+        let bedrockLine = BootLine(
+            text: String(format: L("Bedrock — macOS %@"), UIDevice.current.systemVersion),
+            tone: .ok)
+#endif
         var out: [BootLine] = [
             BootLine(text: String(format: L("Keyholder — %@"), UIDevice.current.name),
                      tone: .ok),
-            BootLine(text: String(format: L("Bedrock — iOS %@"), UIDevice.current.systemVersion),
-                     tone: .ok),
+            bedrockLine,
             BootLine(text: String(format: L("Nightjar — %@"), AppInfo.version),
                      tone: .ok),
         ]

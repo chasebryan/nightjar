@@ -53,6 +53,7 @@ struct NightjarApp: App {
                              language.isRTL
                                 ? .rightToLeft : .leftToRight)
                 .id(language.effective)
+                .modifier(MacWindowSizing())
                 .background(
                     KeyboardSwipeInstaller()
                         .frame(width: 0, height: 0)
@@ -121,5 +122,6 @@ struct NightjarApp: App {
                     }
                 }
         }
+        .macWindowDefaults()
     }
 }
