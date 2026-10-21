@@ -1552,6 +1552,40 @@ extension SkelliCenter {
                 && word.contains(where: { $0.isLetter })
         })
         let host = ip ?? (q.contains("gateway") ? gateway : nil)
+        // A purpose named with a target (fix271,
+        // Chase): "build a payload that targets
+        // X for full recon discovery and
+        // analysis", "…for offensive analysis"
+        // — forge the battery for that host: the
+        // HTTP probe addressed to it, the banner
+        // probe, and the reverse-name query.
+        // One keep each, one word for the set.
+        let purposed = q.contains("recon")
+            || q.contains("discover")
+            || q.contains("offensive")
+            || q.contains("analysis")
+        if purposed, let host {
+            let reverse = host
+                .split(separator: ".").reversed()
+                .joined(separator: ".")
+                + ".in-addr.arpa"
+            let battery = [
+                ForgeKit.http(method: "GET",
+                              host: host, path: "/",
+                              body: ""),
+                ForgeKit.probe(),
+                ForgeKit.dns(host: reverse),
+            ]
+            for built in battery {
+                keepForged(built, announce: false)
+            }
+            let names = battery.map {
+                $0.name.replacingOccurrences(
+                    of: "Forged — ", with: "")
+            }.joined(separator: ", ")
+            say(String(format: L("Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire."), String(describing: host), String(describing: names)))
+            return true
+        }
         let built: ForgeKit.Built
         if q.contains("dns") {
             let name: String
@@ -1590,6 +1624,13 @@ extension SkelliCenter {
             }
             built = ForgeKit.Built(name: "Forged — " + custom.name,
                                    source: custom.source, text: text)
+        } else if let host {
+            // A named target and no kind named:
+            // her standing build, addressed to
+            // it (fix271).
+            built = ForgeKit.http(method: "GET",
+                                  host: host,
+                                  path: "/", body: "")
         } else {
             forgeDraft(raw)
             return true
@@ -1600,14 +1641,20 @@ extension SkelliCenter {
 
     /// A keep is a keep, from her hands or the
     /// sheet's: armory takes the payload,
-    /// Deliveries takes the file.
-    private func keepForged(_ built: ForgeKit.Built) {
+    /// Deliveries takes the file. A battery
+    /// keeps quietly and speaks once for the
+    /// set (announce: false).
+    private func keepForged(
+        _ built: ForgeKit.Built,
+        announce: Bool = true) {
         PayloadBook().add(SavedPayload(name: built.name, source: built.source,
                                        text: built.text, xorKey: "",
                                        useGzip: false, framing: "raw"))
         DeliveriesCenter.shared.add(name: built.name, text: built.text,
                                     ext: built.source == "hex" ? "hex" : "txt")
-        say(String(format: L("Forged and kept: %@ — %@ bytes. It is in the armory, filed in Deliveries, ready to fire from Send."), String(describing: built.name), String(describing: ForgeKit.byteCount(of: built))))
+        if announce {
+            say(String(format: L("Forged and kept: %@ — %@ bytes. It is in the armory, filed in Deliveries, ready to fire from Send."), String(describing: built.name), String(describing: ForgeKit.byteCount(of: built))))
+        }
     }
 
     /// A forge she holds no pattern for goes to her
