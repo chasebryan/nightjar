@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy: आप इस पर खड़े हैं — इसके नेटवर्क के विरुद्ध पूरी बैटरी चल रही है।";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "पूरी बैटरी — दरवाज़े, फिर प्रत्येक दरवाज़े का प्रोब, फिर दाखिल रिपोर्ट; बिना लक्ष्य का अर्थ यह नेटवर्क, नाम का अर्थ एक्सेस पॉइंट";
 "this network" = "यह नेटवर्क";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: इस डिवाइस का अपना TLS स्टैक पुराने संस्करण पेश नहीं करता — सर्वर के पुराने तालों को यहाँ से साबित नहीं किया जा सकता।";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — इस डिवाइस से परीक्षण नहीं किया जा सकता: इसके स्टैक ने इसके बजाय %@ पर बातचीत की।";
