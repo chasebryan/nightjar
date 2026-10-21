@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10 मिनट की पिसाई";
 "100,000" = "100,000";
 "15 min" = "15 मिनट";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210,000";
 "3 hours" = "3 घंटे";
 "3 min" = "3 मिनट";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff: नामित फ़ाइल पढ़ी नहीं जा सकती।";
 "diff: name two texts, or one and a pipe." = "diff: दो texts बताएँ, या एक और एक pipe।";
 "diff: too large for this room." = "diff: इस कमरे के लिए बहुत बड़ा।";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig को नाम चाहिए — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'।";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig को नाम चाहिए — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'।";
 "dig: no answer from %@ — the wire stayed quiet." = "dig: %@ से कोई जवाब नहीं — तार शांत रहा।";
 "dirb: that is not a URL." = "dirb: यह URL नहीं है।";
 "dirb: the host is not answering at all — called off." = "dirb: होस्ट बिल्कुल जवाब नहीं दे रहा — रद्द किया गया।";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel: [%@] %@ — रोका गया।";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps' kernel की table दिखाता है।";
 "kill: no live process %@." = "kill: कोई live process %@ नहीं।";
-"knock needs a host — 'knock 192.168.4.1'." = "knock को होस्ट चाहिए — 'knock 192.168.4.1'।";
+"knock needs a host — 'knock 192.168.1.1'." = "knock को होस्ट चाहिए — 'knock 192.168.1.1'।";
 "knock runs live — it cannot be piped or captured." = "knock live चलता है — इसे pipe या capture नहीं किया जा सकता।";
 "knocking on %@ doors at %@ — anything but 404 is news" = "%@ पर %@ दरवाज़े खटखटाए जा रहे हैं — 404 के अलावा सब ख़बर है";
 "limits — what this room honestly cannot do:" = "limits — यह कमरा ईमानदारी से क्या नहीं कर सकता:";
@@ -2874,7 +2874,7 @@
 "connected" = "connected";
 "device" = "device";
 "diagnose: %@/%@ — %@" = "diagnose: %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb को URL चाहिए — 'dirb http://192.168.4.1'.";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb को URL चाहिए — 'dirb http://192.168.1.1'.";
 "down" = "down";
 "factory write community live" = "factory write community चालू";
 "features ride at their defaults." = "features अपने defaults पर चलते हैं।";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "उसके इनकार readings हैं, moods नहीं। जो macro 'ready नहीं' है वह अपने पहले unready block का नाम और वजह बताता है — book में न होने वाला payload, parse न होने वाला target — क्योंकि आधी चलने वाली playlist कभी शुरू न होने वाली से बदतर है। जो hand कहता है कि कोई organ 'अभी मुझ तक पहुँचा नहीं' उसका मतलब है launch के बाद से उसका tab खोला नहीं गया; उसे एक बार खोलना session के लिए उसे wire कर देता है। जो capability किसी platform limit जैसी पढ़ती है — free team पर NFC — वह कल भी वैसी ही पढ़ेगी; वह operator को उसे bug समझकर पीछा नहीं करने देती।";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "एक tag phone के पास रखो और census उसे पढ़ता है: type, identifier, technologies, वह NDEF जो वह लिए है, और APDU जवाब जो एक ISO 7816 tag explorer को देगा। यह पढ़ता और पहचानता है — यह कभी लिखता या clone नहीं करता; reading का record कमरे में रहता है।";
 "Home network hardening — the NSA's sheet" = "Home network hardening — NSA की sheet";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "Home wires लगभग हमेशा /24 होते हैं: एक prefix के नीचे 254 addresses, gateway .1 पर (यहाँ eero), broadcast .255 पर जहाँ एक पुकार एक साथ हर host तक पहुँचती है। इस wire पर phone का अपना address 192.168.4.20 है। एक sweep उन 254 पर चलती है और हर एक पर एक port खटखटाती है — एक census, मारपीट नहीं। /24 छोड़ना नियम पूरी तरह बदल देता है: remote targets दूसरों के networks हैं, और About का charter लागू होता है।";
 "Housekeeping — clears and folds" = "Housekeeping — clears और folds";
 "How operators actually phrase orders" = "Operators असल में orders कैसे बोलते हैं";
 "How the exams are actually passed" = "Exams असल में कैसे पास होते हैं";
@@ -3915,7 +3914,7 @@
 "But I can " = "पर मैं कर सकती हूँ ";
 "Called off — the Netbomb stays in the rack." = "रद्द — Netbomb rack में ही रहता है।";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "%@ को challenge भेजा — defender को अपने War Games room खुले के साथ serving होना चाहिए। जब READY आ जाए, तो round Send tab के War Games room से तय होता है।";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "किसे challenge करूँ? defender का पता दो — challenge 192.168.4.31।";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "किसे challenge करूँ? defender का पता दो — challenge 192.168.1.31।";
 "Currently wearing %@. The rack holds: %@." = "अभी %@ पहना हुआ है। rack में है: %@।";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "Defense तय: Serve के %@ दरवाज़े असली माने गए, %@ decoys उड़ रहे हैं";
 "Deleted “%@”." = "मिटाया “%@”।";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@: समाप्त, %lld में से %lld ब्लॉक।";
 "%@: stopped." = "%@: रुका।";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 या gateway";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 या phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 या gateway";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 या phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "मौजूदा scope पर पूरा trace, फिर ख़बर कि हो गया।";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "परीक्षण नहीं, एक पहरा: घर अंधेरा, stealth चालू, कान खुला — और अंत में ठीक वैसा ही खड़ा, design के मुताबिक़।";
 "A watch is already running — left as it was." = "एक निगरानी पहले से चल रही है — जैसी थी, वैसी ही छोड़ दी।";
