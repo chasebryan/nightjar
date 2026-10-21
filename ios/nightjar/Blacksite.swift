@@ -207,6 +207,14 @@ final class BlacksiteShell: ObservableObject {
     @Published var betafischSeedName: String?
     @Published var betafischSeedData: Data?
 
+    /// Driftnet's seed for the same room:
+    /// the sheet opens in drift mode, and
+    /// — with no capture named — on the
+    /// sample, so the gallery is already
+    /// up when the sheet lands.
+    @Published var betafischSeedDrift = false
+    @Published var betafischSeedDriftSample = false
+
     var capturing: Bool { !captureStack.isEmpty }
 
     static let builtinNames: [String] = [
@@ -217,7 +225,7 @@ final class BlacksiteShell: ObservableObject {
         "scan", "knock", "census", "eazy", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
-        "freedoom", "doom", "betafisch",
+        "freedoom", "doom", "betafisch", "driftnet",
         "theme", "haptics", "skelli", "open",
         "halt", "stop", "pwd", "cd", "ls", "mkdir",
         "touch", "cat", "echo", "cp", "mv",
@@ -281,6 +289,8 @@ final class BlacksiteShell: ObservableObject {
     private func betafischCommand(_ args: [String]) {
         betafischSeedName = nil
         betafischSeedData = nil
+        betafischSeedDrift = false
+        betafischSeedDriftSample = false
         if let name = args.first {
             let path = BlacksiteFS.normalize(
                 name, cwd: cwd)
@@ -299,6 +309,39 @@ final class BlacksiteShell: ObservableObject {
             }
         } else {
             emit(L("betafisch opens — the packet dissector."), .ok)
+        }
+        programRequest = .betafisch
+    }
+
+    /// driftnet [file] — raise the
+    /// dissector in drift mode: the
+    /// capture named (or the sample, when
+    /// none is) opens with its pictures
+    /// already lifted to the wall.
+    private func driftnetCommand(_ args: [String]) {
+        betafischSeedName = nil
+        betafischSeedData = nil
+        betafischSeedDrift = true
+        betafischSeedDriftSample = false
+        if let name = args.first {
+            let path = BlacksiteFS.normalize(
+                name, cwd: cwd)
+            let url = BlacksiteFS.url(
+                forVirtual: path)
+            if let data = try? Data(contentsOf: url),
+               (try? Betafisch.load(
+                   data: data,
+                   name: url.lastPathComponent)) != nil {
+                betafischSeedName =
+                    url.lastPathComponent
+                betafischSeedData = data
+                emit(String(format: L("driftnet opens — %@ is loaded from the tree; lifting its pictures."), url.lastPathComponent), .ok)
+            } else {
+                emit(String(format: L("no capture named %@ in the tree — driftnet opens; pick the file there."), name), .sys)
+            }
+        } else {
+            betafischSeedDriftSample = true
+            emit(L("driftnet opens — the pictures in a capture, lifted off the wire."), .ok)
         }
         programRequest = .betafisch
     }
@@ -2960,6 +3003,13 @@ final class BlacksiteShell: ObservableObject {
             } else {
                 betafischCommand(args)
             }
+        case "driftnet":
+            if capturing {
+                emit(L("driftnet opens live — it cannot be piped."),
+                     .err)
+            } else {
+                driftnetCommand(args)
+            }
         case "gauntlet":
             if capturing {
                 emit(L("the gauntlet runs live — it cannot be piped."),
@@ -4944,6 +4994,7 @@ final class BlacksiteShell: ObservableObject {
                 ("date", L("when it is")),
                 ("which <cmd>", L("where a command lives")),
                 ("betafisch [file]", L("betafisch — the packet dissector: open a capture, read every frame")),
+                ("driftnet [file]", L("driftnet — the pictures in a capture, lifted off the wire and pinned to a wall")),
                 ("ver", L("what this is")),
                 ("clear", L("wipe this screen")),
             ]),
@@ -10904,7 +10955,10 @@ struct BlacksiteView: View {
             BlacksiteProgramSheet(
                 program: program,
                 betafischSeedName: shell.betafischSeedName,
-                betafischSeedData: shell.betafischSeedData)
+                betafischSeedData: shell.betafischSeedData,
+                betafischSeedDrift: shell.betafischSeedDrift,
+                betafischSeedDriftSample:
+                    shell.betafischSeedDriftSample)
         }
         .onChange(of: shell.programRequest) {
             _, requested in
@@ -11717,6 +11771,8 @@ private struct BlacksiteProgramSheet: View {
     let program: BlacksiteView.Program
     var betafischSeedName: String? = nil
     var betafischSeedData: Data? = nil
+    var betafischSeedDrift: Bool = false
+    var betafischSeedDriftSample: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -11766,7 +11822,10 @@ private struct BlacksiteProgramSheet: View {
         case .betafisch:
             BetafischView(
                 seedName: betafischSeedName,
-                seedData: betafischSeedData)
+                seedData: betafischSeedData,
+                seedDrift: betafischSeedDrift,
+                seedDriftSample:
+                    betafischSeedDriftSample)
         }
     }
 }
