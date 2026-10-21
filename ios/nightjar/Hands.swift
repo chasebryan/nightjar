@@ -2186,15 +2186,7 @@ extension SkelliCenter {
                BlacksiteShell.builtinNames
                    .contains(first) {
                 var claims = false
-                if tokens.count == 2,
-                   first == "snmp",
-                   tokens[1] == "audit" {
-                    // The audit's spoken shape
-                    // (fix276): a console line of
-                    // two words, no argument-shaped
-                    // token in it.
-                    claims = true
-                } else if tokens.count == 1 {
+                if tokens.count == 1 {
                     claims = ["neofetch",
                         "fastfetch", "diagnose",
                         "ps", "jobs", "pwd", "ls",
