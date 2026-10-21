@@ -2177,20 +2177,24 @@ extension SkelliCenter {
         // Her own console if the room's has not
         // woken (fix266): the chat is an
         // interface to the Blacksite, not a
-        // request to go and open it.
+        // request to go and open it. The live
+        // runner (fix267) — the wire tools'
+        // results land after the line returns,
+        // and she speaks when the room settles.
         let shell = blacksite()
-        let out = shell.runForSkelli(payload)
-        if out.isEmpty {
-            say(L("Ran it — nothing came back on the line. If it's a program, its output lives in the console; the Blacksite tab holds it."))
-        } else if out.count > 700 {
-            DeliveriesCenter.shared.add(
-                name: "Blacksite — "
-                    + String(payload.prefix(60)),
-                text: out, ext: "txt")
-            say(String(out.prefix(700))
-                + L("\n…the rest is filed in Deliveries."))
-        } else {
-            say(out)
+        shell.runForSkelliLive(payload) { out in
+            if out.isEmpty {
+                self.say(L("Ran it — nothing came back on the line. If it's a program, its output lives in the console; the Blacksite tab holds it."))
+            } else if out.count > 700 {
+                DeliveriesCenter.shared.add(
+                    name: "Blacksite — "
+                        + String(payload.prefix(60)),
+                    text: out, ext: "txt")
+                self.say(String(out.prefix(700))
+                    + L("\n…the rest is filed in Deliveries."))
+            } else {
+                self.say(out)
+            }
         }
         return true
     }
