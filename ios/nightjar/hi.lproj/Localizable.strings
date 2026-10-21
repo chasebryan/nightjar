@@ -6008,3 +6008,9 @@
 "Walk to a room" = "किसी कमरे में जाएँ";
 "%.1f seconds" = "%.1f सेकंड";
 "Running work" = "चल रहा कार्य";
+"Firing %@ at %@ — %@ bytes." = "%@ को %@ पर दागा — %@ बाइट।";
+"It answered — %@ bytes back." = "उसने जवाब दिया — %@ बाइट वापस आए।";
+"Sent. No reply came back." = "भेज दिया। कोई जवाब वापस नहीं आया।";
+"Nothing landed at %@ — the door never opened." = "%@ पर कुछ नहीं पहुँचा — दरवाज़ा कभी खुला ही नहीं।";
+"Here — %@: %@ bytes, filed in Deliveries." = "यह रहा — %@: %@ बाइट, Deliveries में रखा है।";
+"I have no send wire just now." = "मेरे पास अभी भेजने का तार नहीं है।";
