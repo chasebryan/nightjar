@@ -6029,3 +6029,5 @@
 "Use a collected address" = "収集済みアドレスを使う";
 "\n…the rest is filed in Deliveries." = "\n…残りは Deliveries に保管されました。";
 "…still running — that's what's printed so far." = "…まだ実行中 — ここまでに出力された分です。";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "%@向けのバッテリーを鍛造しました:%@ — 3つのペイロードを武器庫に保管し、Deliveriesに提出しました。発射準備完了です。";
