@@ -6030,3 +6030,6 @@
 "…still running — that's what's printed so far." = "…sigue corriendo — esto es lo impreso hasta ahora.";
 
 "Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "Forjé la batería para %@: %@ — 3 cargas guardadas en la armería y archivadas en Deliveries, listas para disparar.";
+"stop whatever is running in this room — a sweep, a knock, a walk, a program" = "detén lo que esté en marcha en esta sala — un barrido, un toque a las puertas, un recorrido, un programa";
+"stopped — the room is yours again." = "detenido — la sala es tuya otra vez.";
+"nothing is running." = "no hay nada en marcha.";
