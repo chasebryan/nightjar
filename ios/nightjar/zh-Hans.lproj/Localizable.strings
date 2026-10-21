@@ -6030,3 +6030,6 @@
 "…still running — that's what's printed so far." = "…仍在运行 — 这是到目前为止输出的内容。";
 
 "Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "已为 %@ 锻造电池:%@ — 3 个载荷已存入军械库并归档至 Deliveries,随时可发射。";
+"stop whatever is running in this room — a sweep, a knock, a walk, a program" = "停下这个房间里正在运行的一切 — 扫描、敲门、遍历、程序";
+"stopped — the room is yours again." = "已停下 — 房间又是你的了。";
+"nothing is running." = "没有东西在运行。";

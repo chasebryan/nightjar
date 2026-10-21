@@ -6030,3 +6030,6 @@
 "…still running — that's what's printed so far." = "…아직 실행 중 — 지금까지 출력된 내용입니다.";
 
 "Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "%@용 배터리를 제작했습니다: %@ — 페이로드 3개가 무기고에 보관되고 Deliveries에 제출되어 발사 준비를 마쳤습니다.";
+"stop whatever is running in this room — a sweep, a knock, a walk, a program" = "이 방에서 실행 중인 것을 멈춘다 — 스윕, 노크, 워크, 프로그램";
+"stopped — the room is yours again." = "멈췄다 — 방은 다시 네 것이다.";
+"nothing is running." = "실행 중인 것이 없다.";
