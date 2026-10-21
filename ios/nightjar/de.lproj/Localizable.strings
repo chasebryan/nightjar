@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ Hop %lld/%lld (%@) %@ — Ziel nicht lesbar";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ Hop %lld/%lld (%@) %@ — kein Netzwerkziel";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ Hop %lld/%lld (%@) %@ — Payload ließ sich nicht bauen";
+"The Mac bench" = "Die Mac-Werkbank";
+"Window" = "Fenster";
+"Display" = "Bildschirm";
+"Catalog" = "Katalog";
+"missing" = "fehlt";
+"App icon" = "App-Symbol";
+"Mac boot film" = "Mac-Startfilm";
+"Phone boot film" = "Telefon-Startfilm";
+"Boot film length" = "Länge des Startfilms";
+"Replay the boot" = "Start erneut abspielen";
+"Walk to a room" = "Zu einem Raum gehen";
+"%.1f seconds" = "%.1f Sekunden";
