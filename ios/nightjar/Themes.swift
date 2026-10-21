@@ -61,6 +61,16 @@ struct AppTheme: Identifiable, Codable, Equatable {
     var glow: Color { Color(hex: glowHex) }
     var tint: Color { Color(hex: tintHex) }
 
+    /// The colour the operator's own words
+    /// wear on the accent — his chat bubbles,
+    /// his send arrow. White on every suit
+    /// but one: Black Glass is a pale silver,
+    /// and his words wear black on it (his
+    /// ruling, 2026-10-21).
+    var onAccent: Color {
+        id == "blackglass" ? .black : .white
+    }
+
     // Accent brightened in the beauty pass
     // (2026-10-19): #148040 measured 3.75:1
     // against its own tint — the muddiest
