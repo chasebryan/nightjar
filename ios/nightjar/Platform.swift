@@ -391,10 +391,12 @@ func platformImage(cgImage cg: CGImage) -> UIImage {
 func platformImageIsAnimated(_ image: UIImage) -> Bool {
 #if os(macOS)
     for rep in image.representations {
-        if let frames = rep.value(
-            forProperty: NSBitmapImageRep
-                .PropertyKey.frameCount) as? Int,
-           frames > 1 { return true }
+        guard let bitmap = rep as? NSBitmapImageRep,
+              let frames = bitmap.value(
+                forProperty: NSBitmapImageRep
+                    .PropertyKey.frameCount) as? Int,
+              frames > 1 else { continue }
+        return true
     }
     return false
 #else
