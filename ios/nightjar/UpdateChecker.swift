@@ -67,7 +67,7 @@ final class UpdateChecker: ObservableObject {
     private var etag: String?
     private var watchTask: Task<Void, Never>?
 
-    init(current: String = AppInfo.version, repo: String = "chasebryan/nightjar-hack",
+    init(current: String = AppInfo.version, repo: String = "chasebryan/nightjar",
          session: URLSession = .shared) {
         self.current = current
         self.repo = repo
@@ -83,7 +83,7 @@ final class UpdateChecker: ObservableObject {
     nonisolated static func githubURL(_ string: String) -> URL {
         URL(string: string)
             ?? URL(string: "https://github.com/"
-                   + "chasebryan/nightjar-hack")!
+                   + "chasebryan/nightjar")!
     }
 
     var releasesURL: URL {
@@ -280,7 +280,7 @@ final class UpdateChecker: ObservableObject {
         else { return }
         let content = UNMutableNotificationContent()
         content.title = L("Update available")
-        content.body = String(format: L("%@ is out. Open nightjar-hack to install it."), release.name)
+        content.body = String(format: L("%@ is out. Open nightjar to install it."), release.name)
         content.sound = .default
         let request = UNNotificationRequest(
             identifier: "nightjar.update.\(release.tag)",

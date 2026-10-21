@@ -1,4 +1,4 @@
-# nightjar-hack for iOS — 10.0
+# nightjar for iOS — 10.0
 
 This is the flagship: the nightjar listening post — a
 receive-only scanner, a wide decoder bench and session
@@ -473,7 +473,7 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
   that's what `NSLocalNetworkUsageDescription` in
   `Support/Info.plist` is for. If LAN probes fail,
   check Settings → Privacy & Security → Local Network
-  → nightjar-hack is ON.
+  → nightjar is ON.
 - **App icon.** The icon is a photo of a great eared
   nightjar, cropped square on the face. Its file
   (`IMG_1434.png`) lives in the AppIcon set; the
@@ -529,7 +529,7 @@ in `ota/` at the repo root:
 
 - **Ad hoc over-the-air (paid Developer Program).**
   Profiles live a year, installs come from a link,
-  and when a release carries its `nightjar-hack.ipa`
+  and when a release carries its `nightjar.ipa`
   + `manifest.plist`, the app's own update banner
   and About's Version section become a true
   **Update** button — iOS installs the new build
@@ -539,7 +539,7 @@ in `ota/` at the repo root:
 - **SideStore (free).** Re-signs on the phone itself
   before the 7 days lapse. Add the repo as a source
   and releases surface there:
-  `https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json`
+  `https://raw.githubusercontent.com/chasebryan/nightjar/main/sidestore-source.json`
 
 ## Install (sideload)
 

@@ -15,7 +15,7 @@ from a link with no Xcode and no cable, and a true **Update**
 button inside the app.
 
 How it works: each GitHub release carries two extra assets —
-`nightjar-hack.ipa` (an ad hoc build) and `manifest.plist`
+`nightjar.ipa` (an ad hoc build) and `manifest.plist`
 (its install manifest). The app already watches for new
 releases; when it finds one, it probes for the manifest. If the
 manifest is there, the banner and About's Version section show
@@ -42,10 +42,10 @@ Apple provides, and it is a genuine one-tap update.
 ### Per release
 
 1. Xcode → Product → Archive → Distribute App → **Ad Hoc** →
-   export. Name the result `nightjar-hack.ipa`.
+   export. Name the result `nightjar.ipa`.
 2. Copy `ota/manifest.plist` and replace `__VERSION__` with the
    release's version (e.g. `5.0.0`). The manifest already points
-   at `releases/latest/download/nightjar-hack.ipa`, so it never
+   at `releases/latest/download/nightjar.ipa`, so it never
    needs a new address.
 3. Attach **both** files to the GitHub release. Done — every
    phone running the app sees the Update button light up.
@@ -88,10 +88,10 @@ Add this repo as a source in SideStore and new versions will
 surface there on their own:
 
 ```
-https://raw.githubusercontent.com/chasebryan/nightjar-hack/main/sidestore-source.json
+https://raw.githubusercontent.com/chasebryan/nightjar/main/sidestore-source.json
 ```
 
-The source serves the same `nightjar-hack.ipa` the releases
+The source serves the same `nightjar.ipa` the releases
 carry; SideStore signs it with your own account at install
 time. Honest limits: SideStore holds one of the free account's
 3 app slots, and its refresh depends on community anisette

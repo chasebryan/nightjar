@@ -3243,7 +3243,7 @@ no new commands this round; its docs were overhauled with the rest.
 ### Docs
 
 README.md, HACKER.md and ios/README.md rewritten for the full
-feature set; this changelog started. The stale `nightjar-hack.zip`
+feature set; this changelog started. The stale `nightjar.zip`
 convenience archive was removed from the repo before tagging —
 releases carry GitHub's own source archives; the single-file
 build and the bundle are regenerated from source.

@@ -1,4 +1,4 @@
-# nightjar-hack 10.0 — release notes
+# nightjar 10.0 — release notes
 
 The chorus release: every voice in the house, singing at once.
 

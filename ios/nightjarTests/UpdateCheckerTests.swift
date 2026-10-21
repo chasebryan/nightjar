@@ -40,7 +40,7 @@ final class UpdateCheckerTests: XCTestCase {
     func testParseRejectsMalformedReleaseTag() {
         let json = """
         {"tag_name": "v3.bad", "html_url":
-        "https://github.com/chasebryan/nightjar-hack/releases/tag/v3.bad",
+        "https://github.com/chasebryan/nightjar/releases/tag/v3.bad",
         "draft": false, "prerelease": false}
         """.data(using: .utf8)!
         XCTAssertNil(UpdateChecker.parse(json, current: "2.6"))

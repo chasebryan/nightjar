@@ -1,4 +1,4 @@
-# nightjar-hack
+# nightjar
 
 nightjar listens. This overlay gives it a mouth.
 

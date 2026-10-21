@@ -405,7 +405,7 @@ final class Steward: ObservableObject {
         }
 
         let nightjarGrade = verdict.hasPrefix(
-            "nightjar-hack probe:")
+            "nightjar probe:")
         let rows = emcon.events.filter {
             ($0.source.components(separatedBy: " ").first
                 ?? $0.source) == host

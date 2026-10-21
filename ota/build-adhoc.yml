@@ -73,7 +73,7 @@ jobs:
             -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
-          cp "$RUNNER_TEMP/export/nightjar.ipa" nightjar-hack.ipa
+          cp "$RUNNER_TEMP/export/nightjar.ipa" nightjar.ipa
 
       - name: Fill the manifest
         run: |
@@ -85,4 +85,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "$GITHUB_REF_NAME" \
-            nightjar-hack.ipa manifest.plist --clobber
+            nightjar.ipa manifest.plist --clobber

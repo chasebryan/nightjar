@@ -39,7 +39,7 @@ enum SourceStamp {
     static func currentRemoteHead() async -> String? {
         guard let url = URL(string:
             "https://api.github.com/repos/"
-            + "chasebryan/nightjar-hack/commits/main")
+            + "chasebryan/nightjar/commits/main")
         else { return nil }
         var request = URLRequest(url: url)
         request.setValue("application/vnd.github+json",

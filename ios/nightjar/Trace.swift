@@ -1,6 +1,6 @@
 //
 //  Trace.swift
-//  nightjar-hack
+//  nightjar
 //
 //  The Network Trace: an operator-started, foreground,
 //  stoppable run that maps ONE IPv4 /24 — every address

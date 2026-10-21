@@ -1,4 +1,4 @@
-# nightjar-hack
+# nightjar
 
 <p align="center">
   <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
@@ -8,7 +8,7 @@
 
 **No jailbreak required**
 
-nightjar-hack began as an overlay that taught the nightjar
+nightjar began as an overlay that taught the nightjar
 BLE listening post to talk. It is its own project now, and
 its flagship is the iOS app: the listening post, the mouth,
 a recon bench, a defensive posture standard, a vault,
@@ -27,7 +27,7 @@ right-to-left for Arabic.
 
 ## The flagship: the iOS app
 
-Twelve tabs, one instrument. This is where nightjar-hack
+Twelve tabs, one instrument. This is where nightjar
 is developed, and the standard everything else is
 measured against. It boots over a living film — a
 ceremony timed to the reel, the house proving its
@@ -288,7 +288,7 @@ as above, always works too.
     cd nightjar
 
     # 2. lay the overlay on top
-    python3 /path/to/nightjar-hack/apply_overlay.py .
+    python3 /path/to/nightjar/apply_overlay.py .
 
     # 3. install
     pip install -e .
@@ -322,7 +322,7 @@ and trick (`--expect`, `--follow`, `--replay`) — is
 ## Single-file route
 
 If you would rather not unzip anything, use
-nightjar-hack-single.py: it writes the same files into the
+nightjar-single.py: it writes the same files into the
 checkout and then calls apply_overlay.py.
 
 ## Documents
@@ -335,7 +335,7 @@ checkout and then calls apply_overlay.py.
 
 ## About me
 
-I'm Chase Bryan — cryptographer and builder. nightjar-hack
+I'm Chase Bryan — cryptographer and builder. nightjar
 is my instrument: I build the tools I want to exist, and I
 build them in the open.
 

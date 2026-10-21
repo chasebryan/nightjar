@@ -64,7 +64,7 @@ enum SkelliCrew {
 
     private static let plannerBrief = """
         You are the Planner in Skelli's crew, \
-        aboard nightjar-hack, a network field \
+        aboard nightjar, a network field \
         instrument. Break the operator's ask \
         into steps the house can actually work, \
         one per line, each line beginning \

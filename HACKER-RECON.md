@@ -1,4 +1,4 @@
-# nightjar-hack recon
+# nightjar recon
 
 `nightjar listen`s. This adds the words. It lands **in the iOS app first**
 — a Recon tab beside Send and Serve — and the same protocol library is

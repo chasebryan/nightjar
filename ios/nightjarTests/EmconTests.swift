@@ -222,29 +222,29 @@ final class EmconTests: XCTestCase {
     func testFingerprintClassifiesKnownProbes() throws {
         let redis = try ReconPayloads.build("redis-ping")
         XCTAssertEqual(Emcon.fingerprint(redis, port: 6379, udp: false),
-                       "nightjar-hack probe: redis-ping")
+                       "nightjar probe: redis-ping")
         XCTAssertEqual(Emcon.fingerprint(redis, port: 80, udp: false),
-                       "nightjar-hack probe: redis-ping (on the wrong port)")
+                       "nightjar probe: redis-ping (on the wrong port)")
         XCTAssertEqual(Emcon.fingerprint(redis, port: 6379, udp: true),
-                       "nightjar-hack probe: redis-ping (a TCP probe over UDP)")
+                       "nightjar probe: redis-ping (a TCP probe over UDP)")
 
         // Several probes are the same GET /. The port breaks the tie.
         let http = try ReconPayloads.build("http-get")
         XCTAssertEqual(Emcon.fingerprint(http, port: 80, udp: false),
-                       "nightjar-hack probe: http-get")
+                       "nightjar probe: http-get")
         XCTAssertEqual(Emcon.fingerprint(http, port: 9200, udp: false),
-                       "nightjar-hack probe: elasticsearch-root")
+                       "nightjar probe: elasticsearch-root")
         XCTAssertEqual(Emcon.fingerprint(http, port: 443, udp: false),
-                       "nightjar-hack probe: https-get")
+                       "nightjar probe: https-get")
         let dns = try ReconPayloads.build("dns-a")
         XCTAssertEqual(Emcon.fingerprint(dns, port: 53, udp: true),
-                       "nightjar-hack probe: dns-a")
+                       "nightjar probe: dns-a")
 
         // A partial send still names the probe. The trailing byte is
         // what a short read would drop; "PING" is already in hand.
         let partial = Data(redis.prefix(redis.count - 1))
         XCTAssertEqual(Emcon.fingerprint(partial, port: 6379, udp: false),
-                       "nightjar-hack probe: redis-ping")
+                       "nightjar probe: redis-ping")
     }
 
     func testFingerprintClassifiesGenericScanners() {
@@ -273,7 +273,7 @@ final class EmconTests: XCTestCase {
                        "silent knock (no bytes sent)")
         let redis = try ReconPayloads.build("redis-ping")
         XCTAssertEqual(Emcon.tripVerdict(redis, port: 6379, udp: false),
-                       "nightjar-hack probe: redis-ping")
+                       "nightjar probe: redis-ping")
     }
 
     /// The receive path and the grace timer share one gate. Whichever
@@ -284,7 +284,7 @@ final class EmconTests: XCTestCase {
         let once = Emcon.TripOnce()
         let logged = Emcon.noteKnock(once, bytes: redis, port: 6379, udp: false)
         let dropped = Emcon.noteKnock(once, bytes: Data(), port: 6379, udp: false)
-        XCTAssertEqual(logged?.verdict, Optional("nightjar-hack probe: redis-ping"))
+        XCTAssertEqual(logged?.verdict, Optional("nightjar probe: redis-ping"))
         XCTAssertEqual(logged?.byteCount, Optional(redis.count))
         XCTAssertNil(dropped)
         XCTAssertTrue(once.isSettled)
@@ -304,7 +304,7 @@ final class EmconTests: XCTestCase {
         XCTAssertEqual(Emcon.eventCap, 200)
         var events: [Emcon.TripEvent] = []
         let t0 = Date(timeIntervalSinceReferenceDate: 10_000)
-        let verdict = "nightjar-hack probe: redis-ping"
+        let verdict = "nightjar probe: redis-ping"
         Emcon.record(&events, source: "10.1.1.8", port: 6379, proto: "TCP",
                      verdict: verdict, byteCount: 14, now: t0)
         Emcon.record(&events, source: "10.1.1.8", port: 6379, proto: "TCP",
@@ -354,16 +354,16 @@ final class EmconTests: XCTestCase {
         let when = Date(timeIntervalSinceReferenceDate: 50_000)
         var events: [Emcon.TripEvent] = []
         Emcon.record(&events, source: "10.1.1.8", port: 6379, proto: "TCP",
-                     verdict: "nightjar-hack probe: redis-ping",
+                     verdict: "nightjar probe: redis-ping",
                      byteCount: 14, now: when)
         Emcon.record(&events, source: "10.1.1.8", port: 6379, proto: "TCP",
-                     verdict: "nightjar-hack probe: redis-ping",
+                     verdict: "nightjar probe: redis-ping",
                      byteCount: 14, now: when.addingTimeInterval(2))
         let report = Emcon.tripwireReport(events)
         XCTAssertTrue(report.contains("EMCON tripwire"))
         XCTAssertTrue(report.contains("The tripwire never replies."))
         XCTAssertTrue(report.contains("10.1.1.8 → TCP/6379 ×2"))
-        XCTAssertTrue(report.contains("nightjar-hack probe: redis-ping"))
+        XCTAssertTrue(report.contains("nightjar probe: redis-ping"))
         XCTAssertEqual(Emcon.tripwireReport([]),
                        "EMCON tripwire\nThe tripwire never replies.\n\nNobody has knocked.")
 

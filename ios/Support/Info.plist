@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>nightjar-hack listens for Bluetooth devices around you and logs what it hears. If you use the Send tab, it can also advertise a payload you type and write to devices you choose. Listening never connects to anything.</string>
+	<string>nightjar listens for Bluetooth devices around you and logs what it hears. If you use the Send tab, it can also advertise a payload you type and write to devices you choose. Listening never connects to anything.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>nightjar-hack sends payloads to, and receives payloads from, devices on your local network — only to addresses you type, and only while the app is open.</string>
+	<string>nightjar sends payloads to, and receives payloads from, devices on your local network — only to addresses you type, and only while the app is open.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_ssh._tcp</string>
@@ -28,15 +28,15 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>nightjar-hack uses your location while in use for two things: its compass, which uses your heading and direction of travel to point you toward a Bluetooth device its ear is hearing while you walk to it; and Skelli's sense of place, which lets her name where in the world you are and read your local time and weather. Your location is never stored. Coordinates are sent to the weather service only at the moment you ask Skelli about the weather.</string>
+	<string>nightjar uses your location while in use for two things: its compass, which uses your heading and direction of travel to point you toward a Bluetooth device its ear is hearing while you walk to it; and Skelli's sense of place, which lets her name where in the world you are and read your local time and weather. Your location is never stored. Coordinates are sent to the weather service only at the moment you ask Skelli about the weather.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>nightjar-hack uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
+	<string>nightjar uses the camera to receive Blink transmissions — messages another of your devices shows as a looping sequence of QR frames — only while you hold the Blink receiver open in the Knocktalk tab. Frames are decoded in the moment; no photos or video are taken or stored.</string>
 	<key>NFCReaderUsageDescription</key>
-	<string>nightjar-hack reads a tag you hold to the phone when you use the Coin — a physical key you claim in the EMCON tab — and when you run the EMCON tag census on your own cards and tags. Tags are only read at the moment you tap; the Coin keeps only a hash, and the census keeps nothing but what it shows you.</string>
+	<string>nightjar reads a tag you hold to the phone when you use the Coin — a physical key you claim in the EMCON tab — and when you run the EMCON tag census on your own cards and tags. Tags are only read at the moment you tap; the Coin keeps only a hash, and the census keeps nothing but what it shows you.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>nightjar-hack listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
+	<string>nightjar listens for Chirp transmissions — short messages another of your devices sends as audible tones — only while you hold the Chirp listener open in the Knocktalk tab. Nothing is recorded or stored; tones are decoded in the moment and forgotten.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>nightjar-hack reads the readings your Apple Watch already collects — heart rate, blood oxygen, breath, wrist temperature, and sleep — to show the state of the operator beside the state of the house. It only reads; nothing is written to your health data, and nothing leaves this phone.</string>
+	<string>nightjar reads the readings your Apple Watch already collects — heart rate, blood oxygen, breath, wrist temperature, and sleep — to show the state of the operator beside the state of the house. It only reads; nothing is written to your health data, and nothing leaves this phone.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>

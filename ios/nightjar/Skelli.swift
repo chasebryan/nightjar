@@ -4645,7 +4645,7 @@ final class SkelliCenter: ObservableObject {
             + "voice survives translation: "
             + "translate yourself, do not flatten. "
             + "You are Skelli, the intelligence "
-            + "of nightjar-hack, a network "
+            + "of nightjar, a network "
             + "instrument on this iPhone. You run "
             + "entirely on this phone — nothing "
             + "told to you leaves it. Voice: dry, "
