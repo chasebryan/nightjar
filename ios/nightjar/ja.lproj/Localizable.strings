@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10分間の粉砕";
 "100,000" = "100,000";
 "15 min" = "15分";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210,000";
 "3 hours" = "3時間";
 "3 min" = "3分";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff: 名前付きファイルを読み取れません。";
 "diff: name two texts, or one and a pipe." = "diff: テキストを2つ、または1つとパイプを指定してください。";
 "diff: too large for this room." = "diff: この部屋には大きすぎます。";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig には名前が必要です — 'dig example.com'、'dig @192.168.4.1 x.local AAAA'。";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig には名前が必要です — 'dig example.com'、'dig @192.168.1.1 x.local AAAA'。";
 "dig: no answer from %@ — the wire stayed quiet." = "dig: %@ から応答なし — 回線は静かでした。";
 "dirb: that is not a URL." = "dirb: URL ではありません。";
 "dirb: the host is not answering at all — called off." = "dirb: ホストがまったく応答しません — 中止しました。";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel: [%@] %@ — 停止。";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps' でカーネルのテーブルを表示。";
 "kill: no live process %@." = "kill: 稼働中のプロセス %@ はありません。";
-"knock needs a host — 'knock 192.168.4.1'." = "knock にはホストが必要です — 'knock 192.168.4.1'。";
+"knock needs a host — 'knock 192.168.1.1'." = "knock にはホストが必要です — 'knock 192.168.1.1'。";
 "knock runs live — it cannot be piped or captured." = "knock はライブ実行です — パイプもキャプチャもできません。";
 "knocking on %@ doors at %@ — anything but 404 is news" = "%@ のドア %@ 件をノック中 — 404 以外はすべてニュースです";
 "limits — what this room honestly cannot do:" = "limits — この部屋に正直できないこと:";
@@ -2874,7 +2874,7 @@
 "connected" = "接続中";
 "device" = "デバイス";
 "diagnose: %@/%@ — %@" = "diagnose: %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb には URL が必要 — 'dirb http://192.168.4.1'。";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb には URL が必要 — 'dirb http://192.168.1.1'。";
 "down" = "停止";
 "factory write community live" = "工場出荷時の書き込みコミュニティが有効";
 "features ride at their defaults." = "機能はデフォルトのまま動作。";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "彼女の拒否は気分ではなく読みだ。「準備できていない」マクロは、その最初の未準備のブロックと理由を名指す——本にないペイロード、パースできないターゲット——なぜなら半分だけ走るプレイリストは、決して始まらないものより悪いからだ。「まだ届いていない」と言う手は、そのタブが起動以来開かれていないことを意味する。一度開けばセッションのために配線される。プラットフォームの限界として読める能力——無料チームでのNFC——は明日も同じに読める。彼女はオペレータにそれをバグとして追わせない。";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "タグを電話にかざすとセンサスがそれを読む:タイプ、識別子、技術、運ぶNDEF、そしてISO 7816タグが探検者に与えるAPDU応答。読み、識別する——書き込みやクローンは決してしない。読みの記録はその部屋に留まる。";
 "Home network hardening — the NSA's sheet" = "家庭ネットワークの強化——NSAのシート";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "家庭の配線はほぼ常に/24だ:一つの接頭辞の下に254のアドレス、.1にゲートウェイ(ここではeero)、.255にブロードキャスト——叫びが一度にすべてのホストへ届く場所。電話のこの配線での自分のアドレスは192.168.4.20だ。スイープは254を歩き、それぞれに一つのポートを叩く——センサスであって、殴打ではない。/24を離れると規則は全く変わる:遠隔のターゲットは他人のネットワークであり、Aboutの憲章が当てはまる。";
 "Housekeeping — clears and folds" = "ハウスキーピング——クリアと折り畳み";
 "How operators actually phrase orders" = "オペレータが実際に命令を言い回す方法";
 "How the exams are actually passed" = "試験が実際に合格される方法";
@@ -3915,7 +3914,7 @@
 "But I can " = "でも私には ";
 "Called off — the Netbomb stays in the rack." = "中止 — Netbomb はラックに残る。";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "%@ に挑戦を送った — 守る側は War Games の部屋を開いて出していなければならない。READY が着いたら、ラウンドは Send タブの War Games の部屋から決まる。";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "誰に挑戦する? 守る側のアドレスを — challenge 192.168.4.31 のように。";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "誰に挑戦する? 守る側のアドレスを — challenge 192.168.1.31 のように。";
 "Currently wearing %@. The rack holds: %@." = "今着ているのは %@。ラックには: %@。";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "防御を設定: Serve の扉のうち %@ を本物として守り、%@ のデコイを飛ばす";
 "Deleted “%@”." = "消した “%@”。";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@: 完了、%lld / %lld ブロック。";
 "%@: stopped." = "%@: 停止。";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 または gateway";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 または phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 または gateway";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 または phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "常設スコープでフルにトレースし、終わればその旨を告げる。";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "テストではなく持ち場: 家は暗く、ステルス on、耳は開いたまま — そして設計どおり、ちょうどその姿勢で終わる。";
 "A watch is already running — left as it was." = "ウォッチはすでに走っている — そのままにした。";
