@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>nightjar listens for Bluetooth devices around you and logs what it hears. If you use the Send tab, it can also advertise a payload you type and write to devices you choose. Listening never connects to anything.</string>
 	<key>NSLocalNetworkUsageDescription</key>
