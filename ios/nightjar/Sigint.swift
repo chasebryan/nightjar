@@ -993,7 +993,7 @@ struct SigintStationView: View {
                           systemImage: "record.circle")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HouseProminentStyle())
                 Text(L("A watch records the registry and the timeline under a name, then files itself with its delta: what arrived, what went silent, what changed."))
                     .font(.caption)
                     .foregroundStyle(.secondary)

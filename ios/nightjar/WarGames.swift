@@ -974,7 +974,7 @@ struct WarGamesView: View {
                       systemImage: "scope")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(HouseProminentStyle())
             .disabled(!center.defenderReady)
             if !center.defenderReady {
                 Text(L("Enabled when the defender answers READY."))

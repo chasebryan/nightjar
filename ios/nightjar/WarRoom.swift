@@ -670,7 +670,7 @@ struct WarRoomView: View {
                                   systemImage: "play.circle")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                         .disabled(mouth.traceBusy || mouth.crawlBusy
                                   || mouth.talkBusy)
                         if mouth.traceBusy || mouth.crawlBusy

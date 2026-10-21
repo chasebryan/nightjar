@@ -261,7 +261,7 @@ struct BansheeView: View {
                                   systemImage: "speaker.slash")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(HouseProminentStyle())
                     } else {
                         Button {
                             Haptics.tap()

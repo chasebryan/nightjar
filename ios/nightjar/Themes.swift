@@ -506,6 +506,53 @@ final class ThemeCenter: ObservableObject {
     }
 }
 
+// MARK: - The house prominent button
+
+/// The accent-filled action button, house
+/// pattern (fix274): the system's prominent
+/// style always letters white, which the
+/// pale suits — Black Glass above all —
+/// cannot carry (Chase: white on silver is
+/// hard to read, on EVERY button like
+/// this). The house style fills with the
+/// accent and letters with the theme's
+/// onAccent: white on the deep suits,
+/// black on Black Glass. Semantic buttons
+/// (the red stops) keep the system style.
+struct HouseProminentStyle: ButtonStyle {
+    func makeBody(
+        configuration: Configuration) -> some View {
+        HouseProminentLabel(
+            configuration: configuration)
+    }
+}
+
+private struct HouseProminentLabel: View {
+    let configuration: ButtonStyleConfiguration
+    @ObservedObject private var themes
+        = ThemeCenter.shared
+    @Environment(\.isEnabled)
+    private var isEnabled
+
+    var body: some View {
+        configuration.label
+            .foregroundStyle(themes.current.onAccent)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(
+                themes.current.accent.opacity(
+                    configuration.isPressed ? 0.65
+                        : (isEnabled ? 1 : 0.45)),
+                in: RoundedRectangle(
+                    cornerRadius: 10,
+                    style: .continuous))
+            .contentShape(RoundedRectangle(
+                cornerRadius: 10,
+                style: .continuous))
+    }
+}
+
 // MARK: - The studio
 
 struct ColoursView: View {

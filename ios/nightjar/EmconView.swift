@@ -343,7 +343,7 @@ struct EmconView: View {
                         Text(L("Go dark now"))
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HouseProminentStyle())
             }
             if emcon.active {
                 Menu {
@@ -390,7 +390,7 @@ struct EmconView: View {
                                     chosenCondition.declared))
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HouseProminentStyle())
             }
         }
     }

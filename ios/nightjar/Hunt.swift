@@ -164,7 +164,7 @@ struct HuntView: View {
                     Button(L("Start listening")) {
                         post.start(label: "hunt")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(HouseProminentStyle())
                 } else if row == nil {
                     Text(L("Not heard in this session yet. It may be asleep, out of range — or, if it rotates its address, gone under a new one."))
                         .font(.callout).foregroundStyle(.secondary)
