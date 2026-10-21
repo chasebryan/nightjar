@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10 Minute schleife";
 "100,000" = "100,000";
 "15 min" = "15 Min";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210,000";
 "3 hours" = "3 Stunde";
 "3 min" = "3 Min";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff: e benennti Datei cha nid gläse wärde.";
 "diff: name two texts, or one and a pipe." = "diff: benenn zwöi Text, oder eine und e Pipe.";
 "diff: too large for this room." = "diff: z gross für de Ruum.";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig bruucht e Name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'.";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig bruucht e Name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'.";
 "dig: no answer from %@ — the wire stayed quiet." = "dig: kei Antwort vo %@ — s Kabel isch still blibe.";
 "dirb: that is not a URL." = "dirb: das isch kei URL.";
 "dirb: the host is not answering at all — called off." = "dirb: de Host antwortet gar nid — abbroche.";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel: [%@] %@ — aghalte.";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps' listet d Tabälle vom Kernel.";
 "kill: no live process %@." = "kill: kei läbige Prozess %@.";
-"knock needs a host — 'knock 192.168.4.1'." = "knock bruucht e Host — 'knock 192.168.4.1'.";
+"knock needs a host — 'knock 192.168.1.1'." = "knock bruucht e Host — 'knock 192.168.1.1'.";
 "knock runs live — it cannot be piped or captured." = "knock lauft live — mes cha nid pipe oder ufnäh.";
 "knocking on %@ doors at %@ — anything but 404 is news" = "chlopfet a %@ Türe bi %@ — alles usser 404 isch Neuigkeit";
 "limits — what this room honestly cannot do:" = "limits — was de Ruum ehrlich nid cha:";
@@ -2874,7 +2874,7 @@
 "connected" = "verbunde";
 "device" = "Grät";
 "diagnose: %@/%@ — %@" = "diagnose: %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb bruucht e URL — 'dirb http://192.168.4.1'.";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb bruucht e URL — 'dirb http://192.168.1.1'.";
 "down" = "unde";
 "factory write community live" = "Wärch-Schriib-Community aktiv";
 "features ride at their defaults." = "Funktione loufed mit ihrne Standardwärt.";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "Ihri Verweigerige sind Läsige, kei Stimmung. Es Makro, wo 'nid bereit' isch, benennt siin erste unbereite Block und warum — e Payload nid im Buech, es Ziil, wo sich nid parst — wil e Playlist, wo halb lauft, schlimmer isch als eini, wo nie startet. E Hand, wo seit, en Organ 'het mich no nid erreicht', meint, siin Tab isch sit em Start nid geöffnet worde; ihn einisch z öffne verdrahtet ihn für d Sitzig. E Fähigkeit, wo als Plattform-Gränze gläse wird — NFC uf eme gratis Team — wird morn gliich läse; si laht de Operator si nid als Bug jage.";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "Halt es Tag as Telefon und d Zählig liest s: Typ, Identifikator, Technologie, s NDEF, wo s treit, und APDU-Antworte, wo es ISO 7816 Tag eme Entdecker git. Es liest und identifiziert — es schriibt oder klont nie; d Ufzeichnig von ere Läsig bliibt im Ruum.";
 "Home network hardening — the NSA's sheet" = "Heimnetz-Härtig — s Blatt vo de NSA";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "Heimdräht sind fascht immer es /24: 254 Adrässe under eim Präfix, de Gateway bi .1 (de eero do), Broadcast bi .255, wo e Ruef jede Host uf einisch erreicht. Die eigen Adrässe vom Telefon uf däm Draht isch 192.168.4.20. E Sweep lauft die 254 ab und chlopfet ein Port uf jedem — e Zählig, kei Prüglerei. S /24 z verlah änderet d Regle komplett: entfernnti Ziile sind d Netz vo andere Lüüt, und d Charta in About gilt.";
 "Housekeeping — clears and folds" = "Huuushalt — lösche und falte";
 "How operators actually phrase orders" = "Wie Operatore Befehle würklich formuliere";
 "How the exams are actually passed" = "Wie d Exame würklich bestande wärde";
@@ -3915,7 +3914,7 @@
 "But I can " = "Aber i cha ";
 "Called off — the Netbomb stays in the rack." = "Abgseit — d Netbomb bliibt im Gstell.";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "Useforderig an %@ gschickt — de Verteidiger muess diine, mit sim offene War-Games-Ruum. Wänn READY landet, wird d Rundi us em War-Games-Ruum im Send-Tab gsetzt.";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "Wär usefordere? Gib mer d Adrässe vom Verteidiger — challenge 192.168.4.31.";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "Wär usefordere? Gib mer d Adrässe vom Verteidiger — challenge 192.168.1.31.";
 "Currently wearing %@. The rack holds: %@." = "Trege grad %@. S Gstell het: %@.";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "Verteidigung gsetzt: %@ vo Serve sine Türe als ächt ghalte, %@ Täuschige am Flüge";
 "Deleted “%@”." = "Glöscht “%@”.";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@: fertig, %lld vo %lld Blöck.";
 "%@: stopped." = "%@: abbroche.";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 oder Gateway";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 oder phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 oder Gateway";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 oder phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "E volli Trace uf em ständige Umfang, denn s Wort, dass fertig isch.";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "E Poste, kei Tescht: s Huus dunkel, Stealth a, s Ohr offe — und es ändet genau eso stah, wie plant.";
 "A watch is already running — left as it was." = "E Wach lauft scho — bliibt, wie sie isch.";
