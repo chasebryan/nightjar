@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "%@ पर कुछ नहीं पहुँचा — दरवाज़ा कभी खुला ही नहीं।";
 "Here — %@: %@ bytes, filed in Deliveries." = "यह रहा — %@: %@ बाइट, Deliveries में रखा है।";
 "I have no send wire just now." = "मेरे पास अभी भेजने का तार नहीं है।";
+"Census — collecting addresses" = "जनगणना — पते एकत्र किए जा रहे हैं";
+"%@ address(es) collected" = "%@ पते एकत्र किए गए";
+"Collect addresses" = "पते एकत्र करें";
+"Collecting…" = "एकत्र किया जा रहा है…";
+"A census is already running — the wire is being knocked." = "एक जनगणना पहले से चल रही है — नेटवर्क पर दस्तक दी जा रही है।";
+"The Standard forbids sweeps at this condition — the census stays silent." = "Standard इस स्थिति में स्वीप पर रोक लगाता है — जनगणना मौन रहती है।";
+"No wire under this phone — join the Wi-Fi and the census can run." = "इस फ़ोन के नीचे कोई नेटवर्क नहीं है — Wi-Fi से जुड़ें और जनगणना चल सकेगी।";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "इस नेटवर्क के पते एकत्र किए जा रहे हैं — पूरे /24 में खोज दरवाज़ों पर दस्तक दी जा रही है।";
+"Nothing collected yet — the board is empty." = "अभी तक कुछ एकत्र नहीं हुआ — बोर्ड खाली है।";
+", and %@ more" = ", और %@ और";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ पते एकत्र किए गए: %@। सूची Deliveries में दर्ज है।";
+"Collected addresses" = "एकत्र किए गए पते";
+"Use a collected address" = "एकत्र किया गया पता उपयोग करें";
