@@ -338,7 +338,7 @@ final class NeighborhoodStore: ObservableObject {
     /// moment the sweep returns (her census hand,
     /// fix270) must not read the board from before it.
     func recordSweep(_ hosts: [SweepHost],
-                     completion: (@escaping () -> Void)? = nil) {
+                     completion: (() -> Void)? = nil) {
         let byIP = Dictionary(grouping: hosts, by: { $0.ip })
         guard !byIP.isEmpty else {
             completion?()
