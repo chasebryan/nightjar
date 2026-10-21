@@ -6029,3 +6029,5 @@
 "Use a collected address" = "एकत्र किया गया पता उपयोग करें";
 "\n…the rest is filed in Deliveries." = "\n…बाकी Deliveries में दर्ज है।";
 "…still running — that's what's printed so far." = "…अभी भी चल रहा है — यह अब तक छपा हुआ है।";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "%@ के लिए बैटरी तैयार की गई: %@ — 3 पेलोड शस्त्रागार में रखे गए और Deliveries में दाखिल किए गए, चलाने के लिए तैयार।";
