@@ -451,7 +451,6 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             AppBackdrop()
-            tabShell
             if showBoot && bootEnabled {
                 BootView {
                     withAnimation(.easeOut(duration: 0.5)) {
@@ -470,6 +469,14 @@ struct ContentView: View {
                 }
                 .transition(.opacity)
                 .zIndex(20)
+            } else {
+                // The house takes its place only
+                // once the ceremony lifts: while
+                // the boot runs, no part of it —
+                // no navigator, no room — stands
+                // in the hierarchy to be tapped
+                // before everything is ready.
+                tabShell
             }
         }
         .scrollContentBackground(.hidden)

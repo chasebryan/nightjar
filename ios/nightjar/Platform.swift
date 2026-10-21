@@ -565,3 +565,55 @@ extension View {
     func houseMacTabStyle() -> some View { self }
 }
 #endif
+
+#if os(macOS)
+/// A clear pane that hears scroll-wheel turns
+/// while it lives and hands their deltas up.
+/// Some Mac instruments — Blacksite's program
+/// wheel — turn by scrolling, and SwiftUI has
+/// no ear for the wheel of a mouse; this is
+/// it. The monitor is local to the app and
+/// dies with the pane (dismantle removes it),
+/// so it hears only while its owner is on
+/// screen.
+struct ScrollWheelCatcher: NSViewRepresentable {
+    var onScroll: (Double) -> Void
+
+    final class Coordinator {
+        var monitor: Any?
+        var onScroll: (Double) -> Void = { _ in }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        context.coordinator.onScroll = onScroll
+        let coordinator = context.coordinator
+        context.coordinator.monitor =
+            NSEvent.addLocalMonitorForEvents(
+                matching: .scrollWheel) { event in
+                coordinator.onScroll(
+                    Double(event.scrollingDeltaY))
+                return event
+            }
+        return NSView()
+    }
+
+    func updateNSView(_ nsView: NSView,
+                      context: Context) {
+        context.coordinator.onScroll = onScroll
+    }
+
+    static func dismantleNSView(
+        _ nsView: NSView,
+        coordinator: Coordinator
+    ) {
+        if let monitor = coordinator.monitor {
+            NSEvent.removeMonitor(monitor)
+            coordinator.monitor = nil
+        }
+    }
+}
+#endif

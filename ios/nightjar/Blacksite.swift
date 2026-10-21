@@ -10174,6 +10174,8 @@ struct BlacksiteView: View {
     @State private var wheelAngle: Double?
     @State private var wheelSelected = 0
     @State private var wheelCancel = false
+    @State private var wheelDragBase: Double?
+    @FocusState private var wheelKeysFocused: Bool
 
     enum Program: String, Identifiable {
         case processes, sys, journal, gauntlet,
@@ -10332,7 +10334,27 @@ struct BlacksiteView: View {
     /// marker at the top opens. Drag into
     /// the hub to call it off. A plain tap
     /// opens the wheel for tapping instead.
+    /// The bar's counsel, in each platform's
+    /// own terms: a hold for the finger, a
+    /// click for the pointer.
+    private var wheelHint: String {
+#if os(macOS)
+        "click + spin"
+#else
+        "hold + spin"
+#endif
+    }
+
     private var wheelBar: some View {
+#if os(macOS)
+        wheelBarRow
+#else
+        wheelBarRow
+            .gesture(wheelGesture)
+#endif
+    }
+
+    private var wheelBarRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "steeringwheel")
             Text("PROGRAMS")
@@ -10340,7 +10362,7 @@ struct BlacksiteView: View {
                               design: .monospaced)
                     .weight(.semibold))
             Spacer()
-            Text("hold + spin")
+            Text(wheelHint)
                 .font(.system(.caption2,
                               design: .monospaced))
                 .foregroundStyle(.secondary)
@@ -10362,7 +10384,6 @@ struct BlacksiteView: View {
             wheelTapMode = true
             openWheel()
         }
-        .gesture(wheelGesture)
     }
 
     private var wheelGesture: some Gesture {
@@ -10398,6 +10419,9 @@ struct BlacksiteView: View {
         wheelOpen = true
         wheelSelected = selectedIndex()
         Haptics.press()
+#if os(macOS)
+        wheelKeysFocused = true
+#endif
     }
 
     private func closeWheel() {
@@ -10484,6 +10508,82 @@ struct BlacksiteView: View {
         }
     }
 
+    /// Settle the wheel on its nearest program
+    /// without opening it — the Mac's drags and
+    /// scrolls select; opening is a separate,
+    /// deliberate act (a click, or Return).
+    private func snapWheel() {
+        let picked = selectedIndex()
+        let gap = wrapDegrees(
+            wheelRotation
+                + Double(picked) * wheelStep)
+        withAnimation(
+            .spring(response: 0.3,
+                    dampingFraction: 0.8)) {
+            wheelRotation -= gap
+        }
+        wheelSelected = picked
+    }
+
+    private func stepWheel(_ direction: Int) {
+        let stride = Double(direction) * wheelStep
+        wheelRotation -= stride
+        snapWheel()
+        Haptics.select()
+    }
+
+    private func openPicked() {
+        program = Program
+            .allCases[wheelSelected]
+        closeWheel()
+    }
+
+    /// The Mac's other hand on the wheel: a
+    /// scroll turn, fed by ScrollWheelCatcher.
+    /// The sign is the house's one tunable —
+    /// scrolling down should walk the wheel
+    /// forward through its programs.
+    private func spinWheelByScroll(
+        _ delta: Double
+    ) {
+        wheelRotation -= delta * 2.2
+        let picked = selectedIndex()
+        if picked != wheelSelected {
+            wheelSelected = picked
+        }
+    }
+
+    /// The Mac's drag: a straight pull, like a
+    /// knob in a studio rack — the circle is
+    /// the finger's road, not the mouse's.
+    /// Down and across turn the wheel; release
+    /// settles it on the nearest program.
+    private var macWheelDrag: some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { drag in
+                if wheelDragBase == nil {
+                    wheelDragBase = wheelRotation
+                }
+                let base = wheelDragBase
+                    ?? wheelRotation
+                let down = Double(
+                    drag.translation.height) * 0.9
+                let across = Double(
+                    drag.translation.width) * 0.35
+                wheelRotation = base - down
+                    + across
+                let picked = selectedIndex()
+                if picked != wheelSelected {
+                    wheelSelected = picked
+                    Haptics.select()
+                }
+            }
+            .onEnded { _ in
+                wheelDragBase = nil
+                snapWheel()
+            }
+    }
+
     private func wheelOverlay(size: CGSize)
         -> some View {
         let diameter = max(
@@ -10493,7 +10593,22 @@ struct BlacksiteView: View {
         let radius = diameter / 2 - 42
         let center = CGPoint(x: size.width / 2,
                              y: size.height / 2)
-        return ZStack {
+        let disc = ZStack {
+#if os(macOS)
+            ScrollWheelCatcher { delta in
+                spinWheelByScroll(delta)
+            }
+            .frame(width: 0, height: 0)
+            Rectangle()
+                .fill(Color.clear)
+                .contentShape(Rectangle())
+                .gesture(macWheelDrag)
+                .onTapGesture {
+                    if wheelTapMode {
+                        closeWheel()
+                    }
+                }
+#endif
             Color.black.opacity(0.55)
                 .ignoresSafeArea()
                 .onTapGesture {
@@ -10538,8 +10653,37 @@ struct BlacksiteView: View {
             wheelHub
                 .position(center)
         }
-        .frame(width: size.width,
-               height: size.height)
+#if os(macOS)
+        return disc
+            .frame(width: size.width,
+                   height: size.height)
+            .focusable()
+            .focused($wheelKeysFocused)
+            .onKeyPress(keys: [.leftArrow,
+                               .rightArrow,
+                               .upArrow,
+                               .downArrow,
+                               .return, .space,
+                               .escape]) { key in
+                switch key.key {
+                case .rightArrow, .downArrow:
+                    stepWheel(1)
+                case .leftArrow, .upArrow:
+                    stepWheel(-1)
+                case .return, .space:
+                    openPicked()
+                case .escape:
+                    closeWheel()
+                default:
+                    break
+                }
+                return .handled
+            }
+#else
+        return disc
+            .frame(width: size.width,
+                   height: size.height)
+#endif
     }
 
     private func wheelSegment(
@@ -10591,6 +10735,19 @@ struct BlacksiteView: View {
                         : Color.white
                             .opacity(0.2),
                         lineWidth: 1))
+#if os(macOS)
+            VStack(spacing: 2) {
+                Image(systemName:
+                        Program.allCases[
+                            wheelSelected].icon)
+                    .font(.body)
+                Text("OPEN")
+                    .font(.system(.caption2,
+                                  design: .monospaced)
+                        .weight(.bold))
+            }
+            .foregroundStyle(Color.primary)
+#else
             Text(wheelCancel
                  ? "LET GO\nTO CANCEL"
                  : "SPIN")
@@ -10603,10 +10760,15 @@ struct BlacksiteView: View {
                     ? AnyShapeStyle(Color.red)
                     : AnyShapeStyle(
                         Color.secondary))
+#endif
         }
         .frame(width: 84, height: 84)
         .onTapGesture {
+#if os(macOS)
+            openPicked()
+#else
             if wheelTapMode { closeWheel() }
+#endif
         }
     }
 
