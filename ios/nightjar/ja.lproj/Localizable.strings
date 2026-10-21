@@ -6008,3 +6008,9 @@
 "Walk to a room" = "部屋へ移動";
 "%.1f seconds" = "%.1f 秒";
 "Running work" = "実行中の作業";
+"Firing %@ at %@ — %@ bytes." = "%@ を %@ へ発射 — %@ バイト。";
+"It answered — %@ bytes back." = "応答あり — %@ バイト返ってきた。";
+"Sent. No reply came back." = "送信済み。応答はなかった。";
+"Nothing landed at %@ — the door never opened." = "%@ には何も届かなかった — ドアは開かなかった。";
+"Here — %@: %@ bytes, filed in Deliveries." = "どうぞ — %@：%@ バイト、Deliveries に保管した。";
+"I have no send wire just now." = "今は送信の回線がない。";
