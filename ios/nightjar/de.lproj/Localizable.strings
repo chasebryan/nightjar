@@ -2142,7 +2142,7 @@
 "She knows it now." = "Sie weiß es jetzt.";
 "Skelli's crew" = "Skellis Crew";
 "Stealth only" = "Nur Tarnung";
-"Sweep — port %@" = "Sweep — Port %@";
+"Sweep — port %lld" = "Sweep — Port %lld";
 "That target does not parse: %@" = "Dieses Ziel lässt sich nicht parsen: %@";
 "The GATT host already wears “%@”." = "Der GATT-Host trägt bereits „%@“.";
 "The beacon already wears “%@”." = "Der Beacon trägt bereits „%@“.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, klopft";
 "War Room, tracing" = "War Room, verfolgt";
 "Watch — %@" = "Wache — %@";
-"Watch — port %@" = "Wache — Port %@";
+"Watch — port %lld" = "Wache — Port %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Trägt die %@ — jetzt live, in Rolle auf jeder Fläche, die ihr gehört.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Trägt die %@ — das Kostüm sitzt; es wird live, sobald Serve oder die Luftorgane das nächste Mal starten.";
 "Write target set: %@ — Send tab" = "Schreibziel gesetzt: %@ — Send-Tab";
