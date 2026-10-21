@@ -2142,7 +2142,7 @@
 "She knows it now." = "Ya lo sabe.";
 "Skelli's crew" = "La tripulación de Skelli";
 "Stealth only" = "Solo sigilo";
-"Sweep — port %@" = "Barrido — puerto %@";
+"Sweep — port %lld" = "Barrido — puerto %lld";
 "That target does not parse: %@" = "Ese destino no se interpreta: %@";
 "The GATT host already wears “%@”." = "El anfitrión GATT ya lleva “%@”.";
 "The beacon already wears “%@”." = "La baliza ya lleva “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, llamando";
 "War Room, tracing" = "War Room, rastreando";
 "Watch — %@" = "Vigía — %@";
-"Watch — port %@" = "Vigía — puerto %@";
+"Watch — port %lld" = "Vigía — puerto %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Llevando %@ — en vivo ahora, en personaje en cada superficie que posee.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Llevando %@ — el atuendo está puesto; entra en vivo cuando Serve o los órganos del aire arranquen la próxima vez.";
 "Write target set: %@ — Send tab" = "Destino de escritura fijado: %@ — pestaña Send";
