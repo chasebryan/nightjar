@@ -2142,7 +2142,7 @@
 "She knows it now." = "이제 그녀도 압니다.";
 "Skelli's crew" = "Skelli의 크루";
 "Stealth only" = "스텔스만 허용";
-"Sweep — port %@" = "스윕 — 포트 %@";
+"Sweep — port %lld" = "스윕 — 포트 %lld";
 "That target does not parse: %@" = "그 대상은 파싱할 수 없습니다: %@";
 "The GATT host already wears “%@”." = "GATT 호스트는 이미 “%@”을(를) 입고 있습니다.";
 "The beacon already wears “%@”." = "비콘은 이미 “%@”을(를) 입고 있습니다.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, 노킹 중";
 "War Room, tracing" = "War Room, 추적 중";
 "Watch — %@" = "감시 — %@";
-"Watch — port %@" = "감시 — 포트 %@";
+"Watch — port %lld" = "감시 — 포트 %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "%@ 착용 중 — 지금 라이브, 닿는 모든 표면에서 캐릭터 그대로입니다.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "%@ 착용 중 — 옷차림은 정해졌습니다; Serve나 무선 기관이 다음에 시작될 때 라이브가 됩니다.";
 "Write target set: %@ — Send tab" = "쓰기 대상 설정: %@ — Send 탭";
