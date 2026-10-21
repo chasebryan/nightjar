@@ -6029,3 +6029,5 @@
 "Use a collected address" = "使用已收集的地址";
 "\n…the rest is filed in Deliveries." = "\n…其余部分已存入 Deliveries。";
 "…still running — that's what's printed so far." = "…仍在运行 — 这是到目前为止输出的内容。";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "已为 %@ 锻造电池:%@ — 3 个载荷已存入军械库并归档至 Deliveries,随时可发射。";
