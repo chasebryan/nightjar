@@ -2142,7 +2142,7 @@
 "She knows it now." = "彼女はもう知っています。";
 "Skelli's crew" = "Skelli のクルー";
 "Stealth only" = "ステルスのみ";
-"Sweep — port %@" = "スイープ — ポート %@";
+"Sweep — port %lld" = "スイープ — ポート %lld";
 "That target does not parse: %@" = "そのターゲットは解析できません： %@";
 "The GATT host already wears “%@”." = "GATT ホストはすでに “%@” を着ています。";
 "The beacon already wears “%@”." = "ビーコンはすでに “%@” を着ています。";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room、ノッキング中";
 "War Room, tracing" = "War Room、トレース中";
 "Watch — %@" = "監視 — %@";
-"Watch — port %@" = "監視 — ポート %@";
+"Watch — port %lld" = "監視 — ポート %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "%@ を着用中 — 今まさにライブ、その所有するすべての面で役になりきっています。";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "%@ を着用中 — 装いは整いました。Serve やエア器官が次に起動したときにライブになります。";
 "Write target set: %@ — Send tab" = "書き込み先を設定： %@ — Send タブ";
