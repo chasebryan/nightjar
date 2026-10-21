@@ -1235,7 +1235,7 @@
 "This house finds things. I keep the list." = "Questa casa trova cose. Io tengo la lista.";
 "This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them." = "Questo è rumoroso. Annuncia questo telefono a ogni dispositivo — e a ogni osservatore — sul filo. Sulle reti che non sono tue, la risposta al colpo cade qui.";
 "This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for." = "Questo è fatto per essere notato — da ogni misura amministrativa sulla rete: i registri DHCP e di flusso, la tabella delle sessioni del controller, l'NMS che guarda i suoi indicatori salire.";
-"This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "Questo è nightjar-hack: la postazione d'ascolto di nightjar, più una bocca. La scheda Ascolta è la metà purista — scansiona e registra annunci e non connette, abbina né invia mai, proprio come l'app originale. Le schede Invia e Servi sono la metà hack: trasmettono, ma solo quando premi i loro pulsanti, verso obiettivi che digiti tu. Le due metà non condividono stato radio; l'orecchio resta puro, la bocca è una ";
+"This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "Questo è nightjar: la postazione d'ascolto di nightjar, più una bocca. La scheda Ascolta è la metà purista — scansiona e registra annunci e non connette, abbina né invia mai, proprio come l'app originale. Le schede Invia e Servi sono la metà hack: trasmettono, ma solo quando premi i loro pulsanti, verso obiettivi che digiti tu. Le due metà non condividono stato radio; l'orecchio resta puro, la bocca è una ";
 "This network" = "Questa rete";
 "This post" = "Questa postazione";
 "Throw Your Voice — the ventriloquist" = "Lancia la Tua Voce — il ventriloquo";
@@ -1402,10 +1402,10 @@
 "memcached set" = "memcached set";
 "never" = "mai";
 "new in the house" = "nuova in casa";
-"nightjar-hack" = "nightjar-hack";
-"nightjar-hack for iOS %@ · log format 1" = "nightjar-hack per iOS %@ · formato registro 1";
-"nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar-hack è uno strumento di test per dispositivi e reti di tua proprietà, o che sei incaricato di testare. Punta tutto ciò che invia, scansiona, pianta o registra solo verso obiettivi per i quali sei autorizzato. Sei responsabile della tua autorizzazione; l'autore non è responsabile di usi impropri contro dispositivi o reti che non eri autorizzato a testare.";
-"nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar-hack è gratis, e resta gratis comunque — ogni strumento che contiene è già tuo. Qui non ci sono paywall, e non ce ne saranno mai.";
+"nightjar" = "nightjar";
+"nightjar for iOS %@ · log format 1" = "nightjar per iOS %@ · formato registro 1";
+"nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar è uno strumento di test per dispositivi e reti di tua proprietà, o che sei incaricato di testare. Punta tutto ciò che invia, scansiona, pianta o registra solo verso obiettivi per i quali sei autorizzato. Sei responsabile della tua autorizzazione; l'autore non è responsabile di usi impropri contro dispositivi o reti che non eri autorizzato a testare.";
+"nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar è gratis, e resta gratis comunque — ogni strumento che contiene è già tuo. Qui non ci sono paywall, e non ce ne saranno mai.";
 "no releases published yet" = "nessuna versione pubblicata ancora";
 "not advertised" = "non annunciato";
 "open" = "aperto";
@@ -2069,7 +2069,7 @@
 " Note: the dress changed while the shape was worn — the restore unwound that too." = " Nota: l'abito è cambiato mentre la forma era indossata — il ripristino ha disfatto anche quello.";
 " The revolving rack stands still." = " La rastrelliera rotante sta ferma.";
 "%@ Kept on your rack." = "%@ Conservato sulla tua rastrelliera.";
-"%@ is out. Open nightjar-hack to install it." = "%@ è uscito. Apri nightjar-hack per installarlo.";
+"%@ is out. Open nightjar to install it." = "%@ è uscito. Apri nightjar per installarlo.";
 "%@ — emissions regulated, tripwire armed." = "%@ — emissioni regolate, tripwire armato.";
 "%@ — the house is re-regulated." = "%@ — la casa è di nuovo regolata.";
 "%lld blocks" = "%lld blocchi";
@@ -2174,7 +2174,7 @@
 "an update check" = "un controllo degli aggiornamenti";
 "depth %lld" = "profondità %lld";
 "narrating the /24" = "raccontando la /24";
-"nightjar-hack · %@ from %@" = "nightjar-hack · %@ da %@";
+"nightjar · %@ from %@" = "nightjar · %@ da %@";
 "on %@.0/24" = "su %@.0/24";
 "planning" = "pianificazione";
 "scope: %@" = "ambito: %@";
@@ -2512,7 +2512,7 @@
 "; referred to %@" = "; rinviato a %@";
 "; whois %@ via %@" = "; whois %@ via %@";
 "; … the rest is boilerplate." = "; … il resto è testo standard.";
-"BLACKSITE OS — nightjar-hack %@" = "BLACKSITE OS — nightjar-hack %@";
+"BLACKSITE OS — nightjar %@" = "BLACKSITE OS — nightjar %@";
 "EMCON %@ set." = "EMCON %@ impostato.";
 "EMCON forbids the watch under this condition — it stays down." = "EMCON vieta la guardia in questa condizione — resta giù.";
 "EMCON off — the house is open." = "EMCON spento — la casa è aperta.";
@@ -2884,7 +2884,7 @@
 "is readmitted." = "è riammesso.";
 "kept — %@@%@ speaks SNMPv3 %@" = "conservato — %@@%@ parla SNMPv3 %@";
 "legacy versions live" = "versioni legacy attive";
-"nightjar-hack %@ on %@ — source %@" = "nightjar-hack %@ su %@ — sorgente %@";
+"nightjar %@ on %@ — source %@" = "nightjar %@ su %@ — sorgente %@";
 "no %@ at %@ answers to “%@”." = "nessun %@ su %@ risponde a “%@”.";
 "no CSP; the browser trusts whatever loads." = "nessun CSP; il browser si fida di qualunque cosa si carichi.";
 "no HSTS; downgrade stays possible." = "nessun HSTS; il downgrade resta possibile.";
@@ -3408,7 +3408,7 @@
 "network gear in " = "apparato di rete in ";
 "network-gear name " = "nome dell'apparato di rete ";
 "never knocked for this page" = "mai bussato per questa pagina";
-"nightjar-hack phone" = "telefono nightjar-hack";
+"nightjar phone" = "telefono nightjar";
 "no answer" = "nessuna risposta";
 "no answer (" = "nessuna risposta (";
 "no known format" = "nessun formato noto";
@@ -3707,7 +3707,7 @@
 "The certifications — the map of the ladder" = "Le certificazioni — la mappa della scala";
 "The decoder engine — batteries and evidence" = "Il motore dei decodificatori — batterie e prove";
 "The expansion formats" = "I formati di espansione";
-"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "Il primo sospettato, sempre: il permesso Local Network di iOS — Impostazioni, Privacy e sicurezza, Local Network, nightjar-hack attivo. Senza, il cavo si legge come un vuoto educato: gli sweep finiscono, niente risponde, e nessun errore dice perché. Secondo sospettato: il telefono non è davvero sul cavo che crede di essere — VPN attiva, o unito a una rete ospiti che isola i client l'uno dall'altro. Terzo: il cavo è davvero quieto. Lei controlla in quell'ordine e dice su quale sospettato si trova.";
+"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "Il primo sospettato, sempre: il permesso Local Network di iOS — Impostazioni, Privacy e sicurezza, Local Network, nightjar attivo. Senza, il cavo si legge come un vuoto educato: gli sweep finiscono, niente risponde, e nessun errore dice perché. Secondo sospettato: il telefono non è davvero sul cavo che crede di essere — VPN attiva, o unito a una rete ospiti che isola i client l'uno dall'altro. Terzo: il cavo è davvero quieto. Lei controlla in quell'ordine e dice su quale sospettato si trova.";
 "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export." = "Il banco di fusione: le righe dell'orecchio, il censimento del cavo e l'attività del diario, rivendicati in un unico registro di emettitori — aria e cavo, ogni dichiarazione etichettata con il canale che l'ha sentita e una priorità da una formula dichiarata. Una sorveglianza registra una baseline, e fermarla legge il delta: cosa è arrivato, cosa è svanito, quali porte sono cambiate. Una regola sopra tutte: gli emettitori si fondono solo dentro un'epoca — il banco non cuce mai uno sconosciuto attraverso i giorni, e lo dice su ogni esportazione.";
 "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten." = "La casa su un'unica tela: nomini le stanze e posizioni ogni vicino dove il dispositivo sta fisicamente; i nodi brillano per freschezza, portano la loro deriva, e aprono i loro dossier. Il posizionamento è la tua testimonianza — l'app lo conserva e non inventa mai una posizione propria. La Map si azzera dal suo menu More; i dispositivi restano, la disposizione viene dimenticata.";
 "The house presets" = "I preset della casa";
