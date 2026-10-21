@@ -6030,3 +6030,6 @@
 "…still running — that's what's printed so far." = "…अभी भी चल रहा है — यह अब तक छपा हुआ है।";
 
 "Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "%@ के लिए बैटरी तैयार की गई: %@ — 3 पेलोड शस्त्रागार में रखे गए और Deliveries में दाखिल किए गए, चलाने के लिए तैयार।";
+"stop whatever is running in this room — a sweep, a knock, a walk, a program" = "इस कमरे में जो चल रहा है उसे रोको — एक स्वीप, एक नॉक, एक वॉक, एक प्रोग्राम";
+"stopped — the room is yours again." = "रुक गया — कमरा फिर से तुम्हारा है।";
+"nothing is running." = "कुछ नहीं चल रहा।";
