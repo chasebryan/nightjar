@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy : vous êtes dessus — la batterie complète part contre son réseau.";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "la batterie complète — les portes, puis la sonde qui appartient à chaque porte, puis un rapport déposé ; pas de cible veut dire ce réseau, un nom veut dire un point d'accès";
 "this network" = "ce réseau";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade : la pile TLS de cet appareil ne propose pas les anciennes versions — les serrures héritées d'un serveur ne peuvent pas être prouvées d'ici.";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — impossible à tester depuis cet appareil : sa pile a négocié %@ à la place.";
