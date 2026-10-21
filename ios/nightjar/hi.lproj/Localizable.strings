@@ -2142,7 +2142,7 @@
 "She knows it now." = "अब वह जानती है।";
 "Skelli's crew" = "Skelli का दल";
 "Stealth only" = "केवल stealth";
-"Sweep — port %@" = "स्वीप — पोर्ट %@";
+"Sweep — port %lld" = "स्वीप — पोर्ट %lld";
 "That target does not parse: %@" = "वह लक्ष्य समझ नहीं आया: %@";
 "The GATT host already wears “%@”." = "GATT होस्ट पहले से “%@” पहने है।";
 "The beacon already wears “%@”." = "बीकन पहले से “%@” पहने है।";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, दस्तक दे रहा";
 "War Room, tracing" = "War Room, ट्रेस कर रहा";
 "Watch — %@" = "निगरानी — %@";
-"Watch — port %@" = "निगरानी — पोर्ट %@";
+"Watch — port %lld" = "निगरानी — पोर्ट %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "%@ पहना है — अभी लाइव, अपनी हर सतह पर किरदार में।";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "%@ पहना है — पोशाक तैयार है; जब Serve या हवा के अंग अगली बार शुरू होंगे तब यह लाइव होगा।";
 "Write target set: %@ — Send tab" = "लिखने का लक्ष्य तय: %@ — Send टैब";
