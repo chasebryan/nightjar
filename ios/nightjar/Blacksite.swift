@@ -4867,19 +4867,43 @@ final class BlacksiteShell: ObservableObject {
             ]),
         ]
         let needle = (filter ?? "").lowercased()
-        var shown = 0
-        for (title, rows) in sections {
-            let picked = needle.isEmpty ? rows : rows.filter { $0.0.lowercased().contains(needle) || $0.1.lowercased().contains(needle) }
-            if picked.isEmpty { continue }
+        func render(_ title: String, _ picked: [(String, String)]) {
             emit("", .sys)
             emit("— " + title + " —", .sys)
             for (name, what) in picked {
                 emit("  " + name, .sys)
                 for line in wrapHelp(what) { emit(line, .sys) }
-                shown += 1
             }
         }
-        if shown == 0 && !needle.isEmpty {
+        if needle.isEmpty {
+            let total = sections.reduce(0) { $0 + $1.1.count }
+            emit(String(format: L("the house answers to %lld commands:"), total), .sys)
+            for (title, rows) in sections {
+                emit(String(format: L("— %@ — %lld commands"), title, rows.count), .sys)
+                let taste = rows.prefix(3).map { $0.0 }.joined(separator: " · ")
+                emit("    " + taste + " · …", .sys)
+            }
+            emit("", .sys)
+            emit(L("help <section> opens one section whole; help <word> searches every command."), .sys)
+            return
+        }
+        let sectionHits = sections.filter { (title, _) in
+            let t = title.lowercased()
+            return t == needle || t.hasPrefix(needle)
+                || t.split(separator: " ").contains { $0 == needle }
+        }
+        if !sectionHits.isEmpty {
+            for (title, rows) in sectionHits { render(title, rows) }
+            return
+        }
+        var shown = 0
+        for (title, rows) in sections {
+            let picked = rows.filter { $0.0.lowercased().contains(needle) || $0.1.lowercased().contains(needle) }
+            if picked.isEmpty { continue }
+            render(title, picked)
+            shown += picked.count
+        }
+        if shown == 0 {
             emit(String(format: L("help: nothing answers to '%@'."), filter ?? ""), .sys)
         }
     }
@@ -11309,8 +11333,8 @@ struct BlacksiteView: View {
     private var terminal: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading,
-                           spacing: 3) {
+                VStack(alignment: .leading,
+                       spacing: 3) {
                     ForEach(shell.lines) { line in
                         Group {
                             if let image = line.image {
@@ -11370,11 +11394,8 @@ struct BlacksiteView: View {
             .onChange(of: shell.lines.count) {
                 _ in
                 if let last = shell.lines.last {
-                    withAnimation(
-                        .easeOut(duration: 0.2)) {
-                        proxy.scrollTo(
-                            last.id, anchor: .bottom)
-                    }
+                    proxy.scrollTo(
+                        last.id, anchor: .bottom)
                 }
             }
         }
