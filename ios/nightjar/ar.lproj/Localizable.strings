@@ -6236,3 +6236,6 @@
 "this network" = "هذه الشبكة";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: مكدس TLS الخاص بهذا الجهاز لا يعرض الإصدارات القديمة — لا يمكن إثبات أقفال الخادم القديمة من هنا.";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — لا يمكن اختباره من هذا الجهاز: تفاوض مكدسه على %@ بدلاً من ذلك.";
+"the house answers to %lld commands:" = "يستجيب المنزل لـ %lld أمرًا:";
+"— %@ — %lld commands" = "— %@ — %lld أمرًا";
+"help <section> opens one section whole; help <word> searches every command." = "help <القسم> يفتح قسمًا كاملاً؛ help <كلمة> يبحث في كل الأوامر.";
