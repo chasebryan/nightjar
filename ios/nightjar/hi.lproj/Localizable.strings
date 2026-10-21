@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ हॉप %lld/%lld (%@) %@ — लक्ष्य पार्स नहीं हो सका";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ हॉप %lld/%lld (%@) %@ — नेटवर्क लक्ष्य नहीं है";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ हॉप %lld/%lld (%@) %@ — पेलोड बन नहीं पाया";
+"The Mac bench" = "मैक बेंच";
+"Window" = "विंडो";
+"Display" = "डिस्प्ले";
+"Catalog" = "कैटलॉग";
+"missing" = "गायब";
+"App icon" = "ऐप आइकन";
+"Mac boot film" = "मैक बूट फ़िल्म";
+"Phone boot film" = "फ़ोन बूट फ़िल्म";
+"Boot film length" = "बूट फ़िल्म की अवधि";
+"Replay the boot" = "बूट फिर चलाएँ";
+"Walk to a room" = "किसी कमरे में जाएँ";
+"%.1f seconds" = "%.1f सेकंड";
