@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "Собрано адресов: %@: %@. Список сохранён в Доставках.";
 "Collected addresses" = "Собранные адреса";
 "Use a collected address" = "Использовать собранный адрес";
+"\n…the rest is filed in Deliveries." = "\n…остальное сохранено в Доставках.";
