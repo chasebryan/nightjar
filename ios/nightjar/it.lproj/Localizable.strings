@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "Niente è arrivato a %@ — la porta non si è mai aperta.";
 "I have no send wire just now." = "Non ho un filo di invio al momento.";
 "Here — %@: %@ bytes, filed in Deliveries." = "Ecco — %@: %@ byte, archiviato in Deliveries.";
+"Census — collecting addresses" = "Censimento — raccolta degli indirizzi";
+"%@ address(es) collected" = "%@ indirizzo/i raccolto/i";
+"Collect addresses" = "Raccogli indirizzi";
+"Collecting…" = "Raccolta…";
+"A census is already running — the wire is being knocked." = "Un censimento è già in corso — si sta bussando alla rete.";
+"The Standard forbids sweeps at this condition — the census stays silent." = "Lo Standard vieta le scansioni in questa condizione — il censimento tace.";
+"No wire under this phone — join the Wi-Fi and the census can run." = "Nessuna rete sotto questo telefono — unisciti al Wi-Fi e il censimento potrà partire.";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "Raccolta degli indirizzi di questa rete — si bussa alle porte di scoperta su tutto il /24.";
+"Nothing collected yet — the board is empty." = "Ancora niente di raccolto — la lavagna è vuota.";
+", and %@ more" = ", e altri %@";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "%@ indirizzo/i raccolto/i: %@. L'elenco è archiviato in Consegne.";
+"Collected addresses" = "Indirizzi raccolti";
+"Use a collected address" = "Usa un indirizzo raccolto";
