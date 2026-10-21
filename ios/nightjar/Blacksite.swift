@@ -9017,6 +9017,29 @@ final class BlacksiteShell: ObservableObject {
                     done: done)
             }
         case "snmp":
+            // "snmp audit [host]" — the audit in
+            // its spoken two-word shape (fix276):
+            // the audit word is not a hostname,
+            // and an audit with no host named
+            // audits the gateway.
+            if args.first == "audit" {
+                guard netAllowed("snmpaudit") else {
+                    return
+                }
+                let host = args.count > 1
+                    ? args[1]
+                    : BlacksiteNet.defaultGatewayIP()
+                guard let host else {
+                    emit(L("snmpaudit needs a host."), .err)
+                    return
+                }
+                netBusy { emit, done in
+                    BlacksitePentest.snmpAudit(
+                        host: host,
+                        emit: emit, done: done)
+                }
+                return
+            }
             guard netAllowed(name),
                   let host = args.first
             else {
