@@ -6029,3 +6029,5 @@
 "Use a collected address" = "Использовать собранный адрес";
 "\n…the rest is filed in Deliveries." = "\n…остальное сохранено в Доставках.";
 "…still running — that's what's printed so far." = "…всё ещё выполняется — это то, что напечатано к этому моменту.";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "Батарея выкована для %@: %@ — 3 заряда сохранены в арсенале и сданы в Deliveries, готовы к огню.";
