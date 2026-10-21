@@ -722,7 +722,7 @@ final class AddressCensus: NSObject, ObservableObject,
                 let ip = prefix + "\(octet)"
                 for port in doors {
                     phaseB.enter()
-                    queue.async {
+                    self.queue.async {
                         semB.wait()
                         self.knock(host: ip,
                                    port: port,
@@ -743,7 +743,7 @@ final class AddressCensus: NSObject, ObservableObject,
                     }
                 }
             }
-            phaseB.notify(queue: queue) {
+            phaseB.notify(queue: self.queue) {
                 outer.leave()
             }
         }
