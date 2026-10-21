@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "تم جمع %@ عنوانًا: %@. القائمة محفوظة في التسليمات.";
 "Collected addresses" = "العناوين المجموعة";
 "Use a collected address" = "استخدام عنوان مجموع";
+"\n…the rest is filed in Deliveries." = "\n…والباقي محفوظ في التسليمات.";
