@@ -1638,6 +1638,257 @@ extension SkelliCenter {
         }
     }
 
+    // MARK: her send hand — she fires
+
+    /// A saved pattern filled from the ask, the
+    /// same swaps the forge itself makes.
+    private func patternPayload(
+        _ pattern: ForgePattern, host: String,
+        domain: String?) -> ForgeKit.Built {
+        var text = pattern.template
+        let swaps: [(String, String)] = [
+            ("{host}", host), ("{path}", "/"),
+            ("{domain}", domain ?? "example.com"),
+            ("{client}", "nightjar"),
+            ("{method}", "GET"),
+        ]
+        for (hole, value) in swaps {
+            text = text.replacingOccurrences(
+                of: hole, with: value)
+        }
+        return ForgeKit.Built(
+            name: "Forged — " + pattern.name,
+            source: pattern.source, text: text)
+    }
+
+    /// "send a payload to 192.168.0.1", "fire
+    /// the dns packet at the gateway", "you pick
+    /// one and send it to me": she fires, herself
+    /// — the forge builds, this hand sends. Both
+    /// of Chase's asks drew manual pages before
+    /// this hand existed (2026-10-21: "I should
+    /// be able to do this"). A named kind,
+    /// pattern or armory payload is used as
+    /// named; a bare "a payload" gets her
+    /// standing pick — the deterministic HTTP
+    /// builder, aimed at the target. "To me" is
+    /// a delivery instead: the pick is built
+    /// and filed to the operator in Deliveries.
+    /// The claim wants a send verb standing
+    /// over a payload-shaped object, so
+    /// statements and other hands' cargo pass
+    /// through, and questions never arrive —
+    /// the cascade's question lanes run earlier.
+    func payloadSendAsk(_ q: String,
+                        raw: String) -> Bool {
+        let words = q.split(separator: " ").map {
+            $0.trimmingCharacters(
+                in: CharacterSet(
+                    charactersIn: ".,;:!?\"'"))
+        }
+        let wordSet = Set(words)
+        let verbs: Set<String> = ["send", "fire",
+                                  "throw", "shoot",
+                                  "deliver"]
+        guard !wordSet.isDisjoint(with: verbs)
+        else { return false }
+
+        // The pick: a pattern or an armory
+        // payload named in full, a named kind,
+        // or — the standing pick — HTTP.
+        let pattern = ForgePatternStore.load()
+            .first(where: {
+                q.contains($0.name.lowercased())
+            })
+        let book = PayloadBook()
+        let saved = (book.items
+                     + PayloadBook.builtIns)
+            .first(where: { entry in
+                !entry.name.isEmpty
+                    && q.contains(
+                        entry.name.lowercased())
+            })
+        let kinds = ["http", "dns", "ssdp",
+                     "mqtt", "probe", "banner"]
+        let kind = kinds.first(where: {
+            wordSet.contains($0) })
+        let generic = q.contains("payload")
+            || q.contains("packet")
+            || wordSet.contains("it")
+            || wordSet.contains("one")
+        guard pattern != nil || saved != nil
+                || kind != nil || generic
+        else { return false }
+
+        // The target: an IPv4 literal (a :port
+        // may ride on it), a "port N" phrase,
+        // a domain, the gateway by the house
+        // convention — or the operator himself.
+        var explicitPort: Int? = nil
+        var ip: String? = nil
+        var domain: String? = nil
+        for word in words {
+            var stem = word
+            if let colon = word.lastIndex(of: ":") {
+                let tail = word[
+                    word.index(after: colon)...]
+                if let port = Int(tail),
+                   (1...65535).contains(port) {
+                    explicitPort = port
+                    stem = String(word[..<colon])
+                }
+            }
+            let parts = stem.split(separator: ".")
+            if parts.count == 4
+                && parts.allSatisfy({
+                    $0.allSatisfy({ $0.isNumber })
+                }) {
+                ip = stem
+            } else if domain == nil
+                        && stem.contains(".")
+                        && stem.contains(where: {
+                            $0.isLetter }) {
+                domain = stem
+            }
+        }
+        if explicitPort == nil && q.contains("port") {
+            let digits = words.compactMap { Int($0) }
+                .filter { (1...65535).contains($0) }
+            if let port = digits.last {
+                explicitPort = port
+            }
+        }
+        let gateway = Mouth.localIPAddress()
+            .map { local -> String in
+                var parts = local
+                    .split(separator: ".")
+                guard parts.count == 4
+                else { return local }
+                parts[3] = "1"
+                return parts.joined(separator: ".")
+            }
+        var host = ip ?? domain
+        if host == nil
+            && (q.contains("gateway")
+                || q.contains("router")) {
+            host = gateway
+        }
+        if host == nil && kind == "ssdp" {
+            host = "239.255.255.250"
+        }
+        let buildHost = host ?? gateway
+            ?? "192.168.4.1"
+
+        // Build the pick.
+        var name = ""
+        var source = "text"
+        var text = ""
+        var framing = "raw"
+        var xorSpec = ""
+        var useGzip = false
+        var proto = "tcp"
+        var defaultPort = 80
+        var tls = false
+        if let saved {
+            name = saved.name
+            source = saved.source
+            text = saved.text
+            framing = saved.framing
+            xorSpec = saved.xorKey
+            useGzip = saved.useGzip
+        } else if let pattern {
+            let built = patternPayload(
+                pattern, host: buildHost,
+                domain: domain)
+            name = built.name
+            source = built.source
+            text = built.text
+        } else if kind == "dns" {
+            let built = ForgeKit.dns(
+                host: domain ?? "example.com")
+            name = built.name
+            source = built.source
+            text = built.text
+            proto = "udp"
+            defaultPort = 53
+        } else if kind == "ssdp" {
+            let built = ForgeKit.ssdp()
+            name = built.name
+            source = built.source
+            text = built.text
+            proto = "udp"
+            defaultPort = 1900
+        } else if kind == "mqtt" {
+            let built = ForgeKit.mqtt(
+                clientID: "nightjar")
+            name = built.name
+            source = built.source
+            text = built.text
+            defaultPort = 1883
+        } else if kind == "probe"
+                    || kind == "banner" {
+            let built = ForgeKit.probe()
+            name = built.name
+            source = built.source
+            text = built.text
+        } else {
+            let built = ForgeKit.http(
+                method: q.contains(" post ")
+                    ? "POST" : "GET",
+                host: buildHost, path: "/",
+                body: "")
+            name = built.name
+            source = built.source
+            text = built.text
+            if wordSet.contains("https") {
+                defaultPort = 443
+                tls = true
+            }
+        }
+        guard let data = try? PayloadKit.build(
+            source: source, text: text, hex: text,
+            b64: "", xorSpec: xorSpec,
+            useGzip: useGzip), !data.isEmpty
+        else { return false }
+
+        // "To me" — or no target at all — is a
+        // delivery: the pick, filed to him.
+        guard let host else {
+            DeliveriesCenter.shared.add(
+                name: name, text: text,
+                ext: source == "hex" ? "hex" : "txt")
+            say(String(format: L("Here — %@: %@ bytes, filed in Deliveries."), String(describing: name), String(describing: data.count)))
+            return true
+        }
+        guard let mouth else {
+            say(L("I have no send wire just now."))
+            return true
+        }
+        let port = explicitPort ?? defaultPort
+        let target: SendTarget = proto == "udp"
+            ? .udp(host: host, port: port)
+            : .tcp(host: host, port: port, tls: tls)
+        say(String(format: L("Firing %@ at %@ — %@ bytes."), String(describing: name), String(describing: target.raw), String(describing: data.count)))
+        mouth.sendNetwork(
+            target: target, payload: data,
+            framing: framing, read: true,
+            timeout: 5) { didSend in
+            DispatchQueue.main.async {
+                if !didSend {
+                    self.say(String(format: L("Nothing landed at %@ — the door never opened."), String(describing: target.raw)))
+                } else if let reply = mouth.lastReply,
+                          reply.label == target.raw,
+                          Date().timeIntervalSince(
+                            reply.at) < 8 {
+                    self.say(String(format: L("It answered — %@ bytes back."), String(describing: reply.data.count)))
+                } else {
+                    self.say(L("Sent. No reply came back."))
+                }
+            }
+        }
+        return true
+    }
+
     /// Her bench, run from conversation: fetch a
     /// model, put one on the bench, or report its
     /// state — the same shared center the sheet

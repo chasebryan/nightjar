@@ -2956,6 +2956,9 @@ final class SkelliCenter: ObservableObject {
         if assaultAsk(q) { return true }
         if skyBloomAsk(q) { return true }
         if cartomancyAsk(q) { return true }
+        if payloadSendAsk(q, raw: raw) {
+            return true
+        }
         if handsGate(q, raw: raw) { return true }
         return false
     }
@@ -4003,6 +4006,7 @@ final class SkelliCenter: ObservableObject {
         // Orders before lessons: an imperative
         // that names her hands is performed, not
         // taught — questions had the manual, above.
+        if payloadSendAsk(q, raw: raw) { return }
         if handsGate(q, raw: raw) { return }
         if applyThemeAsk(q) { return }
         if reviseCodeAsk(q) { return }
