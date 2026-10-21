@@ -1,6 +1,9 @@
 import Foundation
 import Network
 import Security
+#if os(macOS)
+import CoreWLAN
+#endif
 
 // BlacksiteBench — the offensive bench
 // (fix278). Website testing and wire
@@ -880,7 +883,7 @@ extension BlacksiteBench {
             return String(bytes: out, encoding: .utf8) ?? ""
         }
         func say(_ line: String) {
-            _ = sendAll(fd: fd, Array(line.utf8))
+            _ = sendAll(fd, Array(line.utf8))
         }
         func code(_ reply: String) -> Int {
             let digits = reply.prefix(3)
@@ -1109,11 +1112,12 @@ extension BlacksiteBench {
 
 extension BlacksiteBench {
 
-    private static func hostPort(_ target: String, _ defaultPort: Int) -> (String, Int)? {
+    private static func hostPort(_ target: String, _ defaultPort: Int) -> (String, UInt16)? {
         let halves = target.split(separator: ":").map(String.init)
         guard let h = halves.first, !h.isEmpty else { return nil }
         let ip = BlacksiteNet.resolve4(h)?.ip ?? h
-        return (ip, halves.count > 1 ? (Int(halves[1]) ?? defaultPort) : defaultPort)
+        let p = halves.count > 1 ? (Int(halves[1]) ?? defaultPort) : defaultPort
+        return (ip, UInt16(clamping: p))
     }
 
     // MARK: vncprobe — the framebuffer's front door
@@ -1135,7 +1139,7 @@ extension BlacksiteBench {
             return
         }
         say(emit, String(format: L("vncprobe: %@"), String(bytes: version, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "RFB"))
-        _ = sendAll(fd: fd, version)
+        _ = sendAll(fd, version)
         BlacksiteNet.setRecvTimeout(fd, seconds: 3)
         var countByte = [UInt8](repeating: 0, count: 1)
         guard recv(fd, &countByte, 1, 0) == 1 else {
@@ -1185,9 +1189,13 @@ extension BlacksiteBench {
             req.append(UInt8((protocols >> 8) & 0xFF))
             req.append(UInt8((protocols >> 16) & 0xFF))
             req.append(UInt8((protocols >> 24) & 0xFF))
-            guard sendAll(fd: fd, req) else { return nil }
+            guard sendAll(fd, req) else { return nil }
             guard let resp = readExact(fd, 19), resp.count == 19, resp[11] == 0x02 || resp[11] == 0x03 else { return nil }
-            let value = UInt32(resp[15]) | (UInt32(resp[16]) << 8) | (UInt32(resp[17]) << 16) | (UInt32(resp[18]) << 24)
+            let b0 = UInt32(resp[15])
+            let b1 = UInt32(resp[16])
+            let b2 = UInt32(resp[17])
+            let b3 = UInt32(resp[18])
+            let value = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
             return (Int(resp[11]), value)
         }
         guard let legacy = ask(0x00000000) else {
@@ -1383,7 +1391,7 @@ extension BlacksiteBench {
         defer { close(fd) }
         BlacksiteNet.setRecvTimeout(fd, seconds: 3)
         let bind: [UInt8] = [0x30, 0x0C, 0x02, 0x01, 0x01, 0x60, 0x07, 0x02, 0x01, 0x03, 0x04, 0x00, 0x80, 0x00]
-        guard sendAll(fd: fd, bind), let resp = readMessage(fd) else {
+        guard sendAll(fd, bind), let resp = readMessage(fd) else {
             say(emit, L("ldapprobe: the bind was never answered."))
             return
         }
@@ -1423,7 +1431,7 @@ extension BlacksiteBench {
         }
         searchBody += berTLV(0x30, attrs)
         let search = berTLV(0x30, berTLV(0x02, [0x02]) + berTLV(0x63, searchBody))
-        guard sendAll(fd: fd, search) else { return }
+        guard sendAll(fd, search) else { return }
         var facts: [String] = []
         for _ in 0..<3 {
             guard let msg = readMessage(fd) else { break }
@@ -1459,13 +1467,13 @@ extension BlacksiteBench {
         }
         defer { close(fd) }
         BlacksiteNet.setRecvTimeout(fd, seconds: 3)
-        guard sendAll(fd: fd, Array("PING\r\n".utf8)) else { return }
+        guard sendAll(fd, Array("PING\r\n".utf8)) else { return }
         var buf = [UInt8](repeating: 0, count: 4096)
         let n = recv(fd, &buf, buf.count, 0)
         let text = n > 0 ? (String(bytes: buf[0..<n], encoding: .utf8) ?? "") : ""
         if text.hasPrefix("+PONG") {
             say(emit, L("redisprobe: PONG with NO password asked — an unauthenticated Redis. Anyone on this wire can read and write the whole store, and its config. Critical."), .err)
-            _ = sendAll(fd: fd, Array("INFO server\r\n".utf8))
+            _ = sendAll(fd, Array("INFO server\r\n".utf8))
             var buf2 = [UInt8](repeating: 0, count: 8192)
             let n2 = recv(fd, &buf2, buf2.count, 0)
             if n2 > 0, let info = String(bytes: buf2[0..<n2], encoding: .utf8) {
@@ -1537,5 +1545,192 @@ extension BlacksiteBench {
         case "dockerprobe": dockerprobe(target: target, emit: emit, done: done)
         default: done()
         }
+    }
+}
+
+extension BlacksiteBench {
+
+    // MARK: eazy — the full battery behind one word
+
+    private static let eazyDoors = [21, 22, 25, 53, 80, 443, 445, 389, 1883, 2375, 3306, 3389, 5900, 6379, 8080, 8443]
+
+    /// A nonblocking connect with a poll deadline — a filtered door
+    /// answers with silence, and silence must not stall the battery.
+    private static func doorOpen(ip: String, port: Int, deadline: Double = 0.9) -> Bool {
+        let fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+        guard fd >= 0 else { return false }
+        defer { close(fd) }
+        let flags = fcntl(fd, F_GETFL)
+        _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
+        var dest = BlacksiteNet.sockaddrIn(ip: ip, port: UInt16(clamping: port))
+        let rc = withUnsafeMutablePointer(to: &dest) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                connect(fd, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        if rc == 0 { return true }
+        guard errno == EINPROGRESS else { return false }
+        var pfd = pollfd(fd: fd, events: Int16(POLLOUT), revents: 0)
+        guard poll(&pfd, 1, Int32(deadline * 1000)) > 0 else { return false }
+        var err: Int32 = 0
+        var len = socklen_t(MemoryLayout<Int32>.size)
+        guard getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0 else { return false }
+        return err == 0
+    }
+
+    private static func doorScan(ip: String) -> [Int] {
+        var open: [Int] = []
+        let lock = NSLock()
+        let group = DispatchGroup()
+        let sem = DispatchSemaphore(value: 24)
+        for port in eazyDoors {
+            group.enter()
+            DispatchQueue.global().async {
+                sem.wait()
+                if doorOpen(ip: ip, port: port) {
+                    lock.lock()
+                    open.append(port)
+                    lock.unlock()
+                }
+                sem.signal()
+                group.leave()
+            }
+        }
+        group.wait()
+        return open.sorted()
+    }
+
+    private static func chain(_ steps: [(BlacksiteEmit, @escaping () -> Void) -> Void], _ i: Int, stopped: @escaping () -> Bool, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        if i >= steps.count || stopped() { done(); return }
+        steps[i](emit) { chain(steps, i + 1, stopped: stopped, emit: emit, done: done) }
+    }
+
+    private static func probeSteps(ip: String, doors: [Int], gateway: Bool) -> [(BlacksiteEmit, @escaping () -> Void) -> Void] {
+        var steps: [(BlacksiteEmit, @escaping () -> Void) -> Void] = []
+        for port in doors {
+            switch port {
+            case 21: steps.append { e, d in ftpprobe(target: ip, emit: e, done: d) }
+            case 25: steps.append { e, d in smtpprobe(target: ip, emit: e, done: d) }
+            case 389: steps.append { e, d in ldapprobe(target: ip, emit: e, done: d) }
+            case 1883: steps.append { e, d in mqttprobe(target: ip, emit: e, done: d) }
+            case 2375: steps.append { e, d in dockerprobe(target: ip, emit: e, done: d) }
+            case 3389: steps.append { e, d in rdpprobe(target: ip, emit: e, done: d) }
+            case 5900: steps.append { e, d in vncprobe(target: ip, emit: e, done: d) }
+            case 6379: steps.append { e, d in redisprobe(target: ip, emit: e, done: d) }
+            case 80:
+                steps.append { e, d in BlacksiteBench.robots(urlText: "http://\(ip)/", emit: e, done: d) }
+                steps.append { e, d in BlacksitePentest.webaudit(urlText: "http://\(ip)/", emit: e, done: d) }
+                steps.append { e, d in corsprobe(url: "http://\(ip)/", emit: e, done: d) }
+            case 443:
+                steps.append { e, d in tlsgrade(target: ip, emit: e, done: d) }
+                steps.append { e, d in BlacksitePentest.webaudit(urlText: "https://\(ip)/", emit: e, done: d) }
+                steps.append { e, d in corsprobe(url: "https://\(ip)/", emit: e, done: d) }
+            case 8080:
+                steps.append { e, d in BlacksitePentest.webaudit(urlText: "http://\(ip):8080/", emit: e, done: d) }
+                steps.append { e, d in corsprobe(url: "http://\(ip):8080/", emit: e, done: d) }
+            case 8443:
+                steps.append { e, d in BlacksitePentest.webaudit(urlText: "https://\(ip):8443/", emit: e, done: d) }
+            default:
+                break
+            }
+        }
+        if gateway {
+            steps.append { e, d in BlacksitePentest.snmpAudit(host: ip, emit: e, done: d) }
+            steps.append { e, d in reflect(target: ip, emit: e, done: d) }
+            steps.append { e, d in dnsaudit(domain: "example.com", emit: e, done: d) }
+        }
+        return steps
+    }
+
+    /// The battery itself: every host gets its doors read, then the
+    /// probe that belongs to each open door, in order, one at a time.
+    static func eazyRun(hosts: [(ip: String, gateway: Bool)], stopped: @escaping () -> Bool, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        BlacksitePentest.run {
+            var queue = hosts
+            func nextHost() {
+                if stopped() {
+                    emit(L("eazy: stopped by the operator."), .err)
+                    done()
+                    return
+                }
+                guard let host = queue.first else { done(); return }
+                queue.removeFirst()
+                emit(String(format: L("eazy: %@"), host.ip), .sys)
+                let open = doorScan(ip: host.ip)
+                if open.isEmpty {
+                    emit(L("eazy: no doors answered — nothing to test here."))
+                    nextHost()
+                    return
+                }
+                emit(String(format: L("eazy: doors open: %@"), open.map { String($0) }.joined(separator: ", ")))
+                let noted = open.filter { [22, 53, 445, 3306].contains($0) }
+                if !noted.isEmpty {
+                    emit(String(format: L("eazy: noted without a probe of their own: %@"), noted.map { String($0) }.joined(separator: ", ")))
+                }
+                chain(probeSteps(ip: host.ip, doors: open, gateway: host.gateway), 0, stopped: stopped, emit: emit) {
+                    nextHost()
+                }
+            }
+            nextHost()
+        }
+    }
+
+    // MARK: eazy — an access point, named
+
+    /// Grade a named access point from the air. On the Mac the radio
+    /// can be asked (CoreWLAN); on iOS Apple offers no such census, and
+    /// eazy says so rather than dressing a guess as a reading.
+    static func apGrade(name: String, emit: @escaping BlacksiteEmit, done: @escaping (Bool) -> Void) {
+        #if os(macOS)
+        BlacksitePentest.run {
+            guard let iface = CWWiFiClient.shared().interface() else {
+                emit(L("eazy: this Mac shows no Wi-Fi radio."), .err)
+                done(false)
+                return
+            }
+            let joined = iface.ssid() == name
+            let nets = (try? iface.scanForNetworks(withName: name)) ?? []
+            guard let net = nets.first(where: { $0.ssid == name }) else {
+                emit(String(format: L("eazy: no access point named '%@' is heard from here."), name), .err)
+                if iface.ssid() == nil {
+                    emit(L("eazy: the Mac may be withholding the air — Location permission governs Wi-Fi names on macOS."))
+                }
+                done(joined)
+                return
+            }
+            let channel = net.wlanChannel
+            let band: String
+            switch channel?.channelBand {
+            case .band2GHz: band = "2.4 GHz"
+            case .band5GHz: band = "5 GHz"
+            case .band6GHz: band = "6 GHz"
+            default: band = L("band unknown")
+            }
+            emit(String(format: L("eazy: '%@' — channel %lld (%@), signal %lld dBm."), name, channel?.channelNumber ?? 0, band, net.rssiValue))
+            switch net.securityMode {
+            case .none:
+                emit(L("eazy: it is OPEN — no password at all. Anyone may join, and everything said on it is plain. Critical."), .err)
+            case .WEP:
+                emit(L("eazy: WEP — a lock from another century, opened in minutes by known tools. Critical."), .err)
+            case .wpaPersonal:
+                emit(L("eazy: WPA (the first) — long superseded; TKIP-era gear should be retired."), .out)
+            case .wpa2Personal, .wpaPersonalMixed, .wpa2Enterprise, .wpaEnterprise, .wpaEnterpriseMixed:
+                emit(L("eazy: WPA2 — sound, provided the password is. The air cannot judge the password."), .ok)
+            case .wpa3Personal, .wpa3Enterprise:
+                emit(L("eazy: WPA3 — the current standard, worn properly."), .ok)
+            default:
+                emit(L("eazy: a security mode this build does not name — read it in the Wi-Fi menu."), .out)
+            }
+            if joined {
+                emit(L("eazy: you are standing on it — running the full battery against its network."))
+            } else {
+                emit(L("eazy: grading from the air is all any honest tool can do from outside — to test THROUGH it, join it and run eazy again."))
+            }
+            done(joined)
+        }
+        #else
+        emit(L("eazy: iOS gives no app a census of the air — other radios cannot be seen, let alone graded. Join the access point and run eazy to test the network you are standing on, or aim eazy at an address."), .err)
+        done(false)
+        #endif
     }
 }

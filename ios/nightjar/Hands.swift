@@ -2195,7 +2195,7 @@ extension SkelliCenter {
                     claims = ["neofetch",
                         "fastfetch", "diagnose",
                         "ps", "jobs", "pwd", "ls",
-                        "sys", "limits"]
+                        "sys", "limits", "eazy"]
                         .contains(first)
                 } else if !["cat", "find", "test",
                             "open", "echo",

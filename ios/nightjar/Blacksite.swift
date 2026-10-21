@@ -206,7 +206,7 @@ final class BlacksiteShell: ObservableObject {
         "jobs", "kill", "fastfetch",
         "neofetch", "diagnose",
         "limits",
-        "scan", "knock", "census", "decode",
+        "scan", "knock", "census", "eazy", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom",
@@ -2857,6 +2857,8 @@ final class BlacksiteShell: ObservableObject {
             knock(args)
         case "census":
             census()
+        case "eazy":
+            eazyCommand(args)
         case "decode":
             if let line = Blacksite.decode(
                 hex: args.joined(separator: "")) {
@@ -4682,6 +4684,7 @@ final class BlacksiteShell: ObservableObject {
                 ("scan [port]", L("sweep the /24 on a port (default 80)")),
                 ("knock <host> [ports]", L("knock a host (default: the top doors)")),
                 ("census", L("knock every device on the neighborhood board")),
+                ("eazy [target]", L("the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point")),
                 ("decode <hex>", L("raw advertisement bytes through the decoders")),
                 ("company <id>", L("who a company id belongs to")),
                 ("port <n> [udp]", L("what a port is for")),
@@ -8696,6 +8699,85 @@ final class BlacksiteShell: ObservableObject {
         }
     }
 
+    // MARK: eazy — the full battery, one word or one button
+
+    func eazyCommand(_ args: [String]) {
+        if capturing && !skelliLive {
+            emit(L("eazy runs live — it cannot be piped or captured."), .err)
+            return
+        }
+        if EmconStandard.refused(.probing) {
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
+            return
+        }
+        guard !busy else {
+            emit(L("eazy: something is already running — stop it first."), .err)
+            return
+        }
+        busy = true
+        stopToken.reset()
+        let captureLock = NSLock()
+        var captured: [(String, Line.Kind)] = []
+        let collect: BlacksiteEmit = { [weak self] text, kind in
+            captureLock.lock()
+            captured.append((text, kind))
+            captureLock.unlock()
+            self?.emit(text, kind)
+        }
+        let target = args.first
+        let label = target ?? L("this network")
+        let finish: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            captureLock.lock()
+            let lines = captured
+            captureLock.unlock()
+            let findings = lines.filter { $0.1 == .err }.count
+            DispatchQueue.main.async {
+                self.busy = false
+            }
+            guard !lines.isEmpty else { return }
+            let report = lines.map { $0.0 }.joined(separator: "\n")
+            DeliveriesCenter.shared.add(name: String(format: L("eazy — %@"), label), text: report, ext: "txt")
+            self.emit(String(format: L("eazy: the battery is done — %lld findings. The full report is filed in Deliveries."), findings), findings > 0 ? .err : .ok)
+        }
+        let gateway = BlacksiteNet.defaultGatewayIP()
+        if let target = target {
+            let parts = target.split(separator: ".")
+            let isIP = parts.count == 4 && parts.allSatisfy { Int($0) != nil }
+            if isIP || BlacksiteNet.resolve4(target) != nil {
+                let ip = BlacksiteNet.resolve4(target)?.ip ?? target
+                BlacksiteBench.eazyRun(hosts: [(ip: ip, gateway: ip == gateway)], stopped: stopCheck, emit: collect, done: finish)
+            } else {
+                BlacksiteBench.apGrade(name: target, emit: collect) { [weak self] joined in
+                    guard let self = self else { return }
+                    if joined {
+                        self.eazyHosts(gateway: gateway, collect: collect, finish: finish)
+                    } else {
+                        finish()
+                    }
+                }
+            }
+        } else {
+            eazyHosts(gateway: gateway, collect: collect, finish: finish)
+        }
+    }
+
+    private func eazyHosts(gateway: String?, collect: @escaping BlacksiteEmit, finish: @escaping () -> Void) {
+        var ips: [String] = []
+        if let gateway = gateway { ips.append(gateway) }
+        for n in NeighborhoodStore.shared.neighbors where !ips.contains(n.ip) {
+            ips.append(n.ip)
+        }
+        let hosts: [(ip: String, gateway: Bool)] = ips.prefix(12).map { (ip: $0, gateway: $0 == gateway) }
+        guard !hosts.isEmpty else {
+            emit(L("eazy: nothing to aim at — the board is empty and no gateway answers."), .err)
+            finish()
+            return
+        }
+        emit(String(format: L("eazy: the full battery on %lld hosts — doors first, then the probe that belongs to each door."), hosts.count), .sys)
+        BlacksiteBench.eazyRun(hosts: hosts, stopped: stopCheck, emit: collect, done: finish)
+    }
+
     // MARK: The wire + the pentest bench
 
     /// Every live wire command stands
@@ -11423,6 +11505,27 @@ struct BlacksiteView: View {
                 Image(systemName: "chevron.down")
             }
             .disabled(historyBack < 0)
+            .houseHoverEffect()
+            Button {
+                Haptics.tap()
+                shell.eazyCommand([])
+            } label: {
+                Text("EAZY")
+                    .font(.system(.caption,
+                                  design: .monospaced)
+                        .weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(
+                            cornerRadius: 7)
+                            .strokeBorder(
+                                themes.current
+                                    .accent,
+                                lineWidth: 1))
+                    .foregroundStyle(
+                        themes.current.accent)
+            }
             .houseHoverEffect()
             Button {
                 Haptics.tap()
