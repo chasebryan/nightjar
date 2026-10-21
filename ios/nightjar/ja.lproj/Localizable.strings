@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ ホップ %lld/%lld (%@) %@ — ターゲットを解析できない";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ ホップ %lld/%lld (%@) %@ — ネットワークターゲットではない";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ ホップ %lld/%lld (%@) %@ — ペイロードを構築できなかった";
+"The Mac bench" = "Macベンチ";
+"Window" = "ウィンドウ";
+"Display" = "ディスプレイ";
+"Catalog" = "カタログ";
+"missing" = "なし";
+"App icon" = "アプリアイコン";
+"Mac boot film" = "Macの起動フィルム";
+"Phone boot film" = "電話の起動フィルム";
+"Boot film length" = "起動フィルムの長さ";
+"Replay the boot" = "起動を再生";
+"Walk to a room" = "部屋へ移動";
+"%.1f seconds" = "%.1f 秒";
