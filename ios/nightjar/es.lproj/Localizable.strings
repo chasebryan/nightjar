@@ -6236,3 +6236,6 @@
 "this network" = "esta red";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: la propia pila TLS de este dispositivo no ofrece las versiones antiguas — los candados heredados de un servidor no se pueden probar desde aquí.";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — no se puede probar desde este dispositivo: su propia pila negoció %@ en su lugar.";
+"the house answers to %lld commands:" = "la casa responde a %lld comandos:";
+"— %@ — %lld commands" = "— %@ — %lld comandos";
+"help <section> opens one section whole; help <word> searches every command." = "help <sección> abre una sección entera; help <palabra> busca en todos los comandos.";
