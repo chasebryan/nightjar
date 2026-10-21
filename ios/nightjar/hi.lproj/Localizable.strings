@@ -6236,3 +6236,6 @@
 "this network" = "यह नेटवर्क";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: इस डिवाइस का अपना TLS स्टैक पुराने संस्करण पेश नहीं करता — सर्वर के पुराने तालों को यहाँ से साबित नहीं किया जा सकता।";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — इस डिवाइस से परीक्षण नहीं किया जा सकता: इसके स्टैक ने इसके बजाय %@ पर बातचीत की।";
+"the house answers to %lld commands:" = "यह घर %lld कमांड का जवाब देता है:";
+"— %@ — %lld commands" = "— %@ — %lld कमांड";
+"help <section> opens one section whole; help <word> searches every command." = "help <सेक्शन> पूरा सेक्शन खोलता है; help <शब्द> हर कमांड में खोजता है।";
