@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10 минут перемалывания";
 "100,000" = "100,000";
 "15 min" = "15 мин";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210 000";
 "3 hours" = "3 часа";
 "3 min" = "3 мин";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff: файл с таким именем нельзя прочитать.";
 "diff: name two texts, or one and a pipe." = "diff: укажите два текста, или один и канал.";
 "diff: too large for this room." = "diff: слишком велико для этой комнаты.";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig нужно имя — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'.";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig нужно имя — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'.";
 "dig: no answer from %@ — the wire stayed quiet." = "dig: нет ответа от %@ — провод молчал.";
 "dirb: that is not a URL." = "dirb: это не URL.";
 "dirb: the host is not answering at all — called off." = "dirb: хост совсем не отвечает — отменено.";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "ядро: [%@] %@ — остановлен.";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps' показывает таблицу ядра.";
 "kill: no live process %@." = "kill: нет живого процесса %@.";
-"knock needs a host — 'knock 192.168.4.1'." = "knock нужен хост — 'knock 192.168.4.1'.";
+"knock needs a host — 'knock 192.168.1.1'." = "knock нужен хост — 'knock 192.168.1.1'.";
 "knock runs live — it cannot be piped or captured." = "knock работает вживую — его нельзя перенаправить или перехватить.";
 "knocking on %@ doors at %@ — anything but 404 is news" = "стучусь в %@ дверей на %@ — всё, что не 404, — новость";
 "limits — what this room honestly cannot do:" = "limits — что эта комната честно не умеет:";
@@ -2874,7 +2874,7 @@
 "connected" = "подключено";
 "device" = "устройство";
 "diagnose: %@/%@ — %@" = "диагностика: %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb нужен URL — 'dirb http://192.168.4.1'.";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb нужен URL — 'dirb http://192.168.1.1'.";
 "down" = "лежит";
 "factory write community live" = "заводская community на запись активна";
 "features ride at their defaults." = "функции работают на значениях по умолчанию.";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "Её отказы — это прочтения, а не настроения. Макрос, который «не готов», называет свой первый неготовый блок и почему — полезная нагрузка не в книге, цель не разбирается — потому что плейлист, который выполняется наполовину, хуже того, который никогда не начинается. Рука, которая говорит, что орган «ещё не дошёл до меня», означает, что её вкладка не открывалась с запуска; открыть её один раз — значит подключить её на сессию. Возможность, которая читается как ограничение платформы — NFC при бесплатной команде разработчиков — завтра будет читаться так же; она не даёт оператору гоняться за ней как за багом.";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "Поднесите метку к телефону, и перепись прочитает её: тип, идентификатор, технологии, NDEF, который она несёт, и ответы APDU, которые метка ISO 7816 даст исследователю. Она читает и опознаёт — она никогда не пишет и не клонирует; запись чтения остаётся в комнате.";
 "Home network hardening — the NSA's sheet" = "Укрепление домашней сети — лист NSA";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "Домашние провода почти всегда /24: 254 адреса под одним префиксом, шлюз на .1 (здесь eero), широковещание на .255, где крик достигает каждого хоста сразу. Собственный адрес телефона на этом проводе — 192.168.4.20. Прочёсывание проходит по 254 и стучится в один порт на каждом — перепись, а не избиение. Выход за пределы /24 полностью меняет правила: удалённые цели — это сети других людей, и применяется устав из About.";
 "Housekeeping — clears and folds" = "Уборка — очистки и сворачивания";
 "How operators actually phrase orders" = "Как операторы на самом деле формулируют приказы";
 "How the exams are actually passed" = "Как на самом деле сдаются экзамены";
@@ -3915,7 +3914,7 @@
 "But I can " = "Но я могу ";
 "Called off — the Netbomb stays in the rack." = "Отменено — Netbomb остаётся на стойке.";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "Вызов отправлен %@ — защитник должен обслуживать с открытой комнатой War Games. Когда приземлится READY, раунд задаётся из комнаты War Games во вкладке Send.";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "Кого вызвать? Дай адрес защитника — challenge 192.168.4.31.";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "Кого вызвать? Дай адрес защитника — challenge 192.168.1.31.";
 "Currently wearing %@. The rack holds: %@." = "Сейчас надето %@. Стойка держит: %@.";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "Оборона задана: %@ дверей Serve держатся настоящими, %@ приманок в полёте";
 "Deleted “%@”." = "Удалено «%@».";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@: готово, %lld из %lld блоков.";
 "%@: stopped." = "%@: остановлено.";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 или gateway";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 или phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 или gateway";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 или phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "Полный трейс по действующему охвату — и слово, что готово.";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "Пост, а не тест: дом тёмен, скрытность включена, ухо открыто — и всё кончается ровно так, как задумано.";
 "A watch is already running — left as it was." = "Наблюдение уже идёт — оставлено как было.";
