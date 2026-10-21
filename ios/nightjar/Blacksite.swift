@@ -111,6 +111,17 @@ final class BlacksiteShell: ObservableObject {
     /// $(…) substitution), emit() writes
     /// here instead of the transcript.
     private var captureStack: [[String]] = []
+    /// Her live capture (fix267): while it
+    /// stands, the live wire commands may run
+    /// under capture — their results land in
+    /// the frame as they arrive, and her hand
+    /// collects them when the room settles.
+    /// The lock keeps the frame sound: a live
+    /// command emits from its own queue while
+    /// her collector reads from the main one.
+    private(set) var skelliLive = false
+    private var lastCaptureAt = Date()
+    private let captureLock = NSLock()
     private var stageError = false
     private(set) var lastStatus = 0
 
@@ -219,8 +230,11 @@ final class BlacksiteShell: ObservableObject {
             ? ANSITerm.strip(text) : text
         if capturing {
             if kind == .err { stageError = true }
+            captureLock.lock()
             captureStack[captureStack.count - 1]
                 .append(shown)
+            lastCaptureAt = Date()
+            captureLock.unlock()
             return
         }
         let append = { [weak self] in
@@ -1075,6 +1089,78 @@ final class BlacksiteShell: ObservableObject {
         captureOutput {
             execLine(line, stdin: "")
         }
+    }
+
+    /// Her hand, live (fix267): run one line
+    /// and hand back everything it prints —
+    /// the live wire commands included. Their
+    /// results land after the line itself
+    /// returns, so the capture stays open
+    /// until the room settles: the busy flag
+    /// down and the captured line quiet for
+    /// a breath — or the deadline passes,
+    /// and what has printed by then is hers,
+    /// marked partial if the room is still
+    /// working. One live run at a time.
+    func runForSkelliLive(
+        _ line: String,
+        timeout: TimeInterval = 90,
+        completion: @escaping (String) -> Void) {
+        if skelliLive {
+            // One live run at a time: a second
+            // line waits its turn rather than
+            // being dropped. The standing run
+            // always settles by its deadline,
+            // so the wait is bounded.
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 2) {
+                self.runForSkelliLive(
+                    line, timeout: timeout,
+                    completion: completion)
+            }
+            return
+        }
+        skelliLive = true
+        captureLock.lock()
+        captureStack.append([])
+        lastCaptureAt = Date()
+        captureLock.unlock()
+        execLine(line, stdin: "")
+        let started = Date()
+        var settled = false
+        func finish() {
+            guard !settled else { return }
+            settled = true
+            self.captureLock.lock()
+            let rows = self.captureStack.removeLast()
+            self.captureLock.unlock()
+            self.skelliLive = false
+            var text = rows.joined(separator: "\n")
+            if self.busy && !text.isEmpty {
+                text += "\n" + L("…still running — that's what's printed so far.")
+            }
+            completion(text)
+        }
+        func poll() {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 0.4) {
+                if settled { return }
+                self.captureLock.lock()
+                let last = self.lastCaptureAt
+                self.captureLock.unlock()
+                let quiet = Date()
+                    .timeIntervalSince(last) > 1.6
+                let over = Date()
+                    .timeIntervalSince(started)
+                    > timeout
+                if (!self.busy && quiet) || over {
+                    finish()
+                } else {
+                    poll()
+                }
+            }
+        }
+        poll()
     }
 
     private func writeRedirect(
@@ -8251,7 +8337,7 @@ final class BlacksiteShell: ObservableObject {
     // MARK: Scan + knock + census
 
     private func scan(_ args: [String]) {
-        if capturing {
+        if capturing && !skelliLive {
             emit(L("scan runs live — it cannot be piped or captured."), .err)
             return
         }
@@ -8300,7 +8386,7 @@ final class BlacksiteShell: ObservableObject {
     }
 
     private func knock(_ args: [String]) {
-        if capturing {
+        if capturing && !skelliLive {
             emit(L("knock runs live — it cannot be piped or captured."), .err)
             return
         }
@@ -8372,7 +8458,7 @@ final class BlacksiteShell: ObservableObject {
     }
 
     private func census() {
-        if capturing {
+        if capturing && !skelliLive {
             emit(L("census runs live — it cannot be piped or captured."), .err)
             return
         }
@@ -8421,7 +8507,7 @@ final class BlacksiteShell: ObservableObject {
     /// the Standard's word on probing.
     private func netAllowed(_ name: String)
         -> Bool {
-        if capturing {
+        if capturing && !skelliLive {
             emit(String(format: L("%@ runs live — it cannot be piped or captured."), String(describing: name)), .err)
             return false
         }
