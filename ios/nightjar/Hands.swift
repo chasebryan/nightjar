@@ -2067,6 +2067,85 @@ extension SkelliCenter {
                   let r = q.range(of: "run in the console ") {
             payloadQ = String(q[r.upperBound...])
         }
+        // The verb and bare forms (fix266): she
+        // is plugged into the Blacksite, so a
+        // line that IS a console line runs —
+        // "run scan 192.168.4.1", or the line
+        // itself, its first word naming a tool
+        // and the rest reading as arguments.
+        // Prose that merely starts with a tool's
+        // name ("find my phone", "test the
+        // canary") is fenced out by the argument
+        // shape and the prose-word list; the
+        // prefix forms above remain the certain
+        // road. These two forms keep the raw
+        // ask's casing for their payload — file
+        // names are caseful.
+        var rawPayload: String? = nil
+        if payloadQ == nil, q.hasPrefix("run ")
+            && !q.contains("canary") {
+            let rest = String(q.dropFirst(4))
+                .trimmingCharacters(in: .whitespaces)
+            let first = rest.split(separator: " ")
+                .first.map(String.init) ?? ""
+            if BlacksiteShell.builtinNames
+                .contains(first) {
+                payloadQ = rest
+                let rawTrimmed = raw
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                if rawTrimmed.lowercased()
+                    .hasPrefix("run ") {
+                    rawPayload = String(
+                        rawTrimmed.dropFirst(4))
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                }
+            }
+        }
+        if payloadQ == nil
+            && !q.contains("canary") {
+            let tokens = q.split(separator: " ")
+                .map(String.init)
+            if let first = tokens.first,
+               first != "run",
+               BlacksiteShell.builtinNames
+                   .contains(first) {
+                var claims = false
+                if tokens.count == 1 {
+                    claims = ["neofetch",
+                        "fastfetch", "diagnose",
+                        "ps", "jobs", "pwd", "ls",
+                        "sys", "limits"]
+                        .contains(first)
+                } else if !["cat", "find", "test",
+                            "open", "echo",
+                            "sleep", "theme",
+                            "quarantine"]
+                    .contains(first) {
+                    claims = tokens.dropFirst()
+                        .contains(where: { token in
+                            token.contains(
+                                where: {
+                                    $0.isNumber
+                                })
+                            || token.contains(".")
+                            || token.contains("/")
+                            || token.contains(":")
+                            || token.contains("=")
+                            || token.contains("-")
+                            || token.contains("$")
+                            || token.contains("\"")
+                        })
+                }
+                if claims {
+                    payloadQ = q
+                    rawPayload = raw
+                        .trimmingCharacters(
+                            in: .whitespaces)
+                }
+            }
+        }
         guard var payload = payloadQ?
             .trimmingCharacters(in: .whitespaces),
               !payload.isEmpty, !payload.contains("?")
@@ -2092,16 +2171,24 @@ extension SkelliCenter {
             if !text.isEmpty { payload = text }
             break
         }
-        guard let shell = blacksiteShell else {
-            say(L("The console hasn't woken in this run of the app — open the Blacksite tab once and the hand is mine from then on."))
-            return true
+        if let rawPayload, !rawPayload.isEmpty {
+            payload = rawPayload
         }
+        // Her own console if the room's has not
+        // woken (fix266): the chat is an
+        // interface to the Blacksite, not a
+        // request to go and open it.
+        let shell = blacksite()
         let out = shell.runForSkelli(payload)
         if out.isEmpty {
             say(L("Ran it — nothing came back on the line. If it's a program, its output lives in the console; the Blacksite tab holds it."))
         } else if out.count > 700 {
+            DeliveriesCenter.shared.add(
+                name: "Blacksite — "
+                    + String(payload.prefix(60)),
+                text: out, ext: "txt")
             say(String(out.prefix(700))
-                + L("\n…the console holds the rest."))
+                + L("\n…the rest is filed in Deliveries."))
         } else {
             say(out)
         }
