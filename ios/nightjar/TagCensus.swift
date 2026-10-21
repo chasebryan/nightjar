@@ -1,3 +1,4 @@
+#if os(iOS)
 import SwiftUI
 import CoreNFC
 
@@ -325,3 +326,22 @@ struct TagCensusView: View {
         }
     }
 }
+
+#else
+import SwiftUI
+
+/// The census reads NFC tags — a phone sense. On
+/// the Mac the sheet opens to say so, plainly.
+struct TagCensusView: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "wave.3.right")
+                .font(.largeTitle)
+            Text(L("Phone-only for now — this organ hasn't crossed to the Mac yet."))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding(40)
+    }
+}
+#endif

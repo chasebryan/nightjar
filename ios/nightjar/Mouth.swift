@@ -2,7 +2,11 @@ import Compression
 import CoreBluetooth
 import Foundation
 import Network
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import UserNotifications
 
 /// The mouth: everything in nightjar-hack that transmits. A port of

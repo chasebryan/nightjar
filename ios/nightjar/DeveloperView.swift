@@ -1,6 +1,10 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// The developer kit: a section of its own, for
 /// building and improving the house. While it is

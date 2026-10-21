@@ -1,7 +1,11 @@
 import CryptoKit
 import GameController
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// BLACKSITE — the house's own operating
 /// system, in one room (the operator's order,

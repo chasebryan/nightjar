@@ -2,7 +2,11 @@ import AVFoundation
 import CoreImage
 import Foundation
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// Blink: messages carried by light.
 ///

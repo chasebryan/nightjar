@@ -1,6 +1,10 @@
 import AVFoundation
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// A short sine beep with a smooth envelope — the hunt's voice.
 final class HuntTone {

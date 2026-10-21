@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import UniformTypeIdentifiers
 
 /// The Send and Serve tabs — the mouth's face. Everything here is a

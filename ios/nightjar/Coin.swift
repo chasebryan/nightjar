@@ -1,3 +1,4 @@
+#if os(iOS)
 import CoreNFC
 import CryptoKit
 import SwiftUI
@@ -314,3 +315,36 @@ struct CoinSectionView: View {
         }
     }
 }
+
+#else
+import SwiftUI
+import Combine
+
+/// The coin is an NFC tag — a phone sense. The
+/// Mac center is inert and honest: nothing is
+/// claimed here, and a tap says why.
+final class CoinCenter: ObservableObject {
+    enum Purpose { case claim, mint, checkin, vault, unlock }
+    static let shared = CoinCenter()
+    @Published private(set) var claimed = false
+    @Published private(set) var lastResult = ""
+    func tap(_ purpose: Purpose, emcon: Emcon?,
+             completion: ((Bool, String) -> Void)? = nil) {
+        completion?(false, L("This Mac cannot read NFC tags."))
+    }
+}
+
+/// The coin card on the Mac: the section stands,
+/// and its body says the organ lives on the phone.
+struct CoinSectionView: View {
+    @ObservedObject var center: CoinCenter
+    let emcon: Emcon
+    var body: some View {
+        Section(header: Text(L("The coin — a key you can hold"))) {
+            Text(L("Phone-only for now — this organ hasn't crossed to the Mac yet."))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+#endif

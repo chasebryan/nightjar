@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import Network
 
 /// Net-Assault — the house, turned loose on its own wire.

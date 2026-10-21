@@ -1,7 +1,11 @@
 import Photos
 import PhotosUI
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// Colours — the app's wardrobe.
 ///

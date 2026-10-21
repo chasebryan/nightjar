@@ -1,6 +1,10 @@
 import JavaScriptCore
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// Her forge: payload work built to order. From
 /// her patterns she assembles real packets —

@@ -2,7 +2,11 @@ import CoreBluetooth
 import ImageIO
 import PDFKit
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import WebKit
 #if canImport(MLXLLM)
 import MLXLLM
@@ -2053,6 +2057,7 @@ extension UIImage {
     }
 }
 
+#if os(iOS)
 /// A full-bleed GIF player (UIImageView under the hood).
 struct GIFPlayerView: UIViewRepresentable {
     let data: Data
@@ -2289,6 +2294,7 @@ struct BootFilmPlayer: UIViewRepresentable {
 }
 
 
+#endif
 /// The drumroll: a glitching, laughing skull over the whole
 /// screen when the centipede is released (tap to skip). The
 /// GIF comes from a "Centipede" data asset or a centipede.gif

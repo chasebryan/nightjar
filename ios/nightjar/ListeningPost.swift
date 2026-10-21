@@ -1,7 +1,11 @@
 import Combine
 import CoreBluetooth
 import Foundation
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// The listening post: one `CBCentralManager`, one session at a time.
 ///
@@ -403,9 +407,11 @@ final class ListeningPost: NSObject, ObservableObject {
     private func applyIdleTimer() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+#if os(iOS)
             UIApplication.shared
                 .isIdleTimerDisabled =
                 keepScreenAwake && session != nil
+#endif
         }
     }
 

@@ -3,7 +3,9 @@
 // distribution only. App Store builds define STORE_BUILD
 // and compile this whole file out: updates arrive through
 // the App Store, and no traffic goes to GitHub.
+#if os(iOS)
 import BackgroundTasks
+#endif
 import Foundation
 import UserNotifications
 
@@ -197,6 +199,7 @@ final class UpdateChecker: ObservableObject {
     /// app finishes launching, on every launch — NightjarApp's
     /// init is the caller.
     nonisolated static func registerBackgroundCheck() {
+#if os(iOS)
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: backgroundID, using: nil
         ) { task in
@@ -206,6 +209,7 @@ final class UpdateChecker: ObservableObject {
             }
             handleBackgroundCheck(refresh)
         }
+#endif
     }
 
     /// Ask iOS for background time to check again. iOS picks
@@ -213,11 +217,13 @@ final class UpdateChecker: ObservableObject {
     /// that is used often, later for one that isn't; nothing
     /// here can promise sooner, and nothing pretends to.
     nonisolated static func scheduleBackgroundCheck() {
+#if os(iOS)
         let request = BGAppRefreshTaskRequest(
             identifier: backgroundID)
         request.earliestBeginDate =
             Date(timeIntervalSinceNow: 15 * 60)
         try? BGTaskScheduler.shared.submit(request)
+#endif
     }
 
     /// One background run: schedule the next one first (so
@@ -225,6 +231,7 @@ final class UpdateChecker: ObservableObject {
     /// release this operator hasn't seen announced or waved
     /// off is waiting — say so, once, and only where
     /// notifications are already welcome.
+#if os(iOS)
     nonisolated private static func handleBackgroundCheck(
         _ task: BGAppRefreshTask
     ) {
@@ -256,6 +263,7 @@ final class UpdateChecker: ObservableObject {
             }
         }
     }
+#endif
 
     /// A local notification for a waiting update — posted
     /// only when the operator has already allowed this app

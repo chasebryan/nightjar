@@ -1,5 +1,9 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// BLACKSITE EDITORS — vim and emacs, in the
 /// console (the operator's orders, 2026-10-19:
@@ -2053,7 +2057,11 @@ struct BlacksiteEditorView: View {
             Color.black.ignoresSafeArea()
             VStack(spacing: 0) {
                 statusBar
+#if os(iOS)
                 EditorTextView(core: core)
+#else
+                MacEditorFallback(core: core)
+#endif
                 miniBar
             }
         }
@@ -2160,6 +2168,7 @@ struct BlacksiteEditorView: View {
     }
 }
 
+#if os(iOS)
 // MARK: - The canvas (UITextView)
 
 private struct EditorTextView:
@@ -2500,3 +2509,25 @@ private final class EditorCanvas: UITextView {
         }
     }
 }
+
+#endif
+
+#if os(macOS)
+/// The canvas is a UITextView on the phone; its
+/// NSTextView twin is the port's polish phase.
+/// Until then the Mac editor opens to the organ's
+/// note — the console around it is fully live.
+private struct MacEditorFallback: View {
+    @ObservedObject var core: EditorCore
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "text.cursor")
+                .font(.largeTitle)
+            Text(L("Phone-only for now — this organ hasn't crossed to the Mac yet."))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+#endif

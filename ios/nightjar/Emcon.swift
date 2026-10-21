@@ -1,7 +1,11 @@
 import Combine
 import Foundation
 import Network
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 import UserNotifications
 
 /// EMCON — emissions control. The defensive half of nightjar-hack:

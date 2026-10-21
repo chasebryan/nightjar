@@ -2,7 +2,11 @@ import AVFoundation
 import CryptoKit
 import Foundation
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// The Gauntlet: a full stress run over every
 /// system in the house, built for the developer

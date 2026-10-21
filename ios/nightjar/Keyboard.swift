@@ -1,6 +1,11 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
+#if os(iOS)
 /// One way to fold the keyboard, everywhere:
 /// swipe down, anywhere, and it goes away. A
 /// single swipe recognizer rides on the window
@@ -68,3 +73,13 @@ final class KeyboardDismisser: NSObject,
         true
     }
 }
+
+#else
+/// The Mac folds its keyboard the Mac's way — there
+/// is no swipe to install. The installer is an
+/// empty, touch-transparent view so the app root
+/// keeps the same shape on both platforms.
+struct KeyboardSwipeInstaller: View {
+    var body: some View { Color.clear }
+}
+#endif

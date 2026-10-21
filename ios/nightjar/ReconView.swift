@@ -1,6 +1,8 @@
 import Foundation
 import Network
+#if os(iOS)
 import NetworkExtension
+#endif
 import Security
 import SwiftUI
 import UniformTypeIdentifiers
@@ -1921,9 +1923,11 @@ struct ScanView: View {
             .navigationTitle(L("Scan"))
             .onAppear {
                 model.startDiscovery()
+#if os(iOS)
                 NEHotspotNetwork.fetchCurrent { network in
                     DispatchQueue.main.async { ssid = network?.ssid }
                 }
+#endif
             }
             .onDisappear { model.stopDiscovery() }
             .onChange(of: model.scanning) { scanning in

@@ -1,6 +1,10 @@
 import Combine
 import SwiftUI
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// The tab beat, in two independent parts.
 ///
@@ -103,6 +107,7 @@ enum TabBeat {
 /// When this watch answers, it bumps TabBeat's
 /// sequence, standing the vanish timer down
 /// so the tap is never beaten twice.
+#if os(iOS)
 enum SelectionWatch {
     private static var observation:
         NSKeyValueObservation?
@@ -210,6 +215,18 @@ struct TabProbe: UIViewRepresentable {
         }
     }
 }
+
+#endif
+
+#if os(macOS)
+/// On the Mac there is no tab bar controller for a
+/// selection watch to ride — the strip is the
+/// system's own, and a selection is just a
+/// selection. The probe is an empty view.
+struct TabProbe: View {
+    var body: some View { Color.clear }
+}
+#endif
 
 struct ContentView: View {
     @EnvironmentObject private var toasts: ToastCenter

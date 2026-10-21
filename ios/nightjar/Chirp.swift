@@ -404,9 +404,11 @@ final class ChirpSender: ObservableObject {
         for (index, sample) in samples.enumerated() {
             data[index] = sample
         }
+#if os(iOS)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback)
         try? session.setActive(true)
+#endif
         if !attached {
             engine.attach(player)
             attached = true
@@ -467,6 +469,7 @@ final class ChirpListener: ObservableObject {
     private var processTimer: Timer?
 
     func start() {
+#if os(iOS)
         AVAudioSession.sharedInstance().requestRecordPermission {
             [weak self] granted in
             DispatchQueue.main.async {
@@ -478,12 +481,27 @@ final class ChirpListener: ObservableObject {
                 }
             }
         }
+#else
+        AVCaptureDevice.requestAccess(for: .audio) {
+            [weak self] granted in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if granted {
+                    self.begin()
+                } else {
+                    self.status = L("microphone permission denied — System Settings is where that changes")
+                }
+            }
+        }
+#endif
     }
 
     private func begin() {
+#if os(iOS)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.record)
         try? session.setActive(true)
+#endif
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         let decoder = ChirpDecoder(rate: format.sampleRate)
