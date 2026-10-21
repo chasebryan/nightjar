@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10 minutes de broyage";
 "100,000" = "100,000";
 "15 min" = "15 min";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210 000";
 "3 hours" = "3 heures";
 "3 min" = "3 min";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff : un fichier nommé ne peut pas être lu.";
 "diff: name two texts, or one and a pipe." = "diff : nommez deux textes, ou un et un pipe.";
 "diff: too large for this room." = "diff : trop gros pour cette pièce.";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig a besoin d'un nom — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'.";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig a besoin d'un nom — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'.";
 "dig: no answer from %@ — the wire stayed quiet." = "dig : aucune réponse de %@ — le fil est resté silencieux.";
 "dirb: that is not a URL." = "dirb : ce n'est pas une URL.";
 "dirb: the host is not answering at all — called off." = "dirb : l'hôte ne répond pas du tout — annulé.";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel : [%@] %@ — arrêté.";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps' liste la table du kernel.";
 "kill: no live process %@." = "kill : aucun processus vivant %@.";
-"knock needs a host — 'knock 192.168.4.1'." = "knock a besoin d'un hôte — 'knock 192.168.4.1'.";
+"knock needs a host — 'knock 192.168.1.1'." = "knock a besoin d'un hôte — 'knock 192.168.1.1'.";
 "knock runs live — it cannot be piped or captured." = "knock tourne en direct — impossible à piper ou capturer.";
 "knocking on %@ doors at %@ — anything but 404 is news" = "on frappe à %@ portes sur %@ — tout sauf 404 est une nouvelle";
 "limits — what this room honestly cannot do:" = "limits — ce que cette pièce ne peut honnêtement pas faire :";
@@ -2874,7 +2874,7 @@
 "connected" = "connecté";
 "device" = "appareil";
 "diagnose: %@/%@ — %@" = "diagnostic : %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb exige une URL — 'dirb http://192.168.4.1'.";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb exige une URL — 'dirb http://192.168.1.1'.";
 "down" = "déconnecté";
 "factory write community live" = "communauté d'écriture d'usine active";
 "features ride at their defaults." = "les fonctions restent à leurs valeurs par défaut.";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "Ses refus sont des lectures, pas des humeurs. Une macro qui « n’est pas prête » nomme son premier bloc pas prêt et pourquoi — une charge absente du livre, une cible qui ne s’analyse pas — parce qu’une playlist qui tourne à moitié est pire qu’une qui ne démarre jamais. Une main qui dit qu’un organe « ne m’a pas encore atteinte » signifie que son onglet n’a pas été ouvert depuis le lancement ; l’ouvrir une fois le câble pour la session. Une capacité qui se lit comme une limite de la plateforme — NFC sur une équipe gratuite — se lira pareil demain ; elle ne laisse pas l’opérateur la pourchasser comme un bug.";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "Tenez un tag contre le téléphone et le recensement le lit : type, identifiant, technologies, le NDEF qu’il porte, et les réponses APDU qu’un tag ISO 7816 donnera à un explorateur. Il lit et identifie — il n’écrit ni ne clone jamais ; l’enregistrement d’une lecture reste dans la pièce.";
 "Home network hardening — the NSA's sheet" = "Durcissement du réseau domestique — la fiche de la NSA";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "Les fils domestiques sont presque toujours un /24 : 254 adresses sous un préfixe, la passerelle en .1 (l’eero ici), le broadcast en .255 où un cri atteint chaque hôte à la fois. L’adresse propre du téléphone sur ce fil est 192.168.4.20. Un sweep parcourt les 254 et frappe un port sur chacun — un recensement, pas un matraquage. Quitter le /24 change entièrement les règles : les cibles distantes sont les réseaux d’autres gens, et la charte dans À propos s’applique.";
 "Housekeeping — clears and folds" = "Ménage — effacements et pliages";
 "How operators actually phrase orders" = "Comment les opérateurs formulent vraiment les ordres";
 "How the exams are actually passed" = "Comment les examens se réussissent vraiment";
@@ -3915,7 +3914,7 @@
 "But I can " = "Mais je peux ";
 "Called off — the Netbomb stays in the rack." = "Annulé — la Netbomb reste dans le râtelier.";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "Défi envoyé à %@ — le défenseur doit servir avec sa salle War Games ouverte. Quand READY arrivera, la manche se règle depuis la salle War Games dans l'onglet Send.";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "Défier qui ? Donne-moi l'adresse du défenseur — challenge 192.168.4.31.";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "Défier qui ? Donne-moi l'adresse du défenseur — challenge 192.168.1.31.";
 "Currently wearing %@. The rack holds: %@." = "Je porte actuellement %@. Le râtelier contient : %@.";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "Défense réglée : %@ des portes de Serve tenues pour vraies, %@ leurres en vol";
 "Deleted “%@”." = "« %@ » supprimé.";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@ : terminé, %lld blocs sur %lld.";
 "%@: stopped." = "%@ : arrêté.";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 ou passerelle";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 ou phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 ou passerelle";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 ou phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "Trace complète sur le périmètre en cours, puis le signal de fin.";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "Un poste, pas un test : la maison éteinte, furtivité active, l'oreille ouverte — et il finit exactement ainsi, par conception.";
 "A watch is already running — left as it was." = "Une surveillance tourne déjà — laissée telle quelle.";
