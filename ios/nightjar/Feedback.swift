@@ -461,6 +461,15 @@ enum BootMedia {
     static func isGIF(_ data: Data) -> Bool {
         data.starts(with: [0x47, 0x49, 0x46, 0x38])
     }
+
+    /// True when the bytes are a real video file:
+    /// an ISO media box carries "ftyp" at offset
+    /// four. The Mac's own boot film is one.
+    static func isVideo(_ data: Data) -> Bool {
+        data.count > 8
+            && data[4] == 0x66 && data[5] == 0x74
+            && data[6] == 0x79 && data[7] == 0x70
+    }
 }
 
 /// The boot's subtitle: not a fixed seal but a
@@ -1365,6 +1374,16 @@ struct BootView: View {
                             filmPlayer(data: data)
                                 .ignoresSafeArea()
                         }
+                } else if BootMedia.isVideo(data) {
+                    // Real video — the Mac's own boot
+                    // film. Only the Mac's player can
+                    // ride it (its AVPlayer road); the
+                    // phone's player speaks GIF alone,
+                    // so there these bytes show
+                    // nothing, exactly as they did
+                    // before this branch existed.
+                    filmPlayer(data: data)
+                        .ignoresSafeArea()
                 } else if let image = UIImage(
                     data: data) {
                     Image.platformImage(image)
