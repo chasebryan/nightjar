@@ -55,11 +55,18 @@ final class CompassSource: NSObject, ObservableObject,
 
     func locationManagerDidChangeAuthorization(
         _ manager: CLLocationManager) {
+#if os(iOS)
         if manager.authorizationStatus == .authorizedWhenInUse
             || manager.authorizationStatus == .authorizedAlways {
             authorized = true
             begin()
         }
+#else
+        if manager.authorizationStatus == .authorizedAlways {
+            authorized = true
+            begin()
+        }
+#endif
     }
 
     func locationManager(_ manager: CLLocationManager,

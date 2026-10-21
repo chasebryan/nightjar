@@ -446,7 +446,7 @@ struct DeliveriesView: View {
             .skelliSheetList()
             .navigationTitle(L("Deliveries"))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .houseLeading) {
                     EditButton()
                 }
                 ToolbarItem(

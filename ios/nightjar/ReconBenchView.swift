@@ -342,7 +342,7 @@ struct ReconBenchView: View {
             .searchable(text: $presetFilter)
             .navigationTitle(L("Protocol library"))
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Done")) { showPresets = false }
                 }
             }

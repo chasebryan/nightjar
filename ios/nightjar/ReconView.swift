@@ -1973,7 +1973,7 @@ struct ScanView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $mapShown) {
+        .houseFullScreenCover(isPresented: $mapShown) {
             MapView(model: model)
         }
         .sheet(item: $dossierSheet) { presentation in

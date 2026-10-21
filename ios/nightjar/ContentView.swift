@@ -1034,16 +1034,16 @@ struct SessionsView: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Sessions"))
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .houseLeading) {
                     EditButton()
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button { reload() } label: { Image(systemName: "arrow.clockwise") }
                 }
 #if os(iOS)
                 if editMode?.wrappedValue.isEditing == true,
                    selectedDeletableCount > 0 {
-                    ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .houseBottom) {
                         Button(String(format: L("Delete selected (%lld)"), selectedDeletableCount),
                                role: .destructive) {
                             deleteSelected()
@@ -1052,7 +1052,7 @@ struct SessionsView: View {
                 }
 #else
                 if selectedDeletableCount > 0 {
-                    ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .houseBottom) {
                         Button(String(format: L("Delete selected (%lld)"), selectedDeletableCount),
                                role: .destructive) {
                             deleteSelected()
@@ -1680,7 +1680,7 @@ struct SupportView: View {
         }
         .navigationTitle(L("Support"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .houseToolbarColorScheme()
     }
 }
 #endif

@@ -230,7 +230,7 @@ struct HelmView: View {
             }
             .navigationTitle(L("The Helm"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Menu {
                         Button(L("New remote")) {
                             Haptics.tap()

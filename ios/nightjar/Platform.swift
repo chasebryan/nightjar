@@ -242,6 +242,13 @@ enum TextInputAutocapitalization {
     case never, words, sentences, characters
 }
 
+/// The edit toggle: on the Mac the lists select
+/// with the pointer and the delete bar answers to
+/// the selection, so the toggle itself stands down
+/// to nothing.
+struct EditButton: View {
+    var body: some View { EmptyView() }
+}
 
 extension View {
     func textInputAutocapitalization(
@@ -297,3 +304,68 @@ extension Image {
     }
 }
 
+// MARK: - Bars and covers, in both houses' spellings
+
+extension ToolbarItemPlacement {
+    /// The bar's leading end: the navigation bar's
+    /// leading slot on the phone, the toolbar's
+    /// navigation area on the Mac.
+    static var houseLeading: ToolbarItemPlacement {
+#if os(macOS)
+        .navigation
+#else
+        .navigationBarLeading
+#endif
+    }
+    /// The bar's trailing end, likewise.
+    static var houseTrailing: ToolbarItemPlacement {
+#if os(macOS)
+        .primaryAction
+#else
+        .navigationBarTrailing
+#endif
+    }
+    /// The bottom bar: a phone bar on iOS, the
+    /// window's status area on the Mac.
+    static var houseBottom: ToolbarItemPlacement {
+#if os(macOS)
+        .status
+#else
+        .bottomBar
+#endif
+    }
+}
+
+extension View {
+    /// The dark bar scheme: the navigation bar on
+    /// the phone, the window toolbar on the Mac.
+    func houseToolbarColorScheme() -> some View {
+#if os(macOS)
+        toolbarColorScheme(.dark, for: .windowToolbar)
+#else
+        toolbarColorScheme(.dark, for: .navigationBar)
+#endif
+    }
+
+    /// A full-screen cover on the phone; on the Mac
+    /// a sheet, which is the window's own full dress.
+    func houseFullScreenCover<C: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: @escaping () -> C) -> some View {
+#if os(macOS)
+        sheet(isPresented: isPresented, content: content)
+#else
+        fullScreenCover(isPresented: isPresented, content: content)
+#endif
+    }
+
+    func houseFullScreenCover<Item: Identifiable, C: View>(
+        item: Binding<Item?>,
+        @ViewBuilder content: @escaping (Item) -> C) -> some View {
+#if os(macOS)
+        sheet(item: item, content: content)
+#else
+        fullScreenCover(item: item, content: content)
+#endif
+    }
+}

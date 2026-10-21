@@ -146,7 +146,7 @@ struct EmconView: View {
         .sheet(item: $proberSelection) { file in
             ProberFileView(file: file)
         }
-        .fullScreenCover(isPresented: $assaultIgnition) {
+        .houseFullScreenCover(isPresented: $assaultIgnition) {
             AssaultIgnitionView(isShown: $assaultIgnition)
         }
         .onChange(of: shareAssaultReport) { wanted in

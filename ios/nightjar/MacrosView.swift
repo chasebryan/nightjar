@@ -150,7 +150,7 @@ struct MacrosView: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Macros"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button {
                         Haptics.tap()
                         var name = "New Macro"
@@ -536,10 +536,10 @@ struct MacroEditorView: View {
                     + draft.id.uuidString)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .houseLeading) {
                 EditButton()
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .houseTrailing) {
                 Button(L("Done")) {
                     Haptics.tap()
                     dismiss()
@@ -891,7 +891,7 @@ struct MacroPaletteSheet: View {
             }
             .navigationTitle(L("Add a block"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Done")) { dismiss() }
                 }
             }
@@ -970,10 +970,10 @@ struct MacroRunCardSheet: View {
             }
             .navigationTitle(L("Run this macro?"))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .houseLeading) {
                     Button(L("Not yet")) { dismiss() }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Run it")) {
                         Haptics.tap()
                         onRun()

@@ -536,8 +536,13 @@ final class FreedoomTrail:
 /// on, so a key can never land twice.
 final class FreedoomKeyWebView: WKWebView {
 
+#if os(iOS)
     override var canBecomeFirstResponder:
         Bool { true }
+#else
+    override var acceptsFirstResponder:
+        Bool { true }
+#endif
 
 #if os(iOS)
     override func didMoveToWindow() {

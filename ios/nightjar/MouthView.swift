@@ -1159,7 +1159,7 @@ struct SendView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button {
                         Haptics.tap()
                         showLog = true
@@ -1185,7 +1185,7 @@ struct SendView: View {
             .sheet(isPresented: $showWarGames) {
                 WarGamesView()
             }
-            .fullScreenCover(isPresented: $showCentipedeSplash) {
+            .houseFullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)
             }
             .sheet(item: $shareItem) { item in
@@ -1974,7 +1974,7 @@ struct LibrarySheet: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Payload library"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Done")) { dismiss() }
                 }
             }
@@ -2005,18 +2005,18 @@ struct MouthLogSheet: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Mouth log"))
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .houseLeading) {
                     Button(L("Clear"), role: .destructive) {
                         Haptics.tap()
                         mouth.clearSendLog()
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Done")) { dismiss() }
                 }
                 if FileManager.default.fileExists(
                     atPath: Mouth.exchangesURL.path) {
-                    ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .houseBottom) {
                         Button {
                             Haptics.tap()
                             shareItem = ShareItem(
@@ -2026,7 +2026,7 @@ struct MouthLogSheet: View {
                                   systemImage: "square.and.arrow.up")
                         }
                     }
-                    ToolbarItem(placement: .bottomBar) {
+                    ToolbarItem(placement: .houseBottom) {
                         Button(role: .destructive) {
                             Haptics.tap()
                             showDeleteConfirm = true
@@ -2214,7 +2214,7 @@ struct ServeView: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Serve"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button {
                         Haptics.tap()
                         showLog = true

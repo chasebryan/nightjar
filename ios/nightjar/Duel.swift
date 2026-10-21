@@ -489,7 +489,7 @@ struct DuelView: View {
             }
             .navigationTitle(L("Duel"))
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .houseTrailing) {
                     Button(L("Done")) { dismiss() }
                 }
             }

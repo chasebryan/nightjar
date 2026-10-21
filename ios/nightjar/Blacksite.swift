@@ -10252,7 +10252,7 @@ struct BlacksiteView: View {
                 shell.programRequest = nil
             }
         }
-        .fullScreenCover(
+        .houseFullScreenCover(
             item: $shell.editorSession
         ) { session in
             BlacksiteEditorView(
@@ -11132,7 +11132,7 @@ private struct BlacksiteFilesProgram: View {
             }
         }
         .listStyle(.plain)
-        .fullScreenCover(isPresented: $showEditor) {
+        .houseFullScreenCover(isPresented: $showEditor) {
             BlacksiteEditorView(
                 path: editPath,
                 personality: .vim,
