@@ -2142,7 +2142,7 @@
 "She knows it now." = "她现在知道了。";
 "Skelli's crew" = "Skelli 的团队";
 "Stealth only" = "仅隐匿";
-"Sweep — port %@" = "横扫 — 端口 %@";
+"Sweep — port %lld" = "横扫 — 端口 %lld";
 "That target does not parse: %@" = "该目标无法解析:%@";
 "The GATT host already wears “%@”." = "GATT 主机已经穿着“%@”。";
 "The beacon already wears “%@”." = "信标已经穿着“%@”。";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "作战室,敲门中";
 "War Room, tracing" = "作战室,追踪中";
 "Watch — %@" = "监视 — %@";
-"Watch — port %@" = "监视 — 端口 %@";
+"Watch — port %lld" = "监视 — 端口 %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "正穿着 %@ — 现已上线,在它掌管的每个界面上都入戏。";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "正穿着 %@ — 装扮已就位;等 Serve 或空中器官下次启动时上线。";
 "Write target set: %@ — Send tab" = "写入目标已设定:%@ — 发送标签页";
