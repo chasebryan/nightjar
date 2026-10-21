@@ -170,7 +170,7 @@ struct WarMatchReport: Codable {
 }
 
 /// The peer address out of an inbox peer string
-/// ("192.168.4.20:54321" → "192.168.4.20").
+/// ("192.168.1.20:54321" → "192.168.1.20").
 func warIP(fromPeer peer: String) -> String {
     let parts = peer.split(separator: ":")
     if parts.count == 2,
@@ -934,7 +934,7 @@ struct WarGamesView: View {
         Section(L("Attack")) {
             HStack {
                 Text(L("Defender"))
-                TextField(L("192.168.4.31"), text: $peerIP)
+                TextField(L("192.168.1.31"), text: $peerIP)
                     .font(.body.monospaced())
                     .multilineTextAlignment(.trailing)
                     .autocorrectionDisabled()

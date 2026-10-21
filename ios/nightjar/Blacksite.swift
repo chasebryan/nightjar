@@ -8391,7 +8391,7 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         guard let host = args.first else {
-            emit(L("knock needs a host — 'knock 192.168.4.1'."), .err)
+            emit(L("knock needs a host — 'knock 192.168.1.1'."), .err)
             return
         }
         let ports: [Int]
@@ -8627,7 +8627,7 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             guard let target = target else {
-                emit(L("dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'."),
+                emit(L("dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'."),
                      .err)
                 return
             }
@@ -9914,7 +9914,7 @@ final class BlacksiteShell: ObservableObject {
                   let url = args.first
             else {
                 if args.isEmpty {
-                    emit(L("dirb needs a URL — 'dirb http://192.168.4.1'."), .err)
+                    emit(L("dirb needs a URL — 'dirb http://192.168.1.1'."), .err)
                 }
                 return
             }

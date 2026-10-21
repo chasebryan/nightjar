@@ -68,8 +68,8 @@ final class TomatoMarks: ObservableObject {
             .displayName ?? ip
     }
 
-    /// "the printer (192.168.4.1), the television
-    /// (192.168.4.50)" — the whole marked cast,
+    /// "the printer (192.168.1.1), the television
+    /// (192.168.1.50)" — the whole marked cast,
     /// named as she would name them.
     func listing(store: NeighborhoodStore) -> String {
         marked.sorted().map {

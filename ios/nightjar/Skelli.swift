@@ -5088,7 +5088,7 @@ final class SkelliCenter: ObservableObject {
             + "confirmations; I'll walk you to those. "
             + "I also run the drill ('run the drill') "
             + "and the ear ('start listening'), and I "
-            + "can name a device: 'name 192.168.4.50 "
+            + "can name a device: 'name 192.168.1.50 "
             + "the printer'. Tell me 'remember …' and "
             + "I keep it across conversations. And "
             + "when a question is beyond the house, I "

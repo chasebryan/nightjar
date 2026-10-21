@@ -299,7 +299,7 @@ enum MacroCatalog {
                 MacroField("payload", "Payload",
                            .payloadPicker),
                 MacroField("target", "Target", .text,
-                           placeholder: "192.168.4.31:9000 or phone:Name"),
+                           placeholder: "192.168.1.31:9000 or phone:Name"),
                 MacroField("readReply", "Read the reply",
                            .toggle),
             ]),
@@ -452,7 +452,7 @@ enum MacroCatalog {
             blurb: "Knock a host's doors and wait for the answers.",
             fields: [
                 MacroField("host", "Host", .text,
-                           placeholder: "192.168.4.31 or gateway"),
+                           placeholder: "192.168.1.31 or gateway"),
                 MacroField("ports", "Ports", .text,
                            placeholder: "22, 80, 443"),
                 MacroField("udp", "UDP too", .toggle),
@@ -464,7 +464,7 @@ enum MacroCatalog {
             blurb: "Fuzz a target from the runner's own bench.",
             fields: [
                 MacroField("target", "Target", .text,
-                           placeholder: "192.168.4.31:9000"),
+                           placeholder: "192.168.1.31:9000"),
                 MacroField("count", "Packets", .number,
                            placeholder: "50"),
                 MacroField("length", "Length", .number,
@@ -512,7 +512,7 @@ enum MacroCatalog {
             blurb: "Challenge a defender by address.",
             fields: [
                 MacroField("ip", "Defender address", .text,
-                           placeholder: "192.168.4.31"),
+                           placeholder: "192.168.1.31"),
                 MacroField("port", "Their Serve port",
                            .number, placeholder: "9000"),
                 MacroField("control", "My control port",
