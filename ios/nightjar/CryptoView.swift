@@ -80,6 +80,7 @@ struct CryptoView: View {
             // black while tabs that paint their own
             // backdrop played). Same recipe as Knocktalk.
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("Vault"))
             .onAppear {

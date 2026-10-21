@@ -123,6 +123,7 @@ struct KnockChatView: View {
                 housekeepingSection
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("Knocktalk"))
             .onAppear {

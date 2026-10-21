@@ -126,6 +126,7 @@ struct EmconView: View {
         // Vault sat black for trusting it). Same recipe
         // as the tabs that play.
         .scrollContentBackground(.hidden)
+        .macColumn(880)
         .background { AppBackdrop() }
         .sheet(isPresented: $showMind) {
             SubconsciousView()

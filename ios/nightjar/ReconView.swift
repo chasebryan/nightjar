@@ -1919,6 +1919,7 @@ struct ScanView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("Scan"))
             .onAppear {

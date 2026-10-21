@@ -66,6 +66,7 @@ struct ReconBenchView: View {
                 librarySection
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("Recon"))
             .onAppear {

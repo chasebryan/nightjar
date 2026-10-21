@@ -1133,6 +1133,7 @@ struct SessionsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("Sessions"))
             .toolbar {
@@ -1635,6 +1636,7 @@ struct AboutView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .macColumn(880)
             .background { AppBackdrop() }
             .navigationTitle(L("About"))
             .sheet(isPresented: $showColours) {
