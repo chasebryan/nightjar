@@ -15,6 +15,8 @@ import AppKit
 extension Notification.Name {
     static let houseNavigate = Notification.Name(
         "house.navigate")
+    static let houseReplayBoot = Notification.Name(
+        "house.replayBoot")
 }
 
 // MARK: - The knowledge

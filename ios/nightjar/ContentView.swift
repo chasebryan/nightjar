@@ -398,6 +398,13 @@ struct ContentView: View {
             tab = target
         }
     }
+    .onReceive(NotificationCenter.default.publisher(
+        for: .houseReplayBoot)) { _ in
+        // The developer bench's party trick:
+        // run the ceremony again without
+        // relaunching the house.
+        showBoot = true
+    }
     .onChange(of: tab) { newTab in
         UserDefaults.standard.set(
             newTab, forKey: "house.lastTab")
@@ -1730,38 +1737,51 @@ struct MacSidebar: View {
     @ObservedObject private var themes =
         ThemeCenter.shared
 
-    private var sections: [(tag: Int, label: String,
-                             icon: String)] {
-        [(9, L("Skelli"), "brain.head.profile"),
-         (0, L("Listen"),
-          "dot.radiowaves.left.and.right"),
-         (1, L("Send"), "paperplane"),
-         (2, L("Serve"), "tray.and.arrow.down"),
-         (5, L("About"), "info.circle"),
-         (12, L("Blacksite"), "terminal.fill"),
-         (3, L("Sessions"),
-          "list.bullet.rectangle"),
-         (4, L("Scan"), "scope"),
-         (6, L("Recon"), "target"),
-         (7, L("EMCON"), "shield"),
-         (8, L("Knocktalk"),
-          "message.badge.waveform"),
-         (10, L("Macros"),
-          "puzzlepiece.extension.fill"),
-         (11, L("Vault"), "lock.fill")]
+    private struct Room: Identifiable {
+        let tag: Int
+        let label: String
+        let icon: String
+        var id: Int { tag }
+    }
+
+    private var sections: [Room] {
+        [Room(tag: 9, label: L("Skelli"),
+              icon: "brain.head.profile"),
+         Room(tag: 0, label: L("Listen"),
+              icon: "dot.radiowaves.left.and.right"),
+         Room(tag: 1, label: L("Send"),
+              icon: "paperplane"),
+         Room(tag: 2, label: L("Serve"),
+              icon: "tray.and.arrow.down"),
+         Room(tag: 5, label: L("About"),
+              icon: "info.circle"),
+         Room(tag: 12, label: L("Blacksite"),
+              icon: "terminal.fill"),
+         Room(tag: 3, label: L("Sessions"),
+              icon: "list.bullet.rectangle"),
+         Room(tag: 4, label: L("Scan"),
+              icon: "scope"),
+         Room(tag: 6, label: L("Recon"),
+              icon: "target"),
+         Room(tag: 7, label: L("EMCON"),
+              icon: "shield"),
+         Room(tag: 8, label: L("Knocktalk"),
+              icon: "message.badge.waveform"),
+         Room(tag: 10, label: L("Macros"),
+              icon: "puzzlepiece.extension.fill"),
+         Room(tag: 11, label: L("Vault"),
+              icon: "lock.fill")]
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(sections, id: \.tag) { s in
+                ForEach(sections) { room in
                     Button {
-                        tab = s.tag
+                        tab = room.tag
                     } label: {
-                        Label(s.label,
-                              systemImage: s.icon)
-                            .font(.system(.body,
-                                          design: .default))
+                        Label(room.label,
+                              systemImage: room.icon)
                             .frame(maxWidth: .infinity,
                                    alignment: .leading)
                             .padding(.vertical, 5)
@@ -1769,11 +1789,11 @@ struct MacSidebar: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(
-                        tab == s.tag
+                        tab == room.tag
                             ? themes.current.accent
                             : Color.primary)
                     .background(
-                        tab == s.tag
+                        tab == room.tag
                             ? themes.current.accent
                                 .opacity(0.16)
                             : Color.clear,

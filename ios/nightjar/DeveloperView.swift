@@ -656,6 +656,9 @@ struct DeveloperSheet: View {
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
                 }
+#if os(macOS)
+                MacBenchSection()
+#endif
                 if !records.isEmpty {
                     Section(header: Text(
                         L("Crash records"))) {
@@ -932,3 +935,191 @@ private struct GauntletLogView: View {
         }
     }
 }
+
+#if os(macOS)
+/// The Mac bench: the developer console's own
+/// instruments for the laptop build, kept in the
+/// console's pattern — the facts first, then the
+/// acts. It exists because the laptop's failures
+/// were fabric failures: an icon the catalog
+/// never carried, a film the bundle never held,
+/// a boot that cut its own film short. Fabric
+/// should be checkable from inside the house, in
+/// one glance. The audit's two working acts live
+/// here as well: walk to any room without
+/// hunting for a tab strip the Mac never drew,
+/// and run the boot ceremony again on demand.
+private struct MacBenchSection: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var filmLength = "…"
+
+    private struct Room: Identifiable {
+        let tag: Int
+        let name: String
+        var id: Int { tag }
+    }
+
+    private static let rooms: [Room] = [
+        Room(tag: 9, name: "Skelli"),
+        Room(tag: 0, name: "Listen"),
+        Room(tag: 1, name: "Send"),
+        Room(tag: 2, name: "Serve"),
+        Room(tag: 5, name: "About"),
+        Room(tag: 12, name: "Blacksite"),
+        Room(tag: 3, name: "Sessions"),
+        Room(tag: 4, name: "Scan"),
+        Room(tag: 6, name: "Recon"),
+        Room(tag: 7, name: "EMCON"),
+        Room(tag: 8, name: "Knocktalk"),
+        Room(tag: 10, name: "Macros"),
+        Room(tag: 11, name: "Vault")]
+
+    private var windowText: String {
+        guard let window = NSApp.keyWindow
+            ?? NSApp.mainWindow else { return "—" }
+        let frame = window.frame
+        return "\(Int(frame.width)) × \(Int(frame.height))"
+    }
+
+    private var displayText: String {
+        guard let screen = NSScreen.main
+        else { return "—" }
+        return "\(Int(screen.frame.width)) × "
+            + "\(Int(screen.frame.height)) · "
+            + String(format: "%.1f×",
+                     screen.backingScaleFactor)
+    }
+
+    private var roomText: String {
+        let tag = UserDefaults.standard
+            .object(forKey: "house.lastTab") as? Int
+        guard let room = Self.rooms
+            .first(where: { $0.tag == tag })
+        else { return "—" }
+        return L(room.name)
+    }
+
+    /// One thread of the fabric: the file's
+    /// weight in the bundle, or the word that
+    /// names its absence — the two states this
+    /// week taught the house to tell apart at a
+    /// glance.
+    private func fabric(_ name: String,
+                        _ ext: String)
+        -> (text: String, ok: Bool) {
+        guard let url = Bundle.main.url(
+            forResource: name, withExtension: ext),
+            let attrs = try? FileManager.default
+                .attributesOfItem(atPath: url.path),
+            let size = attrs[.size] as? NSNumber
+        else { return (L("missing"), false) }
+        return (ByteCountFormatter.string(
+            fromByteCount: size.int64Value,
+            countStyle: .file), true)
+    }
+
+    private var iconText: (text: String, ok: Bool) {
+        if let name = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleIconName")
+            as? String, !name.isEmpty {
+            return (name, true)
+        }
+        return (L("missing"), false)
+    }
+
+    var body: some View {
+        Section(header: Text(L("The Mac bench"))) {
+            LabeledContent(L("Window"),
+                           value: windowText)
+            LabeledContent(L("Display"),
+                           value: displayText)
+            LabeledContent(L("Room"),
+                           value: roomText)
+            LabeledContent(L("App icon")) {
+                Text(iconText.text)
+                    .foregroundStyle(
+                        iconText.ok
+                            ? Color.secondary
+                            : Color.red)
+            }
+            LabeledContent(L("Mac boot film")) {
+                let film = fabric("boot-reel-mac",
+                                  "mp4")
+                Text(film.text)
+                    .foregroundStyle(
+                        film.ok
+                            ? Color.secondary
+                            : Color.red)
+            }
+            LabeledContent(L("Phone boot film")) {
+                let film = fabric("boot-reel", "gif")
+                Text(film.text)
+                    .foregroundStyle(
+                        film.ok
+                            ? Color.secondary
+                            : Color.red)
+            }
+            LabeledContent(L("Catalog")) {
+                let car = fabric("Assets", "car")
+                Text(car.text)
+                    .foregroundStyle(
+                        car.ok
+                            ? Color.secondary
+                            : Color.red)
+            }
+            LabeledContent(L("Boot film length"),
+                           value: filmLength)
+            Button(L("Replay the boot")) {
+                Haptics.tap()
+                dismiss()
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.4) {
+                    NotificationCenter.default.post(
+                        name: .houseReplayBoot,
+                        object: nil)
+                }
+            }
+            Menu {
+                ForEach(Self.rooms) { room in
+                    Button(L(room.name)) {
+                        dismiss()
+                        DispatchQueue.main
+                            .asyncAfter(
+                                deadline: .now()
+                                    + 0.4) {
+                            NotificationCenter
+                                .default.post(
+                                    name: .houseNavigate,
+                                    object: nil,
+                                    userInfo:
+                                        ["tab":
+                                            room.tag])
+                        }
+                    }
+                }
+            } label: {
+                Label(L("Walk to a room"),
+                      systemImage: "figure.walk")
+            }
+        }
+        .onAppear {
+            Task {
+                if let url = Bundle.main.url(
+                    forResource: "boot-reel-mac",
+                    withExtension: "mp4"),
+                   let data = try? Data(
+                    contentsOf: url),
+                   let seconds = await
+                    BootFilmMeasure.videoSeconds(
+                        for: data) {
+                    filmLength = String(
+                        format: L("%.1f seconds"),
+                        seconds)
+                } else {
+                    filmLength = "—"
+                }
+            }
+        }
+    }
+}
+#endif
