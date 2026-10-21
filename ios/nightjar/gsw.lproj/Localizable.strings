@@ -2142,7 +2142,7 @@
 "She knows it now." = "Sie weiss es jetz.";
 "Skelli's crew" = "Skellis Crew";
 "Stealth only" = "Nur Stealth";
-"Sweep — port %@" = "Sweep — Port %@";
+"Sweep — port %lld" = "Sweep — Port %lld";
 "That target does not parse: %@" = "Das Ziil lot sech ned parse: %@";
 "The GATT host already wears “%@”." = "De GATT-Host treit scho “%@”.";
 "The beacon already wears “%@”." = "De Beacon treit scho “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "Chriegsruum, am Chlopfe";
 "War Room, tracing" = "Chriegsruum, am Verfolge";
 "Watch — %@" = "Wach — %@";
-"Watch — port %@" = "Wach — Port %@";
+"Watch — port %lld" = "Wach — Port %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Treit d %@ — jetz live, i de Rolle uf jedere Oberflächi, wo ihre ghört.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Treit d %@ — s Gwand esch parat; es wird live, wenn Serve oder d Luft-Organ s nöchschte Mol starte.";
 "Write target set: %@ — Send tab" = "Schriibziil gsetzt: %@ — Send-Tab";
