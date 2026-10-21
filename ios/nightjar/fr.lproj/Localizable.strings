@@ -2142,7 +2142,7 @@
 "She knows it now." = "Elle le sait maintenant.";
 "Skelli's crew" = "L'équipe de Skelli";
 "Stealth only" = "Furtif seulement";
-"Sweep — port %@" = "Balayage — port %@";
+"Sweep — port %lld" = "Balayage — port %lld";
 "That target does not parse: %@" = "Cette cible ne s'analyse pas : %@";
 "The GATT host already wears “%@”." = "L'hôte GATT porte déjà “%@”.";
 "The beacon already wears “%@”." = "La balise porte déjà “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, frappes";
 "War Room, tracing" = "War Room, traçage";
 "Watch — %@" = "Surveillance — %@";
-"Watch — port %@" = "Surveillance — port %@";
+"Watch — port %lld" = "Surveillance — port %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Vous portez %@ — en direct maintenant, dans le personnage sur chaque surface qu'elle contrôle.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Vous portez %@ — la tenue est en place ; elle devient active quand Serve ou les organes de l'air démarrent.";
 "Write target set: %@ — Send tab" = "Cible d'écriture définie : %@ — onglet Send";
