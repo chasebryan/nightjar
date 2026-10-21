@@ -6027,3 +6027,4 @@
 "%@ address(es) collected: %@. The list is filed in Deliveries." = "已收集 %@ 个地址:%@。列表已存入 Deliveries。";
 "Collected addresses" = "已收集的地址";
 "Use a collected address" = "使用已收集的地址";
+"\n…the rest is filed in Deliveries." = "\n…其余部分已存入 Deliveries。";
