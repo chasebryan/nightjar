@@ -61,6 +61,36 @@ final class KernelCancel {
     }
 }
 
+/// A resettable stop flag for the wire
+/// work: the console's `stop` word trips
+/// it, a fresh wire command resets it,
+/// and the long commands check it between
+/// steps — the same one-way shape as
+/// KernelCancel, but a new run earns a
+/// new word.
+final class ConsoleStop {
+    private let lock = NSLock()
+    private var flag = false
+
+    var isTripped: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return flag
+    }
+
+    func trip() {
+        lock.lock()
+        flag = true
+        lock.unlock()
+    }
+
+    func reset() {
+        lock.lock()
+        flag = false
+        lock.unlock()
+    }
+}
+
 /// A kill switch whose hook is installed
 /// by whatever runs the process — the
 /// kernel fires it, the runner decides

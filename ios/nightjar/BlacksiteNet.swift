@@ -367,7 +367,9 @@ enum BlacksiteNet {
                      emit: @escaping
                         BlacksiteEmit,
                      done: @escaping ()
-                        -> Void) {
+                        -> Void,
+                     stopped: @escaping
+                        () -> Bool = { false }) {
         run {
             guard let resolved = resolve4(
                 host) else {
@@ -390,6 +392,7 @@ enum BlacksiteNet {
             var received = 0
             var times: [Double] = []
             for seq in 0..<count {
+                if stopped() { break }
                 var target = resolved.addr
                 target.sin_port = 0
                 let packet = echoPacket(
@@ -446,7 +449,8 @@ enum BlacksiteNet {
     static func traceroute(
         host: String,
         emit: @escaping BlacksiteEmit,
-        done: @escaping () -> Void) {
+        done: @escaping () -> Void,
+        stopped: @escaping () -> Bool = { false }) {
         run {
             guard let resolved = resolve4(
                 host) else {
@@ -469,6 +473,7 @@ enum BlacksiteNet {
             var seq: UInt16 = 0
             var reached = false
             for hop in 1...30 {
+                if stopped() { break }
                 var ttl = Int32(hop)
                 setsockopt(
                     fd, IPPROTO_IP, IP_TTL,

@@ -74,9 +74,39 @@ final class BlacksiteShell: ObservableObject {
     /// it is echoed as bullets, never as
     /// itself (netadmin cred, 2026-10-20).
     private var secretWaiter = false
+    /// How the current waiter is released
+    /// WITHOUT an answer: the stop word
+    /// fires this instead of feeding the
+    /// waiting program or prompt a line.
+    /// (askSecret's release answers "" —
+    /// every asker reads that as "nothing
+    /// typed, nothing kept".)
+    private var waiterRelease: (() -> Void)?
 
     private let scanner = ScanModel()
     private let recon = Recon()
+    /// The stop word's token: tripped by
+    /// `stop`, reset by every fresh wire
+    /// command, and handed to the long ones
+    /// as the check they read between steps.
+    private let stopToken = ConsoleStop()
+    /// Set by the stop word; the scan /
+    /// knock / census hands read it when
+    /// their work unwinds, and keep their
+    /// result lines to themselves.
+    private var workStopped = false
+    /// The SSH session this room opened,
+    /// if one stands — the stop word
+    /// disconnects it.
+    private var activeSSHClient: SSHClient?
+
+    /// The check the wire commands read:
+    /// has the operator said stop?
+    var stopCheck: () -> Bool {
+        { [weak self] in
+            self?.stopToken.isTripped ?? true
+        }
+    }
     private var history: [String] = []
     private var booted = false
 
@@ -181,7 +211,7 @@ final class BlacksiteShell: ObservableObject {
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom",
         "theme", "haptics", "skelli", "open",
-        "halt", "pwd", "cd", "ls", "mkdir",
+        "halt", "stop", "pwd", "cd", "ls", "mkdir",
         "touch", "cat", "echo", "cp", "mv",
         "rm", "tree", "head", "tail", "wc",
         "grep", "find", "stat",
@@ -421,8 +451,27 @@ final class BlacksiteShell: ObservableObject {
     /// One interactive line: echoed,
     /// remembered, executed.
     func run(_ raw: String) {
+        // The stop word stands above every
+        // other door in the room: it is never
+        // a program's input, never a secret,
+        // and never a command queued behind
+        // the work it is stopping.
+        let word = raw.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+            .lowercased()
+        if word == "stop" || word == "stop all" {
+            emit("▸ " + word, .cmd)
+            history.append(word)
+            if history.count > 200 {
+                history.removeFirst(
+                    history.count - 200)
+            }
+            stopCurrentWork()
+            return
+        }
         if let waiter = inputWaiter {
             inputWaiter = nil
+            waiterRelease = nil
             let typed = raw
                 .trimmingCharacters(
                     in: .newlines)
@@ -462,6 +511,7 @@ final class BlacksiteShell: ObservableObject {
         emit(prompt, .sys)
         secretWaiter = true
         inputWaiter = answer
+        waiterRelease = { answer("") }
     }
 
     /// Block the calling (background) thread for one
@@ -478,6 +528,10 @@ final class BlacksiteShell: ObservableObject {
             }
             self.inputWaiter = { typed in
                 answer = typed
+                gate.signal()
+            }
+            self.waiterRelease = {
+                answer = nil
                 gate.signal()
             }
         }
@@ -2863,6 +2917,8 @@ final class BlacksiteShell: ObservableObject {
             ask(args)
         case "open":
             open(args)
+        case "stop":
+            stopCurrentWork()
         case "halt", "standdown":
             BlacksiteKernel.shared.killAll(
                 reason: "halted by the "
@@ -3046,7 +3102,8 @@ final class BlacksiteShell: ObservableObject {
                         targetIP: targetQ,
                         gearIP: gearFinal,
                         community: communityQ,
-                        down: downQ)
+                        down: downQ,
+                        stopped: self.stopCheck)
                 for line in lines {
                     emit(line, .out)
                 }
@@ -3867,6 +3924,68 @@ final class BlacksiteShell: ObservableObject {
             .hasForegroundLive
     }
 
+    /// The stop word (the operator's order,
+    /// 2026-10-21): whatever this room is
+    /// doing, it stops. The kernel's
+    /// programs are killed; the sweep and
+    /// the knock hand are stood down; the
+    /// wire commands are told through the
+    /// token they check between steps; a
+    /// program parked in input() is let go
+    /// (its cancel is set first, so the
+    /// release reads as EOF); a prompt
+    /// waiting on a secret is answered with
+    /// nothing, which every asker reads as
+    /// "nothing kept"; an open SSH session
+    /// is disconnected. The house itself is
+    /// untouched — that is `halt`'s word.
+    private func stopCurrentWork() {
+        let kernelLive = BlacksiteKernel
+            .shared.snapshot()
+            .contains { $0.isLive }
+        let working = busy || kernelLive
+            || scanner.sweeping
+            || recon.knocking
+            || inputWaiter != nil
+            || MacroRunner.shared.running
+            || activeSSHClient != nil
+        stopToken.trip()
+        workStopped = true
+        BlacksiteKernel.shared.killAll(
+            reason: "stopped by the operator")
+        if scanner.sweeping {
+            scanner.stopSweep()
+        }
+        if recon.knocking {
+            recon.cancelKnock()
+        }
+        if MacroRunner.shared.running {
+            MacroRunner.shared.stop()
+        }
+        BlacksitePentest.cancelBonjour()
+        if let client = activeSSHClient {
+            activeSSHClient = nil
+            client.disconnect()
+        }
+        if let release = waiterRelease {
+            waiterRelease = nil
+            inputWaiter = nil
+            secretWaiter = false
+            release()
+        } else if let waiter = inputWaiter {
+            inputWaiter = nil
+            secretWaiter = false
+            waiter("")
+        }
+        setConstructBuffer(nil)
+        if working {
+            emit(L("stopped — the room is yours again."),
+                 .ok)
+        } else {
+            emit(L("nothing is running."), .sys)
+        }
+    }
+
     /// A process's own output door: the
     /// kernel counts every line, and past
     /// the quota the door closes.
@@ -3908,9 +4027,16 @@ final class BlacksiteShell: ObservableObject {
                     answer = typed
                     gate.signal()
                 }
+                self.waiterRelease = {
+                    answer = nil
+                    gate.signal()
+                }
             }
             gate.wait()
             kernel.markWaiting(proc, false)
+            if proc.cancel.isCancelled {
+                return nil
+            }
             return answer
         }
     }
@@ -3950,7 +4076,7 @@ final class BlacksiteShell: ObservableObject {
                 BlacksiteKernel.shared.finish(
                     proc, note: "done")
                 if !background {
-                    self?.inputWaiter = nil
+                    self?.inputWaiter = nil; self?.waiterRelease = nil
                 }
                 self?.updateBusy()
                 latch.signal()
@@ -4031,7 +4157,7 @@ final class BlacksiteShell: ObservableObject {
                         .finish(proc,
                                 note: "done")
                     if !background {
-                        self?.inputWaiter = nil
+                        self?.inputWaiter = nil; self?.waiterRelease = nil
                     }
                     self?.updateBusy()
                     latch.signal()
@@ -4560,6 +4686,7 @@ final class BlacksiteShell: ObservableObject {
                 ("skelli <words>", L("ask her — she answers in her room")),
                 ("open <tab>", L("go to a tab")),
                 ("halt", L("stop everything, now")),
+                ("stop", L("stop whatever is running in this room — a sweep, a knock, a walk, a program")),
             ]),
             (L("the wire"), [
                 ("ping <host> [-c n]", L("ICMP echo, by hand")),
@@ -8357,6 +8484,7 @@ final class BlacksiteShell: ObservableObject {
                  .err)
             return
         }
+        workStopped = false
         scanner.sweep(port: port)
         busy = true
         emit(String(format: L("sweeping the wire on port %@…"), String(describing: port)), .sys)
@@ -8369,6 +8497,7 @@ final class BlacksiteShell: ObservableObject {
             let hosts = self.scanner.sweepHosts
             await MainActor.run {
                 self.busy = false
+                if self.workStopped { return }
                 if hosts.isEmpty {
                     self.emit(String(format: L("the sweep found no one on port %@."), String(describing: port)), .out)
                 } else {
@@ -8424,6 +8553,7 @@ final class BlacksiteShell: ObservableObject {
             emit(L("the knock hand is busy."), .err)
             return
         }
+        workStopped = false
         busy = true
         recon.knock(host: host, ports: ports,
                     udp: false)
@@ -8437,6 +8567,7 @@ final class BlacksiteShell: ObservableObject {
                 .filter { $0.isOpen }
             await MainActor.run {
                 self.busy = false
+                if self.workStopped { return }
                 if hits.isEmpty {
                     self.emit(String(format: L("%@: every door shut."), String(describing: label)), .out)
                 } else {
@@ -8472,10 +8603,12 @@ final class BlacksiteShell: ObservableObject {
             emit(L("the board is empty — nothing to census yet."), .err)
             return
         }
+        workStopped = false
         emit(String(format: L("census of %@ known devices, in turn…"), String(describing: board.count)), .sys)
         Task { [weak self] in
             guard let self = self else { return }
             for neighbor in board.prefix(12) {
+                if self.workStopped { break }
                 if self.recon.knocking { break }
                 let ports = neighbor.ports.isEmpty
                     ? ScanModel.topPorts.map { $0.0 }
@@ -8493,8 +8626,11 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             await MainActor.run {
-                self.emit(L("census complete."),
-                          .sys)
+                if !self.workStopped {
+                    self.emit(
+                        L("census complete."),
+                        .sys)
+                }
             }
         }
     }
@@ -8530,6 +8666,7 @@ final class BlacksiteShell: ObservableObject {
         _ body: @escaping (
             @escaping BlacksiteEmit,
             @escaping () -> Void) -> Void) {
+        stopToken.reset()
         busy = true
         body(Self.netEmit(self)) {
             [weak self] in
@@ -8555,6 +8692,7 @@ final class BlacksiteShell: ObservableObject {
     private func netCommand(
         _ name: String, _ args: [String]) {
         let out = Self.netEmit(self)
+        let stopCheck = self.stopCheck
         switch name {
         case "ifconfig":
             BlacksiteNet.ifconfig(emit: out)
@@ -8592,7 +8730,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteNet.ping(
                     host: host, count: count,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "traceroute", "trace":
             guard netAllowed(name),
@@ -8605,7 +8744,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteNet.traceroute(
                     host: host, emit: emit,
-                    done: done)
+                    done: done,
+                    stopped: stopCheck)
             }
         case "dig":
             guard netAllowed(name) else {
@@ -8882,7 +9022,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.discover(
                     base: base, emit: emit,
-                    done: done)
+                    done: done,
+                    stopped: stopCheck)
             }
         case "portscan", "nmap":
             guard netAllowed(name),
@@ -8933,7 +9074,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.portscan(
                     host: host, ports: ports,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "banner":
             guard netAllowed(name),
@@ -8983,7 +9125,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.subdomains(
                     domain: domain,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "revdns":
             guard netAllowed(name) else {
@@ -9000,7 +9143,8 @@ final class BlacksiteShell: ObservableObject {
                 BlacksitePentest.revdns(
                     base: base,
                     server: server,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "nbstat":
             guard netAllowed(name),
@@ -9036,7 +9180,8 @@ final class BlacksiteShell: ObservableObject {
                 netBusy { emit, done in
                     BlacksitePentest.snmpAudit(
                         host: host,
-                        emit: emit, done: done)
+                        emit: emit, done: done,
+                        stopped: stopCheck)
                 }
                 return
             }
@@ -9068,7 +9213,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.snmpAudit(
                     host: host,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "router":
             netBusy { emit, done in
@@ -9084,7 +9230,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.mndp(
                     seconds: seconds,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "cred":
             let sub = args.first ?? ""
@@ -9355,7 +9502,8 @@ final class BlacksiteShell: ObservableObject {
                     host: host,
                     community: community,
                     root: root,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "snmpset":
             guard netAllowed(name),
@@ -9412,7 +9560,8 @@ final class BlacksiteShell: ObservableObject {
                 BlacksitePentest.snmp3Walk(
                     host: host, user: user,
                     cred: cred, root: root,
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "snmp3set":
             guard netAllowed(name),
@@ -9629,6 +9778,7 @@ final class BlacksiteShell: ObservableObject {
                                    user: user,
                                    passive: passive)
             let wasKnown = client.knownKey != nil
+            activeSSHClient = client
             busy = true
             DispatchQueue.global(
                 qos: .userInitiated).async {
@@ -9638,6 +9788,7 @@ final class BlacksiteShell: ObservableObject {
                 defer {
                     DispatchQueue.main.async {
                         self.busy = false
+                        self.activeSSHClient = nil
                     }
                 }
                 do {
@@ -9854,17 +10005,21 @@ final class BlacksiteShell: ObservableObject {
             }
             netBusy { emit, done in
                 BlacksitePentest.upnp(
-                    emit: emit, done: done)
+                    emit: emit, done: done,
+                    stopped: stopCheck)
             }
         case "bonjour":
             guard netAllowed(name) else {
                 return
             }
+            stopToken.reset()
             busy = true
             BlacksitePentest.bonjour(
-                emit: out) { [weak self] in
-                self?.busy = false
-            }
+                emit: out,
+                done: { [weak self] in
+                    self?.busy = false
+                },
+                stopped: stopCheck)
         case "cert":
             guard netAllowed(name),
                   let host = args.first
@@ -9907,7 +10062,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.methods(
                     urlText: url, emit: emit,
-                    done: done)
+                    done: done,
+                    stopped: stopCheck)
             }
         case "dirb":
             guard netAllowed(name),
@@ -9921,7 +10077,8 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksitePentest.dirb(
                     urlText: url, emit: emit,
-                    done: done)
+                    done: done,
+                    stopped: stopCheck)
             }
         case "wol":
             guard netAllowed(name),
