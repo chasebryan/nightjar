@@ -11468,6 +11468,17 @@ struct BlacksiteView: View {
                 }
                 .padding(10)
             }
+            // The panel's frame is pinned
+            // to the room, never sized by
+            // its content: the rows claim
+            // full width one by one, so an
+            // emptied transcript (clear)
+            // would otherwise fold the
+            // whole terminal into a thin
+            // strip standing in the middle
+            // of the room.
+            .frame(maxWidth: .infinity,
+                   maxHeight: .infinity)
             .background(
                 GeometryReader { geo in
                     ZStack {
