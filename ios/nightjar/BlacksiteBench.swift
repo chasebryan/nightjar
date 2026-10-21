@@ -1600,13 +1600,13 @@ extension BlacksiteBench {
         return open.sorted()
     }
 
-    private static func chain(_ steps: [(BlacksiteEmit, @escaping () -> Void) -> Void], _ i: Int, stopped: @escaping () -> Bool, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+    private static func chain(_ steps: [(@escaping BlacksiteEmit, @escaping () -> Void) -> Void], _ i: Int, stopped: @escaping () -> Bool, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
         if i >= steps.count || stopped() { done(); return }
         steps[i](emit) { chain(steps, i + 1, stopped: stopped, emit: emit, done: done) }
     }
 
-    private static func probeSteps(ip: String, doors: [Int], gateway: Bool) -> [(BlacksiteEmit, @escaping () -> Void) -> Void] {
-        var steps: [(BlacksiteEmit, @escaping () -> Void) -> Void] = []
+    private static func probeSteps(ip: String, doors: [Int], gateway: Bool) -> [(@escaping BlacksiteEmit, @escaping () -> Void) -> Void] {
+        var steps: [(@escaping BlacksiteEmit, @escaping () -> Void) -> Void] = []
         for port in doors {
             switch port {
             case 21: steps.append { e, d in ftpprobe(target: ip, emit: e, done: d) }
@@ -1658,14 +1658,14 @@ extension BlacksiteBench {
                 emit(String(format: L("eazy: %@"), host.ip), .sys)
                 let open = doorScan(ip: host.ip)
                 if open.isEmpty {
-                    emit(L("eazy: no doors answered — nothing to test here."))
+                    say(emit, L("eazy: no doors answered — nothing to test here."))
                     nextHost()
                     return
                 }
-                emit(String(format: L("eazy: doors open: %@"), open.map { String($0) }.joined(separator: ", ")))
+                say(emit, String(format: L("eazy: doors open: %@"), open.map { String($0) }.joined(separator: ", ")))
                 let noted = open.filter { [22, 53, 445, 3306].contains($0) }
                 if !noted.isEmpty {
-                    emit(String(format: L("eazy: noted without a probe of their own: %@"), noted.map { String($0) }.joined(separator: ", ")))
+                    say(emit, String(format: L("eazy: noted without a probe of their own: %@"), noted.map { String($0) }.joined(separator: ", ")))
                 }
                 chain(probeSteps(ip: host.ip, doors: open, gateway: host.gateway), 0, stopped: stopped, emit: emit) {
                     nextHost()
@@ -1693,7 +1693,7 @@ extension BlacksiteBench {
             guard let net = nets.first(where: { $0.ssid == name }) else {
                 emit(String(format: L("eazy: no access point named '%@' is heard from here."), name), .err)
                 if iface.ssid() == nil {
-                    emit(L("eazy: the Mac may be withholding the air — Location permission governs Wi-Fi names on macOS."))
+                    say(emit, L("eazy: the Mac may be withholding the air — Location permission governs Wi-Fi names on macOS."))
                 }
                 done(joined)
                 return
@@ -1722,9 +1722,9 @@ extension BlacksiteBench {
                 emit(L("eazy: a security mode this build does not name — read it in the Wi-Fi menu."), .out)
             }
             if joined {
-                emit(L("eazy: you are standing on it — running the full battery against its network."))
+                say(emit, L("eazy: you are standing on it — running the full battery against its network."))
             } else {
-                emit(L("eazy: grading from the air is all any honest tool can do from outside — to test THROUGH it, join it and run eazy again."))
+                say(emit, L("eazy: grading from the air is all any honest tool can do from outside — to test THROUGH it, join it and run eazy again."))
             }
             done(joined)
         }
