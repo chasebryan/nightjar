@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ хоп %lld/%lld (%@) %@ — цель не разобрать";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ хоп %lld/%lld (%@) %@ — не сетевая цель";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ хоп %lld/%lld (%@) %@ — полезную нагрузку собрать не удалось";
+"The Mac bench" = "Стенд Mac";
+"Window" = "Окно";
+"Display" = "Экран";
+"Catalog" = "Каталог";
+"missing" = "отсутствует";
+"App icon" = "Значок приложения";
+"Mac boot film" = "Фильм загрузки Mac";
+"Phone boot film" = "Фильм загрузки телефона";
+"Boot film length" = "Длительность фильма загрузки";
+"Replay the boot" = "Повторить загрузку";
+"Walk to a room" = "Перейти в комнату";
+"%.1f seconds" = "%.1f с";
