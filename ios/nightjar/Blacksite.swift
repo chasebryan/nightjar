@@ -252,6 +252,16 @@ final class BlacksiteShell: ObservableObject {
         "vncprobe", "rdpprobe", "ftpprobe",
         "smtpprobe", "ldapprobe", "redisprobe",
         "dockerprobe",
+        "headersdeep", "cookieaudit",
+        "cacheprobe", "wafdetect", "techstack",
+        "sitemap", "faviconhash", "httpversion",
+        "hstsprobe", "certprobe", "certchain",
+        "ocspprobe", "redirectchain",
+        "jsendpoints", "swaggerprobe",
+        "oidcprobe", "graphqldeep", "jwtdeep",
+        "compressprobe", "methoddeep",
+        "robotsdeep", "apicensus", "urlextract",
+        "wayback", "corsdeep",
     ]
 
     // MARK: Output
@@ -2889,7 +2899,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4769,6 +4779,31 @@ final class BlacksiteShell: ObservableObject {
                 ("ldapprobe <host>", L("anonymous bind, and what the RootDSE tells strangers")),
                 ("redisprobe <host>", L("one PING — PONG without a password is critical")),
                 ("dockerprobe <host>", L("an unauthenticated Docker API is the host itself")),
+                ("headersdeep <url>", L("every header on the answer, read whole")),
+                ("cookieaudit <url>", L("every cookie, and the flags each keeps or breaks")),
+                ("cacheprobe <url>", L("how caches are told to treat the answer")),
+                ("wafdetect <url>", L("which shield shows its badge on an ordinary knock")),
+                ("techstack <url>", L("the stack, fingerprinted from what the answer gives away")),
+                ("sitemap <url>", L("the house's own map of itself")),
+                ("faviconhash <url>", L("the icon's MurmurHash3 — the badge hunters search by")),
+                ("httpversion <url>", L("which HTTP the house speaks, read off its status lines")),
+                ("hstsprobe <url>", L("the https-only promise — set, long, and honored")),
+                ("certprobe <url>", L("the leaf's papers against the name you knocked on")),
+                ("certchain <url>", L("every paper in the chain, leaf to root")),
+                ("ocspprobe <url>", L("where revocation lives — responder, stapling, must-staple")),
+                ("redirectchain <url>", L("the chain walked hop by hop — downgrades and circles")),
+                ("jsendpoints <url>", L("the API doors the page's own scripts name")),
+                ("swaggerprobe <url>", L("the API's published spec doors")),
+                ("oidcprobe <url>", L("the OpenID discovery document, read whole")),
+                ("graphqldeep <url>", L("the endpoint's manners — schema, suggestions, batching")),
+                ("jwtdeep <token>", L("a token read to the bottom — header edges and claims")),
+                ("compressprobe <url>", L("gzip, deflate, brotli — does the house squeeze")),
+                ("methoddeep <url>", L("the write verbs tried empty-handed on a nothing path")),
+                ("robotsdeep <url>", L("robots.txt graded — and the doors its map advertises")),
+                ("apicensus <url>", L("one answer as an API citizen — limits, pages, challenges")),
+                ("urlextract <url>", L("every road out of the page, sorted")),
+                ("wayback <domain>", L("what the public archive remembers of the house")),
+                ("corsdeep <url>", L("cross-origin, deepened — null origins, subdomains, preflight")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10380,6 +10415,20 @@ final class BlacksiteShell: ObservableObject {
             }
             netBusy { emit, done in
                 BlacksiteBench.benchTwo(
+                    name, target,
+                    emit: emit, done: done)
+            }
+        case "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("the bench tools each want a target."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.benchWeb(
                     name, target,
                     emit: emit, done: done)
             }

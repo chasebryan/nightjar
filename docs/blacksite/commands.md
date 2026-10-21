@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (53)
+## pentest bench (78)
 
 | Command | What it does |
 | --- | --- |
@@ -111,6 +111,31 @@ Every command the console answers to, with the signature it takes and what it do
 | `ldapprobe <host>` | anonymous bind, and what the RootDSE tells strangers |
 | `redisprobe <host>` | one PING — PONG without a password is critical |
 | `dockerprobe <host>` | an unauthenticated Docker API is the host itself |
+| `headersdeep <url>` | every header on the answer, read whole |
+| `cookieaudit <url>` | every cookie, and the flags each keeps or breaks |
+| `cacheprobe <url>` | how caches are told to treat the answer |
+| `wafdetect <url>` | which shield shows its badge on an ordinary knock |
+| `techstack <url>` | the stack, fingerprinted from what the answer gives away |
+| `sitemap <url>` | the house's own map of itself |
+| `faviconhash <url>` | the icon's MurmurHash3 — the badge hunters search by |
+| `httpversion <url>` | which HTTP the house speaks, read off its status lines |
+| `hstsprobe <url>` | the https-only promise — set, long, and honored |
+| `certprobe <url>` | the leaf's papers against the name you knocked on |
+| `certchain <url>` | every paper in the chain, leaf to root |
+| `ocspprobe <url>` | where revocation lives — responder, stapling, must-staple |
+| `redirectchain <url>` | the chain walked hop by hop — downgrades and circles |
+| `jsendpoints <url>` | the API doors the page's own scripts name |
+| `swaggerprobe <url>` | the API's published spec doors |
+| `oidcprobe <url>` | the OpenID discovery document, read whole |
+| `graphqldeep <url>` | the endpoint's manners — schema, suggestions, batching |
+| `jwtdeep <token>` | a token read to the bottom — header edges and claims |
+| `compressprobe <url>` | gzip, deflate, brotli — does the house squeeze |
+| `methoddeep <url>` | the write verbs tried empty-handed on a nothing path |
+| `robotsdeep <url>` | robots.txt graded — and the doors its map advertises |
+| `apicensus <url>` | one answer as an API citizen — limits, pages, challenges |
+| `urlextract <url>` | every road out of the page, sorted |
+| `wayback <domain>` | what the public archive remembers of the house |
+| `corsdeep <url>` | cross-origin, deepened — null origins, subdomains, preflight |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |
