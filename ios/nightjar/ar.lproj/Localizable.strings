@@ -1235,7 +1235,7 @@
 "This house finds things. I keep the list." = "هذا البيت يجد الأشياء. أحتفظ بالقائمة.";
 "This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them." = "هذا صاخب. يُعلن هذا الهاتف لكل جهاز — ولكل مراقب — على الخط. على الشبكات التي ليست لك، يسقط الرد على الطرق هنا.";
 "This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for." = "هذا مصنوع ليُلاحَظ — بكل مقياس إداري على الشبكة: سجلات DHCP والتدفق، وجدول جلسات المتحكّم، ونظام إدارة الشبكة يشاهد مقاييسه ترتفع.";
-"This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "هذا هو nightjar-hack: موقع الاستماع من nightjar، زائد فم. تبويب الاستماع هو النصف النقي — يمسح الإعلانات ويسجّلها ولا يتصل ولا يقترن ولا يرسل أبدًا، تمامًا كالتطبيق الأصلي. تبويبا الإرسال والخدمة هما نصف الاختراق: يبثّان، لكن فقط عندما تضغط أزرارهما، إلى أهداف تكتبها أنت. النصفان لا يتشاركان حالة لاسلكية؛ الأذن تبقى نقية، والفم هو ";
+"This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "هذا هو nightjar: موقع الاستماع من nightjar، زائد فم. تبويب الاستماع هو النصف النقي — يمسح الإعلانات ويسجّلها ولا يتصل ولا يقترن ولا يرسل أبدًا، تمامًا كالتطبيق الأصلي. تبويبا الإرسال والخدمة هما نصف الاختراق: يبثّان، لكن فقط عندما تضغط أزرارهما، إلى أهداف تكتبها أنت. النصفان لا يتشاركان حالة لاسلكية؛ الأذن تبقى نقية، والفم هو ";
 "This network" = "هذه الشبكة";
 "This post" = "هذا الموقع";
 "Throw Your Voice — the ventriloquist" = "ارمِ صوتك — المتكلم من البطن";
@@ -1402,10 +1402,10 @@
 "memcached set" = "memcached set";
 "never" = "أبدًا";
 "new in the house" = "جديدة في المنزل";
-"nightjar-hack" = "nightjar-hack";
-"nightjar-hack for iOS %@ · log format 1" = "nightjar-hack لنظام iOS %@ · صيغة السجل 1";
-"nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar-hack أداة اختبار للأجهزة والشبكات التي تملكها أو التي كُلّفت باختبارها. وجّه كل ما يرسله ويمسحه ويزرعه ويسجّله فقط إلى أهداف مخوّل لك اختبارها. أنت مسؤول عن تخويلك؛ والمؤلف غير مسؤول عن سوء الاستخدام ضد أجهزة أو شبكات لم تكن مخوّلًا لاختبارها.";
-"nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar-hack مجاني، ويبقى مجانيًا في كل الأحوال — كل أداة فيه ملكك أصلًا. لا جدران دفع هنا، ولن تكون أبدًا.";
+"nightjar" = "nightjar";
+"nightjar for iOS %@ · log format 1" = "nightjar لنظام iOS %@ · صيغة السجل 1";
+"nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar أداة اختبار للأجهزة والشبكات التي تملكها أو التي كُلّفت باختبارها. وجّه كل ما يرسله ويمسحه ويزرعه ويسجّله فقط إلى أهداف مخوّل لك اختبارها. أنت مسؤول عن تخويلك؛ والمؤلف غير مسؤول عن سوء الاستخدام ضد أجهزة أو شبكات لم تكن مخوّلًا لاختبارها.";
+"nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar مجاني، ويبقى مجانيًا في كل الأحوال — كل أداة فيه ملكك أصلًا. لا جدران دفع هنا، ولن تكون أبدًا.";
 "no releases published yet" = "لا إصدارات منشورة بعد";
 "not advertised" = "غير مُعلن";
 "open" = "مفتوح";
@@ -2069,7 +2069,7 @@
 " Note: the dress changed while the shape was worn — the restore unwound that too." = " ملاحظة: تغيّر الزيّ بينما كان الشكل ملبوسًا — فكّ الاسترداد ذلك أيضًا.";
 " The revolving rack stands still." = " الرفّ الدوّار يقف ساكنًا.";
 "%@ Kept on your rack." = "%@ محفوظة على رفّك.";
-"%@ is out. Open nightjar-hack to install it." = "صدر %@. افتح nightjar-hack لتثبيته.";
+"%@ is out. Open nightjar to install it." = "صدر %@. افتح nightjar لتثبيته.";
 "%@ — emissions regulated, tripwire armed." = "%@ — البثّ منظَّم، ومصيدة الاقتراب مسلّحة.";
 "%@ — the house is re-regulated." = "%@ — أُعيد تنظيم البيت.";
 "%lld blocks" = "%lld كتلة";
@@ -2174,7 +2174,7 @@
 "an update check" = "فحص تحديث";
 "depth %lld" = "العمق %lld";
 "narrating the /24" = "رواية الـ/24";
-"nightjar-hack · %@ from %@" = "nightjar-hack · %@ من %@";
+"nightjar · %@ from %@" = "nightjar · %@ من %@";
 "on %@.0/24" = "على %@.0/24";
 "planning" = "التخطيط";
 "scope: %@" = "النطاق: %@";
@@ -2512,7 +2512,7 @@
 "; referred to %@" = "; أُحيل إلى %@";
 "; whois %@ via %@" = "; whois %@ عبر %@";
 "; … the rest is boilerplate." = "; … والباقي نص نمطي.";
-"BLACKSITE OS — nightjar-hack %@" = "BLACKSITE OS — nightjar-hack %@";
+"BLACKSITE OS — nightjar %@" = "BLACKSITE OS — nightjar %@";
 "EMCON %@ set." = "تم تعيين EMCON %@.";
 "EMCON forbids the watch under this condition — it stays down." = "يحظر EMCON المراقبة في هذه الحالة — تبقى متوقفة.";
 "EMCON off — the house is open." = "EMCON متوقف — المنزل مفتوح.";
@@ -2884,7 +2884,7 @@
 "is readmitted." = "أُعيد قبوله.";
 "kept — %@@%@ speaks SNMPv3 %@" = "محفوظ — %@@%@ يتحدث SNMPv3 %@";
 "legacy versions live" = "الإصدارات القديمة فعّالة";
-"nightjar-hack %@ on %@ — source %@" = "nightjar-hack %@ على %@ — المصدر %@";
+"nightjar %@ on %@ — source %@" = "nightjar %@ على %@ — المصدر %@";
 "no %@ at %@ answers to “%@”." = "لا %@ عند %@ يرد على “%@”.";
 "no CSP; the browser trusts whatever loads." = "لا CSP؛ المتصفح يثق بكل ما يُحمَّل.";
 "no HSTS; downgrade stays possible." = "لا HSTS؛ التخفيض يبقى ممكنًا.";
@@ -3408,7 +3408,7 @@
 "network gear in " = "معدّات شبكة في ";
 "network-gear name " = "اسم معدّات الشبكة ";
 "never knocked for this page" = "لم يُطرق أبدًا لهذه الصفحة";
-"nightjar-hack phone" = "هاتف nightjar-hack";
+"nightjar phone" = "هاتف nightjar";
 "no answer" = "لا رد";
 "no answer (" = "لا رد (";
 "no known format" = "لا صيغة معروفة";
@@ -3707,7 +3707,7 @@
 "The certifications — the map of the ladder" = "الشهادات — خريطة السلّم";
 "The decoder engine — batteries and evidence" = "محرّك الفكّ — البطاريات والأدلة";
 "The expansion formats" = "صيغ التوسعة";
-"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "المشتبه الأول، دائماً: إذن الشبكة المحلية في iOS — الإعدادات، الخصوصية والأمان، الشبكة المحلية، وnightjar-hack مشغّلة. بدونه يُقرأ السلك فراغاً مهذباً: تنتهي المسوح، ولا شيء يجيب، ولا خطأ يقول لماذا. المشتبه الثاني: الهاتف ليس فعلاً على السلك الذي يظنه — VPN مشغّلة، أو منضم إلى شبكة ضيوف تعزل العملاء بعضهم عن بعض. الثالث: السلك هادئ حقاً. تتحقق بهذا الترتيب وتقول عند أي مشتبه هي.";
+"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "المشتبه الأول، دائماً: إذن الشبكة المحلية في iOS — الإعدادات، الخصوصية والأمان، الشبكة المحلية، وnightjar مشغّلة. بدونه يُقرأ السلك فراغاً مهذباً: تنتهي المسوح، ولا شيء يجيب، ولا خطأ يقول لماذا. المشتبه الثاني: الهاتف ليس فعلاً على السلك الذي يظنه — VPN مشغّلة، أو منضم إلى شبكة ضيوف تعزل العملاء بعضهم عن بعض. الثالث: السلك هادئ حقاً. تتحقق بهذا الترتيب وتقول عند أي مشتبه هي.";
 "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export." = "مكتب الدمج: صفوف الأذن، وإحصاء السلك، ونشاط اليومية، مدَّعاة في سجلّ باعثين واحد — هواء وسلك، وكل ادعاء موسوم بالقناة التي سمعته وأولوية من صيغة منصوصة. مراقبة تسجّل خط أساس، وإيقافها يقرأ الفرق: ما وصل، ما اختفى، أي أبواب تغيّرت. قاعدة واحدة فوق الكل: الباعثون يندمجون فقط داخل حقبة — المكتب لا يخيط غريباً عبر الأيام أبداً، ويقول ذلك على كل تصدير.";
 "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten." = "البيت على لوحة واحدة: تسمّي الغرف وتضع كل جار حيث يجلس الجهاز مادياً؛ العقد تتوهج بحسب الجِدّة، وتحمل انحرافها، وتفتح ملفاتها. الموضع شهادتك — التطبيق يحتفظ بها ولا يخترع موضعاً من عنده أبداً. الخريطة تُصفَّر من قائمة «المزيد» فيها؛ الأجهزة تبقى، والجلوس يُنسى.";
 "The house presets" = "إعدادات البيت المسبقة";
