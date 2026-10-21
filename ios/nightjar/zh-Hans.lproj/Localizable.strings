@@ -6236,3 +6236,6 @@
 "this network" = "本网络";
 "tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: 此设备自身的 TLS 协议栈不提供旧版本 — 无法从这里证明服务器的旧式锁。";
 "%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — 无法从此设备测试:其协议栈改为协商了 %@。";
+"the house answers to %lld commands:" = "这所房子响应 %lld 条命令:";
+"— %@ — %lld commands" = "— %@ — %lld 条命令";
+"help <section> opens one section whole; help <word> searches every command." = "help <章节> 打开整个章节;help <词语> 搜索所有命令。";
