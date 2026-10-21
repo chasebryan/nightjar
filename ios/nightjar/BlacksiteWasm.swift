@@ -173,8 +173,10 @@ final class BlacksiteWasm: NSObject {
             frame: CGRect(x: 0, y: 0,
                           width: 2, height: 2),
             configuration: config)
+#if os(iOS)
         view.isUserInteractionEnabled =
             false
+#endif
         attach(view)
         webView = view
         proc.killSwitch.install {
@@ -206,6 +208,18 @@ final class BlacksiteWasm: NSObject {
     /// at full speed, and one without
     /// may be throttled by the system.
     private func attach(_ view: WKWebView) {
+#if os(macOS)
+        view.alphaValue = 0.02
+        // The Mac's stage is its own key
+        // window's content view — the same
+        // bargain: a window behind the
+        // guest, at full speed.
+        let window = NSApplication.shared
+            .keyWindow
+            ?? NSApplication.shared
+                .windows.first
+        window?.contentView?.addSubview(view)
+#else
         view.alpha = 0.02
         let scenes = UIApplication.shared
             .connectedScenes
@@ -218,6 +232,7 @@ final class BlacksiteWasm: NSObject {
             ?? scenes.flatMap { $0.windows }
                 .first
         window?.addSubview(view)
+#endif
     }
 
     // MARK: The staged room

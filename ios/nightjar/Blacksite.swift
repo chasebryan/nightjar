@@ -10620,24 +10620,8 @@ struct BlacksiteView: View {
                     ForEach(shell.lines) { line in
                         Group {
                             if let image = line.image {
-                                VStack(alignment: .leading,
-                                       spacing: 4) {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(
-                                            maxWidth: 300,
-                                            maxHeight: 300)
-                                        .clipShape(
-                                            RoundedRectangle(
-                                                cornerRadius: 8))
-                                    Text(line.text)
-                                        .font(.system(
-                                            .caption2,
-                                            design: .monospaced))
-                                        .foregroundStyle(
-                                            .secondary)
-                                }
+                                imageCell(image,
+                                          text: line.text)
                             } else {
                                 lineText(line)
                                     // A pointer can
@@ -10699,6 +10683,28 @@ struct BlacksiteView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// A transcript line carrying a picture:
+    /// the frame, capped, with its caption
+    /// under it — lifted out of the transcript
+    /// stack so the stack's own expression
+    /// stays small enough to solve.
+    @ViewBuilder
+    private func imageCell(_ image: UIImage,
+                           text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Image.platformImage(image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 300, maxHeight: 300)
+                .clipShape(RoundedRectangle(
+                    cornerRadius: 8))
+            Text(text)
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -10798,14 +10804,14 @@ struct BlacksiteView: View {
                 Image(systemName: "chevron.up")
             }
             .disabled(shell.historyCount == 0)
-            .hoverEffect(.highlight)
+            .houseHoverEffect()
             Button {
                 stepHistory(-1)
             } label: {
                 Image(systemName: "chevron.down")
             }
             .disabled(historyBack < 0)
-            .hoverEffect(.highlight)
+            .houseHoverEffect()
             Button {
                 Haptics.tap()
                 send()
@@ -10823,7 +10829,7 @@ struct BlacksiteView: View {
                                 .accent))
                     .foregroundStyle(.black)
             }
-            .hoverEffect(.highlight)
+            .houseHoverEffect()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)

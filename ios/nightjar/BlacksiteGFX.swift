@@ -165,6 +165,44 @@ final class BlacksiteGFX {
     }
 
     func renderCanvas() -> UIImage {
+#if os(macOS)
+        // No graphics renderer on the Mac: the
+        // canvas is painted into a bitmap rep
+        // through a flipped graphics context, so
+        // the same ops land in the same places
+        // and the text hand draws as it did.
+        let w = max(1, Int(canvasSize.width))
+        let h = max(1, Int(canvasSize.height))
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: w, pixelsHigh: h,
+            bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0, bitsPerPixel: 0),
+              let graphics = NSGraphicsContext(
+                bitmapImageRep: rep)
+        else {
+            let image = NSImage(size: canvasSize)
+            lastImage = image
+            return image
+        }
+        let ctx = graphics.cgContext
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current =
+            NSGraphicsContext(cgContext: ctx,
+                              flipped: true)
+        ctx.setFillColor(
+            Self.color(canvasBG).cgColor)
+        ctx.fill(CGRect(origin: .zero,
+                        size: canvasSize))
+        for op in ops { op(ctx) }
+        NSGraphicsContext.restoreGraphicsState()
+        let image = NSImage(size: canvasSize)
+        image.addRepresentation(rep)
+        lastImage = image
+        return image
+#else
         let renderer = UIGraphicsImageRenderer(
             size: canvasSize)
         let image = renderer.image { rendererCtx in
@@ -177,6 +215,7 @@ final class BlacksiteGFX {
         }
         lastImage = image
         return image
+#endif
     }
 
     // MARK: The pixel hand
@@ -597,9 +636,9 @@ final class BlacksiteWallpaper:
             let target =
                 Self.wallpaperTargetPixels()
             let pw = Int(filed.size.width
-                         * filed.scale)
+                         * platformImageScale(filed))
             let ph = Int(filed.size.height
-                         * filed.scale)
+                         * platformImageScale(filed))
             image = filed
             if abs(pw - target.0) > 4
                 || abs(ph - target.1) > 4 {
@@ -656,7 +695,7 @@ struct BlacksiteWallpaperView: View {
     var body: some View {
         Group {
             if let image = wallpaper.image {
-                Image(uiImage: image)
+                Image.platformImage(image)
                     .resizable()
                     .scaledToFill()
                     .frame(width: width,

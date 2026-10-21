@@ -28,6 +28,11 @@ typealias UIImage = NSImage
 /// spelling the shared sources use.
 typealias UIColor = NSColor
 
+/// Fonts cross as NSFont; the monospaced system
+/// font the canvas hands ask for exists under
+/// the same spelling there.
+typealias UIFont = NSFont
+
 /// The pasteboard: the shared code only ever writes
 /// a string to the general pasteboard. On the Mac
 /// that is NSPasteboard.general.
@@ -432,6 +437,33 @@ extension View {
         toolbarBackground(.hidden, for: .windowToolbar)
 #else
         toolbarBackground(.hidden, for: .navigationBar)
+#endif
+    }
+}
+
+/// An image's pixel scale: the phone carries it
+/// on the image; the Mac reads it off the bitmap
+/// rep — pixels against points.
+func platformImageScale(_ image: UIImage) -> CGFloat {
+#if os(macOS)
+    guard let rep = image.representations.first
+        as? NSBitmapImageRep, image.size.width > 0
+    else { return 1 }
+    return CGFloat(rep.pixelsWide) / image.size.width
+#else
+    image.scale
+#endif
+}
+
+extension View {
+    /// The pointer's highlight: a phone effect;
+    /// on the Mac the system's own button hover
+    /// answers, so the spelling simply rests.
+    func houseHoverEffect() -> some View {
+#if os(macOS)
+        self
+#else
+        hoverEffect(.highlight)
 #endif
     }
 }
