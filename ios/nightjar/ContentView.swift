@@ -553,7 +553,7 @@ struct ListenView: View {
             }
             .scrollContentBackground(.hidden)
             .background { AppBackdrop() }
-            .navigationTitle(L("nightjar-hack"))
+            .navigationTitle(L("nightjar"))
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
             .sheet(item: $huntRow) { row in
                 HuntView(targetID: row.id)
@@ -1252,10 +1252,10 @@ struct AboutView: View {
         NavigationStack {
             List {
                 Section(header: Text(L("Version"))) {
-                    Text(String(format: L("nightjar-hack for iOS %@ · log format 1"), AppInfo.version))
+                    Text(String(format: L("nightjar for iOS %@ · log format 1"), AppInfo.version))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Link(destination: URL(string: "https://github.com/chasebryan/nightjar-hack/blob/main/PRIVACY.md")!) {
+                    Link(destination: URL(string: "https://github.com/chasebryan/nightjar/blob/main/PRIVACY.md")!) {
                         Label(L("Privacy Policy"), systemImage: "hand.raised")
                     }
 #if !STORE_BUILD
@@ -1484,10 +1484,10 @@ struct AboutView: View {
                 Section(header: Text(L("The app"))) {
                     ExplainToggle(
                         title: L("What this app is"),
-                        text: L("This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a ")
+                        text: L("This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a ")
                             + "different organ.\n\nSend and "
                             + L("Serve work while the app is on screen. iOS does not let a sideloaded app hold listeners or advertisements open in the background, so a beacon or server stops being reachable when you leave the app — the Listen tab keeps its background hearing, the mouth does not."))
-                    Text(L("nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test."))
+                    Text(L("nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test."))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 #if !STORE_BUILD
@@ -1644,7 +1644,7 @@ struct SupportView: View {
                         .foregroundStyle(cream)
 
                     VStack(spacing: 14) {
-                        Text(L("nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be."))
+                        Text(L("nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be."))
                         Text(L("If it has earned its keep on your phone and you'd like to chip in, a coffee helps cover the developer fee and the test gear it takes to build this. And if not — that's cool too. Truly."))
                         Text(L("— Chase"))
                             .foregroundStyle(amber)

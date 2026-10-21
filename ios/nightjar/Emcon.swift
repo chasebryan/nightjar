@@ -8,7 +8,7 @@ import AppKit
 #endif
 import UserNotifications
 
-/// EMCON — emissions control. The defensive half of nightjar-hack:
+/// EMCON — emissions control. The defensive half of nightjar:
 /// turn the app's own instruments inward so the operator can see
 /// (and shut down) what this device announces to the network, and
 /// hear anyone who comes probing with the same techniques.
@@ -1338,7 +1338,7 @@ final class Emcon: ObservableObject {
     func senseObserve(source: String, port: Int, proto: String,
                       verdict: String, mine: Bool) {
         guard !mine, proto == "TCP",
-              verdict.hasPrefix("nightjar-hack probe:")
+              verdict.hasPrefix("nightjar probe:")
         else { return }
         raiseSense(reason: String(format: L("a foreign nightjar-grade probe (%@) from %@"),
                                   verdict, source))
@@ -2027,7 +2027,7 @@ final class Emcon: ObservableObject {
     }
 
     private static func verdict(for sig: Signature, port: Int, udp: Bool) -> String {
-        var verdict = "nightjar-hack probe: \(sig.name)"
+        var verdict = "nightjar probe: \(sig.name)"
         if sig.port != port {
             verdict += " (on the wrong port)"
         } else if sig.udp != udp {

@@ -1374,7 +1374,7 @@ struct BootView: View {
             }
             VStack(spacing: 0) {
                 VStack(spacing: 4) {
-                    Text("nightjar-hack")
+                    Text("nightjar")
                         .font(.system(.title3, design: .monospaced)
                               .weight(.bold))
                         .tracking(titleTracking)
@@ -4675,7 +4675,7 @@ extension SkelliMind {
             : recent + "\nOperator: " + text
         let charter =
             "You read intent for Skelli, the"
-            + " specialist inside nightjar-hack."
+            + " specialist inside nightjar."
             + " The operator's message matched none"
             + " of her command patterns. Judge by"
             + " MEANING alone: if he plainly wants"
@@ -5280,7 +5280,7 @@ extension SkelliCenter {
                 instructions: "You are Skelli, "
                     + "the operator's programming "
                     + "partner inside "
-                    + "nightjar-hack. Write "
+                    + "nightjar. Write "
                     + "complete, correct, runnable "
                     + "code for what is asked — no "
                     + "placeholders, no truncation. "
@@ -5320,7 +5320,7 @@ extension SkelliCenter {
                 instructions: "You are Skelli, "
                     + "the operator's programming "
                     + "partner inside "
-                    + "nightjar-hack. He has "
+                    + "nightjar. He has "
                     + "asked you to MAKE something, "
                     + "and it will be delivered "
                     + "to him as a file. You can "

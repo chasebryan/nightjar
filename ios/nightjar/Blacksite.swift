@@ -291,7 +291,7 @@ final class BlacksiteShell: ObservableObject {
             { [weak self] image, path in
                 self?.emitImage(image, path: path)
             }
-        emit(String(format: L("BLACKSITE OS — nightjar-hack %@"), String(describing: AppInfo.version)), .sys)
+        emit(String(format: L("BLACKSITE OS — nightjar %@"), String(describing: AppInfo.version)), .sys)
         emit(L("organs: scan · recon · decode · emcon · macros · skelli"), .sys)
         emit(L("mounted: files (ls /) · editors (vim · emacs) · engine (run · js) · graphics (gfx) · packages (pkg)"),
              .sys)
@@ -2686,7 +2686,7 @@ final class BlacksiteShell: ObservableObject {
         case "sys", "status":
             emitBlock(DevKit.houseState(), .sys)
         case "ver", "whoami":
-            emit(String(format: L("nightjar-hack %@ on %@ — source %@"), String(describing: AppInfo.version), String(describing: Self.deviceModelID), String(describing: SourceStamp.shortCommit ?? L("unstamped"))), .sys)
+            emit(String(format: L("nightjar %@ on %@ — source %@"), String(describing: AppInfo.version), String(describing: Self.deviceModelID), String(describing: SourceStamp.shortCommit ?? L("unstamped"))), .sys)
             emit(L("operator: the one holding the phone. console: blacksite."),
                  .sys)
         case "ps":

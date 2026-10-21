@@ -1311,7 +1311,7 @@ extension BlacksiteNet {
             headOnly ? "HEAD" : "GET"
         request.timeoutInterval = 20
         request.setValue(
-            "blacksite/9.0 (nightjar-hack)",
+            "blacksite/9.0 (nightjar)",
             forHTTPHeaderField: "User-Agent")
         for (key, value) in headers {
             request.setValue(

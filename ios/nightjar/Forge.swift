@@ -44,7 +44,7 @@ enum ForgeKit {
             + (path.isEmpty ? "/" : path)
             + " HTTP/1.1\r\n"
             + "Host: " + host + "\r\n"
-            + "User-Agent: nightjar-hack\r\n"
+            + "User-Agent: nightjar\r\n"
         if !body.isEmpty {
             text += "Content-Length: "
                 + "\(body.utf8.count)\r\n"
@@ -688,7 +688,7 @@ struct ForgeView: View {
         Task {
             let text = await SkelliMind.rawAnswer(
                 instructions: "You are the forge "
-                    + "inside nightjar-hack, a "
+                    + "inside nightjar, a "
                     + "network instrument. The "
                     + "operator describes a "
                     + "payload; you produce ONLY "

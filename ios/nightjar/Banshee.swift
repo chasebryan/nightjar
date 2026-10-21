@@ -150,7 +150,7 @@ final class BansheeCenter: ObservableObject {
     /// one pair of packets every four seconds.
     private func shout(mouth: Mouth) {
         let ip = Mouth.localIPAddress() ?? ""
-        let text = "BANSHEE \(hostName) \(ip) nightjar-hack — "
+        let text = "BANSHEE \(hostName) \(ip) nightjar — "
             + "this device announces itself"
         let payload = Data(text.utf8)
         var targets = ["255.255.255.255"]

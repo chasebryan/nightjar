@@ -132,7 +132,7 @@ enum DevKit {
         // interpolated strings is more expression
         // than the type-checker will chew.
         var lines: [String] = []
-        lines.append("App: nightjar-hack "
+        lines.append("App: nightjar "
             + "\(AppInfo.version) (\(build))")
         lines.append("Source: \(commit)"
             + (changes > 0

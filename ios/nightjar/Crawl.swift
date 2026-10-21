@@ -1,6 +1,6 @@
 //
 //  Crawl.swift
-//  nightjar-hack
+//  nightjar
 //
 //  The Centipede, as an extension on Mouth: route expansion
 //  (targets, ranges, port trains, per-device walks), the crawl
