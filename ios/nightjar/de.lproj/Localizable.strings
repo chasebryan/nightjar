@@ -6029,3 +6029,5 @@
 "Use a collected address" = "Eine gesammelte Adresse verwenden";
 "\n…the rest is filed in Deliveries." = "\n…der Rest liegt bei den Lieferungen.";
 "…still running — that's what's printed so far." = "…läuft noch — das ist der bisherige Ausdruck.";
+
+"Forged the battery for %@: %@ — 3 payloads kept in the armory and filed in Deliveries, ready to fire." = "Die Batterie für %@ geschmiedet: %@ — 3 Ladungen im Arsenal verwahrt und in Deliveries abgelegt, bereit zum Feuern.";
