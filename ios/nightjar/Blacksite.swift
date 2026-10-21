@@ -11216,7 +11216,7 @@ private struct BlacksiteGauntletProgram: View {
                     Label("Run the gauntlet",
                           systemImage: "play.fill")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(HouseProminentStyle())
             }
             Spacer()
         }
@@ -11295,7 +11295,7 @@ private struct BlacksiteDecodeProgram: View {
                     ?? "those are not hex bytes "
                     + "the stack can read."
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(HouseProminentStyle())
             if let reading {
                 Text(reading)
                     .font(.system(.callout,
