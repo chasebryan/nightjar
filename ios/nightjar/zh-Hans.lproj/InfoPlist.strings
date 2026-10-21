@@ -1,8 +1,8 @@
 /* Permission prompts, in the operator's own tongue. */
-"NSBluetoothAlwaysUsageDescription" = "nightjar-hack 会监听你周围的 Bluetooth 设备，并记录它所听到的一切。如果你使用“发送”标签页，它还可以广播你输入的载荷，并写入你选择的设备。监听从不与任何设备建立连接。";
-"NSLocalNetworkUsageDescription" = "nightjar-hack 会向你本地网络上的设备发送载荷，并从这些设备接收载荷——仅限于你输入的地址，且仅在应用打开时进行。";
-"NSLocationWhenInUseUsageDescription" = "nightjar-hack 在使用期间会将你的位置用于两件事：其一是它的指南针，它会利用你的朝向和行进方向，在你走向一台蓝牙设备时为你指引方向，那台设备正是它的耳朵正在听到的；其二是 Skelli 的方位感，它让她能说出你身处世界的何处，并读取你当地的时间和天气。你的位置从不被存储。坐标仅在你向 Skelli 询问天气的那一刻发送给天气服务。";
-"NSCameraUsageDescription" = "nightjar-hack 会使用相机来接收 Blink 传输——即你的另一台设备以循环播放的 QR 帧序列所显示的消息——仅限于你在 Knocktalk 标签页中打开 Blink 接收器时。帧会被即时解码；不会拍摄或存储任何照片或视频。";
-"NFCReaderUsageDescription" = "当你使用 Coin 时——Coin 是你在 EMCON 标签页中认领的一把实体钥匙——以及当你对自己的卡片和标签运行 EMCON 标签清点时，nightjar-hack 会读取你贴近手机的标签。标签仅在你轻触的那一刻被读取；Coin 只保留一个哈希值，清点则只保留它向你展示的内容，别无其他。";
-"NSMicrophoneUsageDescription" = "nightjar-hack 会监听 Chirp 传输——即你的另一台设备以可听见的音调发送的短消息——仅限于你在 Knocktalk 标签页中打开 Chirp 监听器时。不会录制或存储任何内容；音调会被即时解码，随后被遗忘。";
-"NSHealthShareUsageDescription" = "nightjar-hack 会读取你的 Apple Watch 已经收集的读数——心率、血氧、呼吸、手腕温度和睡眠——以便在房屋状态之旁展示操作者的状态。它只读取；不会向你的健康数据写入任何内容，也没有任何数据离开这部手机。";
+"NSBluetoothAlwaysUsageDescription" = "nightjar 会监听你周围的 Bluetooth 设备，并记录它所听到的一切。如果你使用“发送”标签页，它还可以广播你输入的载荷，并写入你选择的设备。监听从不与任何设备建立连接。";
+"NSLocalNetworkUsageDescription" = "nightjar 会向你本地网络上的设备发送载荷，并从这些设备接收载荷——仅限于你输入的地址，且仅在应用打开时进行。";
+"NSLocationWhenInUseUsageDescription" = "nightjar 在使用期间会将你的位置用于两件事：其一是它的指南针，它会利用你的朝向和行进方向，在你走向一台蓝牙设备时为你指引方向，那台设备正是它的耳朵正在听到的；其二是 Skelli 的方位感，它让她能说出你身处世界的何处，并读取你当地的时间和天气。你的位置从不被存储。坐标仅在你向 Skelli 询问天气的那一刻发送给天气服务。";
+"NSCameraUsageDescription" = "nightjar 会使用相机来接收 Blink 传输——即你的另一台设备以循环播放的 QR 帧序列所显示的消息——仅限于你在 Knocktalk 标签页中打开 Blink 接收器时。帧会被即时解码；不会拍摄或存储任何照片或视频。";
+"NFCReaderUsageDescription" = "当你使用 Coin 时——Coin 是你在 EMCON 标签页中认领的一把实体钥匙——以及当你对自己的卡片和标签运行 EMCON 标签清点时，nightjar 会读取你贴近手机的标签。标签仅在你轻触的那一刻被读取；Coin 只保留一个哈希值，清点则只保留它向你展示的内容，别无其他。";
+"NSMicrophoneUsageDescription" = "nightjar 会监听 Chirp 传输——即你的另一台设备以可听见的音调发送的短消息——仅限于你在 Knocktalk 标签页中打开 Chirp 监听器时。不会录制或存储任何内容；音调会被即时解码，随后被遗忘。";
+"NSHealthShareUsageDescription" = "nightjar 会读取你的 Apple Watch 已经收集的读数——心率、血氧、呼吸、手腕温度和睡眠——以便在房屋状态之旁展示操作者的状态。它只读取；不会向你的健康数据写入任何内容，也没有任何数据离开这部手机。";

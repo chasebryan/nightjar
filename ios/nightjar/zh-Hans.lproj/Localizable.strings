@@ -1235,7 +1235,7 @@
 "This house finds things. I keep the list." = "这所房子找东西。清单在我这里。";
 "This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them." = "这很吵。它向线上的每台设备——以及每个观察者——宣告这部电话。在不属于你的网络上，敲门的答复会落在这里。";
 "This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for." = "这是为了被人注意到——被网络上的每一个管理指标：DHCP 和流量日志、控制器的会话表、看着仪表上升的 NMS。";
-"This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "这是 nightjar-hack：nightjar 的聆听哨所，加上一张嘴。聆听标签页是纯粹派的一半——它扫描并记录广播，从不连接、配对或发送，与上游应用完全一样。发送和服务标签页是黑客的一半：它们会发射，但只在您按下按钮时，指向您输入的目标。两半不共享无线电状态；耳朵保持纯粹，嘴则是一个";
+"This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "这是 nightjar：nightjar 的聆听哨所，加上一张嘴。聆听标签页是纯粹派的一半——它扫描并记录广播，从不连接、配对或发送，与上游应用完全一样。发送和服务标签页是黑客的一半：它们会发射，但只在您按下按钮时，指向您输入的目标。两半不共享无线电状态；耳朵保持纯粹，嘴则是一个";
 "This network" = "这个网络";
 "This post" = "本哨所";
 "Throw Your Voice — the ventriloquist" = "投掷你的声音——腹语者";
@@ -1402,10 +1402,10 @@
 "memcached set" = "memcached set";
 "never" = "从来没有";
 "new in the house" = "初到房子";
-"nightjar-hack" = "nightjar-hack";
-"nightjar-hack for iOS %@ · log format 1" = "nightjar-hack for iOS %@ · 日志格式 1";
-"nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar-hack 是用于测试您拥有或受托测试的设备和网络的仪器。它发送、扫描、植入或记录的一切，只能指向您有权测试的目标。您对自己的授权负责；对于未经授权而对设备或网络的滥用，作者不承担责任。";
-"nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar-hack 是免费的，而且无论如何都会保持免费——里面的每个工具都已经属于您。这里没有付费墙，永远也不会有。";
+"nightjar" = "nightjar";
+"nightjar for iOS %@ · log format 1" = "nightjar for iOS %@ · 日志格式 1";
+"nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar 是用于测试您拥有或受托测试的设备和网络的仪器。它发送、扫描、植入或记录的一切，只能指向您有权测试的目标。您对自己的授权负责；对于未经授权而对设备或网络的滥用，作者不承担责任。";
+"nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar 是免费的，而且无论如何都会保持免费——里面的每个工具都已经属于您。这里没有付费墙，永远也不会有。";
 "no releases published yet" = "尚未发布任何版本";
 "not advertised" = "未广播";
 "open" = "开放";
@@ -2069,7 +2069,7 @@
 " Note: the dress changed while the shape was worn — the restore unwound that too." = " 注意:穿着这身装扮期间它变过 — 还原时把那部分也一并撤销了。";
 " The revolving rack stands still." = " 旋转衣架已停下。";
 "%@ Kept on your rack." = "%@ 已收进你的衣架。";
-"%@ is out. Open nightjar-hack to install it." = "%@ 已发布。打开 nightjar-hack 安装它。";
+"%@ is out. Open nightjar to install it." = "%@ 已发布。打开 nightjar 安装它。";
 "%@ — emissions regulated, tripwire armed." = "%@ — 发射受控,绊线已布防。";
 "%@ — the house is re-regulated." = "%@ — 全屋已重新纳入管制。";
 "%lld blocks" = "%lld 个模块";
@@ -2174,7 +2174,7 @@
 "an update check" = "一次更新检查";
 "depth %lld" = "深度 %lld";
 "narrating the /24" = "正在解说 /24";
-"nightjar-hack · %@ from %@" = "nightjar-hack · %@ 来自 %@";
+"nightjar · %@ from %@" = "nightjar · %@ 来自 %@";
 "on %@.0/24" = "位于 %@.0/24";
 "planning" = "规划中";
 "scope: %@" = "范围:%@";
@@ -2512,7 +2512,7 @@
 "; referred to %@" = "; 转介至 %@";
 "; whois %@ via %@" = "; 通过 %@ 查询 whois %@";
 "; … the rest is boilerplate." = "; …其余都是样板文字。";
-"BLACKSITE OS — nightjar-hack %@" = "BLACKSITE OS — nightjar-hack %@";
+"BLACKSITE OS — nightjar %@" = "BLACKSITE OS — nightjar %@";
 "EMCON %@ set." = "EMCON %@ 已设置。";
 "EMCON forbids the watch under this condition — it stays down." = "EMCON 在此条件下禁止监视——它保持关闭。";
 "EMCON off — the house is open." = "EMCON 关闭——屋子开放。";
@@ -2884,7 +2884,7 @@
 "is readmitted." = "已重新接纳。";
 "kept — %@@%@ speaks SNMPv3 %@" = "已保存 — %@@%@ 使用 SNMPv3 %@";
 "legacy versions live" = "旧版本可用";
-"nightjar-hack %@ on %@ — source %@" = "%@ 上的 nightjar-hack %@ — 源码 %@";
+"nightjar %@ on %@ — source %@" = "%@ 上的 nightjar %@ — 源码 %@";
 "no %@ at %@ answers to “%@”." = "%@ 上没有 %@ 响应“%@”。";
 "no CSP; the browser trusts whatever loads." = "无 CSP;浏览器信任加载的一切。";
 "no HSTS; downgrade stays possible." = "无 HSTS;仍可降级。";
@@ -3408,7 +3408,7 @@
 "network gear in " = "网络设备位于 ";
 "network-gear name " = "网络设备名称 ";
 "never knocked for this page" = "从未为此页面敲门";
-"nightjar-hack phone" = "nightjar-hack phone";
+"nightjar phone" = "nightjar phone";
 "no answer" = "无应答";
 "no answer (" = "无应答（";
 "no known format" = "无已知格式";
@@ -3707,7 +3707,7 @@
 "The certifications — the map of the ladder" = "这些认证——梯子的地图";
 "The decoder engine — batteries and evidence" = "解码引擎——电池与证据";
 "The expansion formats" = "扩展格式";
-"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "第一个嫌疑犯,永远是:iOS 的本地网络权限——Settings、Privacy & Security、Local Network、nightjar-hack 打开。没有它,线路读起来是一个礼貌的空无:扫查完成,什么都不回答,而且没有错误说明为什么。第二个嫌疑犯:手机实际上不在它以为自己在的那条线路上——VPN 开着,或加入了一个把客户端彼此隔离的访客网络。第三个:线路真的很安静。她按这个顺序查,并说出自己在哪个嫌疑犯上。";
+"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "第一个嫌疑犯,永远是:iOS 的本地网络权限——Settings、Privacy & Security、Local Network、nightjar 打开。没有它,线路读起来是一个礼貌的空无:扫查完成,什么都不回答,而且没有错误说明为什么。第二个嫌疑犯:手机实际上不在它以为自己在的那条线路上——VPN 开着,或加入了一个把客户端彼此隔离的访客网络。第三个:线路真的很安静。她按这个顺序查,并说出自己在哪个嫌疑犯上。";
 "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export." = "融合台:耳朵的行、线路普查和日志的活动,被认领进一个发射者登记表——空气和线路,每一项声称都标上听到它的信道和一个来自既定公式的优先级。一次监视记录一条基线,停下它读出增量:什么到达了、什么消失了、哪些门变了。一条规则高于一切:发射者只在一个纪元内合并——这张台从不把一个陌生人跨天缝合,并在每一次导出时明说。";
 "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten." = "一整座房子在一块画布上:你点名房间,把每个邻居放在设备实际所在的地方;节点按新鲜度发光,带着它们的漂移,打开它们的档案。放置是你的证词——应用保存它,从不编造自己的位置。Map 从它的更多菜单重置;设备留着,坐法被遗忘。";
 "The house presets" = "房子的预设";
