@@ -125,10 +125,24 @@ struct AppTheme: Identifiable, Codable, Equatable {
         dim: 0.20,
         builtIn: true)
 
+    /// Black glass (the operator's order,
+    /// 2026-10-21): the house gone obsidian —
+    /// a true-black wash at full strength,
+    /// frosted silver working the controls,
+    /// a pure-white sheen for the glow.
+    /// Monochrome, cool, all glass.
+    static let blackGlass = AppTheme(
+        id: "blackglass", name: "Black Glass",
+        accentHex: "#C7CEDA", glowHex: "#FFFFFF",
+        tintHex: "#000000", tintStrength: 0.50,
+        dim: 0.30,
+        builtIn: true)
+
     static let builtIns: [AppTheme] = [.phosphor, .bloodwork,
                                        .ultraviolet, .arctic,
                                        .amber, .bone,
-                                       .halloween, .christmas]
+                                       .halloween, .christmas,
+                                       .blackGlass]
 }
 
 // MARK: - Backdrop slots and choices
