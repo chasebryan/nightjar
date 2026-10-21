@@ -933,6 +933,17 @@ struct BootView: View {
     /// The boot reel, by either road in: a "BootReel" data
     /// asset, or boot-reel.gif in the bundle.
     private var providedData: Data? {
+#if os(macOS)
+        // The laptop's own reel: a wide film cut
+        // for a wide screen. The phone's portrait
+        // reel stands down here — stretched or
+        // boxed, it never sat right on the Mac.
+        if let url = Bundle.main.url(
+            forResource: "boot-reel-mac",
+            withExtension: "mp4") {
+            return try? Data(contentsOf: url)
+        }
+#endif
         if let asset = NSDataAsset(name: "BootReel") {
             return asset.data
         }
