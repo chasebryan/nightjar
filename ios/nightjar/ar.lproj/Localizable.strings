@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "لم يصل شيء إلى %@ — الباب لم يُفتح أبدًا.";
 "Here — %@: %@ bytes, filed in Deliveries." = "إليك — %@: %@ بايت، حُفظ في Deliveries.";
 "I have no send wire just now." = "ليس لديّ سلك إرسال الآن.";
+"Census — collecting addresses" = "الإحصاء — جارٍ جمع العناوين";
+"%@ address(es) collected" = "تم جمع %@ عنوانًا";
+"Collect addresses" = "جمع العناوين";
+"Collecting…" = "جارٍ الجمع…";
+"A census is already running — the wire is being knocked." = "الإحصاء قيد التشغيل بالفعل — يتم الطرق على الشبكة.";
+"The Standard forbids sweeps at this condition — the census stays silent." = "يحظر المعيار عمليات المسح في هذه الحالة — يلتزم الإحصاء الصمت.";
+"No wire under this phone — join the Wi-Fi and the census can run." = "لا توجد شبكة تحت هذا الهاتف — انضم إلى Wi-Fi وسيتمكن الإحصاء من العمل.";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "جارٍ جمع عناوين هذه الشبكة — الطرق على أبواب الاكتشاف عبر /24 بأكمله.";
+"Nothing collected yet — the board is empty." = "لم يُجمع شيء بعد — اللوحة فارغة.";
+", and %@ more" = "، و%@ أخرى";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "تم جمع %@ عنوانًا: %@. القائمة محفوظة في التسليمات.";
+"Collected addresses" = "العناوين المجموعة";
+"Use a collected address" = "استخدام عنوان مجموع";
