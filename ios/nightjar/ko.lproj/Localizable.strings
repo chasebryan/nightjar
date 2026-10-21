@@ -187,6 +187,7 @@
 "Battery voltage" = "배터리 전압";
 "Beacon" = "비컨";
 "Bedrock — iOS %@" = "기반 — iOS %@";
+"Bedrock — macOS %@" = "기반 — macOS %@";
 "Beeps quicken and rise as the signal strengthens; a thump means you're near. The pitch bends up while you're closing and down while you drift away. Walk slow — RSSI is a compass that points in loudness, not direction." = "신호가 강해질수록 삑 소리가 빨라지고 높아지며, 쿵 하는 소리는 가까워졌다는 뜻이다. 가까워지는 동안 음정이 오르고 멀어지면 내린다 — 악기로 찾는 감각이다.";
 "Before and after agree: nothing was exposed in the first place." = "전후가 일치한다: 처음부터 노출된 것은 없었다.";
 "Begin" = "시작";
