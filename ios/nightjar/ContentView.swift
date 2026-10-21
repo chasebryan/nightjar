@@ -266,171 +266,192 @@ struct ContentView: View {
     }
     @ObservedObject private var themes = ThemeCenter.shared
 
+    /// The house's rooms, with everything hung
+    /// on them — the tab view, its watches, its
+    /// overlays and its sheets. On the phone it
+    /// stands alone. On the Mac it stands beside
+    /// the sidebar, which drives its selection:
+    /// the Mac's tab view switches by selection
+    /// but shows no chrome to select with, so
+    /// without the sidebar there is no way to
+    /// walk the house at all.
+    private var tabShell: some View {
+        TabView(selection: $tab) {
+        SkelliView()
+            .appThemed(.skelli)
+            .tabItem { Label(L("Skelli"),
+                             systemImage: "brain.head.profile") }
+            .tag(9)
+            .onAppear { TabBeat.appeared(9) }
+            .onDisappear { TabBeat.vanished(9) }
+        ListenView(tab: $tab)
+            .appThemed(.listen)
+            .tabItem { Label(L("Listen"), systemImage: "dot.radiowaves.left.and.right") }
+            .tag(0)
+            .onAppear { TabBeat.appeared(0) }
+            .onDisappear { TabBeat.vanished(0) }
+        SendView()
+            .appThemed(.send)
+            .tabItem { Label(L("Send"), systemImage: "paperplane") }
+            .tag(1)
+            .onAppear { TabBeat.appeared(1) }
+            .onDisappear { TabBeat.vanished(1) }
+        ServeView()
+            .appThemed(.serve)
+            .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
+            .tag(2)
+            .onAppear { TabBeat.appeared(2) }
+            .onDisappear { TabBeat.vanished(2) }
+        // Declaration order is the More list's order:
+        // About heads it — it is the app's identity and
+        // its options hub — and Sessions sits under it.
+        // Tags are unchanged by position.
+        AboutView()
+            .appThemed(.about)
+            .tabItem { Label(L("About"), systemImage: "info.circle") }
+            .tag(5)
+            .onAppear { TabBeat.appeared(5) }
+            .onDisappear { TabBeat.vanished(5) }
+        BlacksiteView()
+            .appThemed(.blacksite)
+            .tabItem { Label(L("Blacksite"),
+                             systemImage: "terminal.fill") }
+            .tag(12)
+            .onAppear { TabBeat.appeared(12) }
+            .onDisappear { TabBeat.vanished(12) }
+        SessionsView()
+            .appThemed(.sessions)
+            .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
+            .tag(3)
+            .onAppear { TabBeat.appeared(3) }
+            .onDisappear { TabBeat.vanished(3) }
+        ScanView(tab: $tab)
+            .appThemed(.scan)
+            .tabItem { Label(L("Scan"), systemImage: "scope") }
+            .tag(4)
+            .onAppear { TabBeat.appeared(4) }
+            .onDisappear { TabBeat.vanished(4) }
+        ReconBenchView(tab: $tab)
+            .appThemed(.recon)
+            .tabItem { Label(L("Recon"), systemImage: "target") }
+            .tag(6)
+            .onAppear { TabBeat.appeared(6) }
+            .onDisappear { TabBeat.vanished(6) }
+        EmconView()
+            .appThemed(.emcon)
+            .tabItem {
+                // The bare "shield.slash" name renders
+                // as nothing on the operator's symbol
+                // set; the base shield with the slash
+                // variant asked for explicitly degrades
+                // to a visible shield, never a blank.
+                Label(L("EMCON"), systemImage: "shield")
+                    .symbolVariant(.slash)
+            }
+            .tag(7)
+            .onAppear { TabBeat.appeared(7) }
+            .onDisappear { TabBeat.vanished(7) }
+        KnockChatView()
+            .appThemed(.knocktalk)
+            .tabItem { Label(L("Knocktalk"),
+                             systemImage: "message.badge.waveform") }
+            .tag(8)
+            .onAppear { TabBeat.appeared(8) }
+            .onDisappear { TabBeat.vanished(8) }
+        MacrosView()
+            .appThemed(.macros)
+            .tabItem { Label(L("Macros"),
+                             systemImage: "puzzlepiece.extension.fill") }
+            .tag(10)
+            .onAppear { TabBeat.appeared(10) }
+            .onDisappear { TabBeat.vanished(10) }
+        CryptoView()
+            .appThemed(.vault)
+            .tabItem { Label(L("Vault"),
+                             systemImage: "lock.fill") }
+            .tag(11)
+            .onAppear { TabBeat.appeared(11) }
+            .onDisappear { TabBeat.vanished(11) }
+    }
+    .tint(themes.current.accent)
+    .onReceive(
+        NotificationCenter.default.publisher(
+            for: Blacksite.openTabNotification)
+    ) { note in
+        if let tag = note.userInfo?["tag"]
+            as? Int {
+            tab = tag
+        }
+    }
+    .onAppear {
+        // The specialist gets the house's real
+        // organs, so its hands work the real
+        // controls.
+        SkelliCenter.shared.wire(mouth: mouth,
+                                 emcon: emcon,
+                                 post: post)
+        ProcessBoard.shared.toasts = toasts
+    }
+    .onReceive(NotificationCenter.default.publisher(
+        for: .houseNavigate)) { note in
+        if let target = note.userInfo?["tab"] as? Int {
+            tab = target
+        }
+    }
+    .onChange(of: tab) { newTab in
+        UserDefaults.standard.set(
+            newTab, forKey: "house.lastTab")
+    }
+    .onChange(of: mouth.reconHandoff) { handoff in
+        // Counter-knock pivot: a tripwire row tapped in EMCON
+        // lands the operator on the Recon bench, pre-aimed.
+        if handoff != nil { tab = 6 }
+    }
+    .overlay {
+        // Zero-size and touch-transparent:
+        // the probe that installs the
+        // selection watch.
+        TabProbe()
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+    }
+    .overlay(alignment: .top) {
+        VStack(spacing: 8) {
+            if let toast = toasts.current {
+                ToastView(toast: toast)
+                    .transition(.move(edge: .top)
+                        .combined(with: .opacity))
+            }
+            if !board.active.isEmpty {
+                ProcessStripView(board: board) {
+                    showBoard = true
+                }
+                .transition(.move(edge: .top)
+                    .combined(with: .opacity))
+            }
+        }
+        .padding(.top, 6)
+        .animation(.spring(response: 0.35,
+                           dampingFraction: 0.85),
+                   value: board.active.count)
+    }
+    .sheet(isPresented: $showBoard) {
+        ProcessBoardView()
+    }
+    }
+
     var body: some View {
         ZStack {
             AppBackdrop()
-            TabView(selection: $tab) {
-            SkelliView()
-                .appThemed(.skelli)
-                .tabItem { Label(L("Skelli"),
-                                 systemImage: "brain.head.profile") }
-                .tag(9)
-                .onAppear { TabBeat.appeared(9) }
-                .onDisappear { TabBeat.vanished(9) }
-            ListenView(tab: $tab)
-                .appThemed(.listen)
-                .tabItem { Label(L("Listen"), systemImage: "dot.radiowaves.left.and.right") }
-                .tag(0)
-                .onAppear { TabBeat.appeared(0) }
-                .onDisappear { TabBeat.vanished(0) }
-            SendView()
-                .appThemed(.send)
-                .tabItem { Label(L("Send"), systemImage: "paperplane") }
-                .tag(1)
-                .onAppear { TabBeat.appeared(1) }
-                .onDisappear { TabBeat.vanished(1) }
-            ServeView()
-                .appThemed(.serve)
-                .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
-                .tag(2)
-                .onAppear { TabBeat.appeared(2) }
-                .onDisappear { TabBeat.vanished(2) }
-            // Declaration order is the More list's order:
-            // About heads it — it is the app's identity and
-            // its options hub — and Sessions sits under it.
-            // Tags are unchanged by position.
-            AboutView()
-                .appThemed(.about)
-                .tabItem { Label(L("About"), systemImage: "info.circle") }
-                .tag(5)
-                .onAppear { TabBeat.appeared(5) }
-                .onDisappear { TabBeat.vanished(5) }
-            BlacksiteView()
-                .appThemed(.blacksite)
-                .tabItem { Label(L("Blacksite"),
-                                 systemImage: "terminal.fill") }
-                .tag(12)
-                .onAppear { TabBeat.appeared(12) }
-                .onDisappear { TabBeat.vanished(12) }
-            SessionsView()
-                .appThemed(.sessions)
-                .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
-                .tag(3)
-                .onAppear { TabBeat.appeared(3) }
-                .onDisappear { TabBeat.vanished(3) }
-            ScanView(tab: $tab)
-                .appThemed(.scan)
-                .tabItem { Label(L("Scan"), systemImage: "scope") }
-                .tag(4)
-                .onAppear { TabBeat.appeared(4) }
-                .onDisappear { TabBeat.vanished(4) }
-            ReconBenchView(tab: $tab)
-                .appThemed(.recon)
-                .tabItem { Label(L("Recon"), systemImage: "target") }
-                .tag(6)
-                .onAppear { TabBeat.appeared(6) }
-                .onDisappear { TabBeat.vanished(6) }
-            EmconView()
-                .appThemed(.emcon)
-                .tabItem {
-                    // The bare "shield.slash" name renders
-                    // as nothing on the operator's symbol
-                    // set; the base shield with the slash
-                    // variant asked for explicitly degrades
-                    // to a visible shield, never a blank.
-                    Label(L("EMCON"), systemImage: "shield")
-                        .symbolVariant(.slash)
-                }
-                .tag(7)
-                .onAppear { TabBeat.appeared(7) }
-                .onDisappear { TabBeat.vanished(7) }
-            KnockChatView()
-                .appThemed(.knocktalk)
-                .tabItem { Label(L("Knocktalk"),
-                                 systemImage: "message.badge.waveform") }
-                .tag(8)
-                .onAppear { TabBeat.appeared(8) }
-                .onDisappear { TabBeat.vanished(8) }
-            MacrosView()
-                .appThemed(.macros)
-                .tabItem { Label(L("Macros"),
-                                 systemImage: "puzzlepiece.extension.fill") }
-                .tag(10)
-                .onAppear { TabBeat.appeared(10) }
-                .onDisappear { TabBeat.vanished(10) }
-            CryptoView()
-                .appThemed(.vault)
-                .tabItem { Label(L("Vault"),
-                                 systemImage: "lock.fill") }
-                .tag(11)
-                .onAppear { TabBeat.appeared(11) }
-                .onDisappear { TabBeat.vanished(11) }
-        }
-        .tint(themes.current.accent)
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: Blacksite.openTabNotification)
-        ) { note in
-            if let tag = note.userInfo?["tag"]
-                as? Int {
-                tab = tag
+#if os(macOS)
+            HStack(spacing: 0) {
+                MacSidebar(tab: $tab)
+                Divider()
+                tabShell
             }
-        }
-        .onAppear {
-            // The specialist gets the house's real
-            // organs, so its hands work the real
-            // controls.
-            SkelliCenter.shared.wire(mouth: mouth,
-                                     emcon: emcon,
-                                     post: post)
-            ProcessBoard.shared.toasts = toasts
-        }
-        .onReceive(NotificationCenter.default.publisher(
-            for: .houseNavigate)) { note in
-            if let target = note.userInfo?["tab"] as? Int {
-                tab = target
-            }
-        }
-        .onChange(of: tab) { newTab in
-            UserDefaults.standard.set(
-                newTab, forKey: "house.lastTab")
-        }
-        .onChange(of: mouth.reconHandoff) { handoff in
-            // Counter-knock pivot: a tripwire row tapped in EMCON
-            // lands the operator on the Recon bench, pre-aimed.
-            if handoff != nil { tab = 6 }
-        }
-        .overlay {
-            // Zero-size and touch-transparent:
-            // the probe that installs the
-            // selection watch.
-            TabProbe()
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
-        }
-        .overlay(alignment: .top) {
-            VStack(spacing: 8) {
-                if let toast = toasts.current {
-                    ToastView(toast: toast)
-                        .transition(.move(edge: .top)
-                            .combined(with: .opacity))
-                }
-                if !board.active.isEmpty {
-                    ProcessStripView(board: board) {
-                        showBoard = true
-                    }
-                    .transition(.move(edge: .top)
-                        .combined(with: .opacity))
-                }
-            }
-            .padding(.top, 6)
-            .animation(.spring(response: 0.35,
-                               dampingFraction: 0.85),
-                       value: board.active.count)
-        }
-        .sheet(isPresented: $showBoard) {
-            ProcessBoardView()
-        }
+#else
+            tabShell
+#endif
             if showBoot && bootEnabled {
                 BootView {
                     withAnimation(.easeOut(duration: 0.5)) {
@@ -1694,3 +1715,76 @@ struct SupportView: View {
         .environmentObject(Mouth())
         .environmentObject(ToastCenter())
 }
+
+#if os(macOS)
+/// The Mac's way through the house: a sidebar of
+/// its rooms, driving the same selection the tab
+/// view obeys. The labels and symbols are the tab
+/// strip's own, in its own order — Skelli first,
+/// then the working rooms, About and Blacksite
+/// in their declared places.
+struct MacSidebar: View {
+    @Binding var tab: Int
+    @ObservedObject private var languageCenter =
+        LanguageCenter.shared
+    @ObservedObject private var themes =
+        ThemeCenter.shared
+
+    private var sections: [(tag: Int, label: String,
+                             icon: String)] {
+        [(9, L("Skelli"), "brain.head.profile"),
+         (0, L("Listen"),
+          "dot.radiowaves.left.and.right"),
+         (1, L("Send"), "paperplane"),
+         (2, L("Serve"), "tray.and.arrow.down"),
+         (5, L("About"), "info.circle"),
+         (12, L("Blacksite"), "terminal.fill"),
+         (3, L("Sessions"),
+          "list.bullet.rectangle"),
+         (4, L("Scan"), "scope"),
+         (6, L("Recon"), "target"),
+         (7, L("EMCON"), "shield"),
+         (8, L("Knocktalk"),
+          "message.badge.waveform"),
+         (10, L("Macros"),
+          "puzzlepiece.extension.fill"),
+         (11, L("Vault"), "lock.fill")]
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(sections, id: \.tag) { s in
+                    Button {
+                        tab = s.tag
+                    } label: {
+                        Label(s.label,
+                              systemImage: s.icon)
+                            .font(.system(.body,
+                                          design: .default))
+                            .frame(maxWidth: .infinity,
+                                   alignment: .leading)
+                            .padding(.vertical, 5)
+                            .padding(.horizontal, 8)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(
+                        tab == s.tag
+                            ? themes.current.accent
+                            : Color.primary)
+                    .background(
+                        tab == s.tag
+                            ? themes.current.accent
+                                .opacity(0.16)
+                            : Color.clear,
+                        in: RoundedRectangle(
+                            cornerRadius: 7))
+                }
+            }
+            .padding(10)
+        }
+        .frame(width: 196)
+        .background(Color(white: 0.07))
+    }
+}
+#endif
