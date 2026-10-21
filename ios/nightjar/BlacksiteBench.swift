@@ -1706,7 +1706,7 @@ extension BlacksiteBench {
             case .band6GHz: band = "6 GHz"
             default: band = L("band unknown")
             }
-            emit(String(format: L("eazy: '%@' — channel %lld (%@), signal %lld dBm."), name, channel?.channelNumber ?? 0, band, net.rssiValue))
+            say(emit, String(format: L("eazy: '%@' — channel %lld (%@), signal %lld dBm."), name, channel?.channelNumber ?? 0, band, net.rssiValue))
             switch net.securityMode {
             case .none:
                 emit(L("eazy: it is OPEN — no password at all. Anyone may join, and everything said on it is plain. Critical."), .err)
