@@ -523,6 +523,16 @@ final class AddressCensus: ObservableObject {
     private let queue = DispatchQueue(
         label: "nightjar.census",
         attributes: .concurrent)
+    /// NWConnection starts and their deadline
+    /// timers live here, NOT on `queue` — the
+    /// Scan bench's standing lesson (fix268:
+    /// the first census starved to death
+    /// exactly this way): the probe workers
+    /// block `queue` on their semaphore, so a
+    /// connection started there waits behind
+    /// its own gating and never answers.
+    private let connectionQueue = DispatchQueue(
+        label: "nightjar.census-connections")
 
     /// The discovery doors, from the trace's own
     /// stored list — one fallback for every reader.
@@ -569,7 +579,7 @@ final class AddressCensus: ObservableObject {
         var found: [SweepHost] = []
         let foundLock = NSLock()
         let group = DispatchGroup()
-        let semaphore = DispatchSemaphore(value: 40)
+        let semaphore = DispatchSemaphore(value: 48)
         for octet in 1...254 {
             let ip = prefix + "\(octet)"
             for port in ports {
@@ -641,8 +651,9 @@ final class AddressCensus: ObservableObject {
             default: break
             }
         }
-        connection.start(queue: queue)
-        queue.asyncAfter(deadline: .now() + 1.0) {
+        connection.start(queue: connectionQueue)
+        connectionQueue.asyncAfter(
+            deadline: .now() + 0.6) {
             finish(false)
         }
     }
