@@ -46,7 +46,7 @@
 "10 minutes of grinding" = "10분간의 갈기";
 "100,000" = "100,000";
 "15 min" = "15분";
-"192.168.4.31" = "192.168.4.31";
+"192.168.1.31" = "192.168.1.31";
 "210,000" = "210,000";
 "3 hours" = "3시간";
 "3 min" = "3분";
@@ -2567,7 +2567,7 @@
 "diff: a file named cannot be read." = "diff: 이름 붙은 파일을 읽을 수 없습니다.";
 "diff: name two texts, or one and a pipe." = "diff: 텍스트 두 개, 또는 하나와 파이프를 지정하세요.";
 "diff: too large for this room." = "diff: 이 방에는 너무 큽니다.";
-"dig needs a name — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'." = "dig에는 이름이 필요합니다 — 'dig example.com', 'dig @192.168.4.1 x.local AAAA'.";
+"dig needs a name — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'." = "dig에는 이름이 필요합니다 — 'dig example.com', 'dig @192.168.1.1 x.local AAAA'.";
 "dig: no answer from %@ — the wire stayed quiet." = "dig: %@에서 답이 없습니다 — 회선이 조용했습니다.";
 "dirb: that is not a URL." = "dirb: URL이 아닙니다.";
 "dirb: the host is not answering at all — called off." = "dirb: 호스트가 전혀 응답하지 않습니다 — 중단했습니다.";
@@ -2616,7 +2616,7 @@
 "kernel: [%@] %@ — stopped." = "kernel: [%@] %@ — 중지됨.";
 "kill <pid> — 'ps' lists the kernel's table." = "kill <pid> — 'ps'가 커널의 표를 나열합니다.";
 "kill: no live process %@." = "kill: 살아 있는 프로세스 %@이(가) 없습니다.";
-"knock needs a host — 'knock 192.168.4.1'." = "knock에는 호스트가 필요합니다 — 'knock 192.168.4.1'.";
+"knock needs a host — 'knock 192.168.1.1'." = "knock에는 호스트가 필요합니다 — 'knock 192.168.1.1'.";
 "knock runs live — it cannot be piped or captured." = "knock은 라이브로 실행됩니다 — 파이프나 캡처가 불가능합니다.";
 "knocking on %@ doors at %@ — anything but 404 is news" = "%@에서 문 %@개를 두드리는 중 — 404가 아니면 소식입니다";
 "limits — what this room honestly cannot do:" = "limits — 이 방이 솔직히 할 수 없는 것:";
@@ -2874,7 +2874,7 @@
 "connected" = "연결됨";
 "device" = "장치";
 "diagnose: %@/%@ — %@" = "진단: %@/%@ — %@";
-"dirb needs a URL — 'dirb http://192.168.4.1'." = "dirb는 URL이 필요함 — 'dirb http://192.168.4.1'.";
+"dirb needs a URL — 'dirb http://192.168.1.1'." = "dirb는 URL이 필요함 — 'dirb http://192.168.1.1'.";
 "down" = "다운";
 "factory write community live" = "공장 출고 쓰기 커뮤니티 활성";
 "features ride at their defaults." = "기능들이 기본값 그대로 동작함.";
@@ -3599,7 +3599,6 @@
 "Her refusals are readings, not moods. A macro that 'is not ready' names its first unready block and why — a payload not in the book, a target that does not parse — because a playlist that half-runs is worse than one that never starts. A hand that says an organ 'hasn't reached me yet' means its tab has not been opened since launch; opening it once wires it for the session. A capability that reads as a platform limit — NFC on a free team — will read the same tomorrow; she does not let the operator chase it as a bug." = "그녀의 거부는 판독이지 기분이 아니다. '준비가 안 됐다'는 매크로는 준비 안 된 첫 블록과 그 이유를 이름 댄다 — 책에 없는 페이로드, 파싱되지 않는 대상 — 반쯤 도는 플레이리스트는 시작조차 안 하는 것보다 나쁘기 때문이다. 어느 기관이 '아직 내게 닿지 않았다'고 말하는 손은 그 탭이 실행 이후 열리지 않았다는 뜻이다; 한 번 열면 세션 동안 연결된다. 플랫폼 한계로 읽히는 능력 — 무료 팀에서의 NFC — 은 내일도 똑같이 읽힐 것이다; 그녀는 오퍼레이터가 그것을 버그처럼 쫓게 두지 않는다.";
 "Hold a tag to the phone and the census reads it: type, identifier, technologies, the NDEF it carries, and APDU answers an ISO 7816 tag will give an explorer. It reads and identifies — it never writes or clones; the record of a reading stays in the room." = "태그를 폰에 대면 센서스가 그것을 읽는다: 종류, 식별자, 기술, 그것이 지닌 NDEF, 그리고 ISO 7816 태그가 탐험가에게 줄 APDU 답들. 그것은 읽고 식별한다 — 절대 쓰거나 복제하지 않는다; 한 판독의 기록은 그 방에 남는다.";
 "Home network hardening — the NSA's sheet" = "가정 네트워크 강화 — NSA의 시트";
-"Home wires are almost always a /24: 254 addresses under one prefix, the gateway at .1 (the eero here), broadcast at .255 where a shout reaches every host at once. The phone's own address on this wire is 192.168.4.20. A sweep walks the 254 and knocks one port on each — a census, not a battering. Leaving the /24 changes the rules entirely: remote targets are other people's networks, and the charter in About applies." = "가정 선은 거의 언제나 /24다: 하나의 접두사 아래 254개 주소, .1에 게이트웨이(여기서는 eero), .255에 브로드캐스트 — 한 번의 외침이 모든 호스트에 한 번에 닿는 곳. 이 선에서 폰 자체의 주소는 192.168.4.20이다. 스위프는 254개를 걷고 각각에 포트 하나를 노크한다 — 센서스이지 맹타가 아니다. /24를 떠나는 것은 규칙을 완전히 바꾼다: 원격 대상은 다른 사람들의 네트워크이고, About의 헌장이 적용된다.";
 "Housekeeping — clears and folds" = "하우스키핑 — 지우기와 접기";
 "How operators actually phrase orders" = "오퍼레이터가 실제로 명령을 표현하는 방식";
 "How the exams are actually passed" = "시험이 실제로 합격되는 법";
@@ -3915,7 +3914,7 @@
 "But I can " = "하지만 나는 할 수 있다 ";
 "Called off — the Netbomb stays in the rack." = "취소했다 — Netbomb은 선반에 남는다.";
 "Challenge sent to %@ — the defender must be serving with its War Games room open. When READY lands, the round is set from the War Games room in the Send tab." = "%@에 도전장을 보냈다 — 방어자는 War Games 방을 연 채 서빙 중이어야 한다. READY가 도착하면 라운드는 Send 탭의 War Games 방에서 정해진다.";
-"Challenge whom? Give me the defender's address — challenge 192.168.4.31." = "누구에게 도전할까? 방어자 주소를 줘라 — challenge 192.168.4.31.";
+"Challenge whom? Give me the defender's address — challenge 192.168.1.31." = "누구에게 도전할까? 방어자 주소를 줘라 — challenge 192.168.1.31.";
 "Currently wearing %@. The rack holds: %@." = "지금 %@를 입고 있다. 선반에는: %@.";
 "Defense set: %@ of Serve's doors held as real, %@ decoys flying" = "방어 설정 완료: Serve 문 %@개는 진짜로 유지, 미끼 %@개 비행 중";
 "Deleted “%@”." = "“%@” 삭제했다.";
@@ -4883,8 +4882,8 @@
 "%@: finished, %lld of %lld blocks." = "%@: 완료 — 블록 %lld개 중 %lld개.";
 "%@: stopped." = "%@: 중지됨.";
 "%lld. %@ — %@" = "%lld. %@ — %@";
-"192.168.4.31 or gateway" = "192.168.4.31 또는 gateway";
-"192.168.4.31:9000 or phone:Name" = "192.168.4.31:9000 또는 phone:Name";
+"192.168.1.31 or gateway" = "192.168.1.31 또는 gateway";
+"192.168.1.31:9000 or phone:Name" = "192.168.1.31:9000 또는 phone:Name";
 "A full trace on the standing scope, then the word that it is done." = "상시 범위 전체를 추적한 뒤, 완료됐다는 소식을 전한다.";
 "A post, not a test: the house dark, stealth on, the ear open — and it ends standing exactly that way, by design." = "시험이 아닌 보초: 집은 어둡고, stealth 켜짐, 귀는 열림 — 설계대로 정확히 그 상태로 선 채 끝난다.";
 "A watch is already running — left as it was." = "감시가 이미 돌아가는 중 — 그대로 뒀다.";
