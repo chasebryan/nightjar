@@ -2142,7 +2142,7 @@
 "She knows it now." = "Adesso lo sa.";
 "Skelli's crew" = "La squadra di Skelli";
 "Stealth only" = "Solo furtivo";
-"Sweep — port %@" = "Spazzata — porta %@";
+"Sweep — port %lld" = "Spazzata — porta %lld";
 "That target does not parse: %@" = "Quel target non si interpreta: %@";
 "The GATT host already wears “%@”." = "L'host GATT indossa già “%@”.";
 "The beacon already wears “%@”." = "Il beacon indossa già “%@”.";
@@ -2160,7 +2160,7 @@
 "War Room, knocking" = "War Room, bussando";
 "War Room, tracing" = "War Room, tracciando";
 "Watch — %@" = "Osserva — %@";
-"Watch — port %@" = "Osserva — porta %@";
+"Watch — port %lld" = "Osserva — porta %lld";
 "Wearing the %@ — live now, in character on every surface it owns." = "Indossa %@ — attiva ora, in personaggio su ogni superficie che possiede.";
 "Wearing the %@ — the dress is set; it goes live when Serve or the air organs next start." = "Indossa %@ — l'abito è pronto; diventa attiva quando Serve o gli organi dell'aria ripartono.";
 "Write target set: %@ — Send tab" = "Bersaglio di scrittura impostato: %@ — scheda Send";
