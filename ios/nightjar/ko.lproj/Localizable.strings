@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ 홉 %lld/%lld (%@) %@ — 대상을 파싱할 수 없음";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ 홉 %lld/%lld (%@) %@ — 네트워크 대상이 아님";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ 홉 %lld/%lld (%@) %@ — 페이로드 구축 실패";
+"The Mac bench" = "Mac 벤치";
+"Window" = "창";
+"Display" = "디스플레이";
+"Catalog" = "카탈로그";
+"missing" = "없음";
+"App icon" = "앱 아이콘";
+"Mac boot film" = "Mac 부팅 필름";
+"Phone boot film" = "휴대폰 부팅 필름";
+"Boot film length" = "부팅 필름 길이";
+"Replay the boot" = "부팅 다시 재생";
+"Walk to a room" = "방으로 이동";
+"%.1f seconds" = "%.1f초";
