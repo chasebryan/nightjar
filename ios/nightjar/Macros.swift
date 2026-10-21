@@ -1979,7 +1979,7 @@ final class MacroRunner: ObservableObject {
 
     private func announce(_ text: String) {
         let content = UNMutableNotificationContent()
-        content.title = "nightjar-hack — macro"
+        content.title = "nightjar — macro"
         content.body = L(text)
         content.sound = .default
         let request = UNNotificationRequest(

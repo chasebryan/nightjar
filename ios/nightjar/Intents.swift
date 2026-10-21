@@ -5,7 +5,7 @@ import AppIntents
 /// radio), so those throw a pointer back to the Send tab.
 struct SendPayloadIntent: AppIntent {
     static var title: LocalizedStringResource = "Send a payload"
-    static var description = IntentDescription("Send a text payload to a tcp://, udp://, or http(s):// target with nightjar-hack.")
+    static var description = IntentDescription("Send a text payload to a tcp://, udp://, or http(s):// target with nightjar.")
     static var openAppWhenRun = false
 
     @Parameter(title: "Target",
@@ -22,7 +22,7 @@ struct SendPayloadIntent: AppIntent {
         var errorDescription: String? {
             switch self {
             case .sendFailed(let target):
-                return "nightjar-hack could not send to \(target)."
+                return "nightjar could not send to \(target)."
             }
         }
     }

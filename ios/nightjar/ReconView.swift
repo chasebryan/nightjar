@@ -679,7 +679,7 @@ final class ScanModel: ObservableObject {
         ("_airplay._tcp", "AirPlay"), ("_raop._tcp", L("AirPlay audio")),
         ("_rair._tcp", L("AirPlay audio")),
         ("_googlecast._tcp", "Chromecast"),
-        ("_mqtt._tcp", "MQTT"), ("_nightjar._tcp", L("nightjar-hack phone")),
+        ("_mqtt._tcp", "MQTT"), ("_nightjar._tcp", L("nightjar phone")),
     ]
 
     func startDiscovery() {

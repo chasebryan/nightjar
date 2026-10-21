@@ -9,7 +9,7 @@ import AppKit
 #endif
 import UserNotifications
 
-/// The mouth: everything in nightjar-hack that transmits. A port of
+/// The mouth: everything in nightjar that transmits. A port of
 /// `nightjar/send.py`'s semantics to what iOS allows an app to do.
 ///
 /// The listening post (ListeningPost.swift) is untouched by this file:
@@ -855,7 +855,7 @@ final class Mouth: NSObject, ObservableObject {
                 // is printable; binary arrivals banner their size and
                 // first bytes as hex instead of staying silent.
                 let content = UNMutableNotificationContent()
-                content.title = String(format: L("nightjar-hack · %@ from %@"), transport, peer)
+                content.title = String(format: L("nightjar · %@ from %@"), transport, peer)
                 if let text = PayloadKit.printableText(data) {
                     content.body = text
                 } else {
@@ -1472,7 +1472,7 @@ final class Mouth: NSObject, ObservableObject {
 
     // MARK: Bonjour discovery of other phones
 
-    /// Watch for other phones serving nightjar-hack on the local
+    /// Watch for other phones serving nightjar on the local
     /// network. Their TCP listener advertises `_nightjar._tcp`; the
     /// names listed here are what the Send tab offers as one-tap
     /// targets.
@@ -1570,7 +1570,7 @@ final class Mouth: NSObject, ObservableObject {
     /// path completes false, exactly once. (UI calls this signature.)
     func plantMQTT(host: String, port: Int, topic: String, payload: Data,
                    completion: @escaping (Bool) -> Void) {
-        let connectPacket = PayloadKit.mqttConnect(clientID: "nightjar-hack")
+        let connectPacket = PayloadKit.mqttConnect(clientID: "nightjar")
         let publishPacket = PayloadKit.mqttPublish(topic: topic, payload: payload,
                                                    retain: true)
         guard !connectPacket.isEmpty, !publishPacket.isEmpty,
@@ -1965,7 +1965,7 @@ final class Mouth: NSObject, ObservableObject {
         var errorDescription: String? {
             switch self {
             case .appNotRunning:
-                return "nightjar-hack is not running; open it once first."
+                return "nightjar is not running; open it once first."
             case .needsTheApp:
                 return "That target needs the app: use the Send tab instead."
             }
@@ -2748,7 +2748,7 @@ final class PayloadBook: ObservableObject {
                      xorKey: "", useGzip: false, framing: "raw",
                      builtIn: true),
         SavedPayload(name: "Printer test page (TCP 9100)", source: "text",
-                     text: "nightjar-hack says hello\r\n\u{0C}",
+                     text: "nightjar says hello\r\n\u{0C}",
                      xorKey: "", useGzip: false, framing: "raw",
                      builtIn: true),
         SavedPayload(name: "SNMP get sysDescr (UDP 161)", source: "hex",

@@ -416,7 +416,7 @@ extension SkelliKnowledge {
             keywords: ["empty sweep", "nothing answers",
                        "local network", "permission",
                        "no hosts", "wire empty"],
-            body: "The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on."),
+            body: "The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on."),
         SkelliEntry(
             id: "earhearsnothing",
             title: "When the ear hears nothing",

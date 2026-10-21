@@ -462,7 +462,7 @@ final class Gauntlet: ObservableObject {
         add("house", "house state readable") {
             let state = DevKit.houseState()
             try Gauntlet.require(
-                state.contains("nightjar-hack"),
+                state.contains("nightjar"),
                 "house state did not describe "
                 + "the app")
             return nil

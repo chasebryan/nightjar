@@ -155,7 +155,7 @@ struct SendView: View {
     @AppStorage("plantKind") private var plantKind = "mqtt"
     @AppStorage("plantTopic") private var plantTopic = "nightjar/plant"
     @AppStorage("plantKey") private var plantKey = "nightjar:plant"
-    @AppStorage("plantValue") private var plantValue = "planted by nightjar-hack"
+    @AppStorage("plantValue") private var plantValue = "planted by nightjar"
     /// The most recent plant: which service, under what key/topic,
     /// at which target. Verify reads this, not the form's current
     /// values, so editing the form after planting can't misdirect it.
@@ -2242,7 +2242,7 @@ struct ServeView: View {
 
     private func inboxFile() -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("nightjar-hack-inbox.jsonl")
+            .appendingPathComponent("nightjar-inbox.jsonl")
         try? (mouth.inboxJSONL + "\n").write(to: url, atomically: true, encoding: .utf8)
         return url
     }

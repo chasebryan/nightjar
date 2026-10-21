@@ -642,8 +642,8 @@ final class KnockEngine {
         if verdict.hasPrefix("SSH client banner") { return "ssh" }
         if verdict.hasPrefix("TLS ClientHello") { return "tls" }
         if verdict.hasPrefix("HTTP request") { return "http" }
-        if verdict.hasPrefix("nightjar-hack probe:") {
-            let rest = verdict.dropFirst("nightjar-hack probe: ".count)
+        if verdict.hasPrefix("nightjar probe:") {
+            let rest = verdict.dropFirst("nightjar probe: ".count)
             let name = rest.split(separator: "(").first?
                 .trimmingCharacters(in: .whitespaces) ?? ""
             if name.contains("ssh") { return "ssh" }

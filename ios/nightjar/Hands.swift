@@ -1621,7 +1621,7 @@ extension SkelliCenter {
         activity = "Forging…"
         Task {
             let text = await SkelliMind.rawAnswer(
-                instructions: "You are the forge inside nightjar-hack. The operator describes a payload; produce ONLY the payload itself — raw protocol text, or space-separated hex bytes for a binary payload. No explanation, no code fences. If the brief is unclear, produce the closest standard probe.",
+                instructions: "You are the forge inside nightjar. The operator describes a payload; produce ONLY the payload itself — raw protocol text, or space-separated hex bytes for a binary payload. No explanation, no code fences. If the brief is unclear, produce the closest standard probe.",
                 prompt: raw)
             await MainActor.run {
                 guard let text, !text.isEmpty else {

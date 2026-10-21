@@ -53,7 +53,7 @@ enum Postcard {
 
     /// The tomato, made literal.
     static var tomatoBytes: Data {
-        Data("🍅 — nightjar-hack sends its regards.\r\n"
+        Data("🍅 — nightjar sends its regards.\r\n"
             .utf8)
     }
 

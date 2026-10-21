@@ -159,7 +159,7 @@ final class HeadlineWire: ObservableObject {
             var request = URLRequest(url: url)
             request.timeoutInterval = 12
             request.setValue(
-                "nightjar-hack headline wire",
+                "nightjar headline wire",
                 forHTTPHeaderField: "User-Agent")
             URLSession.shared.dataTask(
                 with: request) { data, _, _ in

@@ -519,7 +519,7 @@ struct KnockChatView: View {
                             suite: chat.sendSuite) {
                             mouth.startGattHost(
                                 payload: sealed,
-                                name: "nightjar-hack")
+                                name: "nightjar")
                             brushDraft = ""
                         }
                     }

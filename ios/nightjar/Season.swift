@@ -182,7 +182,7 @@ final class Season: ObservableObject {
             let words: [(Int, String)] = [
                 (22, "SSH client banner (the season ghost)"),
                 (443, "TLS ClientHello (the season ghost)"),
-                (1883, "nightjar-hack probe: mqtt-connect "
+                (1883, "nightjar probe: mqtt-connect "
                        + "(the season ghost)"),
             ]
             for (step, word) in words.enumerated() {

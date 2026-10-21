@@ -11,7 +11,7 @@ import AppKit
 ///
 /// Receive-only, by construction: the only CoreBluetooth calls in this
 /// file are `scanForPeripherals` and `stopScan`. There is no `connect`,
-/// no GATT, no pairing in the listening post. (This is the nightjar-hack
+/// no GATT, no pairing in the listening post. (This is the nightjar
 /// build: the transmitting engines live in Mouth.swift, in separate
 /// managers the listener never touches. The ear stays pure; the mouth
 /// is a different organ.)

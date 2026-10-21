@@ -86,7 +86,7 @@ struct ProberFile: Identifiable {
         if drops > 0 {
             out += "Took \(drops) honeydrop(s).\n"
         }
-        out += "\nAssembled by nightjar-hack from its own "
+        out += "\nAssembled by nightjar from its own "
         out += "tripwire log and journal — testimony, not "
         out += "attribution: an address is a claim about a "
         out += "network, not an identity."
