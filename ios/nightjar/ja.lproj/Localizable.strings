@@ -1235,7 +1235,7 @@
 "This house finds things. I keep the list." = "この家は物を見つける。リストは私が持ってる。";
 "This is loud. It announces this phone to every device — and every watcher — on the wire. On networks you do not own it may trip intrusion detection, alerts, and logs with your name on them." = "これはうるさい。この電話を回線上のすべてのデバイス — そしてすべての観察者 — に知らせる。あなたのものではないネットワークでは、ノックへの応答はここに届く。";
 "This is meant to be noticed — by every admin measure on the network: the DHCP and flow logs, the controller's client list, anything watching broadcasts. On a network you do not own, expect exactly the attention it asks for." = "これは注目されるためのもの — ネットワーク上のすべての管理指標によって：DHCPとフローのログ、コントローラのセッション表、ゲージの上昇を見守るNMS。";
-"This is nightjar-hack: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "これは nightjar-hack です。nightjar のリッスンポストに、口が付いたものです。リッスンタブは純粋主義の半分で — アドバタイズをスキャンして記録し、接続、ペアリング、送信は決してしません。本家アプリとまったく同じです。送信タブとサーブタブはハックの半分で、送信はしますが、それはあなたがボタンを押したとき、あなたが入力した対象にだけです。両半分は無線の状態を共有しません。耳は純粋なまま、口は ";
+"This is nightjar: the listening post from nightjar, plus a mouth. The Listen tab is the purist half — it scans and logs advertisements and never connects, pairs or sends, exactly like the upstream app. The Send and Serve tabs are the hack half: they transmit, but only when you press their buttons, to targets you type. The two halves share no radio state; the ear stays pure, the mouth is a " = "これは nightjar です。nightjar のリッスンポストに、口が付いたものです。リッスンタブは純粋主義の半分で — アドバタイズをスキャンして記録し、接続、ペアリング、送信は決してしません。本家アプリとまったく同じです。送信タブとサーブタブはハックの半分で、送信はしますが、それはあなたがボタンを押したとき、あなたが入力した対象にだけです。両半分は無線の状態を共有しません。耳は純粋なまま、口は ";
 "This network" = "このネットワーク";
 "This post" = "このポスト";
 "Throw Your Voice — the ventriloquist" = "声を投げる — 腹話術師";
@@ -1402,10 +1402,10 @@
 "memcached set" = "memcached set";
 "never" = "決して";
 "new in the house" = "家に来たばかり";
-"nightjar-hack" = "nightjar-hack";
-"nightjar-hack for iOS %@ · log format 1" = "nightjar-hack for iOS %@ · ログ形式 1";
-"nightjar-hack is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar-hack は、あなたが所有する、またはテストを委託されたデバイスとネットワークのためのテスト機器です。送信、スキャン、設置、記録するものはすべて、あなたに権限のある対象だけに向けてください。あなたの権限についてはあなたが責任を負います。権限のなかったデバイスやネットワークへの誤用について、作者は責任を負いません。";
-"nightjar-hack is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar-hack は無料で、どちらにしても無料のままです — 中のすべてのツールはすでにあなたのものです。ここにペイウォールはなく、今後も決してありません。";
+"nightjar" = "nightjar";
+"nightjar for iOS %@ · log format 1" = "nightjar for iOS %@ · ログ形式 1";
+"nightjar is a testing instrument for devices and networks you own, or that you are engaged in writing to test. Aim everything it sends, scans, plants, or records only at targets you are authorized for. You are responsible for your authorization; the author is not responsible for misuse against devices or networks you were not authorized to test." = "nightjar は、あなたが所有する、またはテストを委託されたデバイスとネットワークのためのテスト機器です。送信、スキャン、設置、記録するものはすべて、あなたに権限のある対象だけに向けてください。あなたの権限についてはあなたが責任を負います。権限のなかったデバイスやネットワークへの誤用について、作者は責任を負いません。";
+"nightjar is free, and it stays free either way — every tool in it is already yours. There are no paywalls here, and there never will be." = "nightjar は無料で、どちらにしても無料のままです — 中のすべてのツールはすでにあなたのものです。ここにペイウォールはなく、今後も決してありません。";
 "no releases published yet" = "まだリリースは公開されていません";
 "not advertised" = "アドバタイズなし";
 "open" = "開いている";
@@ -2069,7 +2069,7 @@
 " Note: the dress changed while the shape was worn — the restore unwound that too." = " 注記：姿を着ているあいだに装いが変わっていました — 復元はそれも巻き戻しました。";
 " The revolving rack stands still." = " 回転ラックは静止しています。";
 "%@ Kept on your rack." = "%@ ラックに保管しました。";
-"%@ is out. Open nightjar-hack to install it." = "%@ が出ました。nightjar-hack を開いてインストールしてください。";
+"%@ is out. Open nightjar to install it." = "%@ が出ました。nightjar を開いてインストールしてください。";
 "%@ — emissions regulated, tripwire armed." = "%@ — 発信は規制中、トリップワイヤー作動中。";
 "%@ — the house is re-regulated." = "%@ — 家は再規制されました。";
 "%lld blocks" = "%lld ブロック";
@@ -2174,7 +2174,7 @@
 "an update check" = "更新チェック";
 "depth %lld" = "深さ %lld";
 "narrating the /24" = "/24 を実況中";
-"nightjar-hack · %@ from %@" = "nightjar-hack · %@ から %@";
+"nightjar · %@ from %@" = "nightjar · %@ から %@";
 "on %@.0/24" = "%@.0/24 上";
 "planning" = "計画中";
 "scope: %@" = "スコープ： %@";
@@ -2512,7 +2512,7 @@
 "; referred to %@" = "; %@ へリファラル";
 "; whois %@ via %@" = "; whois %@（%@ 経由）";
 "; … the rest is boilerplate." = "; …残りは定型文です。";
-"BLACKSITE OS — nightjar-hack %@" = "BLACKSITE OS — nightjar-hack %@";
+"BLACKSITE OS — nightjar %@" = "BLACKSITE OS — nightjar %@";
 "EMCON %@ set." = "EMCON %@ を設定。";
 "EMCON forbids the watch under this condition — it stays down." = "この状態では EMCON が監視を禁じます — 停止したままです。";
 "EMCON off — the house is open." = "EMCON オフ — ハウスは開いています。";
@@ -2884,7 +2884,7 @@
 "is readmitted." = "を再許可した。";
 "kept — %@@%@ speaks SNMPv3 %@" = "保存済み — %@@%@ は SNMPv3 %@ を使用";
 "legacy versions live" = "レガシーバージョンが有効";
-"nightjar-hack %@ on %@ — source %@" = "nightjar-hack %@ / %@ 上 — ソース %@";
+"nightjar %@ on %@ — source %@" = "nightjar %@ / %@ 上 — ソース %@";
 "no %@ at %@ answers to “%@”." = "%@ の %@ は “%@” に応答しない。";
 "no CSP; the browser trusts whatever loads." = "CSP なし。ブラウザは読み込まれたものを何でも信頼する。";
 "no HSTS; downgrade stays possible." = "HSTS なし。ダウングレードの余地あり。";
@@ -3408,7 +3408,7 @@
 "network gear in " = "ネットワーク機器 ";
 "network-gear name " = "ネットワーク機器名 ";
 "never knocked for this page" = "このページでは未ノック";
-"nightjar-hack phone" = "nightjar-hack phone";
+"nightjar phone" = "nightjar phone";
 "no answer" = "応答なし";
 "no answer (" = "応答なし (";
 "no known format" = "既知の形式なし";
@@ -3707,7 +3707,7 @@
 "The certifications — the map of the ladder" = "資格——梯子の地図";
 "The decoder engine — batteries and evidence" = "デコーダエンジン——バッテリーと証拠";
 "The expansion formats" = "拡張フォーマット";
-"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar-hack on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "最初の容疑者、常に:iOSのローカルネットワーク許可——Settings、Privacy & Security、Local Network、nightjar-hackオン。それなしでは配線は丁寧な虚空として読める:スイープは終わり、何も応答せず、どのエラーも理由を言わない。第二の容疑者:電話が、自分がいると思っている配線に実際にはいない——VPNが上がっている、あるいはクライアント同士を隔離するゲストネットワークに参加している。第三:配線が本当に静か。彼女はその順に確認し、どの容疑者の上にいるかを言う。";
+"The first suspect, always: iOS's Local Network permission — Settings, Privacy & Security, Local Network, nightjar on. Without it the wire reads as a polite void: sweeps finish, nothing answers, and no error says why. Second suspect: the phone not actually on the wire it thinks it is — VPN up, or joined to a guest network that isolates clients from each other. Third: the wire genuinely is quiet. She checks in that order and says which suspect she is on." = "最初の容疑者、常に:iOSのローカルネットワーク許可——Settings、Privacy & Security、Local Network、nightjarオン。それなしでは配線は丁寧な虚空として読める:スイープは終わり、何も応答せず、どのエラーも理由を言わない。第二の容疑者:電話が、自分がいると思っている配線に実際にはいない——VPNが上がっている、あるいはクライアント同士を隔離するゲストネットワークに参加している。第三:配線が本当に静か。彼女はその順に確認し、どの容疑者の上にいるかを言う。";
 "The fusion desk: the ear's rows, the wire census and the journal's activity, claimed into one emitter registry — air and wire, every claim labeled with the channel that heard it and a priority from a stated formula. A watch records a baseline, and stopping it reads the delta: what arrived, what vanished, which doors changed. One rule above all: emitters merge only within an epoch — the desk never stitches a stranger across days, and says so on every export." = "融合デスク:耳の行、配線のセンサス、ジャーナルの活動が、一つの発信源レジストリへ主張される——空と配線、すべての主張はそれを聞いたチャネルでラベルされ、表明された式からの優先順位を持つ。見張りはベースラインを記録し、止めることでデルタを読む:何が到着し、何が消え、どの扉が変わったか。一つの規則が何より上:発信源はエポック内でのみ統合される——デスクは決して見知らぬ者を日々を越えて縫い合わせず、すべてのエクスポートでその旨を言う。";
 "The house on one canvas: you name rooms and place each neighbor where the device physically sits; nodes glow by freshness, carry their drift, and open their dossiers. Placement is your testimony — the app keeps it and never invents a location of its own. The Map resets from its More menu; the devices stay, the sitting is forgotten." = "一枚のキャンバス上の家:あなたは部屋を名指し、各隣人をそのデバイスが物理的に座している場所に配置する。ノードは新しさで輝き、そのドリフトを運び、その身上書を開く。配置はあなたの証言——アプリはそれを保持し、自らの場所を発明することは決してない。MapはそのMoreメニューからリセットされる。デバイスは残り、座り方は忘れられる。";
 "The house presets" = "家のプリセット";
