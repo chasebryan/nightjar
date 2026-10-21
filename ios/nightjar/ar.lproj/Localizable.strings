@@ -6234,3 +6234,5 @@
 "eazy: you are standing on it — running the full battery against its network." = "eazy: أنت تقف عليه — البطارية الكاملة تنطلق ضد شبكته.";
 "the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point" = "البطارية الكاملة — الأبواب، ثم المسبار الذي يخص كل باب، ثم تقرير محفوظ؛ بلا هدف يعني هذه الشبكة، والاسم يعني نقطة وصول";
 "this network" = "هذه الشبكة";
+"tlsgrade: this device's own TLS stack will not offer the old versions — a server's legacy locks cannot be proven from here." = "tlsgrade: مكدس TLS الخاص بهذا الجهاز لا يعرض الإصدارات القديمة — لا يمكن إثبات أقفال الخادم القديمة من هنا.";
+"%@ — cannot be tested from this device: its own stack negotiated %@ instead." = "%@ — لا يمكن اختباره من هذا الجهاز: تفاوض مكدسه على %@ بدلاً من ذلك.";
