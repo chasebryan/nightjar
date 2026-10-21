@@ -268,13 +268,13 @@ struct ContentView: View {
 
     /// The house's rooms, with everything hung
     /// on them — the tab view, its watches, its
-    /// overlays and its sheets. On the phone it
-    /// stands alone. On the Mac it stands beside
-    /// the sidebar, which drives its selection:
-    /// the Mac's tab view switches by selection
-    /// but shows no chrome to select with, so
-    /// without the sidebar there is no way to
-    /// walk the house at all.
+    /// overlays and its sheets. One navigator
+    /// only: on the phone, the tab strip; on the
+    /// Mac, the tab view's own sidebar dress
+    /// (houseMacTabStyle) — the toolbar strip the
+    /// Mac also drew was the same thirteen rooms
+    /// a second time, and two navigators is one
+    /// too many.
     private var tabShell: some View {
         TabView(selection: $tab) {
         SkelliView()
@@ -374,6 +374,7 @@ struct ContentView: View {
             .onDisappear { TabBeat.vanished(11) }
     }
     .tint(themes.current.accent)
+    .houseMacTabStyle()
     .onReceive(
         NotificationCenter.default.publisher(
             for: Blacksite.openTabNotification)
@@ -450,15 +451,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             AppBackdrop()
-#if os(macOS)
-            HStack(spacing: 0) {
-                MacSidebar(tab: $tab)
-                Divider()
-                tabShell
-            }
-#else
             tabShell
-#endif
             if showBoot && bootEnabled {
                 BootView {
                     withAnimation(.easeOut(duration: 0.5)) {
@@ -1722,89 +1715,3 @@ struct SupportView: View {
         .environmentObject(Mouth())
         .environmentObject(ToastCenter())
 }
-
-#if os(macOS)
-/// The Mac's way through the house: a sidebar of
-/// its rooms, driving the same selection the tab
-/// view obeys. The labels and symbols are the tab
-/// strip's own, in its own order — Skelli first,
-/// then the working rooms, About and Blacksite
-/// in their declared places.
-struct MacSidebar: View {
-    @Binding var tab: Int
-    @ObservedObject private var languageCenter =
-        LanguageCenter.shared
-    @ObservedObject private var themes =
-        ThemeCenter.shared
-
-    private struct Room: Identifiable {
-        let tag: Int
-        let label: String
-        let icon: String
-        var id: Int { tag }
-    }
-
-    private var sections: [Room] {
-        [Room(tag: 9, label: L("Skelli"),
-              icon: "brain.head.profile"),
-         Room(tag: 0, label: L("Listen"),
-              icon: "dot.radiowaves.left.and.right"),
-         Room(tag: 1, label: L("Send"),
-              icon: "paperplane"),
-         Room(tag: 2, label: L("Serve"),
-              icon: "tray.and.arrow.down"),
-         Room(tag: 5, label: L("About"),
-              icon: "info.circle"),
-         Room(tag: 12, label: L("Blacksite"),
-              icon: "terminal.fill"),
-         Room(tag: 3, label: L("Sessions"),
-              icon: "list.bullet.rectangle"),
-         Room(tag: 4, label: L("Scan"),
-              icon: "scope"),
-         Room(tag: 6, label: L("Recon"),
-              icon: "target"),
-         Room(tag: 7, label: L("EMCON"),
-              icon: "shield"),
-         Room(tag: 8, label: L("Knocktalk"),
-              icon: "message.badge.waveform"),
-         Room(tag: 10, label: L("Macros"),
-              icon: "puzzlepiece.extension.fill"),
-         Room(tag: 11, label: L("Vault"),
-              icon: "lock.fill")]
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
-                ForEach(sections) { room in
-                    Button {
-                        tab = room.tag
-                    } label: {
-                        Label(room.label,
-                              systemImage: room.icon)
-                            .frame(maxWidth: .infinity,
-                                   alignment: .leading)
-                            .padding(.vertical, 5)
-                            .padding(.horizontal, 8)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(
-                        tab == room.tag
-                            ? themes.current.accent
-                            : Color.primary)
-                    .background(
-                        tab == room.tag
-                            ? themes.current.accent
-                                .opacity(0.16)
-                            : Color.clear,
-                        in: RoundedRectangle(
-                            cornerRadius: 7))
-                }
-            }
-            .padding(10)
-        }
-        .frame(width: 196)
-        .background(Color(white: 0.07))
-    }
-}
-#endif

@@ -537,3 +537,31 @@ extension View {
 #endif
     }
 }
+
+#if os(macOS)
+extension View {
+    /// The Mac's one navigator: the tab view in
+    /// its sidebar dress. macOS draws a tab view's
+    /// items twice over by default — a segmented
+    /// strip in the toolbar and nothing else —
+    /// and a house with two identical navigators
+    /// has one too many. The sidebar dress draws
+    /// the same items once, at the left, with
+    /// their symbols: where a Mac operator looks
+    /// for the rooms of an app. Below macOS 15
+    /// the dress does not exist and the strip
+    /// stands alone, as it did.
+    func houseMacTabStyle() -> some View {
+        if #available(macOS 15.0, *) {
+            return AnyView(
+                self.tabViewStyle(.sidebarAdaptable))
+        }
+        return AnyView(self)
+    }
+}
+#else
+extension View {
+    /// The phone's tab strip needs no dress.
+    func houseMacTabStyle() -> some View { self }
+}
+#endif
