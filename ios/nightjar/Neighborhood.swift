@@ -1,4 +1,5 @@
 import SwiftUI
+import Network
 
 /// The Neighborhood: a cast of characters for your own wire.
 ///
@@ -499,8 +500,158 @@ final class NeighborhoodStore: ObservableObject {
 
 /// Scan's neighborhood board: every character on the wire,
 /// each opening into its full dossier.
+/// The census (fix265): one deliberate pass over
+/// this phone's own /24, knocking the house's
+/// discovery doors on every address and collecting
+/// whoever answers into the Neighborhood — the
+/// collection the Scan room shows, Send offers as
+/// targets, and Skelli reads aloud (Chase,
+/// 2026-10-21: "i should be able to collect ip
+/// addresses with the mobile ios version also" —
+/// all three shapes). The doors are the standing
+/// trace's discovery set, read from its stored key,
+/// so the census and the trace knock the same
+/// doors. A census is a sweep under the Standard:
+/// where sweeps are forbidden, it does not run.
+final class AddressCensus: ObservableObject {
+    static let shared = AddressCensus()
+
+    @Published private(set) var running = false
+    @Published private(set) var lastRun: Date?
+    @Published private(set) var lastCount = 0
+
+    private let queue = DispatchQueue(
+        label: "nightjar.census",
+        attributes: .concurrent)
+
+    /// The discovery doors, from the trace's own
+    /// stored list — one fallback for every reader.
+    static var discoveryPorts: [Int] {
+        let text = UserDefaults.standard.string(
+            forKey: "traceDiscoveryPorts")
+            ?? "80,443,22,445,1883,8080,8443,9100"
+        let ports = Array(Set(text
+            .split(separator: ",")
+            .compactMap {
+                Int($0.trimmingCharacters(
+                    in: .whitespaces))
+            }
+            .filter { (1...65535).contains($0) }))
+            .sorted()
+        return ports.isEmpty ? [80, 443, 22] : ports
+    }
+
+    /// Run the pass. The completion receives the
+    /// neighbors standing on this wire, ordered
+    /// by address — the collection as it stands
+    /// the moment the pass ends. When the pass
+    /// cannot run (already running, silenced by
+    /// the Standard, no wire), the completion
+    /// receives the collection as it stands.
+    func run(completion: (([Neighbor]) -> Void)? = nil) {
+        let standing = NeighborhoodStore.shared.neighbors
+        guard !running,
+              !EmconStandard.refused(.sweep),
+              let own = Mouth.localIPAddress()
+        else { completion?(standing); return }
+        let parts = own.split(separator: ".")
+        guard parts.count == 4
+        else { completion?(standing); return }
+        let prefix = parts.dropLast()
+            .joined(separator: ".") + "."
+        let ports = Self.discoveryPorts
+        running = true
+        let boardID = ProcessBoard.shared.begin(
+            label: L("Census — collecting addresses"),
+            organ: "Scan",
+            detail: L("across the /24"),
+            stop: nil)
+        var found: [SweepHost] = []
+        let foundLock = NSLock()
+        let group = DispatchGroup()
+        let semaphore = DispatchSemaphore(value: 40)
+        for octet in 1...254 {
+            let ip = prefix + "\(octet)"
+            for port in ports {
+                group.enter()
+                queue.async {
+                    semaphore.wait()
+                    self.probe(host: ip, port: port) { alive in
+                        if alive {
+                            foundLock.lock()
+                            found.append(SweepHost(
+                                ip: ip, octet: octet,
+                                port: port))
+                            foundLock.unlock()
+                        }
+                        semaphore.signal()
+                        group.leave()
+                    }
+                }
+            }
+        }
+        group.notify(queue: .main) {
+            self.running = false
+            self.lastRun = Date()
+            NeighborhoodStore.shared.recordSweep(found)
+            let wire = NeighborhoodStore.shared
+                .neighbors
+                .filter { $0.ip.hasPrefix(prefix) }
+                .sorted { lhs, rhs in
+                    let lo = Int(lhs.ip
+                        .split(separator: ".")
+                        .last ?? "") ?? 0
+                    let ro = Int(rhs.ip
+                        .split(separator: ".")
+                        .last ?? "") ?? 0
+                    return lo < ro
+                }
+            self.lastCount = wire.count
+            ProcessBoard.shared.end(boardID, .done(
+                String(format: L("%@ address(es) collected"), String(describing: wire.count))))
+            completion?(wire)
+        }
+    }
+
+    /// One knock, the sweep's own semantics: a
+    /// door that opens is a collected address;
+    /// silence and refusal are not.
+    private func probe(host: String, port: Int,
+                       done: @escaping (Bool) -> Void) {
+        guard let nwPort = NWEndpoint.Port(
+            rawValue: UInt16(clamping: port))
+        else { done(false); return }
+        let connection = NWConnection(
+            host: NWEndpoint.Host(host),
+            port: nwPort, using: .tcp)
+        let finishLock = NSLock()
+        var finished = false
+        let finish: (Bool) -> Void = { alive in
+            finishLock.lock()
+            defer { finishLock.unlock() }
+            guard !finished else { return }
+            finished = true
+            connection.cancel()
+            done(alive)
+        }
+        connection.stateUpdateHandler = { state in
+            switch state {
+            case .ready: finish(true)
+            case .failed, .cancelled: finish(false)
+            default: break
+            }
+        }
+        connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + 1.0) {
+            finish(false)
+        }
+    }
+}
+
 struct NeighborhoodSectionView: View {
     @ObservedObject var store: NeighborhoodStore
+    @ObservedObject private var census =
+        AddressCensus.shared
     @ObservedObject private var tomato =
         TomatoMarks.shared
     @Binding var editing: Neighbor?
@@ -512,6 +663,23 @@ struct NeighborhoodSectionView: View {
     var body: some View {
         Section(header: Text(L("The Neighborhood — this wire, kept")),
                 footer: Text(L("Fed only by what this phone itself observes: sweeps it ran, announcements it heard, knocks at its own door. An address is a character, never a person — and nothing here is followed off this network."))) {
+            if EmconStandard.refused(.sweep) {
+                Text(L("The Standard forbids sweeps at this condition — the census stays silent."))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button {
+                    census.run { _ in
+                        boardOpen = true
+                    }
+                } label: {
+                    Label(census.running
+                            ? L("Collecting…")
+                            : L("Collect addresses"),
+                          systemImage: "dot.radiowaves.left.and.right")
+                }
+                .disabled(census.running)
+            }
             if store.neighbors.isEmpty {
                 Text(L("No neighbors yet. Run a sweep, let Bonjour resolve, or simply be knocked — the wire will populate its own cast."))
                     .font(.callout).foregroundStyle(.secondary)

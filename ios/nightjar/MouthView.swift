@@ -67,6 +67,8 @@ struct SendView: View {
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
     @StateObject private var book = PayloadBook()
+    @ObservedObject private var neighborhood =
+        NeighborhoodStore.shared
     @AppStorage("sendTarget") private var target = "tcp://127.0.0.1:9000"
     @State private var phoneSelection: String?
     @AppStorage("sendSource") private var source = "text"
@@ -200,6 +202,19 @@ struct SendView: View {
             .prefix(300).count
     }
 
+    /// The door a collected address is aimed at:
+    /// the house port when the address serves
+    /// nightjar or answered there, else the first
+    /// door it ever answered, else the house port.
+    private func collectedPort(for neighbor: Neighbor) -> Int {
+        if neighbor.ports.contains(9000) { return 9000 }
+        if neighbor.announcements.contains(
+            where: { $0.hasPrefix("_nightjar") }) {
+            return 9000
+        }
+        return neighbor.ports.first ?? 9000
+    }
+
     private var parsed: Result<SendTarget, Error> {
         Result { try SendTarget.parse(target) }
     }
@@ -305,6 +320,13 @@ struct SendView: View {
                                 HStack {
                                     Label(name, systemImage: "iphone")
                                     Spacer()
+                                    if let ip =
+                                        mouth.nearbyPhoneIPs[name] {
+                                        Text(ip)
+                                            .font(.caption
+                                                .monospaced())
+                                            .foregroundStyle(.secondary)
+                                    }
                                     if phoneSelection == name {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundStyle(.green)
@@ -325,6 +347,21 @@ struct SendView: View {
                         && phoneSelection == nil {
                         Text(L("No nearby phones right now — start serving on another phone on this Wi-Fi and it appears here, or type an address."))
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                    if !neighborhood.neighbors.isEmpty {
+                        Menu {
+                            ForEach(neighborhood.neighbors) { neighbor in
+                                Button {
+                                    phoneSelection = nil
+                                    target = "tcp://\(neighbor.ip):\(collectedPort(for: neighbor))"
+                                } label: {
+                                    Text("\(neighbor.displayName) — \(neighbor.ip):\(collectedPort(for: neighbor))")
+                                }
+                            }
+                        } label: {
+                            Label(L("Use a collected address"),
+                                  systemImage: "list.bullet.rectangle")
+                        }
                     }
                     if phoneSelection != nil {
                         Text(L("A nearby phone is selected — the address is ignored until you tap it."))

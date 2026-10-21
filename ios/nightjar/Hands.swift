@@ -1638,6 +1638,94 @@ extension SkelliCenter {
         }
     }
 
+    // MARK: her census hand — she collects the wire
+
+    /// "collect the ip addresses", "run a
+    /// census", "what addresses have you
+    /// collected": the collection is hers to run
+    /// and to read (fix265, Chase: "i should be
+    /// able to collect ip addresses with the
+    /// mobile ios version also" — all three
+    /// shapes: this hand, Scan's Collect button,
+    /// Send's collected targets). A run knocks
+    /// the discovery doors across this phone's
+    /// own /24, files the list in Deliveries, and
+    /// reads the addresses back; a report ask
+    /// reads the standing collection and runs
+    /// nothing. Lessons ("what is an ip address",
+    /// "how do i collect…") fall through to the
+    /// teacher.
+    func censusAsk(_ q: String) -> Bool {
+        if q.contains("what is") || q.contains("what's")
+            || q.contains("explain")
+            || q.contains("how do")
+            || q.contains("how does") {
+            return false
+        }
+        let words = Set(q.lowercased()
+            .split(whereSeparator: {
+                !$0.isLetter && !$0.isNumber
+            })
+            .map(String.init))
+        let ipish = q.contains("ip address")
+            || words.contains("ips")
+            || q.contains("addresses")
+            || q.contains("census")
+        guard ipish else { return false }
+        let runWords: Set<String> = ["collect",
+            "gather", "run", "take", "sweep",
+            "do"]
+        if !words.isDisjoint(with: runWords) {
+            if AddressCensus.shared.running {
+                say(L("A census is already running — the wire is being knocked."))
+                return true
+            }
+            guard !EmconStandard.refused(.sweep) else {
+                say(L("The Standard forbids sweeps at this condition — the census stays silent."))
+                return true
+            }
+            guard Mouth.localIPAddress() != nil else {
+                say(L("No wire under this phone — join the Wi-Fi and the census can run."))
+                return true
+            }
+            say(L("Collecting the addresses on this wire — knocking the discovery doors across the /24."))
+            AddressCensus.shared.run { wire in
+                self.censusReport(wire)
+            }
+            return true
+        }
+        let reportWords: Set<String> = ["what",
+            "list", "show", "which", "have"]
+        guard !words.isDisjoint(with: reportWords)
+        else { return false }
+        censusReport(NeighborhoodStore.shared.neighbors)
+        return true
+    }
+
+    /// The collection, read aloud and filed:
+    /// named where the wire named them, bare
+    /// addresses where it did not.
+    private func censusReport(_ wire: [Neighbor]) {
+        guard !wire.isEmpty else {
+            say(L("Nothing collected yet — the board is empty."))
+            return
+        }
+        let lines = wire.map { neighbor in
+            neighbor.displayName != neighbor.ip
+                ? "\(neighbor.ip) — \(neighbor.displayName)"
+                : neighbor.ip
+        }
+        DeliveriesCenter.shared.add(
+            name: L("Collected addresses"),
+            text: lines.joined(separator: "\n"),
+            ext: "txt")
+        let spoken = lines.count <= 12
+            ? lines.joined(separator: ", ")
+            : lines.prefix(12).joined(separator: ", ")
+              + String(format: L(", and %@ more"), String(describing: lines.count - 12))
+        say(String(format: L("%@ address(es) collected: %@. The list is filed in Deliveries."), String(describing: lines.count), spoken))
+    }
+
     // MARK: her send hand — she fires
 
     /// A saved pattern filled from the ask, the

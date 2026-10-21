@@ -458,6 +458,13 @@ final class Mouth: NSObject, ObservableObject {
     @Published var pendingWriteID: UUID?
     @Published var pendingWriteLabel: String?
     @Published private(set) var nearbyPhones: [String] = []
+    /// A browsed phone's address, once resolved
+    /// (fix265): the name is a door, not an
+    /// address — Send's targets are collected,
+    /// not typed.
+    @Published private(set) var nearbyPhoneIPs:
+        [String: String] = [:]
+    private var resolvingPhones: Set<String> = []
     private var browser: NWBrowser?
 
     /// Scan → Send handoff: an open port tapped in the Scan tab,
@@ -1491,12 +1498,83 @@ final class Mouth: NSObject, ObservableObject {
                 }
                 return nil
             }
+            self?.resolvePhones(results: results)
             DispatchQueue.main.async {
-                self?.nearbyPhones = names.sorted()
+                guard let self else { return }
+                self.nearbyPhones = names.sorted()
+                let live = Set(names)
+                self.nearbyPhoneIPs =
+                    self.nearbyPhoneIPs.filter {
+                        live.contains($0.key)
+                    }
             }
         }
         browser.start(queue: queue)
         self.browser = browser
+    }
+
+    /// Resolve each browsed phone's name to its
+    /// address, once — the way the Scan bench
+    /// resolves a service: open the connection,
+    /// read where it landed. The address joins
+    /// the name on Send's list and the phone
+    /// joins the Neighborhood: collected, both.
+    private func resolvePhones(
+        results: Set<NWBrowser.Result>) {
+        let mine = UIDevice.current.name
+        for result in results {
+            guard case .service(let name, _, _, _) =
+                    result.endpoint,
+                  name != mine,
+                  nearbyPhoneIPs[name] == nil,
+                  !resolvingPhones.contains(name)
+            else { continue }
+            resolvingPhones.insert(name)
+            let connection = NWConnection(
+                to: result.endpoint, using: .tcp)
+            let finishLock = NSLock()
+            var finished = false
+            let finish: (String?) -> Void = { ip in
+                finishLock.lock()
+                defer { finishLock.unlock() }
+                guard !finished else { return }
+                finished = true
+                connection.cancel()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.resolvingPhones.remove(name)
+                    if let ip {
+                        self.nearbyPhoneIPs[name] = ip
+                    }
+                }
+                if let ip {
+                    NeighborhoodStore.shared
+                        .recordBonjour(
+                            ip: ip, name: name,
+                            label: Mouth.bonjourType)
+                }
+            }
+            connection.stateUpdateHandler = { state in
+                switch state {
+                case .ready:
+                    if let path = connection.currentPath,
+                       case .hostPort(let host, _) =
+                        path.remoteEndpoint {
+                        finish("\(host)")
+                    } else {
+                        finish(nil)
+                    }
+                case .failed, .cancelled:
+                    finish(nil)
+                default:
+                    break
+                }
+            }
+            connection.start(queue: queue)
+            queue.asyncAfter(deadline: .now() + 3) {
+                finish(nil)
+            }
+        }
     }
 
     // MARK: HTTP send
