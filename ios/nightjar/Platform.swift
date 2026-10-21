@@ -1,12 +1,18 @@
 import Foundation
 import SwiftUI
+import AVFoundation
 
 // Platform.swift — the macOS bridge (fix237).
 //
 // The house is one source tree serving two targets:
-// the iPhone app and its Mac sibling. Everything in
-// this file exists ONLY on macOS; the iOS build never
-// sees it. The shims are deliberately narrow — each
+// the iPhone app and its Mac sibling. The shims in
+// the gated blocks below exist ONLY on macOS; the
+// helpers after them are shared by both targets —
+// mind which side of a gate a symbol lives on
+// before shared code calls it (fix260's lesson:
+// BootFilmMeasure sat in the Mac gate while the
+// boot measured films on both platforms). The
+// shims are deliberately narrow — each
 // one covers exactly the surface the shared sources
 // already use, spelled the way they use it, so the
 // shared code does not grow platform branches for
@@ -286,30 +292,6 @@ struct BootFilmPlayer: NSViewRepresentable {
     }
 }
 
-/// The length of a video backdrop, measured off
-/// the file itself. The boot times its whole
-/// ceremony against the film — the text, the
-/// print and the finale land on its last frame —
-/// so the Mac's film needs its seconds known
-/// before the printing starts.
-enum BootFilmMeasure {
-    static func videoSeconds(for data: Data) async
-        -> Double? {
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "nightjar-bootfilm-measure.mp4")
-        guard (try? data.write(to: url,
-                               options: .atomic)) != nil
-        else { return nil }
-        let asset = AVURLAsset(url: url)
-        guard let duration = try? await asset
-            .load(.duration) else { return nil }
-        let seconds = duration.seconds
-        return seconds.isFinite && seconds > 0
-            ? seconds : nil
-    }
-}
-
 /// Capitalization is a phone-keyboard concern; the
 /// Mac has a real keyboard. The spelling exists so
 /// shared text fields keep theirs — and does nothing.
@@ -332,6 +314,34 @@ extension View {
     }
 }
 #endif
+
+/// The length of a video backdrop, measured off
+/// the file itself. The boot times its whole
+/// ceremony against the film — the text, the
+/// print and the finale land on its last frame —
+/// so the film needs its seconds known before
+/// the printing starts, on the phone as much as
+/// on the laptop. (Born Mac-only in fix248; the
+/// phone grew its own video road in fix259 and
+/// calls it too — fix260 lifts it out of the
+/// Mac gate so both targets see it.)
+enum BootFilmMeasure {
+    static func videoSeconds(for data: Data) async
+        -> Double? {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "nightjar-bootfilm-measure.mp4")
+        guard (try? data.write(to: url,
+                               options: .atomic)) != nil
+        else { return nil }
+        let asset = AVURLAsset(url: url)
+        guard let duration = try? await asset
+            .load(.duration) else { return nil }
+        let seconds = duration.seconds
+        return seconds.isFinite && seconds > 0
+            ? seconds : nil
+    }
+}
 
 // MARK: - The Mac window's shape (fix240)
 //
