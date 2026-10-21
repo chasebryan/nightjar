@@ -187,6 +187,7 @@
 "Battery voltage" = "Batteriespannung";
 "Beacon" = "Bake";
 "Bedrock — iOS %@" = "Fundament — iOS %@";
+"Bedrock — macOS %@" = "Fundament — macOS %@";
 "Beeps quicken and rise as the signal strengthens; a thump means you're near. The pitch bends up while you're closing and down while you drift away. Walk slow — RSSI is a compass that points in loudness, not direction." = "Piepstöne werden schneller und höher, wenn das Signal stärker wird; ein dumpfer Schlag bedeutet, Sie sind nah. Der Ton steigt, während Sie sich nähern, und sinkt, während Sie sich entfernen. Gehen Sie langsam — RSSI ist ein Kompass, der in Lautstärke zeigt, nicht in Richtung.";
 "Before and after agree: nothing was exposed in the first place." = "Vorher und Nachher stimmen überein: Es war von Anfang an nichts bloßgelegt.";
 "Begin" = "Beginnen";
