@@ -6014,3 +6014,16 @@
 "Nothing landed at %@ — the door never opened." = "%@에 아무것도 닿지 않았다 — 문이 열리지 않았다.";
 "I have no send wire just now." = "지금은 보낼 회선이 없다.";
 "Here — %@: %@ bytes, filed in Deliveries." = "여기 — %@: %@바이트, Deliveries에 보관했다.";
+"Census — collecting addresses" = "센서스 — 주소 수집 중";
+"%@ address(es) collected" = "주소 %@개 수집됨";
+"Collect addresses" = "주소 수집";
+"Collecting…" = "수집 중…";
+"A census is already running — the wire is being knocked." = "센서스가 이미 실행 중입니다 — 네트워크를 두드리고 있습니다.";
+"The Standard forbids sweeps at this condition — the census stays silent." = "Standard가 이 상태에서는 스윕을 금지합니다 — 센서스는 침묵합니다.";
+"No wire under this phone — join the Wi-Fi and the census can run." = "이 전화 아래에 네트워크가 없습니다 — Wi-Fi에 연결하면 센서스를 실행할 수 있습니다.";
+"Collecting the addresses on this wire — knocking the discovery doors across the /24." = "이 네트워크의 주소를 수집 중 — /24 전체의 검색 문을 두드리고 있습니다.";
+"Nothing collected yet — the board is empty." = "아직 수집된 것이 없습니다 — 보드가 비어 있습니다.";
+", and %@ more" = ", 그리고 %@개 더";
+"%@ address(es) collected: %@. The list is filed in Deliveries." = "주소 %@개 수집됨: %@. 목록은 Deliveries에 보관되었습니다.";
+"Collected addresses" = "수집된 주소";
+"Use a collected address" = "수집된 주소 사용";
