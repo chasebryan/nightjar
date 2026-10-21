@@ -5995,3 +5995,15 @@
 "✗ hop %lld/%lld (%@) %@ — cannot parse target" = "✗ قفزة %lld/%lld (%@) %@ — تعذّر تحليل الهدف";
 "✗ hop %lld/%lld (%@) %@ — not a network target" = "✗ قفزة %lld/%lld (%@) %@ — ليس هدف شبكة";
 "✗ hop %lld/%lld (%@) %@ — payload failed to build" = "✗ قفزة %lld/%lld (%@) %@ — فشل بناء الحمولة";
+"The Mac bench" = "منصة ماك";
+"Window" = "النافذة";
+"Display" = "الشاشة";
+"Catalog" = "الكتالوج";
+"missing" = "مفقود";
+"App icon" = "أيقونة التطبيق";
+"Mac boot film" = "فيلم إقلاع ماك";
+"Phone boot film" = "فيلم إقلاع الهاتف";
+"Boot film length" = "مدة فيلم الإقلاع";
+"Replay the boot" = "إعادة تشغيل الإقلاع";
+"Walk to a room" = "الانتقال إلى غرفة";
+"%.1f seconds" = "%.1f ثانية";
