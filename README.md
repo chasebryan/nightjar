@@ -4,11 +4,7 @@
   <img src="assets/B37610A4-D1ED-4F50-B83E-8DCCE23F7DE4.png" width="640" alt="NIGHTWARE LABZ">
 </p>
 
-**nightjar is a NIGHTWARE LABZ instrument.**
-
-<p align="center">
-  <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
-</p>
+**Made by NIGHTWARE LABZ.**
 
 **11.0**
 
