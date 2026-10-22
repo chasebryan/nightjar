@@ -1513,24 +1513,6 @@ struct AboutView: View {
                         .resizable()
                         .scaledToFit()
                         .listRowInsets(EdgeInsets())
-                    HStack(spacing: 12) {
-                        Image("NightwareMark")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 44, height: 44)
-                            .background(Color.white)
-                            .clipShape(
-                                RoundedRectangle(
-                                    cornerRadius: 8))
-                        VStack(alignment: .leading,
-                               spacing: 2) {
-                            Text("NIGHTWARE LABZ")
-                                .font(.headline)
-                            Text(L("nightjar is a NIGHTWARE LABZ instrument."))
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                 }
                 Section(header: Text(L("Version"))) {
                     Text(String(format: L("nightjar for iOS %@ · log format 1"), AppInfo.version))
