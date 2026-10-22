@@ -4,8 +4,6 @@
   <img src="assets/B37610A4-D1ED-4F50-B83E-8DCCE23F7DE4.png" width="640" alt="NIGHTWARE LABZ">
 </p>
 
-**Made by NIGHTWARE LABZ.**
-
 **11.0**
 
 **No jailbreak required**
@@ -350,17 +348,7 @@ fix can ship before the flaw is public.
 - [CHANGELOG.md](CHANGELOG.md) — what shipped, when
 - [PRIVACY.md](PRIVACY.md) — what the app collects (nothing)
 
-## About me
-
-I'm Chase Bryan — cryptographer and builder. nightjar
-is my instrument: I build the tools I want to exist, and I
-build them in the open.
-
-The rest of the shelf: **orange**, a language for
-specifying and verifying cryptography; **snoot**, a
-post-quantum crypto-inventory scanner; **mawkbox**, an
-encrypted text-to-audio modem; and **Magic Box**, keyless
-time-lock encryption.
+** Made by NIGHTWARE LABZ **
 
 ## What it does not do
 
