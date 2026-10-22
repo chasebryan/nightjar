@@ -1678,11 +1678,11 @@ extension BlacksiteBench {
         p.pagesCounted = pageBodies
         if let r = text.range(
             of: "/Pages") {
-            let window = text[r.lowerBound..<text.index(r.lowerBound,
-                            offsetBy: 200,
-                            limitedBy:
-                                text.endIndex)
-                    ?? text.endIndex]
+            let hi = text.index(
+                r.lowerBound, offsetBy: 200,
+                limitedBy: text.endIndex)
+                ?? text.endIndex
+            let window = text[r.lowerBound..<hi]
             if let cr = window.range(
                 of: "/Count") {
                 let rest = window[
@@ -1718,9 +1718,11 @@ extension BlacksiteBench {
             return []
         }
         let from = open.lowerBound
-        let window = text[from..<text.index(from, offsetBy: 3000,
-                       limitedBy: text.endIndex)
-                ?? text.endIndex]
+        let hi = text.index(
+            from, offsetBy: 3000,
+            limitedBy: text.endIndex)
+            ?? text.endIndex
+        let window = text[from..<hi]
         guard let close = window.range(
             of: ">>") else { return [] }
         let dict = window[..<close.lowerBound]

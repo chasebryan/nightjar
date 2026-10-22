@@ -116,7 +116,8 @@ extension BlacksiteBench {
     static func satSocket(_ ip: String, _ port: Int) -> Int32 {
         let fd = socket(AF_INET, SOCK_STREAM, 0)
         guard fd >= 0 else { return -1 }
-        var addr = BlacksiteNet.sockaddrIn(ip, port)
+        var addr = BlacksiteNet.sockaddrIn(
+            ip: ip, port: UInt16(clamping: port))
         let rc = withUnsafePointer(to: &addr) { pointer in
             pointer.withMemoryRebound(
                 to: sockaddr.self, capacity: 1) { sa in
@@ -149,7 +150,8 @@ extension BlacksiteBench {
     /// open. Returns the raw bytes (possibly empty).
     static func satReadWindow(
         _ fd: Int32, seconds: Double, cap: Int = 262144) -> [UInt8] {
-        BlacksiteNet.setRecvTimeout(fd, 0.25)
+        BlacksiteNet.setRecvTimeout(
+            fd, seconds: 0.25)
         var out: [UInt8] = []
         var buf = [UInt8](repeating: 0, count: 65536)
         let deadline = Date().addingTimeInterval(seconds)
@@ -164,7 +166,7 @@ extension BlacksiteBench {
     }
 
     static func satText(_ bytes: [UInt8]) -> String {
-        icsClean(String(decoding: bytes, as: UTF8.self))
+        icsClean(bytes[...])
     }
 
     static func satLines(_ bytes: [UInt8]) -> [String] {
@@ -177,7 +179,8 @@ extension BlacksiteBench {
     static func satUDPSocket(_ ip: String, _ port: Int) -> Int32 {
         let fd = socket(AF_INET, SOCK_DGRAM, 0)
         guard fd >= 0 else { return -1 }
-        var addr = BlacksiteNet.sockaddrIn(ip, port)
+        var addr = BlacksiteNet.sockaddrIn(
+            ip: ip, port: UInt16(clamping: port))
         let rc = withUnsafePointer(to: &addr) { pointer in
             pointer.withMemoryRebound(
                 to: sockaddr.self, capacity: 1) { sa in
@@ -202,7 +205,8 @@ extension BlacksiteBench {
     /// Collect datagrams until the deadline; sends nothing itself.
     static func satUDPReadAll(
         _ fd: Int32, seconds: Double, cap: Int = 256) -> [[UInt8]] {
-        BlacksiteNet.setRecvTimeout(fd, 0.25)
+        BlacksiteNet.setRecvTimeout(
+            fd, seconds: 0.25)
         var out: [[UInt8]] = []
         var buf = [UInt8](repeating: 0, count: 65536)
         let deadline = Date().addingTimeInterval(seconds)
@@ -224,13 +228,11 @@ extension BlacksiteBench {
         guard let (data, response) = icsFetch(url, accept: accept)
         else { return nil }
         var headers: [String: String] = [:]
-        if let response = response {
-            for (key, value) in response.allHeaderFields {
-                headers[String(describing: key).lowercased()] =
-                    String(describing: value)
-            }
+        for (key, value) in response.allHeaderFields {
+            headers[String(describing: key).lowercased()] =
+                String(describing: value)
         }
-        return (response?.statusCode ?? 0,
+        return (response.statusCode,
                 String(decoding: data, as: UTF8.self), headers)
     }
 
@@ -308,16 +310,13 @@ extension BlacksiteBench {
         for packet in replies where sport(of: packet) == 0 {
             let body = Array(packet.dropFirst(4))
             guard body.count >= 64 else { continue }
-            let host = icsClean(String(
-                decoding: body[0..<32], as: UTF8.self))
+            let host = icsClean(body[0..<32])
                 .trimmingCharacters(in: .whitespaces)
-            let model = icsClean(String(
-                decoding: body[32..<64], as: UTF8.self))
+            let model = icsClean(body[32..<64])
                 .trimmingCharacters(in: .whitespaces)
             var tail: [String] = []
             for field in body[64...].split(separator: 0) {
-                let s = icsClean(String(
-                    decoding: field, as: UTF8.self))
+                let s = icsClean(field)
                     .trimmingCharacters(in: .whitespaces)
                 if !s.isEmpty { tail.append(s) }
             }
@@ -673,7 +672,8 @@ extension BlacksiteBench {
     static func satAGWRead(
         _ fd: Int32, seconds: Double)
         -> (kind: UInt8, data: [UInt8])? {
-        BlacksiteNet.setRecvTimeout(fd, 0.25)
+        BlacksiteNet.setRecvTimeout(
+            fd, seconds: 0.25)
         var buf: [UInt8] = []
         var chunk = [UInt8](repeating: 0, count: 65536)
         let deadline = Date().addingTimeInterval(seconds)
@@ -1160,8 +1160,7 @@ extension BlacksiteBench {
         let payload = Array(frame[6..<(6 + length)])
         func field(_ range: Range<Int>) -> String {
             guard range.upperBound <= payload.count else { return "" }
-            return icsClean(String(
-                decoding: payload[range], as: UTF8.self))
+            return icsClean(payload[range])
                 .trimmingCharacters(in: .whitespaces)
         }
         var lines: [ICSLine] = [(
@@ -1396,9 +1395,9 @@ extension BlacksiteBench {
                 String(format: L("server %@"), server), .out))
         }
         if let titleRange = fetched.body.range(
-            of: "<title>", options: .caseInsensitiveSearch),
+            of: "<title>", options: .caseInsensitive),
            let endRange = fetched.body.range(
-            of: "</title>", options: .caseInsensitiveSearch,
+            of: "</title>", options: .caseInsensitive,
             range: titleRange.upperBound..<fetched.body.endIndex) {
             let title = String(
                 fetched.body[titleRange.upperBound..<endRange.lowerBound])

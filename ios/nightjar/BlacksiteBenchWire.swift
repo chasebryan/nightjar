@@ -1421,7 +1421,7 @@ extension BlacksiteBench {
                     return
                 }
                 if let gateway = gateway,
-                   gateway != resolved.ip {
+                   gateway != servers.first?.ip {
                     servers.append((
                         label: L("your router"),
                         ip: gateway))
@@ -3130,12 +3130,14 @@ extension BlacksiteBench {
             let v6 = nameQuery(
                 server: resolver.ip,
                 name: "example.com", type: 28)
-            let aCount = v4?.answers.filter {
+            let v4Answers = v4?.answers ?? []
+            let v6Answers = v6?.answers ?? []
+            let aCount = v4Answers.filter {
                 $0.type == 1
-            }.count ?? 0
-            let aaaa = v6?.answers.filter {
+            }.count
+            let aaaa = v6Answers.filter {
                 $0.type == 28
-            } ?? []
+            }
             icsSay(emit, String(
                 format: L("  by way of %@: example.com draws %lld A answer(s) and %lld AAAA answer(s)"), resolver.label, Int64(aCount), Int64(aaaa.count)), .out)
             if let first = aaaa.first,

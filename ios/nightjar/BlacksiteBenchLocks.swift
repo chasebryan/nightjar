@@ -2816,8 +2816,11 @@ extension BlacksiteBench {
                     file.data, emit: emit)
                 return
             }
-            let resolved = icsResolve(
-                arg, 22)
+            guard let resolved = icsResolve(
+                arg, 22) else {
+                icsSay(emit, L("sshkeydeep: give a host or a key file — sshkeydeep github.com"), .err)
+                return
+            }
             let host = resolved.host
             let port = resolved.port
             let ip = resolved.ip
@@ -3188,7 +3191,7 @@ extension BlacksiteBench {
             result.cipher = UInt32(cipher)
         }
         var version: SSLProtocol =
-            .unknown
+            .SSLProtocolUnknown
         if SSLGetNegotiatedProtocolVersion(
             ctx, &version) == errSecSuccess {
             result.version = Int(
@@ -3218,8 +3221,11 @@ extension BlacksiteBench {
                 icsSay(emit, L("tlscensus: give a host — tlscensus example.com"), .err)
                 return
             }
-            let resolved = icsResolve(
-                arg, 443)
+            guard let resolved = icsResolve(
+                arg, 443) else {
+                icsSay(emit, L("tlscensus: give a host — tlscensus example.com"), .err)
+                return
+            }
             let host = resolved.host
             let ip = resolved.ip
             let port = resolved.port
@@ -6167,8 +6173,11 @@ extension BlacksiteBench {
                 icsSay(emit, L("lockcensus: give a host — lockcensus example.com"), .err)
                 return
             }
-            let resolved = icsResolve(
-                arg, 443)
+            guard let resolved = icsResolve(
+                arg, 443) else {
+                icsSay(emit, L("lockcensus: give a host — lockcensus example.com"), .err)
+                return
+            }
             let host = resolved.host
             let ip = resolved.ip
             icsSay(emit, String(format: L("%@ (%@) — one board"), host, ip), .sys)

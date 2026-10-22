@@ -842,11 +842,10 @@ extension BlacksiteBench {
             return "\(flags) \(raw[2]) "
                 + "\(raw[3]) \(shown)"
         case 46 where raw.count >= 18:
+            let coveredNum = (Int(raw[0]) << 8) | Int(raw[1])
             let covered = nameTypeNames[
-                UInt16(raw[0]) << 8
-                    | UInt16(raw[1])]
-                ?? "\(Int(raw[0]) << 8
-                    | Int(raw[1]))"
+                    UInt16(coveredNum)]
+                ?? "\(coveredNum)"
             let expiry = nameSigTime(
                 nameU32(raw, 8))
             let inception = nameSigTime(
