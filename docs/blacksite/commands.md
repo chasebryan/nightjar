@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**348 commands in 9 sections.**
+**368 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (225)
+## pentest bench (245)
 
 | Command | What it does |
 | --- | --- |
@@ -283,6 +283,26 @@ Every command the console answers to, with the signature it takes and what it do
 | `passivedns <domain>` | the names a domain has worn — the keyless passive-DNS ledgers, limits stated |
 | `macprobe <mac>` | the maker in a MAC address — the house OUI table and the address's own bits |
 | `wirecensus [host]` | the board — SSDP, mDNS, WS-Discovery, DHCP and one host's NetBIOS papers in one pass, limits stated |
+| `keyprobe <file\|string>` | what key is this — family, size, strength and its fingerprints; private keys are named, never decoded |
+| `hashprobe <file\|digest\|string>` | hash a file, name a digest by its shape, or hash a literal string |
+| `entropyprobe <file>` | the shape of a blob's bytes — entropy, chi-square, min-entropy and a runs pass, limits stated |
+| `b64deep <string>` | peel an encoded onion — base64, base64url, base32, hex and base58, layer by labelled layer |
+| `x509probe <file>` | a certificate or bundle read from paper — names, validity, key and usages, graded |
+| `pgpprobe <file>` | walk an OpenPGP file packet by packet — keys, fingerprints, user IDs, signatures |
+| `sshkeydeep <host\|file>` | a host's offered algorithms and presented SSH key, or every key in a file — read, never pinned |
+| `tlscensus <host>` | which TLS versions answer, which cipher families the door still shares, and the papers chained in |
+| `cipherprobe <code\|name>` | a cipher suite from its IANA code or either common name — components and posture |
+| `randprobe [file] [bytes]` | would-be random bytes under the yardstick — entropy, chi-square and a runs pass |
+| `kdfprobe <alg> <word> <salt> <iters>` | derive a key with PBKDF2 where you can watch it — the word is used in place and never printed |
+| `aesprobe mode=… key=… data=…` | raw AES by hand — ECB, CBC and CTR with your own key and IV; no MAC rides with it |
+| `xorprobe <file> [keylen=n]` | repeating-key XOR read statistically — key length by coincidence, key bytes by letter shape; an estimate |
+| `rsaprobe <key\|hex> [second]` | an RSA modulus's cheap shapes — small factors, Fermat-close factors, a factor shared with a second modulus |
+| `eccprobe <file\|point>` | an EC point proven on its curve, exactly — compressed points expanded by the root |
+| `enccensus <file>` | whose papers are these — NJCF, OpenSSL-salted, age, LUKS, OpenPGP, ZIP and the archive magics |
+| `sigprobe <key> <msg> <sig>` | verify a signature over a file — exactly VALID or NOT VALID |
+| `totpprobe <seed>` | the current time-based code for your own seed, with its neighbours — the seed is never printed |
+| `passprobe <word>` | a passphrase graded on shape alone — classes, a charset estimate, the common lists; the word is never printed |
+| `lockcensus <host>` | one host's locks on one board — TLS, the papers, and the SSH key with its pin state |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

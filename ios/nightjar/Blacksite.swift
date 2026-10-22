@@ -199,6 +199,12 @@ final class BlacksiteShell: ObservableObject {
     @Published var programRequest:
         BlacksiteView.Program?
 
+    /// The EAZY ignition: eazyCommand sets
+    /// this as the battery starts; the room
+    /// lays the charge-up splash over its
+    /// first probes (the rainfall reel).
+    @Published var eazyIgnition = false
+
     /// The betafisch seed: a capture the
     /// console had already read, named in
     /// its own tree when the verb carried
@@ -398,6 +404,26 @@ final class BlacksiteShell: ObservableObject {
         "passivedns",
         "macprobe",
         "wirecensus",
+        "keyprobe",
+        "hashprobe",
+        "entropyprobe",
+        "b64deep",
+        "x509probe",
+        "pgpprobe",
+        "sshkeydeep",
+        "tlscensus",
+        "cipherprobe",
+        "randprobe",
+        "kdfprobe",
+        "aesprobe",
+        "xorprobe",
+        "rsaprobe",
+        "eccprobe",
+        "enccensus",
+        "sigprobe",
+        "totpprobe",
+        "passprobe",
+        "lockcensus",
     ]
 
     /// betafisch [file] — raise the
@@ -3101,7 +3127,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus", "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus", "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus", "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus", "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus", "keyprobe", "hashprobe", "entropyprobe", "b64deep", "x509probe", "pgpprobe", "sshkeydeep", "tlscensus", "cipherprobe", "randprobe", "kdfprobe", "aesprobe", "xorprobe", "rsaprobe", "eccprobe", "enccensus", "sigprobe", "totpprobe", "passprobe", "lockcensus":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -5167,6 +5193,26 @@ final class BlacksiteShell: ObservableObject {
                 ("passivedns <domain>", L("the names a domain has worn — the keyless passive-DNS ledgers, limits stated")),
                 ("macprobe <mac>", L("the maker in a MAC address — the house OUI table and the address's own bits")),
                 ("wirecensus [host]", L("the board — SSDP, mDNS, WS-Discovery, DHCP and one host's NetBIOS papers in one pass, limits stated")),
+                ("keyprobe <file|string>", L("what key is this — family, size, strength and its fingerprints; private keys are named, never decoded")),
+                ("hashprobe <file|digest|string>", L("hash a file, name a digest by its shape, or hash a literal string")),
+                ("entropyprobe <file>", L("the shape of a blob's bytes — entropy, chi-square, min-entropy and a runs pass, limits stated")),
+                ("b64deep <string>", L("peel an encoded onion — base64, base64url, base32, hex and base58, layer by labelled layer")),
+                ("x509probe <file>", L("a certificate or bundle read from paper — names, validity, key and usages, graded")),
+                ("pgpprobe <file>", L("walk an OpenPGP file packet by packet — keys, fingerprints, user IDs, signatures")),
+                ("sshkeydeep <host|file>", L("a host's offered algorithms and presented SSH key, or every key in a file — read, never pinned")),
+                ("tlscensus <host>", L("which TLS versions answer, which cipher families the door still shares, and the papers chained in")),
+                ("cipherprobe <code|name>", L("a cipher suite from its IANA code or either common name — components and posture")),
+                ("randprobe [file] [bytes]", L("would-be random bytes under the yardstick — entropy, chi-square and a runs pass")),
+                ("kdfprobe <alg> <word> <salt> <iters>", L("derive a key with PBKDF2 where you can watch it — the word is used in place and never printed")),
+                ("aesprobe mode=… key=… data=…", L("raw AES by hand — ECB, CBC and CTR with your own key and IV; no MAC rides with it")),
+                ("xorprobe <file> [keylen=n]", L("repeating-key XOR read statistically — key length by coincidence, key bytes by letter shape; an estimate")),
+                ("rsaprobe <key|hex> [second]", L("an RSA modulus's cheap shapes — small factors, Fermat-close factors, a factor shared with a second modulus")),
+                ("eccprobe <file|point>", L("an EC point proven on its curve, exactly — compressed points expanded by the root")),
+                ("enccensus <file>", L("whose papers are these — NJCF, OpenSSL-salted, age, LUKS, OpenPGP, ZIP and the archive magics")),
+                ("sigprobe <key> <msg> <sig>", L("verify a signature over a file — exactly VALID or NOT VALID")),
+                ("totpprobe <seed>", L("the current time-based code for your own seed, with its neighbours — the seed is never printed")),
+                ("passprobe <word>", L("a passphrase graded on shape alone — classes, a charset estimate, the common lists; the word is never printed")),
+                ("lockcensus <host>", L("one host's locks on one board — TLS, the papers, and the SSH key with its pin state")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -9139,6 +9185,9 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         busy = true
+        // The battery starts now; the ignition
+        // theatre lays over its first probes.
+        eazyIgnition = true
         stopToken.reset()
         let captureLock = NSLock()
         var captured: [(String, Line.Kind)] = []
@@ -9158,6 +9207,13 @@ final class BlacksiteShell: ObservableObject {
             let findings = lines.filter { $0.1 == .err }.count
             DispatchQueue.main.async {
                 self.busy = false
+                // The splash dismisses itself on
+                // its own timer when the room is
+                // watching; clear the flag here too
+                // so a battery loosed from chat
+                // never leaves a stale ignition
+                // waiting in the console door.
+                self.eazyIgnition = false
             }
             guard !lines.isEmpty else { return }
             let report = lines.map { $0.0 }.joined(separator: "\n")
@@ -10877,6 +10933,21 @@ final class BlacksiteShell: ObservableObject {
                             ? nil : args.first),
                     emit: emit, done: done)
             }
+        case "keyprobe", "hashprobe", "entropyprobe", "b64deep", "x509probe", "pgpprobe", "sshkeydeep", "tlscensus", "cipherprobe", "randprobe", "kdfprobe", "aesprobe", "xorprobe", "rsaprobe", "eccprobe", "enccensus", "sigprobe", "totpprobe", "passprobe", "lockcensus":
+            guard netAllowed(name) else { return }
+            netBusy { emit, done in
+                BlacksiteBench.benchLocks(
+                    name: name,
+                    arg: name == "sshkeydeep"
+                        || name == "tlscensus"
+                        || name == "cipherprobe"
+                        || name == "eccprobe"
+                        || name == "enccensus"
+                        || name == "lockcensus"
+                        ? (args.first ?? "")
+                        : args.joined(separator: " "),
+                    emit: emit, done: done)
+            }
         default:
             break
         }
@@ -11323,6 +11394,12 @@ struct BlacksiteView: View {
                 onClose: {
                     shell.editorSession = nil
                 })
+        }
+        .houseFullScreenCover(
+            isPresented: $shell.eazyIgnition
+        ) {
+            EazyIgnitionView(
+                isShown: $shell.eazyIgnition)
         }
     }
 
