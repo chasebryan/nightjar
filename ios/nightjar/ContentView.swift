@@ -1536,7 +1536,7 @@ struct AboutView: View {
                     Text(String(format: L("nightjar for iOS %@ · log format 1"), AppInfo.version))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Link(destination: URL(string: "https://github.com/chasebryan/nightjar/blob/main/PRIVACY.md")!) {
+                    Link(destination: URL(string: "https://github.com/nightwarelabz/nightjar/blob/main/PRIVACY.md")!) {
                         Label(L("Privacy Policy"), systemImage: "hand.raised")
                     }
 #if !STORE_BUILD

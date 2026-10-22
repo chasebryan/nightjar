@@ -2,8 +2,8 @@
     "apps": [
         {
             "bundleIdentifier": "net.nosuchmachine.nightjarhack",
-            "developerName": "chasebryan",
-            "downloadURL": "https://github.com/chasebryan/nightjar/releases/latest/download/nightjar.ipa",
+            "developerName": "NIGHTWARE LABZ",
+            "downloadURL": "https://github.com/nightwarelabz/nightjar/releases/latest/download/nightjar.ipa",
             "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
             "name": "nightjar",
             "tintColor": "1DB35A",
@@ -15,5 +15,5 @@
     "identifier": "net.nosuchmachine.nightjarhack.source",
     "name": "nightjar",
     "news": [],
-    "sourceURL": "https://raw.githubusercontent.com/chasebryan/nightjar/main/sidestore-source.json"
+    "sourceURL": "https://raw.githubusercontent.com/nightwarelabz/nightjar/main/sidestore-source.json"
 }

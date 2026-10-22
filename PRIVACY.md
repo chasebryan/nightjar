@@ -102,4 +102,4 @@ policy will be updated and the version that ships will say so.
 ## Contact
 
 Questions: open an issue at
-https://github.com/chasebryan/nightjar/issues
+https://github.com/nightwarelabz/nightjar/issues

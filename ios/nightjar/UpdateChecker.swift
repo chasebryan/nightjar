@@ -67,7 +67,7 @@ final class UpdateChecker: ObservableObject {
     private var etag: String?
     private var watchTask: Task<Void, Never>?
 
-    init(current: String = AppInfo.version, repo: String = "chasebryan/nightjar",
+    init(current: String = AppInfo.version, repo: String = "nightwarelabz/nightjar",
          session: URLSession = .shared) {
         self.current = current
         self.repo = repo
@@ -83,7 +83,7 @@ final class UpdateChecker: ObservableObject {
     nonisolated static func githubURL(_ string: String) -> URL {
         URL(string: string)
             ?? URL(string: "https://github.com/"
-                   + "chasebryan/nightjar")!
+                   + "nightwarelabz/nightjar")!
     }
 
     var releasesURL: URL {

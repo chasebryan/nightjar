@@ -40,7 +40,7 @@ final class UpdateCheckerTests: XCTestCase {
     func testParseRejectsMalformedReleaseTag() {
         let json = """
         {"tag_name": "v3.bad", "html_url":
-        "https://github.com/chasebryan/nightjar/releases/tag/v3.bad",
+        "https://github.com/nightwarelabz/nightjar/releases/tag/v3.bad",
         "draft": false, "prerelease": false}
         """.data(using: .utf8)!
         XCTAssertNil(UpdateChecker.parse(json, current: "2.6"))
@@ -49,21 +49,21 @@ final class UpdateCheckerTests: XCTestCase {
     func testParseNewerRelease() {
         let json = """
         {"tag_name": "v2.1.0", "name": "nightjar 2.1", "html_url": \
-        "https://github.com/chasebryan/nightjar/releases/tag/v2.1.0", \
+        "https://github.com/nightwarelabz/nightjar/releases/tag/v2.1.0", \
         "body": "Fusion.", "draft": false, "prerelease": false}
         """.data(using: .utf8)!
         let release = UpdateChecker.parse(json, current: "2.0")
         XCTAssertEqual(release?.tag, "v2.1.0")
         XCTAssertEqual(release?.name, "nightjar 2.1")
         XCTAssertEqual(release?.url.absoluteString,
-                       "https://github.com/chasebryan/nightjar/releases/tag/v2.1.0")
+                       "https://github.com/nightwarelabz/nightjar/releases/tag/v2.1.0")
     }
 
     func testParseIgnoresOlderDraftsAndPrereleases() {
         func body(tag: String, draft: Bool = false, pre: Bool = false) -> Data {
             """
             {"tag_name": "\(tag)", "name": "", "html_url": \
-            "https://github.com/chasebryan/nightjar/releases/tag/\(tag)", \
+            "https://github.com/nightwarelabz/nightjar/releases/tag/\(tag)", \
             "draft": \(draft), "prerelease": \(pre)}
             """.data(using: .utf8)!
         }

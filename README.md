@@ -290,7 +290,7 @@ as above, always works too.
 ## 60 seconds (the CLI)
 
     # 1. get the upstream repo
-    git clone https://github.com/chasebryan/nightjar
+    git clone https://github.com/nightwarelabz/nightjar
     cd nightjar
 
     # 2. lay the overlay on top
