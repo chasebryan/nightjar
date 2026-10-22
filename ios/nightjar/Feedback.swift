@@ -2694,6 +2694,79 @@ struct EazyIgnitionView: View {
     }
 }
 
+/// The lock-on: a cockpit targeting reel over the
+/// whole screen when MAGDUMP is released, ending on
+/// TARGET LOCK ON (tap to skip). The GIF comes from
+/// a "Magdump" data asset or a magdump.gif file in
+/// the bundle (Chase's pick, wired with the program),
+/// and the splash stays up for the GIF's own duration
+/// (plus a beat); without a GIF, a built-in flicker
+/// card stands in. The battery starts the moment
+/// MAGDUMP is ordered — the splash is pure theatre
+/// laid over its first probes, the centipede's
+/// doctrine, same as EAZY's charge-up.
+struct MagdumpIgnitionView: View {
+    @Binding var isShown: Bool
+    @State private var flicker = false
+
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "Magdump") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "magdump",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    /// How long the splash stays: the GIF's own play
+    /// length plus a breath, clamped sane; 3 s for the
+    /// fallback card.
+    private var splashSeconds: Double {
+        guard let data = gifData else { return 3.0 }
+        let seconds = UIImage.gifDelays(data).reduce(0, +)
+        guard seconds > 0 else { return 3.0 }
+        return min(max(seconds + 0.3, 1.5), 6.0)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "scope")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.red)
+                    Text("TARGET LOCK ON")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isShown = false }
+        .onAppear {
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + splashSeconds) {
+                isShown = false
+            }
+        }
+    }
+}
+
 /// The frame: her fingers close a blood-red frame over
 /// the whole screen when EMCON falls to Alpha (tap to
 /// skip). The GIF comes from a "Redframe" data asset or

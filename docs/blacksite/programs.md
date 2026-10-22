@@ -39,3 +39,9 @@ The engine draws: the house card (`fastfetch` reads every value live — nothing
 ## The game room
 
 `freedoom` is the console's flagship program: Chocolate Doom compiled to WebAssembly, playing Freedoom Phase 1 with sound, a stick under the left thumb and the keys under the right. The game data downloads once from Freedoom's official release the first time the room opens — the EMCON Standard counts that fetch as an update check — and plays offline from then on.
+
+## MAGDUMP — the automated targeting program
+
+`magdump <target>` is the bench aimed at one unit. Where `eazy` sweeps the network you are standing on, MAGDUMP takes a single named target — an address or a name, never a range; a range is a census's job — locks on, and empties the whole finished bench at it in stages: the doors first, then the web battery at every web door that answered, then TLS and the keys the target shows, then the name and mail ledgers read under the target's name, then the wire's public ledgers on its address, and finally the shield's single-host posture singles. Each stage's output appends into one consolidated graded board, filed to Deliveries when the magazine is empty, with progress spoken as the stages land.
+
+Nothing in it is new machinery: every stage rides an engine the bench's waves already shipped, knocked exactly the way the console knocks it by hand — one knock, read, grade, the sanctioned anonymous checks exactly as their waves defined them. A stage that cannot run prints its limit and the battery continues; `stop` halts it between stages. The cockpit lock-on reel plays over the first probes — theatre that never delays the work, the house doctrine since the centipede. Under the EMCON Standard it is refused plainly at Bravo and Alpha and gated per organ at Charlie, in the console and in Skelli's chat alike: she looses it by name ("magdump scanme.nmap.org"), names the target, and reports the board.

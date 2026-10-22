@@ -205,6 +205,13 @@ final class BlacksiteShell: ObservableObject {
     /// first probes (the rainfall reel).
     @Published var eazyIgnition = false
 
+    /// The MAGDUMP ignition: magdumpCommand
+    /// sets this as the battery starts; the
+    /// room lays the target lock-on splash
+    /// over its first probes (the magdump
+    /// reel) — the same doctrine as EAZY's.
+    @Published var magdumpIgnition = false
+
     /// The betafisch seed: a capture the
     /// console had already read, named in
     /// its own tree when the verb carried
@@ -228,7 +235,7 @@ final class BlacksiteShell: ObservableObject {
         "jobs", "kill", "fastfetch",
         "neofetch", "diagnose",
         "limits",
-        "scan", "knock", "census", "eazy", "decode",
+        "scan", "knock", "census", "eazy", "magdump", "decode",
         "company", "port", "emcon", "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom", "betafisch", "driftnet",
@@ -3206,6 +3213,8 @@ final class BlacksiteShell: ObservableObject {
             census()
         case "eazy":
             eazyCommand(args)
+        case "magdump":
+            magdumpCommand(args)
         case "decode":
             if let line = Blacksite.decode(
                 hex: args.joined(separator: "")) {
@@ -5046,6 +5055,7 @@ final class BlacksiteShell: ObservableObject {
                 ("knock <host> [ports]", L("knock a host (default: the top doors)")),
                 ("census", L("knock every device on the neighborhood board")),
                 ("eazy [target]", L("the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point")),
+                ("magdump <target>", L("the automated targeting program — one named target, the whole bench emptied at it in stages (doors, web, tls, names and mail, the wire's ledgers, the shield's singles), one graded board filed; the lock-on reel plays over its first probes")),
                 ("decode <hex>", L("raw advertisement bytes through the decoders")),
                 ("company <id>", L("who a company id belongs to")),
                 ("port <n> [udp]", L("what a port is for")),
@@ -9412,6 +9422,73 @@ final class BlacksiteShell: ObservableObject {
         BlacksiteBench.eazyRun(hosts: hosts, stopped: stopCheck, emit: collect, done: finish)
     }
 
+    // MARK: magdump — the automated targeting
+    // program: one named target, the whole
+    // bench emptied at it in stages.
+
+    func magdumpCommand(_ args: [String]) {
+        if capturing && !skelliLive {
+            emit(L("magdump runs live — it cannot be piped or captured."), .err)
+            return
+        }
+        if EmconStandard.refused(.probing) {
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
+            return
+        }
+        guard let target = args.first else {
+            emit(L("magdump needs one target — 'magdump <host>', a name or an address. One target only: a range is a census's job."), .err)
+            return
+        }
+        guard !busy else {
+            emit(L("magdump: something is already running — stop it first."), .err)
+            return
+        }
+        busy = true
+        // The battery starts now; the lock-on
+        // theatre lays over its first probes.
+        magdumpIgnition = true
+        stopToken.reset()
+        let captureLock = NSLock()
+        var captured: [(String, Line.Kind)] = []
+        let collect: BlacksiteEmit = { [weak self] text, kind in
+            captureLock.lock()
+            captured.append((text, kind))
+            captureLock.unlock()
+            self?.emit(text, kind)
+        }
+        let finish: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            captureLock.lock()
+            let lines = captured
+            captureLock.unlock()
+            let findings = lines.filter { $0.1 == .err }.count
+            DispatchQueue.main.async {
+                self.busy = false
+                // The splash dismisses itself on
+                // its own timer when the room is
+                // watching; clear the flag here too
+                // so a battery loosed from chat
+                // never leaves a stale lock-on
+                // waiting in the console door.
+                self.magdumpIgnition = false
+            }
+            guard !lines.isEmpty else { return }
+            let report = lines.map { $0.0 }.joined(separator: "\n")
+            DeliveriesCenter.shared.add(name: String(format: L("magdump — %@"), target), text: report, ext: "txt")
+            self.emit(String(format: L("magdump: the magazine is empty — %lld findings. The full board is filed in Deliveries."), findings), findings > 0 ? .err : .ok)
+        }
+        let parts = target.split(separator: ".")
+        let isIP = parts.count == 4 && parts.allSatisfy { Int($0) != nil }
+        if isIP {
+            BlacksiteBench.magdumpRun(host: target, ip: target, name: nil, stopped: stopCheck, emit: collect, done: finish)
+        } else if let resolved = BlacksiteNet.resolve4(target) {
+            BlacksiteBench.magdumpRun(host: target, ip: resolved.ip, name: target, stopped: stopCheck, emit: collect, done: finish)
+        } else {
+            collect(String(format: L("magdump: '%@' does not resolve from here — nothing to lock onto."), String(describing: target)), .err)
+            finish()
+        }
+    }
+
     // MARK: The wire + the pentest bench
 
     /// Every live wire command stands
@@ -11572,6 +11649,12 @@ struct BlacksiteView: View {
         ) {
             EazyIgnitionView(
                 isShown: $shell.eazyIgnition)
+        }
+        .houseFullScreenCover(
+            isPresented: $shell.magdumpIgnition
+        ) {
+            MagdumpIgnitionView(
+                isShown: $shell.magdumpIgnition)
         }
     }
 

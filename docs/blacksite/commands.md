@@ -2,9 +2,9 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**413 commands in 9 sections.**
+**414 commands in 9 sections.**
 
-## the house (29)
+## the house (30)
 
 | Command | What it does |
 | --- | --- |
@@ -21,6 +21,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `knock <host> [ports]` | knock a host (default: the top doors) |
 | `census` | knock every device on the neighborhood board |
 | `eazy [target]` | the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point |
+| `magdump <target>` | the automated targeting program — one named target, the whole bench emptied at it in stages (doors, web, tls, names and mail, the wire's ledgers, the shield's singles), one graded board filed; the lock-on reel plays over its first probes |
 | `decode <hex>` | raw advertisement bytes through the decoders |
 | `company <id>` | who a company id belongs to |
 | `port <n> [udp]` | what a port is for |
