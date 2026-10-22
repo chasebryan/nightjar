@@ -2944,7 +2944,7 @@ extension BlacksiteBench {
             // before the refusal, and
             // nothing is pinned.
             let client = SSHClient(
-                host: host, port: port,
+                host: host, port: Int(port),
                 user: "bench")
             client.timeout = 8
             do {
