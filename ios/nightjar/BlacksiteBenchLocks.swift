@@ -2975,7 +2975,7 @@ extension BlacksiteBench {
                 if let known = CryptoSuite
                     .NetCred.knownKey(
                         host: host,
-                        port: port) {
+                        port: Int(port)) {
                     if Data(bytes) == known {
                         icsSay(emit, L("the presented key MATCHES the copy pinned in the house book"), .ok)
                     } else {
