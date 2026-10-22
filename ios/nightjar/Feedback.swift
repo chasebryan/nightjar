@@ -215,10 +215,35 @@ struct AnimatedImageView: UIViewRepresentable {
     private func configure(_ view: UIImageView) {
         guard let frames = image.images,
               frames.count > 1 else {
+            // A still where an animation played:
+            // clear the old reel, or it runs on
+            // behind the still.
+            if view.animationImages != nil {
+                view.stopAnimating()
+                view.animationImages = nil
+            }
             view.image = image
             return
         }
-        if view.animationImages == nil {
+        // The view outlives the backdrop choice.
+        // A slot re-pointed from one reel to
+        // another — living wallpaper to a custom
+        // GIF, a custom GIF replaced in place —
+        // hands the new image here, and the old
+        // guard (swap only while animationImages
+        // is nil) kept the FIRST reel playing
+        // forever: changing the wallpaper
+        // selection looked broken, because the
+        // screen never changed (Chase's report,
+        // 2026-10-21). Swap whenever the reel
+        // itself differs.
+        let current = view.animationImages
+        let stale = current == nil
+            || current?.count != frames.count
+            || current?.first !== frames.first
+            || view.animationDuration != image.duration
+        if stale {
+            if view.isAnimating { view.stopAnimating() }
             view.image = frames.first
             view.animationImages = frames
             view.animationDuration = image.duration
@@ -2573,6 +2598,148 @@ struct CentipedeSplashView: View {
                         .font(.system(size: 96))
                         .foregroundStyle(.teal)
                     Text("CENTIPEDE RELEASED")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isShown = false }
+        .onAppear {
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + splashSeconds) {
+                isShown = false
+            }
+        }
+    }
+}
+
+/// The charge-up: a fighter powering up in the rain over
+/// the whole screen when EAZY is released (tap to skip).
+/// The GIF comes from a "Rainfall" data asset or a
+/// rainfall.gif file in the bundle (Chase's pick, wired
+/// 2026-10-21), and the splash stays up for the GIF's own
+/// duration (plus a beat); without a GIF, a built-in
+/// flicker card stands in. The scan starts the moment
+/// EAZY is ordered — the splash is pure theatre laid
+/// over its first probes, the centipede's doctrine.
+struct EazyIgnitionView: View {
+    @Binding var isShown: Bool
+    @State private var flicker = false
+
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "Rainfall") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "rainfall",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    /// How long the splash stays: the GIF's own play
+    /// length plus a breath, clamped sane; 3 s for the
+    /// fallback card.
+    private var splashSeconds: Double {
+        guard let data = gifData else { return 3.0 }
+        let seconds = UIImage.gifDelays(data).reduce(0, +)
+        guard seconds > 0 else { return 3.0 }
+        return min(max(seconds + 0.3, 1.5), 6.0)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.yellow)
+                    Text("EAZY RELEASED")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isShown = false }
+        .onAppear {
+            Haptics.success()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + splashSeconds) {
+                isShown = false
+            }
+        }
+    }
+}
+
+/// The frame: her fingers close a blood-red frame over
+/// the whole screen when EMCON falls to Alpha (tap to
+/// skip). The GIF comes from a "Redframe" data asset or
+/// a redframe.gif file in the bundle (Chase's pick, wired
+/// 2026-10-21), and the splash stays up for the GIF's
+/// own duration (plus a beat); without a GIF, a built-in
+/// flicker card stands in. The silence itself is never
+/// delayed — the Standard silences first, and this is
+/// the theatre laid over the hush.
+struct RedframeSplashView: View {
+    @Binding var isShown: Bool
+    @State private var flicker = false
+
+    private var gifData: Data? {
+        if let asset = NSDataAsset(name: "Redframe") {
+            return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "redframe",
+                                     withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    /// How long the splash stays: the GIF's own play
+    /// length plus a breath, clamped sane; 3 s for the
+    /// fallback card.
+    private var splashSeconds: Double {
+        guard let data = gifData else { return 3.0 }
+        let seconds = UIImage.gifDelays(data).reduce(0, +)
+        guard seconds > 0 else { return 3.0 }
+        return min(max(seconds + 0.3, 1.5), 6.0)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = gifData {
+                GIFPlayerView(data: data)
+                    .ignoresSafeArea()
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "viewfinder")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.red)
+                    Text("EMCON ALPHA")
                         .font(.headline.monospaced())
                         .tracking(4)
                         .foregroundStyle(.white)

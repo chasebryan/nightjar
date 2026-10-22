@@ -15,6 +15,7 @@ struct EmconView: View {
     @State private var chosenCondition: EmconCondition = .charlie
     @State private var armAssault = false
     @State private var assaultIgnition = false
+    @State private var redframeSplash = false
     @State private var shareAssaultReport = false
     @State private var shareItem: ShareItem?
     @State private var tripShowAll = false
@@ -150,6 +151,9 @@ struct EmconView: View {
         }
         .houseFullScreenCover(isPresented: $assaultIgnition) {
             AssaultIgnitionView(isShown: $assaultIgnition)
+        }
+        .houseFullScreenCover(isPresented: $redframeSplash) {
+            RedframeSplashView(isShown: $redframeSplash)
         }
         .onChange(of: shareAssaultReport) { wanted in
             // The after-action report goes out the same
@@ -353,6 +357,12 @@ struct EmconView: View {
                             Haptics.tap()
                             emcon.activate(mouth: mouth,
                                            condition: goal)
+                            if goal == .alpha {
+                                // Total silence gets its
+                                // theatre: her red frame
+                                // closes over the hush.
+                                redframeSplash = true
+                            }
                             toasts.show(String(format: L("%@ — the house is re-regulated."), goal.declared))
                         } label: {
                             Text(String(format: L("Move to %@"), goal.name))
@@ -382,6 +392,12 @@ struct EmconView: View {
                     Haptics.tap()
                     emcon.activate(mouth: mouth,
                                    condition: chosenCondition)
+                    if chosenCondition == .alpha {
+                        // Total silence gets its
+                        // theatre: her red frame
+                        // closes over the hush.
+                        redframeSplash = true
+                    }
                     toasts.show(String(format: L("%@ — emissions regulated, tripwire armed."), chosenCondition.declared))
                 } label: {
                     HStack(spacing: 6) {
