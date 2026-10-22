@@ -148,11 +148,26 @@ struct AppTheme: Identifiable, Codable, Equatable {
         dim: 0.30,
         builtIn: true)
 
+    /// Violent Redteam (the operator's order,
+    /// 2026-10-21): the house gone arterial —
+    /// a hard, saturated red working the
+    /// controls, a hot ember for the glow,
+    /// and a near-black blood wash laid on
+    /// heavy. Bloodwork is a wound dressed;
+    /// this is the wound. Worn for red-team
+    /// work, wearable any night of the year.
+    static let redteam = AppTheme(
+        id: "redteam", name: "Violent Redteam",
+        accentHex: "#FF1626", glowHex: "#FF7A66",
+        tintHex: "#0F0102", tintStrength: 0.45,
+        dim: 0.28,
+        builtIn: true)
+
     static let builtIns: [AppTheme] = [.phosphor, .bloodwork,
                                        .ultraviolet, .arctic,
                                        .amber, .bone,
                                        .halloween, .christmas,
-                                       .blackGlass]
+                                       .blackGlass, .redteam]
 }
 
 // MARK: - Backdrop slots and choices
