@@ -295,23 +295,22 @@ enum BetafischDrift {
                 if interval.start > cursor {
                     let stop = min(interval.start,
                                    segEnd)
+                    let sliceLo = cursor - offset
+                    let sliceHi = stop - offset
                     fresh.append((
                         start: cursor, end: stop,
                         frame: segment.frame,
-                        bytes: slice[
-                            (cursor - offset)..<
-                            (stop - offset)]))
+                        bytes: slice[sliceLo..<sliceHi]))
                 }
                 cursor = max(cursor, interval.end)
                 if cursor >= segEnd { break }
             }
             if cursor < segEnd {
+                let tailLo = cursor - offset
                 fresh.append((
                     start: cursor, end: segEnd,
                     frame: segment.frame,
-                    bytes: slice[
-                        (cursor - offset)..<
-                        slice.count]))
+                    bytes: slice[tailLo..<slice.count]))
             }
             if !fresh.isEmpty {
                 placed.append(contentsOf: fresh)
@@ -1125,8 +1124,7 @@ enum BetafischDrift {
               start + length <= bytes.count else {
             return nil
         }
-        let fourcc = Array(bytes[(start + 12)..<
-                                 (start + 16)])
+        let fourcc = Array(bytes[(start + 12)..<(start + 16)])
         let known: [[UInt8]] = [
             [0x56, 0x50, 0x38, 0x20],
             [0x56, 0x50, 0x38, 0x4c],
@@ -1135,8 +1133,7 @@ enum BetafischDrift {
         guard known.contains(fourcc) else {
             return nil
         }
-        let data = Data(bytes[start..<
-                              (start + length)])
+        let data = Data(bytes[start..<(start + length)])
         guard imageSourceAccepts(data) else {
             return nil
         }
@@ -1193,8 +1190,7 @@ enum BetafischDrift {
                 return nil
             }
         }
-        let data = Data(bytes[start..<
-                              (start + fileSize)])
+        let data = Data(bytes[start..<(start + fileSize)])
         guard imageSourceAccepts(data) else {
             return nil
         }
@@ -1501,9 +1497,7 @@ enum BetafischDrift {
                         index += 1
                         continue
                     }
-                    let streamRange =
-                        (run.start + index)..<
-                        (run.start + found.end)
+                    let streamRange = (run.start + index)..<(run.start + found.end)
                     if runClaims.contains(
                         streamRange) {
                         index = found.end
