@@ -224,7 +224,7 @@ enum SkelliKnowledge {
                        "git clone", "git push",
                        "grok", "diagnose",
                        "limits"],
-            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas."),
+            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 290 graded instruments in ten waves — the web, service doors, names and mail, industrial control, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, and files. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
         SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
@@ -3632,15 +3632,42 @@ final class SkelliCenter: ObservableObject {
             // own tool, not the Bonjour audit
             // (fix278): dnsaudit and snmpaudit
             // contain the word but belong to
-            // the console hand below.
-            let words = q.split(separator: " ")
-            var head = words.first
-                .map(String.init) ?? ""
-            if head == "run", words.count > 1 {
-                head = String(words[1])
+            // the console hand below. The wave
+            // audit (fix308) widened the naming
+            // to the whole bench: console
+            // prefixes are stripped before the
+            // head is read, and any console verb
+            // ending in "audit" is its own
+            // tool — webaudit and cookieaudit
+            // were claimed here in every form,
+            // prefixes and all, and never
+            // reached the bench at all.
+            var words = q.split(separator: " ")
+                .map(String.init)
+            if words.first == "console:"
+                || words.first == "blacksite:"
+                || words.first == "terminal:"
+                || words.first == "console"
+                || words.first == "blacksite"
+                || words.first == "terminal" {
+                words.removeFirst()
+                if words.first == "run" {
+                    words.removeFirst()
+                }
+            } else if words.count > 3,
+                      words[0] == "run",
+                      words[1] == "in",
+                      words[2] == "the",
+                      words[3].hasPrefix("console") {
+                words.removeFirst(4)
             }
-            if head != "dnsaudit"
-                && head != "snmpaudit" {
+            var head = words.first ?? ""
+            if head == "run", words.count > 1 {
+                head = words[1]
+            }
+            if !(BlacksiteShell.builtinNames
+                    .contains(head)
+                 && head.hasSuffix("audit")) {
                 runAudit()
                 return
             }
@@ -4773,7 +4800,11 @@ final class SkelliCenter: ObservableObject {
             + "EMCON drill, go dark and stand "
             + "down, stealth, start and stop "
             + "Serve, arm the tripwire, work the "
-            + "ear, name devices, forge payloads "
+            + "ear, name devices, run the "
+            + "Blacksite bench — every probe and "
+            + "census of its ten waves — from a "
+            + "console line spoken here, forge "
+            + "payloads "
             + "into the armory, remember and "
             + "forget. Your war hands: apply a "
             + "War Chest, fire Helm buttons, start "

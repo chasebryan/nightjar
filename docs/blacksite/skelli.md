@@ -8,6 +8,7 @@ Skelli — the intelligence in the Skelli tab — holds her own Blacksite shell.
 - **Bare commands** — a short list of everyday lines also run directly when they are the whole message: `whois`, `dig`, `ping`, `census`, `eazy`, `diagnose`, `ps`, `jobs`, `fastfetch`, `neofetch`, and their kin. And `eazy <target>` works as a sentence of its own.
 - **Near-misses forgiven** — mistype a tool's name by one letter ("whosis") and she runs the tool you meant, and tells you she did. Only names of five letters or more earn the forgiveness, so short words never get hijacked.
 - **The battery by name** — "run eazy", "eazy demo.testfire.net": the full EAZY run, hers to drive (see [eazy.md](eazy.md)).
+- **The bench by name** — every one of the bench's 290 commands runs from her chat the same ways: prefixed ("console: smbprobe 192.168.1.1"), by "run" ("run dnsdeep example.com"), or as the line itself with its target ("webaudit example.com"). The hostless instruments — the censuses and wire reads whose bare form is a real run — also answer to their name alone: "wirecensus", "satcensus", "randprobe". A bench verb whose bare form could only print its usage stays a question she answers from the manual instead. The gates bind her runs exactly as they bind the console's — when EMCON refuses a run of hers, she names the condition, in words.
 
 ## How a run comes back
 

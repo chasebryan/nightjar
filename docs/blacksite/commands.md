@@ -240,7 +240,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `starlinkprobe [host]` | the dish's local doors, censused — the gRPC API door named, its framing honestly not reproduced |
 | `satipprobe <host>[:port]` | a SAT>IP tuner census by RTSP — OPTIONS and DESCRIBE; SETUP and PLAY are never sent |
 | `yamcsprobe <host>[:port]` | a YAMCS server's mission instances, listed — operations data read, never operated |
-| `satintel [norad|name]` | Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified |
+| `satintel [norad\|name]` | Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified |
 | `satnogsprobe [station]` | the SatNOGS network's ground stations — who listens to the sky, and whether they are up |
 | `satcensus [host]` | every satellite door at one address, knocked once each — and the RF limit stated plainly |
 | `signalprobe <host>` | an NTCIP signal controller's nameplate by SNMP GET — identification only; no phase or timing object exists in this verb |

@@ -1,6 +1,6 @@
 # Blacksite OS — the manual
 
-Blacksite is the console inside **nightjar**: a small operating system that lives in a tab. It has a shell that answers to ~174 commands, a kernel that runs real programs (Python and JavaScript, written by you, in its own editors), a files tree, a graphics bench — and a working pentest bench of graded audit instruments, all of it operable either by typing or by asking Skelli, the intelligence who shares the house.
+Blacksite is the console inside **nightjar**: a small operating system that lives in a tab. It has a shell that answers to 413 commands, a kernel that runs real programs (Python and JavaScript, written by you, in its own editors), a files tree, a graphics bench — and a working pentest bench of 290 graded instruments and censuses, all of it operable either by typing or by asking Skelli, the intelligence who shares the house.
 
 This folder is its full documentation.
 
@@ -18,7 +18,7 @@ Type `help` for the section index, `help <section>` for one section whole, `help
 ## The guides
 
 - **[commands.md](commands.md)** — the complete command reference: every command, its signature, and what it does, generated from the same table the console's `help` reads.
-- **[bench.md](bench.md)** — the pentest bench: the 23 audit instruments, what each one sends, how to read its grades, and the public practice ranges where using them is invited.
+- **[bench.md](bench.md)** — the pentest bench: the 290 bench commands in ten waves, what each one sends, how to read its grades, and the public practice ranges where using them is invited.
 - **[eazy.md](eazy.md)** — the EAZY battery: doors, probes, the gateway's extras, access-point grading, and the filed report.
 - **[skelli.md](skelli.md)** — Skelli at the console: running the room by asking, in plain words, from her chat.
 - **[programs.md](programs.md)** — writing programs: the kernel, the Python dialect, the JavaScript engine, packages, the editors.

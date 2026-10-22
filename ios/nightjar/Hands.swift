@@ -2192,10 +2192,31 @@ extension SkelliCenter {
                    .contains(first) {
                 var claims = false
                 if tokens.count == 1 {
+                    // The wave audit (fix308):
+                    // the bench verbs whose bare
+                    // console form is a real run
+                    // — hostless, every argument
+                    // optional — claim solo too.
+                    // A bench verb whose bare
+                    // form can only print its
+                    // usage stays fenced to the
+                    // manual, honestly.
                     claims = ["neofetch",
                         "fastfetch", "diagnose",
                         "ps", "jobs", "pwd", "ls",
-                        "sys", "limits", "eazy"]
+                        "sys", "limits", "eazy",
+                        "discover", "revdns",
+                        "router", "mndp", "upnp",
+                        "bonjour", "ridprobe",
+                        "ssdpdeep", "mdnsdeep",
+                        "dhcpprobe", "wsdprobe",
+                        "v6probe", "metadataprobe",
+                        "wirecensus", "streetcensus",
+                        "satcensus", "aprsprobe",
+                        "starlinkprobe",
+                        "satnogsprobe", "ntpprobe",
+                        "guestprobe", "upnpgrade",
+                        "sshkey", "randprobe"]
                         .contains(first)
                 } else if !["cat", "find", "test",
                             "open", "echo",

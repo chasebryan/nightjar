@@ -24,7 +24,7 @@ Sixteen doors are knocked: `21 22 25 53 80 443 445 389 1883 2375 3306 3389 5900 
 | 6379 | `redisprobe` — one PING |
 | 80, 8080 | `robots`, `webaudit`, `corsprobe` over HTTP |
 | 443, 8443 | `tlsgrade`, `webaudit`, `corsprobe` over HTTPS |
-| 22, 53, 445, 3306 | Noted as open — the bench has no dedicated probe for these, and says so rather than improvising one |
+| 22, 53, 445, 3306 | Noted as open — EAZY runs no probe of its own for these, and says so rather than improvising one; the bench answers them by hand (`sshkeydeep`, `dnsdeep`, `smbprobe`, `mysqlprobe`) |
 
 The **gateway** takes three extras, because the gateway is where a network's posture is decided: `snmpaudit` (the NSA's six, graded), `reflect` (the amplification doors), and `dnsaudit` — your router's answers for a public name, witnessed against three public resolvers.
 

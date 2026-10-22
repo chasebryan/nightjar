@@ -1,6 +1,6 @@
 # The pentest bench
 
-Twenty-three graded audit instruments live in the console, beside the general wire tools (`ping`, `dig`, `curl`, `nc`, the port scanner). Every instrument follows the same contract: **one knock, one read, one grade — in the open.** This guide is what each one sends and how to read what it says.
+The bench stands at 290 commands: the original graded instruments below, and ten waves of expansion after them — every one built under the same contract: **one knock, one read, one grade — in the open.** This guide is what each one sends and how to read what it says.
 
 Run any of them from the console, or ask Skelli to run it (see [skelli.md](skelli.md)). The full signatures are in [commands.md](commands.md).
 
@@ -12,7 +12,7 @@ Run any of them from the console, or ask Skelli to run it (see [skelli.md](skell
 | `webaudit <url>` | The posture audit: the six security headers, cookie flags (Secure, HttpOnly, SameSite), and what the server banner admits. Missing armour is a finding; present armour is read for quality, not just presence. |
 | `vhost <host> [domain]` | Virtual-host discovery: a bogus-Host request sets the baseline, then a wordlist of names is asked at the same address. A name whose answer differs in status or size from the baseline is a different site living at that address. |
 | `dirb <url>` | A directory wordlist walked politely — found, redirected, and forbidden are three different answers and are reported as such. A 403 is a door that exists. |
-| `subdomains <domain>` | The common names under a name, resolved one by one. What answers is the surface the domain admits to. |
+| `subdomains <domain>` | The names the certificate-transparency logs confess: every certificate ever issued to the domain is a public act, and the names on them are censused from the logs (crt.sh). Nothing is guessed and no wordlist is walked — a name that was never certified is not invented. |
 | `methods <url>` | Which HTTP verbs the door honours. TRACE enabled is cross-site tracing waiting to happen; PUT and DELETE on a public door are findings. |
 
 ## Names and locks
@@ -48,6 +48,50 @@ Run any of them from the console, or ask Skelli to run it (see [skelli.md](skell
 | `openredirect <url>` | The classic redirect parameters are aimed at a witness address. A 3xx that follows the aim is an open redirect; a page that stays home is health. |
 | `graphqlprobe <url>` | Asks the endpoint for its introspection. A schema volunteered to a stranger is counted — types, queries, mutations — because the map is the finding. |
 | `jwtcheck <token>` | Pure local inspection — no wire at all: the header and claims read aloud, `alg: none` and a missing expiry flagged, staleness dated. |
+
+## The ten waves
+
+The expansion was built wave by wave, each wave one country of the wire. The doctrine never moved: knock once, read what answers, grade it in the open — and where a reading cannot be verified from this device, the instrument says so instead of dressing a guess as a grade. Every instrument below runs from the console, and every one runs from Skelli's chat by name (see [skelli.md](skelli.md)).
+
+### Wave 1 — the web, read deep
+
+The web instruments grow past the first read: `headersdeep` and `cookieaudit` grade the armour and the cookie flags line by line; `certchain` and `ocspprobe` read the certificate's whole family and its revocation witness; `hstsprobe`, `corsdeep`, and `csrftoken` test the policies a site declares against the ones it keeps. `faviconhash` fingerprints a site by the icon it cannot help showing. `techstack` and `wafdetect` report what a site *claims* to be — a fingerprint is the server's own confession, graded as a claim, never as proof. `redirectchain` walks a chain of doors to the last one; `oidcprobe` and `swaggerprobe` read the identity papers and API maps a site publishes; `wayback` and `sitemap` read what the public record kept.
+
+### Wave 2 — the service doors
+
+Every database and service door gets its nameplate read: `smbprobe`, `mysqlprobe`, `pgprobe`, `mssqlprobe`, `mongoprobe`, `memcacheprobe`, `kafkaprobe`, `etcdprobe`, `consulprobe`, `vaultprobe`, `k8sprobe`, `registryprobe`, and their kin each speak the door's own greeting protocol once — version, papers, posture — and grade what a stranger is told. Mail doors are read whole (`imap`, `pop3`, the `smtp` read); `starttlscensus` walks the doors that can upgrade to TLS and grades which ones insist. A door that answers an unnamed guest with its version and build has confessed the finding; the probes take the confession and leave.
+
+### Wave 3 — names and mail
+
+A domain's whole public posture: `dnsdeep` reads the record book entire, `spfprobe`, `dkimprobe`, `dmarcprobe`, `bimi`, `mtasts`, and `tlsrpt` grade the mail-authentication stack record by record — a missing DMARC policy is graded as the invitation it is. `dnssecgrade` reads the chain of trust and says where it thins; `danglingprobe` finds CNAMEs pointing at services nobody owns anymore, the takeover-shaped hole, and reports the shape without ever claiming the name. `certtrans` and `subdomains` census the certificate-transparency logs. `zonetransfer` asks once, as `axfr` always has: handed over is critical, refused is health.
+
+### Wave 4 — industrial control
+
+The factory floor, under the strictest line on the bench: **identification and posture only — no coil or register writes, no control function codes, ever.** `modbusprobe`, `s7probe`, `bacnetprobe`, `dnp3probe`, `enipprobe`, `opcuaprobe`, `iec104probe`, and thirty more read a device's nameplate in its own protocol — make, model, firmware, the identity it publishes to anyone who asks — and `plcensus` rolls a street of them into one board. Where a protocol's identity frame could not be verified byte-for-byte against its specification, the probe degrades honestly to a presence knock and prints that limit. The one read past the nameplate is `sunspecprobe`, which reads the SunSpec Common Model block — a published, read-only identity register, read as published.
+
+### Wave 5 — the satellite ledger
+
+Ground segment and public ledgers, never the spacecraft: **the bench never transmits a telecommand, never sends a SET or control command, and never originates RF.** `cspprobe` and `ccsdsprobe` census the ground-station doors; `aprsprobe`, `kissprobe`, and `agwprobe` read the amateur-radio gateways; `rotprobe` and `rigprobe` read a rotator's and a radio's reported position and state — reads, never a move. `gpsdprobe`, `nmeaprobe`, `ubxprobe`, and `ntripprobe` read the position services; `starlinkprobe`, `comtechprobe`, `bucprobe`, and `iridiumprobe` read the terminals' own identity pages. `satintel` and `satnogsprobe` read the public ledgers — Celestrak's element sets, checksum verified, and the SatNOGS station book — as published.
+
+### Wave 6 — the street
+
+The city's machinery, read with both hands visible. Signal and street furniture are read by SNMP **GET of identification objects only — never a SET, never a phase command**: `signalprobe`, `dmsprobe`, `rwisprobe`, `rsuprobe`, and `streetlightprobe` take nameplates, and `spatprobe` reads a published SPaT feed as published. Cameras answer `onvifprobe` and `camdeep` with their nameplates; `ptzprobe` censuses a camera's PTZ nodes and **never moves one**. `ridprobe` is a passive census of drone Remote ID broadcasts — it transmits nothing. `sirenprobe` reads a siren controller's identity and **never activates one**. The rest are public ledgers read as published: `flockcensus` counts the ALPR cameras the OpenStreetMap and DeFlock ledgers record for a place — the bench never touches any vendor's cloud, any plate database, or any captured data — and `dotprobe`, `towerprobe`, `gaugeprobe`, `gbfsprobe`, and `transitprobe` read the DOT camera ledgers, the FCC tower book, USGS gauges, air-quality and transit feeds.
+
+### Wave 7 — the wire itself, and the public record
+
+The local protocols read deep: `ssdpdeep` and `mdnsdeep` (where `upnp` and `bonjour` now lead) census every description document and service paper on the wire; `dhcpprobe`, `wsdprobe`, `v6probe`, `ntpprobe`, and `smallsvc` read the wire's housekeeping — who hands out addresses, what the old small doors still answer, whether the clocks agree. `wirecensus` rolls the whole wire into one board. The wave's other half is the public record, read as published: `kevprobe` and `cveprobe` (the known-exploited ledger outranks any score), `passivedns`, `rblprobe`, `urlscanprobe`, `torprobe`, `macprobe`, `geoprobe`, `ripeprobe`, `gleifprobe`, `ghprobe` — other people's ledgers, quoted, never embellished.
+
+### Wave 8 — locks and ciphers
+
+The locksmith's bench, and most of it never touches the wire: `cipherprobe`, `hashprobe`, `kdfprobe`, `aesprobe`, `eccprobe`, and `xorprobe` work a value you hand them — what algorithm, what strength, what it would cost to be wrong. `keyprobe`, `x509probe`, `pgpprobe`, and `sigprobe` read the papers of keys and certificates from files. `sshkeydeep` reads a host's presented SSH keys and grades the set; `tlscensus` censuses a host's whole TLS posture in one pass. `entropyprobe` and `randprobe` grade randomness by sampling it — `randprobe` bare samples this device's own system random, 65,536 bytes, and grades what it drew. Nothing here cracks, guesses, or sprays: it reads locks and says what they are.
+
+### Wave 9 — the shield
+
+The bench turned around: the same doors, graded as a defender. `sshposture`, `smbposture`, `snmposture`, `mailposture`, `headerposture`, `cookieposture`, `dirposture`, `dnsposture`, `printposture`, `nasposture`, `iotposture`, and `cameraposture` each take one surface of your own house and grade it against the published best practice. `guestprobe` grades the guest network's isolation from the wire it sits on; `metadataprobe` reads what a wire leaks about itself; `upnpgrade` grades the UPnP surface the wire census found. `patchprobe`, `kevcheck`, and `certwatch` watch the ledgers that matter — known-exploited first, expiry always — and `shieldcensus` rolls the whole shield into one board: what stands, what leans, what is open, in the open.
+
+### Wave 10 — files
+
+The evidence bench: files read, never executed. `magicprobe` names a file by its bytes, not its name; `peprobe`, `elfprobe`, and `machoprobe` read the executables' papers — hardening flags, sections, imports, the bytes past the last section where things hide. `exifprobe` and `imgdeep` read what images confess — camera, place, hour — and `pdfprobe`, `zipprobe`, `sqliteprobe`, `plistprobe`, `fontprobe`, `scriptprobe`, and `logprobe` open each format's book the same way. `stringsdeep` lifts a file's words; `dupprobe` finds the same bytes wearing two names; `dataprobe` grades a data file's shape; `filecensus` and `fileboard` roll a shelf of files into one graded board. A file's claims are read as claims — a header that lies is reported as lying, from the bytes.
 
 ## Practice ranges
 
