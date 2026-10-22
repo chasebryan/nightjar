@@ -28,18 +28,16 @@ final class HackTests: XCTestCase {
         XCTAssertEqual(PayloadKit.xor(PayloadKit.xor(data, key: key), key: key), data)
     }
 
-    func testGzipRoundTrips() {
+    func testGzipRoundTrips() throws {
         let data = Data("hello, world — the quick brown payload".utf8)
-        let zipped = PayloadKit.gzipCompress(data)
-        XCTAssertNotNil(zipped)
-        XCTAssertEqual(Array(zipped!.prefix(2)), [0x1F, 0x8B])
-        XCTAssertEqual(PayloadKit.gzipDecompress(zipped!), data)
+        let zipped = try XCTUnwrap(PayloadKit.gzipCompress(data))
+        XCTAssertEqual(Array(zipped.prefix(2)), [0x1F, 0x8B])
+        XCTAssertEqual(try FreedoomZip.gunzip(zipped), data)
     }
 
-    func testGzipEmpty() {
-        let zipped = PayloadKit.gzipCompress(Data())
-        XCTAssertNotNil(zipped)
-        XCTAssertEqual(PayloadKit.gzipDecompress(zipped!), Data())
+    func testGzipEmpty() throws {
+        let zipped = try XCTUnwrap(PayloadKit.gzipCompress(Data()))
+        XCTAssertEqual(try FreedoomZip.gunzip(zipped), Data())
     }
 
     func testBuildAppliesTransformsInOrder() throws {

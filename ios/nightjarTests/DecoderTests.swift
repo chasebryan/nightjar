@@ -436,7 +436,7 @@ final class DecoderTests: XCTestCase {
     /// 6.49.10, identity HomeAP. A packet with
     /// no MikroTik platform states nothing.
     func testMNDPFraming() {
-        let packet = hexBytes(
+        let packet = bytes(
             "000500084d696b726f54696b"
             + "000800085242373530477233"
             + "00030007362e34392e3130"
@@ -447,9 +447,9 @@ final class DecoderTests: XCTestCase {
              "RouterOS 6.49.10",
              "identity \u{201C}HomeAP\u{201D}"])
         XCTAssertNil(BlacksitePentest.parseMNDP(
-            hexBytes("0005000443617365")))
+            bytes("0005000443617365")))
         XCTAssertNil(BlacksitePentest.parseMNDP(
-            hexBytes("0005")))
+            bytes("0005")))
     }
 
     // MARK: SNMPv3 USM (netadmin Phase 2)
@@ -461,7 +461,7 @@ final class DecoderTests: XCTestCase {
         let plain = bytes(
             "00112233445566778899aabbccddeeff")
         XCTAssertEqual(
-            AES128.encryptBlock(
+            BlacksitePentest.AES128.encryptBlock(
                 key: key, plain),
             bytes("69c4e0d86a7b0430"
                   + "d8cdb78070b4c55a"))
@@ -470,16 +470,16 @@ final class DecoderTests: XCTestCase {
     func testDESClassicVectors() {
         let key = bytes("133457799BBCDFF1")
         let plain = bytes("0123456789ABCDEF")
-        let cipher = DESCipher.encryptBlock(
+        let cipher = BlacksitePentest.DESCipher.encryptBlock(
             key: key, plain)
         XCTAssertEqual(
             cipher, bytes("85E813540F0AB405"))
         XCTAssertEqual(
-            DESCipher.decryptBlock(
+            BlacksitePentest.DESCipher.decryptBlock(
                 key: key, cipher), plain)
         let key2 = bytes("0123456789ABCDEF")
         XCTAssertEqual(
-            DESCipher.encryptBlock(
+            BlacksitePentest.DESCipher.encryptBlock(
                 key: key2,
                 Array("Now is t".utf8)),
             bytes("3FA40E8A984D4815"))

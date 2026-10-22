@@ -651,7 +651,7 @@ struct BFFrameDetailView: View {
                 hexDump
             }
         }
-        .listStyle(.insetGrouped)
+        .groupedListStyle()
         .navigationTitle(String(format: L("frame %lld"),
                                 frame.number))
         .navigationBarTitleDisplayMode(.inline)
@@ -970,7 +970,7 @@ struct DriftDetailView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .groupedListStyle()
         .navigationTitle(object.kind.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1195,7 +1195,7 @@ struct BFStreamDetailView: View {
                 streamContent
             }
         }
-        .listStyle(.insetGrouped)
+        .groupedListStyle()
         .navigationTitle(L("stream"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1467,7 +1467,7 @@ struct BFStatsView: View {
                         }
                     }
                 }
-                .listStyle(.insetGrouped)
+                .groupedListStyle()
             } else {
                 VStack {
                     Spacer()

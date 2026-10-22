@@ -491,6 +491,16 @@ extension View {
 #endif
     }
 
+    /// Keep the phone's explicit grouped presentation while using the
+    /// supported inset style on Mac; insetGrouped is unavailable there.
+    func groupedListStyle() -> some View {
+#if os(macOS)
+        listStyle(.inset)
+#else
+        listStyle(.insetGrouped)
+#endif
+    }
+
     /// A reading measure: on the Mac the content
     /// stands in a centered column of the given
     /// width instead of stretching edge to edge
