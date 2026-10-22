@@ -52,7 +52,7 @@ Build from source with Xcode, or inspect the available assets on the [releases p
 
 | Requirement | What you need |
 | --- | --- |
-| **Build tools** | A Mac with **Xcode 26**, the supported setup for the current app |
+| **Build tools** | A Mac with **Xcode 27 / Swift 6.4**, required by the checked-in package resolutions; see [development checks](docs/development.md) |
 | **Metal Toolchain** | Install Xcode's Metal Toolchain component for the MLX build |
 | **iPhone** | **iOS 17 or later**; a signing team selected in Xcode |
 | **Mac app** | **macOS 14 or later**; select the `nightjar-mac` scheme |

@@ -817,7 +817,8 @@ final class Mouth: NSObject, ObservableObject {
     /// same declared defaults where a key was never set. This is
     /// the knock vault's door-raiser: EMCON's combination opens
     /// exactly the Serve the operator configured, nothing bespoke.
-    func startServeFromSettings() {
+    @discardableResult
+    func startServeFromSettings() -> Int? {
         let defaults = UserDefaults.standard
         func flag(_ key: String, _ fallback: Bool) -> Bool {
             defaults.object(forKey: key) as? Bool ?? fallback
@@ -825,7 +826,7 @@ final class Mouth: NSObject, ObservableObject {
         func port(_ key: String, _ fallback: String) -> Int? {
             Int(defaults.string(forKey: key) ?? fallback)
         }
-        startServe(
+        return startServe(
             tcpPort: flag("serveUseTCP", true)
                 ? port("serveTcpPort", "9000") : nil,
             udpPort: flag("serveUseUDP", false)
@@ -2279,8 +2280,9 @@ extension Mouth {
     /// framing), recorded in the inbox, and answered with the reply
     /// when one is set. Foreground only — iOS suspends listeners when
     /// the app leaves the screen.
+    @discardableResult
     func startServe(tcpPort: Int?, udpPort: Int?, httpPort: Int?,
-                    reply: String, framing: String, echo: Bool = false) {
+                    reply: String, framing: String, echo: Bool = false) -> Int? {
         // The Standard at the Serve funnel: under BRAVO or
         // ALPHA no Serve stands at all; under CHARLIE it
         // stands unlisted — a listed start is regulated
@@ -2294,7 +2296,7 @@ extension Mouth {
                 Journal.log("emcon", "regulation",
                             "\(condition.declared) refused "
                             + "a Serve start")
-                return
+                return nil
             }
             if !stealth {
                 setStealth(true)
@@ -2366,41 +2368,63 @@ extension Mouth {
                 self.serveError = String(format: L("nightjar: %@"), error.localizedDescription)
                 self.ui(String(format: L("Serving failed: %@"), error.localizedDescription), error: true)
             }
-            return
+            return nil
         }
         if started.isEmpty {
             DispatchQueue.main.async {
                 self.serveError = L("nightjar: no listener selected")
                 self.ui(L("No listener selected"), error: true)
             }
-            return
+            return nil
         }
-        DispatchQueue.main.async { self.serveRunning = true }
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.serveSync({ self.serveGeneration }) == generation
+            else { return }
+            self.serveRunning = true
+        }
         ui("Serving: \(started.joined(separator: ", "))")
         line(String(format: L("serve: %@ — foreground only"), started.joined(separator: ", ")))
+        return generation
     }
 
     func stopServe() {
-        let wasRunning = serveRunning
-        if wasRunning { Haptics.pulse() }
+        _ = stopServe(ifGeneration: nil)
+    }
+
+    /// A delayed owner may stop only the run it started. The generation
+    /// check and invalidation share the same queue as connection callbacks.
+    @discardableResult
+    func stopServe(ifGeneration expected: Int?) -> Bool {
         // Snapshot and clear under the queue's
         // discipline, then cancel outside it:
         // the sweep of stranded connections
         // must name the serve that is ending,
         // never a successor's.
-        let stranded = serveSync {
+        let stranded: [NWConnection]? = serveSync {
+            if let expected, serveGeneration != expected { return nil }
             serveGeneration += 1
             let taken = serveConnections
             serveConnections = []
             return taken
         }
+        guard let stranded else { return false }
+        let wasRunning = serveRunning
+        if wasRunning { Haptics.pulse() }
         for listener in listeners { listener.cancel() }
         listeners = []
         for connection in stranded {
             connection.cancel()
         }
-        DispatchQueue.main.async { self.serveRunning = false }
+        let generation = serveSync { serveGeneration }
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.serveSync({ self.serveGeneration }) == generation
+            else { return }
+            self.serveRunning = false
+        }
         if wasRunning { ui(L("Stopped serving")) }
+        return true
     }
 
     private func trackServeConnection(_ connection: NWConnection) {

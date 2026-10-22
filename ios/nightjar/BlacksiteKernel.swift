@@ -99,18 +99,43 @@ final class ConsoleStop {
 final class KernelKillSwitch {
     private let lock = NSLock()
     private var hook: (() -> Void)?
+    private var fired = false
+
+    var isFired: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return fired
+    }
 
     func install(_ body: @escaping () -> Void) {
         lock.lock()
-        hook = body
+        let alreadyFired = fired
+        if !alreadyFired { hook = body }
         lock.unlock()
+        // A queued runner may not install its hook until AFTER Stop.
+        // Cancellation is terminal: it must reach late subscribers too.
+        if alreadyFired { body() }
     }
 
     func fire() {
         lock.lock()
+        guard !fired else {
+            lock.unlock()
+            return
+        }
+        fired = true
         let body = hook
+        hook = nil
         lock.unlock()
         body?()
+    }
+
+    /// Release a completed runner's context without forgetting Stop.
+    /// Hooks run outside the lock, so they may safely detach themselves.
+    func removeHandler() {
+        lock.lock()
+        hook = nil
+        lock.unlock()
     }
 }
 

@@ -42,9 +42,20 @@ jobs:
           PY=false
           IOS=false
           grep -Eq '^(tests/|nightjar/|tools/|[^/]+\.py$|\.github/workflows/nightjar-checks\.yml$)' <<<"$FILES" && PY=true
-          grep -Eq '^(ios/|\.github/workflows/nightjar-checks\.yml$)' <<<"$FILES" && IOS=true
+          grep -Eq '^(ios/|tools/test-kernel\.sh$|\.github/workflows/nightjar-checks\.yml$)' <<<"$FILES" && IOS=true
           echo "python=$PY" >> "$GITHUB_OUTPUT"
           echo "ios=$IOS" >> "$GITHUB_OUTPUT"
+
+  kernel:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    name: Kernel lifecycle XCTest
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test the production kernel without app dependencies
+        run: tools/test-kernel.sh --sanitize=thread
 
   python:
     needs: changes
@@ -69,12 +80,18 @@ jobs:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
     name: iOS simulator XCTest
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Show native toolchain versions
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Install Metal toolchain for MLX
+        run: xcodebuild -downloadComponent MetalToolchain
       - name: Select available iPhone simulator
         shell: bash
         run: |
@@ -105,6 +122,7 @@ jobs:
             -configuration Debug \
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -parallel-testing-enabled NO \
+            -onlyUsePackageVersionsFromResolvedFile \
             -resultBundlePath "$RUNNER_TEMP/nightjar-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
       - name: Upload XCTest result bundle on failure
