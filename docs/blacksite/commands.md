@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**393 commands in 9 sections.**
+**413 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (270)
+## pentest bench (290)
 
 | Command | What it does |
 | --- | --- |
@@ -328,6 +328,26 @@ Every command the console answers to, with the signature it takes and what it do
 | `nasposture <host>` | a file box's whole face on one board — shares, NFS, AFP, WebDAV, and its consoles |
 | `cameraposture <host[:port]>` | a camera's papers and its stream: the ONVIF nameplate as claim, the vendor doors, RTSP's answer |
 | `watchprobe [save] <host>` | the shield board against the last baseline on file — what changed on your wire while you weren't looking |
+| `filecensus <file>` | the identity board for a file you have never seen — what its bytes say, what its name claims, its digests and texture |
+| `magicprobe <file>` | sixteen bytes and a verdict — what the head of the file says, and whether its name agrees |
+| `stringsdeep <file>` | the strings census — runs counted and sampled, URL- and domain-shaped strings printed as strings |
+| `exifprobe <file>` | the papers a picture carries — camera, software, timestamps, and a GPS claim if it makes one |
+| `pdfprobe <file>` | a document read as claims — objects, pages counted against the page tree's claim, scripts and carried files |
+| `zipprobe <file>` | the archive ledger — entries, methods, seals and path escapes; listing only, never unpacked |
+| `machoprobe <file>` | a Mach-O read — slices, libraries claimed, encryption papers, runpaths, build version |
+| `elfprobe <file>` | an ELF read — PIE, interpreter, stack and RELRO posture, the needed ledger |
+| `peprobe <file>` | the Windows papers — hardening flags graded, sections, imports, bytes past the last section |
+| `imgdeep <file>` | the image censuses — JPEG markers, PNG chunks and CRCs, GIF frames, the WebP ledger, bytes past the end |
+| `audiofile <file>` | the songs' papers — WAV chunks, FLAC blocks, the MP3 tag and frame walk, Ogg tenants |
+| `sqliteprobe <file>` | a database's ledger — pages, the freelist, schema objects; rows never dumped |
+| `plistprobe <file>` | plists, entitlements and provisioning profiles — powers asked for, printed as asks |
+| `scriptprobe <file>` | a script read as text and never run — dialect by shape, its strings, its reach-out call names counted |
+| `logprobe <file>` | a log read as testimony — shape guess, the span the lines claim, error and status tallies |
+| `dataprobe <file>` | the shape of data — JSON key and kind censuses, delimited columns inferred; values not dumped |
+| `fontprobe <file>` | a font's papers — the table directory, the name it claims, glyph and em counts |
+| `certfile <file>` | a bundle's ledger — every PEM block in the file's own order, the chain graded; deep reads stay with x509probe |
+| `dupprobe <dir>` | a directory's duplicates by size and then SHA-256 — bytes paid for twice, priced |
+| `fileboard <dir>` | a directory read at once — kinds, totals, the largest tenants, and every mismatch in the room |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |
