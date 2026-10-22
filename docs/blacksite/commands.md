@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**368 commands in 9 sections.**
+**393 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (245)
+## pentest bench (270)
 
 | Command | What it does |
 | --- | --- |
@@ -303,6 +303,31 @@ Every command the console answers to, with the signature it takes and what it do
 | `totpprobe <seed>` | the current time-based code for your own seed, with its neighbours — the seed is never printed |
 | `passprobe <word>` | a passphrase graded on shape alone — classes, a charset estimate, the common lists; the word is never printed |
 | `lockcensus <host>` | one host's locks on one board — TLS, the papers, and the SSH key with its pin state |
+| `shieldcensus <host>` | one host, the whole shield board — doors, the versions it presents, SSH and SMB grades, its papers, its clock, and the federal ledger |
+| `mgmtprobe <host>` | the management plane door by door — shells, panels, VNC, RDP, AMT, and the r-services |
+| `anonprobe <host>` | the four anonymous knocks, exactly once each — SNMP 'public', FTP anonymous, an unnamed MQTT guest, an LDAP bind with no name |
+| `certwatch <host>` | every implicit-TLS door's certificate on one host, by days left to live |
+| `smbposture <host>` | the file door graded: dialect, signing, encryption, and whether SMB1 still sits at the table |
+| `sshposture <host>` | the shell door graded: algorithm lists, the auth methods, and the host key against the house pin |
+| `snmposture <host>` | the NSA's six mitigations read as the owner of the gear — the house audit, owned, plus what the agent volunteers |
+| `backupprobe <host>` | the doors your backups ride — AFP, SMB, rsync's module list, the Time Capsule's own door |
+| `upnpgrade [gateway]` | your gateway's UPnP forwarding ledger — every standing port mapping, read as its owner |
+| `dnsposture <resolver>` | your resolver graded: recursion, DNSSEC validation, and whether it confesses its version |
+| `mailposture <domain>` | a domain's mail defences rung by rung — SPF, DMARC, MTA-STS — graded at their weakest |
+| `patchprobe <host>` | the versions a host presents, against the bench's bounded end-of-life table — a claim graded, never a bill of health |
+| `kevcheck <host>` | the products a host presents, against the CISA KEV ledger — confirmed exploitation, not scores |
+| `iotposture <host>` | the small-machine doors graded: the broker, CoAP's map, the stream's own description |
+| `guestprobe [gateway]` | the house as a guest meets it — the gateway's doors, its resolver, its announcers; inference, labelled |
+| `timeprobe <host>` | a clock graded against true time — offset, stratum, and what the drift would cost |
+| `v6posture <host>` | the second stack's doors: what answers on IPv6 that IPv4 keeps shut |
+| `headerposture <url\|host>` | one of your servers' headers, deep-read, with the owner's roll-up of the five defensive headers |
+| `cookieposture <host[:port]>` | the cookies your root page hands out, graded flag by flag: Secure, HttpOnly, SameSite |
+| `dirposture <host[:port]>` | open directory listings, followed only where the page itself holds the door open — nothing guessed |
+| `metadataprobe` | the cloud's link-local door, knocked on once; the status line read, the body discarded unread |
+| `printposture <host>` | a printer's whole posture: the house read, plus the raw 9100 door and the old LPD |
+| `nasposture <host>` | a file box's whole face on one board — shares, NFS, AFP, WebDAV, and its consoles |
+| `cameraposture <host[:port]>` | a camera's papers and its stream: the ONVIF nameplate as claim, the vendor doors, RTSP's answer |
+| `watchprobe [save] <host>` | the shield board against the last baseline on file — what changed on your wire while you weren't looking |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

@@ -424,6 +424,31 @@ final class BlacksiteShell: ObservableObject {
         "totpprobe",
         "passprobe",
         "lockcensus",
+        "shieldcensus",
+        "mgmtprobe",
+        "anonprobe",
+        "certwatch",
+        "smbposture",
+        "sshposture",
+        "snmposture",
+        "backupprobe",
+        "upnpgrade",
+        "dnsposture",
+        "mailposture",
+        "patchprobe",
+        "kevcheck",
+        "iotposture",
+        "guestprobe",
+        "timeprobe",
+        "v6posture",
+        "headerposture",
+        "cookieposture",
+        "dirposture",
+        "metadataprobe",
+        "printposture",
+        "nasposture",
+        "cameraposture",
+        "watchprobe",
     ]
 
     /// betafisch [file] — raise the
@@ -3127,7 +3152,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus", "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus", "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus", "keyprobe", "hashprobe", "entropyprobe", "b64deep", "x509probe", "pgpprobe", "sshkeydeep", "tlscensus", "cipherprobe", "randprobe", "kdfprobe", "aesprobe", "xorprobe", "rsaprobe", "eccprobe", "enccensus", "sigprobe", "totpprobe", "passprobe", "lockcensus":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus", "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus", "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus", "keyprobe", "hashprobe", "entropyprobe", "b64deep", "x509probe", "pgpprobe", "sshkeydeep", "tlscensus", "cipherprobe", "randprobe", "kdfprobe", "aesprobe", "xorprobe", "rsaprobe", "eccprobe", "enccensus", "sigprobe", "totpprobe", "passprobe", "lockcensus", "shieldcensus", "mgmtprobe", "anonprobe", "certwatch", "smbposture", "sshposture", "snmposture", "backupprobe", "upnpgrade", "dnsposture", "mailposture", "patchprobe", "kevcheck", "iotposture", "guestprobe", "timeprobe", "v6posture", "headerposture", "cookieposture", "dirposture", "metadataprobe", "printposture", "nasposture", "cameraposture", "watchprobe":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -5213,6 +5238,31 @@ final class BlacksiteShell: ObservableObject {
                 ("totpprobe <seed>", L("the current time-based code for your own seed, with its neighbours — the seed is never printed")),
                 ("passprobe <word>", L("a passphrase graded on shape alone — classes, a charset estimate, the common lists; the word is never printed")),
                 ("lockcensus <host>", L("one host's locks on one board — TLS, the papers, and the SSH key with its pin state")),
+                ("shieldcensus <host>", L("one host, the whole shield board — doors, the versions it presents, SSH and SMB grades, its papers, its clock, and the federal ledger")),
+                ("mgmtprobe <host>", L("the management plane door by door — shells, panels, VNC, RDP, AMT, and the r-services")),
+                ("anonprobe <host>", L("the four anonymous knocks, exactly once each — SNMP 'public', FTP anonymous, an unnamed MQTT guest, an LDAP bind with no name")),
+                ("certwatch <host>", L("every implicit-TLS door's certificate on one host, by days left to live")),
+                ("smbposture <host>", L("the file door graded: dialect, signing, encryption, and whether SMB1 still sits at the table")),
+                ("sshposture <host>", L("the shell door graded: algorithm lists, the auth methods, and the host key against the house pin")),
+                ("snmposture <host>", L("the NSA's six mitigations read as the owner of the gear — the house audit, owned, plus what the agent volunteers")),
+                ("backupprobe <host>", L("the doors your backups ride — AFP, SMB, rsync's module list, the Time Capsule's own door")),
+                ("upnpgrade [gateway]", L("your gateway's UPnP forwarding ledger — every standing port mapping, read as its owner")),
+                ("dnsposture <resolver>", L("your resolver graded: recursion, DNSSEC validation, and whether it confesses its version")),
+                ("mailposture <domain>", L("a domain's mail defences rung by rung — SPF, DMARC, MTA-STS — graded at their weakest")),
+                ("patchprobe <host>", L("the versions a host presents, against the bench's bounded end-of-life table — a claim graded, never a bill of health")),
+                ("kevcheck <host>", L("the products a host presents, against the CISA KEV ledger — confirmed exploitation, not scores")),
+                ("iotposture <host>", L("the small-machine doors graded: the broker, CoAP's map, the stream's own description")),
+                ("guestprobe [gateway]", L("the house as a guest meets it — the gateway's doors, its resolver, its announcers; inference, labelled")),
+                ("timeprobe <host>", L("a clock graded against true time — offset, stratum, and what the drift would cost")),
+                ("v6posture <host>", L("the second stack's doors: what answers on IPv6 that IPv4 keeps shut")),
+                ("headerposture <url|host>", L("one of your servers' headers, deep-read, with the owner's roll-up of the five defensive headers")),
+                ("cookieposture <host[:port]>", L("the cookies your root page hands out, graded flag by flag: Secure, HttpOnly, SameSite")),
+                ("dirposture <host[:port]>", L("open directory listings, followed only where the page itself holds the door open — nothing guessed")),
+                ("metadataprobe", L("the cloud's link-local door, knocked on once; the status line read, the body discarded unread")),
+                ("printposture <host>", L("a printer's whole posture: the house read, plus the raw 9100 door and the old LPD")),
+                ("nasposture <host>", L("a file box's whole face on one board — shares, NFS, AFP, WebDAV, and its consoles")),
+                ("cameraposture <host[:port]>", L("a camera's papers and its stream: the ONVIF nameplate as claim, the vendor doors, RTSP's answer")),
+                ("watchprobe [save] <host>", L("the shield board against the last baseline on file — what changed on your wire while you weren't looking")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10946,6 +10996,16 @@ final class BlacksiteShell: ObservableObject {
                         || name == "lockcensus"
                         ? (args.first ?? "")
                         : args.joined(separator: " "),
+                    emit: emit, done: done)
+            }
+        case "shieldcensus", "mgmtprobe", "anonprobe", "certwatch", "smbposture", "sshposture", "snmposture", "backupprobe", "upnpgrade", "dnsposture", "mailposture", "patchprobe", "kevcheck", "iotposture", "guestprobe", "timeprobe", "v6posture", "headerposture", "cookieposture", "dirposture", "metadataprobe", "printposture", "nasposture", "cameraposture", "watchprobe":
+            guard netAllowed(name) else { return }
+            netBusy { emit, done in
+                BlacksiteBench.benchShield(
+                    name: name,
+                    arg: name == "watchprobe"
+                        ? args.joined(separator: " ")
+                        : (args.first ?? ""),
                     emit: emit, done: done)
             }
         default:

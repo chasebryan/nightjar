@@ -2951,8 +2951,8 @@ extension BlacksiteBench {
                 // expected road for an
                 // unpinned host.
             }
-            if let blob = client.hostKeyBlob,
-               !blob.isEmpty {
+            let blob = client.hostKeyBlob
+            if !blob.isEmpty {
                 let bytes = [UInt8](blob)
                 icsSay(emit, String(format: L("the host presents a %@ key:"), client.hostAlgorithm), .sys)
                 if let parsed =
@@ -6248,8 +6248,8 @@ extension BlacksiteBench {
                 // census road, as in
                 // sshkeydeep.
             }
-            if let blob = client.hostKeyBlob,
-               !blob.isEmpty {
+            let blob = client.hostKeyBlob
+            if !blob.isEmpty {
                 let bytes = [UInt8](blob)
                 let digest = SHA256.hash(
                     data: blob)
