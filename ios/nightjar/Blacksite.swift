@@ -289,6 +289,17 @@ final class BlacksiteShell: ObservableObject {
         "vaultprobe", "rabbitprobe",
         "printerprobe", "rtspprobe",
         "sipprobe", "starttlscensus",
+        "dnsdeep", "zonetransfer",
+        "reverseprobe", "dnscensus",
+        "wildcardprobe", "caacheck",
+        "ttlprobe", "soacheck",
+        "nsecprobe", "dnssecgrade",
+        "mxprobe", "smtpdeep", "smtptls",
+        "spfprobe", "dkimprobe",
+        "dmarcprobe", "mtasts", "tlsrpt",
+        "bimi", "certtrans", "whoisdeep",
+        "rdap", "asnprobe",
+        "danglingprobe",
     ]
 
     /// betafisch [file] — raise the
@@ -2992,7 +3003,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4839,7 +4850,6 @@ final class BlacksiteShell: ObservableObject {
                 ("discover [a.b.c]", L("who lives on the /24 — ICMP sweep")),
                 ("portscan <host> [top|a-b|all|list]", L("every door, banners too")),
                 ("banner <host> <port>", L("make a door introduce itself")),
-                ("subdomains <domain>", L("the names under a name")),
                 ("revdns [a.b.c] [server]", L("reverse-walk a /24")),
                 ("nbstat <host>", L("NetBIOS names and the adapter")),
                 ("snmp <host> [community]", L("ask the agent (default public)")),
@@ -4936,6 +4946,31 @@ final class BlacksiteShell: ObservableObject {
                 ("rtspprobe <host>", L("the camera's OPTIONS — the published verbs and the Server letterhead")),
                 ("sipprobe <host>", L("one SIP OPTIONS — the Allow list and the PBX's letterhead; no call is placed")),
                 ("starttlscensus <host>", L("the mail doors graded — STARTTLS offered, demanded, or missing; no name is ever given")),
+                ("dnsdeep <domain>", L("every record family of one name, read whole — A, AAAA, MX, NS, TXT, SOA, CAA")),
+                ("zonetransfer <domain> [server]", L("ask a nameserver for its whole zone, once — handed over is critical, refused is correct")),
+                ("reverseprobe <ip>[/28]", L("the names behind the numbers — one address, or a small street read as a summary")),
+                ("dnscensus <domain>", L("the same question to your router and three public witnesses — disagreement is the story")),
+                ("wildcardprobe <domain>", L("ask for a name that cannot exist — if it answers, the zone answers everything")),
+                ("caacheck <domain>", L("who may issue certificates for the name, and whether a watch stands (CAA)")),
+                ("ttlprobe <domain>", L("how long each family's answer may be remembered — the cache posture")),
+                ("soacheck <domain>", L("the zone's own ledger — the serial's convention, the refresh rhythm, the negative lifetime")),
+                ("nsecprobe <domain>", L("can the zone be walked — NSEC names the neighbours, NSEC3 hashes them first")),
+                ("dnssecgrade <domain>", L("the DNSSEC chain as far as the wire shows it — DS, keys, signatures, the resolver's AD word")),
+                ("mxprobe <domain>", L("where the mail goes — the exchangers in their order, the null MX, both roads")),
+                ("smtpdeep <host>", L("the mail door's greeting and EHLO census — no mail sent, no AUTH ever tried")),
+                ("smtptls <host>[:port]", L("rise the sealed road on the mail door itself, and grade the papers it shows")),
+                ("spfprobe <domain>", L("who may sign letters with this name — the ten-lookup budget counted, the terminal word graded")),
+                ("dkimprobe <domain>", L("the signing keys under the twelve common selectors — their weights and revocations")),
+                ("dmarcprobe <domain>", L("what a forgery costs — the policy, the enforcement share, where the reports flow")),
+                ("mtasts <domain>", L("the mail road's published seal — the DNS half and the policy, read together")),
+                ("tlsrpt <domain>", L("where broken mail seals are reported — or that nobody anywhere is told")),
+                ("bimi <domain>", L("the face beside the letter — the brand mark, and whether it stands verified")),
+                ("certtrans <domain>", L("every certificate the public logs remember for the name — issuers, coverage, the last minting")),
+                ("subdomains <domain>", L("the subdomains the public certificate logs confess — no dictionary, no brute force")),
+                ("whoisdeep <domain>", L("the registry's ledger, parsed — keeper, birth, lapse, and the standing words")),
+                ("rdap <domain|ip>", L("the registry's modern ledger for a domain or an address, structured and whole")),
+                ("asnprobe <ip>", L("whose road a number runs on — the autonomous system, the prefix, the registry")),
+                ("danglingprobe <name>", L("a CNAME that points at a ghost — the takeover risk, graded and never touched")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -9467,10 +9502,9 @@ final class BlacksiteShell: ObservableObject {
                 return
             }
             netBusy { emit, done in
-                BlacksitePentest.subdomains(
-                    domain: domain,
-                    emit: emit, done: done,
-                    stopped: stopCheck)
+                BlacksiteBench.benchNames(
+                    "subdomains", domain,
+                    emit: emit, done: done)
             }
         case "revdns":
             guard netAllowed(name) else {
@@ -10579,6 +10613,25 @@ final class BlacksiteShell: ObservableObject {
                 BlacksiteBench.benchDoors(
                     name,
                     name == "starttlscensus"
+                        ? args.joined(
+                            separator: " ")
+                        : target,
+                    emit: emit, done: done)
+            }
+        case "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("the bench tools each want a target."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.benchNames(
+                    name,
+                    name == "zonetransfer"
+                        || name == "smtpdeep"
                         ? args.joined(
                             separator: " ")
                         : target,

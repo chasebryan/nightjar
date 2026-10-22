@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**226 commands in 9 sections.**
+**250 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,14 +57,13 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (103)
+## pentest bench (127)
 
 | Command | What it does |
 | --- | --- |
 | `discover [a.b.c]` | who lives on the /24 — ICMP sweep |
 | `portscan <host> [top\|a-b\|all\|list]` | every door, banners too |
 | `banner <host> <port>` | make a door introduce itself |
-| `subdomains <domain>` | the names under a name |
 | `revdns [a.b.c] [server]` | reverse-walk a /24 |
 | `nbstat <host>` | NetBIOS names and the adapter |
 | `snmp <host> [community]` | ask the agent (default public) |
@@ -161,6 +160,31 @@ Every command the console answers to, with the signature it takes and what it do
 | `rtspprobe <host>` | the camera's OPTIONS — the published verbs and the Server letterhead |
 | `sipprobe <host>` | one SIP OPTIONS — the Allow list and the PBX's letterhead; no call is placed |
 | `starttlscensus <host>` | the mail doors graded — STARTTLS offered, demanded, or missing; no name is ever given |
+| `dnsdeep <domain>` | every record family of one name, read whole — A, AAAA, MX, NS, TXT, SOA, CAA |
+| `zonetransfer <domain> [server]` | ask a nameserver for its whole zone, once — handed over is critical, refused is correct |
+| `reverseprobe <ip>[/28]` | the names behind the numbers — one address, or a small street read as a summary |
+| `dnscensus <domain>` | the same question to your router and three public witnesses — disagreement is the story |
+| `wildcardprobe <domain>` | ask for a name that cannot exist — if it answers, the zone answers everything |
+| `caacheck <domain>` | who may issue certificates for the name, and whether a watch stands (CAA) |
+| `ttlprobe <domain>` | how long each family's answer may be remembered — the cache posture |
+| `soacheck <domain>` | the zone's own ledger — the serial's convention, the refresh rhythm, the negative lifetime |
+| `nsecprobe <domain>` | can the zone be walked — NSEC names the neighbours, NSEC3 hashes them first |
+| `dnssecgrade <domain>` | the DNSSEC chain as far as the wire shows it — DS, keys, signatures, the resolver's AD word |
+| `mxprobe <domain>` | where the mail goes — the exchangers in their order, the null MX, both roads |
+| `smtpdeep <host>` | the mail door's greeting and EHLO census — no mail sent, no AUTH ever tried |
+| `smtptls <host>[:port]` | rise the sealed road on the mail door itself, and grade the papers it shows |
+| `spfprobe <domain>` | who may sign letters with this name — the ten-lookup budget counted, the terminal word graded |
+| `dkimprobe <domain>` | the signing keys under the twelve common selectors — their weights and revocations |
+| `dmarcprobe <domain>` | what a forgery costs — the policy, the enforcement share, where the reports flow |
+| `mtasts <domain>` | the mail road's published seal — the DNS half and the policy, read together |
+| `tlsrpt <domain>` | where broken mail seals are reported — or that nobody anywhere is told |
+| `bimi <domain>` | the face beside the letter — the brand mark, and whether it stands verified |
+| `certtrans <domain>` | every certificate the public logs remember for the name — issuers, coverage, the last minting |
+| `subdomains <domain>` | the subdomains the public certificate logs confess — no dictionary, no brute force |
+| `whoisdeep <domain>` | the registry's ledger, parsed — keeper, birth, lapse, and the standing words |
+| `rdap <domain\|ip>` | the registry's modern ledger for a domain or an address, structured and whole |
+| `asnprobe <ip>` | whose road a number runs on — the autonomous system, the prefix, the registry |
+| `danglingprobe <name>` | a CNAME that points at a ghost — the takeover risk, graded and never touched |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |
