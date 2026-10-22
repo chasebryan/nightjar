@@ -476,8 +476,15 @@ final class BlacksiteShell: ObservableObject {
     /// the console's own tree rides along
     /// as the seed; anything else opens
     /// the room empty, where the picker
-    /// lives.
+    /// lives. `betafisch tap …` works the
+    /// house-wire tap instead of opening
+    /// the room (except `tap open`, which
+    /// opens the room on the recording).
     private func betafischCommand(_ args: [String]) {
+        if args.first == "tap" {
+            tapCommand(Array(args.dropFirst()))
+            return
+        }
         betafischSeedName = nil
         betafischSeedData = nil
         betafischSeedDrift = false
@@ -502,6 +509,63 @@ final class BlacksiteShell: ObservableObject {
             emit(L("betafisch opens — the packet dissector."), .ok)
         }
         programRequest = .betafisch
+    }
+
+    /// betafisch tap [on|off|open|save|
+    /// clear] — the house-wire tap's
+    /// console switch. With no word it
+    /// reports the tap's standing and
+    /// repeats what the tap can and
+    /// cannot see, plainly.
+    private func tapCommand(_ args: [String]) {
+        let tap = BetafischTap.shared
+        switch args.first {
+        case "on":
+            tap.enabled = true
+            emit(L("the house-wire tap is on — the bench's own traffic is being written down as it passes. The tap itself sends nothing."), .ok)
+        case "off":
+            tap.enabled = false
+            emit(L("the house-wire tap is off."), .ok)
+        case "clear":
+            tap.clear()
+            emit(L("the tap's recording is cleared."), .ok)
+        case "save":
+            guard let data = tap.captureData()
+            else {
+                emit(L("the tap has recorded nothing yet."), .err)
+                return
+            }
+            if BlacksiteFS.writeData(
+                "housewire.pcapng", data: data) {
+                emit(L("the house wire is saved in the tree as housewire.pcapng — betafisch housewire.pcapng opens it."), .ok)
+            } else {
+                emit(L("the tree would not take it."), .err)
+            }
+        case "open":
+            betafischSeedName = nil
+            betafischSeedData = nil
+            betafischSeedDrift = false
+            betafischSeedDriftSample = false
+            if let data = tap.captureData() {
+                betafischSeedName =
+                    L("the house wire.pcapng")
+                betafischSeedData = data
+                emit(L("betafisch opens — the house wire, as the tap recorded it."), .ok)
+            } else {
+                emit(L("the tap has recorded nothing yet — betafisch opens empty."), .sys)
+            }
+            programRequest = .betafisch
+        default:
+            let standing = tap.snapshot()
+            emit(String(format: L("the house-wire tap is %@ — %lld frames recorded, %lld bytes%@"),
+                        tap.enabled ? L("on") : L("off"),
+                        standing.frames, standing.bytes,
+                        standing.capped
+                            ? L(" (the recording stopped at the tap's cap)")
+                            : ""), .sys)
+            emit(BetafischTap.coverageNote, .sys)
+            emit(L("betafisch tap on|off|open|save|clear works it from here; the betafisch room holds the same switch."), .sys)
+        }
     }
 
     /// driftnet [file] — raise the
@@ -5396,7 +5460,7 @@ final class BlacksiteShell: ObservableObject {
                 ("quarantine lift <ip> [via <gear>]", L("open the port again")),
                 ("date", L("when it is")),
                 ("which <cmd>", L("where a command lives")),
-                ("betafisch [file]", L("betafisch — the packet dissector: open a capture, read every frame")),
+                ("betafisch [file | tap]", L("betafisch — the packet dissector, its streams and statistics, and the house-wire tap")),
                 ("driftnet [file]", L("driftnet — the pictures in a capture, lifted off the wire and pinned to a wall")),
                 ("ver", L("what this is")),
                 ("clear", L("wipe this screen")),

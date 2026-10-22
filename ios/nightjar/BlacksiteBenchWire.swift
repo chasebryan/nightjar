@@ -211,6 +211,11 @@ extension BlacksiteBench {
                             sockaddr_in>.size))
             }
         }
+        BetafischTap.shared.recordDatagram(
+            fd: fd, remoteIP: destIP,
+            remotePort: Int(port),
+            outbound: true, payload: payload,
+            ipProto: 17)
         var out: [(from: String,
                      data: [UInt8])] = []
         let deadline = Date()
@@ -244,10 +249,17 @@ extension BlacksiteBench {
             inet_ntop(AF_INET, &addr,
                       &text, socklen_t(
                         text.count))
-            out.append((from: String(
-                            cString: text),
-                        data: Array(
-                            buffer[0..<got])))
+            let sender = String(cString: text)
+            let answer = Array(buffer[0..<got])
+            BetafischTap.shared.recordDatagram(
+                fd: fd, remoteIP: sender,
+                remotePort: Int(
+                    UInt16(bigEndian:
+                            from.sin_port)),
+                outbound: false, payload: answer,
+                ipProto: 17)
+            out.append((from: sender,
+                        data: answer))
         }
         return out
     }

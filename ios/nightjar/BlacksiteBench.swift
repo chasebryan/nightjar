@@ -46,6 +46,9 @@ enum BlacksiteBench {
             close(fd)
             return nil
         }
+        BetafischTap.shared.noteConnect(
+            fd: fd, ip: ip, port: Int(port),
+            udp: false)
         return fd
     }
 
@@ -64,6 +67,8 @@ enum BlacksiteBench {
             out.append(contentsOf:
                 chunk[0..<got])
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: false, bytes: out)
         return out
     }
 
@@ -80,6 +85,8 @@ enum BlacksiteBench {
             guard n > 0 else { return false }
             sent += n
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: true, bytes: bytes)
         return true
     }
 

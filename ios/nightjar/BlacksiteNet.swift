@@ -314,6 +314,11 @@ enum BlacksiteNet {
             inet_ntop(AF_INET, &addr, &text,
                       socklen_t(text.count))
             let icmp = Array(bytes[ihl...])
+            BetafischTap.shared.recordDatagram(
+                fd: fd,
+                remoteIP: String(cString: text),
+                remotePort: 0, outbound: false,
+                payload: icmp, ipProto: 1)
             let type = icmp[0]
             let seq = UInt16(icmp[6]) << 8
                 | UInt16(icmp[7])
@@ -360,6 +365,16 @@ enum BlacksiteNet {
                             sockaddr_in>.size))
             }
         }
+        var raw = target.sin_addr
+        var text = [CChar](
+            repeating: 0, count: 64)
+        inet_ntop(AF_INET, &raw, &text,
+                  socklen_t(text.count))
+        BetafischTap.shared.recordDatagram(
+            fd: fd,
+            remoteIP: String(cString: text),
+            remotePort: 0, outbound: true,
+            payload: packet, ipProto: 1)
     }
 
     static func ping(host: String,
@@ -675,6 +690,10 @@ enum BlacksiteDNS {
             }
         }
         guard sent > 0 else { return nil }
+        BetafischTap.shared.recordDatagram(
+            fd: fd, remoteIP: server,
+            remotePort: 53, outbound: true,
+            payload: packet, ipProto: 17)
         BlacksiteNet.setRecvTimeout(
             fd, seconds: timeout)
         var buffer = [UInt8](
@@ -685,6 +704,10 @@ enum BlacksiteDNS {
             .timeIntervalSince(started)
         guard got >= 12 else { return nil }
         let msg = Array(buffer[0..<got])
+        BetafischTap.shared.recordDatagram(
+            fd: fd, remoteIP: server,
+            remotePort: 53, outbound: false,
+            payload: msg, ipProto: 17)
         let rcode = Int(msg[3] & 0x0F)
         let qd = Int(msg[4]) << 8
             | Int(msg[5])
@@ -1342,6 +1365,9 @@ extension BlacksiteNet {
                     return
                 }
                 let body = data ?? Data()
+                BetafischTap.shared.recordFetch(
+                    request: request,
+                    response: http, body: body)
                 let reason = HTTPURLResponse
                     .localizedString(
                         forStatusCode:

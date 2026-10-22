@@ -125,6 +125,8 @@ extension BlacksiteBench {
             }
         }
         if rc != 0 { close(fd); return -1 }
+        BetafischTap.shared.noteConnect(
+            fd: fd, ip: ip, port: port, udp: false)
         return fd
     }
 
@@ -138,6 +140,8 @@ extension BlacksiteBench {
             if n <= 0 { return false }
             sent += n
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: true, bytes: bytes)
         return true
     }
 
@@ -154,6 +158,8 @@ extension BlacksiteBench {
             if n > 0 { out.append(contentsOf: buf[0..<n]) }
             else if n == 0 { break }
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: false, bytes: out)
         return out
     }
 
@@ -180,6 +186,8 @@ extension BlacksiteBench {
             }
         }
         if rc != 0 { close(fd); return -1 }
+        BetafischTap.shared.noteConnect(
+            fd: fd, ip: ip, port: port, udp: true)
         return fd
     }
 
@@ -187,6 +195,8 @@ extension BlacksiteBench {
         _ = bytes.withUnsafeBufferPointer { buffer in
             send(fd, buffer.baseAddress!, bytes.count, 0)
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: true, bytes: bytes)
     }
 
     /// Collect datagrams until the deadline; sends nothing itself.
@@ -199,6 +209,11 @@ extension BlacksiteBench {
         while Date() < deadline && out.count < cap {
             let n = recv(fd, &buf, buf.count, 0)
             if n > 0 { out.append(Array(buf[0..<n])) }
+        }
+        for datagram in out {
+            BetafischTap.shared.record(
+                fd: fd, outbound: false,
+                bytes: datagram)
         }
         return out
     }

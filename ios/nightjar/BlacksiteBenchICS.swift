@@ -116,6 +116,9 @@ extension BlacksiteBench {
             close(fd)
             return nil
         }
+        BetafischTap.shared.noteConnect(
+            fd: fd, ip: ip, port: Int(port),
+            udp: false)
         return fd
     }
 
@@ -134,6 +137,8 @@ extension BlacksiteBench {
             out.append(contentsOf:
                 chunk[0..<got])
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: false, bytes: out)
         return out
     }
 
@@ -156,6 +161,8 @@ extension BlacksiteBench {
             guard n > 0 else { return false }
             sent += n
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: true, bytes: bytes)
         return true
     }
 
@@ -187,6 +194,8 @@ extension BlacksiteBench {
                 break
             }
         }
+        BetafischTap.shared.record(
+            fd: fd, outbound: false, bytes: out)
         return out
     }
 
@@ -237,12 +246,23 @@ extension BlacksiteBench {
             }
         }
         guard sent >= 0 else { return nil }
+        BetafischTap.shared.recordDatagram(
+            fd: fd, remoteIP: ip,
+            remotePort: Int(port),
+            outbound: true, payload: packet,
+            ipProto: 17)
         var buffer = [UInt8](
             repeating: 0, count: cap)
         let got = recv(fd, &buffer,
                        buffer.count, 0)
         guard got > 0 else { return nil }
-        return Array(buffer[0..<got])
+        let answer = Array(buffer[0..<got])
+        BetafischTap.shared.recordDatagram(
+            fd: fd, remoteIP: ip,
+            remotePort: Int(port),
+            outbound: false, payload: answer,
+            ipProto: 17)
+        return answer
     }
 
     /// One HTTP(S) fetch through the
