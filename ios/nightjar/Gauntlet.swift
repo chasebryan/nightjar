@@ -1782,7 +1782,7 @@ final class Gauntlet: ObservableObject {
             let blob = SSHWire.string(Data([1, 2, 3]))
             cases += 1
             try Gauntlet.require(
-                blob == [0, 0, 0, 3, 1, 2, 3],
+                blob == Data([0, 0, 0, 3, 1, 2, 3]),
                 "the string framing moved")
             var stringReader = SSHReader(data: blob)
             cases += 1
