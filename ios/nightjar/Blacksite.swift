@@ -4357,7 +4357,6 @@ final class BlacksiteShell: ObservableObject {
         if MacroRunner.shared.running {
             MacroRunner.shared.stop()
         }
-        BlacksitePentest.cancelBonjour()
         if let client = activeSSHClient {
             activeSSHClient = nil
             client.disconnect()

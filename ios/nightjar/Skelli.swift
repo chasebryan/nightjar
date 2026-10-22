@@ -3617,7 +3617,15 @@ final class SkelliCenter: ObservableObject {
         if crewAsk(q, raw: raw) { return }
 
         // Hands first: the action intents.
-        if q.contains("sweep") {
+        // The sweep lane is fenced to order
+        // shapes (Chase's ruling, 2026-10-22):
+        // it once fired on any sentence
+        // carrying the word, statements
+        // included — sweepOrdered reads the
+        // shape, and a statement about a
+        // sweep falls through to conversation.
+        if q.contains("sweep"),
+           sweepOrdered(q) {
             runSweep()
             return
         }
@@ -3665,7 +3673,40 @@ final class SkelliCenter: ObservableObject {
             if head == "run", words.count > 1 {
                 head = words[1]
             }
-            if !(BlacksiteShell.builtinNames
+            // A question ABOUT an audit is not
+            // an audit order (Chase's ruling,
+            // 2026-10-22): shaped as a question
+            // — a question head, an auxiliary
+            // opening ("can i", "is it ok"), a
+            // trailing mark — the ask falls
+            // through to the conversation lanes
+            // below instead of firing the
+            // Bonjour audit. The orders are
+            // untouched: "run an audit", "audit
+            // the wire" and "snmp audit" still
+            // land here, and a console line
+            // naming its own audit tool still
+            // escapes to the console hand.
+            let auditQuestionHeads = ["how",
+                "what", "why", "when", "where",
+                "which", "who", "should"]
+            let auditQuestionOpenings = ["can i",
+                "could i", "can we", "could we",
+                "do i", "may i", "is it ok",
+                "is it okay"]
+            let opening = words.prefix(2)
+                .joined(separator: " ")
+            let opening3 = words.prefix(3)
+                .joined(separator: " ")
+            let questioned = q.contains("?")
+                || auditQuestionHeads.contains(
+                    words.first ?? "")
+                || auditQuestionOpenings.contains(
+                    opening)
+                || auditQuestionOpenings.contains(
+                    opening3)
+            if !questioned,
+               !(BlacksiteShell.builtinNames
                     .contains(head)
                  && head.hasSuffix("audit")) {
                 runAudit()
@@ -6897,6 +6938,72 @@ final class SkelliCenter: ObservableObject {
             say(L("It won't arm — the EMCON section shows its state."))
         }
         return true
+    }
+
+    /// The early sweep lane's fence (Chase's
+    /// ruling, 2026-10-22): the lane once
+    /// fired on any sentence carrying the
+    /// word — statements included ("my sweep
+    /// net is wide" ran a sweep). Now it
+    /// takes order shapes only, read by the
+    /// loose gate's own marks: no question
+    /// head, no statement marks, and the
+    /// verb standing where verbs stand —
+    /// early among the content words, or
+    /// lifted by an order frame. A statement
+    /// about a sweep is not an order; it
+    /// falls through to conversation.
+    private func sweepOrdered(_ q: String)
+        -> Bool {
+        let sweepFillers = ["skelli", "hey",
+            "please", "can", "could", "will",
+            "would", "you", "just", "now",
+            "ok", "okay", "a", "the",
+            "do", "go", "lets", "let",
+            "me", "to", "i", "my",
+            "this", "that"]
+        let sweepHeads = ["how", "what", "why",
+            "when", "where", "which",
+            "who", "should"]
+        let sweepMarks = ["took", "was",
+            "were", "is",
+            "finished", "yesterday",
+            "ago", "earlier"]
+        let tokens = q.split(whereSeparator: {
+            !$0.isLetter && !$0.isNumber
+                && $0 != "."
+        }).map {
+            String($0).trimmingCharacters(
+                in: CharacterSet(charactersIn: "."))
+        }.filter { !$0.isEmpty }
+        guard let head = tokens.first,
+              !sweepHeads.contains(head)
+        else { return false }
+        if sweepMarks.contains(where: {
+            tokens.contains($0) }) {
+            return false
+        }
+        func sweepStem(_ word: String) -> Bool {
+            if word == "sweep" { return true }
+            let doubled = "sweep"
+                + String("sweep".last ?? " ")
+            return word == "sweep" + "ing"
+                || word == "sweep" + "ed"
+                || word == "sweep" + "es"
+                || word == "sweep" + "s"
+                || word == doubled + "ing"
+                || word == doubled + "ed"
+        }
+        let content = tokens.filter {
+            !sweepFillers.contains($0)
+        }
+        if q.contains("want you to")
+            || q.contains("need you to") {
+            return content.contains {
+                sweepStem($0) }
+        }
+        return content.prefix(2).contains {
+            sweepStem($0) }
     }
 
     // MARK: simple orders, loosely spoken
