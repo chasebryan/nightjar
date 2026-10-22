@@ -1772,7 +1772,7 @@ final class Gauntlet: ObservableObject {
                 try Gauntlet.require(
                     SSHWire.mpint(Data(raw)) == Data(framed),
                     "an mpint framed wrong")
-                var reader = SSHReader(data: framed)
+                var reader = SSHReader(data: Data(framed))
                 cases += 1
                 try Gauntlet.require(
                     reader.bytes() == content,
@@ -2108,8 +2108,11 @@ final class Gauntlet: ObservableObject {
             let tagged: [UInt8] = [
                 0xC4, 0x02, 0x00, 0x03, 0xE7]
             var tagPos = 0
-            let tag = BlacksiteBench.icsBACTag(
-                tagged, &tagPos)
+            guard let tag = BlacksiteBench.icsBACTag(
+                tagged, &tagPos) else {
+                throw Gauntlet.Failure(message:
+                    "the BACnet tag walk read nothing")
+            }
             cases += 1
             try Gauntlet.require(
                 tag.num == 12 && tag.len == 4
@@ -2201,7 +2204,7 @@ final class Gauntlet: ObservableObject {
             // field by field.
             let built = ForgeKit.mqtt(
                 clientID: "gauntlet-probe")
-            let wire = PayloadKit.build(
+            let wire = try PayloadKit.build(
                 source: built.source, text: built.text,
                 hex: built.text, b64: "",
                 xorSpec: "", useGzip: false)
@@ -2490,7 +2493,7 @@ final class Gauntlet: ObservableObject {
         add("megatron", "megatron grades hold") {
             var cases = 0
             let rosFamily = "ros robot (maker unnamed)"
-            var blank = MegaEvidence(
+            var blank = BlacksiteBench.MegaEvidence(
                 host: "unit", ip: "192.0.2.10")
             blank.open = []
             cases += 1
@@ -2500,7 +2503,7 @@ final class Gauntlet: ObservableObject {
                 "an empty board graded something")
             // The substring trap: prose that
             // mentions a system is not the system.
-            var prose = MegaEvidence(
+            var prose = BlacksiteBench.MegaEvidence(
                 host: "unit", ip: "192.0.2.10")
             prose.banners[22] = "across the hall"
             cases += 1
@@ -2511,7 +2514,7 @@ final class Gauntlet: ObservableObject {
                     },
                 "prose graded as a ROS robot")
             // The ROS master door claims its grade.
-            var door = MegaEvidence(
+            var door = BlacksiteBench.MegaEvidence(
                 host: "unit", ip: "192.0.2.10")
             door.open = [11311]
             let doorGrades = BlacksiteBench
@@ -2524,7 +2527,7 @@ final class Gauntlet: ObservableObject {
                 },
                 "the ROS door lost its grade")
             // A rosbridge banner claims the same.
-            var banner = MegaEvidence(
+            var banner = BlacksiteBench.MegaEvidence(
                 host: "unit", ip: "192.0.2.10")
             banner.banners[9090] = "rosbridge suite"
             cases += 1
@@ -2738,12 +2741,12 @@ final class Gauntlet: ObservableObject {
                 return gxEth(gxIPv4(src, dst, 6, seg))
             }
             let request = Array(
-                "GET /moon.png HTTP/1.1\r\n"
-                + "Host: gauntlet.test\r\n\r\n".utf8)
+                ("GET /moon.png HTTP/1.1\r\n"
+                 + "Host: gauntlet.test\r\n\r\n").utf8)
             var response = Array(
-                "HTTP/1.1 200 OK\r\n"
-                + "Content-Type: image/png\r\n"
-                + "Content-Length: 70\r\n\r\n".utf8)
+                ("HTTP/1.1 200 OK\r\n"
+                 + "Content-Type: image/png\r\n"
+                 + "Content-Length: 70\r\n\r\n").utf8)
             response += png
             cases += 1
             try Gauntlet.require(response.count == 134,
@@ -2825,9 +2828,13 @@ final class Gauntlet: ObservableObject {
                         + Double(index)))
             }
             let data = BetafischWrite.pcapng(
-                frames: capture.frames,
-                interfaces: [BFInterface(
-                    name: "gauntlet", linktype: 1)],
+                frames: capture.frames.map {
+                    (iface: 0, ts: $0.timestamp,
+                     bytes: $0.bytes)
+                },
+                interfaces: [(linktype: 1,
+                              name: "gauntlet",
+                              description: "")],
                 comment: "gauntlet round-trip")
             cases += 1
             try Gauntlet.require(!data.isEmpty,
@@ -3067,7 +3074,7 @@ final class Gauntlet: ObservableObject {
             try Gauntlet.require(organs.count == 12,
                 "the organ census moved")
             func row(_ condition: EmconCondition,
-                     _ allowed: [EmconOrgan]) {
+                     _ allowed: [EmconOrgan]) throws {
                 for organ in organs {
                     cases += 1
                     try Gauntlet.require(
@@ -3076,11 +3083,11 @@ final class Gauntlet: ObservableObject {
                         "the ladder moved for an organ")
                 }
             }
-            row(.open, organs)
-            row(.charlie,
+            try row(.open, organs)
+            try row(.charlie,
                 [.serveStealth, .relayPoll, .sweep])
-            row(.bravo, [.sweep])
-            row(.alpha, [])
+            try row(.bravo, [.sweep])
+            try row(.alpha, [])
             return "\(cases) cases: the ceiling is "
                 + "100 and all four rungs held"
         }
@@ -3175,9 +3182,9 @@ final class Gauntlet: ObservableObject {
                 }
             }
             for theme in themes {
-                for hex in [theme.background,
-                            theme.accent,
-                            theme.secondary] {
+                for hex in [theme.accentHex,
+                            theme.glowHex,
+                            theme.tintHex] {
                     cases += 1
                     try Gauntlet.require(hexOK(hex),
                         "a theme hex is malformed: "
