@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**250 commands in 9 sections.**
+**288 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (127)
+## pentest bench (165)
 
 | Command | What it does |
 | --- | --- |
@@ -185,6 +185,44 @@ Every command the console answers to, with the signature it takes and what it do
 | `rdap <domain\|ip>` | the registry's modern ledger for a domain or an address, structured and whole |
 | `asnprobe <ip>` | whose road a number runs on — the autonomous system, the prefix, the registry |
 | `danglingprobe <name>` | a CNAME that points at a ghost — the takeover risk, graded and never touched |
+| `modbusprobe <host>[:port]` | the PLC's device identification, read aloud — the one Modbus read this bench allows |
+| `s7probe <host>[:port]` | the Siemens nameplate over RFC 1006 — module, component, firmware, protection level |
+| `iec61850probe <host>[:port]` | the substation door over RFC 1006 — where an MMS nameplate would be read |
+| `enipprobe <host>[:port]` | List Identity — vendor, device type, product, revision, serial, in the clear |
+| `pcccprobe <host>[:port]` | the legacy Allen-Bradley door, knocked once — presence, graded plainly |
+| `dnp3probe <host>[:port]` | link status and the outstation's own attribute ledger — read only, never a control |
+| `bacnetprobe <host>[:port]` | Who-Is, then the device object's own nameplate — vendor, model, firmware |
+| `opcuaprobe <host>[:port]` | HEL and the endpoint menu — the security policies offered, graded; no session is opened |
+| `finsprobe <host>[:port]` | the Omron controller's data and status reads — model, version, run state; never a write |
+| `melsecprobe <host>[:port]` | the SLMP type-name read — the Mitsubishi module names itself |
+| `iec104probe <host>[:port]` | the telecontrol handshake — STARTDT and TESTFR only; nothing is interrogated or controlled |
+| `knxprobe <host>[:port]` | the building bus describes itself — device, families, the name it answers to |
+| `foxprobe <host>[:port]` | the Niagara hello, parsed — version and host disclosure graded |
+| `hartprobe <host>[:port]` | a HART-IP session and universal command 0 — maker, device, revision |
+| `srtpprobe <host>[:port]` | the GE door, knocked once — presence, graded plainly |
+| `adsprobe <host>[:port]` | the Beckhoff device info and state reads — name, version, run state |
+| `dlmsprobe <host>[:port]` | the meter association posture — what an unauthenticated knock is offered is the grade |
+| `moxaprobe <host>[:port]` | the serial gateway's door, knocked once by UDP — presence, graded plainly |
+| `pmuprobe <host>[:port]` | the PMU's own configuration frame — the only frame this bench ever asks it for |
+| `plcensus <host>` | one light knock on every plant door — the board of what this host runs |
+| `selprobe <host>[:port]` | the SEL relay's ID report — the one page it shows the world |
+| `rocprobe <host>[:port]` | the flow computer's system-parameters read, checksum verified before a byte is believed |
+| `mtconnectprobe <host>[:port]` | the machine-tool agent's published census — devices, makers, serials |
+| `focasprobe <host>[:port]` | the Fanuc door, knocked once — presence, graded plainly |
+| `codesysprobe <host>` | the runtime's two doors, knocked once each — presence, graded plainly |
+| `umasprobe <host>[:port]` | Schneider's UMAS nameplate subfunctions only — never reservation, never start or stop |
+| `happrobe <host>[:port]` | the DirectLOGIC door, knocked once by UDP — presence, graded plainly |
+| `pcomprobe <host>[:port]` | the Unitronics door, knocked once — presence, graded plainly |
+| `pcworxprobe <host>[:port]` | the Phoenix door, knocked once — presence, graded plainly |
+| `lonprobe <host>[:port]` | the LonWorks/IP door, knocked once by UDP — presence, graded plainly |
+| `mbusprobe <host>[:port]` | one meter woken at address 0 — its nameplate, and none of its readings |
+| `secsprobe <host>[:port]` | the HSMS are-you-there — Select, S1F1, S1F13; the equipment names itself |
+| `ffprobe <host>[:port]` | the Fieldbus HSE door, knocked once by UDP — presence, graded plainly |
+| `ptpprobe <host>[:port]` | one management GET — the clock describes itself; its time is never touched |
+| `sep2probe <host>[:port]` | the smart-grid capability document and the end-device nameplates behind it |
+| `sunspecprobe <host>[:port]` | the SunSpec nameplate block — the one bounded register read in the whole wave |
+| `lantronixprobe <host>[:port]` | the gateway's discovery answer — MAC, hardware type, firmware, in the clear |
+| `c1222probe <host>[:port]` | the C12.22 meter door, knocked once — presence, graded plainly |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

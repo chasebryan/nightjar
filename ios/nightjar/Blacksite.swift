@@ -300,6 +300,44 @@ final class BlacksiteShell: ObservableObject {
         "bimi", "certtrans", "whoisdeep",
         "rdap", "asnprobe",
         "danglingprobe",
+        "modbusprobe",
+        "s7probe",
+        "iec61850probe",
+        "enipprobe",
+        "pcccprobe",
+        "dnp3probe",
+        "bacnetprobe",
+        "opcuaprobe",
+        "finsprobe",
+        "melsecprobe",
+        "iec104probe",
+        "knxprobe",
+        "foxprobe",
+        "hartprobe",
+        "srtpprobe",
+        "adsprobe",
+        "dlmsprobe",
+        "moxaprobe",
+        "pmuprobe",
+        "plcensus",
+        "selprobe",
+        "rocprobe",
+        "mtconnectprobe",
+        "focasprobe",
+        "codesysprobe",
+        "umasprobe",
+        "happrobe",
+        "pcomprobe",
+        "pcworxprobe",
+        "lonprobe",
+        "mbusprobe",
+        "secsprobe",
+        "ffprobe",
+        "ptpprobe",
+        "sep2probe",
+        "sunspecprobe",
+        "lantronixprobe",
+        "c1222probe",
     ]
 
     /// betafisch [file] — raise the
@@ -3003,7 +3041,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4971,6 +5009,44 @@ final class BlacksiteShell: ObservableObject {
                 ("rdap <domain|ip>", L("the registry's modern ledger for a domain or an address, structured and whole")),
                 ("asnprobe <ip>", L("whose road a number runs on — the autonomous system, the prefix, the registry")),
                 ("danglingprobe <name>", L("a CNAME that points at a ghost — the takeover risk, graded and never touched")),
+                ("modbusprobe <host>[:port]", L("the PLC's device identification, read aloud — the one Modbus read this bench allows")),
+                ("s7probe <host>[:port]", L("the Siemens nameplate over RFC 1006 — module, component, firmware, protection level")),
+                ("iec61850probe <host>[:port]", L("the substation door over RFC 1006 — where an MMS nameplate would be read")),
+                ("enipprobe <host>[:port]", L("List Identity — vendor, device type, product, revision, serial, in the clear")),
+                ("pcccprobe <host>[:port]", L("the legacy Allen-Bradley door, knocked once — presence, graded plainly")),
+                ("dnp3probe <host>[:port]", L("link status and the outstation's own attribute ledger — read only, never a control")),
+                ("bacnetprobe <host>[:port]", L("Who-Is, then the device object's own nameplate — vendor, model, firmware")),
+                ("opcuaprobe <host>[:port]", L("HEL and the endpoint menu — the security policies offered, graded; no session is opened")),
+                ("finsprobe <host>[:port]", L("the Omron controller's data and status reads — model, version, run state; never a write")),
+                ("melsecprobe <host>[:port]", L("the SLMP type-name read — the Mitsubishi module names itself")),
+                ("iec104probe <host>[:port]", L("the telecontrol handshake — STARTDT and TESTFR only; nothing is interrogated or controlled")),
+                ("knxprobe <host>[:port]", L("the building bus describes itself — device, families, the name it answers to")),
+                ("foxprobe <host>[:port]", L("the Niagara hello, parsed — version and host disclosure graded")),
+                ("hartprobe <host>[:port]", L("a HART-IP session and universal command 0 — maker, device, revision")),
+                ("srtpprobe <host>[:port]", L("the GE door, knocked once — presence, graded plainly")),
+                ("adsprobe <host>[:port]", L("the Beckhoff device info and state reads — name, version, run state")),
+                ("dlmsprobe <host>[:port]", L("the meter association posture — what an unauthenticated knock is offered is the grade")),
+                ("moxaprobe <host>[:port]", L("the serial gateway's door, knocked once by UDP — presence, graded plainly")),
+                ("pmuprobe <host>[:port]", L("the PMU's own configuration frame — the only frame this bench ever asks it for")),
+                ("plcensus <host>", L("one light knock on every plant door — the board of what this host runs")),
+                ("selprobe <host>[:port]", L("the SEL relay's ID report — the one page it shows the world")),
+                ("rocprobe <host>[:port]", L("the flow computer's system-parameters read, checksum verified before a byte is believed")),
+                ("mtconnectprobe <host>[:port]", L("the machine-tool agent's published census — devices, makers, serials")),
+                ("focasprobe <host>[:port]", L("the Fanuc door, knocked once — presence, graded plainly")),
+                ("codesysprobe <host>", L("the runtime's two doors, knocked once each — presence, graded plainly")),
+                ("umasprobe <host>[:port]", L("Schneider's UMAS nameplate subfunctions only — never reservation, never start or stop")),
+                ("happrobe <host>[:port]", L("the DirectLOGIC door, knocked once by UDP — presence, graded plainly")),
+                ("pcomprobe <host>[:port]", L("the Unitronics door, knocked once — presence, graded plainly")),
+                ("pcworxprobe <host>[:port]", L("the Phoenix door, knocked once — presence, graded plainly")),
+                ("lonprobe <host>[:port]", L("the LonWorks/IP door, knocked once by UDP — presence, graded plainly")),
+                ("mbusprobe <host>[:port]", L("one meter woken at address 0 — its nameplate, and none of its readings")),
+                ("secsprobe <host>[:port]", L("the HSMS are-you-there — Select, S1F1, S1F13; the equipment names itself")),
+                ("ffprobe <host>[:port]", L("the Fieldbus HSE door, knocked once by UDP — presence, graded plainly")),
+                ("ptpprobe <host>[:port]", L("one management GET — the clock describes itself; its time is never touched")),
+                ("sep2probe <host>[:port]", L("the smart-grid capability document and the end-device nameplates behind it")),
+                ("sunspecprobe <host>[:port]", L("the SunSpec nameplate block — the one bounded register read in the whole wave")),
+                ("lantronixprobe <host>[:port]", L("the gateway's discovery answer — MAC, hardware type, firmware, in the clear")),
+                ("c1222probe <host>[:port]", L("the C12.22 meter door, knocked once — presence, graded plainly")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10635,6 +10711,20 @@ final class BlacksiteShell: ObservableObject {
                         ? args.joined(
                             separator: " ")
                         : target,
+                    emit: emit, done: done)
+            }
+        case "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("the bench tools each want a target."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.benchICS(
+                    name, target,
                     emit: emit, done: done)
             }
         default:
