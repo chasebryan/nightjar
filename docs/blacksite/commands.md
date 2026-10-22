@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**308 commands in 9 sections.**
+**348 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (185)
+## pentest bench (225)
 
 | Command | What it does |
 | --- | --- |
@@ -87,8 +87,8 @@ Every command the console answers to, with the signature it takes and what it do
 | `unifi <host> devices\|clients` | the controller's adopted devices, or who is on the wire through it |
 | `unifi <host> restart <device>` | restart one adopted device — asks first |
 | `unifi <host> block\|unblock <client>` | bar a client from the network, or readmit it — asks first |
-| `upnp` | who runs UPnP on this wire |
-| `bonjour` | service announcements, censused |
+| `upnp` | UPnP on this wire, read deep — every SSDP description document censused |
+| `bonjour` | the wire's own service index — DNS-SD enumeration, instances and papers censused |
 | `cert <host> [port]` | audit the TLS papers |
 | `webaudit <url>` | headers, cookies, posture |
 | `robots <url>` | the map the site posts of itself — disallowed paths and the sitemap |
@@ -243,6 +243,46 @@ Every command the console answers to, with the signature it takes and what it do
 | `satintel [norad|name]` | Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified |
 | `satnogsprobe [station]` | the SatNOGS network's ground stations — who listens to the sky, and whether they are up |
 | `satcensus [host]` | every satellite door at one address, knocked once each — and the RF limit stated plainly |
+| `signalprobe <host>` | an NTCIP signal controller's nameplate by SNMP GET — identification only; no phase or timing object exists in this verb |
+| `ascprobe <host>` | an ASC-class controller's nameplate plus its 1202 sizing — counts, never states |
+| `dmsprobe <host>` | a dynamic message sign's 1203 identification branch — the sign's makeup, never its message |
+| `rwisprobe <host>` | a road-weather station's 1204 identification — its category and the site it names |
+| `rsuprobe <host>` | a roadside unit's network nameplate — the 1218 radio side is never touched or transmitted to |
+| `spatprobe <url>` | a published SPaT feed read as published — intersections and phase states from the agency's own snapshot |
+| `flockcensus <place>` | the ALPR census from the public map (OpenStreetMap/DeFlock) — the map only; no camera, plate or hotlist is touched |
+| `dotprobe <url>` | a state DOT's published camera ledger, censused as the agency itself lists it |
+| `onvifprobe <host>[:port]` | an ONVIF camera's nameplate — maker, model, firmware, serial; the identification reads only |
+| `camdeep <host>[:port]` | the vendor nameplate doors — Axis VAPIX, Hikvision ISAPI, Dahua system info; unauthenticated disclosure graded |
+| `ptzprobe <host>[:port]` | an ONVIF PTZ node census — proves a steerable camera; a move command does not exist in this verb |
+| `ridprobe` | six seconds of listening for drone Remote ID (ASTM F3411) — IDs as broadcast; listen-only |
+| `streetlightprobe <host>[:port]` | a streetlight gateway's web door — TALQ itself is authenticated and vendor-run, and the verb says so |
+| `sirenprobe <host>` | a warning siren controller's management doors and web nameplate — identification only; activation is never framed |
+| `transitprobe <url>` | a published GTFS-realtime feed — the agency's vehicle census off the wire format |
+| `gaugeprobe <place>` | USGS stream and flood gauges around a place — the public water ledger, latest levels as published |
+| `airprobe <place>` | OpenAQ air stations around a place — the ledger now demands a key, and the verb reports exactly that |
+| `gbfsprobe <url>` | a bike-share system's published GBFS feeds — stations, bikes and docks as published |
+| `towerprobe <place>` | masts and towers around a place from the public map — the FCC registry named, the map read |
+| `streetcensus [host]` | one light knock per street door at an address — and the limits (clouds, plates, RF) stated plainly |
+| `ssdpdeep` | the SSDP census, deepened — every device, its description document read whole, and the service ledger |
+| `mdnsdeep` | the DNS-SD enumeration census — every service type the wire announces, its instances and their papers |
+| `dhcpprobe` | one DHCP DISCOVER, read-only — who offers addresses here, and whether more than one authority answers |
+| `wsdprobe` | the WS-Discovery Probe census — the cameras and printers that introduce themselves |
+| `ntpprobe [server]` | the time plane read — stratum, offset and root doubt for a server and your router |
+| `smallsvc <host>` | the retired small services of 1983 — echo, discard, daytime, qotd, chargen; a chargen that answers is a finding |
+| `v6probe` | the house's IPv6 posture — this console's own addresses and the resolver's two-stack answers |
+| `bgprobe <AS\|prefix>` | the BGP ledger — who originates a prefix, and the paths the collectors see |
+| `ripeprobe <host\|AS>` | RIPEstat's papers — the containing prefix, its holder and its blocklist posture |
+| `torprobe <host>` | Onionoo's ledger — whether an address is a published Tor relay, and its exit policy as published |
+| `rblprobe <host>` | the DNS blocklist census — five public ledgers, per-list verdicts, sanity-checked |
+| `geoprobe <host>` | geolocation by consensus — the keyless ledgers compared, agreement graded, inference labelled |
+| `cveprobe <product\|CVE>` | NVD's ledger — a product's published CVE census by severity, or one CVE read whole |
+| `kevprobe <CVE\|product>` | CISA's KEV catalog — confirmed exploited in the wild; presence outranks any score |
+| `ghprobe <user\|org>` | a GitHub account's published footprint — repos, languages and stars, as the account itself published them |
+| `gleifprobe <name\|LEI>` | the GLEIF legal-entity ledger — who a company is, legally, and its LEI |
+| `urlscanprobe <domain\|IP>` | urlscan's published scans touching a name — verdicts included, as its engines judged them |
+| `passivedns <domain>` | the names a domain has worn — the keyless passive-DNS ledgers, limits stated |
+| `macprobe <mac>` | the maker in a MAC address — the house OUI table and the address's own bits |
+| `wirecensus [host]` | the board — SSDP, mDNS, WS-Discovery, DHCP and one host's NetBIOS papers in one pass, limits stated |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

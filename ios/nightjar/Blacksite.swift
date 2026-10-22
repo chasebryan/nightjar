@@ -358,6 +358,46 @@ final class BlacksiteShell: ObservableObject {
         "satintel",
         "satnogsprobe",
         "satcensus",
+        "signalprobe",
+        "ascprobe",
+        "dmsprobe",
+        "rwisprobe",
+        "rsuprobe",
+        "spatprobe",
+        "flockcensus",
+        "dotprobe",
+        "onvifprobe",
+        "camdeep",
+        "ptzprobe",
+        "ridprobe",
+        "streetlightprobe",
+        "sirenprobe",
+        "transitprobe",
+        "gaugeprobe",
+        "airprobe",
+        "gbfsprobe",
+        "towerprobe",
+        "streetcensus",
+        "ssdpdeep",
+        "mdnsdeep",
+        "dhcpprobe",
+        "wsdprobe",
+        "ntpprobe",
+        "smallsvc",
+        "v6probe",
+        "bgprobe",
+        "ripeprobe",
+        "torprobe",
+        "rblprobe",
+        "geoprobe",
+        "cveprobe",
+        "kevprobe",
+        "ghprobe",
+        "gleifprobe",
+        "urlscanprobe",
+        "passivedns",
+        "macprobe",
+        "wirecensus",
     ]
 
     /// betafisch [file] — raise the
@@ -3061,7 +3101,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus", "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus", "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4931,8 +4971,8 @@ final class BlacksiteShell: ObservableObject {
                 ("unifi <host> devices|clients", L("the controller's adopted devices, or who is on the wire through it")),
                 ("unifi <host> restart <device>", L("restart one adopted device — asks first")),
                 ("unifi <host> block|unblock <client>", L("bar a client from the network, or readmit it — asks first")),
-                ("upnp", L("who runs UPnP on this wire")),
-                ("bonjour", L("service announcements, censused")),
+                ("upnp", L("UPnP on this wire, read deep — every SSDP description document censused")),
+                ("bonjour", L("the wire's own service index — DNS-SD enumeration, instances and papers censused")),
                 ("cert <host> [port]", L("audit the TLS papers")),
                 ("webaudit <url>", L("headers, cookies, posture")),
                 ("robots <url>", L("the map the site posts of itself — disallowed paths and the sitemap")),
@@ -5087,6 +5127,46 @@ final class BlacksiteShell: ObservableObject {
                 ("satintel [norad|name]", L("Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified")),
                 ("satnogsprobe [station]", L("the SatNOGS network's ground stations — who listens to the sky, and whether they are up")),
                 ("satcensus [host]", L("every satellite door at one address, knocked once each — and the RF limit stated plainly")),
+                ("signalprobe <host>", L("an NTCIP signal controller's nameplate by SNMP GET — identification only; no phase or timing object exists in this verb")),
+                ("ascprobe <host>", L("an ASC-class controller's nameplate plus its 1202 sizing — counts, never states")),
+                ("dmsprobe <host>", L("a dynamic message sign's 1203 identification branch — the sign's makeup, never its message")),
+                ("rwisprobe <host>", L("a road-weather station's 1204 identification — its category and the site it names")),
+                ("rsuprobe <host>", L("a roadside unit's network nameplate — the 1218 radio side is never touched or transmitted to")),
+                ("spatprobe <url>", L("a published SPaT feed read as published — intersections and phase states from the agency's own snapshot")),
+                ("flockcensus <place>", L("the ALPR census from the public map (OpenStreetMap/DeFlock) — the map only; no camera, plate or hotlist is touched")),
+                ("dotprobe <url>", L("a state DOT's published camera ledger, censused as the agency itself lists it")),
+                ("onvifprobe <host>[:port]", L("an ONVIF camera's nameplate — maker, model, firmware, serial; the identification reads only")),
+                ("camdeep <host>[:port]", L("the vendor nameplate doors — Axis VAPIX, Hikvision ISAPI, Dahua system info; unauthenticated disclosure graded")),
+                ("ptzprobe <host>[:port]", L("an ONVIF PTZ node census — proves a steerable camera; a move command does not exist in this verb")),
+                ("ridprobe", L("six seconds of listening for drone Remote ID (ASTM F3411) — IDs as broadcast; listen-only")),
+                ("streetlightprobe <host>[:port]", L("a streetlight gateway's web door — TALQ itself is authenticated and vendor-run, and the verb says so")),
+                ("sirenprobe <host>", L("a warning siren controller's management doors and web nameplate — identification only; activation is never framed")),
+                ("transitprobe <url>", L("a published GTFS-realtime feed — the agency's vehicle census off the wire format")),
+                ("gaugeprobe <place>", L("USGS stream and flood gauges around a place — the public water ledger, latest levels as published")),
+                ("airprobe <place>", L("OpenAQ air stations around a place — the ledger now demands a key, and the verb reports exactly that")),
+                ("gbfsprobe <url>", L("a bike-share system's published GBFS feeds — stations, bikes and docks as published")),
+                ("towerprobe <place>", L("masts and towers around a place from the public map — the FCC registry named, the map read")),
+                ("streetcensus [host]", L("one light knock per street door at an address — and the limits (clouds, plates, RF) stated plainly")),
+                ("ssdpdeep", L("the SSDP census, deepened — every device, its description document read whole, and the service ledger")),
+                ("mdnsdeep", L("the DNS-SD enumeration census — every service type the wire announces, its instances and their papers")),
+                ("dhcpprobe", L("one DHCP DISCOVER, read-only — who offers addresses here, and whether more than one authority answers")),
+                ("wsdprobe", L("the WS-Discovery Probe census — the cameras and printers that introduce themselves")),
+                ("ntpprobe [server]", L("the time plane read — stratum, offset and root doubt for a server and your router")),
+                ("smallsvc <host>", L("the retired small services of 1983 — echo, discard, daytime, qotd, chargen; a chargen that answers is a finding")),
+                ("v6probe", L("the house's IPv6 posture — this console's own addresses and the resolver's two-stack answers")),
+                ("bgprobe <AS|prefix>", L("the BGP ledger — who originates a prefix, and the paths the collectors see")),
+                ("ripeprobe <host|AS>", L("RIPEstat's papers — the containing prefix, its holder and its blocklist posture")),
+                ("torprobe <host>", L("Onionoo's ledger — whether an address is a published Tor relay, and its exit policy as published")),
+                ("rblprobe <host>", L("the DNS blocklist census — five public ledgers, per-list verdicts, sanity-checked")),
+                ("geoprobe <host>", L("geolocation by consensus — the keyless ledgers compared, agreement graded, inference labelled")),
+                ("cveprobe <product|CVE>", L("NVD's ledger — a product's published CVE census by severity, or one CVE read whole")),
+                ("kevprobe <CVE|product>", L("CISA's KEV catalog — confirmed exploited in the wild; presence outranks any score")),
+                ("ghprobe <user|org>", L("a GitHub account's published footprint — repos, languages and stars, as the account itself published them")),
+                ("gleifprobe <name|LEI>", L("the GLEIF legal-entity ledger — who a company is, legally, and its LEI")),
+                ("urlscanprobe <domain|IP>", L("urlscan's published scans touching a name — verdicts included, as its engines judged them")),
+                ("passivedns <domain>", L("the names a domain has worn — the keyless passive-DNS ledgers, limits stated")),
+                ("macprobe <mac>", L("the maker in a MAC address — the house OUI table and the address's own bits")),
+                ("wirecensus [host]", L("the board — SSDP, mDNS, WS-Discovery, DHCP and one host's NetBIOS papers in one pass, limits stated")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10493,27 +10573,6 @@ final class BlacksiteShell: ObservableObject {
                     }
                 }
             }
-        case "upnp":
-            guard netAllowed(name) else {
-                return
-            }
-            netBusy { emit, done in
-                BlacksitePentest.upnp(
-                    emit: emit, done: done,
-                    stopped: stopCheck)
-            }
-        case "bonjour":
-            guard netAllowed(name) else {
-                return
-            }
-            stopToken.reset()
-            busy = true
-            BlacksitePentest.bonjour(
-                emit: out,
-                done: { [weak self] in
-                    self?.busy = false
-                },
-                stopped: stopCheck)
         case "cert":
             guard netAllowed(name),
                   let host = args.first
@@ -10777,6 +10836,45 @@ final class BlacksiteShell: ObservableObject {
                         ? (args.isEmpty ? nil
                             : args.joined(separator: " "))
                         : args.first,
+                    emit: emit, done: done)
+            }
+        case "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus":
+            guard netAllowed(name) else { return }
+            netBusy { emit, done in
+                BlacksiteBench.benchStreet(
+                    name,
+                    name == "spatprobe"
+                        || name == "flockcensus"
+                        || name == "dotprobe"
+                        || name == "transitprobe"
+                        || name == "gaugeprobe"
+                        || name == "airprobe"
+                        || name == "gbfsprobe"
+                        || name == "towerprobe"
+                        ? (args.isEmpty ? nil
+                            : args.joined(separator: " "))
+                        : (name == "ridprobe"
+                            ? nil : args.first),
+                    emit: emit, done: done)
+            }
+        case "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus", "upnp", "bonjour":
+            guard netAllowed(name) else { return }
+            netBusy { emit, done in
+                BlacksiteBench.benchWire(
+                    name,
+                    name == "cveprobe"
+                        || name == "kevprobe"
+                        || name == "gleifprobe"
+                        ? (args.isEmpty ? nil
+                            : args.joined(separator: " "))
+                        : (name == "ssdpdeep"
+                            || name == "mdnsdeep"
+                            || name == "dhcpprobe"
+                            || name == "wsdprobe"
+                            || name == "v6probe"
+                            || name == "upnp"
+                            || name == "bonjour"
+                            ? nil : args.first),
                     emit: emit, done: done)
             }
         default:
