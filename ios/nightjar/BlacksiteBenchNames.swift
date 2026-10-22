@@ -500,7 +500,7 @@ extension BlacksiteBench {
     /// OPT pseudo-record is not a
     /// record and never joins the
     /// census.
-    private static func nameParse(
+    static func nameParse(
         _ msg: [UInt8], elapsed: Double)
         -> NameReply? {
         guard msg.count >= 12 else {
