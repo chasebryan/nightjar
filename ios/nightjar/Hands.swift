@@ -2216,7 +2216,9 @@ extension SkelliCenter {
                         "starlinkprobe",
                         "satnogsprobe", "ntpprobe",
                         "guestprobe", "upnpgrade",
-                        "sshkey", "randprobe"]
+                        "sshkey", "randprobe",
+                        "megatron", "primecensus",
+                        "botble"]
                         .contains(first)
                 } else if !["cat", "find", "test",
                             "open", "echo",

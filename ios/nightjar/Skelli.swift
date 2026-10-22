@@ -224,7 +224,7 @@ enum SkelliKnowledge {
                        "git clone", "git push",
                        "grok", "diagnose",
                        "limits"],
-            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 290 graded instruments in ten waves — the web, service doors, names and mail, industrial control, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, and files. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
+            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 302 graded instruments in ten waves and one capstone — the web, service doors, names and mail, industrial control, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, files, and MEGATRON, the robotics and machinery program that hunts every robot and machine on the wire, the Musk fleet first. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
         SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
@@ -4802,7 +4802,8 @@ final class SkelliCenter: ObservableObject {
             + "Serve, arm the tripwire, work the "
             + "ear, name devices, run the "
             + "Blacksite bench — every probe and "
-            + "census of its ten waves — from a "
+            + "census of its ten waves and the "
+            + "MEGATRON robotics battery — from a "
             + "console line spoken here, forge "
             + "payloads "
             + "into the armory, remember and "

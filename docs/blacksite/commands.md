@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**414 commands in 9 sections.**
+**426 commands in 9 sections.**
 
 ## the house (30)
 
@@ -58,7 +58,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (290)
+## pentest bench (302)
 
 | Command | What it does |
 | --- | --- |
@@ -349,6 +349,18 @@ Every command the console answers to, with the signature it takes and what it do
 | `certfile <file>` | a bundle's ledger — every PEM block in the file's own order, the chain graded; deep reads stay with x509probe |
 | `dupprobe <dir>` | a directory's duplicates by size and then SHA-256 — bytes paid for twice, priced |
 | `fileboard <dir>` | a directory read at once — kinds, totals, the largest tenants, and every mismatch in the room |
+| `megatron [host]` | the robotics and machinery program — every Optimus has one: with a host, the whole battery on that unit (doors, fingerprint, papers, ROS posture, the puppet grade); bare, it hunts this wire for machine-shaped presence and boards every unit it claims; every board is filed |
+| `primeprobe <host>` | the Optimus-deep fingerprint read — every identity signal the wire offers, printed as graded claims with their evidence, never as proven names |
+| `primecensus [prefix]` | the hunt — a wire census graded for machine-shaped presence across every family; Musk-fleet claims are flagged as flagship prey |
+| `rosprobe <host>` | the ROS posture read — the master's registry by query, rosbridge's own census, and five seconds of the DDS discovery air; queries only, never a publish, never an invocation |
+| `fleetprobe <host>` | the fleet-link read — the TLS papers a unit presents on its doors, who it trusts, graded |
+| `botdoors <host>` | the doors census weighted to robots and machines — each answered door nameplated and graded |
+| `botble` | eight seconds of the Bluetooth air graded for robot-shaped advertisers — continuity and tracker noise separated from the claims |
+| `puppetprobe <host>` | could this unit plausibly be puppeteered by a stranger? — the control roads graded from read evidence only, the whole chain spelled out; the final step is never taken |
+| `cyberprobe <host>` | the vehicle read — Cybertruck first, then the fleet: fingerprint claims, presented doors, fleet papers, and the remote-control plausibility section graded from claims |
+| `boreprobe <host>` | the Boring Company read — the tunnel boring machines and tunnel plant, by the ICS bench: identification and posture only, no writes, no control function codes, ever |
+| `voltprobe <host>` | the energy read — Powerwall and Megapack gateways, Supercharger cabinets: doors, nameplates, papers; never a setting, never a charge command |
+| `botprobe <host>` | the universal machine read — any robot or machine's identity claims, control-bearing doors and papers, graded; the plant nameplates ride the ICS bench |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

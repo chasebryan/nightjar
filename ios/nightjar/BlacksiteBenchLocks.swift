@@ -2826,7 +2826,7 @@ extension BlacksiteBench {
             // knock, the offered lists
             // read, nothing agreed.
             if let fd = icsSocket(
-                host: ip, port: port,
+                ip: ip, port: UInt16(clamping: port),
                 timeout: 6) {
                 defer { close(fd) }
                 BlacksiteNet.setRecvTimeout(
@@ -3135,7 +3135,7 @@ extension BlacksiteBench {
             answered: false, trust: nil,
             cipher: 0, version: 0)
         guard let fd = icsSocket(
-            host: ip, port: port,
+            ip: ip, port: UInt16(clamping: port),
             timeout: 5) else {
             return result
         }
