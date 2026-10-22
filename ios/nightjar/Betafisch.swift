@@ -1,7 +1,10 @@
 import Foundation
 
 // Betafisch — the packet dissector
-// (B1). A Wireshark-shaped reader for
+// (B1 core; B2 deepens it in
+// BetafischDeep.swift, and B3's house
+// wire tap lives in BetafischTap.swift).
+// A Wireshark-shaped reader for
 // captures the operator brings to the
 // house: classic libpcap and pcapng,
 // Ethernet / BSD loopback / Linux cooked
@@ -69,6 +72,10 @@ struct BFFrame: Identifiable {
     var tcpAck: Int? = nil
     var tcpFlags: Int = 0
     var tcpPayloadRange: Range<Int>? = nil
+    /// Where a UDP payload sits in the
+    /// frame's bytes — the follow-stream
+    /// reader's raw material.
+    var udpPayloadRange: Range<Int>? = nil
     /// Lowercased info line plus the
     /// payload rendered as text — what a
     /// `contains` filter searches.
@@ -584,6 +591,14 @@ extension Betafisch {
         var tcpFlags: Int = 0
         var tcpPayloadAt: Int? = nil
         var tcpPayloadLen: Int = 0
+        var udpPayloadAt: Int? = nil
+        var udpPayloadLen: Int = 0
+        /// The frame's own addresses as
+        /// bytes, for the checksum verdict
+        /// the deep read computes.
+        var ipVersion = 4
+        var ipSrcRaw: [UInt8]? = nil
+        var ipDstRaw: [UInt8]? = nil
     }
 
     static func dissect(bytes: [UInt8], origLen: Int,
@@ -682,6 +697,12 @@ extension Betafisch {
             let end = min(bytes.count,
                           payloadAt + acc.tcpPayloadLen)
             frame.tcpPayloadRange =
+                payloadAt..<max(payloadAt, end)
+        }
+        if let payloadAt = acc.udpPayloadAt {
+            let end = min(bytes.count,
+                          payloadAt + acc.udpPayloadLen)
+            frame.udpPayloadRange =
                 payloadAt..<max(payloadAt, end)
         }
         frame.searchText = (acc.info + "\n"
@@ -974,6 +995,9 @@ extension Betafisch {
         acc.ipDst = dst
         acc.src = src
         acc.dst = dst
+        acc.ipVersion = 4
+        acc.ipSrcRaw = Array(b[(at + 12)..<(at + 16)])
+        acc.ipDstRaw = Array(b[(at + 16)..<(at + 20)])
         let end = totalLen >= headerLen
             ? min(b.count, at + totalLen) : b.count
         var node = BFNode(
@@ -1044,7 +1068,13 @@ extension Betafisch {
             (at + 9)..<(at + 10)))
         node.children.append(BFNode(
             L("Header checksum"),
-            String(format: "0x%@", hexDumpWord(csum, 4)),
+            String(format: "0x%@%@",
+                   hexDumpWord(csum, 4),
+                   foldedSum(b, from: at,
+                             count: headerLen)
+                       == 0xffff
+                       ? " — " + L("correct")
+                       : " — " + L("does not verify — as captured")),
             (at + 10)..<(at + 12)))
         node.children.append(BFNode(
             L("Source"), src, (at + 12)..<(at + 16)))
@@ -1111,6 +1141,9 @@ extension Betafisch {
         acc.ipDst = dst
         acc.src = src
         acc.dst = dst
+        acc.ipVersion = 6
+        acc.ipSrcRaw = Array(b[(at + 8)..<(at + 24)])
+        acc.ipDstRaw = Array(b[(at + 24)..<(at + 40)])
         let end = payloadLen > 0
             ? min(b.count, at + 40 + payloadLen) : b.count
         var node = BFNode(
@@ -1362,16 +1395,26 @@ extension Betafisch {
                 (at + 6)..<(at + 8)))
             acc.info = String(
                 format: L("destination unreachable — fragmentation needed, next-hop MTU %lld"), mtu)
+            if end - at > 8,
+               let quoted = quotedIPNode(
+                   b, at: at + 8, end: end) {
+                node.children.append(quoted)
+            }
         } else {
             acc.info = String(
                 format: L("%@ (type %lld, code %lld)"),
                 icmpTypeName(type), type, code)
             if end - at > 8 {
-                node.children.append(BFNode(
-                    L("The packet that provoked it"),
-                    String(format: L("%lld bytes quoted back"),
-                           end - at - 8),
-                    (at + 8)..<end))
+                if let quoted = quotedIPNode(
+                    b, at: at + 8, end: end) {
+                    node.children.append(quoted)
+                } else {
+                    node.children.append(BFNode(
+                        L("The packet that provoked it"),
+                        String(format: L("%lld bytes quoted back"),
+                               end - at - 8),
+                        (at + 8)..<end))
+                }
             }
         }
         return node
@@ -1459,10 +1502,21 @@ extension Betafisch {
                 (at + 4)..<(at + 8)))
             acc.info = String(
                 format: L("packet too big — MTU %lld"), mtu)
+            if end - at > 8,
+               let quoted = quotedIPNode(
+                   b, at: at + 8, end: end) {
+                node.children.append(quoted)
+            }
         } else {
             acc.info = String(
                 format: L("%@ (type %lld, code %lld)"),
                 icmpv6TypeName(type), type, code)
+            if (type == 1 || type == 3 || type == 4)
+                && end - at > 8,
+               let quoted = quotedIPNode(
+                   b, at: at + 8, end: end) {
+                node.children.append(quoted)
+            }
         }
         return node
     }
@@ -1502,23 +1556,30 @@ extension Betafisch {
             L("Length"),
             String(format: "%lld", length),
             (at + 4)..<(at + 6)))
+        var csumSuffix = ""
+        if csum == 0 {
+            csumSuffix = " — "
+                + L("unused, which IPv4 permits")
+        } else if let verdict = transportVerdict(
+            b, at: at, end: dataEnd, proto: 17, acc) {
+            csumSuffix = " — " + verdict
+        }
         node.children.append(BFNode(
             L("Checksum"),
             String(format: "0x%@%@",
-                   hexDumpWord(csum, 4),
-                   csum == 0
-                       ? " — " + L("unused, which IPv4 permits")
-                       : ""),
+                   hexDumpWord(csum, 4), csumSuffix),
             (at + 6)..<(at + 8)))
         let payloadAt = at + 8
         let payloadLen = max(0, dataEnd - payloadAt)
+        acc.udpPayloadAt = payloadAt
+        acc.udpPayloadLen = payloadLen
         acc.info = String(format: L("%lld → %lld Len=%lld"),
                           sport, dport, payloadLen)
         if payloadLen > 0 {
-            if sport == 53 || dport == 53 {
-                node.children.append(
-                    dns(b, at: payloadAt, end: dataEnd,
-                        acc, spanFrom: payloadAt))
+            if let deep = udpPayload(
+                b, at: payloadAt, end: dataEnd,
+                sport: sport, dport: dport, acc) {
+                node.children.append(deep)
             } else {
                 node.children.append(BFNode(
                     L("Data"),
@@ -1602,7 +1663,11 @@ extension Betafisch {
             (at + 14)..<(at + 16)))
         node.children.append(BFNode(
             L("Checksum"),
-            String(format: "0x%@", hexDumpWord(csum, 4)),
+            String(format: "0x%@%@",
+                   hexDumpWord(csum, 4),
+                   transportVerdict(
+                       b, at: at, end: end, proto: 6,
+                       acc).map { " — " + $0 } ?? ""),
             (at + 16)..<(at + 18)))
         node.children.append(BFNode(
             L("Urgent pointer"),
@@ -1622,14 +1687,10 @@ extension Betafisch {
             sport, dport, flagText, seq, ack, window,
             payloadLen)
         if payloadLen > 0 {
-            if (sport == 53 || dport == 53)
-                && payloadLen >= 2 {
-                node.children.append(
-                    dns(b, at: payloadAt + 2, end: end,
-                        acc, spanFrom: payloadAt))
-            } else if let http = httpSniff(
-                        b, at: payloadAt, end: end, acc) {
-                node.children.append(http)
+            if let deep = tcpPayload(
+                b, at: payloadAt, end: end,
+                sport: sport, dport: dport, acc) {
+                node.children.append(deep)
             } else {
                 node.children.append(BFNode(
                     L("Data"),
@@ -1719,9 +1780,11 @@ extension Betafisch {
         return node
     }
 
-    /// HTTP, read off the payload's first
-    /// lines — enough for the list's info
-    /// and the tree, no deeper.
+    /// HTTP, read off the payload: the
+    /// first line, the headers named and
+    /// valued, and the body as a byte
+    /// count with its opening rendered —
+    /// shown, never rendered or run.
     static func httpSniff(_ b: [UInt8], at: Int,
                           end: Int, _ acc: Accum)
         -> BFNode? {
@@ -1740,6 +1803,7 @@ extension Betafisch {
         var lines: [(String, Range<Int>)] = []
         var start = at
         var cursor = at
+        var bodyAt: Int? = nil
         while cursor < end && lines.count < 24 {
             if b[cursor] == 0x0a {
                 var lineEnd = cursor
@@ -1751,7 +1815,10 @@ extension Betafisch {
                     Array(b[start..<lineEnd]))
                 lines.append((line, start..<(cursor + 1)))
                 start = cursor + 1
-                if line.isEmpty { break }
+                if line.isEmpty {
+                    bodyAt = start
+                    break
+                }
             }
             cursor += 1
         }
@@ -1761,9 +1828,37 @@ extension Betafisch {
         }
         node.detail = lines.first?.0 ?? ""
         for (index, pair) in lines.enumerated() {
+            if index == 0 {
+                node.children.append(BFNode(
+                    L("First line"), pair.0, pair.1))
+                continue
+            }
+            if pair.0.isEmpty { continue }
+            if let colon = pair.0.firstIndex(
+                of: ":") {
+                let name = String(pair.0[..<colon])
+                let value = String(
+                    pair.0[pair.0.index(
+                        after: colon)...])
+                    .trimmingCharacters(
+                        in: .whitespaces)
+                node.children.append(BFNode(
+                    name, value, pair.1))
+            } else {
+                node.children.append(BFNode(
+                    L("Header"), pair.0, pair.1))
+            }
+        }
+        if let bodyAt, bodyAt < end {
+            let bodyCount = end - bodyAt
+            let glimpse = textRender(
+                Array(b[bodyAt..<min(end,
+                                      bodyAt + 96)]))
             node.children.append(BFNode(
-                index == 0 ? L("First line") : L("Header"),
-                pair.0, pair.1))
+                L("Body"),
+                String(format: L("%lld bytes — opens: %@"),
+                       bodyCount, glimpse),
+                bodyAt..<end))
         }
         acc.info = lines.first?.0 ?? acc.info
         return node
@@ -1786,7 +1881,12 @@ extension Betafisch {
         case 28: return "AAAA"
         case 33: return "SRV"
         case 41: return "OPT"
+        case 43: return "DS"
+        case 46: return "RRSIG"
+        case 47: return "NSEC"
+        case 48: return "DNSKEY"
         case 65: return "HTTPS"
+        case 257: return "CAA"
         case 255: return "ANY"
         default:
             return String(format: L("type %lld"), type)
@@ -1879,15 +1979,31 @@ extension Betafisch {
     }
 
     static func dns(_ b: [UInt8], at: Int, end: Int,
-                    _ acc: Accum, spanFrom: Int)
+                    _ acc: Accum, spanFrom: Int,
+                    flavor: String = "dns")
         -> BFNode {
+        let flavorTitle: String
+        switch flavor {
+        case "mdns": flavorTitle = L("Multicast DNS")
+        case "nbns":
+            flavorTitle = L("NetBIOS Name Service")
+        default: flavorTitle = L("Domain Name System")
+        }
         guard end - at >= 12 else {
-            return truncatedNode(L("Domain Name System"),
+            return truncatedNode(flavorTitle,
                                  bytes: b, at: at,
                                  needed: 12)
         }
         acc.protocols.insert("dns")
-        acc.proto = "DNS"
+        if flavor == "mdns" {
+            acc.protocols.insert("mdns")
+            acc.proto = "mDNS"
+        } else if flavor == "nbns" {
+            acc.protocols.insert("nbns")
+            acc.proto = "NBNS"
+        } else {
+            acc.proto = "DNS"
+        }
         let ident = u16be(b, at) ?? 0
         let flagsA = u8(b, at + 2) ?? 0
         let flagsB = u8(b, at + 3) ?? 0
@@ -1899,7 +2015,7 @@ extension Betafisch {
         let ns = u16be(b, at + 8) ?? 0
         let ar = u16be(b, at + 10) ?? 0
         var node = BFNode(
-            L("Domain Name System"),
+            flavorTitle,
             isResponse ? L("response") : L("query"),
             spanFrom..<end)
         node.children.append(BFNode(
@@ -1982,11 +2098,25 @@ extension Betafisch {
                 if firstQuestion == nil {
                     firstQuestion = (got.name, qtype)
                 }
+                var shownName = got.name
+                if flavor == "nbns" {
+                    shownName = nbnsDisplayName(
+                        got.name) ?? got.name
+                }
+                var classWord = dnsClassName(qclass)
+                var classNote = ""
+                if flavor == "mdns"
+                    && qclass & 0x8000 != 0 {
+                    classWord = dnsClassName(
+                        qclass & 0x7fff)
+                    classNote = " — "
+                        + L("a unicast answer is requested (the QU bit)")
+                }
                 queries.children.append(BFNode(
-                    got.name,
+                    shownName,
                     String(format: L("%@, class %@"),
                            dnsTypeName(qtype),
-                           dnsClassName(qclass)),
+                           classWord) + classNote,
                     cursor..<(got.next + 4)))
                 cursor = got.next + 4
             }
@@ -2003,7 +2133,8 @@ extension Betafisch {
             for _ in 0..<count {
                 guard let rr = dnsRecord(b, at: cursor,
                                          end: end,
-                                         msgStart: at)
+                                         msgStart: at,
+                                         flavor: flavor)
                 else {
                     section.children.append(BFNode(
                         L("a record betafisch cannot read"),
@@ -2042,6 +2173,9 @@ extension Betafisch {
                 info += " " + firstAnswer
             }
         }
+        if flavor != "dns" {
+            info = acc.proto + " " + info
+        }
         acc.info = info
         return node
     }
@@ -2049,7 +2183,8 @@ extension Betafisch {
     /// One resource record; nil when it
     /// runs past the message.
     static func dnsRecord(_ b: [UInt8], at: Int,
-                          end: Int, msgStart: Int)
+                          end: Int, msgStart: Int,
+                          flavor: String = "dns")
         -> (node: BFNode, next: Int, summary: String)? {
         guard let got = dnsName(b, at, msgStart: msgStart,
                                 limit: end),
@@ -2131,18 +2266,107 @@ extension Betafisch {
                 summary = target.name
             }
         case 41:
+            let version = (ttl >> 16) & 0xff
+            let dnssecOK = ttl & 0x8000 != 0
             detail = String(
                 format: L("EDNS — the requestor's UDP size is %lld"),
                 cls)
+            detail += String(
+                format: L(", version %lld%@"),
+                version,
+                dnssecOK ? L(", DNSSEC answers accepted") : "")
+        case 65:
+            // HTTPS / SVCB: priority, the
+            // target name, then key=value
+            // parameters — the ALPN offer
+            // is the claim that matters
+            // most on a house wire.
+            if rdlen >= 3,
+               let priority = u16be(b, rdataAt),
+               let target = dnsName(b, rdataAt + 2,
+                                    msgStart: msgStart,
+                                    limit: end) {
+                let shown = target.name.isEmpty
+                    ? "." : target.name
+                if priority == 0 {
+                    detail = String(
+                        format: L("an alias for %@"),
+                        shown)
+                } else {
+                    detail = String(
+                        format: L("priority %lld, target %@"),
+                        priority, shown)
+                }
+                summary = shown
+                var walk = target.next
+                var alpnList: [String] = []
+                var steps = 0
+                while walk + 4 <= rdataEnd
+                        && steps < 16 {
+                    steps += 1
+                    guard let key = u16be(b, walk),
+                          let vlen = u16be(
+                            b, walk + 2),
+                          walk + 4 + vlen <= rdataEnd
+                    else { break }
+                    if key == 1 {
+                        var inner = walk + 4
+                        let innerEnd = inner + vlen
+                        while inner < innerEnd,
+                              let n = u8(b, inner),
+                              inner + 1 + n <= innerEnd {
+                            alpnList.append(String(
+                                decoding: b[(inner + 1)..<(inner + 1 + n)],
+                                as: UTF8.self))
+                            inner += 1 + n
+                        }
+                    }
+                    walk += 4 + vlen
+                }
+                if !alpnList.isEmpty {
+                    detail += String(
+                        format: L(" — ALPN %@"),
+                        alpnList.joined(
+                            separator: ", "))
+                }
+            }
+        case 257:
+            // CAA: a flags byte, a tag,
+            // and the value it carries.
+            if rdlen >= 2,
+               let flags = u8(b, rdataAt),
+               let tagLen = u8(b, rdataAt + 1),
+               rdataAt + 2 + tagLen <= rdataEnd {
+                let tag = String(
+                    decoding: b[(rdataAt + 2)..<(rdataAt + 2 + tagLen)],
+                    as: UTF8.self)
+                let value = String(
+                    decoding: b[(rdataAt + 2 + tagLen)..<rdataEnd],
+                    as: UTF8.self)
+                detail = String(
+                    format: L("flags %lld, %@ %@"),
+                    flags, tag, value)
+                summary = value
+            }
         default:
             detail = String(format: L("%lld bytes"),
                             rdlen)
         }
+        var shownName = got.name
+        if flavor == "nbns" {
+            shownName = nbnsDisplayName(got.name)
+                ?? got.name
+        }
+        var classWord = dnsClassName(cls)
+        if flavor == "mdns" && cls & 0x8000 != 0 {
+            classWord = dnsClassName(cls & 0x7fff)
+                + " " + L("(cache flush)")
+        }
         var node = BFNode(
-            got.name,
+            shownName,
             String(format: L("%@ %@ — %@"),
                    dnsTypeName(type),
-                   dnsClassName(cls), detail),
+                   classWord, detail),
             at..<rdataEnd)
         node.children.append(BFNode(
             L("Time to live"),
@@ -2193,6 +2417,8 @@ extension Betafisch {
     static let filterProtocols: Set<String> = [
         "eth", "arp", "ip", "ipv6", "icmp",
         "icmpv6", "udp", "tcp", "dns", "http",
+        "dhcp", "mdns", "nbns", "ssdp", "ntp",
+        "tftp", "tls", "http2", "smb",
     ]
 
     static let filterFields: Set<String> = [

@@ -457,7 +457,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `quarantine lift <ip> [via <gear>]` | open the port again |
 | `date` | when it is |
 | `which <cmd>` | where a command lives |
-| `betafisch [file]` | betafisch — the packet dissector: open a capture, read every frame |
+| `betafisch [file | tap]` | betafisch — the packet dissector, its streams and statistics, and the house-wire tap |
 | `driftnet [file]` | driftnet — the pictures in a capture, lifted off the wire and pinned to a wall |
 | `ver` | what this is |
 | `clear` | wipe this screen |
