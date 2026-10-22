@@ -105,6 +105,34 @@ final class ServeLifecycleTests: XCTestCase {
     }
 
     @MainActor
+    func testEmptyRestartClearsThePreviousRunningState() async throws {
+        try await withMouth { mouth in
+            _ = try start(mouth)
+            await drainPublications()
+            XCTAssertTrue(mouth.serveRunning)
+            XCTAssertNil(mouth.startServe(
+                tcpPort: nil, udpPort: nil, httpPort: nil,
+                reply: "ack", framing: "raw"))
+            await drainPublications()
+            XCTAssertFalse(mouth.serveRunning)
+            XCTAssertNotNil(mouth.serveError)
+        }
+    }
+
+    @MainActor
+    func testEmptyStartCannotPublishAnErrorOverItsReplacement() async throws {
+        try await withMouth { mouth in
+            XCTAssertNil(mouth.startServe(
+                tcpPort: nil, udpPort: nil, httpPort: nil,
+                reply: "ack", framing: "raw"))
+            _ = try start(mouth)
+            await drainPublications()
+            XCTAssertTrue(mouth.serveRunning)
+            XCTAssertNil(mouth.serveError)
+        }
+    }
+
+    @MainActor
     func testEmconRefusalDoesNotIssueAShutdownToken() async {
         await withMouth { mouth in
             EmconCondition.store(.bravo)

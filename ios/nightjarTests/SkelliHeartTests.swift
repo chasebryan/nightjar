@@ -194,8 +194,8 @@ final class SkelliHeartTests: XCTestCase {
                        .mad)
         XCTAssertEqual(feeling(pride: 80), .proud)
         XCTAssertEqual(feeling(fondness: 80), .loving)
-        XCTAssertEqual(feeling(fondness: 80, attention: 30,
-                               itch: 40), .bored)
+        XCTAssertEqual(feeling(attention: 30, itch: 40,
+                               fondness: 80), .bored)
         XCTAssertEqual(feeling(itch: 90), .feral)
         XCTAssertEqual(feeling(itch: 65), .restless)
         XCTAssertEqual(feeling(attention: 10), .lonely)
@@ -240,11 +240,11 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(feeling(pride: 84, fondness: 40),
                        .proud)
         // Tender keeps late hours and needs closeness.
-        XCTAssertEqual(feeling(fondness: 65,
-                               attention: 80, hour: 22),
+        XCTAssertEqual(feeling(attention: 80,
+                               fondness: 65, hour: 22),
                        .tender)
-        XCTAssertEqual(feeling(fondness: 65,
-                               attention: 80, hour: 12),
+        XCTAssertEqual(feeling(attention: 80,
+                               fondness: 65, hour: 12),
                        .happy)
         // After midnight, a long quiet is haunting,
         // not sleepiness.
@@ -287,11 +287,11 @@ final class SkelliHeartTests: XCTestCase {
                     unnamedBaseline: 7, newFaces: 1),
             .curious)
         // Fed, fond and itching: up to something.
-        XCTAssertEqual(feeling(pride: 40, itch: 50,
+        XCTAssertEqual(feeling(itch: 50, pride: 40,
                                fondness: 50), .mischievous)
         // Fond and fed and half-dreaming.
-        XCTAssertEqual(feeling(fondness: 60, quiet: 6,
-                               itch: 30), .dreamy)
+        XCTAssertEqual(feeling(itch: 30, fondness: 60,
+                               quiet: 6), .dreamy)
     }
 
     // MARK: - the bond

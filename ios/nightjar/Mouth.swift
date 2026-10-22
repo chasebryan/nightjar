@@ -2364,14 +2364,25 @@ extension Mouth {
             }
         } catch {
             stopServe()
-            DispatchQueue.main.async {
+            let failedGeneration = serveSync { serveGeneration }
+            DispatchQueue.main.async { [weak self] in
+                guard let self,
+                      self.serveSync({ self.serveGeneration }) == failedGeneration
+                else { return }
                 self.serveError = String(format: L("nightjar: %@"), error.localizedDescription)
                 self.ui(String(format: L("Serving failed: %@"), error.localizedDescription), error: true)
             }
             return nil
         }
         if started.isEmpty {
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
+                guard let self,
+                      self.serveSync({ self.serveGeneration }) == generation
+                else { return }
+                // The preceding Stop belongs to the old generation; its
+                // queued publication is deliberately ignored after this
+                // start. A refused empty start must publish its own state.
+                self.serveRunning = false
                 self.serveError = L("nightjar: no listener selected")
                 self.ui(L("No listener selected"), error: true)
             }

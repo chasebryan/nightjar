@@ -200,9 +200,16 @@ enum UIKeyboardType: Int {
 /// phone's hand-rolled player was reaching for.
 struct GIFPlayerView: NSViewRepresentable {
     let data: Data
+    var playOnce = false
     func makeNSView(context: Context) -> NSImageView {
         let view = NSImageView()
-        view.image = NSImage(data: data)
+        let image = NSImage(data: data)
+        if playOnce {
+            for case let bitmap as NSBitmapImageRep in image?.representations ?? [] {
+                bitmap.setProperty(.loopCount, withValue: NSNumber(value: 1))
+            }
+        }
+        view.image = image
         view.animates = true
         view.imageScaling = .scaleProportionallyUpOrDown
         return view
