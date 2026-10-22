@@ -2238,6 +2238,12 @@ extension UIImage {
 struct GIFPlayerView: UIViewRepresentable {
     let data: Data
     var contentMode: UIView.ContentMode = .scaleAspectFill
+    /// Play the reel through once and hold its
+    /// last frame, instead of looping forever —
+    /// for splashes whose film is a single act
+    /// (the EAZY ignition: the spin, the blast,
+    /// and stop). Default off: backdrops loop.
+    var playOnce = false
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = true
 
@@ -2275,9 +2281,28 @@ struct GIFPlayerView: UIViewRepresentable {
                 data: data, maxPixel: 640)
             guard let first = film.frames.first
             else { return }
-            view.image = first
+            view.image = playOnce
+                ? (film.frames.last ?? first) : first
             view.animationImages = film.frames
             view.animationDuration = film.duration
+            view.animationRepeatCount = playOnce ? 1 : 0
+            view.startAnimating()
+        } else if playOnce {
+            // One pass at full size, then the last
+            // frame stands. The frames path (not
+            // the animated-image path) so the held
+            // frame is the film's end, not its start;
+            // once decoded, a reconfigure leaves it
+            // standing rather than playing it again.
+            if view.animationImages != nil { return }
+            let film = UIImage.gifFrames(
+                data: data, maxPixel: 2048)
+            guard let last = film.frames.last
+            else { return }
+            view.image = last
+            view.animationImages = film.frames
+            view.animationDuration = film.duration
+            view.animationRepeatCount = 1
             view.startAnimating()
         } else {
             if view.animationImages != nil {
@@ -2661,7 +2686,7 @@ struct EazyIgnitionView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let data = gifData {
-                GIFPlayerView(data: data)
+                GIFPlayerView(data: data, playOnce: true)
                     .ignoresSafeArea()
             } else {
                 VStack(spacing: 16) {
