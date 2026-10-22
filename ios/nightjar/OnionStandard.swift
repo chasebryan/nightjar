@@ -733,7 +733,12 @@ enum OnionStandard {
         SSLSetSessionOption(context,
             .breakOnServerAuth, true)
         var status = SSLHandshake(context)
-        if status == errSSLServerAuth {
+        // -9841 is errSSLServerAuthCompleted:
+        // the handshake paused so the peer's
+        // papers can be judged (the locks bench
+        // compares the same literal — the named
+        // constants are not in scope here).
+        if status == -9841 {
             var trust: SecTrust?
             SSLCopyPeerTrust(context, &trust)
             var trusted = false
@@ -1071,7 +1076,7 @@ enum OnionSOCKS {
             endpointIP = endpointHost
         } else if let resolved = BlacksiteNet
             .resolve4(endpointHost) {
-            endpointIP = resolved
+            endpointIP = resolved.ip
         } else {
             return (nil, L("the socks endpoint's "
                 + "own name does not resolve"))
@@ -1092,7 +1097,7 @@ enum OnionSOCKS {
             pointer.withMemoryRebound(
                 to: sockaddr.self, capacity: 1) {
                     sa in
-                    connect(fd, sa, socklen_t(
+                    Darwin.connect(fd, sa, socklen_t(
                         MemoryLayout<sockaddr_in>
                             .size))
                 }
@@ -1251,10 +1256,6 @@ private func onionTLSRead(
     _ data: UnsafeMutableRawPointer,
     _ length: UnsafeMutablePointer<Int>)
     -> OSStatus {
-    guard let connection else {
-        length.pointee = 0
-        return errSSLInternal
-    }
     let box = Unmanaged<OnionTLSBox>
         .fromOpaque(connection).takeUnretainedValue()
     let wanted = length.pointee
@@ -1280,10 +1281,6 @@ private func onionTLSWrite(
     _ data: UnsafeRawPointer,
     _ length: UnsafeMutablePointer<Int>)
     -> OSStatus {
-    guard let connection else {
-        length.pointee = 0
-        return errSSLInternal
-    }
     let box = Unmanaged<OnionTLSBox>
         .fromOpaque(connection).takeUnretainedValue()
     let n = send(box.fd, data, length.pointee, 0)

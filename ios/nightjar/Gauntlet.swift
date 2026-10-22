@@ -1515,7 +1515,7 @@ final class Gauntlet: ObservableObject {
         }
         add("blacksite", "stop token trips and resets") {
             var cases = 0
-            for _ in 0..<scaled(40, intensity) {
+            for _ in 0..<self.scaled(40, intensity) {
                 let stop = ConsoleStop()
                 cases += 1
                 try Gauntlet.require(!stop.isTripped,
@@ -1548,7 +1548,7 @@ final class Gauntlet: ObservableObject {
             var cases = 0
             let letters = Array(
                 "abcdefghijklmnopqrstuvwxyz")
-            let rounds = scaled(120, intensity)
+            let rounds = self.scaled(120, intensity)
             for _ in 0..<rounds {
                 let labelCount = 1 + fuzz.int(4)
                 var labels: [String] = []
@@ -1770,7 +1770,7 @@ final class Gauntlet: ObservableObject {
             for (raw, framed, content) in vectors {
                 cases += 1
                 try Gauntlet.require(
-                    SSHWire.mpint(raw) == framed,
+                    SSHWire.mpint(Data(raw)) == Data(framed),
                     "an mpint framed wrong")
                 var reader = SSHReader(data: framed)
                 cases += 1
@@ -1818,7 +1818,7 @@ final class Gauntlet: ObservableObject {
                     + "ssh-ed25519",
                 "the name list text moved")
             // Random uint32s round-trip.
-            for _ in 0..<scaled(50, intensity) {
+            for _ in 0..<self.scaled(50, intensity) {
                 let value = UInt32(
                     fuzz.int(1_000_000_000))
                 var r = SSHReader(
@@ -1893,28 +1893,17 @@ final class Gauntlet: ObservableObject {
                 try Gauntlet.require(folded == value,
                     "an integer folded wrong")
             }
-            // A canned v2c GetResponse walks whole.
-            let bind1 = BlacksitePentest.berTLV(
-                0x30,
-                BlacksitePentest.berOID(
-                    [1, 3, 6, 1, 2, 1, 1, 1, 0])
-                    + BlacksitePentest.berTLV(
-                        0x04, Array("gauntlet".utf8)))
-            let bind2 = BlacksitePentest.berTLV(
-                0x30,
-                BlacksitePentest.berOID(
-                    [1, 3, 6, 1, 2, 1, 1, 3, 0])
-                    + BlacksitePentest.berInt(424242))
-            let pdu = BlacksitePentest.berTLV(
-                0xA2,
-                BlacksitePentest.berInt(4243)
-                    + BlacksitePentest.berInt(0)
-                    + BlacksitePentest.berInt(0)
-                    + BlacksitePentest.berTLV(
-                        0x30, bind1 + bind2))
+            // A canned v2c GetResponse walks whole
+            // (snmpMessage lays this exact frame:
+            // request id 4243, error 0, the binds).
             let wire = BlacksitePentest.snmpMessage(
                 version: 1, community: "public",
-                pdu: pdu)
+                pduTag: 0xA2,
+                oids: [[1, 3, 6, 1, 2, 1, 1, 1, 0],
+                       [1, 3, 6, 1, 2, 1, 1, 3, 0]],
+                values: [BlacksitePentest.berTLV(
+                            0x04, Array("gauntlet".utf8)),
+                         BlacksitePentest.berInt(424242)])
             guard let parsed = BlacksitePentest
                 .snmpParse(wire) else {
                 throw Gauntlet.Failure(message:
