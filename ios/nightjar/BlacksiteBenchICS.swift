@@ -2982,7 +2982,7 @@ extension BlacksiteBench {
                  { icsConnectOnlyCore(verb: "plcensus", host: $0, ip: $1, port: $2, light: true, note: "") }),
                 ("IEC 60870-5-104", 2404,
                  { icsIEC104Core(host: $0, ip: $1, port: $2, light: true) }),
-                ("CODESYS runtime", 2455,
+                ("CODESYS gateway", 1217,
                  { icsConnectOnlyCore(verb: "plcensus", host: $0, ip: $1, port: $2, light: true, note: "") }),
                 ("OPC UA", 4840,
                  { icsOPCUACore(host: $0, ip: $1, port: $2, light: true) }),

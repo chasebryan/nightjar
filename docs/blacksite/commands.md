@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**288 commands in 9 sections.**
+**308 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (165)
+## pentest bench (185)
 
 | Command | What it does |
 | --- | --- |
@@ -223,6 +223,26 @@ Every command the console answers to, with the signature it takes and what it do
 | `sunspecprobe <host>[:port]` | the SunSpec nameplate block — the one bounded register read in the whole wave |
 | `lantronixprobe <host>[:port]` | the gateway's discovery answer — MAC, hardware type, firmware, in the clear |
 | `c1222probe <host>[:port]` | the C12.22 meter door, knocked once — presence, graded plainly |
+| `cspprobe <host>[:port]` | a libcsp spacecraft bus — CMP IDENT, uptime and a ping; the reboot service is never touched |
+| `ccsdsprobe <host>[:port]` | a CCSDS stream census — listen-only: APIDs, telemetry against telecommand, sequence gaps |
+| `aprsprobe [host][:port]` | the APRS-IS feed through the read-only login — heard, never spoken into |
+| `kissprobe <host>[:port]` | a KISS TNC heard only — AX.25 frames counted, nothing transmitted, no parameter writes |
+| `agwprobe <host>[:port]` | an AGW packet engine — version, ports and the monitor feed; no transmit frame is ever built |
+| `rotprobe <host>[:port]` | a rotctld rotator's pointing and range — read only; set_pos is never sent |
+| `rigprobe <host>[:port]` | a rigctld radio's tuning and mode — read only; nothing set, nothing keyed |
+| `gpsdprobe <host>[:port]` | gpsd's version and receivers — no ?WATCH, so no fix is ever streamed or printed |
+| `nmeaprobe <host>[:port]` | an NMEA stream census — sentence shapes, checksums and the sky view; positions never printed |
+| `ubxprobe <host>[:port]` | a u-blox receiver's MON-VER nameplate — one poll; the CFG class is never sent |
+| `ntripprobe <host>[:port]` | an NTRIP caster's sourcetable — the mountpoint menu, read; no stream is joined |
+| `comtechprobe <host>[:port]` | a Comtech modem's firmware and serial, asked with query packets only — '=' is never sent |
+| `bucprobe <host>[:port]` | a BUC amplifier's web nameplate — its binary M&C is never guessed at or spoken |
+| `iridiumprobe <host>[:port]` | an Iridium modem's AT identification — maker, model, firmware, IMEI; nothing originated |
+| `starlinkprobe [host]` | the dish's local doors, censused — the gRPC API door named, its framing honestly not reproduced |
+| `satipprobe <host>[:port]` | a SAT>IP tuner census by RTSP — OPTIONS and DESCRIBE; SETUP and PLAY are never sent |
+| `yamcsprobe <host>[:port]` | a YAMCS server's mission instances, listed — operations data read, never operated |
+| `satintel [norad|name]` | Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified |
+| `satnogsprobe [station]` | the SatNOGS network's ground stations — who listens to the sky, and whether they are up |
+| `satcensus [host]` | every satellite door at one address, knocked once each — and the RF limit stated plainly |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |

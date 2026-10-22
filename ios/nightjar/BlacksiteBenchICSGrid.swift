@@ -413,8 +413,9 @@ extension BlacksiteBench {
         }
     }
 
-    // MARK: CODESYS — degraded, two
-    // doors (V2 handler, V3 gateway)
+    // MARK: CODESYS — degraded, three
+    // doors (V2 handler, V3 gateway,
+    // V3 runtime)
 
     static func codesysprobe(
         target: String,
@@ -430,7 +431,8 @@ extension BlacksiteBench {
             }
             let doors: [(UInt16, String)] = [
                 (2455, L("the V2 PLC Handler door")),
-                (11740, L("the V3 gateway door")),
+                (1217, L("the V3 gateway door")),
+                (11740, L("the V3 runtime door")),
             ]
             for (port, label) in doors {
                 guard let fd = icsSocket(
@@ -449,7 +451,7 @@ extension BlacksiteBench {
                 icsPrint(emit, lines)
                 return
             }
-            icsSay(emit, String(format: L("codesysprobe: neither CODESYS door answers at %@ — 2455 and 11740 both stayed shut."), host))
+            icsSay(emit, String(format: L("codesysprobe: no CODESYS door answers at %@ — 2455, 1217 and 11740 all stayed shut."), host))
         }
     }
 

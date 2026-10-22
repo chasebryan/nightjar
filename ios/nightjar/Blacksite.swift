@@ -338,6 +338,26 @@ final class BlacksiteShell: ObservableObject {
         "sunspecprobe",
         "lantronixprobe",
         "c1222probe",
+        "cspprobe",
+        "ccsdsprobe",
+        "aprsprobe",
+        "kissprobe",
+        "agwprobe",
+        "rotprobe",
+        "rigprobe",
+        "gpsdprobe",
+        "nmeaprobe",
+        "ubxprobe",
+        "ntripprobe",
+        "comtechprobe",
+        "bucprobe",
+        "iridiumprobe",
+        "starlinkprobe",
+        "satipprobe",
+        "yamcsprobe",
+        "satintel",
+        "satnogsprobe",
+        "satcensus",
     ]
 
     /// betafisch [file] — raise the
@@ -3041,7 +3061,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus", "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe", "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe", "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -5047,6 +5067,26 @@ final class BlacksiteShell: ObservableObject {
                 ("sunspecprobe <host>[:port]", L("the SunSpec nameplate block — the one bounded register read in the whole wave")),
                 ("lantronixprobe <host>[:port]", L("the gateway's discovery answer — MAC, hardware type, firmware, in the clear")),
                 ("c1222probe <host>[:port]", L("the C12.22 meter door, knocked once — presence, graded plainly")),
+                ("cspprobe <host>[:port]", L("a libcsp spacecraft bus — CMP IDENT, uptime and a ping; the reboot service is never touched")),
+                ("ccsdsprobe <host>[:port]", L("a CCSDS stream census — listen-only: APIDs, telemetry against telecommand, sequence gaps")),
+                ("aprsprobe [host][:port]", L("the APRS-IS feed through the read-only login — heard, never spoken into")),
+                ("kissprobe <host>[:port]", L("a KISS TNC heard only — AX.25 frames counted, nothing transmitted, no parameter writes")),
+                ("agwprobe <host>[:port]", L("an AGW packet engine — version, ports and the monitor feed; no transmit frame is ever built")),
+                ("rotprobe <host>[:port]", L("a rotctld rotator's pointing and range — read only; set_pos is never sent")),
+                ("rigprobe <host>[:port]", L("a rigctld radio's tuning and mode — read only; nothing set, nothing keyed")),
+                ("gpsdprobe <host>[:port]", L("gpsd's version and receivers — no ?WATCH, so no fix is ever streamed or printed")),
+                ("nmeaprobe <host>[:port]", L("an NMEA stream census — sentence shapes, checksums and the sky view; positions never printed")),
+                ("ubxprobe <host>[:port]", L("a u-blox receiver's MON-VER nameplate — one poll; the CFG class is never sent")),
+                ("ntripprobe <host>[:port]", L("an NTRIP caster's sourcetable — the mountpoint menu, read; no stream is joined")),
+                ("comtechprobe <host>[:port]", L("a Comtech modem's firmware and serial, asked with query packets only — '=' is never sent")),
+                ("bucprobe <host>[:port]", L("a BUC amplifier's web nameplate — its binary M&C is never guessed at or spoken")),
+                ("iridiumprobe <host>[:port]", L("an Iridium modem's AT identification — maker, model, firmware, IMEI; nothing originated")),
+                ("starlinkprobe [host]", L("the dish's local doors, censused — the gRPC API door named, its framing honestly not reproduced")),
+                ("satipprobe <host>[:port]", L("a SAT>IP tuner census by RTSP — OPTIONS and DESCRIBE; SETUP and PLAY are never sent")),
+                ("yamcsprobe <host>[:port]", L("a YAMCS server's mission instances, listed — operations data read, never operated")),
+                ("satintel [norad|name]", L("Celestrak's ledger — one satellite's identity and orbit, its element-set checksum verified")),
+                ("satnogsprobe [station]", L("the SatNOGS network's ground stations — who listens to the sky, and whether they are up")),
+                ("satcensus [host]", L("every satellite door at one address, knocked once each — and the RF limit stated plainly")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10725,6 +10765,18 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchICS(
                     name, target,
+                    emit: emit, done: done)
+            }
+        case "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus":
+            guard netAllowed(name) else { return }
+            netBusy { emit, done in
+                BlacksiteBench.benchSat(
+                    name,
+                    name == "satintel"
+                        || name == "satnogsprobe"
+                        ? (args.isEmpty ? nil
+                            : args.joined(separator: " "))
+                        : args.first,
                     emit: emit, done: done)
             }
         default:
