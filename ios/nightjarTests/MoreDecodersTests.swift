@@ -274,22 +274,24 @@ final class MoreDecodersTests: XCTestCase {
     /// must stay silent for these sightings, or it would pre-empt
     /// Services' decoders and Vendors in the chain.
     func testFloorCompanies() {
-        let cases: [(UInt16, String, Bool)] = [
-            (0x03FF, "Withings device", false),
-            (0x0600, "iRobot device", false),
-            (0x08AA, "DJI device", false),
-            (0x08C3, "Chipolo device", true),
-            (0x067C, "Tile device", true),
-            (0x01D1, "August Home device", false),
+        // The full classifier also consults the assigned-number registry.
+        // Its family answer precedes the late hook at the same rank.
+        let cases: [(UInt16, String, String, Bool)] = [
+            (0x03FF, "Withings device", "Withings device", false),
+            (0x0600, "iRobot device", "iRobot Corporation device", false),
+            (0x08AA, "DJI device", "SZ DJI TECHNOLOGY CO.,LTD device", false),
+            (0x08C3, "Chipolo device", "CHIPOLO d.o.o. device", true),
+            (0x067C, "Tile device", "Tile, Inc. device", true),
+            (0x01D1, "August Home device", "August Home, Inc device", false),
         ]
-        for (company, kind, tracker) in cases {
+        for (company, kind, classifiedKind, tracker) in cases {
             let s = sighting(manufacturer: [company: [0x01, 0x02]])
             XCTAssertNil(MoreDecoders.identify(s), "early step must pass on 0x\(String(company, radix: 16))")
             let hit = MoreDecoders.lateIdentify(s)
             XCTAssertEqual(hit?.kind, kind)
             XCTAssertEqual(hit?.specificity, 1)
             XCTAssertEqual(hit?.trackerShaped, tracker)
-            XCTAssertEqual(Classification.classify(s).kind, kind)
+            XCTAssertEqual(Classification.classify(s).kind, classifiedKind)
         }
     }
 
@@ -312,27 +314,38 @@ final class MoreDecodersTests: XCTestCase {
     /// fallback form: August's lock service, the two LE Audio
     /// services, and the Withings/Chipolo ranges.
     func testLateServiceNames() {
-        let cases: [(String, String)] = [
-            (fe24, "Device advertising August Home"),
-            (uuid184f, "Device advertising Broadcast Audio Scan (LE Audio)"),
-            (uuid1856, "Device advertising Public Broadcast Announcement (LE Audio)"),
-            (fd77, "Device advertising Withings"),
-            (fe65, "Device advertising Chipolo"),
+        let cases: [(String, String, String, String?)] = [
+            (fe24, "Device advertising August Home",
+             "Device advertising member service", "August Home Inc"),
+            (uuid184f, "Device advertising Broadcast Audio Scan (LE Audio)",
+             "Device advertising Broadcast Audio Scan", nil),
+            (uuid1856, "Device advertising Public Broadcast Announcement (LE Audio)",
+             "Device advertising Public Broadcast Announcement", nil),
+            (fd77, "Device advertising Withings",
+             "Device advertising member service", "Withings"),
+            (fe65, "Device advertising Chipolo",
+             "Device advertising member service", "CHIPOLO d.o.o."),
         ]
-        for (uuid, kind) in cases {
+        for (uuid, kind, classifiedKind, owner) in cases {
             let s = sighting(services: [uuid])
             XCTAssertEqual(MoreDecoders.lateIdentify(s)?.kind, kind)
-            XCTAssertEqual(Classification.classify(s).kind, kind)
+            let classification = Classification.classify(s)
+            XCTAssertEqual(classification.kind, classifiedKind)
+            if let owner {
+                XCTAssertTrue(classification.details.contains {
+                    $0.contains("registered to " + owner)
+                })
+            }
         }
     }
 
-    /// A SIG company the floor does not list stays unknown — the
-    /// floor is a table, not a heuristic. (0x009B is an automotive
-    /// supplier, verified present in the SIG list and absent here.)
-    func testUnlistedCompanyStaysUnknown() {
+    /// The late floor is only one table. A company it lacks can still
+    /// be identified by the full assigned-number registry.
+    func testCompanyOutsideTheLateFloorUsesTheRegistry() {
         let s = sighting(manufacturer: [0x009B: [0x01]])
         XCTAssertNil(MoreDecoders.lateIdentify(s))
-        XCTAssertEqual(Classification.classify(s).kind, "Unknown device")
+        XCTAssertEqual(Classification.classify(s).kind,
+                       "Jiangsu Toppower Automotive Electronics Co., Ltd. device")
     }
 
     /// Targets the existing tables already cover, pinned so round 2
@@ -397,14 +410,14 @@ final class MoreDecodersTests: XCTestCase {
     }
 
     /// The second documented capture: temperature
-    /// raw 0x1AA5 = 26.6 C, uptime 2,243,073 s =
-    /// 25d 23h, battery 0x5E = 94%.
+    /// raw 0x1AA5 = 26.6 C, uptime 2,242,273 s =
+    /// 25d 22h, battery 0x5E = 94%.
     func testMikrotikTagSecondCapture() {
         let data = hexBytes("0100168dfefffffffeffa51ae1362200005e")
         let hit = MoreDecoders.identify(
             sighting(manufacturer: [0x094F: data]))
         XCTAssertEqual(hit?.details,
-                       ["26.6 °C, uptime 25d 23h, battery 94%"])
+                       ["26.6 °C, uptime 25d 22h, battery 94%"])
     }
 
     /// The encrypted form (user-data bit 0 set):

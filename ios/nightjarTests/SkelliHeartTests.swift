@@ -349,13 +349,19 @@ final class SkelliHeartTests: XCTestCase {
     func testScrapbookNameRetiresTheOld() {
         let book = SkelliScrapbook.shared
         let saved = book.facts
-        defer { UserDefaults.standard.set(
-            saved, forKey: "heart.scrapbook") }
+        let defaults = UserDefaults.standard
+        let moods = defaults.object(forKey: "skelli.moods")
+        defaults.set(true, forKey: "skelli.moods")
+        defer {
+            defaults.set(saved, forKey: "heart.scrapbook")
+            if let moods { defaults.set(moods, forKey: "skelli.moods") }
+            else { defaults.removeObject(forKey: "skelli.moods") }
+        }
         book.clear()
-        XCTAssertTrue(book.learn(from: "my name is a"))
-        XCTAssertTrue(book.learn(from: "my name is b"))
-        XCTAssertEqual(book.facts, ["their name is b"])
-        XCTAssertEqual(book.operatorName, "b")
+        XCTAssertTrue(book.learn(from: "my name is ada"))
+        XCTAssertTrue(book.learn(from: "my name is bea"))
+        XCTAssertEqual(book.facts, ["their name is bea"])
+        XCTAssertEqual(book.operatorName, "bea")
     }
 
     // MARK: - thoughts
@@ -365,13 +371,11 @@ final class SkelliHeartTests: XCTestCase {
             feeling: .content, neighbors: 7, unnamed: 3,
             drift: 2, knocks: 1, emconDeclared: nil,
             hour: 14, seed: 0)
-        XCTAssertFalse(thought.isEmpty)
+        XCTAssertTrue(thought.hasPrefix("7 souls on the wire with me."))
         let dark = SkelliHeart.thought(
             feeling: .feral, neighbors: 0, unnamed: 0,
             drift: 0, knocks: 0,
-            emconDeclared: "EMCON ALPHA", hour: 2, seed: 1)
-        XCTAssertTrue(dark.contains("EMCON ALPHA")
-                      || dark.contains("door")
-                      || dark.contains("Night wire"))
+            emconDeclared: "EMCON ALPHA", hour: 2, seed: 0)
+        XCTAssertTrue(dark.hasPrefix("EMCON ALPHA stands."))
     }
 }

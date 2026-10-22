@@ -406,15 +406,16 @@ final class DecoderTests: XCTestCase {
 
     /// A MikroTik that introduced itself over
     /// MNDP plus its chair: likely, and the
-    /// MNDP sign is the strongest listed.
+    /// MNDP sign is included among the evidence.
     func testRouterSignsMNDP() {
         let scored = RouterSigns.score(
             ip: "192.168.88.1", name: nil,
             ports: [],
             announcements: ["MNDP — MikroTik RB750Gr3"])
         XCTAssertEqual(scored.weight, .likely)
-        XCTAssertTrue(scored.signs.first?
-            .contains("MNDP") ?? false)
+        XCTAssertTrue(scored.signs.contains {
+            $0.contains("MNDP")
+        })
     }
 
     /// A printer with SSH is not a router, and

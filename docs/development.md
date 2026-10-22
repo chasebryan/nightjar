@@ -9,6 +9,14 @@ Unattended CI passes `-skipMacroValidation` for the MLX Hugging Face macro
 plugin in those pinned dependencies. In Xcode, approve that package's macro
 when prompted on the first build.
 
+The simulator test host uses an ad-hoc signature (`CODE_SIGN_IDENTITY=-`)
+so Xcode supplies its application identifier and Keychain entitlements.
+The vault-key and identity round trips need those entitlements to persist
+their keys between calls. See [Apple's Keychain access-group documentation](https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps).
+No distribution certificate is needed.
+CI keeps the XCTest result bundle on failure and skips the simulator's
+additional diagnostic collection, which can stall after tests finish.
+
 Run the app's tests on a Mac with that toolchain:
 
 ```bash
@@ -18,7 +26,8 @@ xcodebuild test \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -parallel-testing-enabled NO \
   -onlyUsePackageVersionsFromResolvedFile \
-  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGN_IDENTITY=- \
+  CODE_SIGNING_ALLOWED=YES
 ```
 
 Choose an installed simulator from `xcrun simctl list devices available`
