@@ -194,8 +194,8 @@ final class SkelliHeartTests: XCTestCase {
                        .mad)
         XCTAssertEqual(feeling(pride: 80), .proud)
         XCTAssertEqual(feeling(fondness: 80), .loving)
-        XCTAssertEqual(feeling(fondness: 80, attention: 30,
-                               itch: 40), .bored)
+        XCTAssertEqual(feeling(attention: 30, itch: 40,
+                               fondness: 80), .bored)
         XCTAssertEqual(feeling(itch: 90), .feral)
         XCTAssertEqual(feeling(itch: 65), .restless)
         XCTAssertEqual(feeling(attention: 10), .lonely)
@@ -240,11 +240,11 @@ final class SkelliHeartTests: XCTestCase {
         XCTAssertEqual(feeling(pride: 84, fondness: 40),
                        .proud)
         // Tender keeps late hours and needs closeness.
-        XCTAssertEqual(feeling(fondness: 65,
-                               attention: 80, hour: 22),
+        XCTAssertEqual(feeling(attention: 80,
+                               fondness: 65, hour: 22),
                        .tender)
-        XCTAssertEqual(feeling(fondness: 65,
-                               attention: 80, hour: 12),
+        XCTAssertEqual(feeling(attention: 80,
+                               fondness: 65, hour: 12),
                        .happy)
         // After midnight, a long quiet is haunting,
         // not sleepiness.
@@ -287,11 +287,11 @@ final class SkelliHeartTests: XCTestCase {
                     unnamedBaseline: 7, newFaces: 1),
             .curious)
         // Fed, fond and itching: up to something.
-        XCTAssertEqual(feeling(pride: 40, itch: 50,
+        XCTAssertEqual(feeling(itch: 50, pride: 40,
                                fondness: 50), .mischievous)
         // Fond and fed and half-dreaming.
-        XCTAssertEqual(feeling(fondness: 60, quiet: 6,
-                               itch: 30), .dreamy)
+        XCTAssertEqual(feeling(itch: 30, fondness: 60,
+                               quiet: 6), .dreamy)
     }
 
     // MARK: - the bond
@@ -349,13 +349,19 @@ final class SkelliHeartTests: XCTestCase {
     func testScrapbookNameRetiresTheOld() {
         let book = SkelliScrapbook.shared
         let saved = book.facts
-        defer { UserDefaults.standard.set(
-            saved, forKey: "heart.scrapbook") }
+        let defaults = UserDefaults.standard
+        let moods = defaults.object(forKey: "skelli.moods")
+        defaults.set(true, forKey: "skelli.moods")
+        defer {
+            defaults.set(saved, forKey: "heart.scrapbook")
+            if let moods { defaults.set(moods, forKey: "skelli.moods") }
+            else { defaults.removeObject(forKey: "skelli.moods") }
+        }
         book.clear()
-        XCTAssertTrue(book.learn(from: "my name is a"))
-        XCTAssertTrue(book.learn(from: "my name is b"))
-        XCTAssertEqual(book.facts, ["their name is b"])
-        XCTAssertEqual(book.operatorName, "b")
+        XCTAssertTrue(book.learn(from: "my name is ada"))
+        XCTAssertTrue(book.learn(from: "my name is bea"))
+        XCTAssertEqual(book.facts, ["their name is bea"])
+        XCTAssertEqual(book.operatorName, "bea")
     }
 
     // MARK: - thoughts
@@ -365,13 +371,11 @@ final class SkelliHeartTests: XCTestCase {
             feeling: .content, neighbors: 7, unnamed: 3,
             drift: 2, knocks: 1, emconDeclared: nil,
             hour: 14, seed: 0)
-        XCTAssertFalse(thought.isEmpty)
+        XCTAssertTrue(thought.hasPrefix("7 souls on the wire with me."))
         let dark = SkelliHeart.thought(
             feeling: .feral, neighbors: 0, unnamed: 0,
             drift: 0, knocks: 0,
-            emconDeclared: "EMCON ALPHA", hour: 2, seed: 1)
-        XCTAssertTrue(dark.contains("EMCON ALPHA")
-                      || dark.contains("door")
-                      || dark.contains("Night wire"))
+            emconDeclared: "EMCON ALPHA", hour: 2, seed: 0)
+        XCTAssertTrue(dark.hasPrefix("EMCON ALPHA stands."))
     }
 }

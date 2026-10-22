@@ -151,6 +151,8 @@ final class BlacksiteJS {
 
     private final class RunState {
         var error: String?
+        // Confined to the JavaScript queue, including cancellation cleanup.
+        var finished = false
     }
 
     // MARK: Lifecycle
@@ -1333,7 +1335,17 @@ function require(spec) {
                     (String?) -> Void) {
         queue.async { [weak self] in
             guard let self = self else { return }
+            // The kernel admits a process before this serial queue runs it.
+            // A Stop while it was queued must prevent any guest code running.
+            guard killSwitch?.isFired != true else {
+                DispatchQueue.main.async { completion("stopped") }
+                return
+            }
             self.prepareLocked()
+            guard killSwitch?.isFired != true else {
+                DispatchQueue.main.async { completion("stopped") }
+                return
+            }
             guard let source = BlacksiteFS
                 .readText(virtualPath) else {
                 DispatchQueue.main.async {
@@ -1355,7 +1367,19 @@ function require(spec) {
             let state = RunState()
             self.installBridge(into: context,
                                state: state)
+            // Cover package initialization as well as the script itself.
+            armTimeLimit(context, timeLimit)
+            killSwitch?.install { [weak self] in
+                self?.armTimeLimit(context, 0.05)
+                // The VM interrupt must be immediate, but the dictionaries
+                // and drain state belong to the engine's serial queue.
+                self?.queue.async { [weak self] in
+                    guard !state.finished else { return }
+                    self?.forceDrain(context)
+                }
+            }
             for name in self.installedPackages() {
+                guard killSwitch?.isFired != true else { break }
                 let path = "/packages/\(name)/main.js"
                 if let pkg = BlacksiteFS
                     .readText(path) {
@@ -1378,22 +1402,18 @@ function require(spec) {
                 "__dirStack.push("
                 + self.jsLiteral(scriptDir)
                 + ");")
-            armTimeLimit(context, timeLimit)
-            killSwitch?.install { [weak self] in
-                self?.armTimeLimit(
-                    context, 0.05)
-                self?.forceDrain(context)
+            if killSwitch?.isFired != true {
+                _ = context.evaluateScript(source)
+                _ = context.evaluateScript(
+                    "__dirStack.pop();")
             }
-            _ = context.evaluateScript(source)
-            _ = context.evaluateScript(
-                "__dirStack.pop();")
             clearTimeLimit(context)
             drainRunFile(
                 context, gen: gen,
                 deadline: started
                     .addingTimeInterval(
                         timeLimit),
-                error: { state.error },
+                state: state, killSwitch: killSwitch,
                 completion: completion)
         }
     }
@@ -1814,19 +1834,22 @@ function require(spec) {
     private func drainRunFile(
         _ context: JSContext, gen: Int,
         deadline: Date,
-        error: @escaping () -> String?,
+        state: RunState,
+        killSwitch: KernelKillSwitch?,
         completion: @escaping
             (String?) -> Void) {
         let key = ObjectIdentifier(context)
         let forced = drainForced.contains(
             key)
-        if forced
+        if forced || killSwitch?.isFired == true
             || (!timersPending(
                 context: context, gen: gen)
                 && !fetchesPending(
                     context: context,
                     gen: gen))
             || Date() >= deadline {
+            state.finished = true
+            killSwitch?.removeHandler()
             drainForced.remove(key)
             cancelTimers(
                 context: context, gen: gen)
@@ -1835,7 +1858,7 @@ function require(spec) {
             if runGeneration == gen {
                 runGeneration = 0
             }
-            let text = error()
+            let text = killSwitch?.isFired == true ? "stopped" : state.error
             DispatchQueue.main.async {
                 completion(text)
             }
@@ -1849,7 +1872,7 @@ function require(spec) {
                     self?.drainRunFile(
                         context, gen: gen,
                         deadline: deadline,
-                        error: error,
+                        state: state, killSwitch: killSwitch,
                         completion: completion)
                 }
             }

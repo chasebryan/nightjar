@@ -472,7 +472,11 @@ def test_cmd_send_replay(tmp_path):
     stop, _ = start_server(send.serve_tcp, port, recorder)
     try:
         code = send.cmd_send(send_namespace(
-            f"tcp://127.0.0.1:{port}", "--replay", str(log), "--speed", "0"))
+            f"tcp://127.0.0.1:{port}", "--replay", str(log), "--speed", "0",
+            "--read"))
+        # A reply acknowledges processing before the next connection starts.
+        # Fire-and-forget connections have independent server threads, so
+        # their arrival callbacks are not an ordering contract.
         deadline = time.time() + 3
         while len(recorder.records) < 2 and time.time() < deadline:
             time.sleep(0.05)
@@ -480,6 +484,30 @@ def test_cmd_send_replay(tmp_path):
         stop.set()
     assert code == 0
     assert [r[2] for r in recorder.records] == [b"one", b"two"]
+
+
+def test_replay_dispatches_unread_records_in_file_order(tmp_path, monkeypatch):
+    log = tmp_path / "rec.jsonl"
+    blobs = [b"one", b"two", b"three"]
+    log.write_text("\n".join(json.dumps({
+        "ts": 1_700_000_000 + index,
+        "payload_b64": base64.b64encode(blob).decode("ascii"),
+    }) for index, blob in enumerate(blobs)) + "\n")
+    dispatched = []
+    sleeps = []
+
+    def record_send(target, payload, args):
+        dispatched.append((payload.data, args.read))
+        return send.SendResult("tcp", target.raw, len(payload.data))
+
+    monkeypatch.setattr(send, "do_send", record_send)
+    monkeypatch.setattr(send.time, "sleep", sleeps.append)
+    code = send.cmd_send(send_namespace(
+        "tcp://127.0.0.1:9", "--replay", str(log), "--speed", "0"))
+
+    assert code == 0
+    assert dispatched == [(blob, False) for blob in blobs]
+    assert sleeps == []
 
 
 def test_ws_round_trip():

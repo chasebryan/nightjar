@@ -483,13 +483,13 @@ iOS is not Linux with a fruit logo. What differs from the CLI, and why:
 
 In the order you'll meet them:
 
-- **Xcode 26.** Skelli's Apple-model layer is
-  written against the iOS 26 SDK (Foundation
-  Models). It is compile-gated — an older Xcode
-  builds the app with that mind absent rather than
-  failing — but Xcode 26 is the supported setup,
-  and the only one where her status line can read
-  *model on*.
+- **Xcode 27 / Swift 6.4.** The checked-in package
+  resolutions now require Swift tools 6.4. Skelli's
+  Apple-model layer remains compile-gated against
+  Foundation Models and requires eligible hardware
+  running iOS 26 or later. The app's deployment floor
+  stays at iOS 17. See [development checks](../docs/development.md)
+  for the native and standalone kernel test commands.
 - **The Metal Toolchain component.** MLX compiles
   Metal shaders during its build, and Xcode 26
   makes the Metal toolchain a separate,

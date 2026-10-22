@@ -296,12 +296,15 @@ enum Conductor {
                 if mouth.serveRunning {
                     detail = "Serve was already up"
                 } else {
-                    mouth.startServeFromSettings()
                     serveWork?.cancel()
-                    let work = DispatchWorkItem {
-                        if mouth.serveRunning {
-                            mouth.stopServe()
-                        }
+                    guard let generation = mouth.startServeFromSettings()
+                    else {
+                        Journal.log("emcon", "conductor",
+                                    "reflex fired — \(rule.name): Serve could not be raised")
+                        return
+                    }
+                    let work = DispatchWorkItem { [weak mouth] in
+                        mouth?.stopServe(ifGeneration: generation)
                     }
                     serveWork = work
                     DispatchQueue.main.asyncAfter(
