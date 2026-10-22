@@ -278,6 +278,17 @@ final class BlacksiteShell: ObservableObject {
         "compressprobe", "methoddeep",
         "robotsdeep", "apicensus", "urlextract",
         "wayback", "corsdeep",
+        "smbprobe", "nfsprobe", "rpcprobe",
+        "mysqlprobe", "pgprobe", "mssqlprobe",
+        "mongoprobe", "elasticprobe",
+        "couchprobe", "kafkaprobe", "zkprobe",
+        "memcacheprobe", "solrprobe",
+        "jenkinsprobe", "gitlabprobe",
+        "registryprobe", "k8sprobe",
+        "etcdprobe", "consulprobe",
+        "vaultprobe", "rabbitprobe",
+        "printerprobe", "rtspprobe",
+        "sipprobe", "starttlscensus",
     ]
 
     /// betafisch [file] — raise the
@@ -2981,7 +2992,7 @@ final class BlacksiteShell: ObservableObject {
              "methods", "dirb", "wol",
              "robots", "vhost", "axfr",
              "tlsgrade", "reflect",
-             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep":
+             "mqttprobe", "dnsaudit", "corsprobe", "openredirect", "graphqlprobe", "jwtcheck", "proxyprobe", "vncprobe", "rdpprobe", "ftpprobe", "smtpprobe", "ldapprobe", "redisprobe", "dockerprobe", "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep", "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus":
             netCommand(head, args)
         case "emcon":
             emcon(args)
@@ -4900,6 +4911,31 @@ final class BlacksiteShell: ObservableObject {
                 ("urlextract <url>", L("every road out of the page, sorted")),
                 ("wayback <domain>", L("what the public archive remembers of the house")),
                 ("corsdeep <url>", L("cross-origin, deepened — null origins, subdomains, preflight")),
+                ("smbprobe <host>", L("one SMB2 negotiate — the dialect, and whether signing is truly required; no session, no name offered")),
+                ("nfsprobe <host>", L("the export list mountd publishes to strangers — what is shared, and with whom")),
+                ("rpcprobe <host>", L("the portmapper's whole directory — every registered program, version and door")),
+                ("mysqlprobe <host>", L("the greeting read — version, capabilities, the password door it names; no answer is ever sent back")),
+                ("pgprobe <host>", L("will it seal the road — S, N or E to the SSL and GSS questions; no startup packet follows")),
+                ("mssqlprobe <host>", L("the TDS prelogin — version, instance, and the encryption word; no login packet")),
+                ("mongoprobe <host>", L("the unauthenticated hello — wire versions and posture, by the protocol's own design")),
+                ("elasticprobe <host>", L("the cluster's own introduction — name, node, version, handed to a stranger")),
+                ("couchprobe <host>", L("the welcome mat — version and features, public by design")),
+                ("kafkaprobe <host>", L("the dialect table — every verb the broker speaks, which dates it")),
+                ("zkprobe <host>", L("four letters, read — stat and envi: version, mode, the tree it watches")),
+                ("memcacheprobe <host>", L("version, then the whole stats ledger — classic memcached keeps no names at all")),
+                ("solrprobe <host>", L("the admin system document — Solr and Lucene versions, and the ensemble it names")),
+                ("jenkinsprobe <host>", L("the version in the letterhead — and whether the dashboard opens unnamed")),
+                ("gitlabprobe <host>", L("the version door's challenge — a 401 keeps the forge's papers indoors")),
+                ("registryprobe <host>", L("the /v2/ threshold — a greeting, or the token challenge read and never answered")),
+                ("k8sprobe <host>", L("the API server's version papers — and /api, when the first door answers unnamed")),
+                ("etcdprobe <host>", L("the version door — server and cluster versions, published by design")),
+                ("consulprobe <host>", L("who leads the raft, asked with no token — the agent API is a control plane")),
+                ("vaultprobe <host>", L("the seal-status — sealed or unsealed, initialized, and the version beside it")),
+                ("rabbitprobe <host>", L("the AMQP introduction — dialect and mechanisms before any name; the management door read the same way")),
+                ("printerprobe <host>", L("the printer introduces itself — name, model, state, and where it sits")),
+                ("rtspprobe <host>", L("the camera's OPTIONS — the published verbs and the Server letterhead")),
+                ("sipprobe <host>", L("one SIP OPTIONS — the Allow list and the PBX's letterhead; no call is placed")),
+                ("starttlscensus <host>", L("the mail doors graded — STARTTLS offered, demanded, or missing; no name is ever given")),
                 ("methods <url>", L("OPTIONS, and the TRACE question")),
                 ("dirb <url>", L("the path dictionary")),
                 ("wol <mac>", L("wake a sleeping machine")),
@@ -10528,6 +10564,24 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchWeb(
                     name, target,
+                    emit: emit, done: done)
+            }
+        case "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus":
+            guard netAllowed(name),
+                  let target = args.first
+            else {
+                if args.isEmpty {
+                    emit(L("the bench tools each want a target."), .err)
+                }
+                return
+            }
+            netBusy { emit, done in
+                BlacksiteBench.benchDoors(
+                    name,
+                    name == "starttlscensus"
+                        ? args.joined(
+                            separator: " ")
+                        : target,
                     emit: emit, done: done)
             }
         default:

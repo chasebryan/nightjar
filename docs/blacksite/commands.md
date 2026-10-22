@@ -2,7 +2,7 @@
 
 Every command the console answers to, with the signature it takes and what it does — generated from the same table the console's own `help` command reads, so this page cannot drift from the shipped truth. Inside the console: `help` shows the sections, `help <section>` opens one whole, `help <word>` searches every command.
 
-**201 commands in 9 sections.**
+**226 commands in 9 sections.**
 
 ## the house (29)
 
@@ -57,7 +57,7 @@ Every command the console answers to, with the signature it takes and what it do
 | `netstat` | this house's doors and wires |
 | `hostname` | who this phone is on the wire |
 
-## pentest bench (78)
+## pentest bench (103)
 
 | Command | What it does |
 | --- | --- |
@@ -136,6 +136,31 @@ Every command the console answers to, with the signature it takes and what it do
 | `urlextract <url>` | every road out of the page, sorted |
 | `wayback <domain>` | what the public archive remembers of the house |
 | `corsdeep <url>` | cross-origin, deepened — null origins, subdomains, preflight |
+| `smbprobe <host>` | one SMB2 negotiate — the dialect, and whether signing is truly required; no session, no name offered |
+| `nfsprobe <host>` | the export list mountd publishes to strangers — what is shared, and with whom |
+| `rpcprobe <host>` | the portmapper's whole directory — every registered program, version and door |
+| `mysqlprobe <host>` | the greeting read — version, capabilities, the password door it names; no answer is ever sent back |
+| `pgprobe <host>` | will it seal the road — S, N or E to the SSL and GSS questions; no startup packet follows |
+| `mssqlprobe <host>` | the TDS prelogin — version, instance, and the encryption word; no login packet |
+| `mongoprobe <host>` | the unauthenticated hello — wire versions and posture, by the protocol's own design |
+| `elasticprobe <host>` | the cluster's own introduction — name, node, version, handed to a stranger |
+| `couchprobe <host>` | the welcome mat — version and features, public by design |
+| `kafkaprobe <host>` | the dialect table — every verb the broker speaks, which dates it |
+| `zkprobe <host>` | four letters, read — stat and envi: version, mode, the tree it watches |
+| `memcacheprobe <host>` | version, then the whole stats ledger — classic memcached keeps no names at all |
+| `solrprobe <host>` | the admin system document — Solr and Lucene versions, and the ensemble it names |
+| `jenkinsprobe <host>` | the version in the letterhead — and whether the dashboard opens unnamed |
+| `gitlabprobe <host>` | the version door's challenge — a 401 keeps the forge's papers indoors |
+| `registryprobe <host>` | the /v2/ threshold — a greeting, or the token challenge read and never answered |
+| `k8sprobe <host>` | the API server's version papers — and /api, when the first door answers unnamed |
+| `etcdprobe <host>` | the version door — server and cluster versions, published by design |
+| `consulprobe <host>` | who leads the raft, asked with no token — the agent API is a control plane |
+| `vaultprobe <host>` | the seal-status — sealed or unsealed, initialized, and the version beside it |
+| `rabbitprobe <host>` | the AMQP introduction — dialect and mechanisms before any name; the management door read the same way |
+| `printerprobe <host>` | the printer introduces itself — name, model, state, and where it sits |
+| `rtspprobe <host>` | the camera's OPTIONS — the published verbs and the Server letterhead |
+| `sipprobe <host>` | one SIP OPTIONS — the Allow list and the PBX's letterhead; no call is placed |
+| `starttlscensus <host>` | the mail doors graded — STARTTLS offered, demanded, or missing; no name is ever given |
 | `methods <url>` | OPTIONS, and the TRACE question |
 | `dirb <url>` | the path dictionary |
 | `wol <mac>` | wake a sleeping machine |
