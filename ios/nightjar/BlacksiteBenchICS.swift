@@ -2968,7 +2968,7 @@ extension BlacksiteBench {
                  { icsMELSECCore(host: $0, ip: $1, port: $2, light: true) }),
                 ("HART-IP", 5094,
                  { icsHARTCore(host: $0, ip: $1, port: $2, light: true) }),
-                ("HSMS / SECS-GEM", 7000,
+                ("HSMS / SECS-GEM", 5000,
                  { icsSECSCore(host: $0, ip: $1, port: $2, light: true) }),
                 ("Fanuc FOCAS", 8193,
                  { icsConnectOnlyCore(verb: "plcensus", host: $0, ip: $1, port: $2, light: true, note: "") }),

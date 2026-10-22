@@ -1036,7 +1036,7 @@ extension BlacksiteBench {
         BlacksitePentest.run {
             defer { done() }
             guard let (host, ip, port) =
-                icsResolve(target, 7000)
+                icsResolve(target, 5000)
             else {
                 icsSay(emit, L("secsprobe: give host[:port] — secsprobe 192.168.1.10"), .err)
                 return
