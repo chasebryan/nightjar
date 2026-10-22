@@ -1775,7 +1775,7 @@ final class Gauntlet: ObservableObject {
                 var reader = SSHReader(data: Data(framed))
                 cases += 1
                 try Gauntlet.require(
-                    reader.bytes() == content,
+                    reader.string() == Data(content),
                     "an mpint did not read back")
             }
             // string and uint32 framing.
@@ -2128,8 +2128,11 @@ final class Gauntlet: ObservableObject {
             let extended: [UInt8] = [
                 0x57, 0x03, 0xAA, 0xBB, 0xCC]
             var extPos = 0
-            let extTag = BlacksiteBench.icsBACTag(
-                extended, &extPos)
+            guard let extTag = BlacksiteBench
+                .icsBACTag(extended, &extPos) else {
+                throw Gauntlet.Failure(message:
+                    "the extended tag walk read nothing")
+            }
             cases += 1
             try Gauntlet.require(
                 extTag.num == 5 && extTag.len == 3
@@ -3195,7 +3198,7 @@ final class Gauntlet: ObservableObject {
             try Gauntlet.require(
                 themes.first {
                     $0.id == "redteam"
-                }?.accent == "#FF1626",
+                }?.accentHex == "#FF1626",
                 "the redteam accent moved")
             return "\(cases) cases: ten themes, "
                 + "every hex well-formed"
