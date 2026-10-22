@@ -41,35 +41,15 @@ extension BlacksiteBench {
     }
 
     /// A connected BSD stream socket,
-    /// or nil. The caller closes it.
+    /// or nil. The caller closes it. Rides
+    /// the shared road (BlacksiteNet
+    /// .streamConnect) — the Onion's wrap
+    /// gate stands there.
     private static func nameSocket(
         ip: String, port: UInt16,
         timeout: Double) -> Int32? {
-        let fd = socket(AF_INET, SOCK_STREAM,
-                        IPPROTO_TCP)
-        guard fd >= 0 else { return nil }
-        BlacksiteNet.setRecvTimeout(
-            fd, seconds: timeout)
-        var dest = BlacksiteNet.sockaddrIn(
-            ip: ip, port: port)
-        let rc = withUnsafeMutablePointer(
-            to: &dest) { ptr in
-            ptr.withMemoryRebound(
-                to: sockaddr.self,
-                capacity: 1) { sa in
-                connect(fd, sa, socklen_t(
-                    MemoryLayout<
-                        sockaddr_in>.size))
-            }
-        }
-        guard rc == 0 else {
-            close(fd)
-            return nil
-        }
-        BetafischTap.shared.noteConnect(
-            fd: fd, ip: ip, port: Int(port),
-            udp: false)
-        return fd
+        BlacksiteNet.streamConnect(
+            ip: ip, port: port, timeout: timeout)
     }
 
     /// Read exactly n bytes, or nil.

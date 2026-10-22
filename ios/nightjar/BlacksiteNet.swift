@@ -116,6 +116,98 @@ enum BlacksiteNet {
         return nil
     }
 
+    /// The interface the default route
+    /// rides, read from the same route dump
+    /// — rt_msghdr's index (u16 @ 4), named
+    /// with if_indextoname. The Onion's
+    /// tunnel row reads this: a utun here
+    /// means the tunnel carries the road,
+    /// not merely exists.
+    static func defaultRouteInterfaceName()
+        -> String? {
+        var length = 0
+        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0,
+                            AF_INET, NET_RT_DUMP, 0]
+        guard sysctl(&mib, u_int(mib.count),
+                     nil, &length, nil, 0) == 0,
+              length > 0 else { return nil }
+        var buffer = [UInt8](
+            repeating: 0, count: length)
+        guard sysctl(&mib, u_int(mib.count),
+                     &buffer, &length, nil,
+                     0) == 0 else { return nil }
+        var offset = 0
+        while offset + 92 <= length {
+            let msglen = Int(buffer[offset])
+                | (Int(buffer[offset + 1]) << 8)
+            if msglen < 92 { break }
+            let version = buffer[offset + 2]
+            let index = UInt32(buffer[offset + 4])
+                | (UInt32(buffer[offset + 5])
+                   << 8)
+            let flags = Int32(
+                bitPattern: UInt32(
+                    buffer[offset + 8])
+                    | (UInt32(buffer[offset + 9])
+                       << 8)
+                    | (UInt32(buffer[offset + 10])
+                       << 16)
+                    | (UInt32(buffer[offset + 11])
+                       << 24))
+            let addrs = Int32(
+                bitPattern: UInt32(
+                    buffer[offset + 12])
+                    | (UInt32(buffer[offset + 13])
+                       << 8)
+                    | (UInt32(buffer[offset + 14])
+                       << 16)
+                    | (UInt32(buffer[offset + 15])
+                       << 24))
+            if version == 5 {
+                var addrPtr = buffer
+                    .withUnsafeBufferPointer {
+                        UnsafeRawPointer(
+                            $0.baseAddress!)
+                    }! + offset + 92
+                // sockaddr sizes: read the
+                // leading length byte, minimum
+                // the sockaddr_in stride.
+                func sockaddrLen(
+                    _ pointer: UnsafeRawPointer)
+                    -> Int {
+                    max(16, Int(pointer
+                        .load(as: UInt8.self)))
+                }
+                if (addrs & 0x1) != 0 {
+                    let dstLen = sockaddrLen(
+                        addrPtr)
+                    let dst = addrPtr
+                        .assumingMemoryBound(
+                            to: sockaddr_in.self)
+                        .pointee
+                    if dst.sin_addr.s_addr == 0,
+                       (addrs & 0x2) != 0,
+                       (flags & 0x2) != 0 {
+                        var nameBuffer = [CChar](
+                            repeating: 0,
+                            count: 16)
+                        if if_indextoname(
+                            index, &nameBuffer)
+                            != nil {
+                            return String(
+                                cString:
+                                    nameBuffer)
+                        }
+                        return nil
+                    }
+                    addrPtr += dstLen
+                }
+            }
+            offset += msglen
+        }
+        return nil
+    }
+
     /// inet_ntoa, spelled out: the in_addr
     /// is already the wire's byte order.
     static func ipv4String(
@@ -199,6 +291,86 @@ enum BlacksiteNet {
                    &tv, socklen_t(
                     MemoryLayout<timeval>
                         .size))
+    }
+
+    // MARK: The shared stream road (+ the wrap)
+    //
+    // Every BSD helper in the bench — the core
+    // stream socket, Doors', Names', Sat's,
+    // the ICS family's — was the same five
+    // lines: socket, timeout, connect, tap.
+    // This is that shape, once, so the Onion's
+    // wrap has ONE gate to stand at. When the
+    // wrap is engaged, the connect rides the
+    // SOCKS road instead — by NAME when the
+    // caller hands one over (the target is
+    // never resolved locally inside the wrap)
+    // — and a down road REFUSES the connect:
+    // fail-closed, nothing bare. timeout <= 0
+    // keeps the satellite road's shape (no
+    // standing recv timeout). The endpoint
+    // itself is never wrapped — the road to
+    // the road runs bare, or nothing could
+    // ever connect.
+
+    static func streamConnect(
+        ip: String, port: UInt16,
+        timeout: Double,
+        name: String? = nil) -> Int32? {
+        if OnionStandard.wrapEngaged {
+            let isEndpoint = ip == OnionStandard
+                .socksHost
+                && Int(port) == OnionStandard
+                    .socksPort
+            if !isEndpoint {
+                let (fd, problem) = OnionSOCKS
+                    .connect(
+                        endpointHost:
+                            OnionStandard.socksHost,
+                        endpointPort:
+                            OnionStandard.socksPort,
+                        targetHost: name ?? ip,
+                        targetPort: Int(port),
+                        timeout: timeout)
+                if let fd {
+                    BetafischTap.shared
+                        .noteConnect(
+                            fd: fd, ip: ip,
+                            port: Int(port),
+                            udp: false)
+                    return fd
+                }
+                OnionStandard.noteWrapRefusal(
+                    problem ?? L("the tor road "
+                        + "did not answer"))
+                return nil
+            }
+        }
+        let fd = socket(AF_INET, SOCK_STREAM,
+                        IPPROTO_TCP)
+        guard fd >= 0 else { return nil }
+        if timeout > 0 {
+            setRecvTimeout(fd, seconds: timeout)
+        }
+        var addr = sockaddrIn(ip: ip, port: port)
+        let rc = withUnsafePointer(to: &addr) {
+            pointer in
+            pointer.withMemoryRebound(
+                to: sockaddr.self, capacity: 1) {
+                    sa in
+                    connect(fd, sa, socklen_t(
+                        MemoryLayout<sockaddr_in>
+                            .size))
+                }
+        }
+        guard rc == 0 else {
+            close(fd)
+            return nil
+        }
+        BetafischTap.shared.noteConnect(
+            fd: fd, ip: ip, port: Int(port),
+            udp: false)
+        return fd
     }
 
     /// The Internet checksum (RFC 1071).

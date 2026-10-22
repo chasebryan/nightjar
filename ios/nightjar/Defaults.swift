@@ -58,6 +58,9 @@ enum SaneDefaults {
         // EMCON
         "emconActive", "emcon.condition", "emconHomeSubnet", "emconVaultCombo",
         "emconVaultAction", "emconEscalation",
+        // Onion
+        "onion.wrap", "onion.socksHost", "onion.socksPort",
+        "onion.lastProbe",
         "deadHand.on", "deadHand.hours", "deadHand.last",
         "deadHand.firedAt",
         "knocktalkRetentionHours", "knocktalkSuite",

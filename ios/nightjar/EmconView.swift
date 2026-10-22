@@ -408,7 +408,33 @@ struct EmconView: View {
                 }
                 .buttonStyle(HouseProminentStyle())
             }
+            Text(onionStatusLine)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
+    }
+
+    /// The Onion's one line on this tab: the
+    /// live layers, the floor this condition
+    /// declares, and whether the house meets
+    /// it. The full room is the Onion tab.
+    private var onionStatusLine: String {
+        let audit = OnionStandard.audit(
+            emcon: emcon, mouth: mouth)
+        let floor = emcon.condition.onionFloor
+        let gap = OnionStandard.floorGap(
+            audit, emcon.condition)
+        let verdict = gap <= 0
+            ? L("floor met")
+            : String(format: L("short by %@"),
+                     OnionStandard.fmt(gap))
+        return String(format: L(
+            "Onion: %@ of 7.0 layers (%@) — "
+            + "this condition's floor is "
+            + "%@: %@."),
+            OnionStandard.fmt(audit.value),
+            audit.band, OnionStandard.fmt(floor),
+            verdict)
     }
 
     private func goDark() {

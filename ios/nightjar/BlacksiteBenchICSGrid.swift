@@ -50,7 +50,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("selprobe: nothing answers on the terminal door at %@."), host), .out),
@@ -175,7 +175,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("rocprobe: nothing answers on the ROC door at %@ — or the flow computer speaks serial behind a gateway."), host), .out),
@@ -437,7 +437,8 @@ extension BlacksiteBench {
             for (port, label) in doors {
                 guard let fd = icsSocket(
                     ip: ip, port: port,
-                    timeout: 1.5) else {
+                    timeout: 1.5,
+                    name: host) else {
                     continue
                 }
                 let heard = icsAvailable(
@@ -486,7 +487,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("umasprobe: nothing answers on the Modbus door at %@ — UMAS rides it, and it stayed shut."), host), .out),
@@ -581,7 +582,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("sunspecprobe: nothing answers on the Modbus door at %@."), host), .out),
@@ -710,7 +711,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("mbusprobe: nothing answers on the gateway door at %@."), host), .out),
@@ -931,7 +932,7 @@ extension BlacksiteBench {
         -> [ICSLine] {
         guard let fd = icsSocket(
             ip: ip, port: port,
-            timeout: light ? 1.5 : 4)
+            timeout: light ? 1.5 : 4, name: host)
         else {
             return light ? [] : [
                 (String(format: L("secsprobe: nothing answers on the HSMS door at %@."), host), .out),

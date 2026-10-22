@@ -1444,21 +1444,21 @@ final class Gauntlet: ObservableObject {
         add("blacksite", "console roster whole") {
             let names = BlacksiteShell.builtinNames
             var cases = 0
-            Gauntlet.require(!names.isEmpty,
+            try Gauntlet.require(!names.isEmpty,
                 "the console roster is empty")
-            Gauntlet.require(
+            try Gauntlet.require(
                 Set(names).count == names.count,
                 "the console roster repeats a name")
             for name in names {
                 cases += 1
-                Gauntlet.require(!name.isEmpty,
+                try Gauntlet.require(!name.isEmpty,
                     "the roster holds an empty name")
-                Gauntlet.require(
+                try Gauntlet.require(
                     name == name.lowercased(),
                     "roster name not lower case: " + name)
-                Gauntlet.require(!name.contains(" "),
+                try Gauntlet.require(!name.contains(" "),
                     "roster name holds a space: " + name)
-                Gauntlet.require(!name.contains("\t"),
+                try Gauntlet.require(!name.contains("\t"),
                     "roster name holds a tab: " + name)
             }
             let heads = ["help", "stop", "gauntlet",
@@ -1466,7 +1466,7 @@ final class Gauntlet: ObservableObject {
                          "betafisch"]
             for head in heads {
                 cases += 1
-                Gauntlet.require(names.contains(head),
+                try Gauntlet.require(names.contains(head),
                     "the roster lost " + head)
             }
             return "\(cases) cases: the roster is whole "
@@ -1482,12 +1482,12 @@ final class Gauntlet: ObservableObject {
             var cases = 0
             for name in BlacksiteShell.builtinNames {
                 cases += 1
-                Gauntlet.require(roster.contains(name),
+                try Gauntlet.require(roster.contains(name),
                     "a roster name does not claim itself")
                 let suffixed = name + "x"
                 if !roster.contains(suffixed) {
                     cases += 1
-                    Gauntlet.require(
+                    try Gauntlet.require(
                         !roster.contains(suffixed),
                         "a suffixed near-miss claimed: "
                             + suffixed)
@@ -1496,19 +1496,19 @@ final class Gauntlet: ObservableObject {
                     let trimmed = String(name.dropLast())
                     if !roster.contains(trimmed) {
                         cases += 1
-                        Gauntlet.require(
+                        try Gauntlet.require(
                             !roster.contains(trimmed),
                             "a trimmed near-miss claimed: "
                                 + trimmed)
                     }
                 }
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     !roster.contains(name + " probe"),
                     "a two-word string claimed a bench")
             }
             cases += 1
-            Gauntlet.require(!roster.contains(""),
+            try Gauntlet.require(!roster.contains(""),
                 "the empty string claimed a bench")
             return "\(cases) cases: exact-match claims "
                 + "held over the whole roster"
@@ -1518,28 +1518,28 @@ final class Gauntlet: ObservableObject {
             for _ in 0..<scaled(40, intensity) {
                 let stop = ConsoleStop()
                 cases += 1
-                Gauntlet.require(!stop.isTripped,
+                try Gauntlet.require(!stop.isTripped,
                     "a fresh stop token starts tripped")
                 stop.trip()
                 cases += 1
-                Gauntlet.require(stop.isTripped,
+                try Gauntlet.require(stop.isTripped,
                     "trip did not set the token")
                 stop.trip()
                 cases += 1
-                Gauntlet.require(stop.isTripped,
+                try Gauntlet.require(stop.isTripped,
                     "a second trip unset the token")
                 stop.reset()
                 cases += 1
-                Gauntlet.require(!stop.isTripped,
+                try Gauntlet.require(!stop.isTripped,
                     "reset did not clear the token")
             }
             let cancel = KernelCancel()
             cases += 1
-            Gauntlet.require(!cancel.isCancelled,
+            try Gauntlet.require(!cancel.isCancelled,
                 "a fresh cancel token starts cancelled")
             cancel.cancel()
             cases += 1
-            Gauntlet.require(cancel.isCancelled,
+            try Gauntlet.require(cancel.isCancelled,
                 "cancel did not set the token")
             return "\(cases) cases: the stop token "
                 + "trips and resets, cancel is one-way"
@@ -1567,22 +1567,22 @@ final class Gauntlet: ObservableObject {
                 let back = BlacksiteDNS.readName(
                     wire, at: 0)
                 cases += 1
-                Gauntlet.require(back.0 == name,
+                try Gauntlet.require(back.0 == name,
                     "name round-trip broke: " + name)
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     back.1 == wire.count,
                     "the name reader stopped early")
             }
             // The root name is a single zero.
             let root = BlacksiteDNS.encodeName("")
             cases += 1
-            Gauntlet.require(root == [0],
+            try Gauntlet.require(root == [0],
                 "the root name is not one zero byte")
             let rootBack = BlacksiteDNS.readName(
                 root, at: 0)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 rootBack.0 == "" && rootBack.1 == 1,
                 "the root name did not read back")
             // Compression: a pointer reads the
@@ -1597,11 +1597,11 @@ final class Gauntlet: ObservableObject {
             let pointed = BlacksiteDNS.readName(
                 msg, at: pointerAt)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 pointed.0 == "gauntlet.test",
                 "the pointer did not read its name")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 pointed.1 == pointerAt + 2,
                 "the pointer walk consumed wrongly")
             let labelAt = msg.count
@@ -1611,11 +1611,11 @@ final class Gauntlet: ObservableObject {
             let mixed = BlacksiteDNS.readName(
                 msg, at: labelAt)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 mixed.0 == "www.gauntlet.test",
                 "a label-plus-pointer name broke")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 mixed.1 == labelAt + 6,
                 "the mixed name consumed wrongly")
             // Truncated wires must end the walk,
@@ -1684,13 +1684,13 @@ final class Gauntlet: ObservableObject {
                     "the fixture message did not parse")
             }
             cases += 1
-            Gauntlet.require(reply.rcode == 0,
+            try Gauntlet.require(reply.rcode == 0,
                 "the fixture parsed with an rcode")
-            Gauntlet.require(!reply.truncated,
+            try Gauntlet.require(!reply.truncated,
                 "the fixture claims truncation")
-            Gauntlet.require(reply.answers.count == 6,
+            try Gauntlet.require(reply.answers.count == 6,
                 "the answers did not all parse")
-            Gauntlet.require(
+            try Gauntlet.require(
                 reply.authority.count == 1,
                 "the authority record did not parse")
             let renders = [
@@ -1706,13 +1706,13 @@ final class Gauntlet: ObservableObject {
             for (index, record) in
                 reply.answers.enumerated() {
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     record.name == "gauntlet.test",
                     "an answer lost its owner name")
-                Gauntlet.require(
+                try Gauntlet.require(
                     Int(record.type) == types[index],
                     "an answer lost its type")
-                Gauntlet.require(
+                try Gauntlet.require(
                     BlacksiteBench.nameRender(
                         msg, record) == renders[index],
                     "a record rendered wrong: "
@@ -1721,9 +1721,9 @@ final class Gauntlet: ObservableObject {
             }
             let authority = reply.authority[0]
             cases += 1
-            Gauntlet.require(authority.type == 6,
+            try Gauntlet.require(authority.type == 6,
                 "the authority record is not SOA")
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.nameRender(
                     msg, authority)
                     == "ns1.gauntlet.test "
@@ -1736,10 +1736,10 @@ final class Gauntlet: ObservableObject {
                     "the SOA fields did not parse")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 soaFields.serial == 123456789,
                 "the SOA serial moved")
-            Gauntlet.require(
+            try Gauntlet.require(
                 soaFields.refresh == 7200
                     && soaFields.retry == 3600
                     && soaFields.expire == 1209600
@@ -1769,35 +1769,35 @@ final class Gauntlet: ObservableObject {
             ]
             for (raw, framed, content) in vectors {
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     SSHWire.mpint(raw) == framed,
                     "an mpint framed wrong")
                 var reader = SSHReader(data: framed)
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     reader.bytes() == content,
                     "an mpint did not read back")
             }
             // string and uint32 framing.
             let blob = SSHWire.string(Data([1, 2, 3]))
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 blob == [0, 0, 0, 3, 1, 2, 3],
                 "the string framing moved")
             var stringReader = SSHReader(data: blob)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 stringReader.string() == Data([1, 2, 3]),
                 "the string did not read back")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 SSHWire.uint32(0xDEADBEEF)
                     == [0xDE, 0xAD, 0xBE, 0xEF],
                 "the uint32 framing moved")
             var intReader = SSHReader(
                 data: SSHWire.uint32(424242))
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 intReader.uint32() == 424242,
                 "the uint32 did not read back")
             // Name lists round-trip whole.
@@ -1806,12 +1806,12 @@ final class Gauntlet: ObservableObject {
                          "ssh-ed25519"]
             let listWire = SSHWire.nameList(names)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 SSHWire.parseNameList(listWire) == names,
                 "the name list did not round-trip")
             var listReader = SSHReader(data: listWire)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 listReader.text()
                     == "curve25519-sha256,"
                     + "curve25519-sha256@libssh.org,"
@@ -1824,7 +1824,7 @@ final class Gauntlet: ObservableObject {
                 var r = SSHReader(
                     data: SSHWire.uint32(value))
                 cases += 1
-                Gauntlet.require(r.uint32() == value,
+                try Gauntlet.require(r.uint32() == value,
                     "a random uint32 broke on the wire")
             }
             return "\(cases) cases: mpint, string, "
@@ -1854,12 +1854,12 @@ final class Gauntlet: ObservableObject {
                         "an OID did not read back")
                 }
                 cases += 1
-                Gauntlet.require(read.tag == 0x06,
+                try Gauntlet.require(read.tag == 0x06,
                     "an OID lost its tag")
                 let dotted = oid.map { String($0) }
                     .joined(separator: ".")
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     BlacksitePentest.berDecodeOID(
                         read.body) == dotted,
                     "an OID decoded wrong: " + dotted)
@@ -1872,7 +1872,7 @@ final class Gauntlet: ObservableObject {
                     "the 2.39 arc did not read")
             }
             cases += 1
-            Gauntlet.require(arcRead.body == [119],
+            try Gauntlet.require(arcRead.body == [119],
                 "the first subidentifier is not 119")
             let ints = [0, 1, 127, 128, 255, 256,
                         4242, 65535, 424242]
@@ -1883,14 +1883,14 @@ final class Gauntlet: ObservableObject {
                         "an integer did not read back")
                 }
                 cases += 1
-                Gauntlet.require(read.tag == 0x02,
+                try Gauntlet.require(read.tag == 0x02,
                     "an integer lost its tag")
                 var folded = 0
                 for byte in read.body {
                     folded = folded * 256 + Int(byte)
                 }
                 cases += 1
-                Gauntlet.require(folded == value,
+                try Gauntlet.require(folded == value,
                     "an integer folded wrong")
             }
             // A canned v2c GetResponse walks whole.
@@ -1921,13 +1921,13 @@ final class Gauntlet: ObservableObject {
                     "the canned response did not parse")
             }
             cases += 1
-            Gauntlet.require(parsed.error == 0,
+            try Gauntlet.require(parsed.error == 0,
                 "the canned response carries an error")
-            Gauntlet.require(parsed.binds.count == 2,
+            try Gauntlet.require(parsed.binds.count == 2,
                 "the canned binds did not all parse")
             let first = parsed.binds[0]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 first.oid == "1.3.6.1.2.1.1.1.0"
                     && first.tag == 0x04
                     && first.body
@@ -1935,7 +1935,7 @@ final class Gauntlet: ObservableObject {
                 "the string bind read wrong")
             let second = parsed.binds[1]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 second.oid == "1.3.6.1.2.1.1.3.0"
                     && second.tag == 0x02
                     && second.body == [0x06, 0x79, 0x32],
@@ -1978,26 +1978,26 @@ final class Gauntlet: ObservableObject {
                     "the fixture paper did not parse")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 cert.subjectLine == "CN=gauntlet.test",
                 "the subject line moved: "
                     + cert.subjectLine)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 cert.issuerLine == "CN=gauntlet.test",
                 "the issuer line moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 cert.issuerRaw == cert.subjectRaw,
                 "a self-signed paper's names differ")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 cert.serialHex
                     == "15:19:84:02:74:af:f8:58:2b:62:"
                     + "bf:82:4c:3a:da:69:05:e4:49:fe",
                 "the serial moved: " + cert.serialHex)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 cert.sigOID == "1.2.840.113549.1.1.11",
                 "the signature OID moved")
             guard let before = cert.notBefore,
@@ -2007,29 +2007,29 @@ final class Gauntlet: ObservableObject {
             }
             cases += 1
             let span = after.timeIntervalSince(before)
-            Gauntlet.require(
+            try Gauntlet.require(
                 span > 315_000_000 && span < 316_000_000,
                 "the validity span moved")
             cases += 1
-            Gauntlet.require(cert.isCA == true,
+            try Gauntlet.require(cert.isCA == true,
                 "the CA flag did not read")
             guard let key = cert.keyInfo else {
                 throw Gauntlet.Failure(message:
                     "the key did not read")
             }
             cases += 1
-            Gauntlet.require(key.family == "RSA",
+            try Gauntlet.require(key.family == "RSA",
                 "the key family moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 key.rsaModulus?.bitLength == 2048,
                 "the modulus is not 2048 bits")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 key.rsaExponent == LockBig(65537),
                 "the exponent is not 65537")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 key.detail.contains("2048-bit"),
                 "the key detail lost its size")
             return "\(cases) cases: the fixture "
@@ -2041,17 +2041,17 @@ final class Gauntlet: ObservableObject {
             // catalogue check values.
             let check = Array("123456789".utf8)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsCRCModbus(check)
                     == 0x4B37,
                 "the Modbus CRC moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsCRCDNP(check)
                     == 0xEA82,
                 "the DNP3 CRC moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsCRCCCITT(check)
                     == 0x29B1,
                 "the CCITT CRC moved")
@@ -2060,7 +2060,7 @@ final class Gauntlet: ObservableObject {
             let ask = BlacksiteBench.icsMBAP(length: 5)
                 + [0x2B, 0x0E, 0x01, 0x00]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 ask == [0x00, 0x01, 0x00, 0x00, 0x00,
                         0x05, 0x01, 0x2B, 0x0E, 0x01,
                         0x00],
@@ -2072,23 +2072,23 @@ final class Gauntlet: ObservableObject {
             let frame = BlacksiteBench.icsDNP3Frame(
                 ctrl: 0xC4, user: short)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(frame[0..<4])
                     == [0x05, 0x64, 8, 0xC4],
                 "the DNP3 header moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(frame[4..<8])
                     == [0x01, 0x00, 0x64, 0x00],
                 "the DNP3 addresses moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16LE(frame, 8)
                     == BlacksiteBench.icsCRCDNP(
                         Array(frame[0..<8])),
                 "the DNP3 header CRC moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsDNP3User(frame)
                     == short,
                 "the DNP3 user bytes did not strip")
@@ -2098,11 +2098,11 @@ final class Gauntlet: ObservableObject {
             let longFrame = BlacksiteBench
                 .icsDNP3Frame(ctrl: 0xC4, user: long)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 longFrame.count == 56,
                 "the blocked DNP3 frame sized wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsDNP3User(longFrame)
                     == long,
                 "the blocked DNP3 frame lost bytes")
@@ -2112,7 +2112,7 @@ final class Gauntlet: ObservableObject {
                 0x81, 0x0A, 0x00, 0x08,
                 0x01, 0x00, 0x10, 0x08]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16BE(whois, 2) == 8
                     && whois.count == 8,
                 "the Who-Is length moved")
@@ -2122,14 +2122,14 @@ final class Gauntlet: ObservableObject {
             let tag = BlacksiteBench.icsBACTag(
                 tagged, &tagPos)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 tag.num == 12 && tag.len == 4
                     && tagPos == 1,
                 "the BACnet tag walk moved")
             let objectID = BlacksiteBench.icsU32BE(
                 tagged, 1)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 objectID >> 22 == 8
                     && (objectID & 0x3FFFFF) == 999,
                 "the device object id read wrong")
@@ -2139,7 +2139,7 @@ final class Gauntlet: ObservableObject {
             let extTag = BlacksiteBench.icsBACTag(
                 extended, &extPos)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 extTag.num == 5 && extTag.len == 3
                     && extPos == 2,
                 "the extended tag walk moved")
@@ -2169,36 +2169,36 @@ final class Gauntlet: ObservableObject {
             enip += [UInt8](repeating: 0, count: 20)
             enip += eBody
             cases += 1
-            Gauntlet.require(enip[0] == 0x63,
+            try Gauntlet.require(enip[0] == 0x63,
                 "the ENIP command byte moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16LE(enip, 2)
                     == eBody.count,
                 "the ENIP length moved")
             let walked = Array(eBody.dropFirst(6))
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16LE(walked, 18)
                     == 1,
                 "the ENIP vendor read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16LE(walked, 20)
                     == 14,
                 "the ENIP device type read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU16LE(walked, 22)
                     == 42,
                 "the ENIP product read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsU32LE(walked, 28)
                     == 0x00ABCDEF,
                 "the ENIP serial read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.icsClean(
                     walked[33..<45])
                     == "gauntlet-plc",
@@ -2218,37 +2218,37 @@ final class Gauntlet: ObservableObject {
                 xorSpec: "", useGzip: false)
             let bytes = [UInt8](wire)
             cases += 1
-            Gauntlet.require(bytes.count == 28,
+            try Gauntlet.require(bytes.count == 28,
                 "the CONNECT sized wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 bytes[0] == 0x10 && bytes[1] == 26,
                 "the CONNECT header moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(bytes[2..<4]) == [0, 4],
                 "the protocol name length moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 String(bytes: bytes[4..<8],
                        encoding: .utf8) == "MQTT",
                 "the protocol name moved")
             cases += 1
-            Gauntlet.require(bytes[8] == 4,
+            try Gauntlet.require(bytes[8] == 4,
                 "the protocol level moved")
             cases += 1
-            Gauntlet.require(bytes[9] == 0x02,
+            try Gauntlet.require(bytes[9] == 0x02,
                 "the connect flags moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(bytes[10..<12]) == [0, 60],
                 "the keepalive moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(bytes[12..<14]) == [0, 14],
                 "the client id length moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 String(bytes: bytes[14..<28],
                        encoding: .utf8)
                     == "gauntlet-probe",
@@ -2263,34 +2263,34 @@ final class Gauntlet: ObservableObject {
             get += [0x04]
             get += Array("core".utf8)
             cases += 1
-            Gauntlet.require((get[0] >> 6) == 1,
+            try Gauntlet.require((get[0] >> 6) == 1,
                 "the CoAP version moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 ((get[0] >> 4) & 0x03) == 0
                     && (get[0] & 0x0F) == 0,
                 "the CoAP type or token length moved")
             cases += 1
-            Gauntlet.require(get[1] == 1,
+            try Gauntlet.require(get[1] == 1,
                 "the CoAP code is not GET")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 (Int(get[2]) << 8 | Int(get[3]))
                     == 0xB07A,
                 "the CoAP message id moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 (get[4] >> 4) == 11
                     && (get[4] & 0x0F) == 10,
                 "the Uri-Path option header moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 String(bytes: get[5..<15],
                        encoding: .utf8)
                     == ".well-known",
                 "the first Uri-Path moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 get[15] == 0x04
                     && String(bytes: get[16..<20],
                               encoding: .utf8)
@@ -2309,21 +2309,21 @@ final class Gauntlet: ObservableObject {
             let beats2 = BlacksiteBench.megaMAVParse(
                 v2, from: "192.0.2.1")
             cases += 1
-            Gauntlet.require(beats2.count == 1,
+            try Gauntlet.require(beats2.count == 1,
                 "the v2 heartbeat did not parse")
             let beat2 = beats2[0]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 beat2.sysid == 1 && beat2.compid == 1,
                 "the v2 ids moved")
             cases += 1
-            Gauntlet.require(beat2.vehicleType == 3,
+            try Gauntlet.require(beat2.vehicleType == 3,
                 "the v2 vehicle class moved")
             cases += 1
-            Gauntlet.require(beat2.autopilot == 0,
+            try Gauntlet.require(beat2.autopilot == 0,
                 "the v2 autopilot moved")
             cases += 1
-            Gauntlet.require(beat2.crcOK,
+            try Gauntlet.require(beat2.crcOK,
                 "the v2 checksum failed its own bytes")
             // The brief's v1 heartbeat: sysid 42.
             let v1 = gxHex(
@@ -2331,19 +2331,19 @@ final class Gauntlet: ObservableObject {
             let beats1 = BlacksiteBench.megaMAVParse(
                 v1, from: "192.0.2.1")
             cases += 1
-            Gauntlet.require(beats1.count == 1,
+            try Gauntlet.require(beats1.count == 1,
                 "the v1 heartbeat did not parse")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 beats1[0].sysid == 42
                     && beats1[0].compid == 1,
                 "the v1 ids moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 beats1[0].vehicleType == 12,
                 "the v1 vehicle class moved")
             cases += 1
-            Gauntlet.require(beats1[0].crcOK,
+            try Gauntlet.require(beats1[0].crcOK,
                 "the v1 checksum failed its own bytes")
             // A flipped payload bit fails the
             // checksum but still reads.
@@ -2352,7 +2352,7 @@ final class Gauntlet: ObservableObject {
             let bentBeats2 = BlacksiteBench
                 .megaMAVParse(bent2, from: "192.0.2.1")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 bentBeats2.count == 1
                     && bentBeats2[0].crcOK == false,
                 "a bent v2 frame still verified")
@@ -2361,19 +2361,19 @@ final class Gauntlet: ObservableObject {
             let bentBeats1 = BlacksiteBench
                 .megaMAVParse(bent1, from: "192.0.2.1")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 bentBeats1.count == 1
                     && bentBeats1[0].crcOK == false,
                 "a bent v1 frame still verified")
             // Noise and truncation read as none.
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaMAVParse(
                     [0x00, 0x11, 0x22],
                     from: "192.0.2.1").isEmpty,
                 "noise parsed as a heartbeat")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaMAVParse(
                     Array(v2.prefix(12)),
                     from: "192.0.2.1").isEmpty,
@@ -2438,27 +2438,27 @@ final class Gauntlet: ObservableObject {
                     + "did not parse")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 participant.guidHex
                     == "010f6d61746f6e0000000001"
                     + "000001c1",
                 "the participant GUID moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 participant.vendorRaw == "010f",
                 "the vendor read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 participant.protoMajor == 2
                     && participant.protoMinor == 3,
                 "the protocol version read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 participant.nameClaims
                     == ["participant_name=gauntlet-prime"],
                 "the name claim read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 participant.security == false,
                 "a plain participant claims security")
             let secured = gxSPDP(
@@ -2473,7 +2473,7 @@ final class Gauntlet: ObservableObject {
                     + "did not parse")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 securedParticipant.security == true,
                 "the security property did not grade")
             // No GUID parameter, no participant.
@@ -2481,7 +2481,7 @@ final class Gauntlet: ObservableObject {
                 [("participant_name", "gauntlet-prime")],
                 guid: false)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaParseSPDP(
                     anonymous, from: "192.0.2.1")
                     == nil,
@@ -2490,7 +2490,7 @@ final class Gauntlet: ObservableObject {
             var junk = Array("XXXX".utf8)
             junk += [UInt8](repeating: 0, count: 40)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaParseSPDP(
                     junk, from: "192.0.2.1") == nil,
                 "junk parsed as a participant")
@@ -2505,7 +2505,7 @@ final class Gauntlet: ObservableObject {
                 host: "unit", ip: "192.0.2.10")
             blank.open = []
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaGrades(blank)
                     .isEmpty,
                 "an empty board graded something")
@@ -2515,7 +2515,7 @@ final class Gauntlet: ObservableObject {
                 host: "unit", ip: "192.0.2.10")
             prose.banners[22] = "across the hall"
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 !BlacksiteBench.megaGrades(prose)
                     .contains {
                         $0.family == rosFamily
@@ -2528,7 +2528,7 @@ final class Gauntlet: ObservableObject {
             let doorGrades = BlacksiteBench
                 .megaGrades(door)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 doorGrades.contains {
                     $0.family == rosFamily
                         && $0.score == 3
@@ -2539,7 +2539,7 @@ final class Gauntlet: ObservableObject {
                 host: "unit", ip: "192.0.2.10")
             banner.banners[9090] = "rosbridge suite"
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaGrades(banner)
                     .contains {
                         $0.family == rosFamily
@@ -2549,22 +2549,22 @@ final class Gauntlet: ObservableObject {
             // Claim containment: word boundaries
             // for short needles, plain for long.
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaClaimContains(
                     "across the hall", "ros") == false,
                 "a substring claimed a word")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaClaimContains(
                     "a ros node", "ros") == true,
                 "a whole word did not claim")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaClaimContains(
                     "rosbridge suite", "ros") == false,
                 "a prefix claimed a whole word")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaClaimContains(
                     "rosbridge suite", "rosbridge")
                     == true,
@@ -2572,22 +2572,22 @@ final class Gauntlet: ObservableObject {
             // Actuation shape: control topics
             // read as control, telemetry does not.
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaActuationShaped(
                     "/cmd_vel"),
                 "cmd_vel lost its shape")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.megaActuationShaped(
                     "/joint_states"),
                 "joint_states lost its shape")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 !BlacksiteBench.megaActuationShaped(
                     "/telemetry"),
                 "telemetry read as actuation")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 !BlacksiteBench.megaActuationShaped(
                     "/diagnostics"),
                 "diagnostics read as actuation")
@@ -2603,23 +2603,23 @@ final class Gauntlet: ObservableObject {
                 linktype: 1, number: 1,
                 timestamp: 1767225600.0)
             cases += 1
-            Gauntlet.require(tcp.proto == "TCP",
+            try Gauntlet.require(tcp.proto == "TCP",
                 "the TCP frame read as " + tcp.proto)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 tcp.srcPort == 49152
                     && tcp.dstPort == 80,
                 "the TCP ports read wrong")
             cases += 1
-            Gauntlet.require(tcp.tcpFlags == 0x18,
+            try Gauntlet.require(tcp.tcpFlags == 0x18,
                 "the TCP flags read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 tcp.ipSrc == "10.0.0.1"
                     && tcp.ipDst == "10.0.0.2",
                 "the IP endpoints read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 tcp.src == "02:00:00:00:00:01"
                     && tcp.dst == "02:00:00:00:00:02",
                 "the placeholder MACs read wrong")
@@ -2630,7 +2630,7 @@ final class Gauntlet: ObservableObject {
                     "the TCP node is missing")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 tcpNode.detail
                     == "49152 → 80 [ACK, PSH]",
                 "the TCP headline moved: "
@@ -2642,7 +2642,7 @@ final class Gauntlet: ObservableObject {
                     "the checksum node is missing")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 csumNode.detail.contains("correct"),
                 "an honest checksum graded wrong")
             let dnsFrame = Betafisch.dissect(
@@ -2651,11 +2651,11 @@ final class Gauntlet: ObservableObject {
                 linktype: 1, number: 2,
                 timestamp: 1767225601.0)
             cases += 1
-            Gauntlet.require(dnsFrame.proto == "DNS",
+            try Gauntlet.require(dnsFrame.proto == "DNS",
                 "the DNS frame read as "
                     + dnsFrame.proto)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 dnsFrame.protocols.contains("dns"),
                 "the protocol stack lost dns")
             guard let queryNode = gxFind(
@@ -2665,7 +2665,7 @@ final class Gauntlet: ObservableObject {
                     "the query node is missing")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 queryNode.detail == "A, class IN",
                 "the query detail moved: "
                     + queryNode.detail)
@@ -2688,7 +2688,7 @@ final class Gauntlet: ObservableObject {
                 linktype: 1, number: 3,
                 timestamp: 1767225602.0)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 icmpFrame.proto == "ICMP",
                 "the ICMP frame read as "
                     + icmpFrame.proto)
@@ -2700,14 +2700,14 @@ final class Gauntlet: ObservableObject {
                     "the quoted packet is missing")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 quotedNode.children.contains {
                     $0.title == "Source"
                         && $0.detail == "10.0.0.1"
                 },
                 "the quoted source read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 quotedNode.children.contains {
                     $0.title == "Ports"
                         && $0.detail.contains("53111")
@@ -2731,7 +2731,7 @@ final class Gauntlet: ObservableObject {
             }
             let png = [UInt8](pngData)
             cases += 1
-            Gauntlet.require(png.count == 70,
+            try Gauntlet.require(png.count == 70,
                 "the fixture picture sized wrong")
             let client: [UInt8] = [10, 0, 0, 1]
             let server: [UInt8] = [10, 0, 0, 2]
@@ -2757,7 +2757,7 @@ final class Gauntlet: ObservableObject {
                 + "Content-Length: 70\r\n\r\n".utf8)
             response += png
             cases += 1
-            Gauntlet.require(response.count == 134,
+            try Gauntlet.require(response.count == 134,
                 "the fixture response sized wrong")
             let seg1 = Array(response[0..<50])
             let seg2 = Array(response[50..<100])
@@ -2793,23 +2793,23 @@ final class Gauntlet: ObservableObject {
             let extraction = BetafischDrift
                 .extractDetailed(capture)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 extraction.stats.flows == 1,
                 "the exchange did not read as one flow")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 extraction.objects.count == 1,
                 "the picture did not carve exactly once")
             let object = extraction.objects[0]
             cases += 1
-            Gauntlet.require(object.kind == .png,
+            try Gauntlet.require(object.kind == .png,
                 "the carve is not a PNG")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 Array(object.data) == png,
                 "the carved bytes differ from the sent")
             cases += 1
-            Gauntlet.require(object.torn == false,
+            try Gauntlet.require(object.torn == false,
                 "a whole stream read as torn")
             return "\(cases) cases: an out-of-order "
                 + "HTTP exchange carved its picture "
@@ -2841,7 +2841,7 @@ final class Gauntlet: ObservableObject {
                     name: "gauntlet", linktype: 1)],
                 comment: "gauntlet round-trip")
             cases += 1
-            Gauntlet.require(!data.isEmpty,
+            try Gauntlet.require(!data.isEmpty,
                 "the writer produced nothing")
             let scratch = DevKit.directory
                 .appendingPathComponent(
@@ -2860,27 +2860,27 @@ final class Gauntlet: ObservableObject {
             try data.write(to: file)
             let readBack = try Data(contentsOf: file)
             cases += 1
-            Gauntlet.require(readBack == data,
+            try Gauntlet.require(readBack == data,
                 "the file bytes moved")
             let loaded = try Betafisch.load(
                 data: readBack, name: "roundtrip.pcapng")
             cases += 1
-            Gauntlet.require(loaded.frames.count == 3,
+            try Gauntlet.require(loaded.frames.count == 3,
                 "frames were lost in the round-trip")
             for (index, frame)
                 in loaded.frames.enumerated() {
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     frame.bytes == all[index],
                     "a frame's bytes moved")
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     frame.proto
                         == capture.frames[index].proto,
                     "a frame's verdict moved")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BetafischTap.coverageNote
                     .contains("house tap"),
                 "the coverage note moved")
@@ -2908,14 +2908,14 @@ final class Gauntlet: ObservableObject {
             elf[16] = 3
             elf[18] = 0xB7
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(elf)?.family
                     == "elf",
                 "the ELF did not identify")
             BlacksiteBench.fileELFReport(
                 elf, base: 0, emit: emit)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 lines.contains {
                     $0.contains("ELF64")
                         && $0.contains("AArch64")
@@ -2935,14 +2935,14 @@ final class Gauntlet: ObservableObject {
             macho[7] = 0x01
             macho[12] = 2
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(macho)?.family
                     == "macho",
                 "the Mach-O did not identify")
             BlacksiteBench.fileMachOThin(
                 macho, base: 0, emit: emit)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 lines.contains {
                     $0.contains("arm64")
                         && $0.contains("EXECUTE")
@@ -2976,7 +2976,7 @@ final class Gauntlet: ObservableObject {
             zip += [UInt8(cdAt & 0xFF), 0, 0, 0]
             zip += [0, 0]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(zip)?.family
                     == "zip",
                 "the ZIP did not identify")
@@ -2986,18 +2986,18 @@ final class Gauntlet: ObservableObject {
                     "the ZIP did not walk")
             }
             cases += 1
-            Gauntlet.require(walk.entries.count == 1,
+            try Gauntlet.require(walk.entries.count == 1,
                 "the ZIP entry count moved")
             let entry = walk.entries[0]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 entry.name == "gauntlet.txt"
                     && entry.method == 0
                     && entry.compSize == 5
                     && entry.rawSize == 5,
                 "the ZIP entry read wrong")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 walk.cdOffset == cdAt,
                 "the ZIP directory offset moved")
             // A SQLite header: 4096-byte pages,
@@ -3013,7 +3013,7 @@ final class Gauntlet: ObservableObject {
             sqlite[31] = 7
             sqlite[59] = 1
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(sqlite)?.family
                     == "sqlite",
                 "the SQLite file did not identify")
@@ -3023,7 +3023,7 @@ final class Gauntlet: ObservableObject {
                     "the SQLite header did not read")
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 header.pageSize == 4096
                     && header.pages == 7
                     && header.encoding == 1,
@@ -3033,13 +3033,13 @@ final class Gauntlet: ObservableObject {
                 "%PDF-1.7\n1 0 obj\n<<>>\nendobj\n"
                     .utf8)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(pdf)?.family
                     == "pdf",
                 "the PDF did not identify")
             let core = BlacksiteBench.filePDFCore(pdf)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 core.version == "1.7"
                     && core.objects == 1,
                 "the PDF core read wrong")
@@ -3054,7 +3054,7 @@ final class Gauntlet: ObservableObject {
             pe[64] = 0x50
             pe[65] = 0x45
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 BlacksiteBench.fileKind(pe)?.family
                     == "pe",
                 "the PE did not identify")
@@ -3065,7 +3065,7 @@ final class Gauntlet: ObservableObject {
         add("control", "emcon standard holds") {
             var cases = 0
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 EmconStandard.maximumTotal == 100.0,
                 "the exposure maxima no longer "
                     + "sum to 100")
@@ -3075,13 +3075,13 @@ final class Gauntlet: ObservableObject {
                 .probing, .warRun, .banshee,
                 .relayPoll, .updateCheck, .sweep]
             cases += 1
-            Gauntlet.require(organs.count == 12,
+            try Gauntlet.require(organs.count == 12,
                 "the organ census moved")
             func row(_ condition: EmconCondition,
                      _ allowed: [EmconOrgan]) {
                 for organ in organs {
                     cases += 1
-                    Gauntlet.require(
+                    try Gauntlet.require(
                         condition.permits(organ)
                             == allowed.contains(organ),
                         "the ladder moved for an organ")
@@ -3103,11 +3103,11 @@ final class Gauntlet: ObservableObject {
                          "SEVERE"]
             for (severity, word) in zip(ladder, words) {
                 cases += 1
-                Gauntlet.require(severity.word == word,
+                try Gauntlet.require(severity.word == word,
                     "a rung lost its word")
             }
             cases += 1
-            Gauntlet.require(Set(words).count == 3,
+            try Gauntlet.require(Set(words).count == 3,
                 "two rungs share a word")
             // An alert survives its own codec.
             let alert = Sentinel.Alert(
@@ -3121,14 +3121,14 @@ final class Gauntlet: ObservableObject {
             let back = try JSONDecoder().decode(
                 Sentinel.Alert.self, from: data)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 back.key == alert.key
                     && back.severity == .severe
                     && back.line == alert.line
                     && back.ip == alert.ip,
                 "the alert codec lost a field")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 abs(back.at.timeIntervalSince(
                     alert.at)) < 0.001,
                 "the alert codec moved the time")
@@ -3138,20 +3138,20 @@ final class Gauntlet: ObservableObject {
             let sentinel = Sentinel.shared
             for standing in sentinel.standingSevere {
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     standing.severity == .severe,
                     "a non-severe alert stands")
             }
             let recent = sentinel.recentSevere(
                 within: 600)
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 recent.count
                     <= sentinel.standingSevere.count,
                 "the recent window outgrew the store")
             for recentAlert in recent {
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     recentAlert.severity == .severe,
                     "a non-severe alert is recent")
             }
@@ -3162,18 +3162,18 @@ final class Gauntlet: ObservableObject {
             var cases = 0
             let themes = AppTheme.builtIns
             cases += 1
-            Gauntlet.require(themes.count == 10,
+            try Gauntlet.require(themes.count == 10,
                 "the built-in census moved")
             let ids = ["phosphor", "bloodwork",
                        "ultraviolet", "arctic", "amber",
                        "bone", "halloween", "christmas",
                        "blackglass", "redteam"]
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 themes.map { $0.id } == ids,
                 "the theme roster moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 themes.first?.id == "phosphor",
                 "the default theme is not first")
             func hexOK(_ text: String) -> Bool {
@@ -3190,13 +3190,13 @@ final class Gauntlet: ObservableObject {
                             theme.accent,
                             theme.secondary] {
                     cases += 1
-                    Gauntlet.require(hexOK(hex),
+                    try Gauntlet.require(hexOK(hex),
                         "a theme hex is malformed: "
                             + hex)
                 }
             }
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 themes.first {
                     $0.id == "redteam"
                 }?.accent == "#FF1626",
@@ -3225,7 +3225,7 @@ final class Gauntlet: ObservableObject {
                 let inBundle = Bundle.main.url(
                     forResource: resource,
                     withExtension: "gif") != nil
-                Gauntlet.require(inAssets || inBundle,
+                try Gauntlet.require(inAssets || inBundle,
                     "film missing from the bundle: "
                         + asset)
             }
@@ -3250,19 +3250,19 @@ final class Gauntlet: ObservableObject {
                     "the wallpaper film is missing")
             }
             cases += 1
-            Gauntlet.require(film.count > 100_000,
+            try Gauntlet.require(film.count > 100_000,
                 "the wallpaper shrank to "
                     + "\(film.count) bytes")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 UIImage.animatedGIF(data: film) != nil,
                 "the wallpaper does not decode")
             let delays = UIImage.gifDelays(film)
             cases += 1
-            Gauntlet.require(delays.count > 1,
+            try Gauntlet.require(delays.count > 1,
                 "the wallpaper has one frame")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 delays.reduce(0, +) > 0,
                 "the wallpaper's frames take no time")
             return "\(cases) cases: the wallpaper "
@@ -3275,25 +3275,25 @@ final class Gauntlet: ObservableObject {
                 + "\\\\" + "c" + "\\" + "u000a"
                 + "d" + "\""
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 JSONL.string("a\"b\\c\nd") == escaped,
                 "the string escaper moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 JSONL.hex([0xDE, 0xAD]) == "dead",
                 "the hex writer moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 JSONL.seconds(1767225600.25)
                     == "1767225600.250",
                 "the seconds writer moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 JSONL.int(nil) == "null"
                     && JSONL.int(7) == "7",
                 "the int writer moved")
             cases += 1
-            Gauntlet.require(
+            try Gauntlet.require(
                 JSONL.object([("b", "1"), ("a", "2")])
                     == "{\"b\":1,\"a\":2}",
                 "the object writer moved")
@@ -3329,7 +3329,7 @@ final class Gauntlet: ObservableObject {
                 lines.append(sighting.jsonLine)
             }
             cases += 1
-            Gauntlet.require(lines.count == 500,
+            try Gauntlet.require(lines.count == 500,
                 "the batch sized wrong")
             for (i, line) in lines.enumerated() {
                 let object = try JSONSerialization
@@ -3340,42 +3340,42 @@ final class Gauntlet: ObservableObject {
                         "a sighting line did not decode")
                 }
                 cases += 1
-                Gauntlet.require(
+                try Gauntlet.require(
                     (dict["type"] as? String)
                         == "sighting",
                     "a line lost its type")
-                Gauntlet.require(
+                try Gauntlet.require(
                     (dict["address"] as? String)
                         == String(
                             format: "gauntlet-%03d", i),
                     "the batch fell out of order")
                 let seen = (dict["seen_at"]
                     as? NSNumber)?.doubleValue ?? -1
-                Gauntlet.require(
+                try Gauntlet.require(
                     abs(seen - (1767225600.0
                         + Double(i) * 0.25)) < 0.001,
                     "a timestamp moved")
-                Gauntlet.require(
+                try Gauntlet.require(
                     (dict["rssi"] as? NSNumber)?
                         .intValue == -40 - (i % 50),
                     "an rssi moved")
                 let maker = dict["manufacturer_data"]
                     as? [String: Any]
-                Gauntlet.require(
+                try Gauntlet.require(
                     (maker?["76"] as? String)
                         == "0215",
                     "the maker bytes moved")
                 if i == 499 {
-                    Gauntlet.require(
+                    try Gauntlet.require(
                         dict["name"] is NSNull,
                         "a nil name did not write null")
                 } else if i % 7 == 0 {
-                    Gauntlet.require(
+                    try Gauntlet.require(
                         (dict["name"] as? String)
                             == "quoted \"name\" \(i)",
                         "a quoted name broke")
                 } else {
-                    Gauntlet.require(
+                    try Gauntlet.require(
                         (dict["name"] as? String)
                             == "beacon-\(i)",
                         "a name moved")
@@ -3383,6 +3383,293 @@ final class Gauntlet: ObservableObject {
             }
             return "\(cases) cases: 500 sighting "
                 + "lines round-tripped in order"
+        }
+        // -- ONION (fix322) ----------------
+        // The wrap's standard, pinned against
+        // its pure cores: the inventory sums
+        // to exactly 7.0, the bands and the
+        // EMCON floors hold their order, the
+        // SOCKS5 wire bytes are byte-exact,
+        // and the pure scorer grades synthetic
+        // postures to the exact decimal. No
+        // network: snapshots and fixtures only.
+
+        add("onion", "inventory sums to seven") {
+            var cases = 0
+            let maxima: [(String, Double)] = [
+                ("tunnel", OnionStandard.maxTunnel),
+                ("tor", OnionStandard.maxTorRoad),
+                ("dns", OnionStandard.maxDNS),
+                ("emissions",
+                 OnionStandard.maxEmissions),
+                ("listeners",
+                 OnionStandard.maxListeners),
+                ("identity",
+                 OnionStandard.maxIdentity),
+                ("metadata",
+                 OnionStandard.maxMetadata),
+            ]
+            var sum = 0.0
+            for (name, maximum) in maxima {
+                cases += 1
+                try Gauntlet.require(maximum > 0,
+                    "a layer's maximum is not "
+                    + "positive: " + name)
+                sum += maximum
+            }
+            try Gauntlet.require(sum == 7.0,
+                "the inventory does not sum to "
+                + "7.0: \(sum)")
+            try Gauntlet.require(
+                OnionStandard.maximumTotal == 7.0,
+                "the standard's total is not 7.0")
+            let peeled = OnionStandard.score(
+                OnionSnapshot())
+            try Gauntlet.require(
+                peeled.rows.count == 7,
+                "the scorer does not lay seven "
+                + "rows")
+            for row in peeled.rows {
+                cases += 1
+                let declared = maxima.first {
+                    $0.0 == row.key
+                }?.1 ?? -1
+                try Gauntlet.require(
+                    row.maximum == declared,
+                    "row maximum drifted from the "
+                    + "inventory: " + row.key)
+            }
+            return "\(cases) cases: seven layers, "
+                + "maxima 1.5+1.5+1.0+1.0+0.75"
+                + "+0.5+0.75 = exactly 7.0"
+        }
+        add("onion", "bands ordered") {
+            var cases = 0
+            let ladder: [(Double, String)] = [
+                (0.0, "PEELED"), (0.25, "THIN"),
+                (1.75, "THIN"), (2.0, "SKINNED"),
+                (3.75, "SKINNED"), (4.0, "WRAPPED"),
+                (5.25, "WRAPPED"),
+                (5.5, "LAYERED"), (6.75, "LAYERED"),
+                (7.0, "FULL ONION"),
+            ]
+            for (value, band) in ladder {
+                cases += 1
+                try Gauntlet.require(
+                    OnionStandard.band(for: value)
+                        == band,
+                    "band drifted at \(value): "
+                    + OnionStandard.band(for: value))
+            }
+            var previous = -1.0
+            var probe = 0.0
+            while probe <= 7.0 {
+                cases += 1
+                let bandIndex = ladder
+                    .firstIndex {
+                        $0.1 == OnionStandard.band(
+                            for: probe)
+                    } ?? -1
+                try Gauntlet.require(
+                    Double(bandIndex) >= previous,
+                    "the bands fell out of order "
+                    + "at \(probe)")
+                previous = Double(bandIndex)
+                probe += 0.25
+            }
+            return "\(cases) cases: PEELED < THIN "
+                + "< SKINNED < WRAPPED < LAYERED "
+                + "< FULL ONION, boundaries exact"
+        }
+        add("onion", "emcon floors monotonic") {
+            var cases = 0
+            let floors: [(EmconCondition, Double)] = [
+                (.open, 0.0), (.charlie, 2.0),
+                (.bravo, 4.5), (.alpha, 7.0),
+            ]
+            var previous = -1.0
+            for (condition, floor) in floors {
+                cases += 1
+                try Gauntlet.require(
+                    condition.onionFloor == floor,
+                    "a floor drifted: "
+                    + "\(condition) asks "
+                    + "\(condition.onionFloor)")
+                try Gauntlet.require(
+                    condition.onionFloor >= previous,
+                    "the floors are not monotonic")
+                previous = condition.onionFloor
+            }
+            let full = OnionStandard.score(
+                onionFullFixture())
+            try Gauntlet.require(
+                OnionStandard.floorGap(
+                    full, .alpha) == 0,
+                "a full onion falls short of "
+                + "alpha's floor")
+            let peeled = OnionStandard.score(
+                onionPeeledFixture())
+            try Gauntlet.require(
+                OnionStandard.floorGap(
+                    peeled, .charlie) == 2.0,
+                "a peeled house is not 2.0 "
+                + "short of charlie's floor")
+            return "\(cases) cases: floors "
+                + "0.0/2.0/4.5/7.0, monotonic "
+                + "with the condition ladder"
+        }
+        add("onion", "socks5 wire bytes exact") {
+            var cases = 0
+            try Gauntlet.require(
+                OnionSOCKS.greetingBytes()
+                    == [0x05, 0x01, 0x00],
+                "the greeting bytes moved")
+            cases += 1
+            var wantDomain: [UInt8] = [0x05, 0x01,
+                0x00, 0x03, 0x0B]
+            wantDomain += [UInt8](
+                "example.com".utf8)
+            wantDomain += [0x01, 0xBB]
+            try Gauntlet.require(
+                OnionSOCKS.requestBytes(
+                    host: "example.com", port: 443)
+                    == wantDomain,
+                "the domain CONNECT bytes moved")
+            cases += 1
+            try Gauntlet.require(
+                OnionSOCKS.requestBytes(
+                    host: "192.0.2.1", port: 80)
+                    == [0x05, 0x01, 0x00, 0x01,
+                        192, 0, 2, 1, 0x00, 0x50],
+                "the ipv4 CONNECT bytes moved")
+            cases += 1
+            let reply = OnionSOCKS.parseReply(
+                [0x05, 0x00, 0x00, 0x01,
+                 127, 0, 0, 1, 0x1F, 0x90])
+            try Gauntlet.require(reply != nil,
+                "a sound reply did not parse")
+            try Gauntlet.require(reply?.rep == 0,
+                "the fixture's rep moved")
+            try Gauntlet.require(
+                reply?.bound == "127.0.0.1",
+                "the bound address moved")
+            try Gauntlet.require(
+                reply?.totalLength == 10,
+                "the reply length moved")
+            cases += 4
+            let refused = OnionSOCKS.parseReply(
+                [0x05, 0x05, 0x00, 0x01,
+                 0, 0, 0, 0, 0, 0])
+            try Gauntlet.require(
+                refused?.rep == 5,
+                "the refusal fixture lost its rep")
+            try Gauntlet.require(
+                OnionSOCKS.repName(5)
+                    == "connection refused",
+                "rep 5 lost its name")
+            try Gauntlet.require(
+                OnionSOCKS.parseReply(
+                    [0x05, 0x00]) == nil,
+                "a truncated reply parsed")
+            cases += 3
+            return "\(cases) cases: greeting + "
+                + "CONNECT (name and literal) "
+                + "byte-exact, replies parse, "
+                + "REP codes named"
+        }
+        add("onion", "scorer exact on fixtures") {
+            var cases = 0
+            let peeled = OnionStandard.score(
+                onionPeeledFixture())
+            try Gauntlet.require(
+                peeled.value == 0.0,
+                "the peeled fixture scored "
+                + "\(peeled.value)")
+            try Gauntlet.require(
+                peeled.band == "PEELED",
+                "the peeled fixture banded "
+                + peeled.band)
+            cases += 2
+            let full = OnionStandard.score(
+                onionFullFixture())
+            try Gauntlet.require(
+                full.value == 7.0,
+                "the full fixture scored "
+                + "\(full.value)")
+            try Gauntlet.require(
+                full.band == "FULL ONION",
+                "the full fixture banded "
+                + full.band)
+            cases += 2
+            // Tunnel present, not the road
+            // (0.50) + bare gateway DNS (0.25)
+            // + quiet organs (1.0+0.75+0.5
+            // +0.75) = 3.75.
+            var a = OnionSnapshot()
+            a.tunnelOtherName = "utun4"
+            a.gatewayIP = "192.168.1.1"
+            let scoreA = OnionStandard.score(a)
+            try Gauntlet.require(
+                scoreA.value == 3.75,
+                "partial A scored "
+                + "\(scoreA.value), want 3.75")
+            cases += 1
+            // Tunnel default (1.5) + DNS rides
+            // (1.0) + wrap on, road answered
+            // but fetch failed (0.25) + a
+            // listed serve AND the GATT stage
+            // standing (emissions 1.0 − 0.40
+            // − 0.30 = 0.30) + one listed
+            // listener (0.50) + personal name
+            // (0) + relay polling (0.50)
+            // = 4.05.
+            var b = onionFullFixture()
+            b.probe = OnionProbeRecord(
+                when: Date(), endpoint:
+                    "127.0.0.1:9050",
+                socksAnswered: true,
+                wrappedOK: false, isTor: nil,
+                exitIP: nil, problem: "fixture")
+            b.organs.gattHostOn = true
+            b.organs.serveRunning = true
+            b.organs.serveListeners = 1
+            b.organs.deviceName = "Gauntlet's iPhone"
+            b.organs.relayPolling = true
+            let scoreB = OnionStandard.score(b)
+            try Gauntlet.require(
+                scoreB.value == 4.05,
+                "partial B scored "
+                + "\(scoreB.value), want 4.05")
+            cases += 1
+            // Road answers, wrap off (0.50)
+            // + tunnel-other (0.50) + gateway
+            // DNS (0.25) + beacon standing
+            // (0.70) + stealth listeners
+            // (0.75) + clean identity (0.50)
+            // + assault running (0.50)
+            // = 3.70.
+            var c = OnionSnapshot()
+            c.tunnelOtherName = "utun2"
+            c.gatewayIP = "192.168.1.1"
+            c.probe = OnionProbeRecord(
+                when: Date(), endpoint:
+                    "127.0.0.1:9050",
+                socksAnswered: true,
+                wrappedOK: true, isTor: true,
+                exitIP: "192.0.2.9", problem: "")
+            c.organs.beaconOn = true
+            c.organs.serveRunning = true
+            c.organs.stealth = true
+            c.organs.assaultOn = true
+            let scoreC = OnionStandard.score(c)
+            try Gauntlet.require(
+                scoreC.value == 3.70,
+                "partial C scored "
+                + "\(scoreC.value), want 3.70")
+            cases += 1
+            return "\(cases) cases: peeled 0.0, "
+                + "full 7.0, partials 3.75 / "
+                + "4.05 / 3.70 — to the cent"
         }
         // The battery: the deep bench — chat
         // by the thousand, stress by the ten
@@ -3408,4 +3695,40 @@ private final class GauntletCounter {
         defer { lock.unlock() }
         return count
     }
+}
+
+/// The Onion's peeled fixture (fix322):
+/// every row starved — no tunnel, no road,
+/// no gateway, the loud organs standing, a
+/// personal name on the wire. Scores 0.0.
+private func onionPeeledFixture()
+    -> OnionSnapshot {
+    var snap = OnionSnapshot()
+    snap.organs.serveRunning = true
+    snap.organs.serveListeners = 3
+    snap.organs.gattHostOn = true
+    snap.organs.beaconOn = true
+    snap.organs.deviceName =
+        "Gauntlet's iPhone"
+    snap.organs.relayPolling = true
+    snap.organs.assaultOn = true
+    snap.organs.warKnocking = true
+    return snap
+}
+
+/// The Onion's full fixture (fix322): the
+/// tunnel carries the road, the wrap is on
+/// and proven, and every organ is quiet.
+/// Scores exactly 7.0.
+private func onionFullFixture()
+    -> OnionSnapshot {
+    var snap = OnionSnapshot()
+    snap.tunnelDefaultName = "utun4"
+    snap.wrapOn = true
+    snap.probe = OnionProbeRecord(
+        when: Date(), endpoint: "127.0.0.1:9050",
+        socksAnswered: true, wrappedOK: true,
+        isTor: true, exitIP: "192.0.2.9",
+        problem: "")
+    return snap
 }

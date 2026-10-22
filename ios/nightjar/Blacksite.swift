@@ -42,6 +42,7 @@ enum Blacksite {
         "scan": 4, "recon": 6, "emcon": 7,
         "knocktalk": 8, "macros": 10,
         "vault": 11, "blacksite": 12,
+        "onion": 13,
     ]
 }
 
@@ -236,7 +237,7 @@ final class BlacksiteShell: ObservableObject {
         "neofetch", "diagnose",
         "limits",
         "scan", "knock", "census", "eazy", "magdump", "decode",
-        "company", "port", "emcon", "macro",
+        "company", "port", "emcon", "onion", "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom", "betafisch", "driftnet",
         "theme", "haptics", "skelli", "open",
@@ -3261,6 +3262,8 @@ final class BlacksiteShell: ObservableObject {
             netCommand(head, args)
         case "emcon":
             emcon(args)
+        case "onion":
+            onionCommand(args)
         case "macro", "macros":
             macro(args)
         case "freedoom", "doom":
@@ -5071,6 +5074,7 @@ final class BlacksiteShell: ObservableObject {
                 ("company <id>", L("who a company id belongs to")),
                 ("port <n> [udp]", L("what a port is for")),
                 ("emcon [open|charlie|bravo|alpha|off]", L("read or set the condition")),
+                ("onion [wrap on|off] [tor] [audit]", L("the wrap and the layers — the board, the road, the score")),
                 ("macro list | run <name>", L("the macro library, run from here")),
                 ("gauntlet", L("run the gauntlet")),
                 ("freedoom", L("play freedoom — the big one")),
@@ -11342,6 +11346,94 @@ final class BlacksiteShell: ObservableObject {
                  .ok)
         default:
             emit(L("conditions: open, charlie, bravo, alpha."), .err)
+        }
+    }
+
+    /// onion [wrap on|off] [tor] [audit] —
+    /// the Onion's console face. Bare: the
+    /// layers board. wrap on|off works the
+    /// wrap. tor fires the one check knock and
+    /// reports the claim. audit re-reads the
+    /// house first, then boards — the board
+    /// always gathers fresh, so the two print
+    /// the same truth; audit says so out loud.
+    private func onionCommand(_ args: [String]) {
+        let word = args.first?.lowercased()
+        switch word {
+        case nil, "audit":
+            guard let (mouth, emcon) =
+                centerOrgans() else { return }
+            if word == "audit" {
+                emit(L("onion: fresh read — the board below was gathered just now."), .sys)
+            }
+            onionBoard(mouth: mouth, emcon: emcon)
+        case "wrap":
+            let setting = args.dropFirst().first?
+                .lowercased()
+            switch setting {
+            case "on":
+                OnionStandard.setWrap(true)
+                emit(L("onion: the wrap is on — the bench core rides the tor road, fail-closed."), .ok)
+            case "off":
+                OnionStandard.setWrap(false)
+                emit(L("onion: the wrap is off — the bench core runs bare."), .ok)
+            case nil:
+                emit(OnionStandard.wrapEngaged
+                     ? String(format: L("onion: the wrap is on. Its road: %@."), OnionStandard.endpointLabel)
+                     : L("onion: the wrap is off."), .out)
+            default:
+                emit(L("onion wrap on|off — or bare onion for the board."), .err)
+            }
+        case "tor":
+            emit(L("onion: one knock on the tor road…"), .sys)
+            OnionStandard.probeTor { record in
+                if record.socksAnswered
+                    && record.wrappedOK {
+                    if record.isTor == true {
+                        self.emit(String(format: L("onion: the claim — the check service says this road exits through Tor (exit %@, via %@)."), record.exitIP ?? "?", record.endpoint), .ok)
+                    } else {
+                        self.emit(String(format: L("onion: the claim — the check service says this road does NOT exit through Tor (exit %@, via %@). Whatever answered is not a Tor road."), record.exitIP ?? "?", record.endpoint), .err)
+                    }
+                } else if record.socksAnswered {
+                    self.emit(String(format: L("onion: the endpoint at %@ answered, but the wrapped fetch failed: %@"), record.endpoint, record.problem), .err)
+                } else {
+                    self.emit(String(format: L("onion: no SOCKS road answered — not 9050, not 9150, not %@: %@"), record.endpoint, record.problem), .err)
+                }
+            }
+        default:
+            emit(L("onion [wrap on|off] [tor] [audit] — bare onion prints the layers board."), .err)
+        }
+    }
+
+    /// The board: the score and band, the
+    /// EMCON line with its floor verdict, the
+    /// wrap's state, and every layer with its
+    /// evidence — the room, in text.
+    private func onionBoard(mouth: Mouth,
+                            emcon: Emcon) {
+        let audit = OnionStandard.audit(
+            emcon: emcon, mouth: mouth)
+        emit(String(format: L("ONION — %@ of 7.0 layers · %@"),
+                    OnionStandard.fmt(audit.value),
+                    audit.band), .ok)
+        emit(String(format: L("EMCON %@ — %@"),
+                    emcon.condition.declared,
+                    OnionStandard.floorLine(
+                        audit, emcon.condition)),
+             .out)
+        emit(OnionStandard.wrapEngaged
+             ? String(format: L("the wrap is ON — the bench core rides %@, fail-closed."), OnionStandard.endpointLabel)
+             : L("the wrap is off — the bench core runs bare."), .out)
+        if let refusal = OnionStandard
+            .lastWrapRefusal {
+            emit(refusal, .err)
+        }
+        for row in audit.rows {
+            emit(String(format: L("  %@ — %@ · %@/%@ · %@"),
+                        row.label, row.state,
+                        OnionStandard.fmt(row.earned),
+                        OnionStandard.fmt(row.maximum),
+                        row.evidence), .out)
         }
     }
 

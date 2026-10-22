@@ -118,22 +118,17 @@ extension BlacksiteBench {
         return (host, resolved.ip, port)
     }
 
-    static func satSocket(_ ip: String, _ port: Int) -> Int32 {
-        let fd = socket(AF_INET, SOCK_STREAM, 0)
-        guard fd >= 0 else { return -1 }
-        var addr = BlacksiteNet.sockaddrIn(
-            ip: ip, port: UInt16(clamping: port))
-        let rc = withUnsafePointer(to: &addr) { pointer in
-            pointer.withMemoryRebound(
-                to: sockaddr.self, capacity: 1) { sa in
-                connect(fd, sa,
-                        socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        if rc != 0 { close(fd); return -1 }
-        BetafischTap.shared.noteConnect(
-            fd: fd, ip: ip, port: port, udp: false)
-        return fd
+    /// A connected stream, or -1. Rides the
+    /// shared road (BlacksiteNet
+    /// .streamConnect, timeout 0 — this
+    /// road's no-standing-timeout shape) —
+    /// the Onion's wrap gate stands there.
+    static func satSocket(_ ip: String,
+                          _ port: Int) -> Int32 {
+        BlacksiteNet.streamConnect(
+            ip: ip,
+            port: UInt16(clamping: port),
+            timeout: 0) ?? -1
     }
 
     static func satSendAll(_ fd: Int32, _ bytes: [UInt8]) -> Bool {

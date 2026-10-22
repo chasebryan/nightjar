@@ -109,6 +109,13 @@ enum SkelliKnowledge {
                        "exposure", "dark", "visible"],
             body: "Emission control, kept to a Standard now: the exposure is decimal and exact — every standing emission carries a fixed weight in one inventory, a fully lit house sums to exactly 100.0, and the audit reads the organs themselves, so her number, the tab's number and the drill's number are one number. EMCON is a declared condition, not a switch: CHARLIE guards (Serve unlisted only, nothing advertising, no campaigns, no update checks), BRAVO receives only (Serve down, the relay poll stopped), ALPHA is total silence (even the sweeps stop). Engaging silences every forbidden organ — campaigns, personas, the air, a running network trace, Serve by the condition — and verifies, naming anything still lit. The network trace answers to the Standard as a sweep: by hand it may run at CHARLIE, under BRAVO and ALPHA the funnel refuses it whoever asks — hand, macro or game. The gate stands at every funnel afterwards: a forbidden organ cannot start by hand, macro, crew or a saved GATT arm returning at launch, and refusals are journaled. One boundary: a single payload the operator fires by hand is the operator speaking; standing emissions are what is regulated. The score never hides what it cannot silence; your VPN's own listener reads as what it is."),
         SkelliEntry(
+            id: "onion", title: "Onion — the wrap",
+            home: "the Onion tab",
+            keywords: ["onion", "layers", "layer score",
+                       "tor", "wrap", "wrapping",
+                       "torification", "socks", "peeled"],
+            body: "The wrap, kept to a Standard of its own, and scored in LAYERS — 0.0 to 7.0, seven rows whose maxima sum to exactly seven. One: the wrap itself. Everything this app sends through its shared bench core rides a SOCKS5 road — your Tor road, Orbot on the phone — when the wrap is engaged, and it fails closed: wrap on and the road down, the connect refuses and nothing goes out bare. The core connects by name, so a target is never resolved on the local wire first. Two: the score. A tunnel carrying the default route earns 1.5, a proven Tor road 1.5, DNS riding the tunnel 1.0, silent emissions 1.0, unlisted listeners 0.75, a wire identity with no personal name in it 0.5, and metadata organs that don't phone home 0.75 — PEELED at zero, FULL ONION at seven. Three: the coupling. Every EMCON condition declares an onion floor — open asks nothing, CHARLIE 2.0, BRAVO 4.5, ALPHA the whole 7.0 — and engaging a condition reports whether the floor is met and exactly what the gap is made of; reported, never enforced, never faked. The boundary, stated in the room and meant: no app can torify a whole device — other apps and the system keep their own roads. The Onion wraps what THIS app emits and grades the posture it can actually see; what it cannot see, it names unverifiable. In the console: onion, onion wrap on, onion tor."),
+        SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
             keywords: ["war chest", "chest", "configuration",
@@ -2976,6 +2983,7 @@ final class SkelliCenter: ObservableObject {
         if lockdownAsk(q) { return true }
         if quarantineAsk(q) { return true }
         if censusAsk(q) { return true }
+        if onionAsk(q) { return true }
         if networkAsk(q) { return true }
         if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
@@ -3520,6 +3528,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if censusAsk(q) {
+            return
+        }
+        if onionAsk(q) {
             return
         }
 

@@ -1773,6 +1773,156 @@ extension SkelliCenter {
         say(String(format: L("%@ address(es) collected: %@. The list is filed in Deliveries."), String(describing: lines.count), spoken))
     }
 
+    // MARK: the Onion lane — her wrap hand
+
+    /// The Onion, claimed whole (fix322, on
+    /// censusAsk's proven shape): the score
+    /// read aloud from the LIVE audit, the
+    /// Tor road's state, and the wrap toggle
+    /// worked by her own hand — she never
+    /// sends the operator to the tab to flip
+    /// it. Lessons about the thing itself
+    /// ("what is the onion", "how does the
+    /// wrap work") fall through to the manual
+    /// untouched. A QUESTION about the score
+    /// is not an action — the fix589 fence:
+    /// a questioned toggle ("should I turn
+    /// the wrap on?") gets the report, never
+    /// the flip; a negated one ("don't turn
+    /// the wrap on") is honored out loud and
+    /// nothing moves.
+    func onionAsk(_ q: String) -> Bool {
+        let onionLessonMarks = ["explain",
+            "how does", "how do i",
+            "what is the onion",
+            "what is an onion",
+            "what's the onion", "what is tor",
+            "what is onion"]
+        if onionLessonMarks.contains(
+            where: { q.contains($0) }) {
+            return false
+        }
+        let words = Set(q.lowercased()
+            .split(whereSeparator: {
+                !$0.isLetter && !$0.isNumber
+            })
+            .map(String.init))
+        let onionOnMarks = ["wrap on",
+            "turn the wrap on",
+            "engage the wrap", "tor on",
+            "onion on", "use tor",
+            "through tor", "torify"]
+        let onionOffMarks = ["wrap off",
+            "turn the wrap off",
+            "drop the wrap", "unwrap",
+            "tor off", "onion off", "stop tor"]
+        let onionNegMarks = ["don't", "dont",
+            "do not", "never"]
+        let wantsOn = onionOnMarks.contains(
+            where: { q.contains($0) })
+        let wantsOff = onionOffMarks.contains(
+            where: { q.contains($0) })
+        let wrapWord = words.contains("wrap")
+            || words.contains("wrapped")
+            || words.contains("wrapping")
+            || words.contains("unwrap")
+        // A toggle mark is itself the subject:
+        // "turn the wrap on" names no tor and
+        // no onion, and it is plainly hers to
+        // work. The rest of the gate wants the
+        // thing named — the onion, a layer,
+        // the tor road, or a wrap word with
+        // tor/onion standing beside it.
+        let subject = words.contains("onion")
+            || words.contains("layer")
+            || words.contains("layers")
+            || q.contains("tor road")
+            || q.contains("tor check")
+            || (wrapWord
+                && (words.contains("tor")
+                    || words.contains("onion")))
+            || wantsOn || wantsOff
+        guard subject else { return false }
+        if wantsOn || wantsOff {
+            let firstWord = q.split(
+                separator: " ").first
+                .map(String.init) ?? ""
+            let questioned = q.contains("?")
+                || ["should", "can", "could",
+                    "is", "do", "does", "would"]
+                    .contains(firstWord)
+            let negated = onionNegMarks.contains(
+                where: { q.contains($0) })
+            if negated {
+                say(L("Heard — the wrap stays "
+                    + "exactly as it is. I "
+                    + "won't touch it."))
+                return true
+            }
+            if !questioned {
+                if wantsOn {
+                    OnionStandard.setWrap(true)
+                    onionSayScore(L("The wrap's "
+                        + "on — the bench core "
+                        + "rides the tor road "
+                        + "now, fail-closed."))
+                } else {
+                    OnionStandard.setWrap(false)
+                    onionSayScore(L("The wrap's "
+                        + "off — the bench core "
+                        + "runs bare."))
+                }
+                return true
+            }
+        }
+        onionSayScore(nil)
+        return true
+    }
+
+    /// The layers, in her voice: the live
+    /// score and band, then the thinnest
+    /// layer named — the same audit the room
+    /// and the console read.
+    private func onionSayScore(
+        _ prefix: String?) {
+        guard let emcon, let mouth else {
+            if let prefix {
+                say(prefix)
+            } else {
+                say(L("The house's organs "
+                    + "aren't wired to me yet "
+                    + "— the Onion room has "
+                    + "the board."))
+            }
+            return
+        }
+        let audit = OnionStandard.audit(
+            emcon: emcon, mouth: mouth)
+        let scoreLine = String(format: L(
+            "You're at %@ layers — %@."),
+            OnionStandard.fmt(audit.value),
+            audit.band.lowercased())
+        let thinnest = audit.rows
+            .filter { $0.earned < $0.maximum }
+            .sorted {
+                ($0.maximum - $0.earned)
+                    > ($1.maximum - $1.earned)
+            }
+            .first
+        var line = prefix.map { $0 + " " }
+            ?? ""
+        line += scoreLine
+        if let thinnest {
+            line += " " + String(format: L(
+                "Thinnest: %@ — %@."),
+                thinnest.label, thinnest.state)
+        } else {
+            line += " " + L("Every layer is "
+                + "whole — full onion.")
+        }
+        say(line)
+    }
+
     // MARK: her send hand — she fires
 
     /// A saved pattern filled from the ask, the

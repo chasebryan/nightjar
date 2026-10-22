@@ -167,6 +167,12 @@ final class Emcon: ObservableObject {
     /// with its name on it; the tab shows both lists.
     @Published private(set) var lastSilenced: [String] = []
     @Published private(set) var lastUnsilenced: [String] = []
+    /// The Onion's floor verdict from the last
+    /// engage: whether the house's layers meet
+    /// the condition's floor, and what the gap
+    /// is. Reported by the activate, never
+    /// enforced by it (OnionStandard).
+    @Published private(set) var lastOnionVerdict: String = ""
     @Published private(set) var homeSubnet: String?
     @Published private(set) var scanning = false
     @Published private(set) var exposures: [Exposure] = []
@@ -401,6 +407,19 @@ final class Emcon: ObservableObject {
                         ? "" : "; STILL LIT: "
                             + lastUnsilenced.joined(
                                 separator: ", ")))
+        // The Onion coupling: the condition
+        // declares a layers floor; the engage
+        // reports whether the house meets it
+        // and exactly what the gap is. It never
+        // blocks the engage and never fakes
+        // the number — the audit reads the
+        // house as it stands after enforcement.
+        let onionAudit = OnionStandard.audit(
+            emcon: self, mouth: mouth)
+        lastOnionVerdict = OnionStandard.floorLine(
+            onionAudit, goal)
+        Journal.log("emcon", "onion",
+                    lastOnionVerdict)
     }
 
     /// The enforcement pass: every standing organ the

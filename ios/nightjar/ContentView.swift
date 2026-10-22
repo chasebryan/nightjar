@@ -371,6 +371,13 @@ struct ContentView: View {
             .tag(11)
             .onAppear { TabBeat.appeared(11) }
             .onDisappear { TabBeat.vanished(11) }
+        OnionView()
+            .appThemed(.onion)
+            .tabItem { Label(L("Onion"),
+                             systemImage: "circle.circle") }
+            .tag(13)
+            .onAppear { TabBeat.appeared(13) }
+            .onDisappear { TabBeat.vanished(13) }
         }
     }
 
@@ -427,6 +434,9 @@ struct ContentView: View {
                 } else if tag == 11 {
                     AnyView(CryptoView()
                         .appThemed(.vault))
+                } else if tag == 13 {
+                    AnyView(OnionView()
+                        .appThemed(.onion))
                 }
             }
             .macRoomVisible(tab == tag)
@@ -487,6 +497,9 @@ struct ContentView: View {
                     Label(L("Vault"),
                           systemImage: "lock.fill")
                         .tag(11)
+                    Label(L("Onion"),
+                          systemImage: "circle.circle")
+                        .tag(13)
                 }
                 Section {
                     Label(L("About"),
@@ -512,6 +525,7 @@ struct ContentView: View {
                 macRoom(8)
                 macRoom(10)
                 macRoom(11)
+                macRoom(13)
             }
         }
         .onAppear { visitedRooms.insert(tab) }
