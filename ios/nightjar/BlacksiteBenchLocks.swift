@@ -2870,13 +2870,13 @@ extension BlacksiteBench {
                     let joined = list.joined(
                         separator: ",")
                     mine.append(
-                        lockSSHString(
+                        contentsOf: lockSSHString(
                             Array(joined.utf8)))
                 }
                 mine.append(
-                    lockSSHString([]))
+                    contentsOf: lockSSHString([]))
                 mine.append(
-                    lockSSHString([]))
+                    contentsOf: lockSSHString([]))
                 mine.append(0)
                 mine.append(contentsOf: [
                     0, 0, 0, 0])
@@ -3241,7 +3241,7 @@ extension BlacksiteBench {
             var sawModern = false
             for (name, proto) in versions {
                 let knock = lockTLSKnock(
-                    ip: ip, port: port,
+                    ip: ip, port: Int(port),
                     host: host, minV: proto,
                     maxV: proto,
                     onlySuite: nil)
@@ -3294,7 +3294,7 @@ extension BlacksiteBench {
             for (family, suite, dated)
                 in families {
                 let knock = lockTLSKnock(
-                    ip: ip, port: port,
+                    ip: ip, port: Int(port),
                     host: host,
                     minV: .tlsProtocol12,
                     maxV: .tlsProtocol12,
@@ -6194,7 +6194,7 @@ extension BlacksiteBench {
             var landed = ""
             for (name, proto) in versions {
                 let knock = lockTLSKnock(
-                    ip: ip, port: resolved.port,
+                    ip: ip, port: Int(resolved.port),
                     host: host, minV: proto,
                     maxV: proto,
                     onlySuite: nil)

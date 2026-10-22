@@ -923,7 +923,7 @@ extension BlacksiteBench {
         port: Int) -> LockCert? {
         let knock = lockTLSKnock(
             ip: ip, port: port, host: host,
-            minV: .tlsProtocol10,
+            minV: .tlsProtocol11,
             maxV: .tlsProtocol13,
             onlySuite: nil)
         guard knock.answered,
