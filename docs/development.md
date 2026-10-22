@@ -5,6 +5,9 @@ toolchain. The checked-in Swift package resolutions require Swift tools
 6.4; the default Xcode 16.4 on the macOS 15 runner cannot resolve them.
 Xcode 27 supplies Swift 6.4. CI uses the checked-in resolutions rather than
 silently upgrading packages; the app's deployment targets stay unchanged.
+Unattended CI passes `-skipMacroValidation` for the MLX Hugging Face macro
+plugin in those pinned dependencies. In Xcode, approve that package's macro
+when prompted on the first build.
 
 Run the app's tests on a Mac with that toolchain:
 
@@ -35,7 +38,8 @@ This script builds the production `BlacksiteKernel.swift` and the same
 `KernelLifecycleTests.swift` used by the app in a temporary Swift package.
 It needs Swift 5.9 or later and XCTest, with no MLX, Metal, simulator, radio,
 or downloaded model. The temporary package is removed after the run. The
-CI kernel job runs it under Thread Sanitizer.
+CI kernel job runs it under Thread Sanitizer. Native changes also build the
+`nightjar-mac` scheme without code signing on the same Xcode 27 toolchain.
 
 The desktop overlay has its own suite:
 

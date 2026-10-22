@@ -123,6 +123,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
             -parallel-testing-enabled NO \
             -onlyUsePackageVersionsFromResolvedFile \
+            -skipMacroValidation \
             -resultBundlePath "$RUNNER_TEMP/nightjar-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
       - name: Upload XCTest result bundle on failure
@@ -132,3 +133,26 @@ jobs:
           name: nightjar-ios-test-results
           path: ${{ runner.temp }}/nightjar-tests.xcresult
           if-no-files-found: ignore
+
+  mac:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    name: Native Mac build
+    runs-on: xcode-27
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Metal toolchain for MLX
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Build the native Mac target without code signing
+        run: |
+          xcodebuild build \
+            -project ios/nightjar.xcodeproj \
+            -scheme nightjar-mac \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -onlyUsePackageVersionsFromResolvedFile \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO
