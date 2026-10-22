@@ -3168,9 +3168,9 @@ extension BlacksiteBench {
                 }
             } else if let own = BlacksiteNet
                 .primaryIPv4() {
-                prefix = own
-                    .split(separator: ".")
-                    [0..<3]
+                let ownParts = own.split(
+                    separator: ".")
+                prefix = ownParts[0..<3]
                     .joined(separator: ".")
             } else {
                 icsSay(emit, L("primecensus: this phone has no wire address to hunt from"), .err)

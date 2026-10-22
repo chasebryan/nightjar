@@ -2846,7 +2846,7 @@ extension BlacksiteBench {
                     kSecRandomDefault, 16,
                     &cookie)
                 var mine = Data([0x14])
-                mine.append(cookie)
+                mine.append(contentsOf: cookie)
                 let lists: [[String]] = [
                     ["curve25519-sha256",
                      "curve25519-sha256@libssh.org",
@@ -3191,7 +3191,7 @@ extension BlacksiteBench {
             result.cipher = UInt32(cipher)
         }
         var version: SSLProtocol =
-            .SSLProtocolUnknown
+            .sslProtocolUnknown
         if SSLGetNegotiatedProtocolVersion(
             ctx, &version) == errSecSuccess {
             result.version = Int(
@@ -3235,7 +3235,6 @@ extension BlacksiteBench {
                 ("TLS 1.3", .tlsProtocol13),
                 ("TLS 1.2", .tlsProtocol12),
                 ("TLS 1.1", .tlsProtocol11),
-                ("TLS 1.0", .tlsProtocol10),
             ]
             var answered: [String] = []
             var firstTrust: SecTrust?
@@ -6189,7 +6188,6 @@ extension BlacksiteBench {
                 ("TLS 1.3", .tlsProtocol13),
                 ("TLS 1.2", .tlsProtocol12),
                 ("TLS 1.1", .tlsProtocol11),
-                ("TLS 1.0", .tlsProtocol10),
             ]
             var answered: [String] = []
             var leafCert: LockCert?

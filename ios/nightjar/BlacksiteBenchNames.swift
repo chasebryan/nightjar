@@ -1415,9 +1415,8 @@ extension BlacksiteBench {
             var reply = nameQuery(
                 server: home.ip, name: asked,
                 type: 257)
-            var records = reply?.answers
+            var records = (reply?.answers ?? [])
                 .filter { $0.type == 257 }
-                ?? []
             if records.isEmpty,
                let dot = domain.firstIndex(
                     of: ".") {
@@ -1429,9 +1428,8 @@ extension BlacksiteBench {
                     reply = nameQuery(
                         server: home.ip,
                         name: asked, type: 257)
-                    records = reply?.answers
+                    records = (reply?.answers ?? [])
                         .filter { $0.type == 257 }
-                        ?? []
                     if !records.isEmpty {
                         nameSay(emit, String(format: L("caacheck: nothing at %@ itself — the parent %@ rules it."), domain, parent), .sys)
                     }
@@ -2543,10 +2541,10 @@ extension BlacksiteBench {
                 nameSay(emit, L("dnssecgrade: the resolver stayed silent — a silence is not a grade."), .err)
                 return
             }
-            let keys = keyReply?.answers
-                .filter { $0.type == 48 } ?? []
-            let keySigs = keyReply?.answers
-                .filter { $0.type == 46 } ?? []
+            let keys = (keyReply?.answers ?? [])
+                .filter { $0.type == 48 }
+            let keySigs = (keyReply?.answers ?? [])
+                .filter { $0.type == 46 }
             var algs = Set<Int>()
             var ksk = 0
             var zsk = 0
@@ -2566,8 +2564,8 @@ extension BlacksiteBench {
                 }
             }
             let dsReply = dsPeek
-            let dsRecords = dsReply?.answers
-                .filter { $0.type == 43 } ?? []
+            let dsRecords = (dsReply?.answers ?? [])
+                .filter { $0.type == 43 }
             if let reply = dsReply {
                 for ds in dsRecords {
                     nameSay(emit, String(format: L("%@. %lld IN DS %@"), ds.name, Int(ds.ttl), nameRender(reply.msg, ds)), .out)
