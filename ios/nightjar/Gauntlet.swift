@@ -1792,7 +1792,7 @@ final class Gauntlet: ObservableObject {
             cases += 1
             try Gauntlet.require(
                 SSHWire.uint32(0xDEADBEEF)
-                    == [0xDE, 0xAD, 0xBE, 0xEF],
+                    == Data([0xDE, 0xAD, 0xBE, 0xEF]),
                 "the uint32 framing moved")
             var intReader = SSHReader(
                 data: SSHWire.uint32(424242))
@@ -1822,9 +1822,9 @@ final class Gauntlet: ObservableObject {
                 let value = UInt32(
                     fuzz.int(1_000_000_000))
                 var r = SSHReader(
-                    data: SSHWire.uint32(value))
+                    data: SSHWire.uint32(Int(value)))
                 cases += 1
-                try Gauntlet.require(r.uint32() == value,
+                try Gauntlet.require(r.uint32() == Int(value),
                     "a random uint32 broke on the wire")
             }
             return "\(cases) cases: mpint, string, "
