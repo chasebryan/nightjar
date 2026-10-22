@@ -1549,19 +1549,23 @@ extension BlacksiteBench {
 
 extension BlacksiteBench {
     /// Wave two's switchboard — one door in the console, twelve engines.
-    static func benchTwo(_ name: String, _ target: String, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+    static func benchTwo(_ name: String, _ target: String, stopped: @escaping () -> Bool, emit: @escaping BlacksiteEmit, done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
-        case "corsprobe": corsprobe(url: target, emit: emit, done: done)
-        case "openredirect": openredirect(url: target, emit: emit, done: done)
-        case "graphqlprobe": graphqlprobe(url: target, emit: emit, done: done)
-        case "proxyprobe": proxyprobe(target: target, emit: emit, done: done)
-        case "vncprobe": vncprobe(target: target, emit: emit, done: done)
-        case "rdpprobe": rdpprobe(target: target, emit: emit, done: done)
-        case "ftpprobe": ftpprobe(target: target, emit: emit, done: done)
-        case "smtpprobe": smtpprobe(target: target, emit: emit, done: done)
-        case "ldapprobe": ldapprobe(target: target, emit: emit, done: done)
-        case "redisprobe": redisprobe(target: target, emit: emit, done: done)
-        case "dockerprobe": dockerprobe(target: target, emit: emit, done: done)
+        case "corsprobe": corsprobe(url: target, emit: live, done: done)
+        case "openredirect": openredirect(url: target, emit: live, done: done)
+        case "graphqlprobe": graphqlprobe(url: target, emit: live, done: done)
+        case "proxyprobe": proxyprobe(target: target, emit: live, done: done)
+        case "vncprobe": vncprobe(target: target, emit: live, done: done)
+        case "rdpprobe": rdpprobe(target: target, emit: live, done: done)
+        case "ftpprobe": ftpprobe(target: target, emit: live, done: done)
+        case "smtpprobe": smtpprobe(target: target, emit: live, done: done)
+        case "ldapprobe": ldapprobe(target: target, emit: live, done: done)
+        case "redisprobe": redisprobe(target: target, emit: live, done: done)
+        case "dockerprobe": dockerprobe(target: target, emit: live, done: done)
         default: done()
         }
     }

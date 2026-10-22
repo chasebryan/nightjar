@@ -9379,6 +9379,9 @@ final class BlacksiteShell: ObservableObject {
         let captureLock = NSLock()
         var captured: [(String, Line.Kind)] = []
         let collect: BlacksiteEmit = { [weak self] text, kind in
+            if self?.stopToken.isTripped ?? true {
+                return
+            }
             captureLock.lock()
             captured.append((text, kind))
             captureLock.unlock()
@@ -9474,6 +9477,9 @@ final class BlacksiteShell: ObservableObject {
         let captureLock = NSLock()
         var captured: [(String, Line.Kind)] = []
         let collect: BlacksiteEmit = { [weak self] text, kind in
+            if self?.stopToken.isTripped ?? true {
+                return
+            }
             captureLock.lock()
             captured.append((text, kind))
             captureLock.unlock()
@@ -9545,7 +9551,14 @@ final class BlacksiteShell: ObservableObject {
             @escaping () -> Void) -> Void) {
         stopToken.reset()
         busy = true
-        body(Self.netEmit(self)) {
+        let base = Self.netEmit(self)
+        let gated: BlacksiteEmit = {
+            [weak self] text, kind in
+            if self?.stopToken.isTripped == false {
+                base(text, kind)
+            }
+        }
+        body(gated) {
             [weak self] in
             DispatchQueue.main.async {
                 self?.busy = false
@@ -10010,6 +10023,7 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchNames(
                     "subdomains", domain,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "revdns":
@@ -11069,6 +11083,7 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchTwo(
                     name, target,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "headersdeep", "cookieaudit", "cacheprobe", "wafdetect", "techstack", "sitemap", "faviconhash", "httpversion", "hstsprobe", "certprobe", "certchain", "ocspprobe", "redirectchain", "jsendpoints", "swaggerprobe", "oidcprobe", "graphqldeep", "jwtdeep", "compressprobe", "methoddeep", "robotsdeep", "apicensus", "urlextract", "wayback", "corsdeep":
@@ -11083,6 +11098,7 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchWeb(
                     name, target,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "smbprobe", "nfsprobe", "rpcprobe", "mysqlprobe", "pgprobe", "mssqlprobe", "mongoprobe", "elasticprobe", "couchprobe", "kafkaprobe", "zkprobe", "memcacheprobe", "solrprobe", "jenkinsprobe", "gitlabprobe", "registryprobe", "k8sprobe", "etcdprobe", "consulprobe", "vaultprobe", "rabbitprobe", "printerprobe", "rtspprobe", "sipprobe", "starttlscensus":
@@ -11101,6 +11117,7 @@ final class BlacksiteShell: ObservableObject {
                         ? args.joined(
                             separator: " ")
                         : target,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "dnsdeep", "zonetransfer", "reverseprobe", "dnscensus", "wildcardprobe", "caacheck", "ttlprobe", "soacheck", "nsecprobe", "dnssecgrade", "mxprobe", "smtpdeep", "smtptls", "spfprobe", "dkimprobe", "dmarcprobe", "mtasts", "tlsrpt", "bimi", "certtrans", "whoisdeep", "rdap", "asnprobe", "danglingprobe":
@@ -11120,6 +11137,7 @@ final class BlacksiteShell: ObservableObject {
                         ? args.joined(
                             separator: " ")
                         : target,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "modbusprobe", "s7probe", "iec61850probe", "enipprobe", "pcccprobe", "dnp3probe", "bacnetprobe", "opcuaprobe", "finsprobe", "melsecprobe", "iec104probe", "knxprobe", "foxprobe", "hartprobe", "srtpprobe", "adsprobe", "dlmsprobe", "moxaprobe", "pmuprobe", "plcensus", "selprobe", "rocprobe", "mtconnectprobe", "focasprobe", "codesysprobe", "umasprobe", "happrobe", "pcomprobe", "pcworxprobe", "lonprobe", "mbusprobe", "secsprobe", "ffprobe", "ptpprobe", "sep2probe", "sunspecprobe", "lantronixprobe", "c1222probe":
@@ -11134,6 +11152,7 @@ final class BlacksiteShell: ObservableObject {
             netBusy { emit, done in
                 BlacksiteBench.benchICS(
                     name, target,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "cspprobe", "ccsdsprobe", "aprsprobe", "kissprobe", "agwprobe", "rotprobe", "rigprobe", "gpsdprobe", "nmeaprobe", "ubxprobe", "ntripprobe", "comtechprobe", "bucprobe", "iridiumprobe", "starlinkprobe", "satipprobe", "yamcsprobe", "satintel", "satnogsprobe", "satcensus":
@@ -11146,6 +11165,7 @@ final class BlacksiteShell: ObservableObject {
                         ? (args.isEmpty ? nil
                             : args.joined(separator: " "))
                         : args.first,
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "signalprobe", "ascprobe", "dmsprobe", "rwisprobe", "rsuprobe", "spatprobe", "flockcensus", "dotprobe", "onvifprobe", "camdeep", "ptzprobe", "ridprobe", "streetlightprobe", "sirenprobe", "transitprobe", "gaugeprobe", "airprobe", "gbfsprobe", "towerprobe", "streetcensus":
@@ -11165,6 +11185,7 @@ final class BlacksiteShell: ObservableObject {
                             : args.joined(separator: " "))
                         : (name == "ridprobe"
                             ? nil : args.first),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "ssdpdeep", "mdnsdeep", "dhcpprobe", "wsdprobe", "ntpprobe", "smallsvc", "v6probe", "bgprobe", "ripeprobe", "torprobe", "rblprobe", "geoprobe", "cveprobe", "kevprobe", "ghprobe", "gleifprobe", "urlscanprobe", "passivedns", "macprobe", "wirecensus", "upnp", "bonjour":
@@ -11185,6 +11206,7 @@ final class BlacksiteShell: ObservableObject {
                             || name == "upnp"
                             || name == "bonjour"
                             ? nil : args.first),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "keyprobe", "hashprobe", "entropyprobe", "b64deep", "x509probe", "pgpprobe", "sshkeydeep", "tlscensus", "cipherprobe", "randprobe", "kdfprobe", "aesprobe", "xorprobe", "rsaprobe", "eccprobe", "enccensus", "sigprobe", "totpprobe", "passprobe", "lockcensus":
@@ -11200,6 +11222,7 @@ final class BlacksiteShell: ObservableObject {
                         || name == "lockcensus"
                         ? (args.first ?? "")
                         : args.joined(separator: " "),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "shieldcensus", "mgmtprobe", "anonprobe", "certwatch", "smbposture", "sshposture", "snmposture", "backupprobe", "upnpgrade", "dnsposture", "mailposture", "patchprobe", "kevcheck", "iotposture", "guestprobe", "timeprobe", "v6posture", "headerposture", "cookieposture", "dirposture", "metadataprobe", "printposture", "nasposture", "cameraposture", "watchprobe":
@@ -11210,6 +11233,7 @@ final class BlacksiteShell: ObservableObject {
                     arg: name == "watchprobe"
                         ? args.joined(separator: " ")
                         : (args.first ?? ""),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "filecensus", "magicprobe", "stringsdeep", "exifprobe", "pdfprobe", "zipprobe", "machoprobe", "elfprobe", "peprobe", "imgdeep", "audiofile", "sqliteprobe", "plistprobe", "scriptprobe", "logprobe", "dataprobe", "fontprobe", "certfile", "dupprobe", "fileboard":
@@ -11218,6 +11242,7 @@ final class BlacksiteShell: ObservableObject {
                 BlacksiteBench.benchFiles(
                     name: name,
                     arg: args.joined(separator: " "),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         case "megatron", "primeprobe", "primecensus", "rosprobe", "fleetprobe", "botdoors", "botble", "puppetprobe", "cyberprobe", "boreprobe", "voltprobe", "botprobe":
@@ -11226,6 +11251,7 @@ final class BlacksiteShell: ObservableObject {
                 BlacksiteBench.benchMegatron(
                     name: name,
                     arg: args.joined(separator: " "),
+                    stopped: self.stopCheck,
                     emit: emit, done: done)
             }
         default:

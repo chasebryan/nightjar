@@ -2199,59 +2199,64 @@ extension BlacksiteBench {
     /// ride benchTwo.
     static func benchWeb(
         _ name: String, _ target: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "headersdeep":
-            headersdeep(url: target, emit: emit, done: done)
+            headersdeep(url: target, emit: live, done: done)
         case "cookieaudit":
-            cookieaudit(url: target, emit: emit, done: done)
+            cookieaudit(url: target, emit: live, done: done)
         case "cacheprobe":
-            cacheprobe(url: target, emit: emit, done: done)
+            cacheprobe(url: target, emit: live, done: done)
         case "wafdetect":
-            wafdetect(url: target, emit: emit, done: done)
+            wafdetect(url: target, emit: live, done: done)
         case "techstack":
-            techstack(url: target, emit: emit, done: done)
+            techstack(url: target, emit: live, done: done)
         case "sitemap":
-            sitemap(url: target, emit: emit, done: done)
+            sitemap(url: target, emit: live, done: done)
         case "faviconhash":
-            faviconhash(url: target, emit: emit, done: done)
+            faviconhash(url: target, emit: live, done: done)
         case "httpversion":
-            httpversion(url: target, emit: emit, done: done)
+            httpversion(url: target, emit: live, done: done)
         case "hstsprobe":
-            hstsprobe(url: target, emit: emit, done: done)
+            hstsprobe(url: target, emit: live, done: done)
         case "certprobe":
-            certprobe(url: target, emit: emit, done: done)
+            certprobe(url: target, emit: live, done: done)
         case "certchain":
-            certchain(url: target, emit: emit, done: done)
+            certchain(url: target, emit: live, done: done)
         case "ocspprobe":
-            ocspprobe(url: target, emit: emit, done: done)
+            ocspprobe(url: target, emit: live, done: done)
         case "redirectchain":
-            redirectchain(url: target, emit: emit, done: done)
+            redirectchain(url: target, emit: live, done: done)
         case "jsendpoints":
-            jsendpoints(url: target, emit: emit, done: done)
+            jsendpoints(url: target, emit: live, done: done)
         case "swaggerprobe":
-            swaggerprobe(url: target, emit: emit, done: done)
+            swaggerprobe(url: target, emit: live, done: done)
         case "oidcprobe":
-            oidcprobe(url: target, emit: emit, done: done)
+            oidcprobe(url: target, emit: live, done: done)
         case "graphqldeep":
-            graphqldeep(url: target, emit: emit, done: done)
+            graphqldeep(url: target, emit: live, done: done)
         case "jwtdeep":
-            jwtdeep(url: target, emit: emit, done: done)
+            jwtdeep(url: target, emit: live, done: done)
         case "compressprobe":
-            compressprobe(url: target, emit: emit, done: done)
+            compressprobe(url: target, emit: live, done: done)
         case "methoddeep":
-            methoddeep(url: target, emit: emit, done: done)
+            methoddeep(url: target, emit: live, done: done)
         case "robotsdeep":
-            robotsdeep(url: target, emit: emit, done: done)
+            robotsdeep(url: target, emit: live, done: done)
         case "apicensus":
-            apicensus(url: target, emit: emit, done: done)
+            apicensus(url: target, emit: live, done: done)
         case "urlextract":
-            urlextract(url: target, emit: emit, done: done)
+            urlextract(url: target, emit: live, done: done)
         case "wayback":
-            wayback(url: target, emit: emit, done: done)
+            wayback(url: target, emit: live, done: done)
         case "corsdeep":
-            corsdeep(url: target, emit: emit, done: done)
+            corsdeep(url: target, emit: live, done: done)
         default:
             done()
         }

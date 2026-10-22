@@ -91,69 +91,74 @@ extension BlacksiteBench {
     /// tree and nothing else.
     static func benchFiles(
         name: String, arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "filecensus":
             filecensus(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "magicprobe":
             magicprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "stringsdeep":
             stringsdeep(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "exifprobe":
             exifprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "pdfprobe":
             pdfprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "zipprobe":
             zipprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "machoprobe":
             machoprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "elfprobe":
             elfprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "peprobe":
             peprobe(target: arg,
-                    emit: emit, done: done)
+                    emit: live, done: done)
         case "imgdeep":
             imgdeep(target: arg,
-                    emit: emit, done: done)
+                    emit: live, done: done)
         case "audiofile":
             audiofile(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "sqliteprobe":
             sqliteprobe(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "plistprobe":
             plistprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "scriptprobe":
             scriptprobe(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "logprobe":
             logprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "dataprobe":
             dataprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "fontprobe":
             fontprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "certfile":
             certfile(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "dupprobe":
             dupprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "fileboard":
             fileboard(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         default:
             done()
         }

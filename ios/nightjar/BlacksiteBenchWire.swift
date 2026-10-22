@@ -57,50 +57,55 @@ extension BlacksiteBench {
     static func benchWire(
         _ name: String,
         _ target: String?,
+        stopped: @escaping () -> Bool,
         emit: @escaping (String,
                          BlacksiteShell.Line.Kind) -> Void,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "ssdpdeep", "upnp":
-            wireSSDPDeep(emit: emit, done: done)
+            wireSSDPDeep(emit: live, done: done)
         case "mdnsdeep", "bonjour":
-            wireMDNSDeep(emit: emit, done: done)
+            wireMDNSDeep(emit: live, done: done)
         case "dhcpprobe":
-            wireDHCPProbe(emit: emit, done: done)
+            wireDHCPProbe(emit: live, done: done)
         case "wsdprobe":
-            wireWSDProbe(emit: emit, done: done)
+            wireWSDProbe(emit: live, done: done)
         case "ntpprobe":
-            wireNTPProbe(target, emit: emit, done: done)
+            wireNTPProbe(target, emit: live, done: done)
         case "smallsvc":
-            wireSmallSvc(target, emit: emit, done: done)
+            wireSmallSvc(target, emit: live, done: done)
         case "v6probe":
-            wireV6Probe(emit: emit, done: done)
+            wireV6Probe(emit: live, done: done)
         case "bgprobe":
-            wireBGProbe(target, emit: emit, done: done)
+            wireBGProbe(target, emit: live, done: done)
         case "ripeprobe":
-            wireRIPEProbe(target, emit: emit, done: done)
+            wireRIPEProbe(target, emit: live, done: done)
         case "torprobe":
-            wireTORProbe(target, emit: emit, done: done)
+            wireTORProbe(target, emit: live, done: done)
         case "rblprobe":
-            wireRBLProbe(target, emit: emit, done: done)
+            wireRBLProbe(target, emit: live, done: done)
         case "geoprobe":
-            wireGEOProbe(target, emit: emit, done: done)
+            wireGEOProbe(target, emit: live, done: done)
         case "cveprobe":
-            wireCVEProbe(target, emit: emit, done: done)
+            wireCVEProbe(target, emit: live, done: done)
         case "kevprobe":
-            wireKEVProbe(target, emit: emit, done: done)
+            wireKEVProbe(target, emit: live, done: done)
         case "ghprobe":
-            wireGHProbe(target, emit: emit, done: done)
+            wireGHProbe(target, emit: live, done: done)
         case "gleifprobe":
-            wireGLEIFProbe(target, emit: emit, done: done)
+            wireGLEIFProbe(target, emit: live, done: done)
         case "urlscanprobe":
-            wireURLScanProbe(target, emit: emit, done: done)
+            wireURLScanProbe(target, emit: live, done: done)
         case "passivedns":
-            wirePassiveDNS(target, emit: emit, done: done)
+            wirePassiveDNS(target, emit: live, done: done)
         case "macprobe":
-            wireMACProbe(target, emit: emit, done: done)
+            wireMACProbe(target, emit: live, done: done)
         case "wirecensus":
-            wireCensus(target, emit: emit, done: done)
+            wireCensus(target, emit: live, done: done)
         default:
             done()
         }

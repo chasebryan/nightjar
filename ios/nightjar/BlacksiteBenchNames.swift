@@ -4168,59 +4168,64 @@ extension BlacksiteBench {
     /// benchDoors.
     static func benchNames(
         _ name: String, _ target: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "dnsdeep":
-            dnsdeep(target: target, emit: emit, done: done)
+            dnsdeep(target: target, emit: live, done: done)
         case "zonetransfer":
-            zonetransfer(target: target, emit: emit, done: done)
+            zonetransfer(target: target, emit: live, done: done)
         case "reverseprobe":
-            reverseprobe(target: target, emit: emit, done: done)
+            reverseprobe(target: target, emit: live, done: done)
         case "dnscensus":
-            dnscensus(target: target, emit: emit, done: done)
+            dnscensus(target: target, emit: live, done: done)
         case "wildcardprobe":
-            wildcardprobe(target: target, emit: emit, done: done)
+            wildcardprobe(target: target, emit: live, done: done)
         case "caacheck":
-            caacheck(target: target, emit: emit, done: done)
+            caacheck(target: target, emit: live, done: done)
         case "ttlprobe":
-            ttlprobe(target: target, emit: emit, done: done)
+            ttlprobe(target: target, emit: live, done: done)
         case "soacheck":
-            soacheck(target: target, emit: emit, done: done)
+            soacheck(target: target, emit: live, done: done)
         case "nsecprobe":
-            nsecprobe(target: target, emit: emit, done: done)
+            nsecprobe(target: target, emit: live, done: done)
         case "dnssecgrade":
-            dnssecgrade(target: target, emit: emit, done: done)
+            dnssecgrade(target: target, emit: live, done: done)
         case "mxprobe":
-            mxprobe(target: target, emit: emit, done: done)
+            mxprobe(target: target, emit: live, done: done)
         case "smtpdeep":
-            smtpdeep(target: target, emit: emit, done: done)
+            smtpdeep(target: target, emit: live, done: done)
         case "smtptls":
-            smtptls(target: target, emit: emit, done: done)
+            smtptls(target: target, emit: live, done: done)
         case "spfprobe":
-            spfprobe(target: target, emit: emit, done: done)
+            spfprobe(target: target, emit: live, done: done)
         case "dkimprobe":
-            dkimprobe(target: target, emit: emit, done: done)
+            dkimprobe(target: target, emit: live, done: done)
         case "dmarcprobe":
-            dmarcprobe(target: target, emit: emit, done: done)
+            dmarcprobe(target: target, emit: live, done: done)
         case "mtasts":
-            mtasts(target: target, emit: emit, done: done)
+            mtasts(target: target, emit: live, done: done)
         case "tlsrpt":
-            tlsrpt(target: target, emit: emit, done: done)
+            tlsrpt(target: target, emit: live, done: done)
         case "bimi":
-            bimi(target: target, emit: emit, done: done)
+            bimi(target: target, emit: live, done: done)
         case "certtrans":
-            certtrans(target: target, emit: emit, done: done)
+            certtrans(target: target, emit: live, done: done)
         case "subdomains":
-            subdomainsCT(target: target, emit: emit, done: done)
+            subdomainsCT(target: target, emit: live, done: done)
         case "whoisdeep":
-            whoisdeep(target: target, emit: emit, done: done)
+            whoisdeep(target: target, emit: live, done: done)
         case "rdap":
-            rdap(target: target, emit: emit, done: done)
+            rdap(target: target, emit: live, done: done)
         case "asnprobe":
-            asnprobe(target: target, emit: emit, done: done)
+            asnprobe(target: target, emit: live, done: done)
         case "danglingprobe":
-            danglingprobe(target: target, emit: emit, done: done)
+            danglingprobe(target: target, emit: live, done: done)
         default:
             done()
         }

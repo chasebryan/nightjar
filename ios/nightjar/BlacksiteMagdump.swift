@@ -260,6 +260,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchTwo(
                         verb, target,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -268,6 +269,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchDoors(
                         verb, target,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -276,6 +278,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchWeb(
                         verb, url,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -284,6 +287,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchNames(
                         verb, target,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -292,6 +296,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchWire(
                         verb, target,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -300,6 +305,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchShield(
                         name: verb, arg: arg,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }
@@ -308,6 +314,7 @@ extension BlacksiteBench {
                 steps.append { e, d in
                     BlacksiteBench.benchLocks(
                         name: verb, arg: arg,
+                        stopped: stopped,
                         emit: e, done: d)
                 }
             }

@@ -3374,59 +3374,64 @@ extension BlacksiteBench {
     /// ride benchWeb.
     static func benchDoors(
         _ name: String, _ target: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "smbprobe":
-            smbprobe(target: target, emit: emit, done: done)
+            smbprobe(target: target, emit: live, done: done)
         case "nfsprobe":
-            nfsprobe(target: target, emit: emit, done: done)
+            nfsprobe(target: target, emit: live, done: done)
         case "rpcprobe":
-            rpcprobe(target: target, emit: emit, done: done)
+            rpcprobe(target: target, emit: live, done: done)
         case "mysqlprobe":
-            mysqlprobe(target: target, emit: emit, done: done)
+            mysqlprobe(target: target, emit: live, done: done)
         case "pgprobe":
-            pgprobe(target: target, emit: emit, done: done)
+            pgprobe(target: target, emit: live, done: done)
         case "mssqlprobe":
-            mssqlprobe(target: target, emit: emit, done: done)
+            mssqlprobe(target: target, emit: live, done: done)
         case "mongoprobe":
-            mongoprobe(target: target, emit: emit, done: done)
+            mongoprobe(target: target, emit: live, done: done)
         case "elasticprobe":
-            elasticprobe(target: target, emit: emit, done: done)
+            elasticprobe(target: target, emit: live, done: done)
         case "couchprobe":
-            couchprobe(target: target, emit: emit, done: done)
+            couchprobe(target: target, emit: live, done: done)
         case "solrprobe":
-            solrprobe(target: target, emit: emit, done: done)
+            solrprobe(target: target, emit: live, done: done)
         case "etcdprobe":
-            etcdprobe(target: target, emit: emit, done: done)
+            etcdprobe(target: target, emit: live, done: done)
         case "consulprobe":
-            consulprobe(target: target, emit: emit, done: done)
+            consulprobe(target: target, emit: live, done: done)
         case "vaultprobe":
-            vaultprobe(target: target, emit: emit, done: done)
+            vaultprobe(target: target, emit: live, done: done)
         case "jenkinsprobe":
-            jenkinsprobe(target: target, emit: emit, done: done)
+            jenkinsprobe(target: target, emit: live, done: done)
         case "gitlabprobe":
-            gitlabprobe(target: target, emit: emit, done: done)
+            gitlabprobe(target: target, emit: live, done: done)
         case "registryprobe":
-            registryprobe(target: target, emit: emit, done: done)
+            registryprobe(target: target, emit: live, done: done)
         case "k8sprobe":
-            k8sprobe(target: target, emit: emit, done: done)
+            k8sprobe(target: target, emit: live, done: done)
         case "kafkaprobe":
-            kafkaprobe(target: target, emit: emit, done: done)
+            kafkaprobe(target: target, emit: live, done: done)
         case "zkprobe":
-            zkprobe(target: target, emit: emit, done: done)
+            zkprobe(target: target, emit: live, done: done)
         case "memcacheprobe":
-            memcacheprobe(target: target, emit: emit, done: done)
+            memcacheprobe(target: target, emit: live, done: done)
         case "rabbitprobe":
-            rabbitprobe(target: target, emit: emit, done: done)
+            rabbitprobe(target: target, emit: live, done: done)
         case "printerprobe":
-            printerprobe(target: target, emit: emit, done: done)
+            printerprobe(target: target, emit: live, done: done)
         case "rtspprobe":
-            rtspprobe(target: target, emit: emit, done: done)
+            rtspprobe(target: target, emit: live, done: done)
         case "sipprobe":
-            sipprobe(target: target, emit: emit, done: done)
+            sipprobe(target: target, emit: live, done: done)
         case "starttlscensus":
-            starttlscensus(target: target, emit: emit, done: done)
+            starttlscensus(target: target, emit: live, done: done)
         default:
             done()
         }

@@ -3063,85 +3063,90 @@ extension BlacksiteBench {
 
     static func benchICS(
         _ name: String, _ target: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "modbusprobe":
-            modbusprobe(target: target, emit: emit, done: done)
+            modbusprobe(target: target, emit: live, done: done)
         case "s7probe":
-            s7probe(target: target, emit: emit, done: done)
+            s7probe(target: target, emit: live, done: done)
         case "iec61850probe":
-            iec61850probe(target: target, emit: emit, done: done)
+            iec61850probe(target: target, emit: live, done: done)
         case "enipprobe":
-            enipprobe(target: target, emit: emit, done: done)
+            enipprobe(target: target, emit: live, done: done)
         case "pcccprobe":
-            pcccprobe(target: target, emit: emit, done: done)
+            pcccprobe(target: target, emit: live, done: done)
         case "dnp3probe":
-            dnp3probe(target: target, emit: emit, done: done)
+            dnp3probe(target: target, emit: live, done: done)
         case "bacnetprobe":
-            bacnetprobe(target: target, emit: emit, done: done)
+            bacnetprobe(target: target, emit: live, done: done)
         case "opcuaprobe":
-            opcuaprobe(target: target, emit: emit, done: done)
+            opcuaprobe(target: target, emit: live, done: done)
         case "finsprobe":
-            finsprobe(target: target, emit: emit, done: done)
+            finsprobe(target: target, emit: live, done: done)
         case "melsecprobe":
-            melsecprobe(target: target, emit: emit, done: done)
+            melsecprobe(target: target, emit: live, done: done)
         case "iec104probe":
-            iec104probe(target: target, emit: emit, done: done)
+            iec104probe(target: target, emit: live, done: done)
         case "knxprobe":
-            knxprobe(target: target, emit: emit, done: done)
+            knxprobe(target: target, emit: live, done: done)
         case "foxprobe":
-            foxprobe(target: target, emit: emit, done: done)
+            foxprobe(target: target, emit: live, done: done)
         case "hartprobe":
-            hartprobe(target: target, emit: emit, done: done)
+            hartprobe(target: target, emit: live, done: done)
         case "srtpprobe":
-            srtpprobe(target: target, emit: emit, done: done)
+            srtpprobe(target: target, emit: live, done: done)
         case "adsprobe":
-            adsprobe(target: target, emit: emit, done: done)
+            adsprobe(target: target, emit: live, done: done)
         case "dlmsprobe":
-            dlmsprobe(target: target, emit: emit, done: done)
+            dlmsprobe(target: target, emit: live, done: done)
         case "moxaprobe":
-            moxaprobe(target: target, emit: emit, done: done)
+            moxaprobe(target: target, emit: live, done: done)
         case "pmuprobe":
-            pmuprobe(target: target, emit: emit, done: done)
+            pmuprobe(target: target, emit: live, done: done)
         case "plcensus":
-            plcensus(target: target, emit: emit, done: done)
+            plcensus(target: target, emit: live, done: done)
         case "selprobe":
-            selprobe(target: target, emit: emit, done: done)
+            selprobe(target: target, emit: live, done: done)
         case "rocprobe":
-            rocprobe(target: target, emit: emit, done: done)
+            rocprobe(target: target, emit: live, done: done)
         case "mtconnectprobe":
-            mtconnectprobe(target: target, emit: emit, done: done)
+            mtconnectprobe(target: target, emit: live, done: done)
         case "focasprobe":
-            focasprobe(target: target, emit: emit, done: done)
+            focasprobe(target: target, emit: live, done: done)
         case "codesysprobe":
-            codesysprobe(target: target, emit: emit, done: done)
+            codesysprobe(target: target, emit: live, done: done)
         case "umasprobe":
-            umasprobe(target: target, emit: emit, done: done)
+            umasprobe(target: target, emit: live, done: done)
         case "happrobe":
-            happrobe(target: target, emit: emit, done: done)
+            happrobe(target: target, emit: live, done: done)
         case "pcomprobe":
-            pcomprobe(target: target, emit: emit, done: done)
+            pcomprobe(target: target, emit: live, done: done)
         case "pcworxprobe":
-            pcworxprobe(target: target, emit: emit, done: done)
+            pcworxprobe(target: target, emit: live, done: done)
         case "lonprobe":
-            lonprobe(target: target, emit: emit, done: done)
+            lonprobe(target: target, emit: live, done: done)
         case "mbusprobe":
-            mbusprobe(target: target, emit: emit, done: done)
+            mbusprobe(target: target, emit: live, done: done)
         case "secsprobe":
-            secsprobe(target: target, emit: emit, done: done)
+            secsprobe(target: target, emit: live, done: done)
         case "ffprobe":
-            ffprobe(target: target, emit: emit, done: done)
+            ffprobe(target: target, emit: live, done: done)
         case "ptpprobe":
-            ptpprobe(target: target, emit: emit, done: done)
+            ptpprobe(target: target, emit: live, done: done)
         case "sep2probe":
-            sep2probe(target: target, emit: emit, done: done)
+            sep2probe(target: target, emit: live, done: done)
         case "sunspecprobe":
-            sunspecprobe(target: target, emit: emit, done: done)
+            sunspecprobe(target: target, emit: live, done: done)
         case "lantronixprobe":
-            lantronixprobe(target: target, emit: emit, done: done)
+            lantronixprobe(target: target, emit: live, done: done)
         case "c1222probe":
-            c1222probe(target: target, emit: emit, done: done)
+            c1222probe(target: target, emit: live, done: done)
         default:
             done()
         }

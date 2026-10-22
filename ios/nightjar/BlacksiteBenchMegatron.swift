@@ -48,49 +48,60 @@ extension BlacksiteBench {
 
     static func benchMegatron(
         name: String, arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "megatron":
             megaMarquee(
                 arg.isEmpty ? nil : arg,
-                emit: emit, done: done)
+                stopped: stopped,
+                emit: live, done: done)
         case "primeprobe":
             megaProbeVerb(
                 arg, optimus: true,
-                emit: emit, done: done)
+                stopped: stopped,
+                emit: live, done: done)
         case "botprobe":
             megaProbeVerb(
                 arg, optimus: false,
-                emit: emit, done: done)
+                stopped: stopped,
+                emit: live, done: done)
         case "primecensus":
             megaPrimeCensus(
                 arg.isEmpty ? nil : arg,
                 file: false,
-                emit: emit, done: done)
+                stopped: stopped,
+                emit: live, done: done)
         case "rosprobe":
             megaROSProbe(
-                arg, emit: emit, done: done)
+                arg, emit: live, done: done)
         case "fleetprobe":
             megaFleetVerb(
-                arg, emit: emit, done: done)
+                arg, emit: live, done: done)
         case "botdoors":
             megaBotDoors(
-                arg, emit: emit, done: done)
+                arg, emit: live, done: done)
         case "botble":
-            megaBotBLE(emit: emit, done: done)
+            megaBotBLE(emit: live, done: done)
         case "puppetprobe":
             megaPuppetProbe(
-                arg, emit: emit, done: done)
+                arg, emit: live, done: done)
         case "cyberprobe":
             megaCyberProbe(
-                arg, emit: emit, done: done)
+                arg, emit: live, done: done)
         case "boreprobe":
             megaBoreProbe(
-                arg, emit: emit, done: done)
+                arg, stopped: stopped,
+                emit: live, done: done)
         case "voltprobe":
             megaVoltProbe(
-                arg, emit: emit, done: done)
+                arg, stopped: stopped,
+                emit: live, done: done)
         default:
             done()
         }
@@ -178,14 +189,16 @@ extension BlacksiteBench {
                    @escaping () -> Void)
                     -> Void],
         _ i: Int,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
-        if i >= steps.count {
+        if i >= steps.count || stopped() {
             done()
             return
         }
         steps[i](emit) {
             megaChain(steps, i + 1,
+                      stopped: stopped,
                       emit: emit, done: done)
         }
     }
@@ -876,6 +889,7 @@ extension BlacksiteBench {
 
     static func megaProbeVerb(
         _ arg: String, optimus: Bool,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         let target = arg
@@ -911,6 +925,7 @@ extension BlacksiteBench {
                     benchICS(
                         "plcensus",
                         resolved.host,
+                        stopped: stopped,
                         emit: emit, done: done)
                     return
                 }
@@ -2850,6 +2865,7 @@ extension BlacksiteBench {
 
     static func megaVoltProbe(
         _ arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         let target = arg
@@ -2902,6 +2918,7 @@ extension BlacksiteBench {
                 icsSay(emit, L("voltprobe — the plant nameplate, by the ICS bench:"), .sys)
                 benchICS(
                     "plcensus", host,
+                    stopped: stopped,
                     emit: emit, done: done)
                 return
             }
@@ -2913,6 +2930,7 @@ extension BlacksiteBench {
 
     static func megaBoreProbe(
         _ arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         let target = arg
@@ -2936,6 +2954,7 @@ extension BlacksiteBench {
             steps.append { e, d in
                 BlacksiteBench.benchICS(
                     verb, target,
+                    stopped: stopped,
                     emit: e, done: d)
             }
         }
@@ -2951,8 +2970,8 @@ extension BlacksiteBench {
             icsSay(e, L("the stakes, plainly: a boring machine is tons of turning steel. This bench reads its nameplates and grades its doors — it does not so much as knock toward a control"), .err)
             d()
         }
-        megaChain(steps, 0, emit: emit,
-                  done: done)
+        megaChain(steps, 0, stopped: stopped,
+                  emit: emit, done: done)
     }
 }
 
@@ -2975,6 +2994,7 @@ extension BlacksiteBench {
     /// board; returns the claimed units.
     static func megaHunt(
         prefix: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit)
         -> [MegaClaim] {
         icsSay(emit, String(
@@ -2987,6 +3007,7 @@ extension BlacksiteBench {
         let group = DispatchGroup()
         let sem = DispatchSemaphore(value: 40)
         for octet in 1...254 {
+            if stopped() { break }
             let ip = "\(prefix).\(octet)"
             group.enter()
             DispatchQueue.global().async {
@@ -3021,14 +3042,16 @@ extension BlacksiteBench {
             }
         }
         // The two airs.
-        let mav = megaMAVListen(seconds: 4)
+        let mav = megaMAVListen(
+            seconds: stopped() ? 0 : 4)
         var mavByIP: [String: [MegaHeartbeat]]
             = [:]
         for beat in mav where beat.crcOK {
             mavByIP[beat.fromIP, default: []]
                 .append(beat)
         }
-        let dds = megaDDSListen(seconds: 5)
+        let dds = megaDDSListen(
+            seconds: stopped() ? 0 : 5)
         var ddsIPs = Set<String>()
         for participant in dds.heard {
             ddsIPs.insert(participant.fromIP)
@@ -3151,6 +3174,7 @@ extension BlacksiteBench {
 
     static func megaPrimeCensus(
         _ arg: String?, file: Bool,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         BlacksitePentest.run {
@@ -3177,6 +3201,7 @@ extension BlacksiteBench {
                 return
             }
             _ = megaHunt(prefix: prefix,
+                         stopped: stopped,
                          emit: emit)
             _ = file
         }
@@ -3186,6 +3211,7 @@ extension BlacksiteBench {
 
     static func megaMarquee(
         _ arg: String?,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         // The board is filed like eazy's:
@@ -3245,6 +3271,7 @@ extension BlacksiteBench {
             steps.append { e, d in
                 megaProbeVerb(
                     host, optimus: false,
+                    stopped: stopped,
                     emit: e, done: d)
             }
             steps.append { e, d in
@@ -3286,12 +3313,14 @@ extension BlacksiteBench {
                     icsSay(e, L("megatron — the dish's own read, by the satellite bench:"), .sys)
                     benchSat(
                         "starlinkprobe", target,
+                        stopped: stopped,
                         emit: e, done: d)
                     return
                 }
                 d()
             }
-            megaChain(steps, 0, emit: collect) {
+            megaChain(steps, 0, stopped: stopped,
+                      emit: collect) {
                 finish(target)
             }
             return
@@ -3311,7 +3340,8 @@ extension BlacksiteBench {
                 .split(separator: ".")[0..<3]
                 .joined(separator: ".")
             let claims = megaHunt(
-                prefix: prefix, emit: collect)
+                prefix: prefix, stopped: stopped,
+                emit: collect)
             var steps: [Step] = []
             let units = claims.prefix(6)
             for claim in units {
@@ -3330,7 +3360,8 @@ extension BlacksiteBench {
                 finish("the wire")
                 return
             }
-            megaChain(steps, 0, emit: collect) {
+            megaChain(steps, 0, stopped: stopped,
+                      emit: collect) {
                 finish("the wire")
             }
         }

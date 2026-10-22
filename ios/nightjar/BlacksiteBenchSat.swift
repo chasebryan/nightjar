@@ -32,50 +32,55 @@ extension BlacksiteBench {
         _ name: String,
         _ target: String?,
         extra: String? = nil,
+        stopped: @escaping () -> Bool,
         emit: @escaping (String,
                          BlacksiteShell.Line.Kind) -> Void,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "cspprobe":
-            satCSPProbe(target, emit: emit, done: done)
+            satCSPProbe(target, emit: live, done: done)
         case "ccsdsprobe":
-            satCCSDSProbe(target, emit: emit, done: done)
+            satCCSDSProbe(target, emit: live, done: done)
         case "aprsprobe":
-            satAPRSProbe(target, emit: emit, done: done)
+            satAPRSProbe(target, emit: live, done: done)
         case "kissprobe":
-            satKISSProbe(target, emit: emit, done: done)
+            satKISSProbe(target, emit: live, done: done)
         case "agwprobe":
-            satAGWProbe(target, emit: emit, done: done)
+            satAGWProbe(target, emit: live, done: done)
         case "rotprobe":
-            satRotProbe(target, emit: emit, done: done)
+            satRotProbe(target, emit: live, done: done)
         case "rigprobe":
-            satRigProbe(target, emit: emit, done: done)
+            satRigProbe(target, emit: live, done: done)
         case "gpsdprobe":
-            satGPSDProbe(target, emit: emit, done: done)
+            satGPSDProbe(target, emit: live, done: done)
         case "nmeaprobe":
-            satNMEAProbe(target, emit: emit, done: done)
+            satNMEAProbe(target, emit: live, done: done)
         case "ubxprobe":
-            satUBXProbe(target, emit: emit, done: done)
+            satUBXProbe(target, emit: live, done: done)
         case "ntripprobe":
-            satNTRIPProbe(target, emit: emit, done: done)
+            satNTRIPProbe(target, emit: live, done: done)
         case "comtechprobe":
-            satComtechProbe(target, emit: emit, done: done)
+            satComtechProbe(target, emit: live, done: done)
         case "bucprobe":
-            satBUCProbe(target, emit: emit, done: done)
+            satBUCProbe(target, emit: live, done: done)
         case "iridiumprobe":
-            satIridiumProbe(target, emit: emit, done: done)
+            satIridiumProbe(target, emit: live, done: done)
         case "starlinkprobe":
-            satStarlinkProbe(target, emit: emit, done: done)
+            satStarlinkProbe(target, emit: live, done: done)
         case "satipprobe":
-            satIPProbe(target, emit: emit, done: done)
+            satIPProbe(target, emit: live, done: done)
         case "yamcsprobe":
-            satYamcsProbe(target, emit: emit, done: done)
+            satYamcsProbe(target, emit: live, done: done)
         case "satintel":
-            satIntel(target, emit: emit, done: done)
+            satIntel(target, emit: live, done: done)
         case "satnogsprobe":
-            satNogsProbe(target, emit: emit, done: done)
+            satNogsProbe(target, emit: live, done: done)
         case "satcensus":
-            satCensus(target, emit: emit, done: done)
+            satCensus(target, emit: live, done: done)
         default:
             done()
         }

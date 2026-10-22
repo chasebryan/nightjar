@@ -49,50 +49,55 @@ extension BlacksiteBench {
     static func benchStreet(
         _ name: String,
         _ target: String?,
+        stopped: @escaping () -> Bool,
         emit: @escaping (String,
                          BlacksiteShell.Line.Kind) -> Void,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "signalprobe":
-            streetSignalProbe(target, emit: emit, done: done)
+            streetSignalProbe(target, emit: live, done: done)
         case "ascprobe":
-            streetASCProbe(target, emit: emit, done: done)
+            streetASCProbe(target, emit: live, done: done)
         case "dmsprobe":
-            streetDMSProbe(target, emit: emit, done: done)
+            streetDMSProbe(target, emit: live, done: done)
         case "rwisprobe":
-            streetRWISProbe(target, emit: emit, done: done)
+            streetRWISProbe(target, emit: live, done: done)
         case "rsuprobe":
-            streetRSUProbe(target, emit: emit, done: done)
+            streetRSUProbe(target, emit: live, done: done)
         case "spatprobe":
-            streetSPaTProbe(target, emit: emit, done: done)
+            streetSPaTProbe(target, emit: live, done: done)
         case "flockcensus":
-            streetFlockCensus(target, emit: emit, done: done)
+            streetFlockCensus(target, emit: live, done: done)
         case "dotprobe":
-            streetDOTProbe(target, emit: emit, done: done)
+            streetDOTProbe(target, emit: live, done: done)
         case "onvifprobe":
-            streetONVIFProbe(target, emit: emit, done: done)
+            streetONVIFProbe(target, emit: live, done: done)
         case "camdeep":
-            streetCamDeep(target, emit: emit, done: done)
+            streetCamDeep(target, emit: live, done: done)
         case "ptzprobe":
-            streetPTZProbe(target, emit: emit, done: done)
+            streetPTZProbe(target, emit: live, done: done)
         case "ridprobe":
-            streetRIDProbe(emit: emit, done: done)
+            streetRIDProbe(emit: live, done: done)
         case "streetlightprobe":
-            streetLightProbe(target, emit: emit, done: done)
+            streetLightProbe(target, emit: live, done: done)
         case "sirenprobe":
-            streetSirenProbe(target, emit: emit, done: done)
+            streetSirenProbe(target, emit: live, done: done)
         case "transitprobe":
-            streetTransitProbe(target, emit: emit, done: done)
+            streetTransitProbe(target, emit: live, done: done)
         case "gaugeprobe":
-            streetGaugeProbe(target, emit: emit, done: done)
+            streetGaugeProbe(target, emit: live, done: done)
         case "airprobe":
-            streetAirProbe(target, emit: emit, done: done)
+            streetAirProbe(target, emit: live, done: done)
         case "gbfsprobe":
-            streetGBFSProbe(target, emit: emit, done: done)
+            streetGBFSProbe(target, emit: live, done: done)
         case "towerprobe":
-            streetTowerProbe(target, emit: emit, done: done)
+            streetTowerProbe(target, emit: live, done: done)
         case "streetcensus":
-            streetCensus(target, emit: emit, done: done)
+            streetCensus(target, emit: live, done: done)
         default:
             done()
         }

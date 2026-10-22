@@ -90,84 +90,89 @@ extension BlacksiteBench {
     /// for its owner.
     static func benchShield(
         name: String, arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "shieldcensus":
             shieldcensus(target: arg,
-                         emit: emit, done: done)
+                         emit: live, done: done)
         case "mgmtprobe":
             mgmtprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "anonprobe":
             anonprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "certwatch":
             certwatch(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "smbposture":
             smbposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "sshposture":
             sshposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "snmposture":
             snmposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "backupprobe":
             backupprobe(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "upnpgrade":
             upnpgrade(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "dnsposture":
             dnsposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "mailposture":
             mailposture(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "patchprobe":
             patchprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "kevcheck":
             kevcheck(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "iotposture":
             iotposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "guestprobe":
             guestprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "timeprobe":
             timeprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "v6posture":
             v6posture(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "headerposture":
             headerposture(target: arg,
-                          emit: emit, done: done)
+                          emit: live, done: done)
         case "cookieposture":
             cookieposture(target: arg,
-                          emit: emit, done: done)
+                          emit: live, done: done)
         case "dirposture":
             dirposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "metadataprobe":
-            metadataprobe(emit: emit,
+            metadataprobe(emit: live,
                           done: done)
         case "printposture":
             printposture(target: arg,
-                         emit: emit, done: done)
+                         emit: live, done: done)
         case "nasposture":
             nasposture(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "cameraposture":
             cameraposture(target: arg,
-                          emit: emit, done: done)
+                          emit: live, done: done)
         case "watchprobe":
             watchprobe(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         default:
             done()
         }

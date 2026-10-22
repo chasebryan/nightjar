@@ -546,69 +546,75 @@ extension BlacksiteBench {
     /// engine room and touch no wire.
     static func benchLocks(
         name: String, arg: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
+        if stopped() { done(); return }
+        let live: BlacksiteEmit = { text, kind in
+            if !stopped() { emit(text, kind) }
+        }
         switch name {
         case "keyprobe":
             keyprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "hashprobe":
             hashprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "entropyprobe":
             entropyprobe(target: arg,
-                         emit: emit, done: done)
+                         emit: live, done: done)
         case "b64deep":
             b64deep(target: arg,
-                    emit: emit, done: done)
+                    emit: live, done: done)
         case "x509probe":
             x509probe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "pgpprobe":
             pgpprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "sshkeydeep":
             sshkeydeep(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         case "tlscensus":
             tlscensus(target: arg,
-                      emit: emit, done: done)
+                      stopped: stopped,
+                      emit: live, done: done)
         case "cipherprobe":
             cipherprobe(target: arg,
-                        emit: emit, done: done)
+                        emit: live, done: done)
         case "randprobe":
             randprobe(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "kdfprobe":
             kdfprobe(spec: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "aesprobe":
             aesprobe(spec: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "xorprobe":
             xorprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "rsaprobe":
             rsaprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "eccprobe":
             eccprobe(target: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "enccensus":
             enccensus(target: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "sigprobe":
             sigprobe(spec: arg,
-                     emit: emit, done: done)
+                     emit: live, done: done)
         case "totpprobe":
             totpprobe(spec: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "passprobe":
             passprobe(spec: arg,
-                      emit: emit, done: done)
+                      emit: live, done: done)
         case "lockcensus":
             lockcensus(target: arg,
-                       emit: emit, done: done)
+                       emit: live, done: done)
         default:
             done()
         }
@@ -3210,6 +3216,7 @@ extension BlacksiteBench {
     /// the papers chained in.
     static func tlscensus(
         target: String,
+        stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
         BlacksitePentest.run {
@@ -3240,6 +3247,7 @@ extension BlacksiteBench {
             var firstTrust: SecTrust?
             var sawModern = false
             for (name, proto) in versions {
+                if stopped() { break }
                 let knock = lockTLSKnock(
                     ip: ip, port: Int(port),
                     host: host, minV: proto,
@@ -3293,6 +3301,7 @@ extension BlacksiteBench {
             var oldShared: [String] = []
             for (family, suite, dated)
                 in families {
+                if stopped() { break }
                 let knock = lockTLSKnock(
                     ip: ip, port: Int(port),
                     host: host,
