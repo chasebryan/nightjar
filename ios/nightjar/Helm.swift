@@ -228,7 +228,7 @@ struct HelmView: View {
                     }
                 }
             }
-            .navigationTitle(L("The Helm"))
+            .navigationTitle(L("THE HELM"))
             .toolbar {
                 ToolbarItem(placement: .houseTrailing) {
                     Menu {
