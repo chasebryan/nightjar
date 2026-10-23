@@ -3960,7 +3960,7 @@ final class Gauntlet: ObservableObject {
                 + "stills hang whole and centered, "
                 + "matched stills fill"
         }
-        add("wardrobe", "the glitch boot engages") {
+        add("wardrobe", "the labz boot engages") {
             // The boot screen's law (Chase's
             // commission, ruled three times on
             // 2026-10-22): the flood answers every
