@@ -1760,6 +1760,8 @@ struct AssaultIgnitionView: View {
     @Binding var isShown: Bool
     @ObservedObject private var themeCenter =
         ThemeCenter.shared
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
     @State private var flicker = false
     @State private var gifData: Data?
     @State private var gifFocus: CGPoint?
@@ -1791,9 +1793,16 @@ struct AssaultIgnitionView: View {
                 }
                 .opacity(flicker ? 0.55 : 1.0)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
+                    // The stillness binds the
+                    // card too (fix383): no
+                    // flicker screens while the
+                    // house's GIFs are off — the
+                    // card simply stands.
+                    if gifsEnabled {
+                        withAnimation(.easeInOut(duration: 0.14)
+                            .repeatForever(autoreverses: true)) {
+                            flicker = true
+                        }
                     }
                 }
             }
@@ -1806,7 +1815,12 @@ struct AssaultIgnitionView: View {
             // film's bytes and its loop then live in
             // state, and the body never touches disk.
             let film = GifWardrobe.data("assault")
-            gifData = film
+            // A film that cannot decode is
+            // no film (fix383): the card
+            // stands instead of a black stage.
+            gifData = film.flatMap {
+                GifWardrobe.decodable($0) ? $0 : nil
+            }
             gifFocus = film.map {
                 SubjectAnchor.focus(for: $0)
             }

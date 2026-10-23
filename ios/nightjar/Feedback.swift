@@ -3091,6 +3091,20 @@ enum GifWardrobe {
         return nil
     }
 
+    /// Can the platform actually decode
+    /// these bytes into a picture? A filed
+    /// film that cannot decode must read as
+    /// no film at all — otherwise its splash
+    /// stands as a black stage over the
+    /// operator's work (fix383).
+    static func decodable(_ data: Data) -> Bool {
+#if os(iOS)
+        UIImage(data: data) != nil
+#else
+        NSImage(data: data) != nil
+#endif
+    }
+
     /// The film's full loop, in seconds, read from
     /// frame properties alone — no frame is ever
     /// decoded to time a film. The delay rule is
@@ -3830,6 +3844,8 @@ struct BootFilmPlayer: UIViewRepresentable {
 /// its first hops.
 struct CentipedeSplashView: View {
     @Binding var isShown: Bool
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
     @State private var flicker = false
     @State private var gifData: Data?
     @State private var gifFocus: CGPoint?
@@ -3857,9 +3873,16 @@ struct CentipedeSplashView: View {
                 }
                 .opacity(flicker ? 0.55 : 1.0)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
+                    // The stillness binds the
+                    // card too (fix383): no
+                    // flicker screens while the
+                    // house's GIFs are off — the
+                    // card simply stands.
+                    if gifsEnabled {
+                        withAnimation(.easeInOut(duration: 0.14)
+                            .repeatForever(autoreverses: true)) {
+                            flicker = true
+                        }
                     }
                 }
             }
@@ -3872,7 +3895,12 @@ struct CentipedeSplashView: View {
             // film's bytes and its loop then live in
             // state, and the body never touches disk.
             let film = GifWardrobe.data("centipede")
-            gifData = film
+            // A film that cannot decode is
+            // no film (fix383): the card
+            // stands instead of a black stage.
+            gifData = film.flatMap {
+                GifWardrobe.decodable($0) ? $0 : nil
+            }
             gifFocus = film.map {
                 SubjectAnchor.focus(for: $0)
             }
@@ -3902,6 +3930,8 @@ struct CentipedeSplashView: View {
 /// centipede's doctrine.
 struct EazyIgnitionView: View {
     @Binding var isShown: Bool
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
     @State private var flicker = false
     @State private var gifData: Data?
     @State private var gifFocus: CGPoint?
@@ -3929,9 +3959,16 @@ struct EazyIgnitionView: View {
                 }
                 .opacity(flicker ? 0.55 : 1.0)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
+                    // The stillness binds the
+                    // card too (fix383): no
+                    // flicker screens while the
+                    // house's GIFs are off — the
+                    // card simply stands.
+                    if gifsEnabled {
+                        withAnimation(.easeInOut(duration: 0.14)
+                            .repeatForever(autoreverses: true)) {
+                            flicker = true
+                        }
                     }
                 }
             }
@@ -3944,7 +3981,12 @@ struct EazyIgnitionView: View {
             // film's bytes and its loop then live in
             // state, and the body never touches disk.
             let film = GifWardrobe.data("eazy")
-            gifData = film
+            // A film that cannot decode is
+            // no film (fix383): the card
+            // stands instead of a black stage.
+            gifData = film.flatMap {
+                GifWardrobe.decodable($0) ? $0 : nil
+            }
             gifFocus = film.map {
                 SubjectAnchor.focus(for: $0)
             }
@@ -3975,6 +4017,8 @@ struct EazyIgnitionView: View {
 /// EAZY's charge-up.
 struct MagdumpIgnitionView: View {
     @Binding var isShown: Bool
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
     @State private var flicker = false
     @State private var gifData: Data?
     @State private var gifFocus: CGPoint?
@@ -4002,9 +4046,16 @@ struct MagdumpIgnitionView: View {
                 }
                 .opacity(flicker ? 0.55 : 1.0)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
+                    // The stillness binds the
+                    // card too (fix383): no
+                    // flicker screens while the
+                    // house's GIFs are off — the
+                    // card simply stands.
+                    if gifsEnabled {
+                        withAnimation(.easeInOut(duration: 0.14)
+                            .repeatForever(autoreverses: true)) {
+                            flicker = true
+                        }
                     }
                 }
             }
@@ -4017,7 +4068,12 @@ struct MagdumpIgnitionView: View {
             // film's bytes and its loop then live in
             // state, and the body never touches disk.
             let film = GifWardrobe.data("magdump")
-            gifData = film
+            // A film that cannot decode is
+            // no film (fix383): the card
+            // stands instead of a black stage.
+            gifData = film.flatMap {
+                GifWardrobe.decodable($0) ? $0 : nil
+            }
             gifFocus = film.map {
                 SubjectAnchor.focus(for: $0)
             }
@@ -4046,6 +4102,8 @@ struct MagdumpIgnitionView: View {
 /// first, and this is the theatre laid over the hush.
 struct RedframeSplashView: View {
     @Binding var isShown: Bool
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
     @State private var flicker = false
     @State private var gifData: Data?
     @State private var gifFocus: CGPoint?
@@ -4073,9 +4131,16 @@ struct RedframeSplashView: View {
                 }
                 .opacity(flicker ? 0.55 : 1.0)
                 .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
+                    // The stillness binds the
+                    // card too (fix383): no
+                    // flicker screens while the
+                    // house's GIFs are off — the
+                    // card simply stands.
+                    if gifsEnabled {
+                        withAnimation(.easeInOut(duration: 0.14)
+                            .repeatForever(autoreverses: true)) {
+                            flicker = true
+                        }
                     }
                 }
             }
@@ -4088,7 +4153,12 @@ struct RedframeSplashView: View {
             // film's bytes and its loop then live in
             // state, and the body never touches disk.
             let film = GifWardrobe.data("redframe")
-            gifData = film
+            // A film that cannot decode is
+            // no film (fix383): the card
+            // stands instead of a black stage.
+            gifData = film.flatMap {
+                GifWardrobe.decodable($0) ? $0 : nil
+            }
             gifFocus = film.map {
                 SubjectAnchor.focus(for: $0)
             }
