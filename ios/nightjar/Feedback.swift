@@ -3271,25 +3271,18 @@ struct GifStageView: View {
     /// (or unless) the anchor speaks.
     var focus: CGPoint? = nil
 
-    /// The stillness governs the stage too
-    /// (Chase's ruling, 2026-10-23, on the Hulk
-    /// that played over his work mid-EMCON):
-    /// with GIFs off — the default — an action's
-    /// splash does not present at all. The film
-    /// stays filed and the stage stays built;
-    /// nothing takes the screen from the
-    /// operator's work until they turn
-    /// animation on themselves.
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = false
-
+    /// The stage itself never gates (fix381,
+    /// 2026-10-23): fix378 emptied the stage
+    /// while the house was still, and every
+    /// splash became its own black shell
+    /// standing alone on the screen — worse
+    /// than the film it replaced. The stillness
+    /// lives in the players, as it does for the
+    /// backdrops: with GIFs off, a splash
+    /// stands on its film's first frame; with
+    /// them on, it plays. Never black, never
+    /// motion the operator did not choose.
     var body: some View {
-        if gifsEnabled {
-            stage
-        }
-    }
-
-    private var stage: some View {
         GeometryReader { geo in
             let frameAspect = geo.size.height > 0
                 ? geo.size.width / geo.size.height : 0
