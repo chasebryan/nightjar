@@ -311,6 +311,15 @@ struct AppBackdrop: View {
     var slot: BackdropSlot? = nil
     @Environment(\.backdropSlot) private var ambientSlot
     @ObservedObject private var themes = ThemeCenter.shared
+    /// The house's GIF stillness (Chase's
+    /// ruling, 2026-10-23): with animation off
+    /// — the default — an animated backdrop
+    /// stands on its first frame. The backdrop
+    /// never consulted the switch before; the
+    /// ambient surfaces are exactly what the
+    /// ruling was about.
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
 
     private var resolvedSlot: BackdropSlot {
         slot ?? ambientSlot
@@ -378,7 +387,8 @@ struct AppBackdrop: View {
         switch choice {
         case .living, .inherit:
             if let wallpaper = Wallpaper.image {
-                if platformImageIsAnimated(wallpaper) {
+                if gifsEnabled,
+                   platformImageIsAnimated(wallpaper) {
                     AnimatedImageView(image: wallpaper)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -394,7 +404,8 @@ struct AppBackdrop: View {
         case .custom:
             if let image = BackdropMedia.image(
                 for: mediaSlot) {
-                if platformImageIsAnimated(image) {
+                if gifsEnabled,
+                   platformImageIsAnimated(image) {
                     AnimatedImageView(image: image)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -403,7 +414,8 @@ struct AppBackdrop: View {
                     stillBackdrop(image, geo: geo)
                 }
             } else if let wallpaper = Wallpaper.image {
-                if platformImageIsAnimated(wallpaper) {
+                if gifsEnabled,
+                   platformImageIsAnimated(wallpaper) {
                     AnimatedImageView(image: wallpaper)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -525,10 +537,19 @@ enum BootMedia {
     /// Whether the boot ceremony plays at all
     /// when the app opens.
     static let enabledKey = "boot.enabled"
-    /// Whether animated GIFs play anywhere in
-    /// the house — the boot film, the wallpaper
-    /// reel, the splashes. Off, every GIF stands
-    /// as a still frame instead.
+    /// Whether the house's AMBIENT GIFs play —
+    /// the wallpaper, the backdrops, the
+    /// viewers. OFF BY DEFAULT (Chase's ruling,
+    /// 2026-10-23: no flicker screens; let
+    /// people work the toolings themselves):
+    /// every ambient GIF stands as a still
+    /// frame until the operator turns
+    /// animation on in Colours. Two exemptions,
+    /// both his word the same night: the boot
+    /// film always plays (it is the ceremony,
+    /// not a decoration), and the action films
+    /// — the ignition splashes that play FOR an
+    /// operator's act — are still present.
     static let gifsKey = "media.gifsEnabled"
     /// The house's picture mode: "quality" or
     /// "performance" — how much of the device
@@ -909,8 +930,6 @@ struct BootView: View {
     private var bootMedia = "provided"
     @AppStorage(BootMedia.textKey)
     private var bootText = "lines"
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = true
     @AppStorage(BootMedia.modeKey)
     private var pictureMode = "quality"
     @State private var shown = 0
@@ -1387,7 +1406,18 @@ struct BootView: View {
             ZStack {
                 Color.black
                 if let data = loadedData {
-                    if BootMedia.isGIF(data), gifsEnabled {
+                    // The boot film is the ONE
+                    // exemption from the house's
+                    // GIF stillness (Chase's
+                    // ruling, 2026-10-23): whatever
+                    // GIF the operator fields as
+                    // the boot's backdrop PLAYS —
+                    // the Joker's, in his house —
+                    // while every other GIF in the
+                    // house stands as a still
+                    // unless the operator turns
+                    // animation on.
+                    if BootMedia.isGIF(data) {
                         if bootMedia == "provided",
                            filmIsWardrobe {
                             // The operator's own boot
@@ -1588,7 +1618,7 @@ struct BootView: View {
                     media: bootMedia, backdrop: data,
                     emblem: BootMedia.emblemData()))
             if !labz, let data = data,
-               BootMedia.isGIF(data), gifsEnabled {
+               BootMedia.isGIF(data) {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
@@ -2547,14 +2577,18 @@ enum Haptics {
     /// The house switch (Colours → Touch): off
     /// means the motor never speaks — no beat
     /// of any class, the console's tests
-    /// included. On by default; the house
-    /// reset restores it on, like every
-    /// setting. Every beat in this enum flows
+    /// included. OFF by default (Chase's
+    /// ruling, 2026-10-23 — the calm house:
+    /// GIFs still, haptics silent, until the
+    /// operator asks otherwise); a stored
+    /// choice stands, and the factory reset
+    /// restores the default by clearing the
+    /// key. Every beat in this enum flows
     /// through onMain, and onMain asks here
     /// first — one gate, total coverage.
     static var enabled: Bool {
         UserDefaults.standard.object(
-            forKey: "house.haptics") as? Bool ?? true
+            forKey: "house.haptics") as? Bool ?? false
     }
 
     // One retained generator per voice, kept
@@ -3240,7 +3274,8 @@ struct GifStageView: View {
                 if whole {
                     GIFPlayerView(
                         data: data,
-                        contentMode: .scaleAspectFit)
+                        contentMode: .scaleAspectFit,
+                        actionFilm: true)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
                         .clipped()
@@ -3248,7 +3283,8 @@ struct GifStageView: View {
                     FilmFrameView(
                         data: data,
                         focus: focus ?? CGPoint(
-                            x: 0.5, y: 0.5))
+                            x: 0.5, y: 0.5),
+                        actionFilm: true)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
                 }
@@ -3277,8 +3313,17 @@ struct GIFPlayerView: UIViewRepresentable {
     /// (the EAZY ignition: the spin, the blast,
     /// and stop). Default off: backdrops loop.
     var playOnce = false
+    /// An action film — one of the ignition
+    /// splashes, fired by the operator's own
+    /// hand — plays whatever the house's
+    /// stillness says (Chase's ruling,
+    /// 2026-10-23: the GIFs that play FOR
+    /// ACTIONS are still present). Ambient
+    /// callers leave this false and obey the
+    /// switch.
+    var actionFilm = false
     @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = true
+    private var gifsEnabled = false
 
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
@@ -3298,7 +3343,7 @@ struct GIFPlayerView: UIViewRepresentable {
     /// mode — or, when the house has stilled
     /// its GIFs, stand its first frame.
     private func configure(_ view: UIImageView) {
-        guard gifsEnabled else {
+        guard gifsEnabled || actionFilm else {
             view.stopAnimating()
             view.animationImages = nil
             if view.image == nil
@@ -3365,8 +3410,12 @@ struct GIFPlayerView: UIViewRepresentable {
 struct FilmFrameView: UIViewRepresentable {
     let data: Data
     let focus: CGPoint
+    /// An action film (an ignition splash's
+    /// stage) plays whatever the house's
+    /// stillness says; see GIFPlayerView.
+    var actionFilm = false
     @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = true
+    private var gifsEnabled = false
 
     final class Container: UIView {
         let imageView = UIImageView()
@@ -3427,7 +3476,7 @@ struct FilmFrameView: UIViewRepresentable {
     /// film runs.
     private func configure(_ view: Container) {
         let player = view.imageView
-        guard gifsEnabled else {
+        guard gifsEnabled || actionFilm else {
             player.stopAnimating()
             player.animationImages = nil
             if player.image == nil

@@ -894,7 +894,7 @@ private struct ThemeEditorView: View {
 /// off everywhere, Hunt ear included.
 private struct TouchRow: View {
     @AppStorage("house.haptics")
-    private var hapticsOn = true
+    private var hapticsOn = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -917,7 +917,7 @@ private struct BootRow: View {
     @AppStorage(BootMedia.enabledKey)
     private var bootEnabled = true
     @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = true
+    private var gifsEnabled = false
     @AppStorage(BootMedia.modeKey)
     private var pictureMode = "quality"
     @State private var pickerItem: PhotosPickerItem?
@@ -944,7 +944,7 @@ private struct BootRow: View {
                 text: L("Quality decodes the boot film at 1024 px with the print at full density, and the wallpaper reel plays full-size. Performance decodes the film at 512 — about a fifth of the memory — thins the print, and caps the reel at 640. Same app, lighter feet: choose Performance when the device runs hot or the boot feels heavy."))
             Toggle(L("Animated GIFs"), isOn: $gifsEnabled)
             ExplainToggle(
-                text: L("Off stills every GIF in the house: the boot film and the splashes stand on their first frame, and the wallpaper reel holds still. Nothing is removed — the pictures stay, the motion goes."))
+                text: L("Off (the default) stills the house's ambient GIFs: the wallpaper and the backdrops stand on their first frame. The boot film and the action splashes always play — they are the ceremony and the punctuation, not decoration. Nothing is removed — the pictures stay, the idle motion goes."))
             HStack {
                 Text(L("Backdrop"))
                 Spacer()
