@@ -279,6 +279,7 @@ rm nightjar/send.py
 | **[CLI manual](HACKER.md)** | Transports, payloads, framing, transforms, replies, and recording |
 | **[Recon manual](HACKER-RECON.md)** | The protocol probe bench |
 | **[Trace viewer](tools/trace-view/README.md)** | Working with exported Network Trace data |
+| **[12.0 release notes](release-notes-12.0.md)** | The plumage release and its changes |
 | **[11.0 release notes](release-notes-11.0.md)** | The churring release and its changes |
 | **[Changelog](CHANGELOG.md)** | The project's release history |
 | **[Privacy policy](PRIVACY.md)** | Local storage, permissions, research, downloads, and configured connections |
@@ -286,8 +287,6 @@ rm nightjar/send.py
 | **[License](LICENSE)** | GNU Affero General Public License, version 3 |
 
 ## Reports and contributions
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to help keep the watch.
 
 **[Open an issue](https://github.com/nightwarelabz/nightjar/issues/new/choose)** for a reproducible bug or a feature request. Include the version, device, steps, and what you expected. Find the version in About or with `ver` in Blacksite; `log` shows the flight recorder. About's Developer section can export a diagnostic file.
 
