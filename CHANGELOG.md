@@ -1,6 +1,6 @@
 # Changelog
 
-## 12B (12.0.1) — 2026-10-23 — plumage
+## 12.0.1 — 2026-10-23 — plumage (12B)
 - **The crash is dead.** The payload beacon's crash — seven records, one family — was convicted at last: an iOS peripheral may advertise its name and its service UUIDs, and nothing else; payload bytes in service data were never legal, in any shape. Beacons now advertise name and service alone, and a payload that cannot legally ride is set down and said so plainly in the log instead of being forced onto the air. The ladder of shapes is retired; the lesson stays in the code where the next reader will find it.
 - **TOTALITY, restructured on principle.** The house keeps three kinds of command — magdump the offensive one, eazy the passive dumper, TOTALITY the raising of the house itself — and TOTALITY no longer blurs them: it raises no beacon and runs no assault. It stands the house up (her door served under EMCON's say-so, the house tap running, ears always open) and reports what it raised; the same word backwards stands down only that.
 - **Skelli runs it.** Asked in chat, she raises TOTALITY, stands it down, and reads its state back in her own voice — the console's word in her hands, like every other instrument in the house.

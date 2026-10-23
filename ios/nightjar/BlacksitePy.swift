@@ -4643,8 +4643,11 @@ QUOTE_NONNUMERIC = 2
 QUOTE_NONE = 3
 
 
-class Error(Exception):
+class _CsvError(Exception):
     pass
+
+
+Error = _CsvError
 
 
 _SETTINGS = ["delimiter", "quotechar", "escapechar",
@@ -5013,7 +5016,6 @@ class DictWriter:
     def writerows(self, rowdicts):
         for rowdict in rowdicts:
             self.writerow(rowdict)
-
 """,
             "enum": """
 # enum — the house's edition, standing on
@@ -6121,8 +6123,11 @@ def log(level, msg, *args, **kw):
 import os as _os
 
 
-class Error(Exception):
+class _ShutilError(Exception):
     pass
+
+
+Error = _ShutilError
 
 
 def _read_all(path):
@@ -6229,7 +6234,6 @@ def which(cmd, path=None):
         if _os.path.exists(candidate) and not _os.path.isdir(candidate):
             return candidate
     return None
-
 """,
             "contextlib": """
 # contextlib — the house's edition:

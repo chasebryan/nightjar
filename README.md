@@ -279,7 +279,7 @@ rm nightjar/send.py
 | **[CLI manual](HACKER.md)** | Transports, payloads, framing, transforms, replies, and recording |
 | **[Recon manual](HACKER-RECON.md)** | The protocol probe bench |
 | **[Trace viewer](tools/trace-view/README.md)** | Working with exported Network Trace data |
-| **[12B release notes](release-notes-12b.md)** | The plumage crash-fix release and its changes |
+| **[12B release notes](release-notes-12.0.1.md)** | The plumage crash-fix release and its changes |
 | **[12.0 release notes](release-notes-12.0.md)** | The plumage release and its changes |
 | **[11.0 release notes](release-notes-11.0.md)** | The churring release and its changes |
 | **[Changelog](CHANGELOG.md)** | The project's release history |
