@@ -2201,6 +2201,228 @@ final class Gauntlet: ObservableObject {
             return "\(cases) cases: CRCs, Modbus, "
                 + "DNP3, BACnet and ENIP bytes held"
         }
+        add("bench", "owserver header byte-exact") {
+            var cases = 0
+            // The DIRALL ask: six big-endian
+            // words, then the root path,
+            // NUL-closed.
+            let ask = BlacksiteBench
+                .buildOWRequest()
+            cases += 1
+            try Gauntlet.require(
+                ask == [0, 0, 0, 0, 0, 0, 0, 2,
+                        0, 0, 0, 7, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        0x2F, 0x00],
+                "the OWServer ask moved")
+            cases += 1
+            try Gauntlet.require(
+                BlacksiteBench.buildOWHeader(
+                    payload: 258, type: 7,
+                    flags: 0, size: 0,
+                    offset: 0)[7] == 2,
+                "the OWServer payload word moved")
+            // A canned directory: four ROMs
+            // and the furniture around them.
+            let roms = BlacksiteBench
+                .buildOWParseDirectory(
+                    "/10.67C6697351FF,"
+                    + "/28.3C9781313230AA,"
+                    + "/22.00000333AABB,"
+                    + "/26.000000ABCDEF,"
+                    + "/bus.0,/settings")
+            cases += 1
+            try Gauntlet.require(
+                roms.count == 4,
+                "the directory read lost a device")
+            cases += 1
+            try Gauntlet.require(
+                roms.map { $0.family }
+                    == [0x10, 0x28, 0x22, 0x26],
+                "the family codes read wrong")
+            cases += 1
+            try Gauntlet.require(
+                BlacksiteBench.buildOWFamilyName(
+                    0x28).contains("DS18B20"),
+                "the DS18B20 lost its name")
+            return "\(cases) cases: the OWServer "
+                + "header, directory and families held"
+        }
+        add("bench", "ws-discovery scrape") {
+            var cases = 0
+            let xml = "<?xml version=\"1.0\"?>"
+                + "<soap:Envelope xmlns:soap=\"x\">"
+                + "<soap:Body><wsd:ProbeMatches>"
+                + "<wsd:ProbeMatch>"
+                + "<wsa:EndpointReference>"
+                + "<wsa:Address>urn:uuid:cam-1</wsa:Address>"
+                + "</wsa:EndpointReference>"
+                + "<wsd:Types>dn:NetworkVideoTransmitter tds:Device</wsd:Types>"
+                + "<wsd:Scopes>onvif://www.onvif.org/type/video_encoder onvif://www.onvif.org/name/GauntletCam</wsd:Scopes>"
+                + "<wsd:XAddrs>http://192.168.1.64/onvif/device_service</wsd:XAddrs>"
+                + "</wsd:ProbeMatch>"
+                + "<wsd:ProbeMatch>"
+                + "<wsd:Types>wprt:PrintDeviceType</wsd:Types>"
+                + "<wsd:Scopes>http://192.168.1.70/printer</wsd:Scopes>"
+                + "<wsd:XAddrs>http://192.168.1.70/wsd</wsd:XAddrs>"
+                + "</wsd:ProbeMatch>"
+                + "</wsd:ProbeMatches>"
+                + "</soap:Body></soap:Envelope>"
+            let matches = BlacksiteBench
+                .buildWSDParse(xml)
+            cases += 1
+            try Gauntlet.require(
+                matches.count == 2,
+                "the ProbeMatches were miscounted")
+            cases += 1
+            try Gauntlet.require(
+                matches[0].types.contains(
+                    "NetworkVideoTransmitter"),
+                "the camera's types were lost")
+            cases += 1
+            try Gauntlet.require(
+                matches[0].scopes.contains(
+                    "GauntletCam"),
+                "the camera's scopes were lost")
+            cases += 1
+            try Gauntlet.require(
+                matches[1].xaddrs
+                    == "http://192.168.1.70/wsd",
+                "the printer's address moved")
+            return "\(cases) cases: ProbeMatches "
+                + "scraped whole, nested tags and all"
+        }
+        add("bench", "fire vendor classifier") {
+            var cases = 0
+            let named: [(String, String)] = [
+                ("NOTIFIER NFS2-3030",
+                 "Notifier"),
+                ("Silent Knight 6820 panel",
+                 "Silent Knight"),
+                ("FIRE-LITE MS-9200UDLS",
+                 "Fire-Lite"),
+                ("Edwards EST3 platform",
+                 "EST / Edwards"),
+                ("Simplex 4100ES", "Simplex"),
+                ("Gamewell-FCI E3 Series",
+                 "Gamewell-FCI"),
+                ("POTTER PFC-8500", "Potter"),
+                ("Mircom FX-3500", "Mircom"),
+            ]
+            for (evidence, maker) in named {
+                cases += 1
+                try Gauntlet.require(
+                    BlacksiteBench
+                        .buildFireClassify(
+                            evidence) == maker,
+                    "the classifier missed "
+                        + maker)
+            }
+            cases += 1
+            try Gauntlet.require(
+                BlacksiteBench.buildFireClassify(
+                    "a water pump controller, rev 4")
+                    == nil,
+                "the classifier named a pump a panel")
+            cases += 1
+            try Gauntlet.require(
+                BlacksiteBench.buildFireClassify(
+                    "") == nil,
+                "the classifier named silence")
+            return "\(cases) cases: the fire makers "
+                + "named from their own plates only"
+        }
+        add("bench", "thermo board grading") {
+            var cases = 0
+            let readings = [
+                BlacksiteBench.BuildThermoReading(
+                    object: "analog-input 3",
+                    name: "Supply Air",
+                    value: 21.5, units: "°C"),
+                BlacksiteBench.BuildThermoReading(
+                    object: "analog-value 1",
+                    name: "Setpoint Echo",
+                    value: nil,
+                    units: "no units claimed"),
+            ]
+            let board = BlacksiteBench
+                .buildThermoBoard(
+                    host: "192.168.1.10",
+                    plate: "thermoprobe: plate",
+                    readings: readings,
+                    bacnetAnswered: true)
+            let text = board.map { $0.text }
+                .joined(separator: "\n")
+            cases += 1
+            try Gauntlet.require(
+                text.contains(
+                    "analog-input 3 'Supply Air' reads 21.5 °C"),
+                "the board lost the reading")
+            cases += 1
+            try Gauntlet.require(
+                text.contains(
+                    "no credential of any kind"),
+                "the board lost its grade")
+            let mute = BlacksiteBench
+                .buildThermoBoard(
+                    host: "192.168.1.10",
+                    plate: nil, readings: [],
+                    bacnetAnswered: false)
+            cases += 1
+            try Gauntlet.require(
+                mute.count == 1
+                    && (mute.first?.kind ?? .out)
+                        == .out,
+                "the mute board spoke out of turn")
+            cases += 1
+            try Gauntlet.require(
+                BlacksiteBench.buildNum(21.50)
+                    == "21.5"
+                    && BlacksiteBench.buildNum(
+                        -4.0) == "-4",
+                "the number printer moved")
+            return "\(cases) cases: the board says "
+                + "what was read, in the claimed units"
+        }
+        add("bench", "sensor page scrape") {
+            var cases = 0
+            let cbw = "<datavalues>"
+                + "<tempSensor1>74.30</tempSensor1>"
+                + "<tempSensor2>71.05</tempSensor2>"
+                + "<relaystate>0</relaystate>"
+                + "<humiditySensor1>41</humiditySensor1>"
+                + "</datavalues>"
+            let flat = BlacksiteBench
+                .buildScrapeSensors(cbw)
+            cases += 1
+            try Gauntlet.require(
+                flat.count == 3,
+                "the flat page was misread")
+            cases += 1
+            try Gauntlet.require(
+                flat.contains(where: {
+                    $0.name == "tempSensor1"
+                        && $0.value == "74.30"
+                }),
+                "the first sensor was lost")
+            let hwg = "<Sen><Entry>"
+                + "<ID>215</ID>"
+                + "<Name>Plant Room</Name>"
+                + "<Value>24.6</Value>"
+                + "<Units>°C</Units>"
+                + "</Entry></Sen>"
+            let entries = BlacksiteBench
+                .buildScrapeSensors(hwg)
+            cases += 1
+            try Gauntlet.require(
+                entries.count == 1
+                    && entries[0].name
+                        == "Plant Room"
+                    && entries[0].units == "°C",
+                "the HWg entry was misread")
+            return "\(cases) cases: both sensor "
+                + "pages scraped, nothing invented"
+        }
         add("bench", "mqtt and coap encodings") {
             var cases = 0
             // The forge's MQTT CONNECT, decoded

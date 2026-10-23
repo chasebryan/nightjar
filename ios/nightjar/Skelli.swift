@@ -130,6 +130,20 @@ enum SkelliKnowledge {
                        "survey log"],
             body: "The listening post, taken for a drive. Start the wardrive — from the Listen tab, the console, or by asking her — and while it rolls a sampler writes a line to the drive's log every five seconds: the time, where the phone is when it holds a fix, the Wi-Fi network it is joined to at that moment, and every Bluetooth device heard for the first time since the line before, each carrying the classification the post read off the air and the strength it was heard at. The haul is counted as it grows — devices, networks, the ground covered — and when the drive comes home the log waits on the Listen tab, ready to hand over through Deliveries or throw away. The honest boundary, printed in the room: iOS shows an app only the Wi-Fi network you are connected to — a drive logs each network as you join it, and every Bluetooth device the post hears; it never pretends to a scan of nearby networks the platform does not give. The drive transmits nothing — it is ears only — and EMCON ALPHA, total silence, is the one condition that refuses it. In the console: wardrive, wardrive start, wardrive stop."),
         SkelliEntry(
+            id: "building", title: "Building systems — heat, panels, and the fire nameplate",
+            home: "the Blacksite bench",
+            keywords: ["building systems",
+                       "buildingprobe",
+                       "thermoprobe", "owprobe",
+                       "envprobe", "panelprobe",
+                       "accessprobe", "fireprobe",
+                       "buildingcensus",
+                       "firecensus", "thermostat",
+                       "alarm panel",
+                       "fire panel", "envisalink",
+                       "owserver", "1-wire"],
+            body: "The bench's eleventh wave knocks on the building itself. For heat: thermoprobe reads a BACnet device's analog points — present values printed with the units the device itself claims, never silently converted — and the open sensor pages (ControlByWeb's state.xml, HWg-STE's values.xml); owprobe takes the 1-Wire bus directory off an OWServer and names the sensor families on it; envprobe asks the documented SNMP temperature objects, each reported with the MIB that defines it. For the panels: panelprobe only listens at the EnvisaLink TPI and the AlarmDecoder's socket — it sends nothing, and no password is tried or ever will be; accessprobe grades presence at the access controllers' discovery ear and host door, and holds no card data anywhere. onvifprobe asks one host's WS-Discovery directly — types, service addresses, scopes — before the nameplate read. And fire is where the bench's line is hardest: fireprobe and firecensus read a fire panel's NAMEPLATE — BACnet device object, SNMP ledger — and match it against the makers (Notifier, Silent Knight, Fire-Lite, EST, Simplex, Gamewell-FCI, Potter, Mircom and their kin). Identification only: the fire engines never read alarm or zone state, and send nothing that can test, acknowledge, silence, or reset — at any scale. buildingprobe runs the four batteries on one host; buildingcensus sweeps a /24 by family. Everywhere the doctrine holds: one knock, read, grade — no setpoint is written, no panel is armed or disarmed, no credential is attempted; posture is graded from exposure and banners only, and identifications are what the devices claim, never more."),
+        SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
             keywords: ["war chest", "chest", "configuration",
@@ -245,7 +259,7 @@ enum SkelliKnowledge {
                        "git clone", "git push",
                        "grok", "diagnose",
                        "limits"],
-            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 302 graded instruments in ten waves and one capstone — the web, service doors, names and mail, industrial control, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, files, and MEGATRON, the robotics and machinery program that hunts every robot and machine on the wire, the Musk fleet first. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
+            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 311 graded instruments in eleven waves and one capstone — the web, service doors, names and mail, industrial control, the building's own systems, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, files, and MEGATRON, the robotics and machinery program that hunts every robot and machine on the wire, the Musk fleet first. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
         SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
@@ -4876,7 +4890,7 @@ final class SkelliCenter: ObservableObject {
             + "Serve, arm the tripwire, work the "
             + "ear, name devices, run the "
             + "Blacksite bench — every probe and "
-            + "census of its ten waves and the "
+            + "census of its eleven waves and the "
             + "MEGATRON robotics battery — from a "
             + "console line spoken here, forge "
             + "payloads "
