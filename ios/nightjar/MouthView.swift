@@ -102,6 +102,7 @@ struct SendView: View {
     @State private var showHelm = false
     @State private var showWarRoom = false
     @State private var showWarGames = false
+    @State private var showMawk = false
     @AppStorage("fanoutTargets") private var fanoutTargets = ""
     @AppStorage("centipedeRoute") private var centipedeRoute = ""
     @AppStorage("centipedeMode") private var centipedeMode = "chain"
@@ -306,6 +307,19 @@ struct SendView: View {
                               systemImage: "flag.2.crossed")
                     }
                     Text(L("One phone defends (Serve up, decoys flying), the other attacks (trace and knock). The match protocol rides the Serve inbox, and the scoring diffs what was found against what was run and caught."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section {
+                    Button {
+                        Haptics.tap()
+                        showMawk = true
+                    } label: {
+                        Label(L("Mawkbox — the sound modem"),
+                              systemImage: "waveform")
+                    }
+                    Text(L("Some messages travel as sound. Mawkbox sings a note as four tones the room can hear — plain, or sealed with a passphrase — and listens for songs coming back. The lab's own format, shared with the desktop mawkbox."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1223,6 +1237,9 @@ struct SendView: View {
             }
             .sheet(isPresented: $showWarGames) {
                 WarGamesView()
+            }
+            .sheet(isPresented: $showMawk) {
+                MawkView()
             }
             .houseFullScreenCover(isPresented: $showCentipedeSplash) {
                 CentipedeSplashView(isShown: $showCentipedeSplash)

@@ -581,6 +581,13 @@ extension SkelliKnowledge {
                        "unconfigured"],
             body: "Every setting in the house has a sane default — the safe, legible choice — and the app runs on those until configured otherwise: Serve on its known doors, the trace on its standing census, stealth presumed. A default is a decision the house made on the operator's behalf and should be able to explain — why these ports, why this posture. The reset button is a factory reset: it returns EVERYTHING to the shipped state — settings, theme, backdrops, posture, the app lock, her memory, sessions, logs and files — the house exactly as it shipped, nothing kept."),
         SkelliEntry(
+            id: "mawkbox",
+            title: "Mawkbox — the sound modem",
+            home: "the Send tab",
+            keywords: ["mawk", "mawkbox", "sound modem",
+                       "tones", "acoustic", "sing a message"],
+            body: "Mawkbox sends a short message as sound: four tones at 200 baud, a note sung by the speaker and heard by a microphone — the lab's own format, the same frames the desktop mawkbox writes, so the phone and a laptop can sing to each other. A message caps at 4096 bytes; a long one takes over a minute on the air. It can travel plain or sealed with a passphrase (scrypt and ChaCha20-Poly1305; the passphrase is never stored and never spoken to the console). Damage is detected, never repaired: a checksum — and on sealed messages the seal itself — refuses a hurt signal instead of guessing at it. Playing is a transmission, so EMCON Bravo and above refuse it; listening is refused at Alpha alone. It lives behind the Mawkbox door in the Send tab, and the console's mawk verb sings plain and minds the mailbox."),
+        SkelliEntry(
             id: "housenames",
             title: "The house's own names",
             home: "her voice",

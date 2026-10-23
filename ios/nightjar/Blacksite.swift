@@ -242,6 +242,7 @@ final class BlacksiteShell: ObservableObject {
         "limits",
         "scan", "knock", "census", "eazy", "magdump", "decode",
         "company", "port", "emcon", "onion", "applock", "wardrive",
+        "mawk",
         "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom", "betafisch", "driftnet",
@@ -3287,6 +3288,8 @@ final class BlacksiteShell: ObservableObject {
             appLockCommand(args)
         case "wardrive":
             wardriveCommand(args)
+        case "mawk":
+            mawkCommand(args)
         case "macro", "macros":
             macro(args)
         case "freedoom", "doom":
@@ -5130,6 +5133,7 @@ final class BlacksiteShell: ObservableObject {
                 ("onion [wrap on|off] [tor] [audit]", L("the wrap and the layers — the board, the road, the score")),
                 ("applock", L("the app lock's state — armed or not, its cipher, its grace; status only, the passcode never comes here")),
                 ("wardrive [start|stop]", L("the war-driving survey — every device the post hears and each network you join, logged as you move")),
+                ("mawk [say <text>|listen|stop|heard|clear]", L("the sound modem — messages sung as four tones and heard off the air; plain from here, sealing lives in the Send tab's Mawkbox")),
                 ("macro list | run <name>", L("the macro library, run from here")),
                 ("gauntlet", L("run the gauntlet")),
                 ("freedoom", L("play freedoom — the big one")),
@@ -11655,6 +11659,74 @@ final class BlacksiteShell: ObservableObject {
             }
         default:
             emit(L("wardrive [start|stop] — bare wardrive prints the state of the drive."), .err)
+        }
+    }
+
+    /// The sound modem, in text: state, plain singing,
+    /// listening, the mailbox. Sealing is the sheet's
+    /// business — a passphrase never transits the console
+    /// (the App Lock rule).
+    private func mawkCommand(_ args: [String]) {
+        let center = MawkCenter.shared
+        switch args.first?.lowercased() {
+        case nil, "status":
+            var parts: [String] = []
+            parts.append(center.playing
+                         ? L("singing") : L("quiet"))
+            parts.append(center.listening
+                         ? L("listening") : L("deaf"))
+            emit(String(format: L("mawk: %@, %@ — %lld in the mailbox. mawk say <text> sings it plain; the Send tab's Mawkbox seals."),
+                        parts[0], parts[1],
+                        Int64(center.heard.count)), .out)
+            emit(center.status, .out)
+        case "say":
+            let text = args.dropFirst().joined(separator: " ")
+            guard !text.isEmpty else {
+                emit(L("mawk say <text> — give it words to sing."), .err)
+                return
+            }
+            do {
+                let frame = try Mawk.pack(text: text,
+                                          passphrase: nil)
+                if let refusal = center.play(frame: frame) {
+                    emit("mawk: " + refusal, .err)
+                } else {
+                    emit(String(format: L("mawk: singing %lld bytes plain — the room can hear it."),
+                                Int64(frame.count)), .ok)
+                }
+            } catch let error as MawkError {
+                emit("mawk: " + error.line, .err)
+            } catch {
+                emit(L("mawk: that would not pack."), .err)
+            }
+        case "listen":
+            if let refusal = center.startListening() {
+                emit("mawk: " + refusal, .err)
+            } else {
+                emit(L("mawk: the ear is opening."), .ok)
+            }
+        case "stop":
+            center.stopPlaying()
+            center.stopListening()
+            emit(L("mawk: quiet, and the ear is shut."), .ok)
+        case "heard":
+            if center.heard.isEmpty {
+                emit(L("mawk: the mailbox is empty."), .out)
+            }
+            for entry in center.heard {
+                if let text = entry.text {
+                    emit("  " + text, .out)
+                } else {
+                    emit("  " + (entry.note
+                        ?? L("sealed — open it in the Mawkbox")),
+                         .out)
+                }
+            }
+        case "clear":
+            center.forgetHeard()
+            emit(L("mawk: the mailbox is empty."), .ok)
+        default:
+            emit(L("mawk [say <text>|listen|stop|heard|clear] — bare mawk prints the modem's state."), .err)
         }
     }
 

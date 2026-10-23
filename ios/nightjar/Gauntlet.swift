@@ -3751,7 +3751,7 @@ final class Gauntlet: ObservableObject {
             var cases = 0
             // The line codec's own primitives.
             // The codec's shipped contract:
-            // short escapes (\n, not \u000a)
+            // short escapes (\n, not the long unicode form)
             // and spaced object fields — the
             // form every log on disk already
             // carries. (This step once pinned
@@ -4299,6 +4299,172 @@ final class Gauntlet: ObservableObject {
             return "factory: the census spans "
                 + "settings, art, posture, seals, "
                 + "and state — nothing survives"
+        }
+        // -- MAWKBOX ------------------------
+        // The sound modem, pinned against the
+        // ORIGINAL mawkbox implementation: the
+        // two frames below were produced by the
+        // desktop code itself (deterministic
+        // salt/nonce), so opening them here is
+        // proof of wire compatibility — scrypt,
+        // the seal, the CRC, all of it.
+
+        add("mawk", "reference frames open") {
+            func unhex(_ s: String) -> Data {
+                var out = Data()
+                var at = s.startIndex
+                while at < s.endIndex {
+                    let next = s.index(at, offsetBy: 2)
+                    out.append(UInt8(
+                        s[at..<next], radix: 16) ?? 0)
+                    at = next
+                }
+                return out
+            }
+            let sealed = unhex(
+                "4d574b3101010000003e000102030405060708"
+                + "090a0b0c0d0e0f101112131415161718191a1b"
+                + "421f11ee49b0667ded8adcb07a77d6c205fcb"
+                + "6c6fa773cad4d2a617753a212ddc84a08cadd7c")
+            let opened = try Mawk.unpack(
+                frame: sealed, passphrase: "nightjar")
+            try Gauntlet.require(
+                opened == "the world is yours",
+                "the desktop's sealed frame did not open")
+            var refused = false
+            do {
+                _ = try Mawk.unpack(
+                    frame: sealed, passphrase: "wrong")
+            } catch { refused = true }
+            try Gauntlet.require(
+                refused, "a wrong passphrase opened the seal")
+            refused = false
+            do {
+                _ = try Mawk.unpack(frame: sealed,
+                                    passphrase: nil)
+            } catch let error as MawkError {
+                refused = error == .needsPassphrase
+            }
+            try Gauntlet.require(
+                refused, "a sealed frame opened bare-handed")
+            let plain = unhex(
+                "4d574b310100000000146d6565742061742074"
+                + "6865206f6c6420706965722e6c67c5")
+            let heard = try Mawk.unpack(
+                frame: plain, passphrase: nil)
+            try Gauntlet.require(
+                heard == "meet at the old pier",
+                "the desktop's plain frame did not open")
+            return "the desktop mawkbox's own frames "
+                + "open here — seal, CRC, and all"
+        }
+        add("mawk", "scrypt keeps the standard") {
+            let dk = Mawk.scrypt(
+                passphrase: [UInt8]("password".utf8),
+                salt: [UInt8]("NaCl".utf8),
+                n: 1024, r: 8, p: 16, length: 64)
+            let hex = dk.map {
+                String(format: "%02x", $0)
+            }.joined()
+            try Gauntlet.require(
+                hex == "fdbabe1c9d3472007856e7190d01e9"
+                    + "fe7c6ad7cbc8237830e77376634b3731"
+                    + "622eaf30d92e22a3886ff109279d9830"
+                    + "dac727afb94a83ee6d8360cbdfa2cc0640",
+                "scrypt drifted from RFC 7914")
+            return "scrypt answers the RFC 7914 vector"
+        }
+        add("mawk", "pack and unpack round-trip") {
+            var cases = 0
+            let plain = try Mawk.pack(
+                text: "hold the west door", passphrase: nil)
+            cases += 1
+            try Gauntlet.require(
+                try Mawk.unpack(frame: plain,
+                                passphrase: nil)
+                    == "hold the west door",
+                "the plain frame did not round-trip")
+            let sealed = try Mawk.pack(
+                text: "hold the west door",
+                passphrase: "nightjar")
+            cases += 1
+            try Gauntlet.require(
+                try Mawk.unpack(frame: sealed,
+                                passphrase: "nightjar")
+                    == "hold the west door",
+                "the sealed frame did not round-trip")
+            var hurt = [UInt8](plain)
+            hurt[14] ^= 0xFF
+            var refused = false
+            do {
+                _ = try Mawk.unpack(frame: Data(hurt),
+                                    passphrase: nil)
+            } catch let error as MawkError {
+                refused = error == .checksum
+            }
+            cases += 1
+            try Gauntlet.require(
+                refused, "a hurt frame passed its checksum")
+            refused = false
+            do {
+                _ = try Mawk.pack(
+                    text: String(repeating: "a",
+                                 count: 4097),
+                    passphrase: nil)
+            } catch let error as MawkError {
+                refused = error == .tooLong
+            }
+            cases += 1
+            try Gauntlet.require(
+                refused, "an over-long message packed")
+            return "\(cases) cases: frames round-trip; "
+                + "damage and excess are refused"
+        }
+        add("mawk", "the modem round-trips") {
+            let frame = try Mawk.pack(
+                text: "meet at the old pier",
+                passphrase: nil)
+            let samples = Mawk.modulate(frame: frame)
+            let back = try Mawk.demodulate(samples: samples)
+            try Gauntlet.require(
+                back == frame,
+                "the sung frame came back different")
+            var shifted = [Float](
+                repeating: 0, count: 12345)
+            shifted += samples
+            shifted += [Float](repeating: 0, count: 5000)
+            let found = try Mawk.demodulate(samples: shifted)
+            try Gauntlet.require(
+                found == frame,
+                "an offset song was not found")
+            let sealed = try Mawk.pack(
+                text: "the world is yours",
+                passphrase: "nightjar")
+            let heard = try Mawk.demodulate(
+                samples: Mawk.modulate(frame: sealed))
+            try Gauntlet.require(
+                try Mawk.unpack(frame: heard,
+                                passphrase: "nightjar")
+                    == "the world is yours",
+                "a sealed song did not survive the air")
+            return "songs survive synthesis, offset, "
+                + "and sealing"
+        }
+        add("mawk", "wav round-trips") {
+            let frame = try Mawk.pack(
+                text: "meet at the old pier",
+                passphrase: nil)
+            let samples = Mawk.modulate(frame: frame)
+            let wav = Mawk.wavData(samples: samples)
+            let back = try Mawk.samples(fromWAV: wav)
+            try Gauntlet.require(
+                back.count == samples.count,
+                "the wav changed the song's length")
+            let found = try Mawk.demodulate(samples: back)
+            try Gauntlet.require(
+                found == frame,
+                "the wav's song did not decode")
+            return "the export file carries the song whole"
         }
         // -- WAR DRIVE ----------------------
         // The survey log's own shapes, proven
