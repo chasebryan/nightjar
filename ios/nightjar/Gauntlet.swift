@@ -3866,7 +3866,27 @@ final class Gauntlet: ObservableObject {
             // slot names); an unfiled slot answers
             // nil, and the shipped stills (the
             // bird, as PNGs) must be present.
+            //
+            // The flattening correction (the first
+            // full run, 2026-10-23, failed this step
+            // on assault.gif): the synchronized
+            // group flattens the wardrobe folder
+            // into the bundle's root in the built
+            // product — GifWardrobe.data's own doc
+            // blesses both shapes as the same
+            // wardrobe. So a GIF at the resource
+            // root wearing a slot's exact name is
+            // FILED, not astray; the stowaway this
+            // step hunts is a GIF that is neither
+            // under gifs/ nor a named slot at the
+            // root. In the repo the films live
+            // under ios/nightjar/gifs/ — verified
+            // there directly; this step judges the
+            // built bundle it runs in.
             cases += 1
+            let slots: Set<String> = [
+                "boot", "centipede", "eazy",
+                "magdump", "redframe", "assault"]
             var strays: [String] = []
             if let resources = Bundle.main.resourceURL,
                let enumerator = FileManager.default
@@ -3874,9 +3894,20 @@ final class Gauntlet: ObservableObject {
                     at: resources,
                     includingPropertiesForKeys: nil) {
                 for case let url as URL in enumerator {
-                    if url.pathExtension.lowercased()
-                        == "gif",
-                       !url.path.contains("/gifs/") {
+                    guard url.pathExtension
+                        .lowercased() == "gif"
+                    else { continue }
+                    if url.path.contains("/gifs/") {
+                        continue
+                    }
+                    let name = url
+                        .deletingPathExtension()
+                        .lastPathComponent
+                    let atRoot = url
+                        .deletingLastPathComponent()
+                        .path == resources.path
+                    if !(atRoot
+                         && slots.contains(name)) {
                         strays.append(url.path)
                     }
                 }

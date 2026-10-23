@@ -329,7 +329,12 @@ final class Recon: NSObject, ObservableObject {
         func drain() {
             connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) {
                 data, _, isComplete, error in
-                if let data = data, !data.isEmpty { reply += data }
+                if let data = data, !data.isEmpty {
+                    reply += data
+                    BetafischTap.shared.recordNW(
+                        host: host, port: port, udp: udp,
+                        outbound: false, payload: data)
+                }
                 if isComplete || error != nil {
                     finish("open")
                 } else {
@@ -353,6 +358,9 @@ final class Recon: NSObject, ObservableObject {
             case .ready:
                 finishLock.lock(); wasReady = true; finishLock.unlock()
                 if let spec = spec, !spec.build().isEmpty {
+                    BetafischTap.shared.recordNW(
+                        host: host, port: port, udp: udp,
+                        outbound: true, payload: spec.build())
                     connection.send(content: spec.build(),
                                     completion: .contentProcessed { _ in drain() })
                 } else {
@@ -661,17 +669,21 @@ final class Recon: NSObject, ObservableObject {
                           done: @escaping (Data, Bool) -> Void) {
         let host: String
         let port: Int
+        let udp: Bool
         let params: NWParameters
         switch target {
         case .tcp(let h, let p, let tls):
             host = h; port = p
+            udp = false
             params = tls ? NWParameters(tls: NWProtocolTLS.Options()) : .tcp
         case .udp(let h, let p):
             host = h; port = p
+            udp = true
             params = .udp
         case .http(let url, let https):
             host = url.host ?? ""
             port = url.port ?? (https ? 443 : 80)
+            udp = false
             params = https ? NWParameters(tls: NWProtocolTLS.Options()) : .tcp
         default:
             done(Data(), true)
@@ -699,7 +711,12 @@ final class Recon: NSObject, ObservableObject {
         func drain() {
             connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) {
                 data, _, isComplete, error in
-                if let data = data, !data.isEmpty { reply += data }
+                if let data = data, !data.isEmpty {
+                    reply += data
+                    BetafischTap.shared.recordNW(
+                        host: host, port: port, udp: udp,
+                        outbound: false, payload: data)
+                }
                 if error != nil {
                     finish(true)
                 } else if isComplete {
@@ -712,6 +729,9 @@ final class Recon: NSObject, ObservableObject {
         connection.stateUpdateHandler = { state in
             switch state {
             case .ready:
+                BetafischTap.shared.recordNW(
+                    host: host, port: port, udp: udp,
+                    outbound: true, payload: payload)
                 connection.send(content: payload, completion: .contentProcessed { error in
                     guard error == nil else { finish(true); return }
                     didSend = true

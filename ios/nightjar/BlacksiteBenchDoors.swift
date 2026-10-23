@@ -432,9 +432,14 @@ extension BlacksiteBench {
                     + "Accept: */*\r\n"
                     + "Connection: close\r\n"
                     + "\r\n"
+                let requestData = Data(
+                    Array(request.utf8))
+                BetafischTap.shared.recordNW(
+                    host: host, port: Int(port),
+                    udp: false, outbound: true,
+                    payload: requestData)
                 connection.send(
-                    content: Data(
-                        Array(request.utf8)),
+                    content: requestData,
                     completion: .contentProcessed { _ in
                     })
                 func receiveMore() {
@@ -446,6 +451,13 @@ extension BlacksiteBench {
                         if let content =
                             content,
                            !content.isEmpty {
+                            BetafischTap.shared
+                                .recordNW(
+                                    host: host,
+                                    port: Int(port),
+                                    udp: false,
+                                    outbound: false,
+                                    payload: content)
                             box.data.append(
                                 contentsOf:
                                     content)

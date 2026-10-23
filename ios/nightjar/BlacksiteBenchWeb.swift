@@ -957,8 +957,12 @@ extension BlacksiteBench {
                     + "Host: " + host + "\r\n"
                     + "User-Agent: \(BlacksiteNet.userAgent)\r\n"
                     + "Connection: close\r\n\r\n"
+                let askedData = Data(asked.utf8)
+                BetafischTap.shared.recordNW(
+                    host: host, port: port, udp: false,
+                    outbound: true, payload: askedData)
                 connection.send(
-                    content: Data(asked.utf8),
+                    content: askedData,
                     completion: .contentProcessed {
                         _ in
                         connection.receive(
@@ -966,6 +970,13 @@ extension BlacksiteBench {
                             maximumLength: 16384) {
                             data, _, _, _ in
                             if let data = data {
+                                BetafischTap.shared
+                                    .recordNW(
+                                        host: host,
+                                        port: port,
+                                        udp: false,
+                                        outbound: false,
+                                        payload: data)
                                 text = String(
                                     decoding: data,
                                     as: UTF8.self)

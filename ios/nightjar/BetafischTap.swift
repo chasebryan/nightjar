@@ -24,18 +24,26 @@ import Network
 // organ stop that organ's traffic
 // from happening at all, so there is
 // nothing of it to record), and it
-// does not invent traffic. Organs
-// whose bytes never pass a funnel the
-// app can see — the serve listeners,
-// NWConnection engines like tlsgrade,
-// one-shot hand-built broadcasts that
-// bypass the plumbing (Wake-on-LAN,
-// the UPnP shout, the DHCP scout, the
-// mDNS harvest), port-scan knocks that
-// carry no payload — are not recorded
-// and are not represented. The
-// coverage note below says exactly
-// this, and the capture repeats it.
+// does not invent traffic. The
+// NWConnection engines joined the tap
+// in fix380: where an engine hands
+// bytes to a connection or receives
+// them, it calls in here too (the
+// recon probes and exchanges, the web
+// bench's raw reads, the doors' TLS
+// reads). What still passes no funnel
+// the app can see — the serve
+// listeners, handshake-only probes
+// like tlsgrade (their bytes are the
+// stack's, never the app's), one-shot
+// hand-built broadcasts that bypass
+// every funnel (Wake-on-LAN, the UPnP
+// shout, the DHCP scout, the mDNS
+// harvest), and knocks that carry no
+// payload — is not recorded and is
+// not represented. The coverage note
+// below says exactly this, and the
+// capture repeats it.
 //
 // Synthesis, stated plainly: the
 // payload bytes recorded are the
@@ -56,12 +64,13 @@ final class BetafischTap {
 
     static let shared = BetafischTap()
 
-    static let coverageNote = L("the tap records the bench's socket plumbing and the app's HTTP fetches — the app's own traffic only. It does not record the serve listeners, NWConnection engines such as tlsgrade, or one-shot broadcasts that bypass the plumbing (Wake-on-LAN, the UPnP shout, the DHCP scout, the mDNS harvest), and it invents none of them. The tap itself sends nothing.")
+    static let coverageNote = L("the tap records the bench's socket plumbing, the app's HTTP fetches, and the payload exchanges of its NWConnection engines — the recon probes and exchanges, the web bench's raw reads, the door probes' TLS reads — the app's own traffic only. It does not record the serve listeners, handshake-only probes (tlsgrade's handshakes are the stack's bytes, never the app's), one-shot broadcasts that bypass every funnel (Wake-on-LAN, the UPnP shout, the DHCP scout, the mDNS harvest), or knocks that carry no payload, and it invents none of them. The tap itself sends nothing.")
 
     private let lock = NSLock()
     private var flows: [String: FlowState] = [:]
     private var fetchPortCursor: [String: Int] = [:]
     private var fdPeers: [Int32: Peer] = [:]
+    private var nwPortCursor: [String: Int] = [:]
     private var recorded: [(iface: Int,
                              ts: Double,
                              bytes: [UInt8])] = []
@@ -113,6 +122,7 @@ final class BetafischTap {
         recordedBytes = 0
         capped = false
         flows = [:]
+        nwPortCursor = [:]
         lock.unlock()
     }
 
@@ -333,6 +343,62 @@ final class BetafischTap {
                ipProto: 6, iface: 1)
     }
 
+    // MARK: Recording — the NWConnection engines
+
+    /// Bytes an NWConnection engine
+    /// handed to its connection, or the
+    /// connection handed back — recorded
+    /// as the app itself saw them. For a
+    /// TLS connection these are the
+    /// plaintext bytes at the app's side
+    /// of the stack; on the wire they
+    /// travelled as TLS records, and the
+    /// capture's third interface says so
+    /// on its face (the fetch road's own
+    /// honesty, kept). NWConnection does
+    /// not publish the local port it
+    /// bound, so the tap assigns the flow
+    /// a standing local port of its own —
+    /// the fetch road's cursor law — and
+    /// the headers are the tap's writing,
+    /// as the capture's comment declares.
+    func recordNW(host: String, port: Int,
+                  udp: Bool, outbound: Bool,
+                  payload: Data) {
+        guard enabled, !payload.isEmpty
+        else { return }
+        let remoteIP = BlacksiteNet
+            .resolve4(host)?.ip ?? host
+        let localIP = Mouth.localIPAddress()
+            ?? "0.0.0.0"
+        lock.lock()
+        let key = "nw " + remoteIP + ":"
+            + String(port) + (udp ? "/udp" : "/tcp")
+        // One standing port per flow,
+        // assigned at first sight and kept:
+        // the sends and the receives are
+        // separate calls, and a flow whose
+        // local port moved between them
+        // would read as two half-flows.
+        let localPort: Int
+        if let kept = nwPortCursor[key] {
+            localPort = kept
+        } else {
+            localPort = 49_152
+                + Int.random(in: 0..<4096)
+            nwPortCursor[key] = localPort
+        }
+        lock.unlock()
+        append(localIP: localIP,
+               localPort: localPort,
+               remoteIP: remoteIP,
+               remotePort: port,
+               outbound: outbound,
+               payload: Array(payload),
+               ipProto: udp ? 17 : 6,
+               iface: 2)
+    }
+
     // MARK: Frame synthesis
 
     private func append(localIP: String,
@@ -506,17 +572,18 @@ final class BetafischTap {
     // MARK: The capture itself
 
     /// The recorded house wire as a
-    /// pcapng the dissector opens: two
-    /// interfaces — the socket wire and
-    /// the fetch road — under a section
-    /// comment that names what this is.
+    /// pcapng the dissector opens: three
+    /// interfaces — the socket wire, the
+    /// fetch road, and the NWConnection
+    /// engines — under a section comment
+    /// that names what this is.
     func captureData() -> Data? {
         lock.lock()
         let frames = recorded
         let wasCapped = capped
         lock.unlock()
         guard !frames.isEmpty else { return nil }
-        var comment = L("nightjar house-wire tap — the app's own traffic only: traffic the app itself sent and received through its bench plumbing and its fetch road. No other device's traffic is in here, and none was sniffed. Payload bytes are the app's own, byte for byte; the Ethernet/IP/transport headers are written by the tap around them (the MAC addresses are placeholders — iOS does not give an app its Wi-Fi MAC — and no handshake is drawn that the app did not make).")
+        var comment = L("nightjar house-wire tap — the app's own traffic only: traffic the app itself sent and received through its bench plumbing, its fetch road, and its NWConnection engines. No other device's traffic is in here, and none was sniffed. Payload bytes are the app's own, byte for byte; the Ethernet/IP/transport headers are written by the tap around them (the MAC addresses are placeholders — iOS does not give an app its Wi-Fi MAC — and no handshake is drawn that the app did not make).")
         if wasCapped {
             comment += L(" The recording stopped at the tap's cap; the tail of the session is not in here.")
         }
@@ -527,6 +594,8 @@ final class BetafischTap {
              L("the bench's socket exchanges, as the app made them")),
             (1, L("house fetches"),
              L("HTTP as the app itself saw it through its fetch road — for HTTPS these are the plaintext bytes handed to the app; on the wire they travelled as TLS records")),
+            (1, L("house engines"),
+             L("the NWConnection engines' payload exchanges, as the app handed them to and received them from the connection — for TLS connections these are the plaintext bytes at the app's side of the stack; on the wire they travelled as TLS records. The local ports are the tap's own assignments: NWConnection does not publish the port it bound")),
         ]
         return BetafischWrite.pcapng(
             frames: frames,
