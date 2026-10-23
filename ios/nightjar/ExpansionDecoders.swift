@@ -87,6 +87,18 @@ enum ExpansionDecoders {
         if let candidate = thermoPro(sighting) {
             return candidate
         }
+        if let candidate = aranet(sighting) {
+            return candidate
+        }
+        if let candidate = sensorPushHT(sighting) {
+            return candidate
+        }
+        if let candidate = sensorPushHTP(sighting) {
+            return candidate
+        }
+        if let candidate = oralB(sighting) {
+            return candidate
+        }
         if let candidate = msCDP(sighting) {
             return candidate
         }
@@ -648,6 +660,174 @@ enum ExpansionDecoders {
         return Identification(kind: L("ThermoPro sensor"), details: details, specificity: 3)
     }
 
+    // MARK: Aranet, SensorPush, Oral-B — appliances
+
+    /// Aranet4 (company 0x0702, the maker's own
+    /// frame): CO₂, temperature, pressure and
+    /// humidity as fixed-point fields in the
+    /// payload's second half, and the battery
+    /// under a flag bit that is masked off, never
+    /// read as part of the percentage.
+    private static func aranet(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting.manufacturerData[
+                0x0702],
+              payload.count >= 16
+        else { return nil }
+        let co2 = Int(UInt16(payload[8])
+            | UInt16(payload[9]) << 8)
+        let rawTemp = Int16(bitPattern:
+            UInt16(payload[10])
+                | UInt16(payload[11]) << 8)
+        let temp = Double(rawTemp) / 20.0
+        let pressure = Double(
+            UInt16(payload[12])
+                | UInt16(payload[13]) << 8) / 10.0
+        let humidity = Int(payload[14])
+        let battery = Int(payload[15] & 0x7F)
+        guard co2 >= 300, co2 <= 10000,
+              temp >= -20, temp <= 60,
+              pressure >= 300, pressure <= 1300,
+              humidity <= 100, battery <= 100
+        else { return nil }
+        let details = [
+            String(format: L("CO₂ %@ ppm"),
+                   String(describing: co2)),
+            String(format: L("temperature %.1f °C"),
+                   temp),
+            String(format: L("pressure %.1f hPa"),
+                   pressure),
+            String(format: L("humidity %.1f %%"),
+                   Double(humidity)),
+            String(format: L("battery %@%% (Aranet4)"),
+                   String(describing: battery)),
+        ]
+        return Identification(kind: L("Aranet4 CO₂ monitor"), details: details, specificity: 3)
+    }
+
+    /// SensorPush HT.w: the whole reading is one
+    /// packed 32-bit value behind a 0x04 head
+    /// byte, fanned out by two moduli — the
+    /// maker's company keying is ambiguous in the
+    /// wild, so the frame is matched by shape
+    /// across every manufacturer payload, the
+    /// way AltBeacon is.
+    private static func sensorPushHT(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting.manufacturerData
+            .values.first(where: {
+                $0.count == 5 && $0[0] == 0x04 })
+        else { return nil }
+        let v = UInt64(payload[1])
+            | UInt64(payload[2]) << 8
+            | UInt64(payload[3]) << 16
+            | UInt64(payload[4]) << 24
+        let temp = Double(v % 66001) * 0.0025 - 40
+        let humidity = Double(v % 2640106001)
+            / 66001.0 * 0.0025
+        guard temp >= -40, temp <= 85,
+              humidity >= 0, humidity <= 100
+        else { return nil }
+        let details = [
+            String(format: L("temperature %.1f °C"),
+                   temp),
+            String(format: L("humidity %.1f %%"),
+                   humidity),
+        ]
+        return Identification(kind: L("SensorPush HT.w sensor"), details: details, specificity: 3)
+    }
+
+    /// SensorPush HTP.xw: the same packing idea
+    /// at 48 bits behind a 0x00 head byte — three
+    /// moduli fan the one value out to
+    /// temperature, humidity and pressure.
+    private static func sensorPushHTP(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting.manufacturerData
+            .values.first(where: {
+                $0.count == 7 && $0[0] == 0x00 })
+        else { return nil }
+        let v = UInt64(payload[1])
+            | UInt64(payload[2]) << 8
+            | UInt64(payload[3]) << 16
+            | UInt64(payload[4]) << 24
+            | UInt64(payload[5]) << 32
+            | UInt64(payload[6]) << 40
+        let temp = Double(v % 72001) * 0.0025 - 40
+        let humidity = Double(v % 2880112001)
+            / 72001.0 * 0.0025
+        let pressure = (Double(v % 273613520207001)
+            / 2880112001.0 + 30000.0) / 100.0
+        guard temp >= -40, temp <= 85,
+              humidity >= 0, humidity <= 100,
+              pressure >= 300, pressure <= 1250
+        else { return nil }
+        let details = [
+            String(format: L("temperature %.1f °C"),
+                   temp),
+            String(format: L("humidity %.1f %%"),
+                   humidity),
+            String(format: L("pressure %.1f hPa"),
+                   pressure),
+        ]
+        return Identification(kind: L("SensorPush HTP.xw sensor"), details: details, specificity: 3)
+    }
+
+    /// Oral-B toothbrush (company 0x00DC): the
+    /// brush state byte is the identification —
+    /// a payload whose state byte speaks none of
+    /// the known states is not claimed as a
+    /// toothbrush at all. Mode and sector words
+    /// are carried only when known; the session
+    /// duration rides only when it is running.
+    private static func oralB(
+        _ sighting: Sighting
+    ) -> Identification? {
+        guard let payload = sighting.manufacturerData[
+                0x00DC],
+              payload.count >= 9
+        else { return nil }
+        let states: [UInt8: String] = [
+            0x01: L("initialising"), 0x02: L("idle"),
+            0x03: L("running"), 0x04: L("charging"),
+            0x73: L("sleeping"),
+        ]
+        guard let state = states[payload[3]]
+        else { return nil }
+        var details = [
+            String(format: L("state %@"), state),
+            String(format: L("pressure %@"),
+                   String(describing: Int(payload[4]))),
+        ]
+        let seconds = Int(payload[5]) * 60
+            + Int(payload[6])
+        if seconds > 0 {
+            details.append(String(
+                format: L("duration %@ s"),
+                String(describing: seconds)))
+        }
+        let modes: [UInt8: String] = [
+            0x00: L("off"), 0x01: L("daily clean"),
+            0x02: L("sensitive"), 0x03: L("massage"),
+            0x04: L("whitening"), 0x05: L("deep clean"),
+            0x06: L("tongue cleaning"),
+            0x07: L("turbo"),
+        ]
+        if let mode = modes[payload[7]] {
+            details.append(String(
+                format: L("mode %@"), mode))
+        }
+        if payload[8] >= 1, payload[8] <= 8 {
+            details.append(String(
+                format: L("sector %@"),
+                String(describing: Int(payload[8]))))
+        }
+        return Identification(kind: L("Oral-B toothbrush"), details: details, specificity: 3)
+    }
+
     // MARK: Microsoft Connected Devices
 
     private static func msCDP(
@@ -752,6 +932,18 @@ enum ExpansionDecoders {
                 component: "device", percent: nil,
                 millivolts: nil, state: "low",
                 source: "ThermoPro", observedAt: 0)))
+        }
+        if let payload = sighting.manufacturerData[
+            0x0702],
+           payload.count >= 16 {
+            let battery = Int(payload[15] & 0x7F)
+            if battery <= 100 {
+                readings.append(stamp(BatteryReading(
+                    component: "device",
+                    percent: battery,
+                    millivolts: nil, state: nil,
+                    source: "Aranet4", observedAt: 0)))
+            }
         }
         return readings
     }

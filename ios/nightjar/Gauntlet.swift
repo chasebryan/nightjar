@@ -697,6 +697,118 @@ final class Gauntlet: ObservableObject {
                 + "the best reading")
             return bestKind
         }
+        add("decoders", "aranet4 frame decodes") {
+            // The vector is the Python-checked one:
+            // CO₂ 800 at [8], temperature raw 430
+            // (21.5 °C) at [10], pressure raw
+            // 10132 (1013.2 hPa) at [12], humidity
+            // 45 at [14], battery 87 at [15], in a
+            // full 22-byte frame under 0x0702.
+            let sighting = Sighting(
+                seenAt: 1, address: "aranet",
+                name: nil, rssi: -50,
+                manufacturerData: [
+                    0x0702: [0, 0, 0, 0, 0, 0, 0, 0,
+                             32, 3, 174, 1, 148, 39,
+                             45, 87, 0, 0, 0, 0, 0, 0]])
+            let result = Classification
+                .classify(sighting)
+            try Gauntlet.require(
+                result.kind.contains("Aranet4"),
+                "aranet frame not named: "
+                + result.kind)
+            let joined = result.details
+                .joined(separator: " ")
+            for needle in ["800", "21.5",
+                           "1013.2", "87"] {
+                try Gauntlet.require(
+                    joined.contains(needle),
+                    "aranet reading lost: " + needle)
+            }
+            return result.kind
+        }
+        add("decoders", "sensorpush ht.w decodes") {
+            // Shape-matched: five bytes, 0x04 head,
+            // the packed value 1320044000 fans out
+            // to exactly 20.0 °C and 50.0 % by the
+            // two moduli (Python-checked).
+            let sighting = Sighting(
+                seenAt: 1, address: "sp-ht",
+                name: nil, rssi: -50,
+                manufacturerData: [
+                    0xFFFF: [4, 224, 69, 174, 78]])
+            let result = Classification
+                .classify(sighting)
+            try Gauntlet.require(
+                result.kind.contains(
+                    "SensorPush HT.w"),
+                "ht.w frame not named: "
+                + result.kind)
+            let joined = result.details
+                .joined(separator: " ")
+            for needle in ["20.0", "50.0"] {
+                try Gauntlet.require(
+                    joined.contains(needle),
+                    "ht.w reading lost: " + needle)
+            }
+            return result.kind
+        }
+        add("decoders", "sensorpush htp.xw decodes") {
+            // Seven bytes, 0x00 head, the packed
+            // 48-bit value 201609280114000 fans
+            // out to 20.0 °C, 50.0 % and
+            // 1000.0 hPa (Python-checked).
+            let sighting = Sighting(
+                seenAt: 1, address: "sp-htp",
+                name: nil, rssi: -50,
+                manufacturerData: [
+                    0xFFFF: [0, 80, 77, 134, 209,
+                             92, 183]])
+            let result = Classification
+                .classify(sighting)
+            try Gauntlet.require(
+                result.kind.contains(
+                    "SensorPush HTP.xw"),
+                "htp.xw frame not named: "
+                + result.kind)
+            let joined = result.details
+                .joined(separator: " ")
+            for needle in ["20.0", "50.0",
+                           "1000.0"] {
+                try Gauntlet.require(
+                    joined.contains(needle),
+                    "htp.xw reading lost: " + needle)
+            }
+            return result.kind
+        }
+        add("decoders", "oral-b brush decodes") {
+            // State 0x03 (running) at [3],
+            // pressure 2 at [4], 1 minute 45
+            // seconds (105) at [5...6], mode
+            // 0x01 (daily clean) at [7], sector
+            // 3 at [8], under 0x00DC.
+            let sighting = Sighting(
+                seenAt: 1, address: "oral-b",
+                name: nil, rssi: -50,
+                manufacturerData: [
+                    0x00DC: [0, 0, 0, 3, 2, 1, 45,
+                             1, 3]])
+            let result = Classification
+                .classify(sighting)
+            try Gauntlet.require(
+                result.kind.contains("Oral-B"),
+                "brush frame not named: "
+                + result.kind)
+            let joined = result.details
+                .joined(separator: " ")
+            for needle in ["running",
+                           "daily clean", "105"] {
+                try Gauntlet.require(
+                    joined.contains(needle),
+                    "brush reading lost: " + needle)
+            }
+            return result.kind
+        }
 
         // -- CRYPTO -------------------------------
         add("crypto", "sealed files round-trip") {
