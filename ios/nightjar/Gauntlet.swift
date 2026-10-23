@@ -3960,6 +3960,34 @@ final class Gauntlet: ObservableObject {
                 + "stills hang whole and centered, "
                 + "matched stills fill"
         }
+        add("stage", "the boot speaks terminal") {
+            var cases = 0
+            // Chase's ruling, 2026-10-23: the
+            // boot's text went hacker — one stage
+            // list read by both boot roads, and a
+            // subtitle deck in the wire's own
+            // voice, deep enough never to repeat
+            // on a daily boot.
+            cases += 1
+            try Gauntlet.require(
+                LabzBootView.stages == BootStages.all
+                    && BootStages.all.count == 6,
+                "both boot roads must read the one "
+                    + "stage list")
+            cases += 1
+            try Gauntlet.require(
+                BootSubtitles.all.count >= 150,
+                "the subtitle deck must stay deep")
+            cases += 1
+            try Gauntlet.require(
+                BootSubtitles.all.contains(
+                    "ONE KNOCK, READ, GRADE")
+                    && BootSubtitles.all.contains(
+                        "TRUST NOTHING ON THE WIRE"),
+                "the deck must speak terminal")
+            return cases
+        }
+
         add("wardrobe", "the labz boot engages") {
             // The boot screen's law (Chase's
             // commission, ruled three times on

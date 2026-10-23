@@ -677,7 +677,7 @@ enum BootMedia {
 }
 
 /// The boot's subtitle: not a fixed seal but a
-/// drawn card — one of four hundred and four
+/// drawn card — one of a hundred and seventy-eight
 /// phrases in the house's plaque voice, chosen
 /// fresh at every boot and held for the whole
 /// ceremony. (The finale still trades it for its
@@ -691,410 +691,184 @@ enum BootMedia {
 /// never blank.
 enum BootSubtitles {
     private static let block = """
-    IT LISTENS FIRST
-    SEALED AT THE SOURCE
-    NOTHING HERE IS DECORATED
-    THE HOUSE IS AWAKE
+    TRUST NOTHING ON THE WIRE
+    EVERY PACKET IS A WITNESS
+    READ THE BYTES, NOT THE BANNER
+    THE BANNER LIES POLITELY
+    EVERY PORT IS A QUESTION
+    A CLOSED PORT IS AN ANSWER
+    ASSUME THE WIRE IS HOSTILE
+    THEY ARE LISTENING
+    ZERO TRUST, FULL RECEIPTS
+    THE LOG NEVER BLINKS
     KEYS BEFORE DOORS
-    CARRY IT QUIETLY
+    SALT EVERYTHING
+    ENTROPY IS NOT OPTIONAL
+    THE HANDSHAKE TELLS THE TRUTH
+    VERIFY, THEN VERIFY AGAIN
     NO NAMES ON THE WIRE
-    THE LONG WAY HOME
-    EVERYTHING IN ITS PLACE
-    THE DARK IS A ROOM
-    PATIENT AS STONE
-    WHAT THE WIRE CARRIES
-    A QUIET HOUSE IN A LOUD WORLD
-    FIRST, LISTEN
-    UNDER NO FLAG
-    SEALED, NOT HIDDEN
-    THE MERIDIAN HOLDS
-    COUNTED AND KEPT
-    THE STATIC HAS A GRAMMAR
-    EARS BEFORE HANDS
-    THE NIGHT SHIFT
-    BOARDED AND DARK
-    A HOUSE THAT LISTENS
-    THE QUIET TRADE
-    NOTHING LEAVES UNSEALED
-    THE LEDGER IS HONEST
     DARK BY DEFAULT
-    THE WIRE REMEMBERS
-    KEPT UNDER THE HOUSE
-    A SEAL, NOT A LOCK
-    THE WEATHER INSIDE
-    LISTENING IS A DISCIPLINE
-    THE SLOW FREQUENCY
-    NO LIGHT WITHOUT LEAVE
-    THE HOUSE KEEPS ITS WORD
-    ASH AND ARCHIVE
-    THE THRESHOLD IS KEPT
-    QUIET HANDS, OPEN EARS
-    THE LONG STATIC
-    SEALED IN THE DARK
-    WHAT THE NIGHT CARRIES
-    A LANTERN, LOWERED
-    THE COMPASS RESTS
-    NOTHING HERE IS LOUD
-    THE ARCHIVE BREATHES
-    KEPT, NOT KEPT SECRET
-    THE DISTANCE IS MEASURED
-    AN HONEST LEDGER
-    THE GATE STANDS OPEN INWARD
-    WINTER IN THE WALLS
-    THE EMBER LEDGER
-    STILL ON THE WIRE
-    THE ROOM BEHIND THE ROOM
-    A MAP OF LISTENING
-    THE CURRENT REMEMBERS
-    HOLD THE FREQUENCY
-    THE NIGHT IS A HARBOR
-    SEALED WITH PATIENCE
-    THE FIELD AT NIGHT
-    NOTHING DECORATED
-    THE HOUSE STANDS ITS WATCH
-    A KEY FOR EVERY DOOR
-    THE QUIET CURRENT
-    READ THE WEATHER FIRST
-    THE STAIR GOES DOWN
-    KEPT IN THE WALLS
-    THE WELL IS DEEP
-    A SEALED ROOM, AN OPEN EAR
-    THE ROAD AT 3 AM
-    NOTHING UNCOUNTED
-    THE SKY IS AN ANTENNA
-    LOW LIGHT, LONG EARS
-    THE HARBOR AT NIGHT
-    SEALED AND CARRIED
-    THE ORCHARD AFTER DARK
-    A COLD ROOM FOR HOT KEYS
-    THE QUARRY OF STATIC
-    PATIENT CIRCUITRY
-    THE HOUSE REMEMBERS THE WAY
-    EVERY DOOR ACCOUNTED
-    THE TIDE LEDGER
-    LISTEN PAST THE STATIC
-    THE GLASS IS LISTENING
-    A WATCH, NOT A SIEGE
-    THE NIGHT LEDGER
-    KEPT UNDER SEAL AND STONE
-    THE SLOW SIGNAL
-    NOTHING HERE PERFORMS
-    THE ROOM KEEPS ITS COUNSEL
-    A QUIET INSTRUMENT
-    THE WIRE IS PATIENT
-    SEALED BEFORE SPOKEN
-    THE HOUR IS KEPT
-    AN EAR AT EVERY WALL
-    THE MAP IS NOT THE HOUSE
-    CARRIED, NOT SENT
-    THE DARK KEEPS RECEIPTS
-    A HOUSE OF LISTENING
-    THE SIGNAL IS A GUEST
+    SEALED AT THE SOURCE
+    ROOT IS EARNED, NEVER GIVEN
+    EVERY SERVICE CONFESSES SOMETHING
+    LISTEN FIRST
+    EARS BEFORE HANDS
+    THE SPECTRUM IS PUBLIC
+    YOUR MAC ADDRESS IS A NAME TAG
+    EVERY BROADCAST IS A CONFESSION
+    EVERY BEACON KEEPS A SCHEDULE
+    THE AIR KEEPS NO SECRETS
+    STATIC HAS A GRAMMAR
+    PACKETS DON'T LIE
+    PEOPLE MISCONFIGURE
+    THE TRUTH IS ON THE WIRE
+    A HASH IS A PROMISE
+    SIGN IT, OR IT NEVER HAPPENED
+    THE KEY IS THE CROWN
+    SMALL KEYS, SHORT LIVES
+    ROTATE, OR ROT
+    A SECRET SHARED IS A SECRET SPENT
+    MATH DOESN'T BLUFF
+    PROVE IT IN BYTES
+    SHOW ME THE PACKETS
+    THE PCAP IS THE AUTOBIOGRAPHY
+    HEX IS HONEST
+    EVERY OFFSET TELLS A STORY
+    READ THE MANUAL, THEN THE MEMORY
+    THE KERNEL SEES EVERYTHING
+    EVERY SYSCALL IS A CONFESSION
+    EVERY PROCESS LEAVES A TRAIL
+    HISTORY IS A LIABILITY
+    OPSEC IS A HABIT, NOT A TOOL
+    IT'S ALWAYS DNS
+    EXCEPT WHEN IT'S THE CABLE
+    THE RADIO DOESN'T CARE
+    THERE IS NO CLOUD
+    ONLY OTHER PEOPLE'S COMPUTERS
+    DEFAULT PASSWORDS ARE PUBLIC PASSWORDS
+    PATCH, OR BE READ
+    YESTERDAY'S CVE IS TODAY'S DOORBELL
+    SCAN QUIET, READ EVERYTHING
+    KNOCK ONCE, KNOW PLENTY
+    ONE KNOCK, READ, GRADE
+    EVERY BANNER IS A BIOGRAPHY
+    VERSION NUMBERS ARE CONFESSIONS
+    ASK THE WIRE, NOT THE WEBSITE
+    GROUND TRUTH RIDES AT LAYER TWO
+    THE ARP TABLE NEVER LIES
+    THE GATEWAY SEES THE WHOLE TOWN
+    IF IT ISN'T LOGGED, IT DIDN'T HAPPEN
+    RECEIPTS, OR IT DIDN'T HAPPEN
+    THE LEDGER IS HONEST
+    COUNTED AND KEPT
+    EVERY KEY ANSWERED FOR
+    A SEAL IS A PROMISE
+    SEALED, NOT HIDDEN
+    CARRY NOTHING UNSEALED
+    NOTHING LEAVES UNSEALED
     NOTHING ARRIVES UNCOUNTED
     THE THRESHOLD REMEMBERS
-    QUIET AS KEPT
-    THE WEATHER ON THE WIRE
-    SEALED IN PLAIN SIGHT
-    THE LONG DARK STAIR
-    A LEDGER OF WEATHER
-    THE HOUSE AT ITS POST
-    EVERY KEY ANSWERED FOR
-    THE NIGHT IS INSTRUMENTED
-    STILL LISTENING
-    THE GATE IS A QUESTION
-    KEPT CLOSE, CARRIED QUIET
-    THE FREQUENCY IS A ROOM
-    ASHES AND SIGNALS
-    THE WALLS HAVE EARS, KEPT
-    A SEAL IS A PROMISE
-    THE DISTANCE LISTENS
-    NOTHING LOST, NOTHING LOUD
-    THE STAIR REMEMBERS FEET
-    SEALED TWICE
-    THE HOUSE, DERIVING ITSELF
-    AN ARCHIVE OF NIGHTS
-    THE QUIET LEDGER
-    PATIENT AS STATIC
-    THE ROOM BELOW THE ROOM
-    CARRY NOTHING UNSEALED
+    DOORS REMEMBER HANDS
+    THE MAP IS NOT THE HOUSE
+    SURVEY BEFORE YOU SPEAK
+    KNOW THE TERRAIN FIRST
+    THE ROOM KEEPS ITS COUNSEL
+    A QUIET INSTRUMENT
+    NOTHING HERE PERFORMS
+    NOTHING HERE IS DECORATED
+    WE DON'T GUESS, WE MEASURE
+    NEVER GUESS WHAT YOU CAN MEASURE
+    THE MEASURED EYE
+    HER EYE IS OPEN
+    ONE EYE OPEN, ALWAYS
+    THE MARE SEES IN THE DARK
+    NIGHT VISION IS A DISCIPLINE
+    BUILT AT 3 AM
+    THE 3 AM STANDARD
+    NIGHTWARE NEVER SLEEPS
+    THE LABZ ARE LISTENING
+    RED EYE OPEN
+    VELVET OVER IRON
+    BLACK BOX, OPEN EARS
+    THE BENCH IS WARM
+    NO DECORATIONS, ONLY INSTRUMENTS
+    THE HOUSE IS AWAKE
+    THE HOUSE KEEPS ITS WORD
+    FIRST, LISTEN
+    UNDER NO FLAG
+    IT LISTENS FIRST
+    A COLD ROOM FOR HOT KEYS
+    PATIENT CIRCUITRY
+    THE GLASS IS LISTENING
+    LOW LIGHT, LONG EARS
+    EVERY DOOR ACCOUNTED
+    THE WIRE IS PATIENT
+    PATIENCE IS A PROTOCOL
+    SILENCE IS A PROTOCOL
+    EVERY SILENCE SAYS SOMETHING
+    THE FIRMWARE REMEMBERS
+    CHANGE THE DEFAULTS, OR DONATE THE DEVICE
+    EVERY UPDATE CLOSES A DOOR
+    THE SERVER TELLS YOU WHAT IT IS
+    MEMORY-SAFE, OR NOT AT ALL
+    THE COMPILER IS A CRITIC
+    PROVE IT COMPILES, THEN PROVE IT TRUE
+    TESTS ARE RECEIPTS TOO
+    THE GAUNTLET DECIDES
+    RUN THE GAUNTLET
+    EVERY FIX EARNS ITS NUMBER
+    SHIP VERIFIED, OR DON'T SHIP
+    HASH IT BEFORE YOU TRUST IT
+    THE BLOB NEVER LIES
+    EVERY BYTE ACCOUNTED
     THE WIRE KEEPS THE HOUR
     A KEY IS A KEPT WORD
-    THE HARBOR LIGHTS, LOWERED
     UNDER SEAL
-    UNDER GLASS
-    UNDER STONE
-    UNDER SNOW
-    UNDER ASH
-    UNDER SALT
-    UNDER IRON
-    UNDER NIGHT
-    UNDER LOCK
-    UNDER OATH
-    UNDER ICE
-    UNDER DUST
-    UNDER BONE
-    UNDER PINE
-    UNDER MOSS
-    UNDER FROST
-    UNDER RAIN
-    UNDER EARTH
-    UNDER STARS
-    UNDER SILENCE
-    UNDER WATER
-    UNDER LEAD
-    UNDER VELVET
-    UNDER OAK
-    SMOKE AND STATIC
-    SALT AND SIGNAL
-    GLASS AND WEATHER
-    IRON AND PATIENCE
-    NIGHT AND WIRE
-    KEY AND LEDGER
-    EMBER AND ASH
-    TIDE AND STONE
-    MAP AND DISTANCE
-    LANTERN AND DARK
-    QUIET AND THUNDER
-    SNOW AND CIRCUIT
-    BONE AND COPPER
-    RAIN AND FREQUENCY
-    OATH AND ARCHIVE
-    DUST AND MERIDIAN
-    PINE AND STATIC
-    FROST AND SIGNAL
-    SALT AND DISTANCE
-    STONE AND CURRENT
-    ASH AND ORCHARD
-    VELVET AND IRON
-    GLASS AND CURRENT
-    NIGHT AND LEDGER
-    KEY AND WEATHER
-    SEA AND SIGNAL
-    FIELD AND STATIC
-    ROOF AND WEATHER
-    WELL AND STONE
-    GATE AND QUESTION
-    ROAD AND WEATHER
-    HOUR AND STATIC
-    MAP AND WEATHER
-    SKY AND LEDGER
-    ROOM AND STATIC
-    EMBER AND SIGNAL
-    TIDE AND SIGNAL
-    IRON AND WEATHER
-    SNOW AND LEDGER
-    QUIET AND CURRENT
-    QUIET WIRE
-    QUIET WEATHER
-    QUIET LEDGER
-    QUIET WELL
-    PATIENT WIRE
-    PATIENT WEATHER
-    PATIENT LEDGER
-    PATIENT WELL
-    HOLLOW WIRE
-    HOLLOW WEATHER
-    HOLLOW LEDGER
-    HOLLOW WELL
-    VELVET WIRE
-    VELVET WEATHER
-    VELVET LEDGER
-    VELVET WELL
-    IRON WIRE
-    IRON WEATHER
-    IRON LEDGER
-    IRON WELL
-    AMBER WIRE
-    AMBER WEATHER
-    AMBER LEDGER
-    AMBER WELL
-    FROZEN WIRE
-    FROZEN WEATHER
-    FROZEN LEDGER
-    FROZEN WELL
-    SILENT WIRE
-    SILENT WEATHER
-    SILENT LEDGER
-    SILENT WELL
-    HIDDEN WIRE
-    HIDDEN WEATHER
-    HIDDEN LEDGER
-    HIDDEN WELL
-    RESTLESS WIRE
-    RESTLESS WEATHER
-    RESTLESS LEDGER
-    RESTLESS WELL
-    ANCIENT WIRE
-    ANCIENT WEATHER
-    ANCIENT LEDGER
-    ANCIENT WELL
-    NARROW WIRE
-    NARROW WEATHER
-    NARROW LEDGER
-    NARROW WELL
-    GENTLE WIRE
-    GENTLE WEATHER
-    GENTLE LEDGER
-    GENTLE WELL
-    PALE WIRE
-    PALE WEATHER
-    PALE LEDGER
-    PALE WELL
-    LOW WIRE
-    LOW WEATHER
-    LOW LEDGER
-    LOW WELL
-    SLOW WIRE
-    SLOW WEATHER
-    SLOW LEDGER
-    SLOW WELL
-    DEEP WIRE
-    DEEP WEATHER
-    DEEP LEDGER
-    DEEP WELL
-    FAR WIRE
-    FAR WEATHER
-    FAR LEDGER
-    FAR WELL
-    THIN WIRE
-    THIN WEATHER
-    THIN LEDGER
-    THIN WELL
-    SOFT WIRE
-    SOFT WEATHER
-    SOFT LEDGER
-    SOFT WELL
-    COPPER WIRE
-    COPPER WEATHER
-    COPPER LEDGER
-    COPPER WELL
-    IVORY WIRE
-    IVORY WEATHER
-    IVORY LEDGER
-    IVORY WELL
-    ASHEN WIRE
-    ASHEN WEATHER
-    ASHEN LEDGER
-    ASHEN WELL
-    STONE WIRE
-    STONE WEATHER
-    STONE LEDGER
-    STONE WELL
-    GLASS WIRE
-    GLASS WEATHER
-    GLASS LEDGER
-    GLASS WELL
-    SALT WIRE
-    SALT WEATHER
-    SALT LEDGER
-    SALT WELL
-    SMOKE WIRE
-    SMOKE WEATHER
-    SMOKE LEDGER
-    SMOKE WELL
-    WINTER WIRE
-    WINTER WEATHER
-    WINTER LEDGER
-    WINTER WELL
-    MORTAL WIRE
-    MORTAL WEATHER
-    MORTAL LEDGER
-    MORTAL WELL
-    THE WIRE LISTENS
-    THE WIRE WAITS
-    THE WIRE COUNTS
-    THE WIRE HOLDS
-    THE WIRE DREAMS
-    THE DARK LISTENS
-    THE DARK WAITS
-    THE DARK COUNTS
-    THE DARK HOLDS
-    THE DARK DREAMS
-    THE HOUSE LISTENS
-    THE HOUSE WAITS
-    THE HOUSE COUNTS
-    THE HOUSE HOLDS
-    THE HOUSE DREAMS
-    THE NIGHT LISTENS
-    THE NIGHT WAITS
-    THE NIGHT COUNTS
-    THE NIGHT HOLDS
-    THE NIGHT DREAMS
-    THE STATIC LISTENS
-    THE STATIC WAITS
-    THE STATIC COUNTS
-    THE STATIC HOLDS
-    THE STATIC DREAMS
-    THE SIGNAL LISTENS
-    THE SIGNAL WAITS
-    THE SIGNAL COUNTS
-    THE SIGNAL HOLDS
-    THE SIGNAL DREAMS
-    THE LEDGER LISTENS
-    THE LEDGER WAITS
-    THE LEDGER COUNTS
-    THE LEDGER HOLDS
-    THE LEDGER DREAMS
-    THE THRESHOLD LISTENS
-    THE THRESHOLD WAITS
-    THE THRESHOLD COUNTS
-    THE THRESHOLD HOLDS
-    THE THRESHOLD DREAMS
-    THE CURRENT LISTENS
-    THE CURRENT WAITS
-    THE CURRENT COUNTS
-    THE CURRENT HOLDS
-    THE CURRENT DREAMS
-    THE HARBOR LISTENS
-    THE HARBOR WAITS
-    THE HARBOR COUNTS
-    THE HARBOR HOLDS
-    THE HARBOR DREAMS
-    THE ARCHIVE LISTENS
-    THE ARCHIVE WAITS
-    THE ARCHIVE COUNTS
-    THE ARCHIVE HOLDS
-    THE ARCHIVE DREAMS
-    THE FREQUENCY LISTENS
-    THE FREQUENCY WAITS
-    THE FREQUENCY COUNTS
-    THE FREQUENCY HOLDS
-    THE FREQUENCY DREAMS
-    HOUSE OF GLASS
-    HOUSE OF SIGNAL
-    HOUSE OF KEYS
-    REPUBLIC OF GLASS
-    REPUBLIC OF SIGNAL
-    REPUBLIC OF KEYS
-    ARCHIVE OF GLASS
-    ARCHIVE OF SIGNAL
-    ARCHIVE OF KEYS
-    LEDGER OF GLASS
-    LEDGER OF SIGNAL
-    LEDGER OF KEYS
-    MAP OF GLASS
-    MAP OF SIGNAL
-    MAP OF KEYS
-    FIELD OF GLASS
-    FIELD OF SIGNAL
-    FIELD OF KEYS
-    ROOM OF GLASS
-    ROOM OF SIGNAL
-    ROOM OF KEYS
-    GARDEN OF GLASS
-    GARDEN OF SIGNAL
-    GARDEN OF KEYS
-    WEATHER OF GLASS
-    WEATHER OF SIGNAL
-    WEATHER OF HOURS
-    CIRCUIT OF STATIC
-    CIRCUIT OF WEATHER
-    CIRCUIT OF HOURS
-    HARBOR OF STATIC
-    HARBOR OF WEATHER
-    HARBOR OF HOURS
-    STAIR OF STATIC
-    STAIR OF WEATHER
+    SEALED TWICE
+    THE HOUSE, DERIVING ITSELF
+    QUIET HANDS, OPEN EARS
+    THE LONG STATIC
+    WHAT THE NIGHT CARRIES
+    KEPT, NOT KEPT SECRET
+    THE GATE STANDS OPEN INWARD
+    STILL ON THE WIRE
+    A WATCH, NOT A SIEGE
+    THE NIGHT LEDGER
+    HOLD THE FREQUENCY
+    LISTEN PAST THE STATIC
+    THE DISTANCE IS MEASURED
+    AN HONEST LEDGER
+    DARK AND INSTRUMENTED
+    THE NIGHT IS INSTRUMENTED
+    SIGNALS IN, TRUTHS OUT
+    THE DARK IS UNREAD DATA
+    WE READ THE DARK
+    NIGHT SHIFT, FULL SPECTRUM
+    THE STACK REMEMBERS
+    EVERY LAYER LEAVES A TRACE
+    TIMING IS A SIDE CHANNEL
+    EVEN SILENCE LEAKS
+    THE METADATA IS THE MESSAGE
+    WHO, WHEN, HOW OFTEN IS ENOUGH
+    YOUR PHONE INTRODUCES YOU FIRST
+    EVERY INTRODUCTION IS A DISCLOSURE
+    STRANGERS KNOCK, INSTRUMENTS LISTEN
+    THE PERIMETER IS A HABIT
+    WATCH THE WATCHERS
+    THE TRIPWIRE NEVER SLEEPS
+    EVERY KNOCK GETS A NAME
+    GRADE IT, THEN FILE IT
+    THE VERDICT IS A NUMBER
+    EXPOSURE IS A NUMBER FIRST
+    WHAT GETS MEASURED GETS DARKENED
+    GO DARK ON PURPOSE
+    SILENCE, GRADED
+    THE VEIL IS A SETTING, NOT A MOOD
+    DRAW THE VEIL
+    UNLISTED IS NOT INVISIBLE
+    QUIET IS NOT THE SAME AS GONE
+    THE AIR REMEMBERS YOUR NAME
+    BROADCAST NOTHING YOU WOULDN'T SHOUT
     """
 
     static let all: [String] = block
@@ -1106,6 +880,25 @@ enum BootSubtitles {
     static func random() -> String {
         all.randomElement() ?? "UNDER SEAL"
     }
+}
+
+/// The boot's warm-up, named as it runs — one
+/// stage list for every road the ceremony can
+/// take (the labz waking and the classic
+/// ceremony alike), in the order the ceremony's
+/// task sets the real jobs running: the entropy
+/// first, then the key, the weights, her words,
+/// the registries, and the radios last, because
+/// the radios are the ceremony joining the world.
+enum BootStages {
+    static let all = [
+        "SPOOLING ENTROPY",
+        "DERIVING THE HOUSE KEY",
+        "WARMING THE WEIGHTS",
+        "READING HER WORDS",
+        "PARSING THE REGISTRIES",
+        "SURVEYING THE RADIOS",
+    ]
 }
 
 struct BootView: View {
@@ -1502,6 +1295,23 @@ struct BootView: View {
     private func lineView(_ line: BootLine,
                           text override: String? = nil)
         -> some View {
+        HStack(spacing: 7) {
+            Text("»")
+                .font(.system(.footnote,
+                              design: .monospaced)
+                      .weight(.bold))
+                .foregroundStyle(
+                    color(line.tone).opacity(0.6))
+                .shadow(color: .black.opacity(0.95),
+                        radius: 3, x: 0, y: 1)
+            lineText(line, override)
+        }
+    }
+
+    @ViewBuilder
+    private func lineText(_ line: BootLine,
+                          _ override: String?)
+        -> some View {
         let text = Text(override ?? line.text)
             .font(.system(.footnote, design: .monospaced)
                   .weight(line.tone == .cmd ? .semibold : .regular))
@@ -1513,6 +1323,41 @@ struct BootView: View {
             text.shadow(color: color(.ok).opacity(0.45), radius: 6)
         } else {
             text
+        }
+    }
+
+    /// The ceremony's heartbeat line: the
+    /// warm-up's current stage, named as it
+    /// runs (the one BootStages list both boot
+    /// roads read), advancing with the boot's
+    /// own progress and settling, at the
+    /// finale, on the verdict. A block cursor
+    /// rides it — the terminal is alive.
+    private var stageLine: some View {
+        let stages = BootStages.all
+        let idx = finale ? stages.count - 1
+            : min(stages.count - 1,
+                  max(0, Int(Double(bootProgress)
+                    * Double(stages.count))))
+        return HStack(spacing: 7) {
+            Text(finale
+                 ? L("ALL SYSTEMS NOMINAL")
+                 : L(stages[idx]))
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .tracking(3)
+                .foregroundStyle(finale
+                    ? color(.ok)
+                    : Color(white: 0.55))
+                .shadow(color: .black.opacity(0.9),
+                        radius: 3)
+            Text("▊")
+                .font(.system(.caption2,
+                              design: .monospaced))
+                .foregroundStyle(color(.ok))
+                .shadow(color: .black.opacity(0.9),
+                        radius: 3)
+                .opacity(cursorOn ? 1 : 0)
         }
     }
 
@@ -1748,13 +1593,7 @@ struct BootView: View {
                 Spacer()
                 VStack(spacing: 10) {
                     printView
-                    Text(L("DERIVING THE NIGHT"))
-                        .font(.system(.caption2,
-                                      design: .monospaced))
-                        .tracking(3)
-                        .foregroundStyle(Color(white: 0.55))
-                        .shadow(color: .black.opacity(0.9),
-                                radius: 3)
+                    stageLine
                 }
                 Spacer()
                 VStack(spacing: 0) {
@@ -2094,14 +1933,9 @@ struct LabzBootView: View {
     /// the glow kindles exactly where her eye is.
     private static let eye = CGPoint(
         x: 0.7027, y: 0.2644)
-    /// The warm-up's real stages, in the order
-    /// the ceremony's task sets them running.
-    private static let stages = [
-        "DERIVING THE HOUSE KEY",
-        "WARMING THE WEIGHTS",
-        "READING HER WORDS",
-        "PARSING THE REGISTRIES",
-    ]
+    /// The warm-up's real stages — the one list
+    /// both boot roads read (BootStages).
+    static let stages = BootStages.all
 
     private func clamp01(_ v: Double) -> Double {
         min(1, max(0, v))
@@ -2139,6 +1973,62 @@ struct LabzBootView: View {
         }
         g += 0.55 * bump(t, 3.12, 0.14)
         return min(1, g)
+    }
+
+    /// One stage line, decoding: the letters
+    /// resolve left to right out of churned
+    /// block glyphs — the house's scramble
+    /// hand, on the boot's own clock. In calm
+    /// water the line stands plain.
+    private func stageText(_ index: Int,
+                           _ t: Double) -> String {
+        let stage = Self.stages[index]
+        let stageLen = Self.duration
+            / Double(Self.stages.count)
+        let local = t - Double(index) * stageLen
+        let glyphs = Array("░▒▓█▄▀·")
+        let chars = Array(stage)
+        let resolved = calm
+            ? chars.count
+            : max(0, min(chars.count,
+                         Int(local / 0.026)))
+        var out = String(chars.prefix(resolved))
+        if resolved < chars.count {
+            let frame = Int(t * 24)
+            for pos in resolved..<chars.count {
+                if chars[pos] == " " {
+                    out.append(" ")
+                } else {
+                    let pick = (index * 31
+                        + pos * 17 + frame * 13) %
+                        glyphs.count
+                    out.append(glyphs[pick])
+                }
+            }
+        }
+        return out
+    }
+
+    /// The lab's name, one row of it — drawn
+    /// three times at the go-live instant,
+    /// torn red and cyan for a breath (the
+    /// wordmarkRow's ghosts), once settled.
+    private func wordmarkRow(_ t: Double,
+                             tint: Color) -> some View {
+        HStack(spacing: 10 - 6.5
+            * ramp(t, 1.95, 2.95)) {
+            let word = Array(L("NIGHTWARE LABZ"))
+            ForEach(word.indices, id: \.self) { i in
+                Text(String(word[i]))
+                    .font(.system(size: 25,
+                                  weight: .bold))
+                    .foregroundStyle(tint)
+                    .opacity(ramp(
+                        t,
+                        1.95 + Double(i) * 0.045,
+                        2.2 + Double(i) * 0.045))
+            }
+        }
     }
 
     /// The backdrop's own rect: the whole still,
@@ -2207,11 +2097,15 @@ struct LabzBootView: View {
                 let markO = ramp(t, 0.5, 1.9)
                 let markU = smooth(t, 0.5, 2.1)
                 let wordU = ramp(t, 1.95, 2.95)
+                let tear = calm ? 0
+                    : bump(t, 3.04, 0.055)
                 let ruleU = ramp(t, 2.55, 3.0)
                 let liveO = ramp(t, 2.95, 3.3)
                 let stageIndex = min(
                     Self.stages.count - 1,
-                    max(0, Int(t / 0.82)))
+                    max(0, Int(t / (Self.duration
+                        / Double(Self.stages
+                            .count)))))
                 ZStack {
                     Color.black
                     // The room: the operator's
@@ -2275,28 +2169,35 @@ struct LabzBootView: View {
                     .position(x: markCentre.x,
                               y: markCentre.y
                                 + 16 * (1 - markU))
-                    // The lab's name sets.
+                    // The lab's name sets — and
+                    // at the go-live instant it
+                    // tears, red and cyan, for
+                    // one breath.
                     VStack(spacing: 10) {
-                        HStack(spacing:
-                            10 - 6.5 * wordU) {
-                            let word = Array(
-                                L("NIGHTWARE LABZ"))
-                            ForEach(
-                                word.indices,
-                                id: \.self) { i in
-                                Text(String(word[i]))
-                                    .font(.system(
-                                        size: 25,
-                                        weight: .bold))
-                                    .foregroundStyle(
-                                        Color(white: 0.92))
-                                    .opacity(ramp(
-                                        t,
-                                        1.95 + Double(i)
-                                            * 0.045,
-                                        2.2 + Double(i)
-                                            * 0.045))
+                        ZStack {
+                            if tear > 0.03 {
+                                wordmarkRow(
+                                    t, tint: Color(
+                                        red: 1.0,
+                                        green: 0.1,
+                                        blue: 0.2))
+                                    .offset(
+                                        x: -3 * tear)
+                                    .opacity(
+                                        0.5 * tear)
+                                wordmarkRow(
+                                    t, tint: Color(
+                                        red: 0.2,
+                                        green: 0.9,
+                                        blue: 1.0))
+                                    .offset(
+                                        x: 3 * tear)
+                                    .opacity(
+                                        0.5 * tear)
                             }
+                            wordmarkRow(
+                                t, tint: Color(
+                                    white: 0.92))
                         }
                         Text(L("nightjar"))
                             .font(.system(
@@ -2334,22 +2235,57 @@ struct LabzBootView: View {
                               y: size.height * 0.76)
                     scanlines(t: t, size: size)
                     // The warm-up, named as it
-                    // runs — the ceremony's real
-                    // work, in its own order.
-                    if t < 3.3 {
-                        Text(L(Self.stages[stageIndex]))
-                            .font(.system(
-                                size: 9,
-                                design: .monospaced))
-                            .tracking(2)
-                            .foregroundStyle(Color(
-                                red: 0.35, green: 1.0,
-                                blue: 0.45)
-                                .opacity(0.75))
-                            .position(
-                                x: 96,
-                                y: size.height - 34)
+                    // runs, terminal-style: the
+                    // finished stages stack with
+                    // their ticks, and the live
+                    // one decodes in beneath them.
+                    VStack {
+                        Spacer()
+                        HStack {
+                            VStack(alignment: .leading,
+                                   spacing: 3) {
+                                ForEach(
+                                    0..<stageIndex,
+                                    id: \.self) { i in
+                                    Text("✓ "
+                                        + L(Self
+                                            .stages[i]))
+                                        .font(.system(
+                                            size: 9,
+                                            design:
+                                                .monospaced))
+                                        .foregroundStyle(
+                                            Color(
+                                                red: 0.35,
+                                                green: 1.0,
+                                                blue: 0.45)
+                                                .opacity(
+                                                    0.5))
+                                }
+                                if t < 3.3 {
+                                    Text(stageText(
+                                            stageIndex,
+                                            t)
+                                        + " ▊")
+                                        .font(.system(
+                                            size: 9,
+                                            design:
+                                                .monospaced))
+                                        .tracking(1)
+                                        .foregroundStyle(
+                                            Color(
+                                                red: 0.35,
+                                                green: 1.0,
+                                                blue: 0.45)
+                                                .opacity(
+                                                    0.85))
+                                }
+                            }
+                            Spacer()
+                        }
                     }
+                    .padding(.leading, 22)
+                    .padding(.bottom, 24)
                 }
                 .frame(width: size.width,
                        height: size.height)
