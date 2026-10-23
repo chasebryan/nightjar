@@ -17,38 +17,57 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Restore exact GIF bytes and take slot names
+      - name: Move staged GIFs to slot names and drop UUID originals
         run: |
           set -euo pipefail
           D="ios/nightjar/gifs"
-          BOOT_SRC_SHA="7964fc7233e8abfb07546468480bd4fab097ff35"
-          changed=0
-          rename_uuid() {
+          take_slot() {
             if [ -f "$D/$1" ]; then
+              echo "taking slot: $1 -> $2"
               rm -f "$D/$2"
               git mv "$D/$1" "$D/$2"
-              changed=1
+            else
+              echo "staged file already moved: $1"
             fi
           }
-          # boot.gif must hold the exact original bytes (10896162)
-          if [ ! -f "$D/boot.gif" ] || [ "$(stat -c%s "$D/boot.gif")" != "10896162" ]; then
-            git show "$BOOT_SRC_SHA:$D/F17B5270-22A0-4CE2-9E36-338947048C16.gif" > "$D/boot.gif"
-            changed=1
-          fi
-          rename_uuid "F17B5270-22A0-4CE2-9E36-338947048C16.gif" "boot.gif"
-          rename_uuid "E638CD3F-147F-4808-8FC2-85E6ABC297FD.gif" "centipede.gif"
-          rename_uuid "12CEAEDC-6879-4FE8-AA44-98FF8D1ADA60.gif" "eazy.gif"
-          # verify exact sizes
-          [ "$(stat -c%s "$D/boot.gif")" = "10896162" ] || { echo "boot.gif size mismatch"; exit 1; }
-          [ "$(stat -c%s "$D/centipede.gif")" = "5314219" ] || { echo "centipede.gif size mismatch"; exit 1; }
-          [ "$(stat -c%s "$D/eazy.gif")" = "8289996" ] || { echo "eazy.gif size mismatch"; exit 1; }
-          # no UUID-named gifs may remain
+          drop_uuid() {
+            if [ -f "$D/$1" ]; then
+              echo "dropping UUID original: $1"
+              git rm -q "$D/$1"
+            else
+              echo "UUID already gone: $1"
+            fi
+          }
+          take_slot "boot-original.gif" "boot.gif"
+          take_slot "centipede-original.gif" "centipede.gif"
+          take_slot "eazy-original.gif" "eazy.gif"
+          take_slot "magdump-original.gif" "magdump.gif"
+          take_slot "assault-original.gif" "assault.gif"
+          drop_uuid "F17B5270-22A0-4CE2-9E36-338947048C16.gif"
+          drop_uuid "E638CD3F-147F-4808-8FC2-85E6ABC297FD.gif"
+          drop_uuid "12CEAEDC-6879-4FE8-AA44-98FF8D1ADA60.gif"
+          drop_uuid "05761C85-8B30-458B-A1E3-082D738064C4.gif"
+          drop_uuid "01898EFC-BAE5-42A1-A24B-1F13C2B3FC24.gif"
+          check_size() {
+            local s
+            s="$(stat -c%s "$D/$1")"
+            echo "$1: $s bytes (expected $2)"
+            [ "$s" = "$2" ] || { echo "SIZE MISMATCH for $1"; exit 1; }
+          }
+          check_size "boot.gif" "10896162"
+          check_size "centipede.gif" "5314219"
+          check_size "eazy.gif" "8289996"
+          check_size "magdump.gif" "994235"
+          check_size "assault.gif" "10049430"
+          echo "--- folder contents ---"
+          ls -la "$D"
           if ls "$D" | grep -Eq '^[0-9A-F-]{36}\.gif$'; then echo "UUID gif still present"; exit 1; fi
-          if [ "$changed" = "1" ]; then
+          if ls "$D" | grep -Eq '\-original\.gif$'; then echo "staged gif still present"; exit 1; fi
+          if [ -n "$(git status --porcelain)" ]; then
             git config user.name "nightwarelabz"
             git config user.email "nightwarelabz@users.noreply.github.com"
             git add -A
-            git commit -m "gifs: boot, centipede and eazy take their slot names"
+            git commit -m "gifs: boot, centipede, eazy, magdump and assault take their slot names"
             git push
           else
             echo "folder already in desired state"
