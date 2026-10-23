@@ -3727,6 +3727,39 @@ final class Gauntlet: ObservableObject {
                 + "is the bird — one still frame, "
                 + "decoded whole"
         }
+        add("wardrobe", "backdrop fit holds the artwork") {
+            var cases = 0
+            // Chase's ruling, 2026-10-22: better
+            // positional management — a still whose
+            // shape mismatches the screen is shown
+            // WHOLE, never fill-cropped past both
+            // edges (the bird lockup did exactly
+            // that, blown up square into portrait).
+            cases += 1
+            try Gauntlet.require(
+                BackdropFit.wholeArtwork(
+                    imageAspect: 1.0,
+                    frameAspect: 0.46),
+                "a square still on a portrait "
+                    + "screen would crop")
+            cases += 1
+            try Gauntlet.require(
+                !BackdropFit.wholeArtwork(
+                    imageAspect: 0.4626,
+                    frameAspect: 0.4603),
+                "a portrait still on its own "
+                    + "screen must still fill")
+            cases += 1
+            try Gauntlet.require(
+                BackdropFit.wholeArtwork(
+                    imageAspect: 1.78,
+                    frameAspect: 0.46),
+                "a wide still on a portrait "
+                    + "screen would crop")
+            return "\(cases) cases: mismatched "
+                + "stills hang whole and centered, "
+                + "matched stills fill"
+        }
         add("stores", "session codec round-trips") {
             var cases = 0
             // The line codec's own primitives.

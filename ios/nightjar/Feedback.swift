@@ -290,6 +290,23 @@ struct AnimatedImageView: NSViewRepresentable {
 /// plain theme colour, or the operator's own art — washed
 /// with the theme's tint and dimmed by its measure, so text
 /// stays readable over any of them.
+/// The still-backdrop fit decision, kept pure so the
+/// Gauntlet can pin it: a still is shown WHOLE when its
+/// aspect and the frame's aspect disagree by more than
+/// ~18% — beyond that, fill-cropping eats the subject
+/// (the bird lockup blew past both screen edges).
+enum BackdropFit {
+    static func wholeArtwork(imageAspect: CGFloat,
+                             frameAspect: CGFloat) -> Bool {
+        guard imageAspect > 0, frameAspect > 0 else {
+            return false
+        }
+        let ratio = max(imageAspect, frameAspect)
+            / min(imageAspect, frameAspect)
+        return ratio > 1.18
+    }
+}
+
 struct AppBackdrop: View {
     var slot: BackdropSlot? = nil
     @Environment(\.backdropSlot) private var ambientSlot
@@ -361,10 +378,14 @@ struct AppBackdrop: View {
         switch choice {
         case .living, .inherit:
             if let wallpaper = Wallpaper.image {
-                AnimatedImageView(image: wallpaper)
-                    .frame(width: geo.size.width,
-                           height: geo.size.height)
-                    .clipped()
+                if platformImageIsAnimated(wallpaper) {
+                    AnimatedImageView(image: wallpaper)
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                } else {
+                    stillBackdrop(wallpaper, geo: geo)
+                }
             } else {
                 skull(geo)
             }
@@ -379,17 +400,17 @@ struct AppBackdrop: View {
                                height: geo.size.height)
                         .clipped()
                 } else {
-                    Image.platformImage(image)
-                        .resizable().scaledToFill()
+                    stillBackdrop(image, geo: geo)
+                }
+            } else if let wallpaper = Wallpaper.image {
+                if platformImageIsAnimated(wallpaper) {
+                    AnimatedImageView(image: wallpaper)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
                         .clipped()
+                } else {
+                    stillBackdrop(wallpaper, geo: geo)
                 }
-            } else if let wallpaper = Wallpaper.image {
-                AnimatedImageView(image: wallpaper)
-                    .frame(width: geo.size.width,
-                           height: geo.size.height)
-                    .clipped()
             } else {
                 skull(geo)
             }
@@ -401,6 +422,37 @@ struct AppBackdrop: View {
             BlacksiteWallpaperView(
                 width: geo.size.width,
                 height: geo.size.height)
+        }
+    }
+
+    /// Positional management for still backdrops (Chase's
+    /// ruling, 2026-10-22: "better positional management of
+    /// the bird — can't even see this"). A still whose shape
+    /// mismatches the screen's is shown WHOLE, centered, on
+    /// the backdrop's near-black base, where the blend is
+    /// invisible; near-matching shapes keep the full-bleed
+    /// fill. Animated reels keep the fill — motion masks
+    /// the crop.
+    @ViewBuilder
+    private func stillBackdrop(_ image: UIImage,
+                               geo: GeometryProxy) -> some View {
+        let frameAspect = geo.size.width
+            / max(geo.size.height, 1)
+        let imageAspect = image.size.width
+            / max(image.size.height, 1)
+        if BackdropFit.wholeArtwork(imageAspect: imageAspect,
+                                    frameAspect: frameAspect) {
+            Image.platformImage(image)
+                .resizable().scaledToFit()
+                .frame(width: geo.size.width,
+                       height: geo.size.height)
+                .clipped()
+        } else {
+            Image.platformImage(image)
+                .resizable().scaledToFill()
+                .frame(width: geo.size.width,
+                       height: geo.size.height)
+                .clipped()
         }
     }
 
