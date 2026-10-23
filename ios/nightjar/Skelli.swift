@@ -144,6 +144,19 @@ enum SkelliKnowledge {
                        "owserver", "1-wire"],
             body: "The bench's eleventh wave knocks on the building itself. For heat: thermoprobe reads a BACnet device's analog points — present values printed with the units the device itself claims, never silently converted — and the open sensor pages (ControlByWeb's state.xml, HWg-STE's values.xml); owprobe takes the 1-Wire bus directory off an OWServer and names the sensor families on it; envprobe asks the documented SNMP temperature objects, each reported with the MIB that defines it. For the panels: panelprobe only listens at the EnvisaLink TPI and the AlarmDecoder's socket — it sends nothing, and no password is tried or ever will be; accessprobe grades presence at the access controllers' discovery ear and host door, and holds no card data anywhere. onvifprobe asks one host's WS-Discovery directly — types, service addresses, scopes — before the nameplate read. And fire is where the bench's line is hardest: fireprobe and firecensus read a fire panel's NAMEPLATE — BACnet device object, SNMP ledger — and match it against the makers (Notifier, Silent Knight, Fire-Lite, EST, Simplex, Gamewell-FCI, Potter, Mircom and their kin). Identification only: the fire engines never read alarm or zone state, and send nothing that can test, acknowledge, silence, or reset — at any scale. buildingprobe runs the four batteries on one host; buildingcensus sweeps a /24 by family. Everywhere the doctrine holds: one knock, read, grade — no setpoint is written, no panel is armed or disarmed, no credential is attempted; posture is graded from exposure and banners only, and identifications are what the devices claim, never more."),
         SkelliEntry(
+            id: "plant", title: "Plant facilities — generation, water, and the grid",
+            home: "the Blacksite bench",
+            keywords: ["plant facilities",
+                       "plantprobe",
+                       "genprobe", "waterprobe",
+                       "gridprobe",
+                       "plantcensus",
+                       "power plant", "nuclear",
+                       "water treatment",
+                       "wastewater",
+                       "substation", "scada"],
+            body: "The bench's twelfth wave adds no protocol at all — it reads the ICS wave's identification ledgers together, as a facility. plantprobe runs the generic reads on one host — Modbus device identification, the S7 plate, EtherNet/IP List Identity, the BACnet device object, the DNP3 device attributes, the IEC 61850 door — and then claims the facility class from the device's own words only: generation in its kinds (nuclear balance-of-plant, coal, gas, oil, hydro, solar, wind, geothermal, biomass, battery storage), water treatment, wastewater, substation and distribution — or the honest 'plant equipment, class unproven'. Process words count only when the device itself printed them; a bare vendor name proves nothing, two words or a word and a corroborating door make a claim, and one word makes only a lean, graded as a lean. genprobe adds the SunSpec nameplate against the generation classes; waterprobe claims against the water classes; gridprobe takes the substation battery — the 61850 door, the DNP3 attributes, the IEC 104 posture, and the SEL relay's ID report last. plantcensus sweeps a /24 in the light weight and claims per address. The doctrine here is the hardest on the bench. Identification and posture grading ONLY: no control or write function codes, ever — no Modbus writes, no DNP3 control or restart function codes (device attributes are group-0 READS only), no IEC 104 general interrogation (gridprobe knocks with STARTDT and TESTFR only, and says so), no IEC 61850 control services. And nothing is ever addressed to a reactor protection or safety system: if a generic read returns a nameplate that classifies as safety or protection equipment, the board REPORTS the classification and the exposure — the bench does not direct further probes at it."),
+        SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
             keywords: ["war chest", "chest", "configuration",
@@ -259,7 +272,7 @@ enum SkelliKnowledge {
                        "git clone", "git push",
                        "grok", "diagnose",
                        "limits"],
-            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 311 graded instruments in eleven waves and one capstone — the web, service doors, names and mail, industrial control, the building's own systems, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, files, and MEGATRON, the robotics and machinery program that hunts every robot and machine on the wire, the Musk fleet first. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
+            body: "The house's own operating system in one room: a kernel with processes, quotas and a watchdog, a shell with pipes and functions, and three tongues — house Python (with bytes, datetime, heapq and friends), JavaScript with git and gh aboard (the console can clone, commit and push — it can rebuild this very app), and real Linux userspace as WebAssembly (linuxbox, 35 applets). Ask her 'console: <line>' and she runs it there herself. Its true walls are named by its own `limits` command: no Linux kernel (iOS grants no hypervisor), EMCON's doctrine, the kernel's quotas. Beside the shell stands the pentest bench: 316 graded instruments in twelve waves and one capstone — the web, service doors, names and mail, industrial control, the building's own systems, the plant floor, the satellite ledger, the street, the wire's own protocols, locks and ciphers, the shield, files, and MEGATRON, the robotics and machinery program that hunts every robot and machine on the wire, the Musk fleet first. Every one knocks once, reads what answers, and grades it in the open; none floods, sprays, or exploits. Name one here with its target — 'webaudit example.com', 'run smbprobe 192.168.1.1' — and she runs it herself, under the same gates the console obeys."),
         SkelliEntry(
             id: "vault", title: "The knock vault",
             home: "the EMCON tab",
@@ -4890,7 +4903,7 @@ final class SkelliCenter: ObservableObject {
             + "Serve, arm the tripwire, work the "
             + "ear, name devices, run the "
             + "Blacksite bench — every probe and "
-            + "census of its eleven waves and the "
+            + "census of its twelve waves and the "
             + "MEGATRON robotics battery — from a "
             + "console line spoken here, forge "
             + "payloads "

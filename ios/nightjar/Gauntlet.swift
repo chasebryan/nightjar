@@ -2423,6 +2423,227 @@ final class Gauntlet: ObservableObject {
             return "\(cases) cases: both sensor "
                 + "pages scraped, nothing invented"
         }
+        add("bench", "plant classifier names generation") {
+            var cases = 0
+            // A nuclear plate: the word
+            // itself plus balance-of-plant
+            // words the device printed.
+            var verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "turbine hall feedwater pump controller, nuclear unit 2 — condensate polisher skid",
+                    doors: ["modbus", "dnp3"],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "generation — nuclear balance-of-plant",
+                "the nuclear plate went unnamed")
+            cases += 1
+            try Gauntlet.require(
+                verdict.words.contains(
+                    "feedwater")
+                    && verdict.words.contains(
+                        "condensate"),
+                "the balance-of-plant words were lost")
+            // Wind: two of its own words.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "wind turbine nacelle controller, yaw drive cabinet",
+                    doors: ["enip"],
+                    focus: .generation)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "generation — wind",
+                "the wind plate went unnamed")
+            // Hydro, claimed in its lens.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "penstock governor, hydroelectric powerhouse unit 1",
+                    doors: ["modbus"],
+                    focus: .generation)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "generation — hydro",
+                "the hydro plate went unnamed")
+            // A SunSpec door and nothing
+            // more: solar and storage
+            // share one honest claim.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "the sunspec nameplate reads — maker Example, model X1",
+                    doors: ["sunspec"],
+                    focus: .generation)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "generation — solar / battery storage",
+                "the sunspec plate was split or silenced")
+            return "\(cases) cases: generation "
+                + "claimed from the plates' "
+                + "own words only"
+        }
+        add("bench", "plant classifier water and grid") {
+            var cases = 0
+            // Wastewater in the water lens.
+            var verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "lift station 4 — aeration basin blower, sludge digester controls",
+                    doors: ["modbus"],
+                    focus: .water)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "wastewater",
+                "the wastewater plate went unnamed")
+            // Treatment: three of its
+            // words, claimed named.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "chlorination skid, clarifier drive, potable water filtration gallery",
+                    doors: ["bacnet"],
+                    focus: .water)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "water treatment",
+                "the treatment plate went unnamed")
+            // Grid: process words plus
+            // the grid doors behind them.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "substation feeder bay — circuit breaker, switchgear, power transformer",
+                    doors: ["dnp3", "iec61850"],
+                    focus: .grid)
+            cases += 1
+            try Gauntlet.require(
+                verdict.named
+                    && verdict.facility
+                        == "substation / distribution",
+                "the substation plate went unnamed")
+            // The same plate under the
+            // water lens: no claim, and
+            // the grid words reported
+            // as riding along.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "substation feeder bay — circuit breaker",
+                    doors: ["dnp3"],
+                    focus: .water)
+            cases += 1
+            try Gauntlet.require(
+                !verdict.named
+                    && !verdict.leaning
+                    && !verdict.also.isEmpty,
+                "the wrong lens claimed or hid the words")
+            return "\(cases) cases: water and "
+                + "grid claimed in their "
+                + "lenses only"
+        }
+        add("bench", "plant classifier refusals") {
+            var cases = 0
+            // A bare vendor proves
+            // nothing — the refusal the
+            // whole wave stands on.
+            var verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "Schneider Electric",
+                    doors: ["modbus"],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                !verdict.named
+                    && !verdict.leaning
+                    && verdict.facility
+                        == "plant equipment, class unproven",
+                "a bare vendor named a facility")
+            // Silence proves nothing.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "",
+                    doors: [],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                !verdict.named
+                    && !verdict.leaning
+                    && !verdict.safety,
+                "silence was classified")
+            // The boiler trap: "boiler"
+            // holds the letters of "oil"
+            // and names no fuel — the
+            // claim is generation with
+            // its fuel unproven, never
+            // oil.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "boiler control panel, burner management",
+                    doors: ["modbus"],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                verdict.leaning
+                    && verdict.facility
+                        == "generation — fuel unproven",
+                "the boiler was named an oil plant")
+            return "\(cases) cases: the "
+                + "classifier refuses what "
+                + "the words do not carry"
+        }
+        add("bench", "plant classifier safety reporting") {
+            var cases = 0
+            // Protection words on a
+            // plate: classified, and the
+            // safety reading stands.
+            var verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "SEL-351 protection relay, feeder protection bay 3",
+                    doors: ["dnp3"],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                verdict.safety
+                    && verdict.safetyWords
+                        .contains("sel-"),
+                "the protection plate went unreported")
+            // The SEL door alone, answered
+            // with its ID report, is
+            // protection equipment by
+            // kind — even on a mute plate.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "the relay shows its ID report",
+                    doors: ["sel"],
+                    focus: .grid)
+            cases += 1
+            try Gauntlet.require(
+                verdict.safety,
+                "the sel door's answer went unreported")
+            // An S7 protection LEVEL is
+            // a posture word, not a
+            // safety system — the bench's
+            // own grading must not
+            // classify itself.
+            verdict = BlacksiteBench
+                .plantClassify(
+                    evidence: "s7probe: protection level 1 stands in its ledger — no protection stands",
+                    doors: ["s7"],
+                    focus: .any)
+            cases += 1
+            try Gauntlet.require(
+                !verdict.safety,
+                "a protection level was named a safety system")
+            return "\(cases) cases: safety "
+                + "plates reported, posture "
+                + "words left alone"
+        }
         add("bench", "mqtt and coap encodings") {
             var cases = 0
             // The forge's MQTT CONNECT, decoded
