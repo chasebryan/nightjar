@@ -1663,6 +1663,32 @@ struct AboutView: View {
                         .scaledToFit()
                         .listRowInsets(EdgeInsets())
                 }
+                // The development wire (Chase's ask,
+                // 2026-10-22): where the lab posts as
+                // it builds — releases, field notes,
+                // what's next.
+                Section {
+                    Link(destination: URL(string: "https://x.com/nightwarelabz")!) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "at.sign")
+                                .font(.title3)
+                                .foregroundStyle(.primary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(L("Follow the development"))
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                Text(L("@nightwarelabz on X — releases, field notes, and what the lab is building next."))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 Section(header: Text(L("Version"))) {
                     Text(String(format: L("nightjar for iOS %@ · log format 1"), AppInfo.version))
                         .font(.footnote)
