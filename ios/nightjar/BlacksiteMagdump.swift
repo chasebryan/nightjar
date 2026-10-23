@@ -4,9 +4,12 @@ import Security
 
 // BlacksiteMagdump — MAGDUMP, the automated
 // targeting program (Chase's order,
-// 2026-10-21). A program in EAZY's class,
-// not a bench wave: ONE target the operator
-// named — an address or a name — and the
+// 2026-10-21). EAZY's offensive sibling
+// under the house's principles (2026-10-23):
+// EAZY dumps passively and triggers
+// nothing; MAGDUMP fires. ONE target the
+// operator named — an address or a name —
+// and the
 // finished bench emptied at it in stages:
 // the doors, the web battery, TLS and the
 // keys it shows, the name and mail ledgers,
@@ -27,6 +30,16 @@ import Security
 // stages like it halts EAZY's. If a stage
 // would need machinery the waves did not
 // ship, the stage does not exist.
+//
+// The plug (2026-10-23): name a payload
+// from the Send room's book after the
+// target — 'magdump <host> <payload>' —
+// and it rides the dump as a final stage,
+// delivered once at every open door the
+// census found, its answers read and
+// boarded like everything else. Built-in
+// or the operator's own custom entries:
+// the book is the magazine.
 
 extension BlacksiteBench {
 
@@ -203,6 +216,8 @@ extension BlacksiteBench {
     static func magdumpRun(
         host: String, ip: String,
         name: String?,
+        plugName: String? = nil,
+        plugBytes: [UInt8]? = nil,
         stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
@@ -558,11 +573,148 @@ extension BlacksiteBench {
                        "\(host):\(plain)")
             }
 
+            // The plug (2026-10-23): the
+            // operator's own payload from
+            // the book, delivered once at
+            // every open door as the final
+            // stage — the magazine's custom
+            // round, fired after the bench's
+            // own battery has spoken.
+            if let plugName = plugName,
+               let plugBytes = plugBytes {
+                header(String(format: L("magdump: the plug — %@ rides the dump"),
+                              plugName))
+                if open.isEmpty {
+                    line(L("magdump: no open doors — the plug was never fired."))
+                } else {
+                    for port in open {
+                        steps.append { e, d in
+                            firePlug(
+                                ip: ip, port: port,
+                                plugName: plugName,
+                                bytes: plugBytes,
+                                emit: e, done: d)
+                        }
+                    }
+                }
+            }
+
             magChain(steps, 0,
                      stopped: stopped,
                      emit: emit) {
                 done()
             }
         }
+    }
+
+    /// The plug's single delivery at one
+    /// door: connect on the shared road,
+    /// send the bytes whole, read what
+    /// answers inside a short window, and
+    /// board the result. TLS doors are not
+    /// fired bare — a payload is noise
+    /// inside a handshake it cannot
+    /// complete, and the board says so.
+    private static func firePlug(
+        ip: String, port: Int,
+        plugName: String, bytes: [UInt8],
+        emit: @escaping BlacksiteEmit,
+        done: @escaping () -> Void) {
+        if port == 443 || port == 8443 {
+            magSay(emit, String(format: L("magdump: plug: :%lld speaks TLS — %@ not fired bare."),
+                                port, plugName))
+            done()
+            return
+        }
+        guard let fd = BlacksiteNet.streamConnect(
+            ip: ip, port: UInt16(port),
+            timeout: 2.0) else {
+            magSay(emit, String(format: L("magdump: plug: :%lld would not take %@."),
+                                port, plugName))
+            done()
+            return
+        }
+        var sent = 0
+        var sendOK = true
+        while sent < bytes.count {
+            let n = bytes.withUnsafeBufferPointer {
+                buffer in
+                send(fd,
+                     buffer.baseAddress! + sent,
+                     bytes.count - sent, 0)
+            }
+            guard n > 0 else {
+                sendOK = false
+                break
+            }
+            sent += n
+        }
+        if sendOK {
+            BetafischTap.shared.record(
+                fd: fd, outbound: true,
+                bytes: bytes)
+        }
+        var reply: [UInt8] = []
+        if sendOK {
+            BlacksiteNet.setRecvTimeout(
+                fd, seconds: 1.0)
+            let deadline = Date()
+                .addingTimeInterval(1.5)
+            while reply.count < 4096,
+                  Date() < deadline {
+                var chunk = [UInt8](
+                    repeating: 0,
+                    count: min(8192,
+                               4096 - reply.count))
+                let got = recv(fd, &chunk,
+                               chunk.count, 0)
+                if got > 0 {
+                    reply.append(
+                        contentsOf:
+                            chunk[0..<got])
+                } else if !reply.isEmpty {
+                    break
+                }
+            }
+            if !reply.isEmpty {
+                BetafischTap.shared.record(
+                    fd: fd, outbound: false,
+                    bytes: reply)
+            }
+        }
+        close(fd)
+        if !sendOK {
+            magSay(emit, String(format: L("magdump: plug: :%lld — the send failed."),
+                                port))
+        } else if reply.isEmpty {
+            magSay(emit, String(format: L("magdump: plug: %@ → :%lld — silence."),
+                                plugName, port))
+        } else {
+            var text = String(format: L("magdump: plug: %@ → :%lld — %lld bytes back."),
+                              plugName, port,
+                              reply.count)
+            if let raw = String(
+                bytes: Array(reply.prefix(120)),
+                encoding: .utf8) {
+                let first = raw.split(
+                    separator: "\n",
+                    maxSplits: 1).first
+                    .map(String.init) ?? ""
+                let clean = first
+                    .trimmingCharacters(
+                        in: .whitespacesAndNewlines)
+                let printable = !clean.isEmpty
+                    && clean.unicodeScalars
+                        .allSatisfy {
+                            $0.value >= 0x20
+                                && $0.value != 0x7F
+                        }
+                if printable {
+                    text += " " + clean
+                }
+            }
+            magSay(emit, text)
+        }
+        done()
     }
 }

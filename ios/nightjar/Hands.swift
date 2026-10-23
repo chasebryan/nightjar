@@ -2117,6 +2117,123 @@ extension SkelliCenter {
         say(line)
     }
 
+    // MARK: the Totality lane — her whole-house hand
+
+    /// Totality, worked by her own hand (on
+    /// wardriveAsk's proven shape): she
+    /// engages the whole house when told —
+    /// Serve up, the tap recording — and the
+    /// center's watchdog keeps it running
+    /// until she stands it down when told.
+    /// She never sends the operator to the
+    /// console to work it. Lessons about the
+    /// thing itself ("what is totality") fall
+    /// through to the manual untouched. The
+    /// fix589 fence holds: a questioned
+    /// engage ("should I run totality?") gets
+    /// the report, never the raising; a
+    /// negated one is honored out loud and
+    /// nothing moves. Every organ still
+    /// answers to EMCON — the center speaks
+    /// what could not rise, in words.
+    func totalityAsk(_ q: String) -> Bool {
+        let totalityLessonMarks = ["explain",
+            "how does", "how do i",
+            "what is totality",
+            "what's totality"]
+        if totalityLessonMarks.contains(
+            where: { q.contains($0) }) {
+            return false
+        }
+        let totalityStartMarks = [
+            "run totality",
+            "engage totality",
+            "start totality",
+            "raise totality",
+            "totality start",
+            "totality engage",
+            "go totality"]
+        let totalityStopMarks = [
+            "stop totality",
+            "stand totality down",
+            "totality stop",
+            "totality off",
+            "end totality"]
+        let totalityNegMarks = ["don't", "dont",
+            "do not", "never"]
+        let totalityMarks = ["totality"]
+        let wantsStart = totalityStartMarks
+            .contains(where: { q.contains($0) })
+        let wantsStop = totalityStopMarks
+            .contains(where: { q.contains($0) })
+        let marked = totalityMarks.contains(
+            where: { q.contains($0) })
+            || wantsStart || wantsStop
+        guard marked else { return false }
+        if wantsStart || wantsStop {
+            let firstWord = q.split(
+                separator: " ").first
+                .map(String.init) ?? ""
+            let questioned = q.contains("?")
+                || ["should", "can", "could",
+                    "is", "do", "does", "would"]
+                    .contains(firstWord)
+            let negated = totalityNegMarks
+                .contains(where: { q.contains($0) })
+            if negated {
+                say(L("Heard — the house stays "
+                    + "exactly as it is. I "
+                    + "won't touch it."))
+                return true
+            }
+            if !questioned {
+                if wantsStart {
+                    guard let mouth else {
+                        say(L("The house's organs "
+                            + "aren't wired to me "
+                            + "yet — the console's "
+                            + "totality word will "
+                            + "raise it."))
+                        return true
+                    }
+                    TotalityCenter.shared.engage(
+                        mouth: mouth,
+                        say: { [weak self] text in
+                            self?.say(text) })
+                    return true
+                }
+                if wantsStop {
+                    if TotalityCenter.shared.running {
+                        TotalityCenter.shared
+                            .standDown(
+                                reason: L("she stood "
+                                    + "it down"),
+                                say: { [weak self] text in
+                                    self?.say(text) })
+                    } else {
+                        say(L("Totality isn't "
+                            + "running — the house "
+                            + "is as it was."))
+                    }
+                    return true
+                }
+            }
+        }
+        totalitySayStatus(nil)
+        return true
+    }
+
+    /// The run's state, in her voice — the
+    /// center's own status line, the same
+    /// words the console reads.
+    private func totalitySayStatus(
+        _ prefix: String?) {
+        var line = prefix ?? ""
+        if !line.isEmpty { line += " " }
+        line += TotalityCenter.shared.statusLine
+        say(line)
+    }
+
     // MARK: her send hand — she fires
 
     /// A saved pattern filled from the ask, the

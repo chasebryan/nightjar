@@ -7,8 +7,7 @@ import Foundation
 // it is stopped (Chase's commission,
 // 2026-10-23): one word raises every
 // standing system the house has — Serve
-// up, the beacon lit, Net-Assault passing
-// on the wire, the house tap recording,
+// up, the house tap recording,
 // the listening post's ears already open
 // by design — and a watchdog re-asserts
 // each organ Totality itself raised, so
@@ -36,6 +35,17 @@ import Foundation
 // nothing here disguises the house from
 // the wire or the router. The test runs
 // in the open, as loud as its organs are.
+//
+// Totality raises no beacon and no flare
+// (Chase's ruling, 2026-10-23): the air
+// is not one of its organs. Nor does it
+// loose Net-Assault (the same day's
+// restructure, by the house's principles):
+// the offensive arm belongs to the
+// offensive commands — magdump's
+// principle — not to the house simply
+// standing. Net-Assault keeps its own
+// doors: its room, and the banshee.
 
 final class TotalityCenter: ObservableObject {
 
@@ -53,8 +63,6 @@ final class TotalityCenter: ObservableObject {
 
     // What Totality itself raised — the
     // only things it may lower.
-    private var armedAssault = false
-    private var litBeacon = false
     private var startedServe = false
     private var tapWasOn = false
 
@@ -101,45 +109,6 @@ final class TotalityCenter: ObservableObject {
                 say(L("Serve would not rise — "
                       + "its own log in the Serve "
                       + "room says why."))
-            }
-        }
-
-        // The beacon: a short shout that
-        // fits the air's budget whole —
-        // TOTALITY under TOTALITY, 29 of
-        // the 31 bytes counted by
-        // Mouth.advertisementFits.
-        if mouth.beaconOn || mouth.gattHostOn {
-            say(L("The air was already held — "
-                  + "the beacon is not Totality's "
-                  + "to lower."))
-        } else if EmconStandard.refused(.beacon) {
-            say(String(format: L("The beacon stays dark — %@."),
-                       EmconCondition.current.declared))
-        } else {
-            mouth.startBeacon(
-                payload: Data("TOTALITY".utf8),
-                name: "TOTALITY")
-            litBeacon = mouth.beaconOn
-            if litBeacon {
-                raised.append(L("the beacon, lit"))
-            }
-        }
-
-        // Net-Assault: arm() carries the
-        // Standard's gate inside it, and
-        // `running` read back is the truth.
-        if AssaultCenter.shared.running {
-            say(L("Net-Assault was already passing — "
-                  + "it is not Totality's to lower."))
-        } else {
-            AssaultCenter.shared.arm()
-            armedAssault = AssaultCenter.shared.running
-            if armedAssault {
-                raised.append(L("Net-Assault, passing"))
-            } else {
-                say(String(format: L("Net-Assault stays dark — %@."),
-                           EmconCondition.current.declared))
             }
         }
 
@@ -193,16 +162,6 @@ final class TotalityCenter: ObservableObject {
     private func watchdog() {
         guard running, let mouth else { return }
         cycles += 1
-        if armedAssault,
-           !AssaultCenter.shared.running {
-            if EmconStandard.refused(.netAssault) {
-                armedAssault = false
-            } else {
-                AssaultCenter.shared.arm()
-                armedAssault =
-                    AssaultCenter.shared.running
-            }
-        }
         if startedServe, !mouth.serveRunning {
             if EmconStandard.refused(.serveListed)
                 && EmconStandard.refused(.serveStealth) {
@@ -210,17 +169,6 @@ final class TotalityCenter: ObservableObject {
             } else {
                 mouth.startServeFromSettings()
                 startedServe = mouth.serveRunning
-            }
-        }
-        if litBeacon, !mouth.beaconOn {
-            if EmconStandard.refused(.beacon)
-                || mouth.gattHostOn {
-                litBeacon = false
-            } else {
-                mouth.startBeacon(
-                    payload: Data("TOTALITY".utf8),
-                    name: "TOTALITY")
-                litBeacon = mouth.beaconOn
             }
         }
     }
@@ -240,17 +188,6 @@ final class TotalityCenter: ObservableObject {
             self.boardID = nil
         }
         var lowered: [String] = []
-        if armedAssault,
-           AssaultCenter.shared.running {
-            AssaultCenter.shared.disarm(reason: reason)
-            lowered.append(L("Net-Assault"))
-        }
-        armedAssault = false
-        if litBeacon, let mouth, mouth.beaconOn {
-            mouth.stopBeacon()
-            lowered.append(L("the beacon"))
-        }
-        litBeacon = false
         if startedServe, let mouth, mouth.serveRunning {
             mouth.stopServe()
             lowered.append(L("Serve"))
@@ -285,8 +222,6 @@ final class TotalityCenter: ObservableObject {
         }
         var organs: [String] = []
         if startedServe { organs.append("Serve") }
-        if litBeacon { organs.append("beacon") }
-        if armedAssault { organs.append("Net-Assault") }
         if BetafischTap.shared.enabled {
             organs.append("tap")
         }

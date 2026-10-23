@@ -220,6 +220,46 @@ final class BlacksiteShell: ObservableObject {
     @Published var betafischSeedDrift = false
     @Published var betafischSeedDriftSample = false
 
+    /// One pip-lite requirement: the
+    /// name as written, an exact pin
+    /// when one was given (==), and the
+    /// environment marker, if any.
+    struct PipReq {
+        var name: String
+        var pin: String?
+        var marker: String?
+        /// The name the way PyPI itself
+        /// normalizes it: lowercased,
+        /// runs of - _ . as one dash.
+        var key: String {
+            var out = ""
+            var dash = false
+            for ch in name.lowercased() {
+                if ch == "-" || ch == "_"
+                    || ch == "." {
+                    if !dash {
+                        out.append("-")
+                    }
+                    dash = true
+                } else {
+                    out.append(ch)
+                    dash = false
+                }
+            }
+            return out
+        }
+    }
+
+    /// pip-lite's working state: the
+    /// requirements still to settle,
+    /// the names already settled, and
+    /// the caller's completion, fired
+    /// when the queue drains.
+    var pipQueue: [(req: PipReq,
+                    depth: Int)] = []
+    var pipVisited: Set<String> = []
+    var pipOnDone: (() -> Void)? = nil
+
     var capturing: Bool { !captureStack.isEmpty }
 
     static let builtinNames: [String] = [
@@ -251,7 +291,7 @@ final class BlacksiteShell: ObservableObject {
         "quarantine",
         "date", "vim", "emacs", "nano", "edit", "run",
         "js", "node", "python3", "python",
-        "sh", "source", "pkg",
+        "sh", "source", "pkg", "load", "pip",
         "gfx", "view", "wallpaper", "exit",
         "ping", "traceroute", "trace",
         "discover", "portscan", "nmap",
@@ -3599,6 +3639,10 @@ final class BlacksiteShell: ObservableObject {
             scriptCommand(args)
         case "pkg":
             pkgCommand(args)
+        case "load":
+            loadCommand(args)
+        case "pip":
+            pipCommand(args)
         case "gfx":
             gfxCommand(args)
         case "wallpaper":
@@ -4994,6 +5038,1105 @@ final class BlacksiteShell: ObservableObject {
         emit(String(format: L("repainting the room: %@ — the engine works; the wall changes when it is done."), String(describing: wanted)), .ok)
     }
 
+    // MARK: Pip-lite — pure-python
+    // packages from PyPI (Road A,
+    // batch 2, 2026-10-23). 'pip install
+    // <name>' (or -r <file>) settles a
+    // requirement the way the house
+    // honestly can: the package's JSON
+    // from PyPI, a wheel whose tags say
+    // pure python (abi none, platform
+    // any), unpacked into /packages by
+    // the house's zip engine, its
+    // Requires-Dist walked the same
+    // way. A package that ships only
+    // compiled wheels or only source is
+    // NAMED as what it is — a C
+    // extension cannot run on the house
+    // interpreter, and a source build
+    // is a build, not an install —
+    // never silently skipped or faked.
+    // Markers are read against the
+    // house's standing facts (python
+    // 3.11, posix, darwin, arm64).
+
+    private func pipCommand(_ args: [String]) {
+        let sub = args.first?.lowercased()
+            ?? ""
+        switch sub {
+        case "list":
+            pipList()
+        case "install":
+            let rest = Array(args.dropFirst())
+            guard !rest.isEmpty else {
+                emit(L("pip install <name> [more names…] · pip install -r <requirements.txt> · pip list"), .err)
+                return
+            }
+            var specs: [String] = []
+            var i = 0
+            while i < rest.count {
+                if rest[i] == "-r",
+                   i + 1 < rest.count {
+                    let path = BlacksiteFS
+                        .normalize(rest[i + 1],
+                                   cwd: cwd)
+                    guard let text = BlacksiteFS
+                        .readText(path) else {
+                        emit(String(format: L("pip: cannot read %@"), String(describing: rest[i + 1])), .err)
+                        return
+                    }
+                    for line in text.split(
+                        separator: "\n") {
+                        let s = String(line)
+                            .trimmingCharacters(
+                                in: .whitespaces)
+                        if !s.isEmpty,
+                           !s.hasPrefix("#"),
+                           !s.hasPrefix("-") {
+                            specs.append(s)
+                        }
+                    }
+                    i += 2
+                } else {
+                    specs.append(rest[i])
+                    i += 1
+                }
+            }
+            guard !specs.isEmpty else {
+                emit(L("pip: nothing to install."), .err)
+                return
+            }
+            if let refusal = EmconStandard
+                .refused(.probing) {
+                emit(refusal, .err)
+                return
+            }
+            guard !capturing else {
+                emit(L("pip installs live."), .err)
+                return
+            }
+            guard !busy else {
+                emit(L("pip: something is already running — stop it first."), .err)
+                return
+            }
+            busy = true
+            pipBegin(specs: specs) {
+                [weak self] in
+                DispatchQueue.main.async {
+                    self?.busy = false
+                    self?.updateBusy()
+                }
+            }
+        default:
+            emit(L("pip install <name> [more names…] · pip install -r <requirements.txt> · pip list"), .err)
+        }
+    }
+
+    private func pipList() {
+        let entries = BlacksiteFS
+            .list("/packages") ?? []
+        var found: [String] = []
+        for entry in entries
+        where entry.isDir
+            && entry.name.hasSuffix(
+                ".dist-info") {
+            let stem = String(entry.name
+                .dropLast(
+                    ".dist-info".count))
+            if let dash = stem.lastIndex(
+                of: "-") {
+                found.append(
+                    "\(stem[..<dash]) \(stem[stem.index(after: dash)...])")
+            } else {
+                found.append(stem)
+            }
+        }
+        if found.isEmpty {
+            emit(L("pip: nothing installed in /packages."), .sys)
+        } else {
+            for line in found.sorted() {
+                emit(String(format: L("● %@"), String(describing: line)), .out)
+            }
+        }
+    }
+
+    /// One requirement string read into
+    /// its parts: 'name[extras] (>=1,<2);
+    /// marker' down to name, pin, marker.
+    /// Only an == pin binds the version;
+    /// the rest settle at the newest
+    /// release, as a loose spec asks.
+    static func pipParseReq(_ raw: String)
+        -> PipReq? {
+        var text = raw.trimmingCharacters(
+            in: .whitespaces)
+        if text.isEmpty
+            || text.hasPrefix("#") {
+            return nil
+        }
+        var marker: String? = nil
+        if let semi = text.firstIndex(
+            of: ";") {
+            marker = String(text[text.index(
+                after: semi)...])
+                .trimmingCharacters(
+                    in: .whitespaces)
+            text = String(text[..<semi])
+                .trimmingCharacters(
+                    in: .whitespaces)
+        }
+        if let open = text.firstIndex(
+            of: "["),
+           let close = text.firstIndex(
+            of: "]"), open < close {
+            text = String(text[..<open])
+                + String(text[text.index(
+                    after: close)...])
+        }
+        var name = ""
+        for ch in text {
+            if ch.isLetter || ch.isNumber
+                || ch == "-" || ch == "_"
+                || ch == "." {
+                name.append(ch)
+            } else {
+                break
+            }
+        }
+        guard !name.isEmpty else {
+            return nil
+        }
+        var spec = String(text.dropFirst(
+            name.count))
+            .trimmingCharacters(
+                in: .whitespaces)
+        if spec.hasPrefix("(")
+            && spec.hasSuffix(")") {
+            spec = String(spec.dropFirst()
+                .dropLast())
+                .trimmingCharacters(
+                    in: .whitespaces)
+        }
+        var pin: String? = nil
+        if spec.hasPrefix("==") {
+            let ver = String(spec
+                .dropFirst(2))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            // A glob pin (==2.32.*) names
+            // a family, not a version —
+            // it settles at the newest,
+            // like any loose spec.
+            if !ver.contains("*"),
+               !ver.contains(",") {
+                pin = ver
+            }
+        }
+        return PipReq(name: name, pin: pin,
+                      marker: marker)
+    }
+
+    static func pipVersionParts(
+        _ v: String) -> [Int] {
+        v.split(separator: ".").map {
+            Int($0.filter { $0.isNumber })
+                ?? 0
+        }
+    }
+
+    static func pipVersionCompare(
+        _ a: String, _ b: String) -> Int {
+        let pa = pipVersionParts(a)
+        let pb = pipVersionParts(b)
+        for i in 0..<max(pa.count, pb.count) {
+            let x = i < pa.count ? pa[i] : 0
+            let y = i < pb.count ? pb[i] : 0
+            if x != y {
+                return x < y ? -1 : 1
+            }
+        }
+        return 0
+    }
+
+    /// One marker clause: '<var> <op>
+    /// "value"'. The house answers for
+    /// itself; a clause it cannot read
+    /// counts as satisfied — the install
+    /// proceeds, and the operator hears
+    /// about real failures, not marker
+    /// pedantry.
+    static func pipMarkerClause(
+        _ clause: String, extra: String)
+        -> Bool {
+        let text = clause
+            .trimmingCharacters(
+                in: .whitespaces)
+        var quoteAt: String.Index? = nil
+        var quote: Character = "\""
+        for (i, ch) in zip(text.indices,
+                           text)
+        where ch == "\"" || ch == "'" {
+            quoteAt = i
+            quote = ch
+            break
+        }
+        guard let q1 = quoteAt else {
+            return true
+        }
+        let after = text[text.index(
+            after: q1)...]
+        guard let q2 = after.firstIndex(
+            of: quote) else {
+            return true
+        }
+        let value = String(after[..<q2])
+        let head = String(text[..<q1])
+            .trimmingCharacters(
+                in: .whitespaces)
+        let ops = ["not in", "==", "!=",
+                   "<=", ">=", "<", ">", "in"]
+        var op = ""
+        var varName = head
+        for candidate in ops
+        where head.hasSuffix(candidate) {
+            op = candidate
+            varName = String(head.dropLast(
+                candidate.count))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            break
+        }
+        guard !op.isEmpty else {
+            return true
+        }
+        let facts: [String: String] = [
+            "python_version": "3.11",
+            "python_full_version": "3.11.0",
+            "os_name": "posix",
+            "sys_platform": "darwin",
+            "platform_machine": "arm64",
+            "platform_system": "Darwin",
+            "implementation_name": "cpython",
+            "extra": extra,
+        ]
+        guard let mine = facts[varName]
+        else {
+            return true
+        }
+        let cmp = varName.contains("version")
+            ? pipVersionCompare(mine, value)
+            : (mine == value ? 0
+                : (mine < value ? -1 : 1))
+        switch op {
+        case "==":
+            if value.hasSuffix(".*") {
+                return mine.hasPrefix(
+                    String(value.dropLast(2)))
+            }
+            return cmp == 0
+        case "!=":
+            return cmp != 0
+        case "<":
+            return cmp < 0
+        case "<=":
+            return cmp <= 0
+        case ">":
+            return cmp > 0
+        case ">=":
+            return cmp >= 0
+        case "in":
+            return value.contains(mine)
+        case "not in":
+            return !value.contains(mine)
+        default:
+            return true
+        }
+    }
+
+    static func pipMarkerOK(
+        _ marker: String?,
+        extra: String = "") -> Bool {
+        guard let marker = marker,
+              !marker.isEmpty else {
+            return true
+        }
+        for group in marker.components(
+            separatedBy: " or ") {
+            let clauses = group.components(
+                separatedBy: " and ")
+            if clauses.allSatisfy({
+                pipMarkerClause($0,
+                                extra: extra)
+            }) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// A wheel's three tags from its
+    /// file name, or nil when the name
+    /// is not a wheel's.
+    static func pipWheelTags(
+        _ filename: String)
+        -> (py: String, abi: String,
+            plat: String)? {
+        guard filename.hasSuffix(".whl")
+        else {
+            return nil
+        }
+        let stem = String(filename
+            .dropLast(4))
+        let parts = stem.split(
+            separator: "-").map(String.init)
+        guard parts.count >= 5 else {
+            return nil
+        }
+        let tail = Array(parts.suffix(3))
+        return (tail[0], tail[1], tail[2])
+    }
+
+    static func pipWheelScore(
+        _ filename: String) -> Int {
+        guard let tags = pipWheelTags(
+            filename) else {
+            return 9
+        }
+        if tags.py.hasPrefix("py3")
+            || tags.py.hasPrefix("cp3") {
+            return 0
+        }
+        if tags.py.contains("py3") {
+            return 1
+        }
+        return 2
+    }
+
+    /// Settle a list of requirement
+    /// strings, one at a time, deps
+    /// queued behind their parents.
+    /// Every outcome is said out loud;
+    /// onDone fires when the queue
+    /// drains, whatever happened.
+    func pipBegin(specs: [String],
+                  onDone: @escaping ()
+        -> Void) {
+        pipVisited = []
+        pipQueue = []
+        pipOnDone = onDone
+        for spec in specs {
+            if let req = Self.pipParseReq(
+                spec) {
+                pipQueue.append((req, 0))
+            } else {
+                emit(String(format: L("pip: '%@' is not a requirement the house can read — skipped."), String(describing: spec)), .err)
+            }
+        }
+        pipNext()
+    }
+
+    private func pipNext() {
+        guard !pipQueue.isEmpty else {
+            let done = pipOnDone
+            pipOnDone = nil
+            done?()
+            return
+        }
+        let (req, depth) = pipQueue
+            .removeFirst()
+        if pipVisited.contains(req.key) {
+            pipNext()
+            return
+        }
+        pipVisited.insert(req.key)
+        if depth > 8 {
+            emit(String(format: L("pip: %@ — deeper than the house walks (8 levels of dependencies); skipped."), String(describing: req.name)), .err)
+            pipNext()
+            return
+        }
+        // Already on disk? Its own
+        // metadata still speaks for its
+        // dependencies.
+        if let distInfo = pipDistInfo(
+            forKey: req.key),
+           let meta = BlacksiteFS.readText(
+            "/packages/" + distInfo
+                + "/METADATA") {
+            emit(String(format: L("pip: %@ — already installed."), String(describing: req.name)), .sys)
+            pipEnqueueDeps(meta, depth: depth)
+            pipNext()
+            return
+        }
+        pipFetch(req, depth: depth)
+    }
+
+    private func pipDistInfo(
+        forKey key: String) -> String? {
+        for entry in BlacksiteFS
+            .list("/packages") ?? [] {
+            guard entry.isDir,
+                  entry.name.hasSuffix(
+                    ".dist-info")
+            else {
+                continue
+            }
+            let stem = String(entry.name
+                .dropLast(
+                    ".dist-info".count))
+            guard let dash = stem.lastIndex(
+                of: "-") else {
+                continue
+            }
+            let probe = PipReq(
+                name: String(stem[..<dash]),
+                pin: nil, marker: nil)
+            if probe.key == key {
+                return entry.name
+            }
+        }
+        return nil
+    }
+
+    private func pipFiles(
+        _ parsed: [String: Any],
+        pin: String?)
+        -> [(name: String, url: String)] {
+        var raw: [[String: Any]] = []
+        if let pin = pin,
+           let releases = parsed["releases"]
+            as? [String: Any],
+           let files = releases[pin]
+            as? [[String: Any]] {
+            raw = files
+        } else if let urls = parsed["urls"]
+                    as? [[String: Any]] {
+            raw = urls
+        }
+        return raw.compactMap { file in
+            guard let name = file["filename"]
+                    as? String,
+                  let url = file["url"]
+                    as? String
+            else {
+                return nil
+            }
+            return (name: name, url: url)
+        }
+    }
+
+    private func pipFetch(_ req: PipReq,
+                          depth: Int) {
+        var address = "https://pypi.org/pypi/\(req.name)/json"
+        if let pin = req.pin {
+            address = "https://pypi.org/pypi/\(req.name)/\(pin)/json"
+        }
+        guard let url = URL(string: address)
+        else {
+            emit(String(format: L("pip: %@ — a name pypi cannot be asked about."), String(describing: req.name)), .err)
+            pipNext()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue("nightjar-blacksite",
+                         forHTTPHeaderField:
+                            "User-Agent")
+        URLSession.shared.dataTask(
+            with: request) {
+            [weak self] data, response, _ in
+            guard let self = self else {
+                return
+            }
+            let status = (response
+                as? HTTPURLResponse)?.statusCode
+                ?? 0
+            guard status == 200,
+                  let data = data,
+                  let parsed = try? JSONSerialization
+                    .jsonObject(with: data)
+                    as? [String: Any]
+            else {
+                emit(String(format: L("pip: %@ — pypi has no such package (or the wire is down)."), String(describing: req.name)), .err)
+                self.pipNext()
+                return
+            }
+            if let pin = req.pin {
+                let releases = parsed["releases"]
+                    as? [String: Any]
+                if releases?[pin] == nil {
+                    emit(String(format: L("pip: %@ — pypi has no version %@."), String(describing: req.name), String(describing: pin)), .err)
+                    self.pipNext()
+                    return
+                }
+            }
+            let files = self.pipFiles(
+                parsed, pin: req.pin)
+            let wheels = files.filter {
+                Self.pipWheelTags($0.name)
+                    != nil
+            }
+            let pure = wheels.filter { file in
+                guard let tags = Self
+                    .pipWheelTags(file.name)
+                else {
+                    return false
+                }
+                return tags.abi == "none"
+                    && tags.plat == "any"
+            }
+            guard let choice = pure.sorted(
+                by: {
+                    Self.pipWheelScore($0.name)
+                        < Self.pipWheelScore(
+                            $1.name)
+                }).first
+            else {
+                if !wheels.isEmpty {
+                    emit(String(format: L("pip: %@ — ships only compiled wheels; a C extension cannot run on the house interpreter. Not installed."), String(describing: req.name)), .err)
+                } else if !files.isEmpty {
+                    emit(String(format: L("pip: %@ — ships source only; the house installs wheels, it does not build. Not installed."), String(describing: req.name)), .err)
+                } else {
+                    emit(String(format: L("pip: %@ — no release files at all. Not installed."), String(describing: req.name)), .err)
+                }
+                self.pipNext()
+                return
+            }
+            self.pipDownload(req, file: choice,
+                             depth: depth)
+        }.resume()
+    }
+
+    private func pipDownload(
+        _ req: PipReq,
+        file: (name: String, url: String),
+        depth: Int) {
+        guard let url = URL(string: file.url)
+        else {
+            pipNext()
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue("nightjar-blacksite",
+                         forHTTPHeaderField:
+                            "User-Agent")
+        URLSession.shared.dataTask(
+            with: request) {
+            [weak self] data, response, _ in
+            guard let self = self else {
+                return
+            }
+            let status = (response
+                as? HTTPURLResponse)?.statusCode
+                ?? 0
+            guard status == 200,
+                  let data = data else {
+                emit(String(format: L("pip: %@ — the wheel would not download (http %lld)."), String(describing: req.name), status), .err)
+                self.pipNext()
+                return
+            }
+            self.pipUnpack(req, wheel: data,
+                           depth: depth)
+        }.resume()
+    }
+
+    private func pipUnpack(_ req: PipReq,
+                           wheel: Data,
+                           depth: Int) {
+        let entries: [FreedoomZip.Entry]
+        do {
+            entries = try FreedoomZip
+                .entries(in: wheel)
+        } catch {
+            emit(String(format: L("pip: %@ — the wheel was not a wheel. Not installed."), String(describing: req.name)), .err)
+            pipNext()
+            return
+        }
+        var metadata: String? = nil
+        if let meta = entries.first(
+            where: {
+                $0.name.hasSuffix(
+                    ".dist-info/METADATA")
+            }),
+           let text = try? FreedoomZip
+            .extract(meta, from: wheel) {
+            metadata = String(data: text,
+                              encoding: .utf8)
+        }
+        var files = 0
+        var leftOut = 0
+        for entry in entries {
+            let rel = entry.name
+            if rel.hasSuffix("/") {
+                continue
+            }
+            if rel.split(separator: "/")
+                .contains("..") {
+                leftOut += 1
+                continue
+            }
+            if rel.contains(".data/") {
+                leftOut += 1
+                continue
+            }
+            do {
+                let plain = try FreedoomZip
+                    .extract(entry, from: wheel)
+                if BlacksiteFS.writeData(
+                    "/packages/" + rel,
+                    data: plain) {
+                    files += 1
+                } else {
+                    leftOut += 1
+                }
+            } catch {
+                leftOut += 1
+            }
+        }
+        let version = metadata?
+            .components(separatedBy: "\n")
+            .first(where: {
+                $0.hasPrefix("Version: ")
+            })
+            .map {
+                String($0.dropFirst(
+                    "Version: ".count))
+                    .trimmingCharacters(
+                        in: .whitespaces)
+            } ?? "?"
+        var line = String(format: L("pip: installed %@ %@ — %lld files into /packages."), String(describing: req.name), String(describing: version), files)
+        if leftOut > 0 {
+            line += String(format: L(" %lld entries left out (data files, or paths that climb)."), leftOut)
+        }
+        emit(line, .sys)
+        if let metadata = metadata {
+            pipEnqueueDeps(metadata,
+                           depth: depth)
+        }
+        pipNext()
+    }
+
+    private func pipEnqueueDeps(
+        _ metadata: String, depth: Int) {
+        for rawLine in metadata.components(
+            separatedBy: "\n") {
+            guard rawLine.hasPrefix(
+                "Requires-Dist: ") else {
+                continue
+            }
+            let text = String(rawLine
+                .dropFirst(
+                    "Requires-Dist: ".count))
+                .trimmingCharacters(
+                    in: .whitespaces)
+            guard let dep = Self.pipParseReq(
+                text) else {
+                continue
+            }
+            if !Self.pipMarkerOK(dep.marker) {
+                emit(String(format: L("pip: %@ — its marker says not for this house; skipped."), String(describing: dep.name)), .sys)
+                continue
+            }
+            if !pipVisited.contains(dep.key) {
+                pipQueue.append(
+                    (dep, depth + 1))
+            }
+        }
+    }
+
+    // MARK: Load — a GitHub program,
+    // fetched and run (Road A, batch 1,
+    // 2026-10-23). 'load owner/repo' (or
+    // the full github.com address, with
+    // an optional @branch pin) pulls the
+    // repository's archive off GitHub into
+    // the current folder — codeload's zip,
+    // read by the house's own zip engine —
+    // finds the program's front door
+    // (__main__.py, main.py, <repo>.py,
+    // app.py, run.py, the package's
+    // __main__, or a lone .py), and runs
+    // it under the house python exactly
+    // as 'python3' would: the program's
+    // folder is its working folder, its
+    // sibling modules import, and words
+    // after the reference ride as its
+    // arguments. Already on disk, it
+    // runs what's there and says so. A
+    // requirements.txt settles through
+    // pip-lite before the run; a
+    // dependency that cannot run here
+    // is named, never silently skipped.
+    // No path in the archive
+    // may climb out of the program's
+    // own folder.
+
+    private func loadCommand(_ args: [String]) {
+        guard let ref = args.first else {
+            emit(L("load <owner/repo> [program args…] — fetch a python program from github and run it."), .err)
+            return
+        }
+        var text = ref
+        for prefix in ["https://", "http://"] {
+            if text.hasPrefix(prefix) {
+                text = String(text.dropFirst(
+                    prefix.count))
+            }
+        }
+        if text.hasPrefix("github.com/") {
+            text = String(text.dropFirst(
+                "github.com/".count))
+        }
+        if text.hasSuffix(".git") {
+            text = String(text.dropLast(4))
+        }
+        while text.hasSuffix("/") {
+            text = String(text.dropLast())
+        }
+        var branch: String? = nil
+        if let at = text.lastIndex(of: "@") {
+            branch = String(text[text.index(
+                after: at)...])
+            text = String(text[..<at])
+        }
+        let parts = text.split(separator: "/")
+            .map(String.init)
+        guard parts.count == 2,
+              !parts[0].isEmpty,
+              !parts[1].isEmpty,
+              !parts[0].contains(".."),
+              !parts[1].contains("..")
+        else {
+            emit(String(format: L("load: '%@' is not a repository reference — load <owner/repo>, or the github.com address."), String(describing: ref)), .err)
+            return
+        }
+        let owner = parts[0]
+        let repo = parts[1]
+        let dir = BlacksiteFS.normalize(
+            repo, cwd: cwd)
+        let progArgs = Array(args.dropFirst())
+        if BlacksiteFS.isDirectory(dir) {
+            emit(String(format: L("load: %@ is already on disk — running what's there (remove the folder to fetch it fresh)."), String(describing: repo)), .sys)
+            loadLaunch(dir: dir, repo: repo,
+                       progArgs: progArgs)
+            return
+        }
+        if let refusal = EmconStandard
+            .refused(.probing) {
+            emit(refusal, .err)
+            return
+        }
+        guard !capturing else {
+            emit(L("loads fetch live."), .err)
+            return
+        }
+        guard !busy else {
+            emit(L("load: something is already running — stop it first."), .err)
+            return
+        }
+        busy = true
+        emit(String(format: L("load: fetching %@/%@ from github…"), String(describing: owner), String(describing: repo)), .sys)
+        if let pinned = branch {
+            loadTryBranch(
+                owner: owner, repo: repo,
+                branches: [pinned], dir: dir,
+                progArgs: progArgs)
+        } else {
+            loadFetchDefault(
+                owner: owner, repo: repo,
+                dir: dir, progArgs: progArgs)
+        }
+    }
+
+    /// Ask GitHub which branch is the
+    /// repository's own default, then try
+    /// it ahead of the usual two. Any
+    /// failure just falls back — the
+    /// branch chain is the honest order.
+    private func loadFetchDefault(
+        owner: String, repo: String,
+        dir: String, progArgs: [String]) {
+        guard let api = URL(string:
+            "https://api.github.com/repos/\(owner)/\(repo)")
+        else {
+            loadTryBranch(
+                owner: owner, repo: repo,
+                branches: ["main", "master"],
+                dir: dir, progArgs: progArgs)
+            return
+        }
+        var request = URLRequest(url: api)
+        request.setValue("nightjar-blacksite",
+                         forHTTPHeaderField:
+                            "User-Agent")
+        URLSession.shared.dataTask(
+            with: request) {
+            [weak self] data, _, _ in
+            var order = ["main", "master"]
+            if let data = data,
+               let parsed = try? JSONSerialization
+                .jsonObject(with: data)
+                as? [String: Any],
+               let found = parsed["default_branch"]
+                as? String, !found.isEmpty {
+                order = [found] + order.filter {
+                    $0 != found
+                }
+            }
+            self?.loadTryBranch(
+                owner: owner, repo: repo,
+                branches: order, dir: dir,
+                progArgs: progArgs)
+        }.resume()
+    }
+
+    /// One branch attempt: pull the
+    /// archive off codeload; a miss steps
+    /// to the next branch, and the last
+    /// miss reports plainly.
+    private func loadTryBranch(
+        owner: String, repo: String,
+        branches: [String], dir: String,
+        progArgs: [String]) {
+        guard let branch = branches.first
+        else {
+            emit(String(format: L("load: github would not hand over %@/%@ — no branch answered (the name, or the network). Nothing was written."), String(describing: owner), String(describing: repo)), .err)
+            DispatchQueue.main.async {
+                [weak self] in
+                self?.busy = false
+                self?.updateBusy()
+            }
+            return
+        }
+        let address = "https://codeload.github.com/\(owner)/\(repo)/zip/refs/heads/\(branch)"
+        guard let url = URL(string: address)
+        else {
+            loadTryBranch(
+                owner: owner, repo: repo,
+                branches: Array(
+                    branches.dropFirst()),
+                dir: dir, progArgs: progArgs)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue("nightjar-blacksite",
+                         forHTTPHeaderField:
+                            "User-Agent")
+        URLSession.shared.dataTask(
+            with: request) {
+            [weak self] data, response, _ in
+            guard let self = self else {
+                return
+            }
+            let status = (response
+                as? HTTPURLResponse)?.statusCode
+                ?? 0
+            guard status == 200,
+                  let data = data else {
+                self.loadTryBranch(
+                    owner: owner, repo: repo,
+                    branches: Array(
+                        branches.dropFirst()),
+                    dir: dir,
+                    progArgs: progArgs)
+                return
+            }
+            self.loadUnpack(
+                data: data, owner: owner,
+                repo: repo, branch: branch,
+                dir: dir, progArgs: progArgs)
+        }.resume()
+    }
+
+    /// The archive opened with the
+    /// house's zip engine and written
+    /// into the program's folder, the
+    /// archive's own root component
+    /// stripped. Entries that will not
+    /// extract, or that try to climb
+    /// out, are refused and counted —
+    /// never silently dropped.
+    private func loadUnpack(
+        data: Data, owner: String,
+        repo: String, branch: String,
+        dir: String, progArgs: [String]) {
+        let entries: [FreedoomZip.Entry]
+        do {
+            entries = try FreedoomZip
+                .entries(in: data)
+        } catch {
+            emit(L("load: what github sent was not a repository archive — nothing was written."), .err)
+            DispatchQueue.main.async {
+                [weak self] in
+                self?.busy = false
+                self?.updateBusy()
+            }
+            return
+        }
+        let prefix = "\(repo)-\(branch)/"
+        var files = 0
+        var bytes = 0
+        var refused = 0
+        _ = BlacksiteFS.makeDir(dir)
+        for entry in entries {
+            guard entry.name
+                .hasPrefix(prefix) else {
+                continue
+            }
+            let rel = String(entry.name
+                .dropFirst(prefix.count))
+            if rel.isEmpty
+                || rel.hasSuffix("/") {
+                continue
+            }
+            if rel.split(separator: "/")
+                .contains("..") {
+                refused += 1
+                continue
+            }
+            do {
+                let plain = try FreedoomZip
+                    .extract(entry, from: data)
+                if BlacksiteFS.writeData(
+                    dir + "/" + rel,
+                    data: plain) {
+                    files += 1
+                    bytes += plain.count
+                } else {
+                    refused += 1
+                }
+            } catch {
+                refused += 1
+            }
+        }
+        emit(String(format: L("load: %@/%@ (%@) — %lld files, %lld bytes on disk."), String(describing: owner), String(describing: repo), String(describing: branch), files, bytes), .sys)
+        if refused > 0 {
+            emit(String(format: L("load: %lld archive entries were refused (unreadable, or a path that climbs out of the folder)."), refused), .err)
+        }
+        DispatchQueue.main.async {
+            [weak self] in
+            guard let self = self else {
+                return
+            }
+            self.busy = false
+            self.updateBusy()
+            self.loadLaunch(
+                dir: dir, repo: repo,
+                progArgs: progArgs)
+        }
+    }
+
+    /// The requirement lines a repo's
+    /// requirements.txt carries: real
+    /// lines only — no comments, no
+    /// blanks, no pip flags (the house
+    /// reads requirements, not options).
+    private func loadRequirements(
+        _ dir: String) -> [String] {
+        guard let req = BlacksiteFS.readText(
+            dir + "/requirements.txt")
+        else {
+            return []
+        }
+        return req.split(separator: "\n")
+            .map {
+                String($0).trimmingCharacters(
+                    in: .whitespaces)
+            }
+            .filter {
+                !$0.isEmpty
+                    && !$0.hasPrefix("#")
+                    && !$0.hasPrefix("-")
+            }
+    }
+
+    /// Papers first, then dependencies,
+    /// then the front door. The deps
+    /// settle through pip-lite before
+    /// the run — a program launched
+    /// ahead of its own requirements
+    /// would die on its first import
+    /// and call it the house's fault.
+    private func loadLaunch(
+        dir: String, repo: String,
+        progArgs: [String]) {
+        if BlacksiteFS.exists(
+            dir + "/pyproject.toml")
+            || BlacksiteFS.exists(
+                dir + "/setup.py") {
+            emit(L("load: the repo carries packaging papers (pyproject/setup.py) — the house runs the program in place; there is no install step."), .sys)
+        }
+        let deps = loadRequirements(dir)
+        if deps.isEmpty {
+            loadRunEntry(dir: dir, repo: repo,
+                         progArgs: progArgs)
+            return
+        }
+        if let refusal = EmconStandard
+            .refused(.probing) {
+            emit(refusal, .err)
+            emit(L("load: the dependencies were not fetched — running anyway; the program may miss them."), .err)
+            loadRunEntry(dir: dir, repo: repo,
+                         progArgs: progArgs)
+            return
+        }
+        emit(String(format: L("load: requirements.txt names %lld dependencies — pip-lite settles them first."), deps.count), .sys)
+        busy = true
+        pipBegin(specs: deps) {
+            [weak self] in
+            DispatchQueue.main.async {
+                guard let self = self else {
+                    return
+                }
+                self.busy = false
+                self.updateBusy()
+                self.loadRunEntry(
+                    dir: dir, repo: repo,
+                    progArgs: progArgs)
+            }
+        }
+    }
+
+    /// The front door, found and run
+    /// through the same door 'python3'
+    /// uses.
+    private func loadRunEntry(
+        dir: String, repo: String,
+        progArgs: [String]) {
+        let names = (BlacksiteFS.list(dir)
+            ?? []).map { $0.name }
+        var entry: String? = nil
+        for name in ["__main__.py", "main.py",
+                     repo + ".py", "app.py",
+                     "run.py"] {
+            if names.contains(name) {
+                entry = name
+                break
+            }
+        }
+        if entry == nil,
+           BlacksiteFS.exists(
+            dir + "/" + repo + "/__main__.py") {
+            entry = repo + "/__main__.py"
+        }
+        if entry == nil {
+            let loose = names.filter {
+                $0.hasSuffix(".py")
+                    && !$0.hasPrefix(".")
+            }
+            if loose.count == 1 {
+                entry = loose[0]
+            } else {
+                emit(String(format: L("load: no front door — no __main__.py, main.py, %@.py, app.py or run.py at the top of %@, and %lld loose .py files. Run one directly: python3 %@/<file>.py"), String(describing: repo), String(describing: repo), loose.count, String(describing: repo)), .err)
+                return
+            }
+        }
+        guard let found = entry else {
+            return
+        }
+        emit(String(format: L("load: %@ — running."), String(describing: found)), .sys)
+        pyCommand([repo + "/" + found]
+            + progArgs)
+    }
+
     // MARK: Graphics
 
     private func gfxCommand(_ args: [String]) {
@@ -5120,8 +6263,8 @@ final class BlacksiteShell: ObservableObject {
                 ("knock <host> [ports]", L("knock a host (default: the top doors)")),
                 ("census", L("knock every device on the neighborhood board")),
                 ("eazy [target]", L("the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point")),
-                ("totality [stop|status]", L("the whole house at once — Serve up, the beacon lit, Net-Assault passing, the tap recording — watched and re-asserted until totality stop or the house stop; every organ still answers to EMCON, and Totality lowers only what it raised")),
-                ("magdump <target>", L("the automated targeting program — one named target, the whole bench emptied at it in stages (doors, web, tls, names and mail, the wire's ledgers, the shield's singles), one graded board filed; the lock-on reel plays over its first probes")),
+                ("totality [stop|status]", L("the whole house at once — Serve up, the tap recording — watched and re-asserted until totality stop or the house stop; every organ still answers to EMCON, and Totality lowers only what it raised")),
+                ("magdump <target> [payload]", L("the automated targeting program — one named target, the whole bench emptied at it in stages (doors, web, tls, names and mail, the wire's ledgers, the shield's singles), one graded board filed; name a payload from the book after the target and it rides the dump, delivered once at every open door; the lock-on reel plays over its first probes")),
                 ("decode <hex>", L("raw advertisement bytes through the decoders")),
                 ("company <id>", L("who a company id belongs to")),
                 ("port <n> [udp]", L("what a port is for")),
@@ -5547,6 +6690,8 @@ final class BlacksiteShell: ObservableObject {
                 ("pkg install grok · grok login · grok <words>", L("ask xAI's grok from here — the house's own client (not the Rust CLI): SuperGrok sign-in via X, then questions with file + shell tools")),
                 ("pkg install git · git clone <url> · git commit · git push", L("real git in the console (isomorphic-git over the house's files and wire): clone a repo here, edit it with the house editors, commit it, push it back")),
                 ("pkg install gh · gh auth login <token> · gh repo view", L("github from here — the house's own client over the REST api: sign-in, repos, issues, pull requests")),
+                ("load <owner/repo> [args…]", L("fetch a python program from github and run it: the repo lands in the current folder, its front door (__main__.py, main.py, <repo>.py, app.py, run.py) runs under the house python with the repo folder as its working folder and your words as its arguments; already on disk, it just runs")),
+                ("pip install <name> · pip install -r <file> · pip list", L("pip-lite: pure-python packages from pypi into /packages, dependencies walked — wheels only; a package that ships only compiled or source-only forms is named as unrunnable here, never faked or silently skipped")),
             ]),
             (L("graphics"), [
                 ("gfx demo", L("the engine draws the house card")),
@@ -9634,8 +10779,56 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         guard let target = args.first else {
-            emit(L("magdump needs one target — 'magdump <host>', a name or an address. One target only: a range is a census's job."), .err)
+            emit(L("magdump needs one target — 'magdump <host> [payload]', a name or an address, then a payload from the book if one rides. One target only: a range is a census's job."), .err)
             return
+        }
+        // The plug: anything after the
+        // target names a payload in the
+        // book — the Send room's library,
+        // built-ins and the operator's own
+        // customs alike — and it rides the
+        // dump as the final stage. A name
+        // that is not in the book stops the
+        // run before it starts: the operator
+        // asked for that payload by name,
+        // and a dump that quietly skipped
+        // it would be a lie.
+        let plugWanted = args.dropFirst()
+            .joined(separator: " ")
+            .trimmingCharacters(
+                in: .whitespaces)
+        var plug: (name: String,
+                    bytes: [UInt8])?
+        if !plugWanted.isEmpty {
+            guard let entry = PayloadBook()
+                .items.first(where: {
+                    $0.name.lowercased() == plugWanted.lowercased()
+                }) else {
+                emit(String(format: L("magdump: no payload named '%@' in the book — the dump did not run. The book is the Send room's library."), plugWanted), .err)
+                return
+            }
+            do {
+                let built = try PayloadKit.build(
+                    source: entry.source,
+                    text: entry.source == "text"
+                        ? PayloadKit.substitute(
+                            entry.text,
+                            targetText: target)
+                        : entry.text,
+                    hex: entry.source == "hex"
+                        ? entry.text : "",
+                    b64: entry.source == "base64"
+                        ? entry.text : "",
+                    xorSpec: entry.xorKey,
+                    useGzip: entry.useGzip)
+                plug = (entry.name,
+                        [UInt8](PayloadKit.frame(
+                            built,
+                            framing: entry.framing)))
+            } catch {
+                emit(String(format: L("magdump: the payload '%@' would not build: %@"), entry.name, error.localizedDescription), .err)
+                return
+            }
         }
         guard !busy else {
             emit(L("magdump: something is already running — stop it first."), .err)
@@ -9671,9 +10864,9 @@ final class BlacksiteShell: ObservableObject {
         let parts = target.split(separator: ".")
         let isIP = parts.count == 4 && parts.allSatisfy { Int($0) != nil }
         if isIP {
-            BlacksiteBench.magdumpRun(host: target, ip: target, name: nil, stopped: stopCheck, emit: collect, done: finish)
+            BlacksiteBench.magdumpRun(host: target, ip: target, name: nil, plugName: plug?.name, plugBytes: plug?.bytes, stopped: stopCheck, emit: collect, done: finish)
         } else if let resolved = BlacksiteNet.resolve4(target) {
-            BlacksiteBench.magdumpRun(host: target, ip: resolved.ip, name: target, stopped: stopCheck, emit: collect, done: finish)
+            BlacksiteBench.magdumpRun(host: target, ip: resolved.ip, name: target, plugName: plug?.name, plugBytes: plug?.bytes, stopped: stopCheck, emit: collect, done: finish)
         } else {
             collect(String(format: L("magdump: '%@' does not resolve from here — nothing to lock onto."), String(describing: target)), .err)
             finish()

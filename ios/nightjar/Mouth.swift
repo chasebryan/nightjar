@@ -1929,72 +1929,12 @@ final class Mouth: NSObject, ObservableObject {
     private var lastAdSnapshot: AdSnapshot?
     private var adGeneration = 0
 
-    // MARK: The payload-start ladder (fix386)
+    // MARK: The advertisement shape (fix389)
 
-    private static let adRungKey = "ble.adRung"
-    private static let adAttemptKey =
-        "ble.adAttemptRung"
-    private static let adProvenKey =
-        "ble.adProvenRung"
-    /// The payload rung whose start is in
-    /// flight, awaiting the delegate's word.
-    private var pendingPayloadRung: Int?
-
-    /// Which ladder rung the next payload
-    /// start climbs at: the proven rung when
-    /// one is proven; otherwise the standing
-    /// rung — advanced past any rung whose
-    /// attempt marker still stands unproven.
-    /// A crash inside startAdvertising leaves
-    /// its marker standing (the process dies
-    /// before the delegate can answer), so
-    /// the next start reads the marker as the
-    /// coroner's verdict and steps down. A
-    /// fresh house starts at rung 1: rung 0
-    /// (name + service data as NSData + the
-    /// UUIDs field dropped) is already
-    /// convicted — it is the shape fix385
-    /// shipped and Chase's phone killed at
-    /// 02:38 on 2026-10-23.
-    private func adLadderRung() -> Int {
-        let defaults = UserDefaults.standard
-        if let proven = defaults.object(
-            forKey: Self.adProvenKey) as? Int {
-            return proven
-        }
-        var rung = defaults.object(
-            forKey: Self.adRungKey) as? Int ?? 1
-        if let attempted = defaults.object(
-            forKey: Self.adAttemptKey) as? Int,
-           attempted == rung, rung < 3 {
-            rung += 1
-            defaults.set(rung,
-                         forKey: Self.adRungKey)
-            DevLog.event(
-                "ble",
-                "ladder: rung \(attempted) went "
-                + "unproven — stepping down "
-                + "to \(rung)")
-        }
-        defaults.removeObject(
-            forKey: Self.adAttemptKey)
-        return rung
-    }
-
-    /// The delegate's clean word on a payload
-    /// start: the rung is proven, and every
-    /// later payload start climbs straight
-    /// to it.
-    private func adLadderProve(_ rung: Int) {
-        UserDefaults.standard.set(
-            rung, forKey: Self.adProvenKey)
-        UserDefaults.standard.removeObject(
-            forKey: Self.adAttemptKey)
-        DevLog.event(
-            "ble",
-            "ladder: rung \(rung) PROVEN — "
-            + "payload starts ride this shape")
-    }
+    /// The one shape this iOS has never
+    /// killed: local name + the FFF0 service
+    /// UUID, nothing else. The conviction is
+    /// written out in applyAdvertising.
 
     /// The legacy advertisement's wire budget:
     /// 31 bytes, flags included — 3 for the
@@ -2014,11 +1954,14 @@ final class Mouth: NSObject, ObservableObject {
     /// 2026-10-23 acquitted it: that payload
     /// ran 29 of these 31 bytes and died
     /// identically. The convicted fault is
-    /// the three-field start (name + UUIDs
-    /// field + service data together), and
-    /// its repair lives in applyAdvertising
-    /// (fix385). The gate stays as what it
-    /// always truly was: air arithmetic.
+    /// the service data key itself (fix389):
+    /// a peripheral may advertise only its
+    /// name and service UUIDs, and every
+    /// start that carried service data died
+    /// in CoreBluetooth's marshalling,
+    /// whatever the byte count. The gate
+    /// stays as what it always truly was:
+    /// air arithmetic.
     static func advertisementFits(
         name: String, serviceData: Data?) -> Bool {
         var total = 3 + 2 + name.utf8.count + 4
@@ -2094,98 +2037,42 @@ final class Mouth: NSObject, ObservableObject {
                   let manager = self.peripheralManager,
                   manager.state == .poweredOn
             else { return }
-            var advertisement: [String: Any] = [
+            // THE SHAPE (fix389): local name +
+            // the FFF0 service UUID — the only
+            // two keys Apple's Core Bluetooth
+            // programming guide allows a
+            // peripheral to advertise ("You
+            // receive an error if you specify
+            // any other keys"), and the only
+            // shape that has never died on this
+            // phone. Every start that carried
+            // the service data key died inside
+            // CoreBluetooth's marshalling with
+            // -[CBUUID UTF8String] — seven crash
+            // records across every variant the
+            // fix386 ladder bisected: three
+            // fields together, name + NSData,
+            // NSData alone with no name, name +
+            // Swift Data. Service data is a
+            // central-side key; a peripheral
+            // may not advertise it, on any iOS.
+            // So the payload does NOT ride the
+            // advertisement: it stays on the
+            // ground, and the log line below
+            // says so plainly each time.
+            let advertisement: [String: Any] = [
                 CBAdvertisementDataLocalNameKey: want.name,
+                CBAdvertisementDataServiceUUIDsKey:
+                    [Mouth.serviceUUID],
             ]
-            // The payload starts below walk the
-            // ladder (fix386, adLadderRung):
-            // this iOS throws -[CBUUID
-            // UTF8String] inside CoreBluetooth's
-            // marshalling for SOME payload-start
-            // shape, and the single-shape bets
-            // all died on the record — cadence
-            // (fix70), the change-gate (fix358),
-            // the byte budget (fix377, acquitted
-            // by TOTALITY's 29-of-31 death), and
-            // the three-field combination
-            // (fix385, killed at 02:38 on
-            // 2026-10-23 with the UUIDs field
-            // already dropped). What has never
-            // died is a start with NO service
-            // data — the GATT host's shape — so
-            // the UUIDs field rides every
-            // payload-free start, and the ladder
-            // ends there by construction.
-            var payloadRides = false
             if let data = want.serviceData {
-                // A payload rides only when the
-                // whole advertisement fits the
-                // legacy budget (see
-                // advertisementFits) — a legacy
-                // frame physically cannot carry
-                // more, whatever the marshalling
-                // makes of it.
-                if Mouth.advertisementFits(
-                    name: want.name, serviceData: data) {
-                    // The ladder (fix386): which
-                    // payload shape this iOS's
-                    // marshalling kills is no
-                    // longer a matter of theory —
-                    // four have died on the
-                    // record. The beacon walks
-                    // the rungs (see adLadderRung):
-                    // 1 = service data alone, no
-                    // local name; 2 = name +
-                    // service data as Swift Data;
-                    // 3 = no payload at all, the
-                    // GATT host's shape, which
-                    // has never died — so the
-                    // ladder always lands
-                    // somewhere alive, and a rung
-                    // the delegate proves is
-                    // kept for good.
-                    let rung = adLadderRung()
-                    switch rung {
-                    case 1:
-                        advertisement.removeValue(
-                            forKey:
-                                CBAdvertisementDataLocalNameKey)
-                        advertisement[
-                            CBAdvertisementDataServiceDataKey] =
-                            [Mouth.serviceUUID:
-                                data as NSData]
-                        payloadRides = true
-                    case 2:
-                        advertisement[
-                            CBAdvertisementDataServiceDataKey] =
-                            [Mouth.serviceUUID: data]
-                        payloadRides = true
-                    default:
-                        break
-                    }
-                    if payloadRides {
-                        pendingPayloadRung = rung
-                        UserDefaults.standard.set(
-                            rung,
-                            forKey: Self.adAttemptKey)
-                    }
-                    DevLog.event(
-                        "ble",
-                        "payload start — ladder "
-                        + "rung \(rung) of 3")
-                } else {
-                    DevLog.event(
-                        "ble",
-                        "payload left on the ground — "
-                        + "\(data.count) bytes bust "
-                        + "the 31-byte air budget; "
-                        + "the name rides alone")
-                }
-            }
-            if !payloadRides {
-                advertisement[
-                    CBAdvertisementDataServiceUUIDsKey] =
-                    [Mouth.serviceUUID]
+                DevLog.event(
+                    "ble",
+                    "payload left on the ground — "
+                    + "\(data.count) bytes cannot "
+                    + "ride an iOS advertisement "
+                    + "(local name + service UUIDs "
+                    + "only); the name rides alone")
             }
             DevLog.event("ble",
                          "advertising as "
@@ -2368,22 +2255,10 @@ extension Mouth: CBPeripheralManagerDelegate {
         if let error = error {
             // Advertising never started: clear the optimistic on-air
             // state set by startBeacon/startGattHost and say so.
-            // A payload rung that failed this way
-            // stays unproven — its attempt marker
-            // stands, and the next start steps
-            // down the ladder (fix386).
-            pendingPayloadRung = nil
             line(String(format: L("nightjar: advertising failed: %@"), error.localizedDescription))
             beaconOn = false
             gattHostOn = false
             return
-        }
-        // A payload start the delegate answers
-        // clean is PROVEN (fix386): the ladder
-        // keeps that rung for good.
-        if let rung = pendingPayloadRung {
-            pendingPayloadRung = nil
-            adLadderProve(rung)
         }
         // Confirmed on the air: reflect the live intent.
         if gattHostOn {

@@ -3032,6 +3032,7 @@ final class SkelliCenter: ObservableObject {
         if onionAsk(q) { return true }
         if appLockAsk(q) { return true }
         if wardriveAsk(q) { return true }
+        if totalityAsk(q) { return true }
         if networkAsk(q) { return true }
         if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
@@ -3585,6 +3586,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if wardriveAsk(q) {
+            return
+        }
+        if totalityAsk(q) {
             return
         }
 
