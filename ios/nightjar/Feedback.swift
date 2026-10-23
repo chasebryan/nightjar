@@ -1049,6 +1049,12 @@ struct BootView: View {
     /// the film's bytes and its measured duration.
     @State private var loadedData: Data?
     @State private var loadedFilmSeconds: Double?
+    /// The glitch boot's engagement (Chase's
+    /// commission, 2026-10-22): when the backdrop
+    /// proves to be the stock bird still, the
+    /// ceremony hands the screen to the flood.
+    @State private var glitchEngaged = false
+    @State private var glitchImage: UIImage?
 
     private struct BootLine {
         let text: String
@@ -1493,7 +1499,7 @@ struct BootView: View {
                    value: finale)
     }
 
-    var body: some View {
+    var ceremonyBody: some View {
         GeometryReader { geo in
             ZStack {
                 Color.black
@@ -1609,6 +1615,29 @@ struct BootView: View {
             .frame(width: geo.size.width,
                    height: geo.size.height)
         }
+    }
+
+    /// The boot as raised: the glitch flood when
+    /// the stock bird still is the backdrop
+    /// (Chase's commission, 2026-10-22), the
+    /// classic ceremony for every other
+    /// backdrop — a film, the operator's own
+    /// still, or none. The ceremony's task
+    /// rides THIS view, not the ceremony's own
+    /// body: it is the clock and the warm-up,
+    /// and it must survive the glitch branch
+    /// replacing the picture mid-boot.
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if glitchEngaged, let glitchImage {
+                GlitchBootView(
+                    image: glitchImage,
+                    calm: pictureMode == "performance")
+            } else {
+                ceremonyBody
+            }
+        }
         // No skipping: the ceremony runs its
         // course — it is working time, not a
         // curtain — and the house already offers
@@ -1672,6 +1701,38 @@ struct BootView: View {
                     try? await Task.sleep(nanoseconds: 420_000_000)
                     cursorOn.toggle()
                 }
+            }
+            if bootMedia == "provided",
+               let data = loadedData,
+               !BootMedia.isGIF(data),
+               !BootMedia.isVideo(data),
+               let still = UIImage(data: data) {
+                // THE GLITCH (Chase's commission,
+                // 2026-10-22): the stock bird
+                // still does not fade in — it
+                // floods. The storm spends its
+                // 3.6 seconds on its own clock
+                // while the warm-up finishes
+                // beside it; the honours — the
+                // join, the finale beat, the
+                // hand-off — stay the ceremony's.
+                glitchImage = still
+                glitchEngaged = true
+                try? await Task.sleep(
+                    nanoseconds: 3_600_000_000)
+                if Task.isCancelled {
+                    blink.cancel(); return
+                }
+                _ = await warm.value
+                if Task.isCancelled { return }
+                finale = true
+                Haptics.success()
+                try? await Task.sleep(
+                    nanoseconds: 350_000_000)
+                blink.cancel()
+                if Task.isCancelled { return }
+                onDone()
+                return
             }
             // The ceremony is timed against the
             // film: while a film plays, every style
@@ -1797,6 +1858,341 @@ struct BootView: View {
             if Task.isCancelled { return }
             onDone()
         }
+    }
+}
+
+/// The glitch boot (Chase's commission, 2026-10-22:
+/// "a full on new glitch screen boot screen that
+/// matches the official nightjar emblem — completely
+/// flood and glitch the whole screen — with a final
+/// shot that nightjar is now live — really go wild").
+/// When the stock bird still is the boot's backdrop,
+/// the ceremony hands the screen to this: the emblem
+/// tears in by slices under channel-split ghosts and
+/// waterfalls of console spill, the storm converges,
+/// one red sweep crosses the settled bird, and the
+/// final shot lands — NIGHTJAR IS NOW LIVE, in the
+/// Violent Redteam red the house now wears by
+/// default. Pure presentation on a 3.6-second clock
+/// (BootView sleeps the same 3.6 beside the warm-up
+/// and keeps the honours); every chaotic value is a
+/// deterministic function of the slice and the time
+/// quantum, so a redraw can never drift the storm —
+/// it is choreographed, not rolled.
+struct GlitchBootView: View {
+    let image: UIImage
+    /// Performance picture mode: fewer slices, no
+    /// full-frame inverts — the storm, calmer.
+    let calm: Bool
+    @State private var start = Date()
+
+    static let duration = 3.6
+    private static let liveRed = Color(red: 1.0,
+        green: 0.086, blue: 0.149)
+    private static let spillPool = [
+        "0x7F3A :: SYN", "ACK 49152 > 80", "KEX CURVE25519",
+        "UDP/5683 OPEN", "TTL 64 ID 0x1F", "SEQ 9F31C2",
+        "SIGINT POST", "HANDSHAKE OK", "02:00:00:00:00:01",
+        "CH0 LISTEN", "FRAG 0 MF 0", "WINDOW 65535",
+        "RTT 0.4 MS", "CHACHA20-POLY1305", "MF 0 DF 1",
+        "SPORT 443 > 8192", "NOMATCH DROP", "FEAA EDDYSTONE",
+        "RSSI -61 DBM", "CIPHER SUITE OK",
+    ]
+
+    /// Deterministic chaos: a hash of the slice and
+    /// the time quantum, 0..<1.
+    private func hash(_ a: Int, _ b: Int) -> Double {
+        let v = sin(Double(a * 127 + b * 311)) *
+            43758.5453
+        return v - floor(v)
+    }
+
+    /// The storm's strength over time: floods in
+    /// over the first breath, rages to 1.9 s, then
+    /// converges to nothing by 2.6 s.
+    private func stormAmp(_ t: Double) -> Double {
+        if t < 0.30 { return t / 0.30 }
+        if t < 1.90 { return 1 }
+        if t < 2.60 {
+            let u = (t - 1.90) / 0.70
+            return pow(1 - u, 2.2)
+        }
+        return 0
+    }
+
+    /// The emblem's own rect: the whole bird,
+    /// fitted and centred — where every layer
+    /// agrees the bird lives, so convergence
+    /// lands exactly on the final shot.
+    private func fittedRect(_ size: CGSize) -> CGRect {
+        let iw = max(image.size.width, 1)
+        let ih = max(image.size.height, 1)
+        let scale = min(size.width / iw,
+                        size.height / ih)
+        let w = iw * scale
+        let h = ih * scale
+        return CGRect(x: (size.width - w) / 2,
+                      y: (size.height - h) / 2,
+                      width: w, height: h)
+    }
+
+    private func sliceOffset(_ i: Int, _ q: Int,
+                             _ amp: Double) -> CGFloat {
+        var off = (hash(i, q) * 2 - 1) * 44 * amp
+        if hash(i + 57, q) > 0.93 {
+            let dir: Double = hash(i + 91, q) > 0.5
+                ? 1 : -1
+            off += dir * 130 * amp
+        }
+        return CGFloat(off)
+    }
+
+    private func sliceOpacity(_ i: Int, _ q: Int,
+                              _ t: Double) -> Double {
+        var o = min(1, t / 0.2)
+        if stormAmp(t) > 0.02, hash(i + 131, q) < 0.10 {
+            o *= 0.3
+        }
+        return o
+    }
+
+    @ViewBuilder
+    private func slices(t: Double,
+                        size: CGSize) -> some View {
+        let fit = fittedRect(size)
+        let count = calm ? 9 : 15
+        let q = Int(t * 24)
+        let amp = stormAmp(t)
+        let h = fit.height / CGFloat(count)
+        ZStack {
+            ForEach(0..<count, id: \.self) { i in
+                Image.platformImage(image)
+                    .resizable()
+                    .frame(width: fit.width,
+                           height: fit.height)
+                    .offset(y: -CGFloat(i) * h)
+                    .frame(width: fit.width, height: h,
+                           alignment: .top)
+                    .clipped()
+                    .position(
+                        x: fit.midX
+                            + sliceOffset(i, q, amp),
+                        y: fit.minY
+                            + h * (CGFloat(i) + 0.5))
+                    .opacity(sliceOpacity(i, q, t))
+            }
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    @ViewBuilder
+    private func ghosts(t: Double,
+                        size: CGSize) -> some View {
+        let fit = fittedRect(size)
+        let amp = stormAmp(t)
+        if amp > 0.02 {
+            ZStack {
+                Image.platformImage(image)
+                    .resizable()
+                    .frame(width: fit.width,
+                           height: fit.height)
+                    .colorMultiply(Color(red: 1,
+                        green: 0.1, blue: 0.15))
+                    .offset(x: CGFloat(-7 * amp))
+                Image.platformImage(image)
+                    .resizable()
+                    .frame(width: fit.width,
+                           height: fit.height)
+                    .colorMultiply(Color(red: 0.15,
+                        green: 0.85, blue: 1))
+                    .offset(x: CGFloat(7 * amp))
+            }
+            .blendMode(.screen)
+            .opacity(0.38 * amp)
+        }
+    }
+
+    @ViewBuilder
+    private func tearBars(t: Double,
+                          size: CGSize) -> some View {
+        let amp = stormAmp(t)
+        if amp > 0.02 {
+            let q = Int(t * 24)
+            ZStack {
+                ForEach(0..<3, id: \.self) { k in
+                    let yy = size.height * CGFloat(hash(k + 3, q))
+                    Rectangle()
+                        .fill(k == 1
+                            ? Self.liveRed
+                            : Color.white)
+                        .frame(width: size.width,
+                               height: CGFloat(
+                                   6 + hash(k + 7, q) * 22))
+                        .position(x: size.width / 2,
+                                  y: yy)
+                        .opacity(0.13 * amp)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func spill(t: Double,
+                       size: CGSize) -> some View {
+        let vis: Double = t < 1.9
+            ? min(1, t / 0.3)
+            : max(0, 1 - (t - 1.9) / 0.5)
+        if vis > 0.01 {
+            let q2 = Int(t * 12)
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(0..<13, id: \.self) { row in
+                    let idx = (row * 31 + q2 * 17) % Self.spillPool.count
+                    Text(Self.spillPool[idx])
+                        .font(.system(
+                            size: 9, design: .monospaced))
+                        .foregroundStyle(Color(
+                            red: 0.35, green: 1.0,
+                            blue: 0.45).opacity(0.55))
+                }
+            }
+            .position(x: 64, y: size.height * 0.32)
+            .opacity(vis)
+        }
+    }
+
+    private func scanlines(t: Double,
+                           size: CGSize) -> some View {
+        Canvas { context, canvasSize in
+            var y: CGFloat = 0
+            while y < canvasSize.height {
+                context.fill(
+                    Path(CGRect(x: 0, y: y,
+                                width: canvasSize.width,
+                                height: 1)),
+                    with: .color(.black.opacity(0.16)))
+                y += 3
+            }
+            let span = canvasSize.height + 120
+            let band = CGFloat(
+                (t * 130).truncatingRemainder(
+                    dividingBy: Double(span))) - 60
+            let grad = Gradient(colors: [
+                .clear,
+                Self.liveRed.opacity(0.10),
+                .clear])
+            context.fill(
+                Path(CGRect(x: 0, y: band,
+                            width: canvasSize.width,
+                            height: 60)),
+                with: .linearGradient(
+                    grad,
+                    startPoint: CGPoint(x: 0, y: band),
+                    endPoint: CGPoint(x: 0, y: band + 60)))
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            TimelineView(.animation(
+                minimumInterval: 1.0 / 60.0)) { timeline in
+                let t = min(Self.duration, max(0,
+                    timeline.date.timeIntervalSince(start)))
+                let q = Int(t * 24)
+                let flashing = !calm
+                    && [7, 23, 41].contains(q)
+                let fit = fittedRect(size)
+                let sweepU = (t - 2.55) / 0.5
+                let textO = t < 2.75 ? 0
+                    : min(1, (t - 2.75) / 0.3)
+                let cleanO = t < 2.45 ? 0
+                    : min(1, (t - 2.45) / 0.35)
+                let pct = min(100, Int(t / 2.6 * 20) * 5)
+                ZStack {
+                    Color.black
+                    slices(t: t, size: size)
+                    ghosts(t: t, size: size)
+                    tearBars(t: t, size: size)
+                    if flashing {
+                        Rectangle()
+                            .fill(Color.white)
+                            .blendMode(.difference)
+                    }
+                    Image.platformImage(image)
+                        .resizable()
+                        .frame(width: fit.width,
+                               height: fit.height)
+                        .position(x: fit.midX, y: fit.midY)
+                        .opacity(cleanO)
+                    scanlines(t: t, size: size)
+                    spill(t: t, size: size)
+                    if t < 2.6 {
+                        Text("BOOT \(pct)%")
+                            .font(.system(
+                                size: 10,
+                                design: .monospaced))
+                            .foregroundStyle(
+                                Color(white: 0.55))
+                            .position(x: size.width - 46,
+                                      y: 56)
+                    }
+                    if sweepU >= 0, sweepU <= 1.15 {
+                        Rectangle()
+                            .fill(Self.liveRed)
+                            .frame(width: size.width,
+                                   height: 2)
+                            .shadow(color: Self.liveRed
+                                .opacity(0.9), radius: 8)
+                            .position(
+                                x: size.width / 2,
+                                y: size.height * CGFloat(
+                                    min(sweepU, 1)))
+                            .opacity(sweepU > 1
+                                ? max(0, 1 - (sweepU - 1)
+                                        / 0.15)
+                                : 1)
+                    }
+                    Ellipse()
+                        .fill(RadialGradient(
+                            colors: [
+                                .black.opacity(0.55 * textO),
+                                .clear],
+                            center: .center,
+                            startRadius: 4,
+                            endRadius: 190))
+                        .frame(width: 470, height: 180)
+                        .position(x: size.width / 2,
+                                  y: size.height * 0.80)
+                    VStack(spacing: 9) {
+                        Text(L("NIGHTJAR IS NOW LIVE"))
+                            .font(.system(
+                                .title3,
+                                design: .monospaced)
+                                .weight(.bold))
+                            .tracking(3)
+                            .foregroundStyle(Self.liveRed)
+                            .shadow(
+                                color: Self.liveRed
+                                    .opacity(0.85),
+                                radius: 14)
+                        Text(L("the world is yours"))
+                            .font(.system(
+                                .caption2,
+                                design: .monospaced))
+                            .tracking(2)
+                            .foregroundStyle(
+                                Color(white: 0.62))
+                    }
+                    .position(x: size.width / 2,
+                              y: size.height * 0.80)
+                    .opacity(textO)
+                }
+                .frame(width: size.width,
+                       height: size.height)
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 
