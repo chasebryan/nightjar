@@ -3985,7 +3985,7 @@ final class Gauntlet: ObservableObject {
                     && BootSubtitles.all.contains(
                         "TRUST NOTHING ON THE WIRE"),
                 "the deck must speak terminal")
-            return cases
+            return "\(cases) cases"
         }
 
         add("wardrobe", "the labz boot engages") {
