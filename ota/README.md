@@ -88,7 +88,7 @@ Add this repo as a source in SideStore and new versions will
 surface there on their own:
 
 ```
-https://raw.githubusercontent.com/chasebryan/nightjar/main/sidestore-source.json
+https://raw.githubusercontent.com/nightwarelabz/nightjar/main/sidestore-source.json
 ```
 
 The source serves the same `nightjar.ipa` the releases

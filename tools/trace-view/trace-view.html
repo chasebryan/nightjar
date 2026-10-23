@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>nightjar-hack — Network Trace viewer</title>
+<title>nightjar — Network Trace viewer</title>
 <style>
   :root{
     --bg:#0b0e13; --panel:#12161f; --panel2:#171c28; --line:#232b3a;
@@ -95,7 +95,7 @@
 <body>
 
 <header class="top">
-  <h1>🗺️ Network Trace viewer <span class="sub">nightjar-hack · reads <span class="mono">net.nosuchmachine.nightjar.network-trace</span> exports · runs fully offline</span></h1>
+  <h1>🗺️ Network Trace viewer <span class="sub">nightjar · reads <span class="mono">net.nosuchmachine.nightjar.network-trace</span> exports · runs fully offline</span></h1>
   <div class="grow"></div>
   <button id="sampleBtn" type="button">Load the sample trace</button>
   <label class="filebtn" for="file">Open a trace JSON…</label>
@@ -145,7 +145,7 @@
 
 <script>
 "use strict";
-/* nightjar-hack Network Trace viewer.
+/* nightjar Network Trace viewer.
    Parses a trace export locally and draws it. Defensive throughout:
    a missing field means "absent", never an exception. */
 
@@ -198,7 +198,7 @@ function loadText(text, name) {
   catch (ex) { fail("Rendering failed: " + ex.message); return; }
   $("empty").style.display = "none";
   $("view").style.display = "block";
-  document.title = "Trace " + str(obj(t.run).scope || name || "") + " — nightjar-hack";
+  document.title = "Trace " + str(obj(t.run).scope || name || "") + " — nightjar";
 }
 
 $("file").addEventListener("change", function (ev) {

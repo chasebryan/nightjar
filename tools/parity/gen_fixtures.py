@@ -16,11 +16,14 @@ Outputs:
   <android>/app/src/test/java/net/nosuchmachine/nightjarhack/TraceParityTest.kt
 """
 import json
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 HACK = HERE.parents[1]                      # ~/workspace/njh-work/hack
-ANDROID = Path.home() / "workspace/nightjar-hack-android"
+ANDROID = Path(os.environ.get(
+    "NIGHTJAR_ANDROID_TREE",
+    Path.home() / "workspace/nightjar-hack-android"))
 
 FIXTURES = json.loads((HERE / "fixtures.json").read_text())
 

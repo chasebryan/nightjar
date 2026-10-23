@@ -1,6 +1,6 @@
 # Trace viewer
 
-A standalone viewer for nightjar-hack **Network Trace** exports
+A standalone viewer for nightjar **Network Trace** exports
 (`net.nosuchmachine.nightjar.network-trace`, schema v1 and v2).
 One self-contained HTML file — no build step, no dependencies,
 no network requests. It draws the map the export describes.

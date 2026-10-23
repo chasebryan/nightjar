@@ -539,7 +539,7 @@ in `ota/` at the repo root:
 - **SideStore (free).** Re-signs on the phone itself
   before the 7 days lapse. Add the repo as a source
   and releases surface there:
-  `https://raw.githubusercontent.com/chasebryan/nightjar/main/sidestore-source.json`
+  `https://raw.githubusercontent.com/nightwarelabz/nightjar/main/sidestore-source.json`
 
 ## Install (sideload)
 
