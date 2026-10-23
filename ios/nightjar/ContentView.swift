@@ -45,9 +45,31 @@ enum TabBeat {
     private static var primed = false
     private static var current: Int?
     private static var sequence = 0
+    /// The transition whose beat has already
+    /// spoken. Every press path claims its
+    /// transition before firing, so one
+    /// navigation can never be beaten twice —
+    /// the old guard trusted event ORDER (a
+    /// vanish timer stood down only when an
+    /// appearance followed it), and on the
+    /// transitions where the appearance landed
+    /// FIRST, both timers fired, spaced right
+    /// at the haptics fold's edge: the two
+    /// taps the operator kept reporting.
+    private static var answered = 0
+
+    /// Claim a transition's one beat. Main
+    /// queue only, like every caller here.
+    private static func beatIfUnclaimed(
+        _ token: Int) -> Bool {
+        if answered == token { return false }
+        answered = token
+        return true
+    }
 
     static func appeared(_ tag: Int) {
         sequence += 1
+        let mine = sequence
         current = tag
         if !primed {
             primed = true
@@ -56,7 +78,8 @@ enum TabBeat {
         DevLog.event("tab", "\(tag) (appeared)")
         DispatchQueue.main.asyncAfter(
             deadline: .now() + 0.15) {
-            if current == tag {
+            if current == tag,
+               beatIfUnclaimed(mine) {
                 Haptics.press()
             }
         }
@@ -66,13 +89,36 @@ enum TabBeat {
     /// has answered for this navigation: bump
     /// the sequence so a pending vanish timer
     /// stands down instead of doubling the beat.
-    static func noteExternalBeat() {
+    /// Returns the new sequence — the watch's
+    /// own timer claims that token, so its
+    /// beat and any other path's cannot both
+    /// land for the same tap.
+    @discardableResult
+    static func noteExternalBeat() -> Int {
         sequence += 1
+        return sequence
+    }
+
+    /// The watch's timer asks here before it
+    /// presses, like every other path.
+    static func claimWatchBeat(_ token: Int) -> Bool {
+        beatIfUnclaimed(token)
     }
 
     static func vanished(_ tag: Int) {
-        sequence += 1
-        let mine = sequence
+        var mine = sequence
+        if current == tag, answered == sequence {
+            // A fresh act on a landing already
+            // beaten — the More list's back pop,
+            // where nothing appears to answer.
+            // Claim a fresh token for it now; a
+            // later bump (the selection watch
+            // tripping, a successor appearing)
+            // still stands this timer down.
+            sequence += 1
+            mine = sequence
+        }
+        let token = mine
         DispatchQueue.main.asyncAfter(
             deadline: .now() + 0.35) {
             // A successor appeared after this
@@ -80,7 +126,9 @@ enum TabBeat {
             // appearance already answered. Only
             // a vanish still unanswered at this
             // distance is the More list's.
-            guard sequence == mine else { return }
+            guard sequence == token,
+                  beatIfUnclaimed(token)
+            else { return }
             Haptics.press()
             DevLog.event(
                 "tab", "more list (vanish \(tag))")
@@ -135,13 +183,14 @@ enum SelectionWatch {
             let was = change.oldValue ?? nil
             guard now === more, was !== more
             else { return }
-            TabBeat.noteExternalBeat()
+            let token = TabBeat.noteExternalBeat()
             DevLog.event("tab",
                          "more opened (watch)")
             DispatchQueue.main.asyncAfter(
                 deadline: .now() + 0.15) {
                 if controller.selectedViewController
-                    === more {
+                    === more,
+                   TabBeat.claimWatchBeat(token) {
                     Haptics.press()
                 }
             }

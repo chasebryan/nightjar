@@ -294,6 +294,21 @@ struct AppBackdrop: View {
         slot ?? ambientSlot
     }
 
+    /// The slot whose media file a custom backdrop
+    /// reads. The choice RESOLVES through inherit —
+    /// a screen wearing the everywhere setting is
+    /// told ".custom" — but the art itself is filed
+    /// under the slot whose own choice is custom.
+    /// Reading the screen's own slot instead found
+    /// no file on any tab but the owner's, and the
+    /// everywhere image (and GIF) silently fell
+    /// back to the wallpaper everywhere (Chase's
+    /// report, 2026-10-22).
+    private var mediaSlot: BackdropSlot {
+        themes.choice(for: resolvedSlot) == .inherit
+            ? .everywhere : resolvedSlot
+    }
+
     var body: some View {
 #if os(macOS)
         // The Mac skin (fix261): the wallpaper is
@@ -352,7 +367,7 @@ struct AppBackdrop: View {
             skull(geo)
         case .custom:
             if let image = BackdropMedia.image(
-                for: resolvedSlot) {
+                for: mediaSlot) {
                 if platformImageIsAnimated(image) {
                     AnimatedImageView(image: image)
                         .frame(width: geo.size.width,
