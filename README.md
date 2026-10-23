@@ -4,7 +4,8 @@
 
 <p align="center">
   <strong>The listening post. The mouth. The bench.</strong><br>
-  A native network instrument for iPhone and Mac, with Skelli at the controls.
+  A native network instrument for iPhone and Mac, with Skelli at the controls.<br>
+  <em>The Ultimate Network Administration Tool.</em>
 </p>
 
 <p align="center">

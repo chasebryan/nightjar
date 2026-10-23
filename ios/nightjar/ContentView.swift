@@ -292,12 +292,6 @@ struct ContentView: View {
     @State private var tab: Int
     @State private var showBoot = true
     /// Serve's sheet at the shell level (iOS):
-    /// raised when a house navigation names
-    /// Serve — the console's `open serve`, her
-    /// "take me to serve" — now that Serve
-    /// lives under Sessions (Chase's order,
-    /// 2026-10-22) instead of on the bar.
-    @State private var showServe = false
     @State private var showLanguageWelcome = false
     @ObservedObject private var languageCenter =
         LanguageCenter.shared
@@ -318,15 +312,15 @@ struct ContentView: View {
         // a 0...9 clamp the day it landed, and the app
         // reopened on Listen instead of where the
         // operator had been working.
-        // (Serve's old 2 is gone on purpose:
-        // it is not a phone tab any more, so a
-        // stored 2 falls back to Listen rather
-        // than restoring a room that is not on
-        // the bar. Onion's 13 joins the set —
-        // it was missing, the very failure this
-        // comment describes.)
+        // (Serve's 2 stands in the set: the
+        // room lives in the More menu now
+        // (Chase's correction, 2026-10-23), a
+        // phone tab like any other, so a
+        // stored 2 restores it. Onion's 13
+        // joins the set — it was missing, the
+        // very failure this comment describes.)
         let knownTabs: Set<Int> =
-            [9, 0, 1, 12, 5, 3, 4, 6, 7, 8, 10, 11, 13]
+            [9, 0, 1, 12, 2, 5, 3, 4, 6, 7, 8, 10, 11, 13]
         _tab = State(initialValue:
             stored.flatMap {
                 knownTabs.contains($0) ? $0 : nil
@@ -356,9 +350,9 @@ struct ContentView: View {
         // of the main bar (Chase's order,
         // 2026-10-22): Skelli, Listen, Blacksite,
         // Send — then More. Serve is not on the
-        // bar any more; it lives under Sessions,
-        // raised as a sheet from there (and by
-        // any house navigation that names it).
+        // bar; its room is in the More menu
+        // (Chase's correction, 2026-10-23), and
+        // Sessions keeps a door to it.
         BlacksiteView()
             .appThemed(.blacksite)
             .tabItem { Label(L("Blacksite"),
@@ -389,6 +383,23 @@ struct ContentView: View {
             .tag(3)
             .onAppear { TabBeat.appeared(3) }
             .onDisappear { TabBeat.vanished(3) }
+        // Serve's room (Chase's correction,
+        // 2026-10-23): fix345 took it off the
+        // bar and left it reachable only as a
+        // sheet from Sessions, which read —
+        // correctly, from where he stood — as
+        // the tab having been deleted. It was
+        // always meant to move, not vanish:
+        // its home is here, in the More menu,
+        // a first-class room with its tag (2)
+        // restored. Sessions keeps its door.
+        ServeView()
+            .appThemed(.serve)
+            .tabItem { Label(L("Serve"),
+                             systemImage: "tray.and.arrow.down") }
+            .tag(2)
+            .onAppear { TabBeat.appeared(2) }
+            .onDisappear { TabBeat.vanished(2) }
         ScanView(tab: $tab)
             .appThemed(.scan)
             .tabItem { Label(L("Scan"), systemImage: "scope") }
@@ -618,31 +629,13 @@ struct ContentView: View {
         .macShellBar(processes: board.active.count) {
             showBoard = true
         }
-#if os(iOS)
-        .sheet(isPresented: $showServe) {
-            ServeView()
-                .appThemed(.serve)
-        }
-#endif
     .onReceive(
         NotificationCenter.default.publisher(
             for: Blacksite.openTabNotification)
     ) { note in
         if let tag = note.userInfo?["tag"]
             as? Int {
-#if os(iOS)
-            if tag == 2 {
-                // Serve lives under Sessions
-                // now: land there with its
-                // sheet raised.
-                tab = 3
-                showServe = true
-            } else {
-                tab = tag
-            }
-#else
             tab = tag
-#endif
         }
     }
     .onAppear {
@@ -657,16 +650,7 @@ struct ContentView: View {
     .onReceive(NotificationCenter.default.publisher(
         for: .houseNavigate)) { note in
         if let target = note.userInfo?["tab"] as? Int {
-#if os(iOS)
-            if target == 2 {
-                tab = 3
-                showServe = true
-            } else {
-                tab = target
-            }
-#else
             tab = target
-#endif
         }
     }
     .onReceive(NotificationCenter.default.publisher(
