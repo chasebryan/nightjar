@@ -4581,11 +4581,8 @@ final class Gauntlet: ObservableObject {
                 text: "the world is yours",
                 passphrase: "nightjar")
             let song = Mawk.modulate(frame: frame)
-            guard let back = Mawk.demodulate(
-                samples: song) else {
-                throw Failure("its own song came "
-                    + "back silent")
-            }
+            let back = try Mawk.demodulate(
+                samples: song)
             let text = try Mawk.unpack(
                 frame: back, passphrase: "nightjar")
             try Gauntlet.require(

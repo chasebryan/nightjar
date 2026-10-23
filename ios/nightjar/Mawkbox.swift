@@ -1008,7 +1008,7 @@ final class MawkCenter: ObservableObject {
             let openingPass = passphrase
             DispatchQueue.global(qos: .utility)
                 .async { [weak self] in
-                guard let found = Mawk.demodulate(
+                guard let found = try? Mawk.demodulate(
                     samples: sung) else { return }
                 DispatchQueue.main.async {
                     guard let self,
