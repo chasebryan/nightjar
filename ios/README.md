@@ -7,13 +7,20 @@ tools as native tabs), **plus everything the house has
 grown since**: a recon bench, a defensive standard, a
 cryptography vault, macros, knock-carried messaging,
 and Skelli, the onboard intelligence who works the
-whole instrument. Twelve tabs, one house, and the
-whole house speaks twelve tongues — English, Spanish,
-French, German, Portuguese, Italian, Russian,
-Japanese, Korean, Chinese, Arabic and Hindi — chosen
-once in a first-boot welcome, kept in a language room
-in About, and applied the moment you choose, Arabic
-turning the house right-to-left.
+whole instrument. Fifteen rooms, one house. On the
+phone the bar is Skelli, Listen, Blacksite, and Drip;
+About, Sessions, Send, Serve, Scan, Recon, EMCON,
+Knocktalk, Macros, Vault, and Onion live in the More
+list. The Mac sidebar lists every room. The language
+room still offers English, twelve other tongues
+(Spanish, French, German, Swiss German, Portuguese,
+Italian, Russian, Japanese, Korean, Simplified
+Chinese, Arabic, and Hindi), and following the
+device. Since 2026-10-21 those twelve tables are held
+empty on purpose, so the interface renders English;
+an untranslated string never goes blank. Arabic still
+turns the layout right-to-left. The choice is offered
+once in a first-boot welcome and kept in About.
 
 - **Listen** (the purist half) — `ListeningPost` still
   only ever calls `scanForPeripherals`/`stopScan`. It
@@ -613,13 +620,18 @@ By area:
   `Steward.swift`, `Subconscious.swift`,
   `Instrument.swift`, `Forge.swift`,
   `Deliveries.swift`, `Hands.swift`.
+- **The Drip** — `DripView.swift`: live meters for
+  work already running, exposure, the ear, the
+  house's own traffic tap, and the mouth, plus the
+  sealed journal newest-first. It starts nothing.
 - **The house** — `ContentView.swift` (the tab shell
   and About), `nightjarApp.swift`, `Feedback.swift`
   (toasts, haptics, the boot film), `ProcessBoard.swift`,
   `Themes.swift`, `Defaults.swift` (the sane-defaults
   registry), `Setup.swift` (the Keychain setup
   mirror), `SourceStamp.swift` (build provenance),
-  `LanguageCenter.swift` (the twelve tongues and the
+  `LanguageCenter.swift` (the language room; the
+  twelve non-English tables are held empty, and the
   `L()` seam), `UpdateChecker.swift`, `Intents.swift`,
   `Keyboard.swift`.
 - **Tests** — `nightjarTests/`: decoder and log

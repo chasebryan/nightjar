@@ -110,7 +110,7 @@ Signing, ad hoc distribution, and update setup are covered in the [installation 
 
 ## Inside the house
 
-**Fourteen rooms, one instrument.** A shared process board reports running work across the app. EMCON gates operations, the night log keeps the timeline, and themes, backdrops, haptics, language, and saved setup carry across the house.
+**Fifteen rooms, one instrument.** On iPhone the tab bar is Skelli, Listen, Blacksite, and Drip. About, Sessions, Send, Serve, Scan, Recon, EMCON, Knocktalk, Macros, Vault, and Onion are in the More list. On Mac every room is in the sidebar: Skelli, Listen, Send, and Serve first, then Blacksite through Onion, with About last. A shared process board reports running work across the app. EMCON gates operations, the night log keeps the timeline, and themes, backdrops, haptics, language, and saved setup carry across the house.
 
 | Room | What happens here |
 | --- | --- |
@@ -119,6 +119,7 @@ Signing, ad hoc distribution, and update setup are covered in the [installation 
 | **Send** | A destination → payload → send flow, protocol payloads, per-target templates, fan-out, timed delivery, Centipede and Network Trace, plus War Chest, Helm, War Room, and War Games. |
 | **Serve** | TCP, UDP, and HTTP listeners, fixed or echo replies, a receive inbox, stealth mode, BLE GATT hosting, and canary personas for SSH, HTTP, MQTT, and SMTP. |
 | **Blacksite** | The built-in console: a shell, program editors, files, graphics, protocol and security audit instruments, and the EAZY battery. |
+| **Drip** | Live meters for work already running, exposure, what the ear has heard, the house's own traffic tap, and the mouth, plus the sealed journal newest-first. War Driving counters show only while a drive is running. The room starts nothing, stops nothing, and sends nothing. |
 | **Sessions** | The night log: one hash-chained timeline for the instrument, designed to make alterations evident. |
 | **Scan** | Connect scanning, subnet sweeps, TLS inspection, DNS, Bonjour, imported pcap dissection, device dossiers, Neighborhood, the SIGINT Station, and a floor-plan Map. |
 | **Recon** | Protocol-speaking probes, a connection console, a seeded fuzzer, and a probe library that hands payloads to Send. |
@@ -154,7 +155,7 @@ Skelli answers from the app's manual and live state, then works the relevant con
 - **Computed mathematics.** Her on-device evaluator computes supported expressions instead of estimating their answers. Requested STEM research can include source links.
 - **Real work, kept.** Forge builds packets, Workbench drafts and runs code, and Deliveries keeps the results. Planner, hands, Critic, and Scribe can work a multistep request together.
 - **A house with memory.** Her heart tracks tone and feelings; the Subconscious consolidates observations with their evidence. The optional Instrument reads passive HealthKit measurements, including Apple Watch data, on the device.
-- **A shared language.** Skelli and the house follow the language selected in About.
+- **One language setting.** About's language room is the choice for the house and for Skelli. The translation tables are held empty, so that choice renders in English. See [Language](#language).
 
 Model inference is local. Research requests, model downloads, update checks, and connections you configure have their own network behavior; the [privacy policy](PRIVACY.md) describes those paths.
 
@@ -187,11 +188,9 @@ Whole files use the **NJCF** envelope: authenticated chunks under a random key, 
 
 </details>
 
-### Twelve languages
+### Language
 
-English · Español · Français · Deutsch · Português · Italiano · Русский · 日本語 · 한국어 · 中文 · العربية · हिन्दी
-
-The first launch offers a language choice. It remains available in **About → Language** afterward; Arabic uses a right-to-left layout. Colours holds the themes, per-tab backdrops, boot-screen appearance, and the operator's own tailoring.
+The language room offers English, twelve other tongues — Español, Français, Deutsch, Schwiizerdütsch, Português, Italiano, Русский, 日本語, 한국어, 简体中文, العربية, and हिन्दी — and following the device's language. Since 2026-10-21 those twelve translation tables are held empty on purpose, so the interface renders the English source string. A string that is not translated shows in English and never goes blank. Choosing Arabic still turns the layout right to left. The choice is offered on first launch and stays in **About → Language**. Colours holds the themes, per-tab backdrops, boot-screen appearance, and the operator's own tailoring.
 
 ## Platform boundaries
 
@@ -284,11 +283,12 @@ rm nightjar/send.py
 | **[Changelog](CHANGELOG.md)** | The project's release history |
 | **[Privacy policy](PRIVACY.md)** | Local storage, permissions, research, downloads, and configured connections |
 | **[Security policy](SECURITY.md)** | Private vulnerability reporting |
+| **[Contributing](CONTRIBUTING.md)** | Build checks, tests, reports, and the license for changes |
 | **[License](LICENSE)** | GNU Affero General Public License, version 3 |
 
 ## Reports and contributions
 
-**[Open an issue](https://github.com/nightwarelabz/nightjar/issues/new/choose)** for a reproducible bug or a feature request. Include the version, device, steps, and what you expected. Find the version in About or with `ver` in Blacksite; `log` shows the flight recorder. About's Developer section can export a diagnostic file.
+**[Open an issue](https://github.com/nightwarelabz/nightjar/issues/new/choose)** for a reproducible bug or a feature request. Include the version, device, steps, and what you expected. Find the version in About or with `ver` in Blacksite; `log` shows the flight recorder. About's Developer section can export a diagnostic file. [CONTRIBUTING.md](CONTRIBUTING.md) covers how to build, test, and send a change. The project is licensed under the [GNU AGPLv3](LICENSE).
 
 Issues are public. Remove passwords, keys, private captures, and personal information from anything you attach. For a vulnerability, follow [SECURITY.md](SECURITY.md) and use the repository's private reporting route.
 
