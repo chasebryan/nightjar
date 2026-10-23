@@ -313,11 +313,12 @@ struct AppBackdrop: View {
     @ObservedObject private var themes = ThemeCenter.shared
     /// The house's GIF stillness (Chase's
     /// ruling, 2026-10-23): with animation off
-    /// — the default — an animated backdrop
-    /// stands on its first frame. The backdrop
-    /// never consulted the switch before; the
-    /// ambient surfaces are exactly what the
-    /// ruling was about.
+    /// — the default — the STOCK living reel
+    /// stands on its first frame. Art the
+    /// operator filed into a slot themselves
+    /// is a choice, not a default, and plays.
+    /// The backdrop never consulted the switch
+    /// before tonight at all.
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = false
 
@@ -404,8 +405,16 @@ struct AppBackdrop: View {
         case .custom:
             if let image = BackdropMedia.image(
                 for: mediaSlot) {
-                if gifsEnabled,
-                   platformImageIsAnimated(image) {
+                // The operator's own filed art:
+                // a GIF they CHOSE for this
+                // backdrop plays — a choice is
+                // not a default (Chase's ruling,
+                // 2026-10-23, on his own frozen
+                // wallpaper). The stillness
+                // governs only what nobody
+                // chose: the stock living reel
+                // above and its stand-in below.
+                if platformImageIsAnimated(image) {
                     AnimatedImageView(image: image)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
@@ -537,19 +546,20 @@ enum BootMedia {
     /// Whether the boot ceremony plays at all
     /// when the app opens.
     static let enabledKey = "boot.enabled"
-    /// Whether the house's AMBIENT GIFs play —
-    /// the wallpaper, the backdrops, the
-    /// viewers. OFF BY DEFAULT (Chase's ruling,
+    /// Whether the house's UNCHOSEN GIFs play —
+    /// the stock living wallpaper, the viewers.
+    /// OFF BY DEFAULT (Chase's ruling,
     /// 2026-10-23: no flicker screens; let
     /// people work the toolings themselves):
-    /// every ambient GIF stands as a still
-    /// frame until the operator turns
-    /// animation on in Colours. Two exemptions,
-    /// both his word the same night: the boot
-    /// film always plays (it is the ceremony,
-    /// not a decoration), and the action films
-    /// — the ignition splashes that play FOR an
-    /// operator's act — are still present.
+    /// an unchosen GIF stands as a still frame
+    /// until the operator turns animation on
+    /// in Colours. What the operator chose
+    /// plays, always: the boot film (the
+    /// ceremony), a GIF they filed into a
+    /// backdrop slot (their wallpaper, their
+    /// act), and the action films — the
+    /// ignition splashes that play FOR an
+    /// operator's act (the same night's word).
     static let gifsKey = "media.gifsEnabled"
     /// The house's picture mode: "quality" or
     /// "performance" — how much of the device

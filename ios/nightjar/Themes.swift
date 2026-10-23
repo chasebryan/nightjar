@@ -945,7 +945,7 @@ private struct BootRow: View {
                 text: L("Quality decodes the boot film at 1024 px with the print at full density, and the wallpaper reel plays full-size. Performance decodes the film at 512 — about a fifth of the memory — thins the print, and caps the reel at 640. Same app, lighter feet: choose Performance when the device runs hot or the boot feels heavy."))
             Toggle(L("Animated GIFs"), isOn: $gifsEnabled)
             ExplainToggle(
-                text: L("Off (the default) stills the house's ambient GIFs: the wallpaper and the backdrops stand on their first frame. The boot film and the action splashes always play — they are the ceremony and the punctuation, not decoration. Nothing is removed — the pictures stay, the idle motion goes."))
+                text: L("Off (the default) stills the GIFs nobody chose: the stock living wallpaper and the viewers stand on their first frame. What you chose always plays — the boot film, a GIF you filed as a backdrop, the action splashes. Nothing is removed — the pictures stay, the idle motion goes."))
             HStack {
                 Text(L("Backdrop"))
                 Spacer()
