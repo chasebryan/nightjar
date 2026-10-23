@@ -5106,9 +5106,8 @@ final class BlacksiteShell: ObservableObject {
                 emit(L("pip: nothing to install."), .err)
                 return
             }
-            if let refusal = EmconStandard
-                .refused(.probing) {
-                emit(refusal, .err)
+            if EmconStandard.refused(.probing) {
+                emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
                 return
             }
             guard !capturing else {
@@ -5819,9 +5818,8 @@ final class BlacksiteShell: ObservableObject {
                        progArgs: progArgs)
             return
         }
-        if let refusal = EmconStandard
-            .refused(.probing) {
-            emit(refusal, .err)
+        if EmconStandard.refused(.probing) {
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
             return
         }
         guard !capturing else {
@@ -6070,9 +6068,8 @@ final class BlacksiteShell: ObservableObject {
                          progArgs: progArgs)
             return
         }
-        if let refusal = EmconStandard
-            .refused(.probing) {
-            emit(refusal, .err)
+        if EmconStandard.refused(.probing) {
+            emit(String(format: L("the Standard refuses probing under %@."), String(describing: EmconCondition.current.name)), .err)
             emit(L("load: the dependencies were not fetched — running anyway; the program may miss them."), .err)
             loadRunEntry(dir: dir, repo: repo,
                          progArgs: progArgs)
