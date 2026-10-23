@@ -3480,11 +3480,61 @@ final class Gauntlet: ObservableObject {
             cases += 1
             try Gauntlet.require(
                 BetafischTap.coverageNote
-                    .contains("house tap"),
+                    .contains("the app's own "
+                              + "traffic only"),
                 "the coverage note moved")
             return "\(cases) cases: three frames "
                 + "survived the writer, the file "
                 + "and the reader"
+        }
+        add("bench", "advertising fits the air") {
+            var cases = 0
+            // The 31-byte legacy budget, counted
+            // exactly as Mouth.advertisementFits
+            // counts it: 3 flags + (2 + name) +
+            // 4 UUID + (4 + payload when one
+            // rides). The Banshee's sixty-byte
+            // shout is the crash's rap sheet —
+            // it must never fit, and the flare's
+            // eight-byte token always must.
+            cases += 1
+            try Gauntlet.require(
+                Mouth.advertisementFits(
+                    name: "BANSHEE", serviceData: nil),
+                "a name alone must fit")
+            cases += 1
+            try Gauntlet.require(
+                Mouth.advertisementFits(
+                    name: "BANSHEE",
+                    serviceData: Data(count: 11)),
+                "eleven payload bytes fit exactly")
+            cases += 1
+            try Gauntlet.require(
+                !Mouth.advertisementFits(
+                    name: "BANSHEE",
+                    serviceData: Data(count: 12)),
+                "twelve payload bytes bust it")
+            cases += 1
+            try Gauntlet.require(
+                !Mouth.advertisementFits(
+                    name: "BANSHEE",
+                    serviceData: Data(count: 60)),
+                "the Banshee's shout busts it")
+            cases += 1
+            try Gauntlet.require(
+                Mouth.advertisementFits(
+                    name: "nightjar",
+                    serviceData: Data(count: 8)),
+                "the flare's token fits")
+            cases += 1
+            try Gauntlet.require(
+                !Mouth.advertisementFits(
+                    name: String(repeating: "x",
+                                count: 30),
+                    serviceData: nil),
+                "a thirty-letter name busts it alone")
+            return "\(cases) cases: the budget is "
+                + "31, counted to the byte"
         }
         add("files", "format parsers read fixtures") {
             var cases = 0

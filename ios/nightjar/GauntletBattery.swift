@@ -486,14 +486,40 @@ enum GauntletBattery {
                             "flipped.njcf")
                     try flipped.write(to: flipURL)
                     cases += 1
-                    try Gauntlet.require(
-                        (try? CryptoFiles.decrypt(
+                    // An opening here must convict
+                    // with evidence, not a shrug:
+                    // the flip's offset, the file's
+                    // size, and whether what came
+                    // out is the original content —
+                    // the three facts that tell an
+                    // unauthenticated header byte
+                    // (the stored name is the house's
+                    // suspect) from a true break in
+                    // the seal. (First full run,
+                    // 2026-10-23: a flip opened under
+                    // Dead drop; the step named
+                    // nothing but the scheme.)
+                    if let openedFlip = try? CryptoFiles
+                        .decrypt(
                             input: flipURL,
                             password: secret,
-                            outputDirectory: outDir))
-                            == nil,
-                        "a flipped byte opened "
-                        + "under \(protection.label)")
+                            outputDirectory: outDir) {
+                        let flipBack = (try? Data(
+                            contentsOf: openedFlip))
+                            ?? Data()
+                        throw Gauntlet.Failure(
+                            message: "a flipped byte "
+                            + "opened under "
+                            + "\(protection.label) — "
+                            + "flip at \(at) of "
+                            + "\(sealed.count); "
+                            + "opened content "
+                            + (flipBack == back
+                               ? "IDENTICAL to the "
+                                 + "original"
+                               : "DIFFERS from the "
+                                 + "original"))
+                    }
                     // A truncation.
                     let cutURL = scratch
                         .appendingPathComponent(

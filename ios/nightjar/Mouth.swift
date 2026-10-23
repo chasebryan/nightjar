@@ -1929,6 +1929,39 @@ final class Mouth: NSObject, ObservableObject {
     private var lastAdSnapshot: AdSnapshot?
     private var adGeneration = 0
 
+    /// The legacy advertisement's wire budget:
+    /// 31 bytes, flags included — 3 for the
+    /// flags, 2 + the name's bytes for the local
+    /// name, 4 for the one 16-bit service UUID,
+    /// and, when a payload rides, 4 + its count
+    /// for the service data. Pure arithmetic,
+    /// pinned by the Gauntlet.
+    ///
+    /// Why a payload that busts the budget is
+    /// now left on the ground: every recorded
+    /// -[CBUUID UTF8String] death — the Netbomb
+    /// run of 2026-10-18, the Banshee's screams
+    /// of 2026-10-22 and 2026-10-23, on 11.0 and
+    /// 12.0 alike — was a payload beacon whose
+    /// words could never fit the legacy frame
+    /// (the Banshee's run to sixty bytes), while
+    /// the GATT host (no payload) and the flare
+    /// (an eight-byte token) have no crash on
+    /// record. CoreBluetooth is handed only
+    /// what the air can lawfully carry; a beacon
+    /// too large for its payload advertises its
+    /// name alone, and the drop is written to
+    /// the developer log where the next crash
+    /// report can acquit or convict this law.
+    static func advertisementFits(
+        name: String, serviceData: Data?) -> Bool {
+        var total = 3 + 2 + name.utf8.count + 4
+        if let serviceData {
+            total += 4 + serviceData.count
+        }
+        return total <= 31
+    }
+
     private func refreshAdvertising() {
         guard !advertisingRefreshPending else { return }
         advertisingRefreshPending = true
@@ -2001,8 +2034,28 @@ final class Mouth: NSObject, ObservableObject {
             advertisement[CBAdvertisementDataServiceUUIDsKey] =
                 [Mouth.serviceUUID]
             if let data = want.serviceData {
-                advertisement[CBAdvertisementDataServiceDataKey] =
-                    [Mouth.serviceUUID: data]
+                // A payload rides only when the
+                // whole advertisement fits the
+                // legacy budget (see
+                // advertisementFits): the beacon's
+                // long shouts are the crash's whole
+                // rap sheet. The flare's eight-byte
+                // token is beneath notice either
+                // way, and the GATT host carries
+                // no payload at all.
+                if Mouth.advertisementFits(
+                    name: want.name, serviceData: data) {
+                    advertisement[
+                        CBAdvertisementDataServiceDataKey] =
+                        [Mouth.serviceUUID: data]
+                } else {
+                    DevLog.event(
+                        "ble",
+                        "payload left on the ground — "
+                        + "\(data.count) bytes bust "
+                        + "the 31-byte air budget; "
+                        + "the name rides alone")
+                }
             }
             DevLog.event("ble",
                          "advertising as "
