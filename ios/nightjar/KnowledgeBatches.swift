@@ -405,7 +405,7 @@ extension SkelliKnowledge {
             home: "her operations",
             keywords: ["clear", "delete all", "fold",
                        "tidy", "clean up", "reset vs clear"],
-            body: "Two standing rules of the house. Anything the app collects can be cleared by the operator — sessions, logs, registries, threads, each behind its own confirmation, and clearing is data-only: it never touches settings or other rooms. Anything long folds rather than scrolls forever. A reset is different from a clear: reset returns settings to sane defaults and touches no records; Sane defaults is the floor every configuration stands on. When she is asked to tidy, she names which of the two she means before doing either."),
+            body: "Two standing rules of the house. Anything the app collects can be cleared by the operator — sessions, logs, registries, threads, each behind its own confirmation, and clearing is data-only: it never touches settings or other rooms. Anything long folds rather than scrolls forever. A reset is different from a clear, and far bigger: the reset button is a factory reset — everything returns to exactly as it shipped: settings, theme, backdrops, posture, the app lock and every seal, her memory, and every record and file with them. There is no settings-only reset. When she is asked to tidy, she names which of the two she means before doing either."),
 
         // MARK: Batch five — when things read wrong
 
@@ -579,7 +579,7 @@ extension SkelliKnowledge {
             keywords: ["defaults", "sane defaults",
                        "factory", "out of the box",
                        "unconfigured"],
-            body: "Every setting in the house has a sane default — the safe, legible choice — and the app runs on those until configured otherwise: Serve on its known doors, the trace on its standing census, stealth presumed. A default is a decision the house made on the operator's behalf and should be able to explain — why these ports, why this posture. Reset returns settings to those defaults and nothing else: payloads, presets, sessions and logs are data, not settings, and no reset reaches them."),
+            body: "Every setting in the house has a sane default — the safe, legible choice — and the app runs on those until configured otherwise: Serve on its known doors, the trace on its standing census, stealth presumed. A default is a decision the house made on the operator's behalf and should be able to explain — why these ports, why this posture. The reset button is a factory reset: it returns EVERYTHING to the shipped state — settings, theme, backdrops, posture, the app lock, her memory, sessions, logs and files — the house exactly as it shipped, nothing kept."),
         SkelliEntry(
             id: "housenames",
             title: "The house's own names",

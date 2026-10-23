@@ -1927,15 +1927,15 @@ struct AboutView: View {
                 }
 #endif
                 Section(header: Text(L("Defaults")),
-                        footer: Text(L("Payloads, presets, sessions and logs are data, not settings — a reset never touches them."))) {
+                        footer: Text(L("The reset is a factory reset: it erases everything — data included — and returns the app to exactly as it shipped."))) {
                     ExplainToggle(
                         title: L("What a reset does"),
-                        text: L("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise. A reset returns every setting to them, and forgets the setup mirror too, so the old configuration cannot restore itself later."))
+                        text: L("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise. The reset below is a factory reset: it erases everything the house has gathered and returns the app to exactly as it shipped."))
                     Button(role: .destructive) {
                         Haptics.warn()
                         confirmReset = true
                     } label: {
-                        Text(L("Reset all settings to sane defaults"))
+                        Text(L("Factory reset — erase everything"))
                     }
                 }
                 Section(header: Text(L("Session logs"))) {
@@ -2004,17 +2004,17 @@ struct AboutView: View {
                 }
             }
 #endif
-            .confirmationDialog(L("Reset all settings?"),
+            .confirmationDialog(L("Factory reset?"),
                                 isPresented: $confirmReset) {
-                Button(L("Reset to sane defaults"), role: .destructive) {
+                Button(L("Erase everything"), role: .destructive) {
                     Haptics.error()
                     SaneDefaults.reset(mouth: mouth,
                                        emcon: emcon)
-                    toasts.show(L("Settings reset — sane defaults restored"))
+                    toasts.show(L("Factory reset — as shipped. Close and reopen nightjar for the fresh house."))
                 }
                 Button(L("Cancel"), role: .cancel) {}
             } message: {
-                Text(L("Preferences return to their sane defaults, and anything transmitting stands down. Your theme, your backdrops, EMCON's condition, the app lock, and every record stay exactly as they are."))
+                Text(L("Everything returns to exactly as it shipped: settings, theme and backdrops, EMCON's condition, the app lock and every seal, Skelli's memory, sessions, logs, saved files, and the keychain. Anything transmitting stands down first. This cannot be undone."))
             }
         }
     }

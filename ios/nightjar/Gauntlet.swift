@@ -4270,56 +4270,49 @@ final class Gauntlet: ObservableObject {
                 + "ChaCha20-Poly1305, opens, "
                 + "disarmed, gone"
         }
-        // -- THE RESET CHARTER --------------
-        // SaneDefaults restores preferences and
-        // stands down live emissions — it must
-        // never reach art, posture, seals, or
-        // accumulated state (the charter in
-        // Defaults.swift, Chase's ruling,
-        // 2026-10-22). Pinned here so the key
-        // registry cannot drift back.
+        // -- THE FACTORY RESET --------------
+        // SaneDefaults.reset is a FULL factory
+        // reset (Chase's ruling, 2026-10-22,
+        // superseding the preferences-only
+        // charter of the same day): the whole
+        // defaults domain, every keychain class,
+        // and every file container are wiped,
+        // and the census below must therefore
+        // account for EVERY kind of key — art,
+        // posture, seals, and accumulated state
+        // included. Pinned here so the census
+        // cannot quietly shrink back.
 
-        add("house", "reset charter holds") {
+        add("house", "factory reset takes everything") {
             let keys = SaneDefaults.keys
-            let forbidden: [String] = [
-                "theme.selected", "theme.customs",
-                "emcon.condition", "emconActive",
-                "onion.wrap", "cadenceSealOn",
-                "coin.hash", "coin.lockKnocktalk",
-                "knocktalkSuite", "voiceThrow.armed",
-                "season.state",
-                "conductorFiredCounts",
-                "canaryLearnedPaths",
-                "skelli.draft",
-                "skelli.weightsDownloaded",
-            ]
-            for key in forbidden {
-                try Gauntlet.require(
-                    !keys.contains(key),
-                    "the reset reaches " + key
-                    + " — outside its charter")
-            }
-            for key in keys {
-                try Gauntlet.require(
-                    !key.hasPrefix("theme.")
-                    && !key.hasPrefix("deadHand.")
-                    && !key.hasPrefix("heart.")
-                    && !key.hasPrefix("applock"),
-                    "the reset reaches " + key
-                    + " — outside its charter")
-            }
-            for needed in ["house.haptics",
+            for needed in ["theme.selected",
+                           "theme.customs",
+                           "emcon.condition",
+                           "emconActive",
+                           "onion.wrap",
+                           "deadHand.on",
+                           "cadenceSealOn",
+                           "coin.hash",
+                           "coin.lockKnocktalk",
+                           "knocktalkSuite",
+                           "voiceThrow.armed",
+                           "season.state",
+                           "conductorFiredCounts",
+                           "canaryLearnedPaths",
+                           "skelli.draft",
+                           "skelli.weightsDownloaded",
+                           "house.haptics",
                            "onion.socksHost",
                            "onion.socksPort",
                            "stealthMode"] {
                 try Gauntlet.require(
                     keys.contains(needed),
-                    "the reset lost " + needed
-                    + " — a preference it owns")
+                    "the factory census lost " + needed
+                    + " — every kind of key is wiped")
             }
-            return "charter: no art, posture, "
-                + "seal, or state key is reset; "
-                + "its preferences remain"
+            return "factory: the census spans "
+                + "settings, art, posture, seals, "
+                + "and state — nothing survives"
         }
         // -- WAR DRIVE ----------------------
         // The survey log's own shapes, proven

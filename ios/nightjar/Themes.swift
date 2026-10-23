@@ -491,6 +491,17 @@ final class ThemeCenter: ObservableObject {
         revision += 1
     }
 
+    /// Factory dress (the factory reset): storage is
+    /// already wiped when this is called — reconcile the
+    /// live center to match it. No customs, the shipped
+    /// default worn, and nothing written back: the store
+    /// stays exactly as empty as the wipe left it.
+    func factoryReset() {
+        customs = []
+        current = .defaultTheme
+        revision += 1
+    }
+
     private func persistCustoms() {
         if let data = try? JSONEncoder().encode(customs) {
             UserDefaults.standard.set(data, forKey: customsKey)
