@@ -4376,6 +4376,89 @@ final class Gauntlet: ObservableObject {
                 + "settings, art, posture, seals, "
                 + "and state — nothing survives"
         }
+        add("house", "insane defaults hold their table") {
+            // The flag is censused like every key.
+            try Gauntlet.require(
+                SaneDefaults.keys.contains(
+                    InsaneDefaults.flagKey),
+                "the insane flag escaped the census")
+            // Every table key is censused too — the
+            // table may only turn keys the house
+            // accounts for.
+            for row in InsaneDefaults.table {
+                try Gauntlet.require(
+                    SaneDefaults.keys.contains(row.key),
+                    "the insane table turns an "
+                    + "uncensused key: " + row.key)
+            }
+            // The extremes are the documented ones:
+            // crosstalk at its Stepper cap, the
+            // assault rest at its floor, the timing
+            // engine at no delay.
+            let byKey = Dictionary(
+                uniqueKeysWithValues:
+                    InsaneDefaults.table.map {
+                        ($0.key, $0.value)
+                    })
+            try Gauntlet.require(
+                (byKey["talkRounds"] as? Int) == 12,
+                "crosstalk is not at its cap")
+            try Gauntlet.require(
+                (byKey["assault.rest"] as? Double)
+                    == 5.0,
+                "the assault rest is not at its floor")
+            try Gauntlet.require(
+                (byKey["timingDelay"] as? String)
+                    == "0",
+                "the timing delay is not zeroed")
+            // Write, read back, clear — against the
+            // live domain, restoring whatever the
+            // operator had standing on those keys.
+            let defaults = UserDefaults.standard
+            var saved: [String: Any] = [:]
+            for row in InsaneDefaults.table {
+                saved[row.key] = defaults.object(
+                    forKey: row.key)
+            }
+            InsaneDefaults.writeTable(to: defaults)
+            for row in InsaneDefaults.table {
+                let landed: Bool
+                switch row.value {
+                case let want as Bool:
+                    landed = defaults.bool(
+                        forKey: row.key) == want
+                case let want as Int:
+                    landed = defaults.integer(
+                        forKey: row.key) == want
+                case let want as Double:
+                    landed = defaults.double(
+                        forKey: row.key) == want
+                case let want as String:
+                    landed = defaults.string(
+                        forKey: row.key) == want
+                default:
+                    landed = false
+                }
+                try Gauntlet.require(
+                    landed,
+                    "the table did not land on "
+                    + row.key)
+            }
+            InsaneDefaults.clearTable(from: defaults)
+            for row in InsaneDefaults.table {
+                try Gauntlet.require(
+                    defaults.object(forKey: row.key)
+                        == nil,
+                    "clearing the table left "
+                    + row.key + " standing")
+            }
+            for (key, value) in saved {
+                defaults.set(value, forKey: key)
+            }
+            return "insane: \(InsaneDefaults.table.count) "
+                + "keys at their extremes, every one "
+                + "censused, and clearing restores sane"
+        }
         // -- MAWKBOX ------------------------
         // The sound modem, pinned against the
         // ORIGINAL mawkbox implementation: the

@@ -1648,6 +1648,7 @@ struct AboutView: View {
     @AppStorage("listen.bthomeV1") private var bthomeV1 = false
     @AppStorage("postName") private var postName = "phone"
     @State private var confirmReset = false
+    @State private var insaneOn = InsaneDefaults.isOn
     @State private var showColours = false
     @State private var setupShare: ShareItem?
     @State private var importingSetup = false
@@ -1957,6 +1958,25 @@ struct AboutView: View {
                     ExplainToggle(
                         title: L("What a reset does"),
                         text: L("Every setting in this app has a sane default — the safe, legible choice — and the app runs on those defaults until you configure otherwise. The reset below is a factory reset: it erases everything the house has gathered and returns the app to exactly as it shipped."))
+                    Toggle(isOn: Binding(
+                        get: { insaneOn },
+                        set: { on in
+                            insaneOn = on
+                            Haptics.tap()
+                            if on {
+                                InsaneDefaults.apply(
+                                    mouth: mouth, emcon: emcon)
+                                toasts.show(L("Insane defaults — the house at its loudest posture. Nothing started; organs still fire by hand."))
+                            } else {
+                                InsaneDefaults.restore()
+                                toasts.show(L("Insane defaults off — sane defaults hold again."))
+                            }
+                        })) {
+                        Text(L("Insane defaults"))
+                    }
+                    Text(L("The other pole: EMCON open, stealth off, every ear open, tempos at their floor, rounds at their cap. It starts nothing and arms nothing. Off returns these settings to sane."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     Button(role: .destructive) {
                         Haptics.warn()
                         confirmReset = true

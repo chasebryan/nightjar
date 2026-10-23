@@ -36,7 +36,7 @@ enum SaneDefaults {
     /// than any list (see reset()).
     static let keys: [String] = [
         // The app itself
-        "app.language", "house.haptics",
+        "app.language", "house.haptics", "defaults.insane",
         // This post / listening
         "postName", "keepScreenAwake",
         // Send
@@ -209,5 +209,95 @@ enum SaneDefaults {
                 try? fm.removeItem(at: item)
             }
         }
+    }
+}
+
+/// Insane defaults — the other pole (Chase's word, 2026-10-22).
+///
+/// Where the sane defaults are the safe, legible choices, the
+/// insane table is every posture, reach and tempo SETTING at
+/// its extreme: the extra ear open, the fanout per device, UDP
+/// knocked alongside TCP, crosstalk at its round cap, the
+/// assault rest at its floor, her agents awake, the timing
+/// engine at no delay and its fastest interval. The live
+/// posture goes loud with it — EMCON stood down to Open,
+/// stealth off — applied through the live centers, exactly
+/// as the factory reset applies its stand-down.
+///
+/// The line the table never crosses: it writes SETTINGS. It
+/// starts no organ, fires no transmission, arms no seal and
+/// flips no standing emission — those remain the operator's
+/// hand-fired acts, in insane mode exactly as in sane.
+///
+/// Turning the mode off removes the table's keys, and each
+/// setting's own sane @AppStorage default stands back up.
+/// The factory reset takes the flag with the whole domain.
+enum InsaneDefaults {
+
+    /// The mode's own persisted flag — censused in
+    /// SaneDefaults.keys like every other key in the house.
+    static let flagKey = "defaults.insane"
+
+    static var isOn: Bool {
+        UserDefaults.standard.bool(forKey: flagKey)
+    }
+
+    /// The table: each key at the extreme end of its own
+    /// range or meaning, in the type its reader expects.
+    static let table: [(key: String, value: Any)] = [
+        // The BTHome v1 ear: open.
+        ("listen.bthomeV1", true),
+        // Centipede: a payload per device, not per room.
+        ("centipedePerDevice", true),
+        // Recon: UDP knocked alongside TCP.
+        ("reconKnockUDP", true),
+        // Crosstalk: the Stepper's own cap.
+        ("talkRounds", 12),
+        // Net-Assault: the rest at its floor — near-relentless.
+        ("assault.rest", 5.0),
+        // Her agents: awake.
+        ("skelli.agents", true),
+        // The timing engine: no delay, the fastest
+        // interval, twenty rounds.
+        ("timingDelay", "0"),
+        ("timingInterval", "1"),
+        ("timingRounds", "20"),
+    ]
+
+    /// Write the table into a defaults domain.
+    static func writeTable(to defaults: UserDefaults) {
+        for row in table {
+            defaults.set(row.value, forKey: row.key)
+        }
+    }
+
+    /// Remove the table's keys; the sane defaults return.
+    static func clearTable(from defaults: UserDefaults) {
+        for row in table {
+            defaults.removeObject(forKey: row.key)
+        }
+    }
+
+    /// Flip the mode on: the table lands, the flag stands,
+    /// and the live posture goes loud.
+    static func apply(mouth: Mouth, emcon: Emcon) {
+        writeTable(to: .standard)
+        UserDefaults.standard.set(true, forKey: flagKey)
+        emcon.deactivate()
+        mouth.setStealth(false)
+        Journal.log("defaults", "insane",
+                    "insane defaults on — posture, reach "
+                    + "and tempo at their extremes")
+    }
+
+    /// Flip it off: the table's keys go, the sane defaults
+    /// stand back up. The live posture stays where the
+    /// operator has it — nothing was silenced to undo.
+    static func restore() {
+        clearTable(from: .standard)
+        UserDefaults.standard.set(false, forKey: flagKey)
+        Journal.log("defaults", "insane",
+                    "insane defaults off — the sane "
+                    + "defaults hold these keys again")
     }
 }
