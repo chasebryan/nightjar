@@ -111,9 +111,15 @@ enum Knocktalk {
     }
 
     /// Fragment frames in the suite layout:
-    /// [sync] [suite] [index] [total] [payload] [checksum] —
+    /// [sync] [suite] [index] [total−1] [payload] [checksum] —
     /// an even nibble count, which also keeps them distinct
     /// from legacy odd-count frames and from v1 streams.
+    /// The total rides as total−1: a nibble tops at fifteen,
+    /// and sixteen fragments are lawful (the full 192-byte
+    /// budget) — writing the raw total indexed one past the
+    /// alphabet's end and trapped on exactly the longest
+    /// lawful messages (fix368; the receiver adds the one
+    /// back).
     static func fragmentFrames(sealed: Data, suite: Int) -> [[Int]] {
         var chunks: [[UInt8]] = []
         var start = 0
@@ -125,7 +131,7 @@ enum Knocktalk {
         if chunks.isEmpty { chunks = [[]] }
         let total = chunks.count
         return chunks.enumerated().map { index, chunk in
-            var nibbles = [suite, index, total]
+            var nibbles = [suite, index, total - 1]
             for byte in chunk {
                 nibbles.append(Int(byte >> 4))
                 nibbles.append(Int(byte & 0x0F))
@@ -496,7 +502,10 @@ final class KnockEngine {
                                 suiteLayout: Bool) -> Bool {
         let suite = suiteLayout ? n[0] : Knocktalk.suiteChaCha
         let index = suiteLayout ? n[1] : n[0]
-        let total = suiteLayout ? n[2] : n[1]
+        // The suite layout carries total−1 (see
+        // fragmentFrames); the legacy layout
+        // predates the encoding and reads raw.
+        let total = suiteLayout ? n[2] + 1 : n[1]
         guard (1...Knocktalk.maxFragments).contains(total),
               index < total else { return false }
         let header = suiteLayout ? 3 : 2

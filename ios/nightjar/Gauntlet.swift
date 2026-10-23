@@ -472,6 +472,31 @@ final class Gauntlet: ObservableObject {
                          "gauntlet self-check")
             return nil
         }
+        add("house", "the longest knock survives") {
+            // fix368: sixteen fragments are the
+            // lawful maximum, and the total rides
+            // the wire as total−1 — the raw total
+            // indexed one past the alphabet's end
+            // and trapped on exactly the longest
+            // lawful messages.
+            let sealed = Data(repeating: 0xAB,
+                count: Knocktalk.maxSealedBytes)
+            let frames = Knocktalk.fragmentFrames(
+                sealed: sealed,
+                suite: Knocktalk.suiteChaCha)
+            try Gauntlet.require(
+                frames.count
+                    == Knocktalk.maxFragments,
+                "the full budget must fragment "
+                    + "into sixteen")
+            let totalPort = frames[0][3]
+            try Gauntlet.require(
+                Knocktalk.alphabet.firstIndex(
+                    of: totalPort)
+                    == Knocktalk.maxFragments - 1,
+                "the total must ride as total−1")
+            return nil
+        }
 
         // -- REGISTRIES ---------------------------
         add("registries", "company table whole") {
@@ -1191,6 +1216,7 @@ final class Gauntlet: ObservableObject {
                     + "— skipped"
             }
             var problems: [String] = []
+            var heldEmpty = 0
             for language in LanguageCenter
                     .languages
             where language.code != "en" {
@@ -1199,6 +1225,19 @@ final class Gauntlet: ObservableObject {
                 else {
                     problems.append(
                         "\(language.code): no table")
+                    continue
+                }
+                // ENGLISH-ONLY ERA (Chase's ruling,
+                // 2026-10-21): the twelve tables
+                // stand emptied on purpose, their
+                // full text kept in the repository's
+                // history for re-adoption. A wholly
+                // empty table is the ruling, not a
+                // regression — but a PARTIALLY
+                // filled one is neither whole nor
+                // held, and still fails here.
+                if table.isEmpty {
+                    heldEmpty += 1
                     continue
                 }
                 if table.count < english.count / 2 {
@@ -1226,6 +1265,11 @@ final class Gauntlet: ObservableObject {
             try Gauntlet.require(
                 problems.isEmpty,
                 problems.joined(separator: "; "))
+            if heldEmpty > 0 {
+                return "english whole; \(heldEmpty) "
+                    + "tables held empty by the "
+                    + "english-only ruling"
+            }
             return "\(LanguageCenter.languages.count)"
                 + " languages checked"
         }

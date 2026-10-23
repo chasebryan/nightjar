@@ -542,7 +542,19 @@ extension BlacksiteBench {
                 _ = sem.wait(
                     timeout: .now() + 5)
                 connection.cancel()
-                if ready, let got = negotiated, got != version {
+                if ready, negotiated == nil {
+                    // The door answered but the
+                    // negotiated version could
+                    // not be read (fix368): the
+                    // old fall-through called
+                    // this "accepted" — proof
+                    // of nothing, claimed as a
+                    // grading. It counts as
+                    // neither accepted nor
+                    // refused.
+                    untestable = true
+                    emit(String(format: L("%@ — answered, but the negotiated version could not be read; %@ is neither proven nor cleared."), String(describing: label), String(describing: label)), .out)
+                } else if ready, let got = negotiated, got != version {
                     untestable = true
                     let gotLabel = versions.first(where: { $0.1 == got })?.0 ?? "?"
                     emit(String(format: L("%@ — cannot be tested from this device: its own stack negotiated %@ instead."), String(describing: label), String(describing: gotLabel)), .out)

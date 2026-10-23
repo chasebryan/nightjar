@@ -118,6 +118,22 @@ final class EditorCore: ObservableObject {
         set {
             guard buffers.indices.contains(current)
             else { return }
+            // A pending "press again to discard"
+            // confirmation dies with the next
+            // change to the buffer — an edit or
+            // a save (fix368): the flags used to
+            // live forever, so a warning shown
+            // once, long ago, let a much later
+            // C-x C-c (or C-x k) discard fresh
+            // unsaved work with no warning at
+            // all.
+            if buffers[current].lines
+                != newValue.lines
+                || buffers[current].dirty
+                    != newValue.dirty {
+                quitPending = false
+                killPending = false
+            }
             buffers[current] = newValue
         }
     }

@@ -2436,7 +2436,13 @@ extension Betafisch {
     }
 
     static let filterProtocols: Set<String> = [
-        "eth", "arp", "ip", "ipv6", "icmp",
+        // "ipv4" stands in the set so the word
+        // is accepted; the parser normalizes it
+        // to "ip", the name frames carry
+        // (fix368 — the alias used to sit
+        // downstream of this membership test
+        // and could never be reached).
+        "eth", "arp", "ip", "ipv4", "ipv6", "icmp",
         "icmpv6", "udp", "tcp", "dns", "http",
         "dhcp", "mdns", "nbns", "ssdp", "ntp",
         "tftp", "tls", "http2", "smb",

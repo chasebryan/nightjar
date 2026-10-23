@@ -95,7 +95,16 @@ final class BlinkCollector {
             .replacingOccurrences(of: "-", with: "+")
         guard let data = Data(base64Encoded: body)
         else { return nil }
-        if total != nil, total != count { reset() }
+        // A new message resets the board — a new
+        // COUNT, and just as much a new SUITE with
+        // the same count (fix368): the old check
+        // watched only the count, so two messages'
+        // frames could interleave into one body
+        // under the second sender's suite.
+        if total != nil,
+           total != count || self.suite != suite {
+            reset()
+        }
         total = count
         self.suite = suite
         chunks[index] = data

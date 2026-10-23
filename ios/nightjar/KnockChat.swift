@@ -240,7 +240,8 @@ final class KnockChat: ObservableObject {
     func resend(messageID: String, key: SymmetricKey) {
         guard let message = find(messageID),
               let sealed = try? Knocktalk.seal(message.text, key: key,
-                                               suite: sendSuite)
+                                               suite: sendSuite),
+              sealed.count <= Knocktalk.maxSealedBytes
         else { return }
         sealedStore[messageID] = sealed
         repairRounds[messageID] = 0

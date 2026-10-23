@@ -425,12 +425,17 @@ extension BlacksiteBench {
 
     /// A server's address: names are
     /// resolved on the system road;
-    /// addresses pass through.
+    /// addresses pass through. The literal
+    /// test is inet_pton itself (fix368) —
+    /// the old spelling passed any name
+    /// that merely STARTED with a digit
+    /// ("3com.example") through as if it
+    /// were already an address.
     private static func nameServerIP(
         _ server: String) -> String? {
-        if BlacksiteNet.resolve4(server)
-            != nil,
-           server.first?.isNumber == true {
+        var literal = in_addr()
+        if inet_pton(AF_INET, server,
+                     &literal) == 1 {
             return server
         }
         return BlacksiteNet.resolve4(
@@ -585,14 +590,45 @@ extension BlacksiteBench {
             fd, seconds: timeout)
         var buffer = [UInt8](
             repeating: 0, count: 65536)
-        let got = recv(fd, &buffer,
-                       buffer.count, 0)
-        let elapsed = Date()
-            .timeIntervalSince(started)
-        guard got >= 12 else { return nil }
-        return nameParse(
-            Array(buffer[0..<got]),
-            elapsed: elapsed)
+        // The answer must be THE answer
+        // (fix368): the old read took the
+        // first datagram that arrived, from
+        // anyone, bearing any transaction
+        // ID — a stranger's reply (or a
+        // spoofer's) parsed as the server's
+        // word. Datagrams that are not this
+        // question's reply, from the server
+        // asked, are discarded until the
+        // clock runs out.
+        while Date().timeIntervalSince(
+                started) < timeout {
+            var from = sockaddr_in()
+            var fromLen = socklen_t(
+                MemoryLayout<sockaddr_in>.size)
+            let got = withUnsafeMutablePointer(
+                to: &from) { ptr in
+                ptr.withMemoryRebound(
+                    to: sockaddr.self,
+                    capacity: 1) { sa in
+                    recvfrom(fd, &buffer,
+                             buffer.count, 0,
+                             sa, &fromLen)
+                }
+            }
+            if got < 0 { return nil }
+            guard got >= 12,
+                  from.sin_addr.s_addr
+                    == dest.sin_addr.s_addr,
+                  buffer[0] == packet[0],
+                  buffer[1] == packet[1]
+            else { continue }
+            let elapsed = Date()
+                .timeIntervalSince(started)
+            return nameParse(
+                Array(buffer[0..<got]),
+                elapsed: elapsed)
+        }
+        return nil
     }
 
     /// One question over TCP, and the
@@ -2693,6 +2729,14 @@ extension BlacksiteBench {
                    aaaa.answers.contains(
                         where: { $0.type == 28 }) {
                     roads.append("IPv6")
+                }
+                // "On both roads" means BOTH
+                // (fix368): the old count took
+                // any exchanger with an AAAA,
+                // IPv6-only doors included, and
+                // the verdict overstated the
+                // house's dual-stack strength.
+                if roads.count == 2 {
                     v6Ready += 1
                 }
                 nameSay(emit, String(format: L("mxprobe: %lld %@ — %@."), pref, host, roads.isEmpty ? L("no address answers for it: a dead exchanger, kept on the sign") : roads.joined(separator: " + ")), roads.isEmpty ? .err : .out)
@@ -2786,7 +2830,8 @@ extension BlacksiteBench {
             }
 
             func walk(_ name: String,
-                      _ depth: Int) {
+                      _ depth: Int,
+                      _ viaRedirect: Bool = false) {
                 guard depth <= 5,
                       seen.insert(
                         name.lowercased())
@@ -2812,7 +2857,20 @@ extension BlacksiteBench {
                         token)
                     switch mech {
                     case "all":
-                        if depth == 0 {
+                        // The deciding terminal:
+                        // this record's own, or a
+                        // redirect target's — a
+                        // redirect hands the whole
+                        // evaluation over (RFC
+                        // 7208), so its `all` IS
+                        // the verdict. An
+                        // include's `all` decides
+                        // only the include, never
+                        // the walk (fix368: the
+                        // old depth==0 gate left
+                        // redirect-only records
+                        // judged "no terminal").
+                        if depth == 0 || viaRedirect {
                             terminal = token
                         }
                     case "include":
@@ -2823,7 +2881,8 @@ extension BlacksiteBench {
                     case "redirect":
                         count += 1
                         if let tgt = tgt {
-                            walk(tgt, depth + 1)
+                            walk(tgt, depth + 1,
+                                 true)
                         }
                     case "a", "mx", "ptr",
                          "exists":
@@ -3369,6 +3428,7 @@ extension BlacksiteBench {
                 return
             }
             var seen = Set<String>()
+            var counted = 0
             var issuers: [String: Int] = [:]
             var names = Set<String>()
             var wildcards = 0
@@ -3381,6 +3441,7 @@ extension BlacksiteBench {
                     .inserted {
                     continue
                 }
+                counted += 1
                 var issuer = nameField(
                     entry, "issuer_name")
                     ?? "?"
@@ -3423,7 +3484,7 @@ extension BlacksiteBench {
             wildcards = names.filter {
                 $0.hasPrefix("*.")
             }.count
-            nameSay(emit, String(format: L("certtrans: the logs hold %lld certificate(s) for %@, covering %lld distinct name(s), %lld of them wildcards."), seen.count, domain, names.count, wildcards), .sys)
+            nameSay(emit, String(format: L("certtrans: the logs hold %lld certificate(s) for %@, covering %lld distinct name(s), %lld of them wildcards."), counted, domain, names.count, wildcards), .sys)
             let top = issuers.sorted {
                 $0.value > $1.value
             }.prefix(3)

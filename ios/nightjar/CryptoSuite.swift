@@ -315,13 +315,27 @@ enum CryptoSuite {
 
     // MARK: - Keys and randomness
 
+    /// Random bytes for keys, salts and pads. The
+    /// SecRandom status is CHECKED (fix368): the
+    /// old spelling discarded it, so a failed call
+    /// returned the zero-filled buffer it started
+    /// with — silent zero key material. On failure
+    /// the bytes come from the system generator
+    /// instead: never zeros, never a trap.
     static func randomBytes(_ count: Int) -> Data {
         var data = Data(count: count)
-        data.withUnsafeMutableBytes { buffer in
+        let status = data.withUnsafeMutableBytes { buffer in
             guard let base = buffer.baseAddress
-            else { return }
-            SecRandomCopyBytes(kSecRandomDefault,
-                               count, base)
+            else { return errSecSuccess }
+            return SecRandomCopyBytes(kSecRandomDefault,
+                                      count, base)
+        }
+        if status != errSecSuccess {
+            var generator = SystemRandomNumberGenerator()
+            for i in data.indices {
+                data[i] = UInt8.random(in: .min ... .max,
+                                       using: &generator)
+            }
         }
         return data
     }

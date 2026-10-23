@@ -5685,10 +5685,7 @@ final class BlacksiteShell: ObservableObject {
     private func fetchCommand(
         neofetch: Bool) {
         let kernel = BlacksiteKernel.shared
-        let version = Bundle.main
-            .infoDictionary?[
-                "CFBundleShortVersionString"]
-            as? String ?? "10.0"
+        let version = AppInfo.version
         let user = env["USER"] ?? "operator"
         let title = "\(user)@nightjar"
         let bold = "\u{1B}[1m"
@@ -5716,8 +5713,13 @@ final class BlacksiteShell: ObservableObject {
             count: title.count))
         info.append(field(
             L("OS"), String(format: L("Blacksite %@ · the house kernel"), String(describing: version))))
+#if os(iOS)
+        let hostLine = String(format: L("%@ · iOS %@"), String(describing: machineName()), String(describing: UIDevice.current.systemVersion))
+#else
+        let hostLine = String(format: L("%@ · macOS %@"), String(describing: machineName()), String(describing: UIDevice.current.systemVersion))
+#endif
         info.append(field(
-            L("Host"), String(format: L("%@ · iOS %@"), String(describing: machineName()), String(describing: UIDevice.current.systemVersion))))
+            L("Host"), hostLine))
         info.append(field(
             L("Kernel"), String(format: L("blacksite · %@ live · %@ spawned"), String(describing: kernel.liveCount), String(describing: kernel.totalSpawned))))
         info.append(field(
@@ -9467,9 +9469,16 @@ final class BlacksiteShell: ObservableObject {
         emit(String(format: L("census of %@ known devices, in turn…"), String(describing: board.count)), .sys)
         Task { [weak self] in
             guard let self = self else { return }
+            var finished = true
             for neighbor in board.prefix(12) {
-                if self.workStopped { break }
-                if self.recon.knocking { break }
+                if self.workStopped {
+                    finished = false
+                    break
+                }
+                if self.recon.knocking {
+                    finished = false
+                    break
+                }
                 let ports = neighbor.ports.isEmpty
                     ? ScanModel.topPorts.map { $0.0 }
                     : neighbor.ports
@@ -9486,9 +9495,18 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
             await MainActor.run {
-                if !self.workStopped {
+                // "Complete" only when the tour
+                // actually finished (fix368): the
+                // old line printed it after the
+                // knocking-break too, claiming a
+                // census that had stood down.
+                if finished && !self.workStopped {
                     self.emit(
                         L("census complete."),
+                        .sys)
+                } else if !self.workStopped {
+                    self.emit(
+                        L("census ended early."),
                         .sys)
                 }
             }

@@ -2302,10 +2302,25 @@ extension BlacksiteBench {
             guard parts.count == 3 else {
                 continue
             }
-            let key = String(parts[0])
-                .replacingOccurrences(
-                    of: "fox:", with: "")
-            props[key] = String(parts[2])
+            // The line's shape is the one
+            // this house's own hello uses:
+            // fox:<key>:<type>:<value>. The
+            // key is the SECOND field and the
+            // value carries a one-letter type
+            // tag (fix368): the old parse keyed
+            // every line "fox" — the protocol
+            // prefix — so no property was ever
+            // found and the facts never built.
+            let key = String(parts[1])
+            var value = String(parts[2])
+            if value.count > 2,
+               value[value.index(
+                    value.startIndex,
+                    offsetBy: 1)] == ":" {
+                value = String(
+                    value.dropFirst(2))
+            }
+            props[key] = value
         }
         var facts: [String] = []
         if let v = props["stationName"] {

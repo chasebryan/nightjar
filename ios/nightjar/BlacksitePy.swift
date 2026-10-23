@@ -5488,7 +5488,12 @@ extension PyInterp {
         -> PyValue {
         switch value {
         case .int(let n):
-            if op == "-" { return .int(-n) }
+            if op == "-" {
+                if n == Int.min {
+                    throw overflowError(line)
+                }
+                return .int(-n)
+            }
             if op == "+" { return .int(n) }
             if op == "~" { return .int(~n) }
         case .float(let d):
@@ -5542,6 +5547,31 @@ extension PyInterp {
             q -= 1
         }
         return q
+    }
+
+    /// The fixed-width overflow error (fix368):
+    /// CPython grows a bigint where this house
+    /// holds 64 bits — the honest answer is an
+    /// OverflowError the script can catch, never
+    /// a Swift trap that takes the HOST down
+    /// with the guest.
+    func overflowError(_ line: Int) -> PyError {
+        PyError(
+            "OverflowError",
+            "integer overflow — this "
+                + "interpreter's ints are 64-bit",
+            line: line)
+    }
+
+    /// A reporting-arithmetic result, unwrapped
+    /// or thrown as the overflow error.
+    func checked(_ result: (partialValue: Int,
+                            overflow: Bool),
+                 _ line: Int) throws -> Int {
+        if result.overflow {
+            throw overflowError(line)
+        }
+        return result.partialValue
     }
 
     func evalBinary(_ op: String,
@@ -5662,9 +5692,19 @@ extension PyInterp {
         if let a = asInt(left),
            let b = asInt(right) {
             switch op {
-            case "+": return .int(a + b)
-            case "-": return .int(a - b)
-            case "*": return .int(a * b)
+            case "+":
+                return .int(try checked(
+                    a.addingReportingOverflow(b),
+                    line))
+            case "-":
+                return .int(try checked(
+                    a.subtractingReportingOverflow(b),
+                    line))
+            case "*":
+                return .int(try checked(
+                    a.multipliedReportingOverflow(
+                        by: b),
+                    line))
             case "/":
                 if b == 0 {
                     throw PyError(
@@ -5682,6 +5722,9 @@ extension PyInterp {
                             + "modulo by zero",
                         line: line)
                 }
+                if a == Int.min, b == -1 {
+                    throw overflowError(line)
+                }
                 return .int(floorDiv(a, b))
             case "%":
                 if b == 0 {
@@ -5691,13 +5734,28 @@ extension PyInterp {
                             + "modulo by zero",
                         line: line)
                 }
+                if a == Int.min, b == -1 {
+                    return .int(0)
+                }
                 return .int(
                     a - floorDiv(a, b) * b)
             case "**":
                 if b >= 0 {
+                    if a == 0 {
+                        return .int(b == 0 ? 1 : 0)
+                    }
+                    if a == 1 { return .int(1) }
+                    if a == -1 {
+                        return .int(
+                            b % 2 == 0 ? 1 : -1)
+                    }
                     var result = 1
                     for _ in 0..<b {
-                        result *= a
+                        result = try checked(
+                            result
+                                .multipliedReportingOverflow(
+                                    by: a),
+                            line)
                     }
                     return .int(result)
                 }
@@ -5705,8 +5763,31 @@ extension PyInterp {
                     pow(Double(a),
                         Double(b)))
             case "<<":
-                return .int(a << b)
+                if b < 0 {
+                    throw PyError(
+                        "ValueError",
+                        "negative shift count",
+                        line: line)
+                }
+                if b >= 64 {
+                    if a == 0 { return .int(0) }
+                    throw overflowError(line)
+                }
+                let shifted = a << b
+                if (shifted >> b) != a {
+                    throw overflowError(line)
+                }
+                return .int(shifted)
             case ">>":
+                if b < 0 {
+                    throw PyError(
+                        "ValueError",
+                        "negative shift count",
+                        line: line)
+                }
+                if b >= 64 {
+                    return .int(a >= 0 ? 0 : -1)
+                }
                 return .int(a >> b)
             case "&": return .int(a & b)
             case "|": return .int(a | b)
@@ -7447,6 +7528,9 @@ extension PyInterp {
         case "abs":
             try needArgs(name, args, 1, line)
             if let n = asInt(args[0]) {
+                if n == Int.min {
+                    throw overflowError(line)
+                }
                 return .int(abs(n))
             }
             if let d = asDouble(args[0]) {
@@ -7781,6 +7865,9 @@ extension PyInterp {
                         "ZeroDivisionError",
                         "divmod() by zero",
                         line: line)
+                }
+                if a == Int.min, b == -1 {
+                    throw overflowError(line)
                 }
                 let q = floorDiv(a, b)
                 return .tuple(
@@ -13086,12 +13173,12 @@ extension PyInterp {
                         + "count",
                     line: line)
             }
-            return .list(PyList(
+            // CPython returns bytes, not a list
+            // of ints (fix368).
+            return .bytes(
                 (0..<max(0, n)).map { _ in
-                    PyValue.int(
-                        Int(UInt8.random(
-                            in: 0...255)))
-                }))
+                    UInt8.random(in: 0...255)
+                })
 
         // os.path — the pure string half.
         case ("os.path", "join"):
@@ -14828,9 +14915,11 @@ extension PyInterp {
             let derived = try pbkdf2(
                 algo, password, salt,
                 rounds, dklen)
-            return .str(derived.map {
-                String(format: "%02x", $0)
-            }.joined())
+            // CPython returns the raw derived
+            // key as bytes (fix368) — the hex
+            // spelling is .hex() on the caller's
+            // own side, as in CPython.
+            return .bytes(derived)
         default:
             throw PyError(
                 "AttributeError",

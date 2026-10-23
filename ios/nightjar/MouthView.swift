@@ -1853,31 +1853,49 @@ struct SendView: View {
                 }
             }
         }
+        // The plant is recorded only when the
+        // send CONFIRMS (fix368): the old shape
+        // wrote lastPlant before the send, so
+        // Verify — which reads the record, not
+        // the form — verified plants that had
+        // never landed.
+        func confirm(_ service: String,
+                     _ key: String)
+            -> (Bool) -> Void {
+            { ok in
+                if ok {
+                    DispatchQueue.main.async {
+                        lastPlant = (
+                            service: service,
+                            key: key,
+                            target: plantedTarget)
+                    }
+                }
+                report(ok)
+            }
+        }
         switch plantKind {
         case "redis":
-            lastPlant = (service: "redis", key: plantKey,
-                         target: plantedTarget)
             mouth.sendNetwork(
                 target: value,
                 payload: PayloadKit.redisCommand(
                     ["SET", plantKey, plantValue]),
                 framing: "raw", read: true, timeout: 5,
-                completion: report)
+                completion: confirm("redis",
+                                    plantKey))
         case "memcached":
-            lastPlant = (service: "memcached", key: plantKey,
-                         target: plantedTarget)
             mouth.sendNetwork(
                 target: value,
                 payload: PayloadKit.memcachedSet(key: plantKey,
                                                  value: plantValue),
                 framing: "raw", read: true, timeout: 5,
-                completion: report)
+                completion: confirm("memcached",
+                                    plantKey))
         default:
-            lastPlant = (service: "mqtt", key: plantTopic,
-                         target: plantedTarget)
             mouth.plantMQTT(host: host, port: port, topic: plantTopic,
                             payload: Data(plantValue.utf8),
-                            completion: report)
+                            completion: confirm("mqtt",
+                                                plantTopic))
         }
     }
 

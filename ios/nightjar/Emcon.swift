@@ -395,7 +395,17 @@ final class Emcon: ObservableObject {
         condition = goal
         EmconCondition.store(goal)
         enforce(mouth: mouth)
-        startTripwire()
+        // The tripwire is an EMCON organ: engaging
+        // OPEN stands it down (fix368). The old
+        // line armed it unconditionally, so
+        // Lockdown.lift() — which restores through
+        // activate — left the wire bound while its
+        // own report said the house was open.
+        if goal == .open {
+            stopTripwire()
+        } else {
+            startTripwire()
+        }
         // The relay poll answers to the condition too.
         chat.refreshRelayPolling()
         Journal.log("emcon", "posture",

@@ -1305,6 +1305,7 @@ extension BlacksiteNet {
             using: udp ? .udp : .tcp)
         let box = StreamBox()
         var watchdog: DispatchWorkItem?
+        var waitWatchdog: DispatchWorkItem?
         let finish: (String?) -> Void = {
             problem in
             guard !box.finished else {
@@ -1312,6 +1313,7 @@ extension BlacksiteNet {
             }
             box.finished = true
             watchdog?.cancel()
+            waitWatchdog?.cancel()
             connection.cancel()
             if let problem = problem,
                box.data.isEmpty {
@@ -1334,6 +1336,8 @@ extension BlacksiteNet {
             state in
             switch state {
             case .ready:
+                waitWatchdog?.cancel()
+                waitWatchdog = nil
                 if let payload = payload,
                    !payload.isEmpty {
                     connection.send(
@@ -1356,7 +1360,26 @@ extension BlacksiteNet {
             case .failed(let error):
                 finish(describe(error))
             case .waiting(let error):
-                finish(describe(error))
+                // .waiting is TRANSIENT
+                // (fix368): the path is not
+                // ready YET, and the stack
+                // retries on its own. The old
+                // spelling finished here, so
+                // any exchange whose route
+                // took a moment to settle
+                // died as a failure. A grace
+                // clock runs instead; only a
+                // wait that never ends is a
+                // failure.
+                waitWatchdog?.cancel()
+                let grace = DispatchWorkItem {
+                    finish(describe(error))
+                }
+                waitWatchdog = grace
+                DispatchQueue.global()
+                    .asyncAfter(
+                        deadline: .now() + 5,
+                        execute: grace)
             default:
                 break
             }
