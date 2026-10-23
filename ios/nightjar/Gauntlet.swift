@@ -3616,8 +3616,9 @@ final class Gauntlet: ObservableObject {
                 "the theme roster moved")
             cases += 1
             try Gauntlet.require(
-                themes.first?.id == "phosphor",
-                "the default theme is not first")
+                AppTheme.defaultTheme.id == "redteam",
+                "the house default is not "
+                    + "Violent Redteam")
             func hexOK(_ text: String) -> Bool {
                 guard text.count == 7,
                       text.hasPrefix("#") else {

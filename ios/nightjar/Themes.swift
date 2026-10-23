@@ -168,6 +168,15 @@ struct AppTheme: Identifiable, Codable, Equatable {
                                        .amber, .bone,
                                        .halloween, .christmas,
                                        .blackGlass, .redteam]
+
+    /// The house default (Chase's order,
+    /// 2026-10-22, the plumage pass):
+    /// Violent Redteam — what a fresh
+    /// install wears before any choice,
+    /// and where the fallbacks land. The
+    /// roster's order is its own thing;
+    /// this is the default.
+    static let defaultTheme = redteam
 }
 
 // MARK: - Backdrop slots and choices
@@ -448,7 +457,7 @@ final class ThemeCenter: ObservableObject {
         let wanted = defaults.string(forKey: selectedKey)
         current = AppTheme.builtIns.first { $0.id == wanted }
             ?? savedCustoms.first { $0.id == wanted }
-            ?? .phosphor
+            ?? .defaultTheme
     }
 
     var allThemes: [AppTheme] { AppTheme.builtIns + customs }
@@ -476,7 +485,9 @@ final class ThemeCenter: ObservableObject {
     func deleteCustom(_ theme: AppTheme) {
         customs.removeAll { $0.id == theme.id }
         persistCustoms()
-        if current.id == theme.id { apply(.phosphor) }
+        if current.id == theme.id {
+            apply(.defaultTheme)
+        }
         revision += 1
     }
 
