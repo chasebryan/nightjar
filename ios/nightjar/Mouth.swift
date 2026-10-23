@@ -1938,21 +1938,20 @@ final class Mouth: NSObject, ObservableObject {
     /// pinned by the Gauntlet.
     ///
     /// Why a payload that busts the budget is
-    /// now left on the ground: every recorded
-    /// -[CBUUID UTF8String] death — the Netbomb
-    /// run of 2026-10-18, the Banshee's screams
-    /// of 2026-10-22 and 2026-10-23, on 11.0 and
-    /// 12.0 alike — was a payload beacon whose
-    /// words could never fit the legacy frame
-    /// (the Banshee's run to sixty bytes), while
-    /// the GATT host (no payload) and the flare
-    /// (an eight-byte token) have no crash on
-    /// record. CoreBluetooth is handed only
-    /// what the air can lawfully carry; a beacon
-    /// too large for its payload advertises its
-    /// name alone, and the drop is written to
-    /// the developer log where the next crash
-    /// report can acquit or convict this law.
+    /// left on the ground: a legacy frame
+    /// physically cannot carry more, and the
+    /// name rides alone rather than not at
+    /// all. This budget was once indicted for
+    /// the -[CBUUID UTF8String] deaths
+    /// (fix377) — and the TOTALITY crash of
+    /// 2026-10-23 acquitted it: that payload
+    /// ran 29 of these 31 bytes and died
+    /// identically. The convicted fault is
+    /// the three-field start (name + UUIDs
+    /// field + service data together), and
+    /// its repair lives in applyAdvertising
+    /// (fix385). The gate stays as what it
+    /// always truly was: air arithmetic.
     static func advertisementFits(
         name: String, serviceData: Data?) -> Bool {
         var total = 3 + 2 + name.utf8.count + 4
@@ -2031,23 +2030,50 @@ final class Mouth: NSObject, ObservableObject {
             var advertisement: [String: Any] = [
                 CBAdvertisementDataLocalNameKey: want.name,
             ]
-            advertisement[CBAdvertisementDataServiceUUIDsKey] =
-                [Mouth.serviceUUID]
+            // fix385: a payload start carries the
+            // name and the service data — NOT the
+            // standalone service-UUIDs field as
+            // well. Every -[CBUUID UTF8String]
+            // death on record (2026-10-18 through
+            // 2026-10-23, on 11.0 and 12.0 alike)
+            // is a start that carried all three
+            // fields at once, and the last of
+            // them acquits everything else: the
+            // TOTALITY beacon ran 29 of the 31
+            // budget bytes — inside the budget
+            // fix377 set — and died identically,
+            // inside CoreBluetooth's marshalling,
+            // before any delegate could answer.
+            // The fault is the combination as
+            // this iOS marshals it. Nothing is
+            // lost by dropping the third field:
+            // the service-data field carries the
+            // UUID on the wire in its own header,
+            // and the post reads beacons from the
+            // data field, keyed by that same
+            // UUID. The UUIDs field still rides
+            // whenever no payload does — the
+            // GATT host's shape, which has never
+            // died. The payload itself now rides
+            // as NSData, the type the framework's
+            // own headers name for the slot, so
+            // no Swift bridging stands between
+            // the house and the radio either.
+            var payloadRides = false
             if let data = want.serviceData {
                 // A payload rides only when the
                 // whole advertisement fits the
                 // legacy budget (see
-                // advertisementFits): the beacon's
-                // long shouts are the crash's whole
-                // rap sheet. The flare's eight-byte
-                // token is beneath notice either
-                // way, and the GATT host carries
-                // no payload at all.
+                // advertisementFits) — a legacy
+                // frame physically cannot carry
+                // more, whatever the marshalling
+                // makes of it.
                 if Mouth.advertisementFits(
                     name: want.name, serviceData: data) {
                     advertisement[
                         CBAdvertisementDataServiceDataKey] =
-                        [Mouth.serviceUUID: data]
+                        [Mouth.serviceUUID: data as NSData]
+                    payloadRides = true
                 } else {
                     DevLog.event(
                         "ble",
@@ -2056,6 +2082,11 @@ final class Mouth: NSObject, ObservableObject {
                         + "the 31-byte air budget; "
                         + "the name rides alone")
                 }
+            }
+            if !payloadRides {
+                advertisement[
+                    CBAdvertisementDataServiceUUIDsKey] =
+                    [Mouth.serviceUUID]
             }
             DevLog.event("ble",
                          "advertising as "
