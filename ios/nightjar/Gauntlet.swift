@@ -3811,10 +3811,11 @@ final class Gauntlet: ObservableObject {
             // filed by the operator under its slot's
             // exact name. A GIF anywhere else in the
             // bundle is a stowaway. The wardrobe
-            // itself ships EMPTY, so its slots all
-            // answer nil until he files a film — and
-            // the shipped stills (the bird, as PNGs)
-            // must be present.
+            // ships FILLED (fix360: all six of the
+            // operator's films filed under their
+            // slot names); an unfiled slot answers
+            // nil, and the shipped stills (the
+            // bird, as PNGs) must be present.
             cases += 1
             var strays: [String] = []
             if let resources = Bundle.main.resourceURL,
@@ -3857,7 +3858,7 @@ final class Gauntlet: ObservableObject {
                         + "are not a GIF")
             }
             return "\(cases) cases: every GIF in "
-                + "the wardrobe, the wardrobe empty, "
+                + "the wardrobe, its slots honest, "
                 + "the bird stills ship"
         }
         add("stage", "films frame their subject") {
@@ -4063,8 +4064,8 @@ final class Gauntlet: ObservableObject {
         add("wardrobe", "the labz boot engages") {
             // The boot screen's law (Chase's
             // commission, ruled three times on
-            // 2026-10-22): the flood answers every
-            // still backdrop, from either slot —
+            // 2026-10-22): the Labz boot answers
+            // every still backdrop, from either slot —
             // fix344's provided-only gate left a
             // custom-still house with the old
             // ceremony, and the ordered boot did
@@ -4079,33 +4080,33 @@ final class Gauntlet: ObservableObject {
             try Gauntlet.require(
                 BootMedia.glitchEngages(
                     media: "provided", data: png),
-                "the stock still does not flood")
+                "the stock still does not engage")
             try Gauntlet.require(
                 BootMedia.glitchEngages(
                     media: "custom", data: png),
                 "the operator's still does not "
-                    + "flood — the fix344 gate")
+                    + "engage — the fix344 gate")
             try Gauntlet.require(
                 !BootMedia.glitchEngages(
                     media: "provided", data: mp4),
-                "a film flooded")
+                "a film engaged")
             try Gauntlet.require(
                 !BootMedia.glitchEngages(
                     media: "custom", data: gif),
-                "a GIF flooded")
+                "a GIF engaged")
             try Gauntlet.require(
                 !BootMedia.glitchEngages(
                     media: "none", data: png),
-                "no-backdrop flooded")
+                "no-backdrop engaged")
             try Gauntlet.require(
                 !BootMedia.glitchEngages(
                     media: "provided", data: nil),
-                "an empty backdrop flooded")
+                "an empty backdrop engaged")
 #if os(iOS)
             // The phone's provided slot carries
             // a bundled film; the law judges that
             // slot by the emblem's bytes, or the
-            // film ceremony buries the flood
+            // film ceremony buries the Labz boot
             // forever (fix351's miss, convicted
             // in Xcode on Chase's Air).
             try Gauntlet.require(
@@ -4127,14 +4128,14 @@ final class Gauntlet: ObservableObject {
                         media: "provided",
                         backdrop: mp4, emblem: png)),
                 "a film in the provided slot "
-                    + "still buries the flood")
+                    + "still buries the Labz boot")
             try Gauntlet.require(
                 BootMedia.emblemData() != nil,
                 "the emblem is not aboard")
 #endif
-            return "the flood answers every still; "
-                + "films, GIFs, and none keep "
-                + "the ceremony"
+            return "the Labz boot answers every "
+                + "still; films, GIFs, and none "
+                + "keep the ceremony"
         }
         add("stores", "session codec round-trips") {
             var cases = 0

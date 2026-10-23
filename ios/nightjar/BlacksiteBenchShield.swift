@@ -933,11 +933,8 @@ extension BlacksiteBench {
             onlySuite: nil)
         guard knock.answered,
               let trust = knock.trust,
-              SecTrustGetCertificateCount(
-                trust) > 0,
-              let leaf =
-                SecTrustGetCertificateAtIndex(
-                    trust, 0),
+              let leaf = certChain(trust)
+                .first,
               let data =
                 SecCertificateCopyData(
                     leaf) as Data?

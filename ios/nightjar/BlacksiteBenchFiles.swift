@@ -1882,7 +1882,6 @@ extension BlacksiteBench {
         var compSize: Int
         var rawSize: Int
         var aesStrength: Int?
-        var localOffset: Int
     }
 
     struct FileZIP {
@@ -2016,8 +2015,7 @@ extension BlacksiteBench {
                         method: method,
                         compSize: comp,
                         rawSize: raw,
-                        aesStrength: aes,
-                        localOffset: local))
+                        aesStrength: aes))
                 detailed += 1
             }
             if firstLocal == nil {
@@ -5022,7 +5020,6 @@ extension BlacksiteBench {
         var tag: String
         var offset: Int
         var length: Int
-        var compLength: Int?
     }
 
     static func fontprobe(
@@ -5101,7 +5098,7 @@ extension BlacksiteBench {
                 as: UTF8.self)
             tables.append(FileSFNTTable(
                 tag: tag, offset: off,
-                length: len, compLength: nil))
+                length: len))
         }
         icsSay(emit, String(format: L("%lld tables in the directory: %@"), Int64(tables.count), tables.map(\.tag).joined(separator: ", ")), .out)
         for table in tables {

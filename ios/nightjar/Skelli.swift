@@ -681,8 +681,17 @@ final class SkelliCenter: ObservableObject {
         guard pool.count > 1 else {
             return pool.first ?? ""
         }
+        // The pool's identity, collision-safe
+        // (fix369): a bare joined() key made
+        // ["ab", "c"] and ["a", "bc"] the same
+        // pool, sharing their draw counts and
+        // last picks. Count plus a separator
+        // her lines never carry separates them.
         let key = String(
-            pool.joined().hashValue)
+            "\(pool.count)#"
+                + pool.joined(
+                    separator: "\u{1}")
+                .hashValue.description)
         let draws = (variationDraws[key]
             ?? 0) + 1
         variationDraws[key] = draws
@@ -1451,7 +1460,6 @@ final class SkelliCenter: ObservableObject {
     /// about her maker, ever. Digging is the one
     /// curiosity she punishes.
     private func personaReply(to q: String) -> String? {
-        let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
             vary(pool)
         }
@@ -1585,7 +1593,6 @@ final class SkelliCenter: ObservableObject {
         guard q.contains("chess")
             || q.contains("grandmaster")
         else { return nil }
-        let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
             vary(pool)
         }
@@ -2141,7 +2148,6 @@ final class SkelliCenter: ObservableObject {
            starters.contains(String(first)) {
             return nil
         }
-        let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
             vary(pool)
         }
@@ -2249,7 +2255,6 @@ final class SkelliCenter: ObservableObject {
            starters.contains(String(first)) {
             return nil
         }
-        let seed = abs(lines.count)
         func pick(_ pool: [String]) -> String {
             vary(pool)
         }
@@ -8598,7 +8603,7 @@ struct SkelliLiveView: View {
         .animation(.easeInOut(duration: 0.5),
                    value: settled)
         .onAppear { settled = mood }
-        .onChange(of: mood) { newMood in
+        .onChange(of: mood) { _, newMood in
             Task {
                 try? await Task.sleep(
                     nanoseconds: 300_000_000)
@@ -9392,12 +9397,12 @@ struct SkelliHalo: View {
                 hue = hueAnchor(feeling)
             }
         }
-        .onChange(of: mood) { _ in
+        .onChange(of: mood) {
             idleSince = mood == .idle
                 ? Date() : nil
             pulse(0.55)
         }
-        .onChange(of: feeling) { newFeeling in
+        .onChange(of: feeling) { _, newFeeling in
             withAnimation(
                 .easeInOut(duration: 2.2)) {
                 hue = hueAnchor(newFeeling)
@@ -9408,13 +9413,13 @@ struct SkelliHalo: View {
         // A stranger takes a shape on the
         // wire: one swell of light, nothing
         // announced.
-        .onChange(of: unnamed) { _ in
+        .onChange(of: unnamed) {
             pulse(0.7)
         }
         // The house going dark (or waking) is
         // felt in the glow before it is read
         // anywhere.
-        .onChange(of: darkHouse) { _ in
+        .onChange(of: darkHouse) {
             pulse(0.8)
         }
         .task {
@@ -10186,7 +10191,7 @@ struct SkelliView: View {
         .onAppear {
             wire.start()
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 wire.refreshOnForeground()
             }
@@ -10328,94 +10333,6 @@ struct SkelliView: View {
 
     // MARK: her heart
 
-    /// The tamagotchi strip: her three needs as thin
-    /// bars, and her standing want with a door that lets
-    /// her do it — the ask goes through her own respond
-    /// path, so every gate her hands answer to (EMCON
-    /// first of all) still stands. Shown only while
-    /// Moods is on in her menu.
-    private var heartStrip: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            TimelineView(.periodic(from: .now, by: 25)) {
-                _ in
-                Text(skelli.idleThought())
-                    .font(.caption.italic())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false,
-                               vertical: true)
-                    .frame(maxWidth: .infinity,
-                           alignment: .leading)
-            }
-            HStack(spacing: 6) {
-                Text(L("Bond: ") + L(heart.bond)
-                     + String(format: L(" · day %lld"), heart.daysKnown + 1))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if !SkelliScrapbook.shared.facts.isEmpty {
-                    Button {
-                        showScrapbook.toggle()
-                    } label: {
-                        Text(String(format: L("Learned about you (%lld)"), SkelliScrapbook.shared.facts.count))
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
-            if showScrapbook {
-                VStack(alignment: .leading, spacing: 3) {
-                    ForEach(SkelliScrapbook.shared.facts,
-                            id: \.self) { fact in
-                        Text("· " + fact)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Button(role: .destructive) {
-                        SkelliScrapbook.shared.clear()
-                        showScrapbook = false
-                    } label: {
-                        Text(L("Forget all of it"))
-                            .font(.caption2.weight(.semibold))
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
-            HStack(spacing: 10) {
-                needBar(L("Attention"), heart.attention, .pink)
-                needBar(L("Itch"), heart.itch, .orange)
-                needBar(L("Pride"), heart.pride, .yellow)
-            }
-            if let want = heart.want {
-                HStack(spacing: 8) {
-                    Text(want.text)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false,
-                                   vertical: true)
-                    Spacer()
-                    if let ask = want.ask {
-                        Button {
-                            Haptics.press()
-                            SkelliHeart.shared
-                                .noteWantAccepted()
-                            input = ""
-                            skelli.ask(ask)
-                        } label: {
-                            Text("Let her")
-                                .font(.caption.weight(.bold))
-                        }
-                        .buttonStyle(HouseProminentStyle())
-                        .controlSize(.small)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 4)
-        .id(heart.pulse)
-    }
 
     private func needBar(_ label: String, _ value: Double,
                          _ tint: Color) -> some View {
@@ -10944,10 +10861,10 @@ struct SkelliView: View {
                     .frame(height: 16)
                     .allowsHitTesting(false)
             }
-            .onChange(of: skelli.lines.count) { _ in
+            .onChange(of: skelli.lines.count) {
                 scrollToEnd(proxy)
             }
-            .onChange(of: skelli.mood) { _ in
+            .onChange(of: skelli.mood) {
                 scrollToEnd(proxy)
             }
             .onAppear { scrollToEnd(proxy) }

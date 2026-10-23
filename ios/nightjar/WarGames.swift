@@ -915,13 +915,13 @@ struct WarGamesView: View {
             .onDisappear {
                 center.detach()
             }
-            .onChange(of: decoysText) { _ in pushDefense() }
-            .onChange(of: serveUseTCP) { _ in pushDefense() }
-            .onChange(of: serveTcpPort) { _ in pushDefense() }
-            .onChange(of: serveUseUDP) { _ in pushDefense() }
-            .onChange(of: serveUdpPort) { _ in pushDefense() }
-            .onChange(of: serveUseHTTP) { _ in pushDefense() }
-            .onChange(of: serveHttpPort) { _ in pushDefense() }
+            .onChange(of: decoysText) { pushDefense() }
+            .onChange(of: serveUseTCP) { pushDefense() }
+            .onChange(of: serveTcpPort) { pushDefense() }
+            .onChange(of: serveUseUDP) { pushDefense() }
+            .onChange(of: serveUdpPort) { pushDefense() }
+            .onChange(of: serveUseHTTP) { pushDefense() }
+            .onChange(of: serveHttpPort) { pushDefense() }
         }
     }
 

@@ -674,8 +674,7 @@ enum BetafischDrift {
     /// each paired to its request by
     /// number.
     static func parseResponses(
-        _ half: HalfStream,
-        requestCount: Int) -> [DriftResponse] {
+        _ half: HalfStream) -> [DriftResponse] {
         var responses: [DriftResponse] = []
         var requestIndex = 0
         for run in half.runs {
@@ -1436,7 +1435,7 @@ enum BetafischDrift {
             -> [Int: [Range<Int>]] {
             var claims: [Int: [Range<Int>]] = [:]
             let responses = parseResponses(
-                server, requestCount: requests.count)
+                server)
             for response in responses {
                 let bodyBytes = Array(response.body)
                 guard let found = identify(

@@ -627,7 +627,7 @@ extension SkelliKnowledge {
             body: "Two rooms need a second phone running the house. War Games: the challenger knocks a defense the other phone is serving, HELLO to CARD over the Serve inbox, and both sides can score the exchange from their own cards. Knocktalk: two paired devices speak in knock order alone, sealed under a shared pairing key kept in the Keychain — messages are knock sequences, contents are never journaled, only arrivals. Both assume the other phone is a friend's or the operator's second device; neither works at a stranger, by design."),
         SkelliEntry(
             id: "themorningbrief",
-            title: L("The morning brief"),
+            title: "The morning brief",
             home: "the Night log",
             keywords: ["morning brief", "overnight",
                        "while i was gone", "digest",
@@ -650,7 +650,7 @@ extension SkelliKnowledge {
             keywords: ["crew", "agents", "planner",
                        "critic", "scribe", "multi-agent",
                        "cooperate", "coordinate"],
-            body: "When the operator toggles Agents on in my menu, an ask with a plan's shape — a chain joined by 'then', or an explicit call to the crew — is worked by roles instead of one pass: a Planner breaks it into steps over the house's real resources, the Hands work each step through the same organs my direct intents use (sweeps, self-scans, audits, EMCON, the manual, the sitrep, the Vault's instant work), a Critic checks the shared board for gaps, and a Scribe writes the one answer. The roles are one bench in different states — Qwen or Apple's model wearing different briefs — because a device holds one set of weights; the cooperation lives in the briefs and the board. Runs register on the ProcessBoard, and Vanish stops a crew between steps like anything else."),
+            body: "When the operator toggles Agents on in my menu, an ask with a plan's shape — several steps to work in sequence, or an explicit call to the crew — is worked by roles instead of one pass: a Planner breaks it into steps over the house's real resources, the Hands work each step in order through the same organs my direct intents use (sweeps, self-scans, audits, EMCON, the manual, the sitrep, the Vault's instant work), a Critic checks the shared board for gaps, and a Scribe writes the one answer. The roles are one bench in different states — Qwen or Apple's model wearing different briefs — because a device holds one set of weights; the cooperation lives in the briefs and the board. Runs register on the ProcessBoard, and Vanish stops a crew between steps like anything else."),
         SkelliEntry(
             id: "setupkept", title: "Your setup, kept",
             home: "About — Your setup",

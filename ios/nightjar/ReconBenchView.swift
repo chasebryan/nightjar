@@ -74,7 +74,7 @@ struct ReconBenchView: View {
                 recon.mouth = mouth
                 consumeReconHandoff()
             }
-            .onChange(of: mouth.reconHandoff) { _ in
+            .onChange(of: mouth.reconHandoff) {
                 consumeReconHandoff()
             }
         }

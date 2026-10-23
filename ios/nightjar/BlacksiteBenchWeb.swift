@@ -49,7 +49,7 @@ extension BlacksiteBench {
         request.httpMethod = method
         request.timeoutInterval = 8
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         for (name, value) in headers {
             request.setValue(
@@ -955,7 +955,7 @@ extension BlacksiteBench {
                 let asked = "GET / HTTP/"
                     + version + "\r\n"
                     + "Host: " + host + "\r\n"
-                    + "User-Agent: blacksite/11.0 (nightjar)\r\n"
+                    + "User-Agent: \(BlacksiteNet.userAgent)\r\n"
                     + "Connection: close\r\n\r\n"
                 connection.send(
                     content: Data(asked.utf8),
@@ -1115,7 +1115,7 @@ extension BlacksiteBench {
                 return
             }
             guard let trust = webTrust(host: target.host, port: target.port),
-                  let leaf = SecTrustGetCertificateAtIndex(trust, 0) else {
+                  let leaf = certChain(trust).first else {
                 webSay(emit, L("no papers were shown — the TLS door is shut or the handshake failed"), .err)
                 return
             }
@@ -1221,11 +1221,12 @@ extension BlacksiteBench {
                 webSay(emit, L("no papers were shown — the TLS door is shut or the handshake failed"), .err)
                 return
             }
-            let count = SecTrustGetCertificateCount(trust)
+            let chain = certChain(trust)
+            let count = chain.count
             webSay(emit, String(format: L("%lld papers in the chain"), count), .sys)
             var expired = 0
             for index in 0..<count {
-                guard let cert = SecTrustGetCertificateAtIndex(trust, index) else { continue }
+                let cert = chain[index]
                 let subject = (SecCertificateCopySubjectSummary(cert) as String?) ?? L("an unnamed paper")
                 let issuer = webCertName(cert, issuer: true, oid: "2.5.4.3")
                     ?? webCertName(cert, issuer: true, oid: "2.5.4.10")
@@ -1272,7 +1273,7 @@ extension BlacksiteBench {
                 return
             }
             guard let trust = webTrust(host: target.host, port: target.port),
-                  let leaf = SecTrustGetCertificateAtIndex(trust, 0) else {
+                  let leaf = certChain(trust).first else {
                 webSay(emit, L("no papers were shown — the TLS door is shut or the handshake failed"), .err)
                 return
             }

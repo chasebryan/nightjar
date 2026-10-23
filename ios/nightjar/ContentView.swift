@@ -594,7 +594,7 @@ struct ContentView: View {
             }
         }
         .onAppear { visitedRooms.insert(tab) }
-        .onChange(of: tab) { newTab in
+        .onChange(of: tab) { _, newTab in
             visitedRooms.insert(newTab)
             TabBeat.appeared(newTab)
         }
@@ -676,11 +676,11 @@ struct ContentView: View {
         // relaunching the house.
         showBoot = true
     }
-    .onChange(of: tab) { newTab in
+    .onChange(of: tab) { _, newTab in
         UserDefaults.standard.set(
             newTab, forKey: "house.lastTab")
     }
-    .onChange(of: mouth.reconHandoff) { handoff in
+    .onChange(of: mouth.reconHandoff) { _, handoff in
         // Counter-knock pivot: a tripwire row tapped in EMCON
         // lands the operator on the Recon bench, pre-aimed.
         if handoff != nil { tab = 6 }
@@ -1485,7 +1485,7 @@ struct SessionsView: View {
                      : L("Every recorded session file is deleted. This cannot be undone."))
             }
             .onAppear(perform: reload)
-            .onChange(of: post.session?.id) { _ in reload() }
+            .onChange(of: post.session?.id) { reload() }
             .sheet(isPresented: $showNightLog) {
                 NavigationStack {
                     NightLogView()
@@ -1800,7 +1800,7 @@ struct AboutView: View {
                 Section(header: Text("Developer")) {
                     Toggle("Developer options",
                            isOn: $developerOn)
-                        .onChange(of: developerOn) { on in
+                        .onChange(of: developerOn) { _, on in
                             Haptics.select()
                             UserDefaults.standard.set(
                                 on,
@@ -1908,11 +1908,11 @@ struct AboutView: View {
                 }
                 Section(header: Text(L("Listening"))) {
                     Toggle(L("Keep the screen awake while listening"), isOn: $keepScreenAwake)
-                        .onChange(of: keepScreenAwake) { _ in
+                        .onChange(of: keepScreenAwake) {
                             Haptics.select()
                         }
                     Toggle(L("Decode BTHome v1 sensors"), isOn: $bthomeV1)
-                        .onChange(of: bthomeV1) { _ in
+                        .onChange(of: bthomeV1) {
                             Haptics.select()
                         }
                     ExplainToggle(

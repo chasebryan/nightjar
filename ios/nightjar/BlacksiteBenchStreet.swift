@@ -141,7 +141,7 @@ extension BlacksiteBench {
         request.httpMethod = "POST"
         request.timeoutInterval = 10
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         request.setValue(
             contentType,

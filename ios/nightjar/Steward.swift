@@ -1213,7 +1213,7 @@ struct StewardSectionView: View {
                     Text(L("Full")).tag("full")
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: latitude) { _ in
+                .onChange(of: latitude) {
                     steward.refresh(emcon: emcon)
                 }
                 Text(steward.assessment)
@@ -1313,7 +1313,7 @@ struct StewardSectionView: View {
                 Spacer()
                 Toggle(L(""), isOn: $order.enabled)
                     .labelsHidden()
-                    .onChange(of: order.enabled) { _ in
+                    .onChange(of: order.enabled) {
                         steward.saveOrders()
                     }
                 Button(role: .destructive) {

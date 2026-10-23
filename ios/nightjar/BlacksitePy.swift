@@ -8328,17 +8328,6 @@ extension PyInterp {
 // MARK: - Methods
 
 extension PyInterp {
-    func noArgs(_ method: String,
-                _ args: [PyValue],
-                _ line: Int) throws {
-        guard args.isEmpty else {
-            throw PyError(
-                "TypeError",
-                "\(method)() takes no "
-                    + "arguments",
-                line: line)
-        }
-    }
 
     func callMethod(_ base: PyValue,
                     _ method: String,

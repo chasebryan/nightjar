@@ -206,8 +206,7 @@ enum BlacksiteBench {
         var answer: (Int, Int)? = nil
         let request = "GET / HTTP/1.1\r\n"
             + "Host: " + hostHeader + "\r\n"
-            + "User-Agent: blacksite/10.0 "
-            + "(nightjar)\r\n"
+            + "User-Agent: \(BlacksiteNet.userAgent)\r\n"
             + "Connection: close\r\n\r\n"
         BlacksiteNet.tcpExchange(
             host: ip, port: port, udp: false,

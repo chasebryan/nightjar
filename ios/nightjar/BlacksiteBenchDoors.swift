@@ -324,7 +324,7 @@ extension BlacksiteBench {
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         return doorFetch(request)
     }
@@ -337,7 +337,7 @@ extension BlacksiteBench {
         request.httpMethod = "POST"
         request.timeoutInterval = 8
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         request.setValue(
             contentType,
@@ -428,8 +428,7 @@ extension BlacksiteBench {
                     "GET \(path) HTTP/1.1\r\n"
                     + "Host: \(host)\r\n"
                     + "User-Agent: "
-                    + "blacksite/11.0 "
-                    + "(nightjar)\r\n"
+                    + "\(BlacksiteNet.userAgent)\r\n"
                     + "Accept: */*\r\n"
                     + "Connection: close\r\n"
                     + "\r\n"
@@ -2941,7 +2940,7 @@ extension BlacksiteBench {
                 "OPTIONS rtsp://\(host):\(port)/ RTSP/1.0\r\n"
                 + "CSeq: 1\r\n"
                 + "User-Agent: "
-                + "blacksite/11.0 (nightjar)\r\n"
+                + "\(BlacksiteNet.userAgent)\r\n"
                 + "\r\n"
             guard doorSend(fd,
                            Array(request.utf8))

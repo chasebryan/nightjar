@@ -80,7 +80,7 @@ struct SendPayloadIntent: AppIntent {
     }
 }
 
-struct NightjarHackShortcuts: AppShortcutsProvider {
+struct NightjarShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: SendPayloadIntent(),
                     phrases: ["Send a payload with \(.applicationName)"],

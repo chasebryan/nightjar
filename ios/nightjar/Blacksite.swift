@@ -12757,7 +12757,6 @@ struct BlacksiteView: View {
                                 .opacity(0.12),
                             lineWidth: 1)))
             .onChange(of: shell.lines.count) {
-                _ in
                 if let last = shell.lines.last {
                     proxy.scrollTo(
                         last.id, anchor: .bottom)

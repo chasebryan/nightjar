@@ -91,14 +91,14 @@ struct NightjarApp: App {
                     updater.watch()
                 }
 #endif
-                .onChange(of: keepScreenAwake) { value in
+                .onChange(of: keepScreenAwake) { _, value in
                     post.keepScreenAwake = value
                 }
                 .task {
                     emcon.deadHandEvaluate(mouth: mouth)
                     emcon.steward.shiftChange(emcon: emcon)
                 }
-                .onChange(of: scenePhase) { phase in
+                .onChange(of: scenePhase) { _, phase in
                     DevLog.event(
                         "app",
                         phase == .active

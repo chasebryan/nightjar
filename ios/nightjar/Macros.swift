@@ -239,9 +239,6 @@ enum MacroPalette {
         "drop.fill", "theatermasks.fill",
     ]
 
-    static func colorName(forHex hex: String) -> String {
-        colors.first { $0.hex == hex }?.name ?? "Custom"
-    }
 }
 
 // MARK: - The block catalog

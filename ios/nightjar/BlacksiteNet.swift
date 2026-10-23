@@ -19,6 +19,18 @@ typealias BlacksiteEmit =
 
 enum BlacksiteNet {
 
+    /// The house User-Agent, its version read
+    /// from the bundle itself (fix369): the
+    /// wire used to introduce the app as 9.0
+    /// and 10.0 in places years after those
+    /// versions shipped, because the number
+    /// was a literal in every sentence that
+    /// spoke it. One spelling now, derived —
+    /// a version bump can never strand it.
+    static var userAgent: String {
+        "blacksite/\(AppInfo.version) (nightjar)"
+    }
+
     // MARK: The default gateway
 
     /// This phone's default gateway, read
@@ -1534,7 +1546,7 @@ extension BlacksiteNet {
             headOnly ? "HEAD" : "GET"
         request.timeoutInterval = 20
         request.setValue(
-            "blacksite/9.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         for (key, value) in headers {
             request.setValue(

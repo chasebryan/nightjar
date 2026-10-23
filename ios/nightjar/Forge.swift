@@ -350,7 +350,7 @@ struct ForgeView: View {
                     }
                     .disabled(keptPattern)
                 }
-                .onChange(of: pattern) { _ in
+                .onChange(of: pattern) {
                     keptPattern = false
                     keepName = ""
                 }

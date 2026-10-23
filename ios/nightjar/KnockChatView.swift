@@ -406,16 +406,16 @@ struct KnockChatView: View {
                 }
             }
         }
-        .onChange(of: relayEnabled) { _ in
+        .onChange(of: relayEnabled) {
             chat.refreshRelayPolling()
         }
-        .onChange(of: relayURL) { _ in
+        .onChange(of: relayURL) {
             chat.refreshRelayPolling()
         }
-        .onChange(of: relayToken) { _ in
+        .onChange(of: relayToken) {
             chat.refreshRelayPolling()
         }
-        .onChange(of: relayBox) { _ in
+        .onChange(of: relayBox) {
             chat.refreshRelayPolling()
         }
     }

@@ -404,13 +404,6 @@ final class EditorCore: ObservableObject {
         return buffer.lines[index]
     }
 
-    private func replaceLine(_ index: Int,
-                             with text: String) {
-        guard buffer.lines.indices.contains(index)
-        else { return }
-        buffer.lines[index] = text
-        buffer.dirty = true
-    }
 
     private func charAt(_ r: Int, _ c: Int)
         -> Character? {

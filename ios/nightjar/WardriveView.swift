@@ -45,7 +45,7 @@ struct WardriveView: View {
                 WardriveCenter.shared.post = post
                 sessions = WardriveCenter.sessions()
             }
-            .onChange(of: drive.running) { _ in
+            .onChange(of: drive.running) {
                 sessions = WardriveCenter.sessions()
             }
         }

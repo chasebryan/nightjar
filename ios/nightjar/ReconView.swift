@@ -1932,7 +1932,7 @@ struct ScanView: View {
 #endif
             }
             .onDisappear { model.stopDiscovery() }
-            .onChange(of: model.scanning) { scanning in
+            .onChange(of: model.scanning) { _, scanning in
                 if !scanning, model.totalCount > 0 {
                     toasts.show(String(format: L("Scan finished — %lld open of %lld"), model.results.count, model.totalCount))
                     // The host the scan actually ran against,
@@ -1968,7 +1968,7 @@ struct ScanView: View {
                                    })
                 }
             }
-            .onChange(of: dns.querying) { querying in
+            .onChange(of: dns.querying) { _, querying in
                 if !querying, !dns.lines.isEmpty {
                     mouth.logRecon("dns", "\(dnsName) \(dnsType)",
                                    lines: dns.lines)

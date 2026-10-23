@@ -35,90 +35,7 @@ enum CryptoSuite {
         return out
     }
 
-    /// RFC 4648 base32, padded; decoding tolerates
-    /// lowercase and missing padding.
-    static func base32Encode(_ data: Data) -> String {
-        let alphabet = Array(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567")
-        var out = ""
-        var buffer: UInt32 = 0
-        var bits = 0
-        for byte in data {
-            buffer = (buffer << 8) | UInt32(byte)
-            bits += 8
-            while bits >= 5 {
-                bits -= 5
-                out.append(alphabet[Int(
-                    (buffer >> UInt32(bits)) & 0x1F)])
-            }
-        }
-        if bits > 0 {
-            out.append(alphabet[Int(
-                (buffer << UInt32(5 - bits)) & 0x1F)])
-        }
-        while out.count % 8 != 0 { out.append("=") }
-        return out
-    }
 
-    static func base32Decode(_ string: String) -> Data? {
-        let clean = string.uppercased()
-            .filter { !$0.isWhitespace && $0 != "=" }
-        var out = Data()
-        var buffer: UInt32 = 0
-        var bits = 0
-        for char in clean {
-            let value: UInt32
-            // Values come from the matched range itself,
-            // never from force-unwrapped ASCII: a pasted
-            // decomposed character (a letter plus a
-            // combining mark) can satisfy a range match
-            // while its asciiValue is nil.
-            switch char {
-            case "A": value = 0
-            case "B": value = 1
-            case "C": value = 2
-            case "D": value = 3
-            case "E": value = 4
-            case "F": value = 5
-            case "G": value = 6
-            case "H": value = 7
-            case "I": value = 8
-            case "J": value = 9
-            case "K": value = 10
-            case "L": value = 11
-            case "M": value = 12
-            case "N": value = 13
-            case "O": value = 14
-            case "P": value = 15
-            case "Q": value = 16
-            case "R": value = 17
-            case "S": value = 18
-            case "T": value = 19
-            case "U": value = 20
-            case "V": value = 21
-            case "W": value = 22
-            case "X": value = 23
-            case "Y": value = 24
-            case "Z": value = 25
-            case "2": value = 26
-            case "3": value = 27
-            case "4": value = 28
-            case "5": value = 29
-            case "6": value = 30
-            case "7": value = 31
-            default:
-                return nil
-            }
-            buffer = (buffer << 5) | value
-            bits += 5
-            if bits >= 8 {
-                bits -= 8
-                out.append(UInt8(
-                    (buffer >> UInt32(bits)) & 0xFF))
-            }
-        }
-        return out
-    }
 
     // MARK: - Hashes and MACs
 
@@ -146,12 +63,6 @@ enum CryptoSuite {
         }
     }
 
-    static func hmacSHA256(key: Data,
-                           data: Data) -> Data {
-        let code = HMAC<SHA256>.authenticationCode(
-            for: data, using: SymmetricKey(data: key))
-        return Data(code)
-    }
 
     /// A fingerprint a human can read back:
     /// the SHA-256 of the data, grouped.

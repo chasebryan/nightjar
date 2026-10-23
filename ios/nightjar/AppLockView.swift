@@ -122,14 +122,14 @@ struct AppLockSettingsView: View {
     private var tuningSection: some View {
         Section(header: Text(L("Coming and going"))) {
             AppLockGracePicker(selection: $grace)
-                .onChange(of: grace) { value in
+                .onChange(of: grace) { _, value in
                     AppLockStandard.setGraceSeconds(
                         value)
                 }
             if AppLockStandard.biometricsAvailable() {
                 Toggle(L("allow biometrics"),
                        isOn: $biometrics)
-                    .onChange(of: biometrics) { value in
+                    .onChange(of: biometrics) { _, value in
                         AppLockStandard
                             .setBiometricsEnabled(value)
                     }

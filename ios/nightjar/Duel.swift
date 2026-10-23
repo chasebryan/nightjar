@@ -493,7 +493,7 @@ struct DuelView: View {
                     Button(L("Done")) { dismiss() }
                 }
             }
-            .onChange(of: center.recon.knocking) { knocking in
+            .onChange(of: center.recon.knocking) { _, knocking in
                 if !knocking {
                     center.strikesLanded(chat: chat)
                 }

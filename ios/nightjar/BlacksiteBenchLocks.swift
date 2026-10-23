@@ -1515,6 +1515,19 @@ extension BlacksiteBench {
         }.joined(separator: ", ")
     }
 
+    /// A trust's certificate chain, whole
+    /// (fix369): SecTrustCopyCertificateChain
+    /// is the standing API — the per-index
+    /// getter the bench used at ten sites was
+    /// deprecated in iOS 15 / macOS 12. One
+    /// door for the chain; sites take .first
+    /// for the leaf or walk the array.
+    static func certChain(
+        _ trust: SecTrust) -> [SecCertificate] {
+        (SecTrustCopyCertificateChain(trust)
+            as? [SecCertificate]) ?? []
+    }
+
     /// Parse one DER certificate.
     /// The walk is the house DER walk
     /// (verified against openssl's own
@@ -3123,7 +3136,6 @@ extension BlacksiteBench {
         var answered: Bool
         var trust: SecTrust?
         var cipher: UInt32
-        var version: Int
     }
 
     /// One TLS knock on a fresh
@@ -3133,6 +3145,16 @@ extension BlacksiteBench {
     /// server auth, and report what
     /// the moment of the papers
     /// showed. The Wave 3 road.
+    ///
+    /// DELIBERATE HOLDOUT (v12 audit,
+    /// adjudicated): the version and
+    /// suite pinning below rides the
+    /// deprecated SecureTransport stack
+    /// on purpose — grading retired
+    /// TLS versions is this verb's job,
+    /// and the standing Network stack
+    /// will not offer them. Known and
+    /// accepted warnings, not drift.
     static func lockTLSKnock(
         ip: String, port: Int,
         host: String,
@@ -3142,7 +3164,7 @@ extension BlacksiteBench {
         -> LockKnock {
         var result = LockKnock(
             answered: false, trust: nil,
-            cipher: 0, version: 0)
+            cipher: 0)
         guard let fd = icsSocket(
             ip: ip, port: UInt16(clamping: port),
             timeout: 5) else {
@@ -3195,13 +3217,6 @@ extension BlacksiteBench {
         if SSLGetNegotiatedCipher(
             ctx, &cipher) == errSecSuccess {
             result.cipher = UInt32(cipher)
-        }
-        var version: SSLProtocol =
-            .sslProtocolUnknown
-        if SSLGetNegotiatedProtocolVersion(
-            ctx, &version) == errSecSuccess {
-            result.version = Int(
-                version.rawValue)
         }
         return result
     }
@@ -3322,11 +3337,8 @@ extension BlacksiteBench {
                 icsSay(emit, String(format: L("dated families still shared: %@ — a client that asks for yesterday can still be served it"), oldShared.joined(separator: ", ")), .err)
             }
             if let trust = firstTrust,
-               SecTrustGetCertificateCount(
-                trust) > 0,
-               let leaf =
-                SecTrustGetCertificateAtIndex(
-                    trust, 0),
+               let leaf = certChain(trust)
+                .first,
                let data =
                 SecCertificateCopyData(leaf)
                 as Data? {
@@ -6217,11 +6229,8 @@ extension BlacksiteBench {
                     }
                     if leafCert == nil,
                        let trust = knock.trust,
-                       SecTrustGetCertificateCount(
-                        trust) > 0,
-                       let leaf =
-                        SecTrustGetCertificateAtIndex(
-                            trust, 0),
+                       let leaf = certChain(
+                        trust).first,
                        let data =
                         SecCertificateCopyData(
                             leaf) as Data? {

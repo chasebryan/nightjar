@@ -74,7 +74,6 @@ extension BlacksiteBench {
         case "primecensus":
             megaPrimeCensus(
                 arg.isEmpty ? nil : arg,
-                file: false,
                 stopped: stopped,
                 emit: live, done: done)
         case "rosprobe":
@@ -1042,14 +1041,10 @@ extension BlacksiteBench {
             icsSay(emit, String(
                 format: L("door %lld — the chain it presents:"),
                 Int64(port)), .sys)
-            let count = SecTrustGetCertificateCount(
-                trust)
+            let chain = certChain(trust)
+            let count = chain.count
             for index in 0..<count {
-                guard let cert =
-                    SecTrustGetCertificateAtIndex(
-                        trust, index) else {
-                    continue
-                }
+                let cert = chain[index]
                 if index == 0 {
                     let der = [UInt8](
                         SecCertificateCopyData(
@@ -1077,9 +1072,7 @@ extension BlacksiteBench {
                         Int64(index), summary))
                 }
             }
-            if count > 0,
-               let leaf = SecTrustGetCertificateAtIndex(
-                trust, 0),
+            if let leaf = chain.first,
                let parsed = lockCertParse(
                 [UInt8](SecCertificateCopyData(
                     leaf) as Data)) {
@@ -2148,18 +2141,6 @@ extension BlacksiteBench {
         }
     }
 
-    static func megaMAVAutopilotName(
-        _ ap: Int) -> String {
-        switch ap {
-        case 0: return L("generic")
-        case 3: return "ArduPilot"
-        case 12: return "PX4"
-        default:
-            return String(
-                format: L("autopilot %lld"),
-                Int64(ap))
-        }
-    }
 
     // MARK: rosprobe — the ROS posture read
 
@@ -3173,7 +3154,7 @@ extension BlacksiteBench {
     }
 
     static func megaPrimeCensus(
-        _ arg: String?, file: Bool,
+        _ arg: String?,
         stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {

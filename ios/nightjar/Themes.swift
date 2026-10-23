@@ -760,7 +760,7 @@ private struct BackdropRow: View {
                     .font(.caption).foregroundStyle(.red)
             }
         }
-        .onChange(of: pickerItem) { item in
+        .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             Task {
                 if let data = await PickerMedia.load(item),
@@ -1013,7 +1013,7 @@ private struct BootRow: View {
                 title: L("About your own art"),
                 text: L("Your own art is copied into the app and never leaves this device; a GIF plays, a photograph holds still. Changes take hold from the next launch, and a tap still skips the boot."))
         }
-        .onChange(of: pickerItem) { item in
+        .onChange(of: pickerItem) { _, item in
             guard let item else { return }
             Task {
                 if let data = await PickerMedia.load(item),

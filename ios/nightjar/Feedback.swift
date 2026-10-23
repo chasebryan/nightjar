@@ -37,7 +37,6 @@ final class ToastCenter: ObservableObject {
         let message: String
         let kind: Kind
         var count = 1
-        var isError: Bool { kind == .error }
     }
 
     @Published var current: Toast?
@@ -622,8 +621,8 @@ enum BootMedia {
         return try? Data(contentsOf: url)
     }
 
-    /// The emblem the flood tears, whatever the
-    /// backdrop slot happens to hold.
+    /// The emblem the Labz boot wakes, whatever
+    /// the backdrop slot happens to hold.
     static func emblem() -> UIImage? {
         guard let data = emblemData() else {
             return nil
@@ -640,7 +639,7 @@ enum BootMedia {
     /// on the film, still never engaged in
     /// Chase's house. The provided slot is
     /// therefore judged by the EMBLEM's bytes:
-    /// the stock boot is the flood, full stop.
+    /// the stock boot is the Labz boot, full stop.
     /// The laptop keeps its film (Chase's
     /// 2026-10-20 selection; the Mac is parked),
     /// and a custom slot is always judged by
@@ -654,8 +653,8 @@ enum BootMedia {
     /// because the slot's bundled film was never
     /// chosen for the boot; the wardrobe film is
     /// nothing but chosen — a film-class backdrop,
-    /// so the flood stands down and the GIF
-    /// ceremony plays. With the wardrobe empty the
+    /// so the Labz boot stands down and the
+    /// GIF ceremony plays. With the wardrobe empty the
     /// check cannot fire and the law is exactly
     /// fix352's.
     static func lawData(media: String,
@@ -1583,18 +1582,18 @@ struct BootView: View {
             // provided slot is judged by the
             // emblem, not by the bundled film
             // its backdrop happens to carry.
-            let flood = BootMedia.glitchEngages(
+            let labz = BootMedia.glitchEngages(
                 media: bootMedia,
                 data: BootMedia.lawData(
                     media: bootMedia, backdrop: data,
                     emblem: BootMedia.emblemData()))
-            if !flood, let data = data,
+            if !labz, let data = data,
                BootMedia.isGIF(data), gifsEnabled {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
             }
-            if !flood, let data = data,
+            if !labz, let data = data,
                BootMedia.isGIF(data) {
                 // The film's shape and its subject,
                 // read once, here in the loader: the
@@ -1619,7 +1618,7 @@ struct BootView: View {
                     }.value
                 }
             }
-            if !flood, let data = data,
+            if !labz, let data = data,
                BootMedia.isVideo(data) {
                 // The film is a video, and the
                 // ceremony is timed against the
@@ -1667,7 +1666,7 @@ struct BootView: View {
             let backdropStill = loadedData.flatMap {
                 UIImage(data: $0)
             }
-            if flood,
+            if labz,
                let still = BootMedia.emblem()
                 ?? backdropStill {
                 // THE LABZ BOOT (Chase's
@@ -2578,8 +2577,6 @@ enum Haptics {
         UIImpactFeedbackGenerator(style: .medium)
     private static let heavyGen =
         UIImpactFeedbackGenerator(style: .heavy)
-    private static let softGen =
-        UIImpactFeedbackGenerator(style: .soft)
 
     /// Every beat speaks on the main thread, or
     /// it does not speak at all.

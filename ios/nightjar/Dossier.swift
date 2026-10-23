@@ -339,7 +339,7 @@ struct DossierView: View {
                 baseline = DossierBaselines.baseline(for: ip)
             }
         }
-        .onChange(of: recon.knocking) { knocking in
+        .onChange(of: recon.knocking) { _, knocking in
             if !knocking { knockFinished() }
         }
     }

@@ -155,7 +155,7 @@ struct EmconView: View {
         .houseFullScreenCover(isPresented: $redframeSplash) {
             RedframeSplashView(isShown: $redframeSplash)
         }
-        .onChange(of: shareAssaultReport) { wanted in
+        .onChange(of: shareAssaultReport) { _, wanted in
             // The after-action report goes out the same
             // door as every other share in the app.
             if wanted {
@@ -198,7 +198,7 @@ struct EmconView: View {
             WireWatch.restoreIfNeeded()
             emcon.mouth = mouth
         }
-        .onChange(of: spar.fuzzing) { now in
+        .onChange(of: spar.fuzzing) { _, now in
             if !now, sparWasFuzzing {
                 Journal.log("emcon", "spar",
                             (sparSummary ?? "sparring run")
@@ -1165,7 +1165,7 @@ struct EmconView: View {
                     Spacer()
                     Toggle(L(""), isOn: $rule.enabled)
                         .labelsHidden()
-                        .onChange(of: rule.enabled) { _ in
+                        .onChange(of: rule.enabled) {
                             Conductor.saveRules(rules)
                         }
                     Button(role: .destructive) {
@@ -1333,7 +1333,7 @@ struct EmconView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .onChange(of: maneuverSpar.fuzzing) { now in
+        .onChange(of: maneuverSpar.fuzzing) { _, now in
             if !now, maneuverWasFuzzing, maneuversRunning {
                 finishManeuvers(sparDead: maneuverSpar.fuzzDead)
             }
@@ -1350,7 +1350,7 @@ struct EmconView: View {
         Section(header: Text(L("Dead hand")),
                 footer: Text(L("Arm it, then check in here — deliberately, with the button — before the interval runs out. If the app is next opened with the check-in overdue, the Knocktalk threads burn and EMCON rises before anything else happens. It falls at the next OPENING, not at the deadline: iOS gives no app a background timer worth trusting. The reminders are courtesies. Merely opening the app never counts as a check-in — that is the point of the hand."))) {
             Toggle(L("Arm the dead hand"), isOn: $deadHandOn)
-                .onChange(of: deadHandOn) { on in
+                .onChange(of: deadHandOn) { _, on in
                     if on { emcon.deadHandArm() }
                     else { emcon.deadHandDisarm() }
                 }
@@ -1364,7 +1364,7 @@ struct EmconView: View {
                             .tag(h)
                     }
                 }
-                .onChange(of: deadHandHours) { _ in
+                .onChange(of: deadHandHours) {
                     emcon.deadHandReschedule()
                 }
                 if emcon.deadHandHasFallen {

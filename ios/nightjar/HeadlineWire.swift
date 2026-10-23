@@ -358,7 +358,7 @@ struct HeadlineTicker: View {
         }
         .frame(height: 17)
         .clipped()
-        .onChange(of: text) { _ in
+        .onChange(of: text) {
             copyWidth = 0
             born = Date()
         }

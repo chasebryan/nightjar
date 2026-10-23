@@ -491,7 +491,7 @@ extension BlacksiteBench {
         let greeting = satLines(satReadWindow(fd, seconds: 1.2,
                                               cap: 65536))
         _ = satSendAll(fd, Array(
-            "user N0CALL pass -1 vers nightjar 11.0 filter b/*\r\n"
+            "user N0CALL pass -1 vers nightjar \(AppInfo.version) filter b/*\r\n"
                 .utf8))
         let heard = satLines(satReadWindow(
             fd, seconds: light ? 2.0 : 6.0, cap: 1048576))
@@ -1213,7 +1213,7 @@ extension BlacksiteBench {
         }
         defer { close(fd) }
         let request = "GET / HTTP/1.0\r\n"
-            + "User-Agent: NTRIP blacksite/11.0 (nightjar)\r\n"
+            + "User-Agent: NTRIP \(BlacksiteNet.userAgent)\r\n"
             + "Accept: */*\r\n\r\n"
         guard satSendAll(fd, Array(request.utf8)) else {
             return light ? [] : []
@@ -1570,7 +1570,7 @@ extension BlacksiteBench {
         }
         let options = rtsp("OPTIONS rtsp://\(ip)/ RTSP/1.0\r\n"
             + "CSeq: 1\r\n"
-            + "User-Agent: blacksite/11.0 (nightjar)\r\n\r\n")
+            + "User-Agent: \(BlacksiteNet.userAgent)\r\n\r\n")
         guard options.contains("RTSP/1.0") else {
             return light ? [] : [(
                 String(format: L("satipprobe — %@:%lld answers but not RTSP — noted, not named"),
@@ -1597,7 +1597,7 @@ extension BlacksiteBench {
         }
         let describe = rtsp("DESCRIBE rtsp://\(ip)/ RTSP/1.0\r\n"
             + "CSeq: 2\r\nAccept: application/sdp\r\n"
-            + "User-Agent: blacksite/11.0 (nightjar)\r\n\r\n")
+            + "User-Agent: \(BlacksiteNet.userAgent)\r\n\r\n")
         if describe.contains("RTSP/1.0 200") {
             var streams = 0
             for line in describe.components(separatedBy: "\r\n") {

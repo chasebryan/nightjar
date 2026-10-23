@@ -226,7 +226,7 @@ struct MacrosView: View {
                     editingMacro = macro
                 }
             }
-            .onChange(of: editingMacro) { macro in
+            .onChange(of: editingMacro) { _, macro in
                 editingID = macro?.id.uuidString ?? ""
             }
         }
@@ -356,13 +356,13 @@ struct MacroEditorView: View {
                               text: $draft.name)
                         .font(.headline)
                         .onChange(of: draft.name) {
-                            _ in commit()
+                            commit()
                         }
                 }
                 TextField(L("Note — what this playlist is for"),
                           text: $draft.note)
                     .font(.callout)
-                    .onChange(of: draft.note) { _ in commit() }
+                    .onChange(of: draft.note) { commit() }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L("Icon"))
                         .font(.caption)
@@ -530,7 +530,7 @@ struct MacroEditorView: View {
         }
         .navigationTitle(draft.name.isEmpty
             ? "Macro" : draft.name)
-        .onChange(of: expanded) { open in
+        .onChange(of: expanded) { _, open in
             UserDefaults.standard.set(
                 open.map(\.uuidString)
                     .joined(separator: ","),

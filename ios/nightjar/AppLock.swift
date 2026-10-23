@@ -585,11 +585,6 @@ final class AppLockCenter: ObservableObject {
         locked = false
     }
 
-    func lockNow() {
-        if AppLockStandard.isArmed() {
-            locked = true
-        }
-    }
 
     /// After the settings room arms or removes
     /// the lock, the keeper re-reads the seal:

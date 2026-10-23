@@ -48,6 +48,16 @@ import Foundation
 /// more numbers than ever, hers among
 /// them, and repeats stop sounding like
 /// a mechanism clearing its throat.
+/// abs() that cannot trap (fix369): a seed
+/// of Int.min — reachable in principle from
+/// the wrapping hash arithmetic her counts
+/// run through — would take the conversation
+/// down with it. Int.min reads as Int.max;
+/// the distribution never notices.
+func skelliAbs(_ n: Int) -> Int {
+    n == Int.min ? Int.max : abs(n)
+}
+
 enum SkelliVoice {
 
     /// Souls on the wire she cannot name — the
@@ -389,13 +399,6 @@ enum SkelliVoice {
         return groups
     }
 
-    /// The first phrasing of each true group —
-    /// the library's plain face, kept for the
-    /// callers that only ever wanted the list.
-    static func eligibleClauses(
-        heart: SkelliHeart) -> [String] {
-        clauseGroups(heart: heart).map { $0[0] }
-    }
 
     /// Choose at most one clause for this moment:
     /// the seed walks the eligible set plus two
@@ -405,7 +408,7 @@ enum SkelliVoice {
                        heart: SkelliHeart) -> String {
         let groups = clauseGroups(heart: heart)
         guard !groups.isEmpty else { return "" }
-        let s = abs(seed)
+        let s = skelliAbs(seed)
         let pick = s % (groups.count + 2)
         guard pick < groups.count else { return "" }
         let group = groups[pick]
@@ -421,7 +424,7 @@ enum SkelliVoice {
                         heart: SkelliHeart) -> String {
         let groups = clauseGroups(heart: heart)
         guard !groups.isEmpty else { return "" }
-        let s = abs(seed)
+        let s = skelliAbs(seed)
         func one(_ i: Int, _ stride: Int) -> String {
             let group = groups[i % groups.count]
             return group[(s / stride) % group.count]

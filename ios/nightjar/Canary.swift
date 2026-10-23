@@ -580,7 +580,7 @@ struct CanarySectionView: View {
                 }
             }
         }
-        .onChange(of: persona) { newPersona in
+        .onChange(of: persona) { _, newPersona in
             // Keep the port honest: if it still holds another
             // persona's default, follow the persona.
             let current = Int(port) ?? -1

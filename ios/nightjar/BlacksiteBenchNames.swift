@@ -111,7 +111,7 @@ extension BlacksiteBench {
         request.httpMethod = "GET"
         request.timeoutInterval = 10
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         guard let (data, http) =
             BlacksitePentest.syncFetch(
@@ -354,7 +354,6 @@ extension BlacksiteBench {
     struct NameReply {
         var msg: [UInt8]
         var rcode: Int
-        var authoritative: Bool
         var truncated: Bool
         var authenticated: Bool
         var answers: [NameRR]
@@ -385,15 +384,6 @@ extension BlacksiteBench {
         257: "CAA",
     ]
 
-    static let nameTypeNumbers: [String: UInt16] = [
-        "A": 1, "NS": 2, "CNAME": 5,
-        "SOA": 6, "PTR": 12, "MX": 15,
-        "TXT": 16, "AAAA": 28,
-        "SRV": 33, "DS": 43,
-        "RRSIG": 46, "NSEC": 47,
-        "DNSKEY": 48, "NSEC3": 50,
-        "HTTPS": 65, "CAA": 257,
-    ]
 
     private static func nameU16(
         _ msg: [UInt8], _ at: Int) -> Int {
@@ -496,7 +486,6 @@ extension BlacksiteBench {
         var reply = NameReply(
             msg: msg,
             rcode: Int(byte3 & 0x0F),
-            authoritative: byte2 & 0x04 != 0,
             truncated: byte2 & 0x02 != 0,
             authenticated: byte3 & 0x20 != 0,
             answers: [], authority: [],
@@ -1819,6 +1808,17 @@ extension BlacksiteBench {
     /// is all a grader needs — the
     /// certificate is read, never
     /// trusted onward.
+    ///
+    /// DELIBERATE HOLDOUT (v12 audit,
+    /// adjudicated): this rides the
+    /// deprecated SecureTransport stack
+    /// because the knock's whole point
+    /// is pinning protocol versions the
+    /// standing Network stack will not
+    /// offer. It stays until the day it
+    /// stops compiling; the deprecation
+    /// warnings here are known and
+    /// accepted, not drift.
     private static func nameTLSUpgrade(
         fd: Int32, host: String)
         -> SecTrust? {
@@ -2454,10 +2454,8 @@ extension BlacksiteBench {
                 nameSay(emit, L("smtptls: the door agreed to rise and the rise itself failed — the sealed road is promised but not passable from here."), .err)
                 return
             }
-            guard SecTrustGetCertificateCount(
-                trust) > 0,
-                  let leaf = SecTrustGetCertificateAtIndex(
-                    trust, 0) else {
+            guard let leaf = certChain(trust)
+                    .first else {
                 nameSay(emit, L("smtptls: the rise completed but no papers were shown."), .err)
                 return
             }

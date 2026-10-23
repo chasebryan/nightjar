@@ -633,9 +633,6 @@ final class SkelliHeart: ObservableObject {
             quietExpected: silenceExpected)
     }
 
-    private var candidateFeeling: SkelliFeeling {
-        candidateAssessment.feeling
-    }
 
     // MARK: - his rhythm, learned
 
@@ -703,9 +700,6 @@ final class SkelliHeart: ObservableObject {
     var currentIntensity: Double {
         defaults.object(forKey: "heart.intensity")
             as? Double ?? 0.25
-    }
-    var currentCause: String {
-        defaults.string(forKey: "heart.cause") ?? ""
     }
 
     struct Episode {
@@ -1890,7 +1884,7 @@ extension SkelliHeart {
         // feeling's line, and the moment's own
         // clause when the moment offers one —
         // a thought is a circumstance noticed.
-        return pool[abs(seed) % pool.count]
+        return pool[skelliAbs(seed) % pool.count]
             + SkelliVoice.clause(
                 seed: seed / 7 + UserDefaults.standard
                     .integer(forKey: "heart.talks"),

@@ -1002,7 +1002,7 @@ struct SendView: View {
                         .font(.caption)
                     }
                 }
-                .onChange(of: mouth.traceCentipedeRoute) { route in
+                .onChange(of: mouth.traceCentipedeRoute) { _, route in
                     guard let route = route else { return }
                     centipedeRoute = route
                     mouth.traceCentipedeRoute = nil
@@ -1197,15 +1197,15 @@ struct SendView: View {
                 mouth.startBrowsing()
                 consumeScanHandoff()
             }
-            .onChange(of: mouth.scanHandoffTarget) { _ in
+            .onChange(of: mouth.scanHandoffTarget) {
                 consumeScanHandoff()
             }
-            .onChange(of: payloadText) { _ in unselectIfEditing() }
-            .onChange(of: payloadHex) { _ in unselectIfEditing() }
-            .onChange(of: payloadB64) { _ in unselectIfEditing() }
-            .onChange(of: xorKey) { _ in unselectIfEditing() }
-            .onChange(of: useGzip) { _ in unselectIfEditing() }
-            .onChange(of: mouth.nearbyPhones) { names in
+            .onChange(of: payloadText) { unselectIfEditing() }
+            .onChange(of: payloadHex) { unselectIfEditing() }
+            .onChange(of: payloadB64) { unselectIfEditing() }
+            .onChange(of: xorKey) { unselectIfEditing() }
+            .onChange(of: useGzip) { unselectIfEditing() }
+            .onChange(of: mouth.nearbyPhones) { _, names in
                 if let picked = phoneSelection, !names.contains(picked) {
                     phoneSelection = nil
                     toasts.show(String(format: L("%@ left the network — pick a destination in step 1"), picked))

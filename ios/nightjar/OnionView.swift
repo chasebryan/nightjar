@@ -183,7 +183,7 @@ struct OnionView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .onChange(of: wrapOn) { newValue in
+            .onChange(of: wrapOn) { _, newValue in
                 OnionStandard.setWrap(newValue)
                 refresh()
             }

@@ -266,7 +266,7 @@ extension BlacksiteBench {
         request.httpMethod = "GET"
         request.timeoutInterval = 10
         request.setValue(
-            "blacksite/11.0 (nightjar)",
+            BlacksiteNet.userAgent,
             forHTTPHeaderField: "User-Agent")
         if let accept = accept {
             request.setValue(

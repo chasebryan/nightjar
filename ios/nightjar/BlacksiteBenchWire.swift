@@ -393,27 +393,6 @@ extension BlacksiteBench {
         return (answers, authority, additional)
     }
 
-    /// The TXT strings inside one record
-    /// of the Names core (rdata rides in
-    /// NameRR.raw, length-prefixed
-    /// chunks, exactly as on the wire).
-    static func wireTXTStrings(
-        _ rr: NameRR) -> [String] {
-        var out: [String] = []
-        var at = 0
-        let raw = rr.raw
-        while at < raw.count {
-            let len = Int(raw[at])
-            guard at + 1 + len <= raw.count
-            else { break }
-            out.append(String(
-                bytes: Array(
-                    raw[(at + 1)..<(at + 1 + len)]),
-                encoding: .utf8) ?? "")
-            at += 1 + len
-        }
-        return out
-    }
 
     /// The resolver the DNS-shaped
     /// ledger reads go through: the
