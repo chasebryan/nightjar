@@ -240,7 +240,7 @@ final class BlacksiteShell: ObservableObject {
         "jobs", "kill", "fastfetch",
         "neofetch", "diagnose",
         "limits",
-        "scan", "knock", "census", "eazy", "magdump", "decode",
+        "scan", "knock", "census", "eazy", "totality", "magdump", "decode",
         "company", "port", "emcon", "onion", "applock", "wardrive",
         "mawk",
         "macro",
@@ -3246,6 +3246,8 @@ final class BlacksiteShell: ObservableObject {
             census()
         case "eazy":
             eazyCommand(args)
+        case "totality":
+            totalityCommand(args)
         case "magdump":
             magdumpCommand(args)
         case "decode":
@@ -4405,6 +4407,12 @@ final class BlacksiteShell: ObservableObject {
             || activeSSHClient != nil
         stopToken.trip()
         workStopped = true
+        if TotalityCenter.shared.running {
+            TotalityCenter.shared.standDown(
+                reason: L("stopped by the operator"),
+                say: { [weak self] text in
+                    self?.emit(text, .sys) })
+        }
         BlacksiteKernel.shared.killAll(
             reason: "stopped by the operator")
         if scanner.sweeping {
@@ -5125,6 +5133,7 @@ final class BlacksiteShell: ObservableObject {
                 ("knock <host> [ports]", L("knock a host (default: the top doors)")),
                 ("census", L("knock every device on the neighborhood board")),
                 ("eazy [target]", L("the full battery — doors, then the probe that belongs to each door, then a filed report; no target means this network, a name means an access point")),
+                ("totality [stop|status]", L("the whole house at once — Serve up, the beacon lit, Net-Assault passing, the tap recording — watched and re-asserted until totality stop or the house stop; every organ still answers to EMCON, and Totality lowers only what it raised")),
                 ("magdump <target>", L("the automated targeting program — one named target, the whole bench emptied at it in stages (doors, web, tls, names and mail, the wire's ledgers, the shield's singles), one graded board filed; the lock-on reel plays over its first probes")),
                 ("decode <hex>", L("raw advertisement bytes through the decoders")),
                 ("company <id>", L("who a company id belongs to")),
@@ -9511,6 +9520,35 @@ final class BlacksiteShell: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: totality — the whole house, running
+
+    func totalityCommand(_ args: [String]) {
+        let word = args.first?.lowercased()
+        if word == "stop" {
+            guard TotalityCenter.shared.running else {
+                emit(L("totality is not running."), .err)
+                return
+            }
+            TotalityCenter.shared.standDown(
+                reason: L("the operator stood it down"),
+                say: { [weak self] text in
+                    self?.emit(text, .sys) })
+            return
+        }
+        if word == "status" {
+            emit(TotalityCenter.shared.statusLine,
+                 .sys)
+            return
+        }
+        guard let organs = centerOrgans() else {
+            return
+        }
+        TotalityCenter.shared.engage(
+            mouth: organs.mouth,
+            say: { [weak self] text in
+                self?.emit(text, .sys) })
     }
 
     // MARK: eazy — the full battery, one word or one button
