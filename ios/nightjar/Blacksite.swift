@@ -204,19 +204,6 @@ final class BlacksiteShell: ObservableObject {
     @Published var programRequest:
         BlacksiteView.Program?
 
-    /// The EAZY ignition: eazyCommand sets
-    /// this as the battery starts; the room
-    /// lays the charge-up splash over its
-    /// first probes (the rainfall reel).
-    @Published var eazyIgnition = false
-
-    /// The MAGDUMP ignition: magdumpCommand
-    /// sets this as the battery starts; the
-    /// room lays the target lock-on splash
-    /// over its first probes (the magdump
-    /// reel) — the same doctrine as EAZY's.
-    @Published var magdumpIgnition = false
-
     /// The betafisch seed: a capture the
     /// console had already read, named in
     /// its own tree when the verb carried
@@ -9567,9 +9554,6 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         busy = true
-        // The battery starts now; the ignition
-        // theatre lays over its first probes.
-        eazyIgnition = true
         stopToken.reset()
         let captureLock = NSLock()
         var captured: [(String, Line.Kind)] = []
@@ -9592,13 +9576,6 @@ final class BlacksiteShell: ObservableObject {
             let findings = lines.filter { $0.1 == .err }.count
             DispatchQueue.main.async {
                 self.busy = false
-                // The splash dismisses itself on
-                // its own timer when the room is
-                // watching; clear the flag here too
-                // so a battery loosed from chat
-                // never leaves a stale ignition
-                // waiting in the console door.
-                self.eazyIgnition = false
             }
             guard !lines.isEmpty else { return }
             let report = lines.map { $0.0 }.joined(separator: "\n")
@@ -9665,9 +9642,6 @@ final class BlacksiteShell: ObservableObject {
             return
         }
         busy = true
-        // The battery starts now; the lock-on
-        // theatre lays over its first probes.
-        magdumpIgnition = true
         stopToken.reset()
         let captureLock = NSLock()
         var captured: [(String, Line.Kind)] = []
@@ -9688,13 +9662,6 @@ final class BlacksiteShell: ObservableObject {
             let findings = lines.filter { $0.1 == .err }.count
             DispatchQueue.main.async {
                 self.busy = false
-                // The splash dismisses itself on
-                // its own timer when the room is
-                // watching; clear the flag here too
-                // so a battery loosed from chat
-                // never leaves a stale lock-on
-                // waiting in the console door.
-                self.magdumpIgnition = false
             }
             guard !lines.isEmpty else { return }
             let report = lines.map { $0.0 }.joined(separator: "\n")
@@ -12172,18 +12139,6 @@ struct BlacksiteView: View {
                 onClose: {
                     shell.editorSession = nil
                 })
-        }
-        .houseFullScreenCover(
-            isPresented: $shell.eazyIgnition
-        ) {
-            EazyIgnitionView(
-                isShown: $shell.eazyIgnition)
-        }
-        .houseFullScreenCover(
-            isPresented: $shell.magdumpIgnition
-        ) {
-            MagdumpIgnitionView(
-                isShown: $shell.magdumpIgnition)
         }
     }
 

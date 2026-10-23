@@ -127,7 +127,6 @@ struct SendView: View {
     @AppStorage("sectionOpen.snatch") private var openSnatch = false
     @AppStorage("sectionOpen.plant") private var openPlant = false
     @State private var centipedeHome = ""
-    @State private var showCentipedeSplash = false
     @State private var presets: [NJPreset] = NJPresetStore.load()
     @State private var selectedPresetID = ""
     @State private var presetNameDraft = ""
@@ -721,7 +720,6 @@ struct SendView: View {
                                 framing: framing, method: method,
                                 rules: TraceRule.parse(traceRules),
                                 payloadNamed: payloadNamed)
-                            showCentipedeSplash = true
                         } label: {
                             Label(String(format: L("Release the centipede (%lld hop(s))"),
                                          centipedeHopCount),
@@ -1240,9 +1238,6 @@ struct SendView: View {
             }
             .sheet(isPresented: $showMawk) {
                 MawkView()
-            }
-            .houseFullScreenCover(isPresented: $showCentipedeSplash) {
-                CentipedeSplashView(isShown: $showCentipedeSplash)
             }
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)

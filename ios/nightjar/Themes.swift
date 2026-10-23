@@ -144,8 +144,8 @@ struct AppTheme: Identifiable, Codable, Equatable {
     static let blackGlass = AppTheme(
         id: "blackglass", name: "Black Glass",
         accentHex: "#C7CEDA", glowHex: "#FFFFFF",
-        tintHex: "#000000", tintStrength: 0.55,
-        dim: 0.38,
+        tintHex: "#000000", tintStrength: 0.50,
+        dim: 0.30,
         builtIn: true)
 
     /// Violent Redteam (the operator's order,
@@ -945,7 +945,7 @@ private struct BootRow: View {
                 text: L("Quality decodes the boot film at 1024 px with the print at full density, and the wallpaper reel plays full-size. Performance decodes the film at 512 — about a fifth of the memory — thins the print, and caps the reel at 640. Same app, lighter feet: choose Performance when the device runs hot or the boot feels heavy."))
             Toggle(L("Animated GIFs"), isOn: $gifsEnabled)
             ExplainToggle(
-                text: L("Off (the default) stills the GIFs nobody chose — the stock living wallpaper and the viewers stand on their first frame — and the action splashes do not present at all. What you chose always plays: the boot film, a GIF you filed as a backdrop. Turn animation on and everything aboard plays, splashes included. Nothing is removed — the pictures stay, the idle motion goes."))
+                text: L("Off (the default) stills the GIFs nobody chose — the stock living wallpaper and the viewers stand on their first frame. What you chose always plays: the boot film, a GIF you filed as a backdrop. There are no action GIFs in either position of this switch: no film, animation or flicker attends any action."))
             HStack {
                 Text(L("Backdrop"))
                 Spacer()

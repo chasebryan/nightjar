@@ -557,14 +557,15 @@ enum BootMedia {
     /// plays, always: the boot film (the
     /// ceremony) and a GIF they filed into a
     /// backdrop slot (their wallpaper, their
-    /// act). The action films are NOT an
-    /// exemption: his later word the same
-    /// night, over the Hulk that played across
-    /// his work, is that a splash does not
-    /// present at all while the house is
-    /// still — the films stay filed, and play
-    /// with everything else when he turns
-    /// animation on.
+    /// act). The action films are GONE
+    /// entirely (fix388, his word the same
+    /// night, repeated until it was done):
+    /// the five action splashes and their
+    /// films were removed outright — no
+    /// GIF, no animation, and no flicker
+    /// attends any action. What keeps GIFs
+    /// at all: the boot screen's film and
+    /// the wallpaper, in every section.
     static let gifsKey = "media.gifsEnabled"
     /// The house's picture mode: "quality" or
     /// "performance" — how much of the device
@@ -578,6 +579,7 @@ enum BootMedia {
         UserDefaults.standard.string(forKey: modeKey)
             == "performance"
     }
+
 
     static var file: URL {
         let docs = FileManager.default.urls(
@@ -1111,8 +1113,8 @@ struct BootView: View {
     /// the machine finishes waking.
     private var titleTracking: CGFloat {
         let t = max(0, min(1,
-            (Double(bootProgress) - 0.35) / 0.65))
-        return CGFloat(18 * (1 - t))
+            (Double(bootProgress) - 0.45) / 0.55))
+        return CGFloat(11 * (1 - t))
     }
 
     /// The manifest's clock, built once — a
@@ -1143,14 +1145,10 @@ struct BootView: View {
             tone: .ok)
 #endif
         var out: [BootLine] = [
-            BootLine(text: L("SYS — NIGHTJAR INSTRUMENT"),
-                     tone: .cmd),
             BootLine(text: String(format: L("Keyholder — %@"), UIDevice.current.name),
                      tone: .ok),
             bedrockLine,
             BootLine(text: String(format: L("Nightjar — %@"), AppInfo.version),
-                     tone: .ok),
-            BootLine(text: L("LINK — sealed ledger online"),
                      tone: .ok),
         ]
         if let ip = Mouth.localIPAddress() {
@@ -1539,42 +1537,34 @@ struct BootView: View {
                     .ignoresSafeArea()
                 LinearGradient(
                     colors: [Color.black.opacity(0),
-                             Color.black.opacity(0.72)],
+                             Color.black.opacity(0.80)],
                     startPoint: .center, endPoint: .bottom)
                     .ignoresSafeArea()
             }
             VStack(spacing: 0) {
                 VStack(spacing: 4) {
-                    Text("NIGHTJAR")
-                        .font(.system(size: 34, weight: .semibold, design: .monospaced))
-                        .tracking(titleTracking * 0.6)
+                    Text("nightjar")
+                        .font(.system(.title3, design: .monospaced)
+                              .weight(.bold))
+                        .tracking(titleTracking)
                         .foregroundStyle(.white.opacity(
-                            0.75 + 0.25 * Double(bootProgress)))
-                        .shadow(color: .black.opacity(0.85),
-                                radius: 8, x: 0, y: 2)
-                    Text("NIGHTWARE LABZ")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .tracking(4.2)
-                        .foregroundStyle(Color.white.opacity(0.55))
-                        .padding(.top, 2)
+                            0.62 + 0.38
+                                * Double(bootProgress)))
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 5, x: 0, y: 1)
                     Text(finale
                          ? L("the world is yours")
                          : L(subtitle))
-                        .font(.system(.caption2, design: .monospaced))
-                        .tracking(1.8)
+                        .font(.system(.caption2,
+                                      design: .monospaced))
+                        .tracking(2)
                         .foregroundStyle(finale
                             ? color(.ok)
-                            : Color(white: 0.48))
-                        .shadow(color: .black.opacity(0.8),
-                                radius: 3, x: 0, y: 1)
-                        .padding(.top, 6)
+                            : Color(white: 0.62))
+                        .shadow(color: .black.opacity(0.9),
+                                radius: 4, x: 0, y: 1)
                         .animation(.easeInOut(duration: 0.45),
                                    value: finale)
-                    Text("EMCON · EARS · VAULT · LINK")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .tracking(2.4)
-                        .foregroundStyle(Color.white.opacity(0.38))
-                        .padding(.top, 10)
                 }
                 .padding(.top, 22)
                 Spacer()
@@ -2007,10 +1997,8 @@ struct LabzBootView: View {
             let word = Array(L("NIGHTWARE LABZ"))
             ForEach(word.indices, id: \.self) { i in
                 Text(String(word[i]))
-                    .font(.system(size: 22,
-                                  weight: .semibold,
-                                  design: .monospaced))
-                    .tracking(1.4)
+                    .font(.system(size: 25,
+                                  weight: .bold))
                     .foregroundStyle(tint)
                     .opacity(ramp(
                         t,
@@ -2206,7 +2194,7 @@ struct LabzBootView: View {
                                 color: Self.liveRed
                                     .opacity(0.9),
                                 radius: 8)
-                        Text(L("NIGHTJAR — INSTRUMENT LIVE"))
+                        Text(L("NIGHTJAR IS NOW LIVE"))
                             .font(.system(
                                 .footnote,
                                 design: .monospaced)
@@ -2893,7 +2881,7 @@ enum Haptics {
 }
 
 
-// MARK: Centipede release splash
+// MARK: GIF decoding
 
 extension UIImage {
     /// Decode an animated GIF's frames and delays the ImageIO
@@ -3075,15 +3063,16 @@ extension UIImage {
 /// THE GIF WARDROBE (Chase's commission, 2026-10-22,
 /// the same night every GIF left the project): GIFs
 /// live in exactly one place — the bundle's gifs/
-/// folder, one file per area, uploaded by the
-/// operator one at a time under its slot's exact
-/// name (boot.gif for the boot ceremony, then
-/// centipede, eazy, magdump, redframe, assault for
-/// the five ignition splashes). A slot with a film
-/// filed lights its area up; a slot without one
-/// leaves the built-in ceremony standing, exactly
-/// as the house ran with no GIFs at all. This enum
-/// is the only door the house opens to a GIF.
+/// folder, filed by the operator under its slot's
+/// exact name. One slot remains (fix388): boot,
+/// for the boot ceremony's film. The five action
+/// slots (centipede, eazy, magdump, redframe,
+/// assault) and their splashes were removed
+/// outright at his word — no GIF attends an
+/// action anywhere in the house. The wallpaper's
+/// films ride the backdrop's own filing road, not
+/// this one. This enum is the only door the house
+/// opens to a bundled GIF.
 enum GifWardrobe {
     /// The film filed under a slot, when one is
     /// aboard. The wardrobe folder answers first;
@@ -3103,37 +3092,6 @@ enum GifWardrobe {
             return try? Data(contentsOf: url)
         }
         return nil
-    }
-
-    /// Can the platform actually decode
-    /// these bytes into a picture? A filed
-    /// film that cannot decode must read as
-    /// no film at all — otherwise its splash
-    /// stands as a black stage over the
-    /// operator's work (fix383).
-    static func decodable(_ data: Data) -> Bool {
-#if os(iOS)
-        UIImage(data: data) != nil
-#else
-        NSImage(data: data) != nil
-#endif
-    }
-
-    /// The film's full loop, in seconds, read from
-    /// frame properties alone — no frame is ever
-    /// decoded to time a film. The delay rule is
-    /// the house's own, the one UIImage.gifDelays
-    /// reads by: the unclamped delay where the
-    /// film authored one, the clamped delay behind
-    /// it, a tenth of a second behind both, and no
-    /// frame credited shorter than a fiftieth of a
-    /// second. A film whose properties will not
-    /// read keeps the house's standing three
-    /// seconds.
-    static func duration(of data: Data) -> Double {
-        let delays = UIImage.gifDelays(data)
-        guard !delays.isEmpty else { return 3.0 }
-        return delays.reduce(0, +)
     }
 }
 
@@ -3277,93 +3235,14 @@ enum SubjectAnchor {
     }
 }
 
-/// A wardrobe film's stage: the GIF hung on black
-/// across the whole screen, beautifully, on any
-/// glass (Chase's commission, 2026-10-22; the
-/// framing corrected to his ruling of 2026-10-23).
-/// The stage obeys FilmStageLaw: a film within
-/// three-to-one of the screen's shape FILLS it,
-/// framed on its subject — FilmFrameView lays the
-/// player out inside its own container so the
-/// subject the anchor found stands at the centre;
-/// a film wider of the line hangs WHOLE and
-/// centred. Either way the stage reports exactly
-/// the size it is offered, never its film's size:
-/// an oversized child inflates the stack it sits
-/// in and pushes everything else off its marks
-/// (the boot film's lesson, 2026-10-17).
-struct GifStageView: View {
-    let data: Data
-    /// Where the film's subject sits, found when
-    /// the film loaded; the plain centre until
-    /// (or unless) the anchor speaks.
-    var focus: CGPoint? = nil
-
-    /// The stage itself never gates (fix381,
-    /// 2026-10-23): fix378 emptied the stage
-    /// while the house was still, and every
-    /// splash became its own black shell
-    /// standing alone on the screen — worse
-    /// than the film it replaced. The stillness
-    /// lives in the players, as it does for the
-    /// backdrops: with GIFs off, a splash
-    /// stands on its film's first frame; with
-    /// them on, it plays. Never black, never
-    /// motion the operator did not choose.
-    var body: some View {
-        GeometryReader { geo in
-            let frameAspect = geo.size.height > 0
-                ? geo.size.width / geo.size.height : 0
-            let image = UIImage(data: data)
-            let imageAspect = image.map {
-                $0.size.height > 0
-                    ? $0.size.width / $0.size.height : 0
-            } ?? 0
-            let whole = FilmStageLaw.hangsWhole(
-                imageAspect: imageAspect,
-                frameAspect: frameAspect)
-            ZStack {
-                Color.black
-#if os(iOS)
-                if whole {
-                    GIFPlayerView(
-                        data: data,
-                        contentMode: .scaleAspectFit)
-                        .frame(width: geo.size.width,
-                               height: geo.size.height)
-                        .clipped()
-                } else {
-                    FilmFrameView(
-                        data: data,
-                        focus: focus ?? CGPoint(
-                            x: 0.5, y: 0.5))
-                        .frame(width: geo.size.width,
-                               height: geo.size.height)
-                }
-#else
-                GIFPlayerView(data: data)
-                    .frame(width: geo.size.width,
-                           height: geo.size.height)
-                    .clipped()
-#endif
-            }
-            .frame(width: geo.size.width,
-                   height: geo.size.height)
-        }
-        .ignoresSafeArea()
-    }
-}
-
 #if os(iOS)
 /// A full-bleed GIF player (UIImageView under the hood).
 struct GIFPlayerView: UIViewRepresentable {
     let data: Data
     var contentMode: UIView.ContentMode = .scaleAspectFill
     /// Play the reel through once and hold its
-    /// last frame, instead of looping forever —
-    /// for splashes whose film is a single act
-    /// (the EAZY ignition: the spin, the blast,
-    /// and stop). Default off: backdrops loop.
+    /// last frame, instead of looping forever.
+    /// Default off: backdrops loop.
     var playOnce = false
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = false
@@ -3447,7 +3326,7 @@ struct GIFPlayerView: UIViewRepresentable {
 /// player inside is sized to the film's displayed
 /// size and placed so the focus point lands at the
 /// stage's centre (BootFilmContainer's own math, on
-/// the looping player the splashes run). The
+/// the looping player the boot film runs). The
 /// SwiftUI side only ever sees a view of exactly
 /// the size it was offered.
 struct FilmFrameView: UIViewRepresentable {
@@ -3511,8 +3390,7 @@ struct FilmFrameView: UIViewRepresentable {
     /// performance mode, the platform's animated
     /// image otherwise; a still frame when the
     /// house has stilled its GIFs. The same roads
-    /// GIFPlayerView runs, looping, as a splash
-    /// film runs.
+    /// GIFPlayerView runs, looping.
     private func configure(_ view: Container) {
         let player = view.imageView
         guard gifsEnabled else {
@@ -3844,350 +3722,6 @@ struct BootFilmPlayer: UIViewRepresentable {
 
 
 #endif
-/// The drumroll: a splash over the whole screen when
-/// the centipede is released (tap to skip). GIFs live
-/// only in the wardrobe folder (gifs/), one per area,
-/// uploaded by the operator (Chase's commission,
-/// 2026-10-22): a film filed under centipede.gif IS
-/// this splash, played on the wardrobe's stage for
-/// one loop of itself, held between three and six
-/// seconds. With the slot empty the built-in flicker
-/// card stands, three seconds of theatre, exactly as
-/// it did. The crawl itself starts the moment Release
-/// is tapped — the splash is pure theatre laid over
-/// its first hops.
-struct CentipedeSplashView: View {
-    @Binding var isShown: Bool
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = false
-    @State private var flicker = false
-    @State private var gifData: Data?
-    @State private var gifFocus: CGPoint?
-
-    /// How long the card stays: a beat of
-    /// theatre, then it lifts — tap lifts
-    /// it sooner.
-    private var splashSeconds: Double { 3.0 }
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            if let gifData {
-                GifStageView(data: gifData,
-                             focus: gifFocus)
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "ant.fill")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.teal)
-                    Text("CENTIPEDE RELEASED")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    // The stillness binds the
-                    // card too (fix383): no
-                    // flicker screens while the
-                    // house's GIFs are off — the
-                    // card simply stands.
-                    if gifsEnabled {
-                        withAnimation(.easeInOut(duration: 0.14)
-                            .repeatForever(autoreverses: true)) {
-                            flicker = true
-                        }
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { isShown = false }
-        .onAppear {
-            Haptics.success()
-            // The wardrobe is read ONCE, here — the
-            // film's bytes and its loop then live in
-            // state, and the body never touches disk.
-            let film = GifWardrobe.data("centipede")
-            // A film that cannot decode is
-            // no film (fix383): the card
-            // stands instead of a black stage.
-            gifData = film.flatMap {
-                GifWardrobe.decodable($0) ? $0 : nil
-            }
-            gifFocus = film.map {
-                SubjectAnchor.focus(for: $0)
-            }
-            let seconds = film.map {
-                min(6.0, max(3.0,
-                    GifWardrobe.duration(of: $0)))
-            } ?? splashSeconds
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + seconds) {
-                isShown = false
-            }
-        }
-    }
-}
-
-/// The charge-up: a splash over the whole screen
-/// when EAZY is released (tap to skip). GIFs live
-/// only in the wardrobe folder (gifs/), one per
-/// area, uploaded by the operator (Chase's
-/// commission, 2026-10-22): a film filed under
-/// eazy.gif IS this splash, played on the wardrobe's
-/// stage for one loop of itself, held between three
-/// and six seconds. With the slot empty the built-in
-/// flicker card stands, exactly as it did. The scan
-/// starts the moment EAZY is ordered — the splash is
-/// pure theatre laid over its first probes, the
-/// centipede's doctrine.
-struct EazyIgnitionView: View {
-    @Binding var isShown: Bool
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = false
-    @State private var flicker = false
-    @State private var gifData: Data?
-    @State private var gifFocus: CGPoint?
-
-    /// How long the card stays: a beat of
-    /// theatre, then it lifts — tap lifts
-    /// it sooner.
-    private var splashSeconds: Double { 3.0 }
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            if let gifData {
-                GifStageView(data: gifData,
-                             focus: gifFocus)
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.yellow)
-                    Text("EAZY RELEASED")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    // The stillness binds the
-                    // card too (fix383): no
-                    // flicker screens while the
-                    // house's GIFs are off — the
-                    // card simply stands.
-                    if gifsEnabled {
-                        withAnimation(.easeInOut(duration: 0.14)
-                            .repeatForever(autoreverses: true)) {
-                            flicker = true
-                        }
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { isShown = false }
-        .onAppear {
-            Haptics.success()
-            // The wardrobe is read ONCE, here — the
-            // film's bytes and its loop then live in
-            // state, and the body never touches disk.
-            let film = GifWardrobe.data("eazy")
-            // A film that cannot decode is
-            // no film (fix383): the card
-            // stands instead of a black stage.
-            gifData = film.flatMap {
-                GifWardrobe.decodable($0) ? $0 : nil
-            }
-            gifFocus = film.map {
-                SubjectAnchor.focus(for: $0)
-            }
-            let seconds = film.map {
-                min(6.0, max(3.0,
-                    GifWardrobe.duration(of: $0)))
-            } ?? splashSeconds
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + seconds) {
-                isShown = false
-            }
-        }
-    }
-}
-
-/// The lock-on: a splash over the whole screen when
-/// MAGDUMP is released, ending on TARGET LOCK ON
-/// (tap to skip). GIFs live only in the wardrobe
-/// folder (gifs/), one per area, uploaded by the
-/// operator (Chase's commission, 2026-10-22): a film
-/// filed under magdump.gif IS this splash, played on
-/// the wardrobe's stage for one loop of itself, held
-/// between three and six seconds. With the slot empty
-/// the built-in flicker card stands, exactly as it
-/// did. The battery starts the moment MAGDUMP is
-/// ordered — the splash is pure theatre laid over its
-/// first probes, the centipede's doctrine, same as
-/// EAZY's charge-up.
-struct MagdumpIgnitionView: View {
-    @Binding var isShown: Bool
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = false
-    @State private var flicker = false
-    @State private var gifData: Data?
-    @State private var gifFocus: CGPoint?
-
-    /// How long the card stays: a beat of
-    /// theatre, then it lifts — tap lifts
-    /// it sooner.
-    private var splashSeconds: Double { 3.0 }
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            if let gifData {
-                GifStageView(data: gifData,
-                             focus: gifFocus)
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "scope")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.red)
-                    Text("TARGET LOCK ON")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    // The stillness binds the
-                    // card too (fix383): no
-                    // flicker screens while the
-                    // house's GIFs are off — the
-                    // card simply stands.
-                    if gifsEnabled {
-                        withAnimation(.easeInOut(duration: 0.14)
-                            .repeatForever(autoreverses: true)) {
-                            flicker = true
-                        }
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { isShown = false }
-        .onAppear {
-            Haptics.success()
-            // The wardrobe is read ONCE, here — the
-            // film's bytes and its loop then live in
-            // state, and the body never touches disk.
-            let film = GifWardrobe.data("magdump")
-            // A film that cannot decode is
-            // no film (fix383): the card
-            // stands instead of a black stage.
-            gifData = film.flatMap {
-                GifWardrobe.decodable($0) ? $0 : nil
-            }
-            gifFocus = film.map {
-                SubjectAnchor.focus(for: $0)
-            }
-            let seconds = film.map {
-                min(6.0, max(3.0,
-                    GifWardrobe.duration(of: $0)))
-            } ?? splashSeconds
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + seconds) {
-                isShown = false
-            }
-        }
-    }
-}
-
-/// The frame: a splash over the whole screen when
-/// EMCON falls to Alpha (tap to skip). GIFs live only
-/// in the wardrobe folder (gifs/), one per area,
-/// uploaded by the operator (Chase's commission,
-/// 2026-10-22): a film filed under redframe.gif IS
-/// this splash, played on the wardrobe's stage for
-/// one loop of itself, held between three and six
-/// seconds. With the slot empty the built-in blood-red
-/// flicker card stands, exactly as it did. The silence
-/// itself is never delayed — the Standard silences
-/// first, and this is the theatre laid over the hush.
-struct RedframeSplashView: View {
-    @Binding var isShown: Bool
-    @AppStorage(BootMedia.gifsKey)
-    private var gifsEnabled = false
-    @State private var flicker = false
-    @State private var gifData: Data?
-    @State private var gifFocus: CGPoint?
-
-    /// How long the card stays: a beat of
-    /// theatre, then it lifts — tap lifts
-    /// it sooner.
-    private var splashSeconds: Double { 3.0 }
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            if let gifData {
-                GifStageView(data: gifData,
-                             focus: gifFocus)
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "viewfinder")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.red)
-                    Text("EMCON ALPHA")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    // The stillness binds the
-                    // card too (fix383): no
-                    // flicker screens while the
-                    // house's GIFs are off — the
-                    // card simply stands.
-                    if gifsEnabled {
-                        withAnimation(.easeInOut(duration: 0.14)
-                            .repeatForever(autoreverses: true)) {
-                            flicker = true
-                        }
-                    }
-                }
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { isShown = false }
-        .onAppear {
-            Haptics.success()
-            // The wardrobe is read ONCE, here — the
-            // film's bytes and its loop then live in
-            // state, and the body never touches disk.
-            let film = GifWardrobe.data("redframe")
-            // A film that cannot decode is
-            // no film (fix383): the card
-            // stands instead of a black stage.
-            gifData = film.flatMap {
-                GifWardrobe.decodable($0) ? $0 : nil
-            }
-            gifFocus = film.map {
-                SubjectAnchor.focus(for: $0)
-            }
-            let seconds = film.map {
-                min(6.0, max(3.0,
-                    GifWardrobe.duration(of: $0)))
-            } ?? splashSeconds
-            DispatchQueue.main.asyncAfter(
-                deadline: .now() + seconds) {
-                isShown = false
-            }
-        }
-    }
-}
-
 /// One share payload, identifiable so a screen's root can
 /// present the share sheet for it with `.sheet(item:)`.
 /// Shares in this app are doors: a button in a list raises

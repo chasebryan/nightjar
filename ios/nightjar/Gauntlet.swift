@@ -3857,19 +3857,23 @@ final class Gauntlet: ObservableObject {
             var cases = 0
             // Chase's commission, 2026-10-22: GIFs
             // live only in the wardrobe — the
-            // bundle's gifs/ folder, one per area,
-            // filed by the operator under its slot's
-            // exact name. A GIF anywhere else in the
-            // bundle is a stowaway. The wardrobe
-            // ships FILLED (fix360: all six of the
-            // operator's films filed under their
-            // slot names); an unfiled slot answers
-            // nil, and the shipped stills (the
-            // bird, as PNGs) must be present.
+            // bundle's gifs/ folder, filed by the
+            // operator under its slot's exact
+            // name. A GIF anywhere else in the
+            // bundle is a stowaway. Since fix388
+            // the wardrobe holds ONE slot — boot,
+            // the boot ceremony's film; the five
+            // action films and their splashes
+            // were removed outright at his word,
+            // and the wallpaper's films ride the
+            // backdrop's own road, not this one.
+            // An unfiled slot answers nil, and
+            // the shipped stills (the bird, as
+            // PNGs) must be present.
             //
             // The flattening correction (the first
             // full run, 2026-10-23, failed this step
-            // on assault.gif): the synchronized
+            // on a root GIF): the synchronized
             // group flattens the wardrobe folder
             // into the bundle's root in the built
             // product — GifWardrobe.data's own doc
@@ -3884,9 +3888,7 @@ final class Gauntlet: ObservableObject {
             // there directly; this step judges the
             // built bundle it runs in.
             cases += 1
-            let slots: Set<String> = [
-                "boot", "centipede", "eazy",
-                "magdump", "redframe", "assault"]
+            let slots: Set<String> = ["boot"]
             var strays: [String] = []
             if let resources = Bundle.main.resourceURL,
                let enumerator = FileManager.default
