@@ -3985,6 +3985,34 @@ final class Gauntlet: ObservableObject {
                     && BootSubtitles.all.contains(
                         "TRUST NOTHING ON THE WIRE"),
                 "the deck must speak terminal")
+            cases += 1
+            try Gauntlet.require(
+                DerivationCoreView.ticksLit(0) == 0
+                    && DerivationCoreView
+                        .ticksLit(0.5) == 36
+                    && DerivationCoreView
+                        .ticksLit(1) == 72
+                    && DerivationCoreView
+                        .ticksLit(2) == 72,
+                "the core's entropy ticks must fill "
+                    + "in order and cap at the rim")
+            cases += 1
+            let step = 2 * Double.pi / 24
+            let settled = DerivationCoreView
+                .rotorAngle(progress: 1, time: 123.4,
+                            speed: 9, glyphs: 24,
+                            lock: 0.45) / step
+            try Gauntlet.require(
+                abs(settled - settled.rounded())
+                    < 0.000001
+                    && DerivationCoreView
+                        .rotorSettle(progress: 0,
+                                      lock: 1) == 0
+                    && DerivationCoreView
+                        .rotorSettle(progress: 1,
+                                      lock: 0.45) == 1,
+                "a locked rotor must stand on its "
+                    + "glyph grid, still")
             return "\(cases) cases"
         }
 

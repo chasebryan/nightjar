@@ -1361,95 +1361,26 @@ struct BootView: View {
         }
     }
 
-    /// The print: a fingerprint deriving itself.
-    /// Ridge by ridge the whorl grows as the load
-    /// rises — the house proving its identity as
-    /// it wakes, which is what a derivation is.
-    /// The ridges are bone-white with an accent
-    /// core; when the load completes, the print
-    /// stands whole and brightens. No ring, no
-    /// chart — a print.
-    private var printView: some View {
-        ZStack {
-            Circle()
-                .fill(RadialGradient(
-                    colors: [color(.ok).opacity(
-                                 finale ? 0.20 : 0.09),
-                             .clear],
-                    center: .center,
-                    startRadius: 8, endRadius: 108))
-                .frame(width: 216, height: 216)
-            Canvas { context, size in
-                let center = CGPoint(x: size.width / 2,
-                                     y: size.height / 2)
-                // The ridge count is the mode's to
-                // spend: full in quality, light in
-                // performance.
-                let ridges = pictureMode
-                    == "performance" ? 7 : 12
-                let p = Double(bootProgress)
-                for i in 0..<ridges {
-                    let local = min(1, max(0,
-                        p * Double(ridges) - Double(i)))
-                    if local <= 0 { continue }
-                    let base = 7 + 77 * Double(i)
-                        / Double(max(1, ridges - 1))
-                    let start = -1.2 + Double(i) * 0.42
-                    let span = (4.9 + Double(i % 3)
-                        * 0.45) * local * local
-                        * (3 - 2 * local)
-                    var path = Path()
-                    let steps = 56
-                    for s in 0...steps {
-                        let u = Double(s) / Double(steps)
-                        let theta = start + span * u
-                        let wobble = 1
-                            + 0.13 * sin(theta * 2
-                                + Double(i) * 0.8)
-                            + 0.08 * sin(theta * 3
-                                - Double(i) * 0.5)
-                        let r = base * wobble
-                        let point = CGPoint(
-                            x: center.x
-                                + CGFloat(r * cos(theta)),
-                            y: center.y + CGFloat(
-                                r * sin(theta)) * 1.14)
-                        if s == 0 {
-                            path.move(to: point)
-                        } else {
-                            path.addLine(to: point)
-                        }
-                    }
-                    let core = i < 3
-                    var alpha = 0.30 + 0.70 * local
-                    if finale { alpha = min(1, alpha + 0.25) }
-                    let tint = core
-                        ? color(.ok)
-                        : Color(white: 0.92)
-                    context.stroke(
-                        path,
-                        with: .color(tint.opacity(alpha)),
-                        style: StrokeStyle(
-                            lineWidth: 2.3,
-                            lineCap: .round,
-                            lineJoin: .round))
-                }
-            }
-            .frame(width: 190, height: 210)
-            Text("\(Int(bootProgress * 100))%")
-                .font(.system(.title3, design: .monospaced)
-                      .weight(.bold))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.95),
-                        radius: 5, x: 0, y: 1)
-        }
-        .frame(width: 216, height: 216)
-        .rotationEffect(.degrees(
-            Double(bootProgress) * 10 - 6))
-        .scaleEffect(finale ? 1.0 : 0.97)
-        .animation(.spring(response: 0.9,
-                           dampingFraction: 0.72),
-                   value: finale)
+    /// The derivation core: the boot's centre
+    /// instrument (Chase's commission, 2026-10-23
+    /// — the fingerprint whorl retired by his
+    /// word). Three cipher rotors of hex glyphs
+    /// counter-rotate while the warm-up runs and
+    /// SETTLE, one by one, as their share of the
+    /// derivation completes — a rotor machine
+    /// aligning. Around them, seventy-two entropy
+    /// ticks light in order with the boot's own
+    /// progress; a sweep rides the dial until the
+    /// finale; at the lock, one red ring — the
+    /// mare's eye colour — pulses out and is gone.
+    /// Every mark is a function of the boot's
+    /// progress and the clock: no state, no disk.
+    private var coreView: some View {
+        DerivationCoreView(
+            progress: Double(bootProgress),
+            finale: finale,
+            calm: pictureMode == "performance",
+            accent: color(.ok))
     }
 
     var ceremonyBody: some View {
@@ -1592,7 +1523,7 @@ struct BootView: View {
                 .padding(.top, 22)
                 Spacer()
                 VStack(spacing: 10) {
-                    printView
+                    coreView
                     stageLine
                 }
                 Spacer()
@@ -2294,6 +2225,279 @@ struct LabzBootView: View {
         .ignoresSafeArea()
     }
 }
+
+/// The derivation core's dial. Drawn in one
+/// Canvas under a timeline; the pure math
+/// stands apart so the Gauntlet can pin it.
+struct DerivationCoreView: View {
+    let progress: Double
+    let finale: Bool
+    let calm: Bool
+    let accent: Color
+
+    @State private var lockAt: Date?
+
+    static let tickCount = 72
+    private static let liveRed = Color(
+        red: 1.0, green: 0.086, blue: 0.149)
+    private static let rings: [(radius: Double,
+                                 glyphs: Int,
+                                 speed: Double,
+                                 lock: Double,
+                                 size: CGFloat)] = [
+        (84, 24, 9, 0.45, 10),
+        (64, 18, -6.5, 0.75, 9),
+        (46, 12, 4, 1.0, 8.5),
+    ]
+    private static let hexRing =
+        Array("8F3AC91D6E04B725")
+
+    /// Entropy ticks lit at a progress: the
+    /// dial fills in order, never jumps back.
+    static func ticksLit(_ progress: Double)
+        -> Int {
+        let p = min(1, max(0, progress))
+        return Int((p * Double(tickCount))
+            .rounded(.down))
+    }
+
+    /// A rotor's angle: it free-spins with the
+    /// clock, then settles onto its glyph grid
+    /// as progress crosses the rotor's lock
+    /// window — at full settle the angle is a
+    /// whole number of glyph steps, so the ring
+    /// reads aligned and still.
+    static func rotorAngle(progress: Double,
+                           time: Double,
+                           speed: Double,
+                           glyphs: Int,
+                           lock: Double) -> Double {
+        let spin = time * speed * .pi / 180
+        let step = 2 * Double.pi
+            / Double(max(1, glyphs))
+        let w0 = lock - 0.2
+        var e = (progress - w0) / 0.2
+        e = min(1, max(0, e))
+        e = e * e * (3 - 2 * e)
+        let rem = spin.truncatingRemainder(
+            dividingBy: step)
+        return spin - e * rem
+    }
+
+    /// How settled a rotor is, 0...1 — its
+    /// glyphs brighten as it locks.
+    static func rotorSettle(progress: Double,
+                            lock: Double) -> Double {
+        var e = (progress - (lock - 0.2)) / 0.2
+        e = min(1, max(0, e))
+        return e * e * (3 - 2 * e)
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(
+                    colors: [accent.opacity(
+                                 finale ? 0.20 : 0.09),
+                             .clear],
+                    center: .center,
+                    startRadius: 8, endRadius: 108))
+                .frame(width: 216, height: 216)
+            if calm {
+                dial(time: 0)
+            } else {
+                TimelineView(.animation(
+                    minimumInterval: 1.0 / 30.0)) {
+                    timeline in
+                    dial(time: timeline.date
+                        .timeIntervalSinceReferenceDate)
+                }
+            }
+            Text("\(Int(progress * 100))%")
+                .font(.system(.title2,
+                              design: .monospaced)
+                      .weight(.bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.95),
+                        radius: 5, x: 0, y: 1)
+        }
+        .frame(width: 216, height: 216)
+        .onChange(of: finale) { _, now in
+            if now, lockAt == nil {
+                lockAt = Date()
+            }
+        }
+    }
+
+    private func dial(time: Double) -> some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2,
+                                 y: size.height / 2)
+            let p = min(1, max(0, progress))
+            drawTicks(context, center)
+            if !finale {
+                drawSweep(context, center, time)
+            }
+            for (index, ring) in Self.rings
+                .enumerated() {
+                drawRotor(context, center,
+                          ring: ring,
+                          index: index, time: time)
+            }
+            drawReticle(context, center)
+            if let lockAt, !calm {
+                let age = Date().timeIntervalSince(
+                    lockAt)
+                if age < 0.7 {
+                    let u = age / 0.7
+                    var ringPath = Path()
+                    ringPath.addEllipse(in: CGRect(
+                        x: center.x - CGFloat(
+                            20 + 120 * u),
+                        y: center.y - CGFloat(
+                            20 + 120 * u),
+                        width: CGFloat(
+                            2 * (20 + 120 * u)),
+                        height: CGFloat(
+                            2 * (20 + 120 * u))))
+                    context.stroke(
+                        ringPath,
+                        with: .color(Self.liveRed
+                            .opacity(0.8 * (1 - u))),
+                        lineWidth: 2)
+                }
+            }
+        }
+        .frame(width: 216, height: 216)
+    }
+
+    private func drawTicks(_ context: GraphicsContext,
+                           _ center: CGPoint) {
+        let lit = Self.ticksLit(progress)
+        for i in 0..<Self.tickCount {
+            let a = Double(i) / Double(Self.tickCount) * 2 * Double.pi - Double.pi / 2
+            let long = i % 6 == 0
+            let r0: Double = long ? 98 : 101
+            let r1: Double = 108
+            var path = Path()
+            path.move(to: CGPoint(
+                x: center.x + CGFloat(r0 * cos(a)),
+                y: center.y + CGFloat(r0 * sin(a))))
+            path.addLine(to: CGPoint(
+                x: center.x + CGFloat(r1 * cos(a)),
+                y: center.y + CGFloat(r1 * sin(a))))
+            let on = i < lit
+            context.stroke(
+                path,
+                with: .color(on
+                    ? accent.opacity(0.95)
+                    : Color(white: 0.9)
+                        .opacity(0.13)),
+                lineWidth: long ? 2 : 1.2)
+        }
+    }
+
+    private func drawSweep(_ context: GraphicsContext,
+                           _ center: CGPoint,
+                           _ time: Double) {
+        let a = time * 40 * Double.pi / 180
+        var wedge = Path()
+        wedge.move(to: center)
+        wedge.addArc(center: center, radius: 96,
+                     startAngle: .radians(a - 0.5),
+                     endAngle: .radians(a),
+                     clockwise: false)
+        wedge.closeSubpath()
+        context.fill(wedge, with: .color(
+            accent.opacity(0.07)))
+        var line = Path()
+        line.move(to: center)
+        line.addLine(to: CGPoint(
+            x: center.x + CGFloat(96 * cos(a)),
+            y: center.y + CGFloat(96 * sin(a))))
+        context.stroke(line, with: .color(
+            accent.opacity(0.35)), lineWidth: 1)
+    }
+
+    private func drawRotor(_ context: GraphicsContext,
+                           _ center: CGPoint,
+                           ring: (radius: Double,
+                                  glyphs: Int,
+                                  speed: Double,
+                                  lock: Double,
+                                  size: CGFloat),
+                           index: Int, time: Double) {
+        var circle = Path()
+        circle.addEllipse(in: CGRect(
+            x: center.x - CGFloat(ring.radius),
+            y: center.y - CGFloat(ring.radius),
+            width: CGFloat(ring.radius * 2),
+            height: CGFloat(ring.radius * 2)))
+        context.stroke(circle, with: .color(
+            Color(white: 0.9).opacity(0.10)),
+            lineWidth: 1)
+        let settle = Self.rotorSettle(
+            progress: progress, lock: ring.lock)
+        let angle = Self.rotorAngle(
+            progress: progress, time: time,
+            speed: ring.speed, glyphs: ring.glyphs,
+            lock: ring.lock)
+        let tint: Color = index == 1
+            ? accent : Color(white: 0.92)
+        let alpha = 0.35 + 0.65 * settle
+        for g in 0..<ring.glyphs {
+            let a = angle + Double(g)
+                / Double(ring.glyphs) * 2 * Double.pi
+            let point = CGPoint(
+                x: center.x + CGFloat(
+                    ring.radius * cos(a)),
+                y: center.y + CGFloat(
+                    ring.radius * sin(a)))
+            let ch = Self.hexRing[
+                (g * 5 + index * 3)
+                    % Self.hexRing.count]
+            let text = Text(String(ch))
+                .font(.system(size: ring.size,
+                              design: .monospaced)
+                      .weight(.semibold))
+                .foregroundColor(tint
+                    .opacity(alpha))
+            var ctx = context
+            ctx.translateBy(x: point.x, y: point.y)
+            ctx.rotate(by: .radians(
+                a + Double.pi / 2))
+            ctx.draw(text, at: CGPoint(x: 0, y: 0),
+                     anchor: .center)
+        }
+    }
+
+    private func drawReticle(_ context: GraphicsContext,
+                             _ center: CGPoint) {
+        var circle = Path()
+        circle.addEllipse(in: CGRect(
+            x: center.x - 34, y: center.y - 34,
+            width: 68, height: 68))
+        context.stroke(circle, with: .color(
+            Color(white: 0.9).opacity(0.16)),
+            lineWidth: 1)
+        for corner in 0..<4 {
+            let base = Double(corner) * Double.pi / 2
+                + Double.pi / 4
+            var path = Path()
+            path.addArc(center: center,
+                        radius: 40,
+                        startAngle: .radians(
+                            base - 0.32),
+                        endAngle: .radians(
+                            base + 0.32),
+                        clockwise: false)
+            context.stroke(path, with: .color(
+                Color(white: 0.95).opacity(0.5)),
+                lineWidth: 1.6)
+        }
+    }
+}
+
 
 /// One place for every buzz, so the house speaks one
 /// haptic language, felt from any screen — and by the
