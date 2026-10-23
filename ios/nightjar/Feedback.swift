@@ -555,11 +555,16 @@ enum BootMedia {
     /// until the operator turns animation on
     /// in Colours. What the operator chose
     /// plays, always: the boot film (the
-    /// ceremony), a GIF they filed into a
+    /// ceremony) and a GIF they filed into a
     /// backdrop slot (their wallpaper, their
-    /// act), and the action films — the
-    /// ignition splashes that play FOR an
-    /// operator's act (the same night's word).
+    /// act). The action films are NOT an
+    /// exemption: his later word the same
+    /// night, over the Hulk that played across
+    /// his work, is that a splash does not
+    /// present at all while the house is
+    /// still — the films stay filed, and play
+    /// with everything else when he turns
+    /// animation on.
     static let gifsKey = "media.gifsEnabled"
     /// The house's picture mode: "quality" or
     /// "performance" — how much of the device
@@ -3266,7 +3271,25 @@ struct GifStageView: View {
     /// (or unless) the anchor speaks.
     var focus: CGPoint? = nil
 
+    /// The stillness governs the stage too
+    /// (Chase's ruling, 2026-10-23, on the Hulk
+    /// that played over his work mid-EMCON):
+    /// with GIFs off — the default — an action's
+    /// splash does not present at all. The film
+    /// stays filed and the stage stays built;
+    /// nothing takes the screen from the
+    /// operator's work until they turn
+    /// animation on themselves.
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = false
+
     var body: some View {
+        if gifsEnabled {
+            stage
+        }
+    }
+
+    private var stage: some View {
         GeometryReader { geo in
             let frameAspect = geo.size.height > 0
                 ? geo.size.width / geo.size.height : 0
@@ -3284,8 +3307,7 @@ struct GifStageView: View {
                 if whole {
                     GIFPlayerView(
                         data: data,
-                        contentMode: .scaleAspectFit,
-                        actionFilm: true)
+                        contentMode: .scaleAspectFit)
                         .frame(width: geo.size.width,
                                height: geo.size.height)
                         .clipped()
@@ -3293,8 +3315,7 @@ struct GifStageView: View {
                     FilmFrameView(
                         data: data,
                         focus: focus ?? CGPoint(
-                            x: 0.5, y: 0.5),
-                        actionFilm: true)
+                            x: 0.5, y: 0.5))
                         .frame(width: geo.size.width,
                                height: geo.size.height)
                 }
@@ -3323,15 +3344,6 @@ struct GIFPlayerView: UIViewRepresentable {
     /// (the EAZY ignition: the spin, the blast,
     /// and stop). Default off: backdrops loop.
     var playOnce = false
-    /// An action film — one of the ignition
-    /// splashes, fired by the operator's own
-    /// hand — plays whatever the house's
-    /// stillness says (Chase's ruling,
-    /// 2026-10-23: the GIFs that play FOR
-    /// ACTIONS are still present). Ambient
-    /// callers leave this false and obey the
-    /// switch.
-    var actionFilm = false
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = false
 
@@ -3353,7 +3365,7 @@ struct GIFPlayerView: UIViewRepresentable {
     /// mode — or, when the house has stilled
     /// its GIFs, stand its first frame.
     private func configure(_ view: UIImageView) {
-        guard gifsEnabled || actionFilm else {
+        guard gifsEnabled else {
             view.stopAnimating()
             view.animationImages = nil
             if view.image == nil
@@ -3420,10 +3432,6 @@ struct GIFPlayerView: UIViewRepresentable {
 struct FilmFrameView: UIViewRepresentable {
     let data: Data
     let focus: CGPoint
-    /// An action film (an ignition splash's
-    /// stage) plays whatever the house's
-    /// stillness says; see GIFPlayerView.
-    var actionFilm = false
     @AppStorage(BootMedia.gifsKey)
     private var gifsEnabled = false
 
@@ -3486,7 +3494,7 @@ struct FilmFrameView: UIViewRepresentable {
     /// film runs.
     private func configure(_ view: Container) {
         let player = view.imageView
-        guard gifsEnabled || actionFilm else {
+        guard gifsEnabled else {
             player.stopAnimating()
             player.animationImages = nil
             if player.image == nil
