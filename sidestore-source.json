@@ -7,9 +7,9 @@
             "localizedDescription": "A network listening post and payload instrument for iOS: BLE ears, a send/serve mouth, EMCON, Knocktalk — and Skelli, the onboard intelligence who runs it all with you.",
             "name": "nightjar",
             "tintColor": "1DB35A",
-            "version": "12.0",
+            "version": "12.0.1",
             "versionDate": "2026-10-23",
-            "versionDescription": "v12 — plumage. The twelfth version wears the lab's colours: the NIGHTWARE LABZ boot (the mare's eye lights first), a ceremony that speaks terminal, the derivation core at its heart, films framed on their subject — and the whole house, Mac included, audited line by line."
+            "versionDescription": "v12b — plumage, fixed. The beacon crash is convicted and dead: beacons advertise name and service alone, and a payload that cannot legally ride is set down, never forced. TOTALITY is restructured on principle, magdump takes a plug, and the console's python is whole — it fetches and runs GitHub programs, settles pure-python packages with pip, and carries a twelve-module stdlib shelf."
         }
     ],
     "identifier": "net.nosuchmachine.nightjarhack.source",

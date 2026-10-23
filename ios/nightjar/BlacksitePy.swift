@@ -971,7 +971,7 @@ struct PyLexer {
             emitOp(op, startLine)
             return
         }
-        if "+-*/%<>=()[]{},:.;&|^~"
+        if "+-*/%<>=()[]{},:.;&|^~@"
             .contains(c) {
             i += 1
             emitOp(String(c), startLine)
@@ -1596,6 +1596,10 @@ indirect enum PyStmt {
     case classDef(String, [PyExpr],
                   [PyStmt], line: Int)
     case nonlocalStmt([String], line: Int)
+    case decorated([PyExpr], [PyStmt],
+                   line: Int)
+    case annotated(PyExpr, PyExpr,
+                   PyExpr?, line: Int)
 }
 
 // MARK: - The parser
@@ -1720,6 +1724,27 @@ struct PyParser {
                 target, iterable, body,
                 line: line)]
         }
+        if isOp("@") {
+            // Decorators: one or more '@'
+            // lines above a def or a
+            // class, applied when the
+            // statement runs.
+            var decorators: [PyExpr] = []
+            let decoLine = current.line
+            while isOp("@") {
+                advance()
+                decorators.append(
+                    try parseExpr())
+                if case .newline
+                    = current.tok {
+                    advance()
+                }
+            }
+            let inner = try parseStatement()
+            return [.decorated(
+                decorators, inner,
+                line: decoLine)]
+        }
         if isName("def") {
             return [try parseDef()]
         }
@@ -1748,7 +1773,11 @@ struct PyParser {
             var names: [(String, String?)] =
                 []
             while true {
-                let name = try expectName()
+                var name = try expectName()
+                while isOp(".") {
+                    advance()
+                    name += "." + (try expectName())
+                }
                 var alias: String? = nil
                 if isName("as") {
                     advance()
@@ -1767,7 +1796,27 @@ struct PyParser {
         }
         if isName("from") {
             advance()
-            let module = try expectName()
+            // Relative imports keep their
+            // dots on the front of the
+            // module string ('.mod',
+            // '..pkg'); the interpreter
+            // resolves them against the
+            // importing module's package
+            // when the statement runs.
+            var module = ""
+            while isOp(".") {
+                advance()
+                module += "."
+            }
+            if module.isEmpty
+                || !isName("import") {
+                var part = try expectName()
+                while isOp(".") {
+                    advance()
+                    part += "." + (try expectName())
+                }
+                module += part
+            }
             guard isName("import") else {
                 throw PyError(
                     "SyntaxError",
@@ -1775,6 +1824,10 @@ struct PyParser {
                     line: current.line)
             }
             advance()
+            let paren = isOp("(")
+            if paren {
+                advance()
+            }
             var names: [(String, String?)] =
                 []
             if isOp("*") {
@@ -1793,10 +1846,16 @@ struct PyParser {
                     names.append((name, alias))
                     if isOp(",") {
                         advance()
+                        if paren, isOp(")") {
+                            break
+                        }
                         continue
                     }
                     break
                 }
+            }
+            if paren {
+                try expectOp(")")
             }
             try endOfStatement()
             return [.fromImport(
@@ -1964,6 +2023,23 @@ struct PyParser {
         }
         // Assignment or bare expression.
         let first = try parseExpr()
+        if isOp(":") {
+            // An annotated statement:
+            // 'x: int', 'x: int = 5'. The
+            // annotation rides the
+            // statement; a value is
+            // optional.
+            advance()
+            let annotation = try parseExpr()
+            var value: PyExpr? = nil
+            if isOp("=") {
+                advance()
+                value = try parseExpr()
+            }
+            return .annotated(
+                first, annotation, value,
+                line: line)
+        }
         if isOp("=") {
             var targets = [first]
             var values: [PyExpr] = []
@@ -2031,23 +2107,64 @@ extension PyParser {
         var defaults: [(String, PyExpr)] = []
         if !isOp(")") {
             while true {
-                let param = try expectName()
-                params.append(param)
-                if isOp("=") {
+                if isOp("**") {
                     advance()
-                    let fallback =
-                        try parseExpr()
-                    defaults.append(
-                        (param, fallback))
+                    let kw = try expectName()
+                    params.append("**" + kw)
+                } else if isOp("*") {
+                    advance()
+                    // '*args' captures the
+                    // surplus; a bare '*'
+                    // only marks the
+                    // keyword-only country
+                    // after it.
+                    if case .name = current.tok {
+                        params.append(
+                            "*" + (try expectName()))
+                    } else {
+                        params.append("*")
+                    }
+                } else if isOp("/") {
+                    // The positional-only
+                    // marker: accepted, not
+                    // enforced.
+                    advance()
+                } else {
+                    let param = try expectName()
+                    params.append(param)
+                    if isOp(":") {
+                        // An annotation: read
+                        // and set aside — the
+                        // house does not keep
+                        // parameter papers.
+                        advance()
+                        _ = try parseExpr()
+                    }
+                    if isOp("=") {
+                        advance()
+                        let fallback =
+                            try parseExpr()
+                        defaults.append(
+                            (param, fallback))
+                    }
                 }
                 if isOp(",") {
                     advance()
+                    if isOp(")") { break }
                     continue
                 }
                 break
             }
         }
         try expectOp(")")
+        if isOp("-") {
+            // A return annotation ('->'
+            // is two tokens here): read
+            // and set aside.
+            advance()
+            try expectOp(">")
+            _ = try parseExpr()
+        }
         try expectOp(":")
         let body = try parseSuite()
         return .def(name, params, defaults,
@@ -2066,6 +2183,22 @@ extension PyParser {
                 while true {
                     bases.append(
                         try parseExpr())
+                    if isOp("=") {
+                        // A header keyword —
+                        // class C(Base,
+                        // metaclass=M): the
+                        // house keeps no
+                        // metaclasses, so the
+                        // pair is read and
+                        // set aside, and a
+                        // base written after
+                        // it would be a
+                        // syntax error in
+                        // python too.
+                        advance()
+                        _ = try parseExpr()
+                        bases.removeLast()
+                    }
                     if isOp(",") {
                         advance()
                         if isOp(")") { break }
@@ -2522,7 +2655,18 @@ extension PyParser {
                     = []
                 if !isOp(")") {
                     while true {
-                        if case .name(let word) =
+                        if isOp("**") {
+                            advance()
+                            kwargs.append(
+                                ("**",
+                                 try parseExpr()))
+                        } else if isOp("*") {
+                            advance()
+                            args.append(
+                                .unary(
+                                    "*",
+                                    try parseExpr()))
+                        } else if case .name(let word) =
                             current.tok,
                            case .op("=") =
                             tokens[
@@ -3030,6 +3174,8 @@ final class PyInterp {
         "any", "all", "divmod", "pow",
         "hex", "oct", "bin", "hash",
         "id", "vars", "dir", "super",
+        "property", "staticmethod",
+        "classmethod",
     ]
 
     static let exceptionKinds: Set<String> = [
@@ -3051,6 +3197,7 @@ final class PyInterp {
         "LookupError", "ArithmeticError",
         "OverflowError",
         "NotImplementedError",
+        "SystemExit",
     ]
 
     init(emit: @escaping BlacksiteEmit,
@@ -3147,10 +3294,33 @@ final class PyInterp {
     /// once per run and shared after.
     var loadedModules:
         [String: PyUserModule] = [:]
+    /// The dotted names of the modules
+    /// whose bodies are running, innermost
+    /// last — relative imports resolve
+    /// against the top of this stack.
+    var moduleNameStack: [String] = []
     /// The house's native classes, one
     /// PyClass per kind, minted on demand.
     var nativeClasses:
         [String: PyClass] = [:]
+
+    /// sys.stdout and sys.stderr, one
+    /// stream apiece per run.
+    var sysStreams: [Bool: PyValue] = [:]
+
+    func sysStream(stderr: Bool)
+        -> PyValue {
+        if let kept = sysStreams[stderr] {
+            return kept
+        }
+        let value = nativeInstance(
+            "sys.stream", "sys.stream", [
+                "name": .str(stderr
+                    ? "<stderr>" : "<stdout>"),
+            ])
+        sysStreams[stderr] = value
+        return value
+    }
 
     func nativeClass(_ kind: String,
                      _ display: String)
@@ -4016,6 +4186,2846 @@ class datetime:
 """,
         ]
 
+    /// Road A batch 3 (2026-10-23):
+    /// the stdlib shelf — whole
+    /// modules written in the house's
+    /// own python, each proven
+    /// against a CPython oracle
+    /// before it was embedded. The
+    /// loader reads these with the
+    /// bundled sources, ahead of the
+    /// disk.
+    static let roadASources:
+        [String: String] = [
+            "typing": """
+# typing — the house's edition. These
+# names exist so annotations and imports
+# evaluate the way programs expect:
+# List[int], Optional[X], Union[A, B],
+# Dict[str, int] all build typing forms.
+# The forms are annotations, not classes —
+# isinstance(x, List) is not a thing here,
+# and get_type_hints answers from the
+# __annotations__ a class body kept.
+
+
+class _Form:
+    def __init__(self, kind, args=None):
+        self.kind = kind
+        self.args = args
+
+    def __getitem__(self, item):
+        if isinstance(item, tuple):
+            return _Form(self.kind, item)
+        return _Form(self.kind, (item,))
+
+    def __call__(self, *a, **kw):
+        if len(a) == 1 and len(kw) == 0:
+            return a[0]
+        return None
+
+    def __or__(self, other):
+        return _Form("Union")
+
+    def __ror__(self, other):
+        return _Form("Union")
+
+    def __repr__(self):
+        if self.args is None:
+            return "typing." + self.kind
+        parts = []
+        for a in self.args:
+            parts.append(repr(a))
+        return "typing." + self.kind + "[" + ", ".join(parts) + "]"
+
+
+class _TypeVar:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return self.name
+
+
+def TypeVar(name, *constraints, **kw):
+    return _TypeVar(name)
+
+
+def cast(typ, val):
+    return val
+
+
+Any = _Form("Any")
+Never = _Form("Never")
+NoReturn = _Form("NoReturn")
+Optional = _Form("Optional")
+Union = _Form("Union")
+List = _Form("List")
+Dict = _Form("Dict")
+Set = _Form("Set")
+FrozenSet = _Form("FrozenSet")
+Tuple = _Form("Tuple")
+Callable = _Form("Callable")
+Iterable = _Form("Iterable")
+Iterator = _Form("Iterator")
+Generator = _Form("Generator")
+Sequence = _Form("Sequence")
+MutableSequence = _Form("MutableSequence")
+Mapping = _Form("Mapping")
+MutableMapping = _Form("MutableMapping")
+Hashable = _Form("Hashable")
+Sized = _Form("Sized")
+Container = _Form("Container")
+Collection = _Form("Collection")
+AbstractSet = _Form("AbstractSet")
+MutableSet = _Form("MutableSet")
+Awaitable = _Form("Awaitable")
+Coroutine = _Form("Coroutine")
+AsyncIterable = _Form("AsyncIterable")
+AsyncIterator = _Form("AsyncIterator")
+Literal = _Form("Literal")
+Annotated = _Form("Annotated")
+ClassVar = _Form("ClassVar")
+Final = _Form("Final")
+Self = _Form("Self")
+TypeAlias = _Form("TypeAlias")
+ParamSpec = _Form("ParamSpec")
+TypeVarTuple = _Form("TypeVarTuple")
+Unpack = _Form("Unpack")
+
+TYPE_CHECKING = False
+
+
+class Generic:
+    pass
+
+
+class Protocol:
+    pass
+
+
+def NewType(name, tp):
+    def new_type(x):
+        return x
+
+    return new_type
+
+
+def get_type_hints(obj):
+    ann = getattr(obj, "__annotations__", None)
+    if ann is None:
+        return {}
+    out = {}
+    for k in ann:
+        out[k] = ann[k]
+    return out
+
+
+def get_origin(tp):
+    return None
+
+
+def get_args(tp):
+    if isinstance(tp, _Form) and tp.args is not None:
+        return tp.args
+    return ()
+
+
+def overload(fn):
+    return fn
+
+
+def final(fn):
+    return fn
+
+
+def runtime_checkable(cls):
+    return cls
+
+""",
+            "fnmatch": """
+# fnmatch — the house's edition: shell-style
+# wildcards over names, matched with the
+# house's re. On this house (posix rules)
+# fnmatch and fnmatchcase agree: matching
+# is case-sensitive, as it is on linux.
+
+import re as _re
+
+
+def _translate(pat):
+    out = ""
+    i = 0
+    n = len(pat)
+    while i < n:
+        c = pat[i]
+        if c == "*":
+            out += ".*"
+        elif c == "?":
+            out += "."
+        elif c == "[":
+            j = i + 1
+            if j < n and pat[j] == "!":
+                j += 1
+            if j < n and pat[j] == "]":
+                j += 1
+            while j < n and pat[j] != "]":
+                j += 1
+            if j >= n:
+                out += "\\\\["
+            else:
+                stuff = pat[i + 1:j]
+                if stuff.startswith("!"):
+                    stuff = "^" + stuff[1:]
+                out += "[" + stuff + "]"
+                i = j
+        else:
+            out += _re.escape(c)
+        i += 1
+    return out
+
+
+def fnmatchcase(name, pat):
+    return _re.fullmatch(_translate(pat), name) is not None
+
+
+def fnmatch(name, pat):
+    return fnmatchcase(name, pat)
+
+
+def filter(names, pat):
+    out = []
+    for name in names:
+        if fnmatchcase(name, pat):
+            out.append(name)
+    return out
+
+
+def translate(pat):
+    return "(?s:" + _translate(pat) + ")\\\\Z"
+
+""",
+            "glob": """
+# glob — the house's edition: pathname
+# patterns over the console's own tree.
+# Supports *, ?, [seq] per segment and,
+# with recursive=True, ** for any number
+# of directories (including none).
+
+import os as _os
+import fnmatch as _fnmatch
+
+
+def _listdir(path):
+    if path == "":
+        path = "."
+    try:
+        return _os.listdir(path)
+    except OSError:
+        return []
+
+
+def _join(a, b):
+    if a == "":
+        return b
+    if a.endswith("/"):
+        return a + b
+    return a + "/" + b
+
+
+def _walk_dirs(base):
+    out = [base]
+    for name in _listdir(base):
+        p = _join(base, name)
+        if _os.path.isdir(p):
+            out += _walk_dirs(p)
+    return out
+
+
+def _magic(seg):
+    return ("*" in seg) or ("?" in seg) or ("[" in seg)
+
+
+def glob(pathname, recursive=False):
+    if pathname == "":
+        return []
+    absolute = pathname.startswith("/")
+    parts = []
+    for seg in pathname.split("/"):
+        if seg != "":
+            parts.append(seg)
+    if len(parts) == 0:
+        return ["/"] if absolute else []
+    results = []
+
+    def descend(dirpath, idx):
+        seg = parts[idx]
+        last = idx == len(parts) - 1
+        if seg == "**" and recursive:
+            for d in _walk_dirs(dirpath):
+                if last:
+                    results.append(d if d != "" else ".")
+                else:
+                    descend(d, idx + 1)
+            return
+        if _magic(seg):
+            for name in _listdir(dirpath):
+                if name.startswith(".") and not seg.startswith("."):
+                    continue
+                if _fnmatch.fnmatchcase(name, seg):
+                    p = _join(dirpath, name)
+                    if last:
+                        results.append(p)
+                    elif _os.path.isdir(p):
+                        descend(p, idx + 1)
+            return
+        p = _join(dirpath, seg)
+        if last:
+            if _os.path.exists(p):
+                results.append(p)
+        elif _os.path.isdir(p):
+            descend(p, idx + 1)
+
+    descend("/" if absolute else "", 0)
+    out = []
+    for r in results:
+        if r not in out:
+            out.append(r)
+    out.sort()
+    return out
+
+
+def iglob(pathname, recursive=False):
+    for item in glob(pathname, recursive=recursive):
+        yield item
+
+
+def escape(s):
+    out = ""
+    for ch in s:
+        if ch in "*?[":
+            out += "[" + ch + "]"
+        else:
+            out += ch
+    return out
+
+""",
+            "textwrap": """
+# textwrap — the house's edition: dedent,
+# indent, wrap, fill, shorten. The word
+# wrapper is the plain greedy one; the
+# full TextWrapper knobs (break_long_words
+# and friends) are accepted and ignored.
+
+
+def dedent(text):
+    lines = text.split("\\n")
+    margin = None
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped == "":
+            continue
+        cut = len(line) - len(stripped)
+        indent = line[:cut]
+        if margin is None:
+            margin = indent
+        else:
+            k = 0
+            while k < len(margin) and k < len(indent) and margin[k] == indent[k]:
+                k += 1
+            margin = margin[:k]
+    if margin is None or margin == "":
+        return text
+    out = []
+    for line in lines:
+        if line.startswith(margin):
+            out.append(line[len(margin):])
+        else:
+            out.append(line)
+    return "\\n".join(out)
+
+
+def indent(text, prefix, predicate=None):
+    lines = text.split("\\n")
+    out = []
+    last = len(lines) - 1
+    for i in range(len(lines)):
+        line = lines[i]
+        if i == last and line == "" and len(lines) > 1:
+            out.append(line)
+        elif predicate is not None:
+            if predicate(line):
+                out.append(prefix + line)
+            else:
+                out.append(line)
+        else:
+            out.append(prefix + line)
+    return "\\n".join(out)
+
+
+def _chunks(text, width, initial_indent, subsequent_indent):
+    words = text.split()
+    lines = []
+    cur = None
+    cur_indent = initial_indent
+    for w in words:
+        if cur is None:
+            cur = w
+        elif len(cur_indent) + len(cur) + 1 + len(w) <= width:
+            cur = cur + " " + w
+        else:
+            lines.append(cur_indent + cur)
+            cur = w
+            cur_indent = subsequent_indent
+    if cur is not None:
+        lines.append(cur_indent + cur)
+    return lines
+
+
+def wrap(text, width=70, initial_indent="", subsequent_indent="",
+         expand_tabs=True, replace_whitespace=True, break_long_words=True,
+         break_on_hyphens=True, tabsize=8, max_lines=None,
+         placeholder=" [...]"):
+    if text.strip() == "":
+        return []
+    return _chunks(text, width, initial_indent, subsequent_indent)
+
+
+def fill(text, width=70, initial_indent="", subsequent_indent="", **kw):
+    return "\\n".join(wrap(text, width=width,
+                          initial_indent=initial_indent,
+                          subsequent_indent=subsequent_indent, **kw))
+
+
+def shorten(text, width, placeholder=" [...]"):
+    collapsed = " ".join(text.split())
+    if len(collapsed) <= width:
+        return collapsed
+    out = ""
+    for w in collapsed.split(" "):
+        cand = w if out == "" else out + " " + w
+        if len(cand) + len(placeholder) <= width:
+            out = cand
+        else:
+            break
+    if out == "":
+        return placeholder.strip()[:width]
+    return out + placeholder
+
+
+class TextWrapper:
+    def __init__(self, width=70, initial_indent="",
+                 subsequent_indent="", **kw):
+        self.width = width
+        self.initial_indent = initial_indent
+        self.subsequent_indent = subsequent_indent
+
+    def wrap(self, text):
+        return wrap(text, width=self.width,
+                    initial_indent=self.initial_indent,
+                    subsequent_indent=self.subsequent_indent)
+
+    def fill(self, text):
+        return "\\n".join(self.wrap(text))
+
+""",
+            "csv": """
+# csv — the house's edition: readers and
+# writers with the excel dialect's rules
+# (comma, doublequote, \\r\\n rows), the
+# full QUOTE_* family, DictReader and
+# DictWriter. Dialects are plain settings;
+# register_dialect keeps named bundles.
+
+QUOTE_MINIMAL = 0
+QUOTE_ALL = 1
+QUOTE_NONNUMERIC = 2
+QUOTE_NONE = 3
+
+
+class _CsvError(Exception):
+    pass
+
+
+Error = _CsvError
+
+
+_SETTINGS = ["delimiter", "quotechar", "escapechar",
+             "doublequote", "skipinitialspace",
+             "lineterminator", "quoting", "strict"]
+
+
+class Dialect:
+    delimiter = ","
+    quotechar = '"'
+    escapechar = None
+    doublequote = True
+    skipinitialspace = False
+    lineterminator = "\\r\\n"
+    quoting = QUOTE_MINIMAL
+    strict = False
+
+
+excel = Dialect
+
+_dialects = {"excel": Dialect, "excel-tab": None}
+
+
+def _tab_dialect():
+    d = Dialect()
+    return d
+
+
+def register_dialect(name, dialect=None, **kw):
+    if dialect is None:
+        d = Dialect()
+        for k in kw:
+            if k in _SETTINGS:
+                setattr(d, k, kw[k])
+        _dialects[name] = d
+    else:
+        _dialects[name] = dialect
+
+
+def get_dialect(name):
+    if name in _dialects and _dialects[name] is not None:
+        return _dialects[name]
+    if name == "excel-tab":
+        d = Dialect()
+        d.delimiter = "\\t"
+        _dialects[name] = d
+        return d
+    raise Error("unknown dialect")
+
+
+def _resolve(dialect, kw):
+    if isinstance(dialect, str):
+        base = get_dialect(dialect)
+    else:
+        base = dialect
+    out = {}
+    for k in _SETTINGS:
+        out[k] = getattr(base, k)
+    for k in kw:
+        if k in _SETTINGS:
+            out[k] = kw[k]
+    return out
+
+
+def _parse_record(text, st):
+    # One logical record (may hold quoted
+    # newlines). Returns the field list.
+    delim = st["delimiter"]
+    quote = st["quotechar"]
+    esc = st["escapechar"]
+    dbl = st["doublequote"]
+    skip = st["skipinitialspace"]
+    quoting = st["quoting"]
+    fields = []
+    quoted = []
+    field = ""
+    was_quoted = False
+    i = 0
+    n = len(text)
+    state = 0  # 0 start, 1 plain, 2 quoted, 3 after quote
+    started = False
+    while i < n:
+        c = text[i]
+        if state == 0:
+            if skip and c == " ":
+                i += 1
+                continue
+            if quoting != QUOTE_NONE and c == quote:
+                state = 2
+                was_quoted = True
+                started = True
+                i += 1
+                continue
+            if c == delim:
+                fields.append(field)
+                quoted.append(was_quoted)
+                field = ""
+                was_quoted = False
+                started = False
+                i += 1
+                continue
+            state = 1
+            started = True
+            continue
+        if state == 1:
+            if esc is not None and c == esc and i + 1 < n:
+                field += text[i + 1]
+                i += 2
+                continue
+            if c == delim:
+                fields.append(field)
+                quoted.append(was_quoted)
+                field = ""
+                was_quoted = False
+                state = 0
+                started = False
+                i += 1
+                continue
+            field += c
+            i += 1
+            continue
+        if state == 2:
+            if esc is not None and c == esc and i + 1 < n:
+                field += text[i + 1]
+                i += 2
+                continue
+            if c == quote:
+                if dbl and i + 1 < n and text[i + 1] == quote:
+                    field += quote
+                    i += 2
+                    continue
+                state = 3
+                i += 1
+                continue
+            field += c
+            i += 1
+            continue
+        # state == 3: after the closing quote
+        if c == delim:
+            fields.append(field)
+            quoted.append(was_quoted)
+            field = ""
+            was_quoted = False
+            state = 0
+            started = False
+            i += 1
+            continue
+        if c == "\\r" or c == "\\n":
+            i += 1
+            continue
+        field += c
+        i += 1
+    if state == 2 and st["strict"]:
+        raise Error("unexpected end of data")
+    fields.append(field)
+    quoted.append(was_quoted)
+    if st["quoting"] == QUOTE_NONNUMERIC:
+        out = []
+        for i in range(len(fields)):
+            if quoted[i]:
+                out.append(fields[i])
+            else:
+                try:
+                    out.append(float(fields[i]))
+                except ValueError:
+                    out.append(fields[i])
+        return out
+    return fields
+
+
+def _quotes_balanced(text, st):
+    if st["quoting"] == QUOTE_NONE:
+        return True
+    quote = st["quotechar"]
+    esc = st["escapechar"]
+    count = 0
+    i = 0
+    n = len(text)
+    state = 0
+    while i < n:
+        c = text[i]
+        if state == 0:
+            if c == quote:
+                state = 2
+            elif c == st["delimiter"]:
+                state = 0
+            else:
+                state = 1
+        elif state == 1:
+            if c == st["delimiter"]:
+                state = 0
+        elif state == 2:
+            if esc is not None and c == esc:
+                i += 1
+            elif c == quote:
+                if st["doublequote"] and i + 1 < n and text[i + 1] == quote:
+                    i += 1
+                else:
+                    state = 3
+        else:
+            if c == st["delimiter"]:
+                state = 0
+        i += 1
+    return state != 2
+
+
+class reader:
+    def __init__(self, csvfile, dialect="excel", **kw):
+        self._st = _resolve(dialect, kw)
+        self._it = iter(csvfile)
+        self._buf = None
+        self.line_num = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while True:
+            text = None
+            while True:
+                try:
+                    line = next(self._it)
+                except StopIteration:
+                    if text is None:
+                        raise StopIteration("")
+                    break
+                self.line_num += 1
+                if text is None:
+                    text = line
+                else:
+                    text += line
+                if _quotes_balanced(text, self._st):
+                    break
+                if not text.endswith("\\n"):
+                    text += "\\n"
+            if text.endswith("\\r\\n"):
+                text = text[:-2]
+            elif text.endswith("\\n") or text.endswith("\\r"):
+                text = text[:-1]
+            if text == "":
+                # Blank lines are skipped,
+                # the way csv has always
+                # read them.
+                continue
+            return _parse_record(text, self._st)
+
+
+def _needs_quote(s, st):
+    if st["quoting"] == QUOTE_ALL:
+        return True
+    if st["quoting"] == QUOTE_NONE:
+        return False
+    if st["quoting"] == QUOTE_NONNUMERIC:
+        return True
+    if s == "":
+        return False
+    for token in [st["delimiter"], st["quotechar"], "\\r", "\\n"]:
+        if token and token in s:
+            return True
+    return False
+
+
+def _format_row(row, st):
+    out = []
+    for value in row:
+        if value is None:
+            s = ""
+            numeric = False
+        elif isinstance(value, bool):
+            s = str(value)
+            numeric = False
+        elif isinstance(value, (int, float)):
+            s = str(value)
+            numeric = True
+        else:
+            s = str(value)
+            numeric = False
+        if st["quoting"] == QUOTE_NONNUMERIC and not numeric:
+            quote = True
+        else:
+            quote = _needs_quote(s, st) and not (
+                st["quoting"] == QUOTE_NONNUMERIC and numeric)
+        if quote:
+            q = st["quotechar"]
+            if st["doublequote"]:
+                s = s.replace(q, q + q)
+            elif st["escapechar"] is not None:
+                s = s.replace(q, st["escapechar"] + q)
+            s = q + s + q
+        elif st["quoting"] == QUOTE_NONE and st["escapechar"] is not None:
+            esc = st["escapechar"]
+            s = s.replace(st["delimiter"], esc + st["delimiter"])
+        out.append(s)
+    return st["delimiter"].join(out)
+
+
+class writer:
+    def __init__(self, csvfile, dialect="excel", **kw):
+        self._f = csvfile
+        self._st = _resolve(dialect, kw)
+
+    def writerow(self, row):
+        line = _format_row(list(row), self._st)
+        return self._f.write(line + self._st["lineterminator"])
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
+class DictReader:
+    def __init__(self, f, fieldnames=None, restkey=None,
+                 restval=None, dialect="excel", **kw):
+        self._reader = reader(f, dialect=dialect, **kw)
+        self.fieldnames = fieldnames
+        self.restkey = restkey
+        self.restval = restval
+        self.line_num = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.fieldnames is None:
+            self.fieldnames = next(self._reader)
+        row = next(self._reader)
+        self.line_num = self._reader.line_num
+        out = {}
+        for i in range(len(self.fieldnames)):
+            key = self.fieldnames[i]
+            if i < len(row):
+                out[key] = row[i]
+            else:
+                out[key] = self.restval
+        if len(row) > len(self.fieldnames):
+            out[self.restkey] = row[len(self.fieldnames):]
+        return out
+
+
+class DictWriter:
+    def __init__(self, f, fieldnames, restval="",
+                 extrasaction="raise", dialect="excel", **kw):
+        self._writer = writer(f, dialect=dialect, **kw)
+        self.fieldnames = fieldnames
+        self.restval = restval
+        self.extrasaction = extrasaction
+
+    def writeheader(self):
+        return self._writer.writerow(self.fieldnames)
+
+    def writerow(self, rowdict):
+        for key in rowdict:
+            if key not in self.fieldnames:
+                if self.extrasaction == "raise":
+                    raise ValueError(
+                        "dict contains fields not in fieldnames: "
+                        + str(key))
+        row = []
+        for key in self.fieldnames:
+            if key in rowdict:
+                row.append(rowdict[key])
+            else:
+                row.append(self.restval)
+        return self._writer.writerow(row)
+
+    def writerows(self, rowdicts):
+        for rowdict in rowdicts:
+            self.writerow(rowdict)
+""",
+            "enum": """
+# enum — the house's edition, standing on
+# the interpreter's __init_subclass__
+# hinge. Members are real: Color.RED,
+# .name, .value, str and repr the CPython
+# way, aliases fold onto the first member
+# of a value, auto() counts up. The doors
+# this edition does not have, said plainly:
+# no calling the class to look a value up
+# (Color(1)) — use Color.lookup(1); no
+# iterating the class itself — use
+# Color.members() or Color.__members__;
+# IntEnum members compare like ints and
+# answer int(), but they are not ints.
+
+
+class _AutoValue:
+    pass
+
+
+def auto():
+    return _AutoValue()
+
+
+def _class_name(cls):
+    text = str(cls)
+    if "'" in text:
+        text = text.split("'")[1]
+    if "." in text:
+        text = text.split(".")[-1]
+    return text
+
+
+class Enum:
+    def __init__(self, value):
+        self._value_ = value
+        self._name_ = None
+
+    def _get_name(self):
+        return self._name_
+
+    def _get_value(self):
+        return self._value_
+
+    name = property(_get_name)
+    value = property(_get_value)
+
+    def __init_subclass__(cls):
+        members = {}
+        order = []
+        by_value = []
+        last = 0
+        table = vars(cls)
+        for key in list(table.keys()):
+            if key.startswith("_"):
+                continue
+            raw = table[key]
+            if isinstance(raw, Enum):
+                continue
+            if isinstance(raw, (property, staticmethod, classmethod)):
+                continue
+            if callable(raw):
+                continue
+            value = raw
+            if isinstance(raw, _AutoValue):
+                last += 1
+                value = last
+            elif isinstance(raw, int) and not isinstance(raw, bool):
+                last = raw
+            found = None
+            for prior_value, prior in by_value:
+                if prior_value == value:
+                    found = prior
+                    break
+            if found is not None:
+                members[key] = found
+                setattr(cls, key, found)
+                continue
+            member = cls(value)
+            member._name_ = key
+            members[key] = member
+            by_value.append((value, member))
+            order.append(member)
+            setattr(cls, key, member)
+        setattr(cls, "__members__", members)
+        setattr(cls, "_member_list_", order)
+
+    def _members_of(cls):
+        return list(cls._member_list_)
+
+    members = classmethod(_members_of)
+
+    def _lookup_of(cls, value):
+        for member in cls._member_list_:
+            if member._value_ == value:
+                return member
+        raise ValueError(str(value) + " is not a valid " + _class_name(cls))
+
+    lookup = classmethod(_lookup_of)
+
+    def __repr__(self):
+        return "<" + _class_name(type(self)) + "." + str(self._name_) + ": " + repr(self._value_) + ">"
+
+    def __str__(self):
+        return _class_name(type(self)) + "." + str(self._name_)
+
+    def __eq__(self, other):
+        return self is other
+
+    def __ne__(self, other):
+        return self is not other
+
+
+class IntEnum(Enum):
+    def __int__(self):
+        return int(self._value_)
+
+    def __index__(self):
+        return int(self._value_)
+
+    def __eq__(self, other):
+        if isinstance(other, Enum):
+            return self is other
+        if isinstance(other, int):
+            return self._value_ == other
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, int):
+            return self._value_ < other
+        return False
+
+    def __hash__(self):
+        return hash(self._value_)
+
+
+class Flag(Enum):
+    def __or__(self, other):
+        out = type(self)(self._value_ | other._value_)
+        left = self._name_ if self._name_ else str(self._value_)
+        right = other._name_ if other._name_ else str(other._value_)
+        out._name_ = str(left) + "|" + str(right)
+        return out
+
+    def __and__(self, other):
+        out = type(self)(self._value_ & other._value_)
+        out._name_ = None
+        return out
+
+    def __invert__(self):
+        allbits = 0
+        for member in type(self)._member_list_:
+            allbits |= member._value_
+        out = type(self)(allbits & ~self._value_)
+        out._name_ = None
+        return out
+
+    def __bool__(self):
+        return self._value_ != 0
+
+    def __contains__(self, other):
+        if other._value_ == 0:
+            return True
+        return (self._value_ & other._value_) == other._value_
+
+
+class IntFlag(Flag):
+    def __int__(self):
+        return int(self._value_)
+
+    def __index__(self):
+        return int(self._value_)
+
+    def __eq__(self, other):
+        if isinstance(other, Enum):
+            return self is other
+        if isinstance(other, int):
+            return self._value_ == other
+        return False
+
+    def __hash__(self):
+        return hash(self._value_)
+
+""",
+            "dataclasses": """
+# dataclasses — the house's edition.
+# @dataclass works the way programs use
+# it: fields come from the class body's
+# annotations (the house keeps those),
+# defaults from class attributes or
+# field(default=..., default_factory=...),
+# and the generated __init__, __repr__
+# and __eq__ are honest closures over the
+# field table — no code is manufactured.
+# Said plainly: frozen=True is accepted
+# but the freeze is not enforced (the
+# house's attribute writes do not pass
+# through __setattr__), order=True does
+# not mint comparisons, and asdict
+# rebuilds containers without copying
+# leaf values.
+
+import typing as _typing
+
+
+class _Missing:
+    def __repr__(self):
+        return "MISSING"
+
+
+MISSING = _Missing()
+
+
+class _FieldMarker:
+    def __init__(self, default, factory, init):
+        self.default = default
+        self.default_factory = factory
+        self.init = init
+
+
+def field(default=MISSING, default_factory=MISSING,
+          init=True, repr=True, compare=True, kw_only=False):
+    if default is not MISSING and default_factory is not MISSING:
+        raise ValueError(
+            "cannot specify both default and default_factory")
+    marker = _FieldMarker(default, default_factory, init)
+    marker.repr = repr
+    marker.compare = compare
+    marker.kw_only = kw_only
+    return marker
+
+
+class Field:
+    def __init__(self, name, type_, default, factory, init):
+        self.name = name
+        self.type = type_
+        self.default = default
+        self.default_factory = factory
+        self.init = init
+
+    def __repr__(self):
+        return "Field(name='" + self.name + "')"
+
+
+class FrozenInstanceError(AttributeError):
+    pass
+
+
+def _class_name(cls):
+    text = str(cls)
+    if "'" in text:
+        text = text.split("'")[1]
+    if "." in text:
+        text = text.split(".")[-1]
+    return text
+
+
+def is_dataclass(obj):
+    return getattr(obj, "__dataclass_fields__", None) is not None
+
+
+def fields(obj):
+    table = getattr(obj, "__dataclass_fields__", None)
+    if table is None:
+        raise TypeError("must be called with a dataclass type or instance")
+    out = []
+    for key in table:
+        out.append(table[key])
+    return tuple(out)
+
+
+def _make_init(field_list, frozen):
+    names = []
+    for f in field_list:
+        if f.init:
+            names.append(f.name)
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > len(names):
+            raise TypeError(
+                "__init__() takes " + str(len(names) + 1)
+                + " positional arguments but "
+                + str(len(args) + 1) + " were given")
+        given = {}
+        for i in range(len(args)):
+            given[names[i]] = args[i]
+        for k in kwargs:
+            if k not in names:
+                raise TypeError(
+                    "__init__() got an unexpected keyword argument '" + k + "'")
+            if k in given:
+                raise TypeError(
+                    "__init__() got multiple values for argument '" + k + "'")
+            given[k] = kwargs[k]
+        for f in field_list:
+            if not f.init:
+                if f.name in given:
+                    value = given[f.name]
+                elif f.default is not MISSING:
+                    value = f.default
+                elif f.default_factory is not MISSING:
+                    value = f.default_factory()
+                else:
+                    continue
+                setattr(self, f.name, value)
+                continue
+            if f.name in given:
+                value = given[f.name]
+            elif f.default is not MISSING:
+                value = f.default
+            elif f.default_factory is not MISSING:
+                value = f.default_factory()
+            else:
+                raise TypeError(
+                    "__init__() missing a required argument: '" + f.name + "'")
+            setattr(self, f.name, value)
+        post = getattr(self, "__post_init__", None)
+        if post is not None:
+            post()
+
+    return __init__
+
+
+def _make_repr(field_list):
+    def __repr__(self):
+        parts = []
+        for f in field_list:
+            parts.append(f.name + "=" + repr(getattr(self, f.name)))
+        return _class_name(type(self)) + "(" + ", ".join(parts) + ")"
+
+    return __repr__
+
+
+def _make_eq(field_list):
+    def __eq__(self, other):
+        if type(other) is not type(self):
+            return False
+        for f in field_list:
+            if getattr(self, f.name) != getattr(other, f.name):
+                return False
+        return True
+
+    return __eq__
+
+
+def _process(cls, init, make_repr, make_eq, frozen):
+    ann = getattr(cls, "__annotations__", {})
+    field_list = []
+    seen_default = False
+    for name in ann:
+        if name.startswith("__") and name.endswith("__"):
+            continue
+        note = ann[name]
+        if isinstance(note, _typing._Form) and note.kind in ("ClassVar", "Final"):
+            continue
+        raw = getattr(cls, name, MISSING)
+        default = MISSING
+        factory = MISSING
+        use_init = True
+        if isinstance(raw, _FieldMarker):
+            default = raw.default
+            factory = raw.default_factory
+            use_init = raw.init
+        elif raw is not MISSING:
+            default = raw
+        f = Field(name, note, default, factory, use_init)
+        if default is not MISSING or factory is not MISSING:
+            seen_default = True
+        elif use_init and seen_default:
+            raise TypeError(
+                "non-default argument '" + name
+                + "' follows default argument")
+        field_list.append(f)
+    table = {}
+    for f in field_list:
+        table[f.name] = f
+    setattr(cls, "__dataclass_fields__", table)
+    setattr(cls, "__dataclass_frozen__", frozen)
+    if init:
+        setattr(cls, "__init__", _make_init(field_list, frozen))
+    if make_repr:
+        setattr(cls, "__repr__", _make_repr(field_list))
+    if make_eq:
+        setattr(cls, "__eq__", _make_eq(field_list))
+    return cls
+
+
+def dataclass(cls=None, init=True, repr=True, eq=True,
+              order=False, unsafe_hash=False, frozen=False,
+              kw_only=False, slots=False):
+    def wrap(c):
+        return _process(c, init, repr, eq, frozen)
+
+    if cls is None:
+        return wrap
+    return wrap(cls)
+
+
+def asdict(obj):
+    if isinstance(obj, type) and is_dataclass(obj):
+        raise TypeError("asdict() should be called on dataclass instances")
+    if is_dataclass(obj):
+        out = {}
+        for f in fields(obj):
+            out[f.name] = asdict(getattr(obj, f.name))
+        return out
+    if isinstance(obj, list):
+        return [asdict(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple([asdict(v) for v in obj])
+    if isinstance(obj, dict):
+        out = {}
+        for k in obj:
+            out[k] = asdict(obj[k])
+        return out
+    return obj
+
+
+def astuple(obj):
+    if isinstance(obj, type) and is_dataclass(obj):
+        raise TypeError("astuple() should be called on dataclass instances")
+    if is_dataclass(obj):
+        out = []
+        for f in fields(obj):
+            out.append(astuple(getattr(obj, f.name)))
+        return tuple(out)
+    if isinstance(obj, list):
+        return [astuple(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple([astuple(v) for v in obj])
+    if isinstance(obj, dict):
+        out = {}
+        for k in obj:
+            out[k] = astuple(obj[k])
+        return out
+    return obj
+
+
+def replace(obj, **changes):
+    table = getattr(obj, "__dataclass_fields__", None)
+    if table is None:
+        raise TypeError("replace() should be called on dataclass instances")
+    kwargs = {}
+    for f in fields(obj):
+        if not f.init:
+            continue
+        if f.name in changes:
+            kwargs[f.name] = changes[f.name]
+        else:
+            kwargs[f.name] = getattr(obj, f.name)
+    return type(obj)(**kwargs)
+
+""",
+            "pathlib": """
+# pathlib — the house's edition: PurePath
+# and Path over posix rules and the
+# console's own tree. Reading and writing
+# text are first-class; bytes doors are
+# not in this edition (the house's files
+# are text), and neither is symlink work.
+
+import os as _os
+import fnmatch as _fnmatch
+
+
+def _split(text):
+    # (anchored, [segments]) with empty
+    # and "." segments folded out; ".."
+    # segments stay, the way pure paths
+    # keep them.
+    anchored = text.startswith("/")
+    parts = []
+    for seg in text.split("/"):
+        if seg == "" or seg == ".":
+            continue
+        parts.append(seg)
+    return anchored, parts
+
+
+class PurePosixPath:
+    def __init__(self, *args):
+        text = ""
+        for arg in args:
+            s = str(arg)
+            if text == "":
+                text = s
+            elif s.startswith("/"):
+                text = s
+            else:
+                text = text + "/" + s
+        self._text = text
+        self._anchored, self._parts = _split(text)
+
+    def _render(self):
+        body = "/".join(self._parts)
+        if self._anchored:
+            return "/" + body
+        if body == "":
+            return "."
+        return body
+
+    def __str__(self):
+        return self._render()
+
+    def __repr__(self):
+        return "PurePosixPath('" + self._render() + "')"
+
+    def __fspath__(self):
+        return self._render()
+
+    def __eq__(self, other):
+        if isinstance(other, PurePosixPath):
+            return self._render() == other._render()
+        return False
+
+    def __truediv__(self, key):
+        return type(self)(self._render(), str(key))
+
+    def __rtruediv__(self, key):
+        return type(self)(str(key), self._render())
+
+    def joinpath(self, *args):
+        out = self
+        for arg in args:
+            out = out / str(arg)
+        # Keep the concrete class of the
+        # path the walk started from.
+        return type(self)(str(out))
+
+    @property
+    def parts(self):
+        if self._anchored:
+            return tuple(["/"] + self._parts)
+        return tuple(self._parts)
+
+    @property
+    def anchor(self):
+        return "/" if self._anchored else ""
+
+    @property
+    def name(self):
+        if len(self._parts) == 0:
+            return ""
+        return self._parts[-1]
+
+    @property
+    def stem(self):
+        name = self.name
+        i = name.rfind(".")
+        if i > 0:
+            return name[:i]
+        return name
+
+    @property
+    def suffix(self):
+        name = self.name
+        i = name.rfind(".")
+        if i > 0:
+            return name[i:]
+        return ""
+
+    @property
+    def suffixes(self):
+        name = self.name
+        out = []
+        rest = name
+        while True:
+            i = rest.rfind(".")
+            if i <= 0:
+                break
+            out.append(rest[i:])
+            rest = rest[:i]
+        out.reverse()
+        return out
+
+    @property
+    def parent(self):
+        rest = self._parts[:-1]
+        if len(rest) == 0:
+            return type(self)("/" if self._anchored else ".")
+        body = "/".join(rest)
+        if self._anchored:
+            return type(self)("/" + body)
+        return type(self)(body)
+
+    @property
+    def parents(self):
+        out = []
+        p = self.parent
+        while True:
+            out.append(p)
+            nxt = p.parent
+            if str(nxt) == str(p):
+                break
+            p = nxt
+        return out
+
+    def with_name(self, name):
+        if "/" in name:
+            raise ValueError("Invalid name '" + name + "'")
+        return self.parent / name
+
+    def with_stem(self, stem):
+        return self.with_name(stem + self.suffix)
+
+    def with_suffix(self, suffix):
+        if suffix != "" and not suffix.startswith("."):
+            raise ValueError("Invalid suffix '" + suffix + "'")
+        return self.with_name(self.stem + suffix)
+
+    def is_absolute(self):
+        return self._anchored
+
+    def relative_to(self, other):
+        other = PurePosixPath(str(other))
+        mine = (["/"] if self._anchored else []) + self._parts
+        theirs = (["/"] if other._anchored else []) + other._parts
+        if len(theirs) > len(mine):
+            raise ValueError("'" + self._render() + "' is not in the subpath of '" + str(other) + "'")
+        for i in range(len(theirs)):
+            if mine[i] != theirs[i]:
+                raise ValueError("'" + self._render() + "' is not in the subpath of '" + str(other) + "'")
+        rest = mine[len(theirs):]
+        if len(rest) == 0:
+            return type(self)(".")
+        return type(self)("/".join(rest))
+
+    def is_relative_to(self, other):
+        try:
+            self.relative_to(other)
+            return True
+        except ValueError:
+            return False
+
+    def match(self, pattern):
+        if "/" in pattern:
+            return _fnmatch.fnmatchcase(self._render(), pattern)
+        return _fnmatch.fnmatchcase(self.name, pattern)
+
+    def as_posix(self):
+        return self._render()
+
+
+PurePath = PurePosixPath
+
+
+class PosixPath(PurePosixPath):
+    def __repr__(self):
+        return "PosixPath('" + self._render() + "')"
+
+    @classmethod
+    def cwd(cls):
+        return cls(_os.getcwd())
+
+    @classmethod
+    def home(cls):
+        h = _os.environ.get("HOME")
+        if h:
+            return cls(h)
+        return cls("/home")
+
+    def resolve(self):
+        return PosixPath(_os.path.abspath(self._render()))
+
+    def absolute(self):
+        if self.is_absolute():
+            return PosixPath(self._render())
+        return PosixPath(_os.path.abspath(self._render()))
+
+    def exists(self):
+        return _os.path.exists(self._render())
+
+    def is_dir(self):
+        return _os.path.isdir(self._render())
+
+    def is_file(self):
+        return _os.path.isfile(self._render())
+
+    def is_symlink(self):
+        return False
+
+    def iterdir(self):
+        for name in _os.listdir(self._render()):
+            yield self / name
+
+    def glob(self, pattern):
+        out = []
+        names = _os.listdir(self._render())
+        names.sort()
+        for name in names:
+            child = self / name
+            if child.match(pattern):
+                out.append(child)
+        return out
+
+    def rglob(self, pattern):
+        out = []
+        for child in self.iterdir():
+            if child.match(pattern):
+                out.append(child)
+            if child.is_dir():
+                out += child.rglob(pattern)
+        return out
+
+    def open(self, mode="r", **kw):
+        return open(self._render(), mode)
+
+    def read_text(self, encoding="utf-8", errors=None):
+        f = open(self._render(), "r")
+        try:
+            return f.read()
+        finally:
+            f.close()
+
+    def write_text(self, data, encoding="utf-8", errors=None):
+        f = open(self._render(), "w")
+        try:
+            f.write(data)
+        finally:
+            f.close()
+        return len(data)
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        if parents:
+            _os.makedirs(self._render(), exist_ok=exist_ok)
+        else:
+            try:
+                _os.mkdir(self._render())
+            except FileExistsError:
+                if not exist_ok:
+                    raise
+
+    def touch(self, mode=0o666, exist_ok=True):
+        if self.exists():
+            if not exist_ok:
+                raise FileExistsError(str(self))
+            return
+        f = open(self._render(), "w")
+        f.close()
+
+    def unlink(self, missing_ok=False):
+        try:
+            _os.remove(self._render())
+        except FileNotFoundError:
+            if not missing_ok:
+                raise
+
+    def rmdir(self):
+        _os.rmdir(self._render())
+
+    def rename(self, target):
+        _os.rename(self._render(), str(target))
+        return PosixPath(str(target))
+
+    def replace(self, target):
+        return self.rename(target)
+
+    def stat(self):
+        raise NotImplementedError(
+            "the house's os carries no stat yet")
+
+    def samefile(self, other):
+        return self.resolve() == PosixPath(str(other)).resolve()
+
+
+Path = PosixPath
+
+""",
+            "logging": """
+# logging — the house's edition: named
+# loggers in a tree, levels, handlers that
+# write to the console's river, and a
+# %-style formatter read by hand. exc_info
+# is accepted and noted, not rendered —
+# the house keeps no traceback objects.
+
+import time as _time
+
+CRITICAL = 50
+FATAL = 50
+ERROR = 40
+WARNING = 30
+WARN = 30
+INFO = 20
+DEBUG = 10
+NOTSET = 0
+
+_NAMES = {0: "NOTSET", 10: "DEBUG", 20: "INFO",
+          30: "WARNING", 40: "ERROR", 50: "CRITICAL"}
+
+
+def _level_name(level):
+    if level in _NAMES:
+        return _NAMES[level]
+    return "Level " + str(level)
+
+
+class LogRecord:
+    def __init__(self, name, level, msg, args):
+        self.name = name
+        self.levelno = level
+        self.levelname = _level_name(level)
+        self.msg = msg
+        self.args = args
+        self.created = _time.time()
+        self.module = name.split(".")[0] if name else ""
+        self._text = None
+
+    def getMessage(self):
+        if self._text is None:
+            text = str(self.msg)
+            if self.args:
+                if len(self.args) == 1 and isinstance(self.args[0], dict):
+                    text = _percent(text, self.args[0])
+                else:
+                    text = _percent_tuple(text, self.args)
+            self._text = text
+        return self._text
+
+
+def _percent(fmt, mapping):
+    out = ""
+    i = 0
+    n = len(fmt)
+    while i < n:
+        c = fmt[i]
+        if c == "%" and i + 1 < n:
+            nxt = fmt[i + 1]
+            if nxt == "%":
+                out += "%"
+                i += 2
+                continue
+            if nxt == "(":
+                close = fmt.find(")", i + 2)
+                if close != -1 and close + 1 < n:
+                    key = fmt[i + 2:close]
+                    spec = fmt[close + 1]
+                    if key in mapping:
+                        out += _pad(mapping[key], spec)
+                    else:
+                        out += fmt[i:close + 2]
+                    i = close + 2
+                    continue
+        out += c
+        i += 1
+    return out
+
+
+def _pad(value, spec):
+    if spec == "d" or spec == "i":
+        try:
+            return str(int(value))
+        except (ValueError, TypeError):
+            return str(value)
+    return str(value)
+
+
+def _percent_tuple(fmt, args):
+    out = ""
+    i = 0
+    n = len(fmt)
+    used = 0
+    while i < n:
+        c = fmt[i]
+        if c == "%" and i + 1 < n:
+            nxt = fmt[i + 1]
+            if nxt == "%":
+                out += "%"
+                i += 2
+                continue
+            if nxt in "sdif" and used < len(args):
+                out += _pad(args[used], nxt)
+                used += 1
+                i += 2
+                continue
+        out += c
+        i += 1
+    return out
+
+
+class Formatter:
+    def __init__(self, fmt=None, datefmt=None, style="%", defaults=None):
+        self._fmt = fmt if fmt is not None else "%(message)s"
+
+    def format(self, record):
+        values = {
+            "message": record.getMessage(),
+            "levelname": record.levelname,
+            "levelno": record.levelno,
+            "name": record.name,
+            "module": record.module,
+            "asctime": self.formatTime(record),
+        }
+        return _percent(self._fmt, values)
+
+    def formatTime(self, record):
+        t = _time.localtime(record.created)
+
+        def p2(n):
+            s = str(int(n))
+            if len(s) >= 2:
+                return s
+            return "0" + s
+
+        return (str(int(t[0])) + "-" + p2(t[1]) + "-" + p2(t[2])
+                + " " + p2(t[3]) + ":" + p2(t[4]) + ":" + p2(t[5]))
+
+
+class Handler:
+    def __init__(self, level=0):
+        self.level = level
+        self.formatter = None
+
+    def setLevel(self, level):
+        self.level = level
+
+    def setFormatter(self, formatter):
+        self.formatter = formatter
+
+    def format(self, record):
+        if self.formatter is not None:
+            return self.formatter.format(record)
+        return _default_formatter.format(record)
+
+    def emit(self, record):
+        pass
+
+    def handle(self, record):
+        if record.levelno >= self.level:
+            self.emit(record)
+
+
+_default_formatter = Formatter()
+
+
+class StreamHandler(Handler):
+    def __init__(self, stream=None):
+        Handler.__init__(self)
+        self.stream = stream
+
+    def emit(self, record):
+        text = self.format(record)
+        if self.stream is not None:
+            self.stream.write(text + "\\n")
+            self.stream.flush()
+        else:
+            print(text)
+
+
+class Logger:
+    def __init__(self, name, level=NOTSET):
+        self.name = name
+        self.level = level
+        self.handlers = []
+        self.propagate = True
+        self.disabled = False
+        self.parent = None
+
+    def setLevel(self, level):
+        self.level = level
+
+    def getEffectiveLevel(self):
+        logger = self
+        while logger is not None:
+            if logger.level != NOTSET:
+                return logger.level
+            logger = logger.parent
+        return WARNING
+
+    def isEnabledFor(self, level):
+        if self.disabled:
+            return False
+        return level >= self.getEffectiveLevel()
+
+    def addHandler(self, handler):
+        if handler not in self.handlers:
+            self.handlers.append(handler)
+
+    def removeHandler(self, handler):
+        if handler in self.handlers:
+            self.handlers.remove(handler)
+
+    def _call_handlers(self, record):
+        logger = self
+        found = 0
+        while logger is not None:
+            for handler in logger.handlers:
+                found += 1
+                handler.handle(record)
+            if not logger.propagate:
+                break
+            logger = logger.parent
+        if found == 0:
+            if record.levelno >= WARNING:
+                _default_handler.handle(record)
+
+    def _log(self, level, msg, args):
+        if not self.isEnabledFor(level):
+            return
+        record = LogRecord(self.name, level, msg, args)
+        self._call_handlers(record)
+
+    def debug(self, msg, *args, **kw):
+        self._log(DEBUG, msg, args)
+
+    def info(self, msg, *args, **kw):
+        self._log(INFO, msg, args)
+
+    def warning(self, msg, *args, **kw):
+        self._log(WARNING, msg, args)
+
+    def warn(self, msg, *args, **kw):
+        self.warning(msg, *args)
+
+    def error(self, msg, *args, **kw):
+        self._log(ERROR, msg, args)
+
+    def critical(self, msg, *args, **kw):
+        self._log(CRITICAL, msg, args)
+
+    def exception(self, msg, *args, **kw):
+        self._log(ERROR, msg, args)
+
+    def log(self, level, msg, *args, **kw):
+        self._log(level, msg, args)
+
+
+_default_handler = StreamHandler()
+
+_loggers = {}
+
+
+def getLogger(name=None):
+    if name is None or name == "":
+        root = _loggers.get("")
+        if root is None:
+            root = Logger("root", WARNING)
+            _loggers[""] = root
+        return root
+    if name in _loggers:
+        return _loggers[name]
+    logger = Logger(name)
+    if "." in name:
+        logger.parent = getLogger(name.rsplit(".", 1)[0])
+    else:
+        logger.parent = getLogger()
+    _loggers[name] = logger
+    return logger
+
+
+def basicConfig(level=None, format=None, handlers=None, **kw):
+    root = getLogger()
+    if handlers is not None:
+        root.handlers = list(handlers)
+    elif len(root.handlers) == 0:
+        root.addHandler(StreamHandler())
+    if format is not None:
+        fmt = Formatter(format)
+        for handler in root.handlers:
+            handler.setFormatter(fmt)
+    if level is not None:
+        root.setLevel(level)
+
+
+def debug(msg, *args, **kw):
+    getLogger().debug(msg, *args, **kw)
+
+
+def info(msg, *args, **kw):
+    getLogger().info(msg, *args, **kw)
+
+
+def warning(msg, *args, **kw):
+    getLogger().warning(msg, *args, **kw)
+
+
+def warn(msg, *args, **kw):
+    getLogger().warning(msg, *args, **kw)
+
+
+def error(msg, *args, **kw):
+    getLogger().error(msg, *args, **kw)
+
+
+def critical(msg, *args, **kw):
+    getLogger().critical(msg, *args, **kw)
+
+
+def exception(msg, *args, **kw):
+    getLogger().exception(msg, *args, **kw)
+
+
+def log(level, msg, *args, **kw):
+    getLogger().log(level, msg, *args, **kw)
+
+""",
+            "shutil": """
+# shutil — the house's edition: copying
+# and moving over the console's own tree.
+# No disk_usage (the house's os carries
+# no statvfs to answer with) and no
+# archive machinery in this edition.
+
+import os as _os
+
+
+class _ShutilError(Exception):
+    pass
+
+
+Error = _ShutilError
+
+
+def _read_all(path):
+    f = open(path, "r")
+    try:
+        return f.read()
+    finally:
+        f.close()
+
+
+def _write_all(path, text):
+    f = open(path, "w")
+    try:
+        f.write(text)
+    finally:
+        f.close()
+
+
+def copyfile(src, dst):
+    if _os.path.isdir(dst):
+        raise IsADirectoryError(str(dst))
+    _write_all(dst, _read_all(src))
+    return dst
+
+
+def copy(src, dst):
+    if _os.path.isdir(dst):
+        dst = _os.path.join(dst, _os.path.basename(src))
+    copyfile(src, dst)
+    return dst
+
+
+def copy2(src, dst):
+    return copy(src, dst)
+
+
+def copytree(src, dst, dirs_exist_ok=False):
+    if _os.path.exists(dst) and not dirs_exist_ok:
+        raise FileExistsError(str(dst))
+    if not _os.path.exists(dst):
+        _os.makedirs(dst)
+    for name in _os.listdir(src):
+        s = _os.path.join(src, name)
+        d = _os.path.join(dst, name)
+        if _os.path.isdir(s):
+            copytree(s, d, dirs_exist_ok=dirs_exist_ok)
+        else:
+            copyfile(s, d)
+    return dst
+
+
+def rmtree(path, ignore_errors=False):
+    if not _os.path.exists(path):
+        if ignore_errors:
+            return
+        raise FileNotFoundError(str(path))
+    if not _os.path.isdir(path):
+        if ignore_errors:
+            return
+        raise NotADirectoryError(str(path))
+    for name in _os.listdir(path):
+        p = _os.path.join(path, name)
+        if _os.path.isdir(p):
+            rmtree(p, ignore_errors=ignore_errors)
+        else:
+            try:
+                _os.remove(p)
+            except OSError:
+                if not ignore_errors:
+                    raise
+    try:
+        _os.rmdir(path)
+    except OSError:
+        if not ignore_errors:
+            raise
+
+
+def move(src, dst):
+    if _os.path.isdir(dst):
+        dst = _os.path.join(dst, _os.path.basename(src))
+    try:
+        _os.rename(src, dst)
+    except OSError:
+        if _os.path.isdir(src):
+            copytree(src, dst)
+            rmtree(src)
+        else:
+            copyfile(src, dst)
+            _os.remove(src)
+    return dst
+
+
+def which(cmd, path=None):
+    if "/" in cmd:
+        if _os.path.exists(cmd):
+            return cmd
+        return None
+    if path is None:
+        path = _os.environ.get("PATH", "")
+    for entry in path.split(":"):
+        if entry == "":
+            entry = "."
+        candidate = _os.path.join(entry, cmd)
+        if _os.path.exists(candidate) and not _os.path.isdir(candidate):
+            return candidate
+    return None
+""",
+            "contextlib": """
+# contextlib — the house's edition:
+# contextmanager on the house's own
+# generators, suppress, nullcontext, and
+# a working ExitStack. redirect_stdout
+# is not in this edition: the house's
+# print does not flow through sys.stdout,
+# so a redirect there would lie.
+
+
+class _GeneratorContextManager:
+    def __init__(self, gen):
+        self._gen = gen
+
+    def __enter__(self):
+        try:
+            return next(self._gen)
+        except StopIteration:
+            raise RuntimeError("generator didn't yield")
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            try:
+                next(self._gen)
+            except StopIteration:
+                return False
+            raise RuntimeError("generator didn't stop")
+        # The house's generators have no
+        # throw(); closing runs the
+        # generator's finally blocks, and
+        # the error travels on.
+        self._gen.close()
+        return False
+
+
+def contextmanager(fn):
+    def helper(*args, **kwargs):
+        return _GeneratorContextManager(fn(*args, **kwargs))
+
+    return helper
+
+
+def _kind_name(kind):
+    text = str(kind)
+    if "'" in text:
+        text = text.split("'")[1]
+    if "." in text:
+        text = text.split(".")[-1]
+    return text
+
+
+class suppress:
+    def __init__(self, *exceptions):
+        # The house hands __exit__ the
+        # error's kind as a name, so the
+        # names are what is kept.
+        self._names = []
+        for kind in exceptions:
+            if isinstance(kind, tuple):
+                for sub in kind:
+                    self._names.append(_kind_name(sub))
+            else:
+                self._names.append(_kind_name(kind))
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            return False
+        if isinstance(exc_type, str):
+            name = exc_type
+        else:
+            name = _kind_name(str(exc_type))
+        return name in self._names
+
+
+class nullcontext:
+    def __init__(self, enter_result=None):
+        self._result = enter_result
+
+    def __enter__(self):
+        return self._result
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class closing:
+    def __init__(self, thing):
+        self._thing = thing
+
+    def __enter__(self):
+        return self._thing
+
+    def __exit__(self, exc_type, exc, tb):
+        self._thing.close()
+        return False
+
+
+class ExitStack:
+    def __init__(self):
+        self._callbacks = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
+
+    def enter_context(self, cm):
+        result = cm.__enter__()
+        self._callbacks.append(
+            lambda: cm.__exit__(None, None, None))
+        return result
+
+    def callback(self, fn, *args, **kwargs):
+        def run():
+            fn(*args, **kwargs)
+
+        self._callbacks.append(run)
+        return fn
+
+    def push(self, exit_fn):
+        self._callbacks.append(
+            lambda: exit_fn(None, None, None))
+        return exit_fn
+
+    def close(self):
+        while len(self._callbacks) > 0:
+            cb = self._callbacks.pop()
+            cb()
+
+""",
+            "argparse": """
+# argparse — the house's edition:
+# ArgumentParser with positionals and
+# optionals, the store / store_true /
+# store_false / store_const / append /
+# count / version actions, nargs in all
+# its shapes, choices, types, defaults
+# (including set_defaults), required
+# arguments, help and usage in CPython's
+# shape, and subparsers with their own
+# arguments and func defaults. Errors
+# print usage and exit 2, help exits 0 —
+# the way command-line programs expect.
+# Not in this edition: argument groups,
+# mutually exclusive groups, FileType,
+# and prefix matching is in (unambiguous
+# long-option prefixes work).
+
+import sys as _sys
+
+SUPPRESS = "==SUPPRESS=="
+
+
+class ArgumentError(Exception):
+    pass
+
+
+class Namespace:
+    def __init__(self, **kw):
+        for key in kw:
+            setattr(self, key, kw[key])
+
+    def __repr__(self):
+        parts = []
+        table = vars(self)
+        for key in table:
+            parts.append(key + "=" + repr(table[key]))
+        return "Namespace(" + ", ".join(parts) + ")"
+
+    def __eq__(self, other):
+        if isinstance(other, Namespace):
+            return vars(self) == vars(other)
+        return False
+
+    def __contains__(self, key):
+        return key in vars(self)
+
+
+def _type_name(t):
+    if t == int:
+        return "int"
+    if t == float:
+        return "float"
+    if t == str:
+        return "str"
+    return getattr(t, "__name__", "value")
+
+
+def _looks_like_option(tok):
+    if len(tok) < 2:
+        return False
+    if not tok.startswith("-"):
+        return False
+    if tok == "--":
+        return True
+    return True
+
+
+def _is_number_token(tok):
+    if len(tok) < 2 or not tok.startswith("-"):
+        return False
+    body = tok[1:]
+    digits = "0123456789"
+    if body[0] not in digits:
+        return False
+    for ch in body:
+        if ch not in digits and ch != ".":
+            return False
+    return True
+
+
+class _Action:
+    def __init__(self, option_strings, dest, kind, nargs,
+                 const, default, type_, choices, required,
+                 help_text, metavar):
+        self.option_strings = option_strings
+        self.dest = dest
+        self.kind = kind
+        self.nargs = nargs
+        self.const = const
+        self.default = default
+        self.type = type_
+        self.choices = choices
+        self.required = required
+        self.help = help_text
+        self.metavar = metavar
+
+    def is_positional(self):
+        return len(self.option_strings) == 0
+
+    def display_name(self):
+        if self.is_positional():
+            if self.metavar is not None:
+                return self.metavar
+            return self.dest
+        return "/".join(self.option_strings)
+
+    def takes_value(self):
+        return self.kind in ("store", "append")
+
+    def value_metavar(self):
+        if self.metavar is not None:
+            return self.metavar
+        return self.dest.upper()
+
+
+class _SubParsers:
+    def __init__(self, parent, dest, required):
+        self._parent = parent
+        self.dest = dest
+        self.required = required
+        self.parsers = {}
+        self.helps = {}
+
+    def add_parser(self, name, help=None, **kw):
+        child = ArgumentParser(
+            prog=self._parent.prog + " " + name, **kw)
+        self.parsers[name] = child
+        self.helps[name] = help
+        return child
+
+
+class ArgumentParser:
+    def __init__(self, prog=None, description=None,
+                 epilog=None, **kw):
+        if prog is None:
+            argv = _sys.argv
+            if len(argv) > 0 and argv[0]:
+                prog = argv[0].split("/")[-1]
+            else:
+                prog = "program"
+        self.prog = prog
+        self.description = description
+        self.epilog = epilog
+        self._actions = []
+        self._defaults = {}
+        self._subparsers = None
+        self.add_argument(
+            "-h", "--help", action="help",
+            help="show this help message and exit")
+
+    # -- building --------------------------------
+
+    def add_argument(self, *names, **kw):
+        kind = kw.get("action", "store")
+        nargs = kw.get("nargs", None)
+        const = kw.get("const", None)
+        default = kw.get("default", None)
+        type_ = kw.get("type", None)
+        choices = kw.get("choices", None)
+        required = kw.get("required", False)
+        help_text = kw.get("help", None)
+        metavar = kw.get("metavar", None)
+        dest = kw.get("dest", None)
+        if kind == "store_true":
+            kind = "store_true"
+            default = False if default is None else default
+            nargs = 0
+        elif kind == "store_false":
+            default = True if default is None else default
+            nargs = 0
+        elif kind == "store_const":
+            nargs = 0
+        elif kind == "count":
+            nargs = 0
+            default = 0 if default is None else default
+        elif kind == "help" or kind == "version":
+            nargs = 0
+            if default is None:
+                default = SUPPRESS
+        option_strings = []
+        for name in names:
+            if name.startswith("-"):
+                option_strings.append(name)
+        if len(option_strings) == 0:
+            if dest is None:
+                dest = names[0]
+            action = _Action([], dest, kind, nargs, const,
+                             default, type_, choices, True,
+                             help_text, metavar)
+        else:
+            if dest is None:
+                long_names = [s for s in option_strings
+                              if s.startswith("--")]
+                if long_names:
+                    dest = long_names[0][2:].replace("-", "_")
+                else:
+                    dest = option_strings[0][1:]
+            action = _Action(option_strings, dest, kind, nargs,
+                             const, default, type_, choices,
+                             required, help_text, metavar)
+        if kind == "version":
+            action.version = kw.get("version", "")
+        self._actions.append(action)
+        return action
+
+    def add_subparsers(self, dest="command", required=False,
+                       **kw):
+        sub = _SubParsers(self, dest, required)
+        self._subparsers = sub
+        return sub
+
+    def set_defaults(self, **kw):
+        for key in kw:
+            self._defaults[key] = kw[key]
+
+    def get_default(self, dest):
+        for action in self._actions:
+            if action.dest == dest:
+                return action.default
+        if dest in self._defaults:
+            return self._defaults[dest]
+        return None
+
+    # -- help and usage --------------------------
+
+    def _usage_metavar(self, action):
+        if action.choices is not None:
+            rendered = []
+            for c in action.choices:
+                rendered.append(str(c))
+            return "{" + ",".join(rendered) + "}"
+        return action.value_metavar()
+
+    def format_usage(self):
+        parts = ["usage:", self.prog]
+        for action in self._actions:
+            if action.is_positional():
+                continue
+            if action.kind == "help":
+                parts.append("[-h]")
+                continue
+            first = action.option_strings[0]
+            if action.takes_value():
+                piece = first + " " + self._usage_metavar(action)
+            else:
+                piece = first
+            if action.required:
+                parts.append(piece)
+            else:
+                parts.append("[" + piece + "]")
+        if self._subparsers is not None:
+            names = []
+            for name in self._subparsers.parsers:
+                names.append(name)
+            parts.append("{" + ",".join(names) + "} ...")
+        for action in self._actions:
+            if not action.is_positional():
+                continue
+            name = action.display_name()
+            if action.nargs == "?":
+                parts.append("[" + name + "]")
+            elif action.nargs == "*":
+                parts.append("[" + name + " ...]")
+            elif action.nargs == "+":
+                parts.append(name + " [" + name + " ...]")
+            else:
+                parts.append(name)
+        return " ".join(parts) + "\\n"
+
+    def format_help(self):
+        lines = [self.format_usage(), ""]
+        if self.description:
+            lines.append(self.description)
+            lines.append("")
+        positionals = [a for a in self._actions if a.is_positional()]
+        if positionals:
+            lines.append("positional arguments:")
+            for action in positionals:
+                self._help_line(lines, action.display_name(),
+                                action.help)
+            lines.append("")
+        lines.append("options:")
+        for action in self._actions:
+            if action.is_positional():
+                continue
+            label = ", ".join(action.option_strings)
+            if action.takes_value():
+                label += " " + self._usage_metavar(action)
+            self._help_line(lines, label, action.help)
+        if self._subparsers is not None:
+            lines.append("")
+            lines.append("commands:")
+            for name in self._subparsers.parsers:
+                self._help_line(lines, name,
+                                self._subparsers.helps[name])
+        if self.epilog:
+            lines.append("")
+            lines.append(self.epilog)
+        return "\\n".join(lines)
+
+    def _help_line(self, lines, label, help_text):
+        if help_text:
+            lines.append("  " + label.ljust(24) + help_text)
+        else:
+            lines.append("  " + label)
+
+    def print_usage(self):
+        print(self.format_usage())
+
+    def print_help(self):
+        print(self.format_help())
+
+    def error(self, message):
+        print(self.format_usage())
+        print(self.prog + ": error: " + message)
+        _sys.exit(2)
+
+    # -- parsing ---------------------------------
+
+    def parse_args(self, args=None):
+        namespace, extras = self.parse_known_args(args)
+        if len(extras) > 0:
+            self.error("unrecognized arguments: "
+                       + " ".join(extras))
+        return namespace
+
+    def parse_known_args(self, args=None):
+        if args is None:
+            args = list(_sys.argv[1:])
+        namespace = Namespace()
+        # Defaults first: every action's
+        # own default, unless suppressed.
+        for action in self._actions:
+            if action.default is not SUPPRESS:
+                setattr(namespace, action.dest, action.default)
+        for key in self._defaults:
+            if not hasattr(namespace, key):
+                setattr(namespace, key, self._defaults[key])
+        extras = []
+        self._consume(list(args), namespace, extras, True)
+        return namespace, extras
+
+    def _find_long(self, name):
+        exact = []
+        partial = []
+        for action in self._actions:
+            for opt in action.option_strings:
+                if opt == name:
+                    exact.append(action)
+                elif opt.startswith(name) and name.startswith("--"):
+                    partial.append(action)
+        if exact:
+            return exact[0], False
+        if len(partial) == 1:
+            return partial[0], False
+        if len(partial) > 1:
+            return None, True
+        return None, False
+
+    def _find_short(self, ch):
+        want = "-" + ch
+        for action in self._actions:
+            for opt in action.option_strings:
+                if opt == want:
+                    return action
+        return None
+
+    def _convert(self, action, raw):
+        value = raw
+        if action.type is not None:
+            try:
+                value = action.type(raw)
+            except Exception:
+                self.error(
+                    "argument " + action.display_name()
+                    + ": invalid "
+                    + _type_name(action.type)
+                    + " value: '" + str(raw) + "'")
+        if action.choices is not None and value not in action.choices:
+            rendered = ", ".join([repr(c) for c in action.choices])
+            self.error(
+                "argument " + action.display_name()
+                + ": invalid choice: " + repr(value)
+                + " (choose from " + rendered + ")")
+        return value
+
+    def _apply(self, namespace, action, values, seen):
+        seen[action.dest] = True
+        if action.kind == "store":
+            if action.nargs in ("*", "+") \\
+                    or isinstance(action.nargs, int):
+                setattr(namespace, action.dest, values)
+            elif len(values) > 0:
+                setattr(namespace, action.dest, values[0])
+            else:
+                setattr(namespace, action.dest, action.const)
+        elif action.kind == "store_true":
+            setattr(namespace, action.dest, True)
+        elif action.kind == "store_false":
+            setattr(namespace, action.dest, False)
+        elif action.kind == "store_const":
+            setattr(namespace, action.dest, action.const)
+        elif action.kind == "count":
+            current = getattr(namespace, action.dest, 0)
+            if current is None:
+                current = 0
+            setattr(namespace, action.dest, current + 1)
+        elif action.kind == "append":
+            current = getattr(namespace, action.dest, None)
+            if current is None:
+                current = []
+            else:
+                current = list(current)
+            if action.nargs in ("*", "+") \\
+                    or isinstance(action.nargs, int):
+                current.append(values)
+            elif len(values) > 0:
+                current.append(values[0])
+            setattr(namespace, action.dest, current)
+
+    def _take_values(self, args, i, action, inline):
+        # Returns (values, new_i). Values
+        # are raw strings still.
+        if not action.takes_value():
+            return [], i
+        nargs = action.nargs
+        if nargs is None:
+            if inline is not None:
+                return [inline], i
+            if i + 1 >= len(args):
+                self.error("argument " + action.display_name()
+                           + ": expected one argument")
+            return [args[i + 1]], i + 1
+        if isinstance(nargs, int):
+            values = []
+            if inline is not None:
+                values.append(inline)
+            while len(values) < nargs and i + 1 < len(args):
+                values.append(args[i + 1])
+                i += 1
+            if len(values) < nargs:
+                self.error("argument " + action.display_name()
+                           + ": expected " + str(nargs)
+                           + " arguments")
+            return values, i
+        # ? * +
+        values = []
+        if inline is not None:
+            values.append(inline)
+            return values, i
+        j = i + 1
+        while j < len(args):
+            tok = args[j]
+            if tok == "--" or (_looks_like_option(tok)
+                               and not _is_number_token(tok)):
+                break
+            if nargs == "?" and len(values) >= 1:
+                break
+            values.append(tok)
+            j += 1
+        if nargs == "?" and len(values) == 0:
+            return [], i
+        if nargs == "+" and len(values) == 0:
+            self.error("argument " + action.display_name()
+                       + ": expected at least one argument")
+        return values, j - 1
+
+    def _consume(self, args, namespace, extras, top):
+        seen = {}
+        pos_tokens = []
+        i = 0
+        no_more_options = False
+        sub_consumed = False
+        while i < len(args):
+            tok = args[i]
+            if sub_consumed:
+                i += 1
+                continue
+            if no_more_options:
+                pos_tokens.append(tok)
+                i += 1
+                continue
+            if tok == "--":
+                no_more_options = True
+                i += 1
+                continue
+            if self._subparsers is not None and len(pos_tokens) == 0 \\
+                    and tok in self._subparsers.parsers:
+                child = self._subparsers.parsers[tok]
+                setattr(namespace, self._subparsers.dest, tok)
+                rest = args[i + 1:]
+                child_namespace, child_extras = \\
+                    child.parse_known_args(rest)
+                for key in vars(child_namespace):
+                    setattr(namespace, key,
+                            vars(child_namespace)[key])
+                for extra in child_extras:
+                    extras.append(extra)
+                sub_consumed = True
+                i += 1
+                continue
+            if tok.startswith("--") and len(tok) > 2:
+                body = tok[2:]
+                inline = None
+                if "=" in body:
+                    body, inline = body.split("=", 1)
+                action, ambiguous = self._find_long("--" + body)
+                if ambiguous:
+                    self.error("ambiguous option: " + tok)
+                if action is None:
+                    extras.append(tok)
+                    i += 1
+                    continue
+                if action.kind == "help":
+                    self.print_help()
+                    _sys.exit(0)
+                if action.kind == "version":
+                    print(getattr(action, "version", ""))
+                    _sys.exit(0)
+                raw_values, i = self._take_values(
+                    args, i, action, inline)
+                values = [self._convert(action, v)
+                          for v in raw_values]
+                if len(values) == 0 and action.nargs == "?":
+                    self._apply(namespace, action,
+                                [action.const], seen)
+                else:
+                    self._apply(namespace, action, values, seen)
+                i += 1
+                continue
+            if tok.startswith("-") and len(tok) > 1 \\
+                    and not _is_number_token(tok):
+                cluster = tok[1:]
+                consumed_value = False
+                j = 0
+                while j < len(cluster):
+                    ch = cluster[j]
+                    action = self._find_short(ch)
+                    if action is None:
+                        extras.append("-" + ch)
+                        j += 1
+                        continue
+                    if action.kind == "help":
+                        self.print_help()
+                        _sys.exit(0)
+                    if action.kind == "version":
+                        print(getattr(action, "version", ""))
+                        _sys.exit(0)
+                    if action.takes_value():
+                        rest = cluster[j + 1:]
+                        inline = None
+                        if rest.startswith("="):
+                            inline = rest[1:]
+                        elif rest != "":
+                            inline = rest
+                        raw_values, i = self._take_values(
+                            args, i, action, inline)
+                        values = [self._convert(action, v)
+                                  for v in raw_values]
+                        if len(values) == 0 and action.nargs == "?":
+                            self._apply(namespace, action,
+                                        [action.const], seen)
+                        else:
+                            self._apply(namespace, action,
+                                        values, seen)
+                        consumed_value = True
+                        j = len(cluster)
+                    else:
+                        self._apply(namespace, action, [], seen)
+                        j += 1
+                i += 1
+                continue
+            pos_tokens.append(tok)
+            i += 1
+        self._fill_positionals(pos_tokens, namespace, seen, extras)
+        # Required optionals.
+        for action in self._actions:
+            if action.is_positional():
+                continue
+            if action.required and action.dest not in seen:
+                self.error("the following arguments are required: "
+                           + action.display_name())
+        if self._subparsers is not None and self._subparsers.required:
+            if getattr(namespace, self._subparsers.dest, None) is None:
+                self.error("the following arguments are required: "
+                           + self._subparsers.dest)
+
+    def _fill_positionals(self, tokens, namespace, seen, extras):
+        positionals = [a for a in self._actions if a.is_positional()]
+        if len(positionals) == 0:
+            for tok in tokens:
+                extras.append(tok)
+            return
+        # How many tokens must be left for
+        # the positionals after this one.
+        def minimum_from(idx):
+            total = 0
+            for a in positionals[idx:]:
+                if a.nargs is None:
+                    total += 1
+                elif isinstance(a.nargs, int):
+                    total += a.nargs
+                elif a.nargs == "+":
+                    total += 1
+            return total
+
+        left = len(tokens)
+        at = 0
+        for idx in range(len(positionals)):
+            action = positionals[idx]
+            reserve = minimum_from(idx + 1)
+            available = left - reserve
+            if available < 0:
+                available = 0
+            if action.nargs is None:
+                take = 1
+            elif isinstance(action.nargs, int):
+                take = action.nargs
+            elif action.nargs == "?":
+                take = 1 if available >= 1 else 0
+            elif action.nargs == "*":
+                take = available
+            elif action.nargs == "+":
+                take = available
+            else:
+                take = 1
+            if action.nargs == "+" and take < 1:
+                self.error("the following arguments are required: "
+                           + action.display_name())
+            if action.nargs is None and take > available:
+                self.error("the following arguments are required: "
+                           + action.display_name())
+            values = []
+            for k in range(take):
+                if at < len(tokens):
+                    values.append(self._convert(action, tokens[at]))
+                    at += 1
+                    left -= 1
+            seen[action.dest] = True
+            if action.nargs in ("*", "+") or isinstance(action.nargs, int):
+                setattr(namespace, action.dest, values)
+            elif action.nargs == "?":
+                if len(values) == 1:
+                    setattr(namespace, action.dest, values[0])
+                elif action.const is not None:
+                    setattr(namespace, action.dest, action.const)
+            else:
+                if len(values) == 1:
+                    setattr(namespace, action.dest, values[0])
+        for tok in tokens[at:]:
+            extras.append(tok)
+
+""",
+        ]
+
     func loadUserModule(_ name: String)
         throws -> PyUserModule {
         if let cached =
@@ -4023,18 +7033,43 @@ class datetime:
             return cached
         }
         let line = frames.last?.line ?? 0
+        // A dotted name loads its parent
+        // first — a package's __init__
+        // runs before any submodule, as
+        // python's own loader orders it —
+        // and the child is bound into the
+        // parent's namespace when it
+        // lands, so attribute walks
+        // (pkg.sub.thing) resolve.
+        var parent: PyUserModule? = nil
+        var childName: String? = nil
+        if let dot = name.lastIndex(of: ".") {
+            parent = try loadUserModule(
+                String(name[..<dot]))
+            childName = String(name[
+                name.index(after: dot)...])
+        }
         let here = osCwd()
+        let rel = name.replacingOccurrences(
+            of: ".", with: "/")
         let candidates = [
             BlacksiteFS.normalize(
-                name + ".py", cwd: here),
+                rel + ".py", cwd: here),
             BlacksiteFS.normalize(
-                name + ".py",
+                rel + ".py",
+                cwd: "/packages"),
+            BlacksiteFS.normalize(
+                rel + "/__init__.py",
+                cwd: here),
+            BlacksiteFS.normalize(
+                rel + "/__init__.py",
                 cwd: "/packages"),
         ]
         let file: String
         let source: String
         if let bundled =
-            Self.bundledSources[name] {
+            Self.bundledSources[name]
+                ?? Self.roadASources[name] {
             file = "<house>/" + name
                 + ".py"
             source = bundled
@@ -4054,7 +7089,8 @@ class datetime:
                 "No module named "
                     + "'\(name)' — not "
                     + "one of the house's, "
-                    + "and no \(name).py "
+                    + "and no \(rel).py or "
+                    + "\(rel)/__init__.py "
                     + "beside the script "
                     + "or in /packages",
                 line: line)
@@ -4066,6 +7102,7 @@ class datetime:
         // half-built module, as python's
         // own circles do.
         loadedModules[name] = module
+        moduleNameStack.append(name)
         do {
             var lexer = PyLexer(source)
             let tokens = try lexer
@@ -4080,10 +7117,84 @@ class datetime:
                 "__file__", .str(file))
             try execBlock(body, module.env)
         } catch {
+            moduleNameStack.removeLast()
             loadedModules[name] = nil
             throw error
         }
+        moduleNameStack.removeLast()
+        if let parent = parent,
+           let childName = childName {
+            parent.env.assignLocal(
+                childName,
+                .userModule(module))
+        }
         return module
+    }
+
+    /// A relative import ('.mod', '..pkg',
+    /// or a bare '.'), resolved against
+    /// the package of the module whose
+    /// body is running. The main script
+    /// counts as a package member only
+    /// when it is a package's __main__
+    /// (the shape 'load' launches), with
+    /// its folder as the package — the
+    /// standing the interpreter gives a
+    /// __main__ under python -m. A plain
+    /// script's single dot means its own
+    /// folder, the house's standing rule.
+    func resolveRelativeImport(
+        _ raw: String, _ line: Int)
+        throws -> String {
+        var level = 0
+        var rest = raw
+        while rest.hasPrefix(".") {
+            level += 1
+            rest = String(rest.dropFirst())
+        }
+        var package: [String] = []
+        if let current = moduleNameStack
+            .last {
+            package = current.split(
+                separator: ".")
+                .map(String.init)
+            if !package.isEmpty {
+                package.removeLast()
+            }
+        } else if path.hasSuffix(
+            "/__main__.py") {
+            let folder = BlacksiteFS.parent(
+                of: path)
+            package = [BlacksiteFS.baseName(
+                of: folder)]
+        }
+        let climb = level - 1
+        guard climb <= package.count
+        else {
+            throw PyError(
+                "ImportError",
+                "attempted relative import "
+                    + "beyond the top "
+                    + "package",
+                line: line)
+        }
+        package.removeLast(climb)
+        var resolved = package.joined(
+            separator: ".")
+        if !rest.isEmpty {
+            resolved = resolved.isEmpty
+                ? rest
+                : resolved + "." + rest
+        }
+        guard !resolved.isEmpty else {
+            throw PyError(
+                "ImportError",
+                "attempted relative import "
+                    + "with no known "
+                    + "package",
+                line: line)
+        }
+        return resolved
     }
 
     /// Library functions written in the
@@ -4190,6 +7301,12 @@ class datetime:
     static func nativeMethodNames(
         _ kind: String) -> Set<String> {
         switch kind {
+        case "property":
+            return ["getter", "setter",
+                    "deleter"]
+        case "sys.stream":
+            return ["write", "writelines",
+                    "flush", "isatty"]
         case "deque":
             return ["append", "appendleft",
                     "pop", "popleft",
@@ -4382,6 +7499,26 @@ class datetime:
 
     // MARK: Statements
 
+    /// The name a statement binds, for
+    /// the decorator machinery: a def
+    /// or a class, looking through any
+    /// layers of decoration.
+    static func stmtTargetName(
+        _ stmt: PyStmt) -> String? {
+        switch stmt {
+        case .def(let name, _, _, _, _):
+            return name
+        case .classDef(let name, _, _, _):
+            return name
+        case .decorated(_, let inner, _):
+            return inner.first.flatMap {
+                stmtTargetName($0)
+            }
+        default:
+            return nil
+        }
+    }
+
     func execBlock(_ body: [PyStmt],
                    _ env: PyEnv) throws {
         for stmt in body {
@@ -4422,6 +7559,10 @@ class datetime:
         case .classDef(_, _, _, let l):
             line = l
         case .nonlocalStmt(_, let l):
+            line = l
+        case .decorated(_, _, let l):
+            line = l
+        case .annotated(_, _, _, let l):
             line = l
         }
         if let top = frames.last {
@@ -4527,6 +7668,74 @@ class datetime:
                 Self.bodyContainsYield(body)
             env.assign(
                 name, .function(fn))
+        case .decorated(let decorators,
+                        let inner, _):
+            for stmt in inner {
+                try execStmt(stmt, env)
+            }
+            guard let first = inner.first,
+                  let targetName =
+                    Self.stmtTargetName(first)
+            else {
+                throw PyError(
+                    "SyntaxError",
+                    "a decorator belongs "
+                        + "on a def or a "
+                        + "class",
+                    line: line)
+            }
+            guard var value = env.lookup(
+                targetName) else {
+                throw PyError(
+                    "RuntimeError",
+                    "the decorated name "
+                        + "vanished",
+                    line: line)
+            }
+            // The decorator nearest the
+            // def applies first; the
+            // topmost wraps last.
+            for deco in decorators
+                .reversed() {
+                let fn = try eval(deco, env)
+                value = try callValue(
+                    fn, [value], [], line)
+            }
+            env.assign(targetName, value)
+        case .annotated(let target,
+                        let annotation,
+                        let valueExpr, _):
+            // The annotation is read
+            // forgivingly — a name the
+            // house cannot resolve (a
+            // typing form from an absent
+            // module, a quoted forward
+            // reference) never kills the
+            // statement it decorates.
+            let noted = (try? eval(
+                annotation, env)) ?? .none
+            if case .name(let field) =
+                target {
+                let book: PyDict
+                if let existing = env
+                    .vars["__annotations__"],
+                   case .dict(let kept) =
+                    existing {
+                    book = kept
+                } else {
+                    book = PyDict()
+                    env.assignLocal(
+                        "__annotations__",
+                        .dict(book))
+                }
+                book.set(.str(field), noted)
+            }
+            if let valueExpr = valueExpr {
+                let value = try eval(
+                    valueExpr, env)
+                try assignTarget(
+                    target, value, env)
+            }
         case .classDef(let name,
                        let baseExprs,
                        let body, _):
@@ -4564,6 +7773,22 @@ class datetime:
                 $0.name
             }
             env.assign(name, .cls(cls))
+            // The bases'
+            // __init_subclass__ hooks run
+            // with the new class in hand —
+            // the hinge enum and the
+            // plugin-shaped libraries
+            // hang on.
+            for base in bases {
+                if let hook = base.lookup(
+                    "__init_subclass__"),
+                   case .function(let fn) =
+                    hook {
+                    _ = try callValue(
+                        .function(fn),
+                        [.cls(cls)], [], line)
+                }
+            }
         case .nonlocalStmt(let names, _):
             env.nonlocals.formUnion(names)
         case .returnStmt(let expr, _):
@@ -4580,20 +7805,62 @@ class datetime:
             break
         case .importStmt(let names, _):
             for (name, alias) in names {
-                let bound = alias ?? name
-                if Self.isModule(name) {
+                if let alias = alias {
+                    // 'import a.b as ab' —
+                    // the alias names the
+                    // submodule itself.
+                    if Self.isModule(name) {
+                        env.assignLocal(
+                            alias, .module(name))
+                    } else {
+                        let module =
+                            try loadUserModule(
+                                name)
+                        env.assignLocal(
+                            alias,
+                            .userModule(module))
+                    }
+                } else if name.contains(".") {
+                    // 'import a.b' binds the
+                    // TOP package only; the
+                    // chain beneath rides as
+                    // attributes — the loader
+                    // binds each child into
+                    // its parent as it lands.
+                    let top = String(name
+                        .split(separator: ".")
+                        .first ?? Substring(name))
+                    if Self.isModule(name) {
+                        env.assignLocal(
+                            top, .module(top))
+                    } else {
+                        _ = try loadUserModule(
+                            name)
+                        let topModule =
+                            try loadUserModule(
+                                top)
+                        env.assignLocal(
+                            top, .userModule(
+                                topModule))
+                    }
+                } else if Self.isModule(name) {
                     env.assignLocal(
-                        bound, .module(name))
+                        name, .module(name))
                 } else {
                     let module = try loadUserModule(
                         name)
                     env.assignLocal(
-                        bound,
+                        name,
                         .userModule(module))
                 }
             }
-        case .fromImport(let module,
+        case .fromImport(let rawModule,
                          let names, _):
+            let module = rawModule
+                .hasPrefix(".")
+                ? try resolveRelativeImport(
+                    rawModule, line)
+                : rawModule
             if Self.isModule(module) {
                 for (name, alias) in names {
                     let value = try moduleAttr(
@@ -4615,19 +7882,34 @@ class datetime:
                         }
                         continue
                     }
-                    guard let value = loaded
-                        .env.lookup(name)
-                    else {
-                        throw PyError(
-                            "ImportError",
-                            "cannot import "
-                                + "name '\(name)' "
-                                + "from "
-                                + "'\(module)'",
-                            line: line)
+                    if let value = loaded
+                        .env.lookup(name) {
+                        env.assignLocal(
+                            alias ?? name, value)
+                        continue
                     }
-                    env.assignLocal(
-                        alias ?? name, value)
+                    // A name the module does
+                    // not carry may be a
+                    // submodule of it —
+                    // 'from pkg import sub'
+                    // loads pkg/sub.py (or
+                    // pkg/sub/__init__.py),
+                    // as python's own
+                    // loader does.
+                    if let sub = try? loadUserModule(
+                        module + "." + name) {
+                        env.assignLocal(
+                            alias ?? name,
+                            .userModule(sub))
+                        continue
+                    }
+                    throw PyError(
+                        "ImportError",
+                        "cannot import "
+                            + "name '\(name)' "
+                            + "from "
+                            + "'\(module)'",
+                        line: line)
                 }
             }
         case .tryExcept(let body,
@@ -4888,6 +8170,28 @@ class datetime:
         let line = frames.last?.line ?? 0
         switch base {
         case .instance(let obj):
+            // A property with a setter
+            // takes the write; one
+            // without refuses it.
+            if let (raw, _) = obj.cls
+                .lookupEntry(field),
+               case .instance(let wrap) = raw,
+               wrap.cls.nativeKind
+                == "property" {
+                let fset = wrap.attrs["fset"]
+                    ?? .none
+                if case .none = fset {
+                    throw PyError(
+                        "AttributeError",
+                        "property '\(field)' "
+                            + "has no setter",
+                        line: line)
+                }
+                _ = try callValue(
+                    fset, [base, value], [],
+                    line)
+                return
+            }
             obj.attrs[field] = value
         case .cls(let cls):
             cls.attrs[field] = value
@@ -5314,15 +8618,52 @@ extension PyInterp {
             let fn = try eval(callee, env)
             var args: [PyValue] = []
             for argExpr in argExprs {
-                args.append(
-                    try eval(argExpr, env))
+                if case .unary("*", let inner)
+                    = argExpr {
+                    // A starred call
+                    // argument spreads its
+                    // iterable in place.
+                    let spread = try eval(
+                        inner, env)
+                    args.append(
+                        contentsOf:
+                            try iterate(spread))
+                } else {
+                    args.append(
+                        try eval(argExpr, env))
+                }
             }
             var kwargs: [(String, PyValue)]
                 = []
             for (name, kwExpr) in kwExprs {
-                kwargs.append(
-                    (name, try eval(
-                        kwExpr, env)))
+                if name == "**" {
+                    let pack = try eval(
+                        kwExpr, env)
+                    guard case .dict(let box) =
+                        pack else {
+                        throw PyError(
+                            "TypeError",
+                            "argument after "
+                                + "** must be "
+                                + "a mapping",
+                            line: line)
+                    }
+                    for hash in box.keys {
+                        if let key = box
+                            .display[hash],
+                           case .str(let word) =
+                            key,
+                           let value = box
+                            .values[hash] {
+                            kwargs.append(
+                                (word, value))
+                        }
+                    }
+                } else {
+                    kwargs.append(
+                        (name, try eval(
+                            kwExpr, env)))
+                }
             }
             return try callValue(
                 fn, args, kwargs, line)
@@ -6415,6 +9756,27 @@ extension PyInterp {
              .seqIter:
             return .bound(base, field)
         case .instance(let obj):
+            // A property on the class is
+            // a data descriptor: it speaks
+            // before the instance's own
+            // attrs get a say.
+            if let (raw, _) = obj.cls
+                .lookupEntry(field),
+               case .instance(let wrap) = raw,
+               wrap.cls.nativeKind
+                == "property" {
+                let fget = wrap.attrs["fget"]
+                    ?? .none
+                if case .none = fget {
+                    throw PyError(
+                        "AttributeError",
+                        "property '\(field)' "
+                            + "has no getter",
+                        line: line)
+                }
+                return try callValue(
+                    fget, [base], [], line)
+            }
             if let value = obj.attrs[field] {
                 return value
             }
@@ -6431,6 +9793,26 @@ extension PyInterp {
                 // attribute reads as itself.
                 if case .function = value {
                     return .bound(base, field)
+                }
+                // The descriptor wrappers
+                // read through: a
+                // staticmethod gives its
+                // bare function, a
+                // classmethod stays bound
+                // so the call binds the
+                // class.
+                if case .instance(let wrap) =
+                    value,
+                   let kind = wrap.cls
+                    .nativeKind {
+                    if kind == "staticmethod" {
+                        return wrap.attrs[
+                            "__func__"] ?? .none
+                    }
+                    if kind == "classmethod" {
+                        return .bound(
+                            base, field)
+                    }
                 }
                 return value
             }
@@ -6449,6 +9831,26 @@ extension PyInterp {
         case .cls(let cls):
             if let value = cls.lookup(
                 field) {
+                // The wrappers read
+                // through on the class too:
+                // a staticmethod gives its
+                // bare function, a
+                // classmethod stays bound,
+                // a property reads as
+                // itself.
+                if case .instance(let wrap) =
+                    value,
+                   let kind = wrap.cls
+                    .nativeKind {
+                    if kind == "staticmethod" {
+                        return wrap.attrs[
+                            "__func__"] ?? .none
+                    }
+                    if kind == "classmethod" {
+                        return .bound(
+                            base, field)
+                    }
+                }
                 return value
             }
             throw PyError(
@@ -7020,11 +10422,41 @@ extension PyInterp {
                 line: line)
         }
         let local = PyEnv(parent: fn.env)
-        for (index, param) in fn.params
-            .enumerated() {
-            if index < args.count {
+        // The parameter list, read into
+        // its countries: position-fillable
+        // names, the surplus capture
+        // ('*args' — a bare '*' only
+        // fences), the keyword-only names
+        // past the fence, and the keyword
+        // capture ('**kw').
+        var positional: [String] = []
+        var surplus: String? = nil
+        var fenced = false
+        var keywordOnly: [String] = []
+        var kwCapture: String? = nil
+        for param in fn.params {
+            if param.hasPrefix("**") {
+                kwCapture = String(
+                    param.dropFirst(2))
+            } else if param.hasPrefix("*") {
+                fenced = true
+                let rest = String(
+                    param.dropFirst())
+                if !rest.isEmpty {
+                    surplus = rest
+                }
+            } else if fenced {
+                keywordOnly.append(param)
+            } else {
+                positional.append(param)
+            }
+        }
+        var used = 0
+        for param in positional {
+            if used < args.count {
                 local.assignLocal(
-                    param, args[index])
+                    param, args[used])
+                used += 1
             } else if let fallback =
                 fn.defaults[param] {
                 local.assignLocal(
@@ -7038,19 +10470,34 @@ extension PyInterp {
                     line: line)
             }
         }
-        if args.count > fn.params.count {
-            throw PyError(
-                "TypeError",
-                "\(fn.name)() takes "
-                    + "\(fn.params.count) "
-                    + "arguments but "
-                    + "\(args.count) were "
-                    + "given",
-                line: line)
+        if used < args.count {
+            if let surplus = surplus {
+                local.assignLocal(
+                    surplus, .tuple(
+                        Array(args[used...])))
+                used = args.count
+            } else {
+                throw PyError(
+                    "TypeError",
+                    "\(fn.name)() takes "
+                        + "\(positional.count) "
+                        + "arguments but "
+                        + "\(args.count) were "
+                        + "given",
+                    line: line)
+            }
+        } else if let surplus = surplus {
+            local.assignLocal(
+                surplus, .tuple([]))
         }
+        var captured: [(String, PyValue)] = []
         for (name, value) in kwargs {
-            guard fn.params.contains(name)
-            else {
+            if positional.contains(name)
+                || keywordOnly.contains(name) {
+                local.assignLocal(name, value)
+            } else if kwCapture != nil {
+                captured.append((name, value))
+            } else {
                 throw PyError(
                     "TypeError",
                     "\(fn.name)() got an "
@@ -7058,7 +10505,32 @@ extension PyInterp {
                         + "argument '\(name)'",
                     line: line)
             }
-            local.assignLocal(name, value)
+        }
+        for param in keywordOnly {
+            if local.vars[param] == nil {
+                if let fallback =
+                    fn.defaults[param] {
+                    local.assignLocal(
+                        param, fallback)
+                } else {
+                    throw PyError(
+                        "TypeError",
+                        "\(fn.name)() missing "
+                            + "a required "
+                            + "keyword-only "
+                            + "argument: "
+                            + "'\(param)'",
+                        line: line)
+                }
+            }
+        }
+        if let kwCapture = kwCapture {
+            let box = PyDict()
+            for (name, value) in captured {
+                box.set(.str(name), value)
+            }
+            local.assignLocal(
+                kwCapture, .dict(box))
         }
         callDepth += 1
         frames.append((fn.name, line))
@@ -8040,6 +11512,36 @@ extension PyInterp {
         case "super":
             return try superBuiltin(
                 args, line)
+        case "property":
+            // The descriptor trio live as
+            // native instances whose attrs
+            // are their working parts; the
+            // attribute machinery (getAttr,
+            // setAttr, callMethod) knows
+            // their kinds by name.
+            return nativeInstance(
+                "property", "property", [
+                    "fget": args.first
+                        ?? .none,
+                    "fset": args.count > 1
+                        ? args[1] : .none,
+                    "fdel": args.count > 2
+                        ? args[2] : .none,
+                ])
+        case "staticmethod":
+            return nativeInstance(
+                "staticmethod",
+                "staticmethod", [
+                    "__func__": args.first
+                        ?? .none,
+                ])
+        case "classmethod":
+            return nativeInstance(
+                "classmethod",
+                "classmethod", [
+                    "__func__": args.first
+                        ?? .none,
+                ])
         case "open":
             return try openFile(
                 args, kwargs, line)
@@ -8345,6 +11847,38 @@ extension PyInterp {
            let kind = obj.cls.nativeKind {
             return try nativeMethod(
                 kind, obj, method, args,
+                kwargs, line)
+        }
+        // The descriptor wrappers change
+        // how a call binds: a
+        // staticmethod's function takes
+        // no one, a classmethod's takes
+        // the class — whichever door the
+        // call came through.
+        let ownerCls: PyClass?
+        switch base {
+        case .instance(let obj):
+            ownerCls = obj.cls
+        case .cls(let cls):
+            ownerCls = cls
+        default:
+            ownerCls = nil
+        }
+        if let ownerCls = ownerCls,
+           let (raw, _) = ownerCls
+            .lookupEntry(method),
+           case .instance(let wrap) = raw,
+           let kind = wrap.cls.nativeKind,
+           kind == "staticmethod"
+            || kind == "classmethod" {
+            let fn = wrap.attrs["__func__"]
+                ?? .none
+            if kind == "staticmethod" {
+                return try callValue(
+                    fn, args, kwargs, line)
+            }
+            return try callValue(
+                fn, [.cls(ownerCls)] + args,
                 kwargs, line)
         }
         switch base {
@@ -8734,7 +12268,10 @@ extension PyInterp {
                     "ls", "exists",
                     "state", "emcon"]
         case "sys":
-            return ["argv"]
+            return ["argv", "exit",
+                    "stdout", "stderr",
+                    "platform", "version",
+                    "maxsize", "path"]
         case "json":
             return ["dumps", "loads",
                     "dump", "load"]
@@ -9942,6 +13479,14 @@ extension PyInterp {
                 return true
             }
             return false
+        case "property", "staticmethod",
+             "classmethod":
+            if case .instance(let obj) =
+                value {
+                return obj.cls.nativeKind
+                    == kind
+            }
+            return false
         default:
             return false
         }
@@ -10712,6 +14257,73 @@ extension PyInterp {
         }
     }
 
+    /// property's own doors: .getter,
+    /// .setter, .deleter each take a
+    /// function and hand back a new
+    /// property with that side replaced
+    /// — the shape '@x.setter' rides on.
+    func propertyMethod(
+        _ obj: PyInstance, _ method: String,
+        _ args: [PyValue], _ line: Int)
+        throws -> PyValue {
+        switch method {
+        case "getter", "setter", "deleter":
+            guard let fn = args.first else {
+                throw PyError(
+                    "TypeError",
+                    "property.\(method)() "
+                        + "needs a function",
+                    line: line)
+            }
+            var attrs = obj.attrs
+            let slot = method == "getter"
+                ? "fget"
+                : method == "setter"
+                    ? "fset" : "fdel"
+            attrs[slot] = fn
+            return nativeInstance(
+                "property", "property", attrs)
+        default:
+            throw attrError(
+                "property", method, line)
+        }
+    }
+
+    /// A sys stream at work: writes go
+    /// to the console's own river (the
+    /// output buffer print rides), a
+    /// flush pushes it through, and
+    /// nothing here is a terminal.
+    func sysStreamMethod(
+        _ obj: PyInstance, _ method: String,
+        _ args: [PyValue], _ line: Int)
+        throws -> PyValue {
+        switch method {
+        case "write":
+            let text = args.first.map {
+                textOf($0)
+            } ?? ""
+            outBuffer += text
+            return .int(text.count)
+        case "writelines":
+            if let first = args.first {
+                for item in try iterate(
+                    first) {
+                    outBuffer += textOf(item)
+                }
+            }
+            return .none
+        case "flush":
+            flushOut()
+            return .none
+        case "isatty":
+            return .bool(false)
+        default:
+            throw attrError(
+                "sys.stream", method, line)
+        }
+    }
+
     func nativeMethod(
         _ kind: String, _ obj: PyInstance,
         _ method: String,
@@ -10719,6 +14331,12 @@ extension PyInterp {
         _ kwargs: [(String, PyValue)],
         _ line: Int) throws -> PyValue {
         switch kind {
+        case "property":
+            return try propertyMethod(
+                obj, method, args, line)
+        case "sys.stream":
+            return try sysStreamMethod(
+                obj, method, args, line)
         case "deque":
             return try dequeMethod(
                 obj, method, args, line)
@@ -12187,6 +15805,12 @@ extension PyInterp {
                     .str("/packages"),
                 ]))
             }
+            if field == "stdout" {
+                return sysStream(stderr: false)
+            }
+            if field == "stderr" {
+                return sysStream(stderr: true)
+            }
             throw PyError(
                 "AttributeError",
                 "module 'sys' has no "
@@ -12987,6 +16611,27 @@ extension PyInterp {
         case ("house", "emcon"):
             return .str(
                 EmconCondition.current.name)
+
+        // sys — the program's own
+        // lifeline: exit, spoken the way
+        // the runner understands (an int
+        // is a silent code, anything
+        // else prints as itself).
+        case ("sys", "exit"):
+            let code = args.first ?? .none
+            if case .none = code {
+                throw PyError(
+                    "SystemExit", "",
+                    line: line)
+            }
+            if case .int(let n) = code {
+                throw PyError(
+                    "SystemExit", "\(n)",
+                    line: line)
+            }
+            throw PyError(
+                "SystemExit", textOf(code),
+                line: line)
 
         // os — the console's own tree,
         // walked the way python walks a
@@ -14933,19 +18578,32 @@ enum BlacksitePy {
             + "comprehensions, nonlocal",
         "  if / for / while, try/except/"
             + "else/finally, f-strings",
+        "  decorators (@), annotations, "
+            + "*args / **kwargs, "
+            + "property, staticmethod, "
+            + "classmethod",
         "  modules: math, random, sys "
-            + "(argv), json, re, "
-            + "collections, itertools, "
-            + "functools",
+            + "(argv, exit, stdout), "
+            + "json, re, collections, "
+            + "itertools, functools",
         "  os + os.path, time, base64, "
             + "hashlib, statistics, "
             + "heapq, bisect, array, "
             + "datetime, "
             + "string, house (the console "
             + "itself)",
+        "  the stdlib shelf (road A): "
+            + "typing, enum, dataclasses, "
+            + "pathlib, argparse, csv, "
+            + "glob, fnmatch, textwrap, "
+            + "logging, shutil, "
+            + "contextlib",
         "  import your own .py files "
-            + "too — from the script's "
-            + "folder, or /packages",
+            + "too — packages, dotted "
+            + "and relative imports, "
+            + "from the script's folder "
+            + "or /packages (pip "
+            + "installs there)",
         "  input() reads the console "
             + "line; the program waits "
             + "while you type",
@@ -14993,6 +18651,18 @@ enum BlacksitePy {
         interp.inputProvider =
             inputProvider
         interp.cancelToken = cancel
+        // A __main__.py runs with the
+        // standing python -m gives it:
+        // its working folder is the one
+        // that HOLDS its package, so the
+        // package resolves by its own
+        // name and relative imports land.
+        if path.hasSuffix("/__main__.py") {
+            interp.cwdOverride =
+                BlacksiteFS.parent(
+                    of: BlacksiteFS.parent(
+                        of: path))
+        }
         do {
             var lexer = PyLexer(source)
             let tokens = try lexer
@@ -15004,9 +18674,23 @@ enum BlacksitePy {
             interp.runProgram(
                 body, args: args)
         } catch let error as PyError {
-            interp.emitTrace(
-                error.kind, error.message,
-                error.line)
+            if error.kind == "SystemExit" {
+                // A program that exits is
+                // not a program that
+                // crashed: an int code is
+                // silent, anything else
+                // prints as itself.
+                interp.flushOut()
+                if !error.message.isEmpty,
+                   Int(error.message) == nil {
+                    interp.emit(error.message,
+                                .out)
+                }
+            } else {
+                interp.emitTrace(
+                    error.kind, error.message,
+                    error.line)
+            }
         } catch {
             interp.emitTrace(
                 "RuntimeError",
