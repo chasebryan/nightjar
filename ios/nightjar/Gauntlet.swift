@@ -2696,7 +2696,7 @@ final class Gauntlet: ObservableObject {
             // ships; the builder's bytes are
             // pinned field-wise instead).
             var get: [UInt8] = [0x40, 0x01, 0xB0, 0x7A,
-                                0xBA]
+                                0xBB]
             get += Array(".well-known".utf8)
             get += [0x04]
             get += Array("core".utf8)
@@ -2719,18 +2719,18 @@ final class Gauntlet: ObservableObject {
             cases += 1
             try Gauntlet.require(
                 (get[4] >> 4) == 11
-                    && (get[4] & 0x0F) == 10,
+                    && (get[4] & 0x0F) == 11,
                 "the Uri-Path option header moved")
             cases += 1
             try Gauntlet.require(
-                String(bytes: get[5..<15],
+                String(bytes: get[5..<16],
                        encoding: .utf8)
                     == ".well-known",
                 "the first Uri-Path moved")
             cases += 1
             try Gauntlet.require(
-                get[15] == 0x04
-                    && String(bytes: get[16..<20],
+                get[16] == 0x04
+                    && String(bytes: get[17..<21],
                               encoding: .utf8)
                         == "core",
                 "the second Uri-Path moved")
@@ -3763,8 +3763,17 @@ final class Gauntlet: ObservableObject {
         add("stores", "session codec round-trips") {
             var cases = 0
             // The line codec's own primitives.
+            // The codec's shipped contract:
+            // short escapes (\n, not \u000a)
+            // and spaced object fields — the
+            // form every log on disk already
+            // carries. (This step once pinned
+            // a compact form the codec never
+            // wrote; corrected 2026-10-22.
+            // The 500-line round-trip below
+            // is the semantic guard.)
             let escaped = "\"" + "a" + "\\\"" + "b"
-                + "\\\\" + "c" + "\\" + "u000a"
+                + "\\\\" + "c" + "\\n"
                 + "d" + "\""
             cases += 1
             try Gauntlet.require(
@@ -3787,7 +3796,7 @@ final class Gauntlet: ObservableObject {
             cases += 1
             try Gauntlet.require(
                 JSONL.object([("b", "1"), ("a", "2")])
-                    == "{\"b\":1,\"a\":2}",
+                    == "{\"b\": 1, \"a\": 2}",
                 "the object writer moved")
             // Five hundred sightings through the
             // line codec, read back by an

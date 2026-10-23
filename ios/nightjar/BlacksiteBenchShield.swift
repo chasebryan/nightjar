@@ -1590,12 +1590,12 @@ extension BlacksiteBench {
     static func shieldCoAPRead(
         ip: String) -> Int? {
         var packet: [UInt8] = [
-            0x40, 0x01, 0xB0, 0x7A, 0xBA]
+            0x40, 0x01, 0xB0, 0x7A, 0xBB]
         packet += Array(".well-known".utf8)
         packet.append(0x04)
         packet += Array("core".utf8)
         guard let reply = shieldUDP(
-            ip: ip, port: 5688,
+            ip: ip, port: 5683,
             payload: packet, window: 2.5),
               reply.count >= 2,
               reply[0] & 0xC0 == 0x40
@@ -3295,7 +3295,7 @@ extension BlacksiteBench {
                     icsSay(emit, String(format: L("CoAP: it answered %@"), rendered))
                 }
             } else {
-                icsSay(emit, L("CoAP: silent on UDP 5688"))
+                icsSay(emit, L("CoAP: silent on UDP 5683"))
             }
             if shieldDoorOpen(
                 ip: ip, port: 554) {

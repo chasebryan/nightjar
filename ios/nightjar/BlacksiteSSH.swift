@@ -122,8 +122,27 @@ enum SSHWire {
         string(items.joined(separator: ","))
     }
 
+    /// Parse a name list. Callers hand over
+    /// either the framed field (as nameList
+    /// writes it) or the bare payload (as
+    /// SSHReader.string returns it); a
+    /// leading length that accounts for
+    /// exactly the remaining bytes marks
+    /// the framed form and comes off. (The
+    /// Gauntlet's round-trip caught the two
+    /// forms being conflated, 2026-10-22.)
     static func parseNameList(_ data: Data) -> [String] {
-        guard let text = String(data: data,
+        var body = data
+        if body.count > 4 {
+            let framed = (Int(body[body.startIndex]) << 24)
+                | (Int(body[body.startIndex + 1]) << 16)
+                | (Int(body[body.startIndex + 2]) << 8)
+                | Int(body[body.startIndex + 3])
+            if framed == body.count - 4 {
+                body = Data(body.dropFirst(4))
+            }
+        }
+        guard let text = String(data: body,
                                 encoding: .utf8),
               !text.isEmpty
         else { return [] }

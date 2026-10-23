@@ -413,7 +413,7 @@ extension Betafisch {
         while pos + 12 <= b.count {
             guard let rawType = u32(b, pos,
                                     little: little),
-                  let total = u32(b, pos + 4,
+                  var total = u32(b, pos + 4,
                                   little: little)
             else { break }
             var blockType = rawType
@@ -443,6 +443,18 @@ extension Betafisch {
                 }
                 sawSection = true
                 blockType = 0x0a0d0d0a
+                // The total was read before the
+                // byte order was settled — for
+                // a little-endian section it
+                // read byte-swapped, the guard
+                // below walked away from the
+                // whole file, and the round-
+                // trip lost every frame. Read
+                // it again, settled.
+                if let settled = u32(b, pos + 4,
+                                     little: little) {
+                    total = settled
+                }
             }
             guard total >= 12, pos + total <= b.count
             else { break }
@@ -677,11 +689,24 @@ extension Betafisch {
         if acc.proto.isEmpty {
             acc.proto = L("unknown")
         }
+        // The list line shows the link address
+        // when the frame has one (Ethernet);
+        // linkless captures (raw IP, loopback)
+        // fall back to the network address, so
+        // the column never sits empty. The
+        // layers keep their own facts apart:
+        // src/dst are the link's, ipSrc/ipDst
+        // the network's — the Gauntlet caught
+        // IP and ARP overwriting the link
+        // pair, 2026-10-22.
         var frame = BFFrame(
             number: number, timestamp: timestamp,
             bytes: bytes, origLen: origLen,
             linktype: linktype, proto: acc.proto,
-            src: acc.src, dst: acc.dst,
+            src: acc.src.isEmpty
+                ? (acc.ipSrc ?? "") : acc.src,
+            dst: acc.dst.isEmpty
+                ? (acc.ipDst ?? "") : acc.dst,
             info: acc.info, tree: roots)
         frame.protocols = acc.protocols
         frame.ipSrc = acc.ipSrc
@@ -924,8 +949,8 @@ extension Betafisch {
                 L("Target protocol address"), tpa,
                 (body + 16)..<(body + 20)))
             node.range = at..<whole
-            acc.src = spa
-            acc.dst = tpa
+            acc.ipSrc = spa
+            acc.ipDst = tpa
             if spa == tpa {
                 acc.info = String(
                     format: L("gratuitous ARP — %@ announces itself"), spa)
@@ -993,8 +1018,6 @@ extension Betafisch {
         let dst = ipv4String(b, at + 16)
         acc.ipSrc = src
         acc.ipDst = dst
-        acc.src = src
-        acc.dst = dst
         acc.ipVersion = 4
         acc.ipSrcRaw = Array(b[(at + 12)..<(at + 16)])
         acc.ipDstRaw = Array(b[(at + 16)..<(at + 20)])
@@ -1139,8 +1162,6 @@ extension Betafisch {
         let dst = ipv6String(b, at + 24)
         acc.ipSrc = src
         acc.ipDst = dst
-        acc.src = src
-        acc.dst = dst
         acc.ipVersion = 6
         acc.ipSrcRaw = Array(b[(at + 8)..<(at + 24)])
         acc.ipDstRaw = Array(b[(at + 24)..<(at + 40)])
