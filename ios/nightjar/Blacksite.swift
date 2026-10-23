@@ -12096,6 +12096,33 @@ struct BlacksiteView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                if !board.active.isEmpty {
+                    // The room at work, in the
+                    // strip: a breathing accent
+                    // dot and the live count —
+                    // the console is the house's
+                    // centre now, and it should
+                    // look awake (the plumage
+                    // pass, 2026-10-22).
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(themes.current.accent)
+                            .frame(width: 6, height: 6)
+                            .opacity(
+                                Int(context.date
+                                    .timeIntervalSince1970)
+                                    % 2 == 0 ? 1 : 0.35)
+                        Text("\(board.active.count) LIVE")
+                            .font(.system(
+                                .caption,
+                                design: .monospaced)
+                                .weight(.bold))
+                            .foregroundStyle(
+                                themes.current.accent)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                }
                 Text(context.date, style: .time)
                     .font(.system(.caption,
                                   design: .monospaced))
