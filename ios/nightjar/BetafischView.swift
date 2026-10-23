@@ -61,7 +61,7 @@ struct BetafischView: View {
                 Divider()
                 content
             }
-            .navigationTitle(L("betafisch"))
+            .navigationTitle(L("BETAFISCH"))
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(
                 for: DriftRoute.self) { route in
