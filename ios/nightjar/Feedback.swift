@@ -644,12 +644,31 @@ enum BootMedia {
     /// 2026-10-20 selection; the Mac is parked),
     /// and a custom slot is always judged by
     /// the operator's own bytes.
+    ///
+    /// One carve-out, and it is the wardrobe's
+    /// (Chase's commission, 2026-10-22): when the
+    /// provided backdrop IS the boot.gif the
+    /// operator filed in gifs/, it is judged by
+    /// its own bytes. The emblem rule exists
+    /// because the slot's bundled film was never
+    /// chosen for the boot; the wardrobe film is
+    /// nothing but chosen — a film-class backdrop,
+    /// so the flood stands down and the GIF
+    /// ceremony plays. With the wardrobe empty the
+    /// check cannot fire and the law is exactly
+    /// fix352's.
     static func lawData(media: String,
                         backdrop: Data?,
                         emblem: Data?) -> Data? {
 #if os(macOS)
         return backdrop
 #else
+        if media == "provided",
+           let backdrop,
+           let film = GifWardrobe.data("boot"),
+           backdrop == film {
+            return backdrop
+        }
         return media == "provided"
             ? emblem : backdrop
 #endif
@@ -1153,8 +1172,18 @@ struct BootView: View {
     /// the ceremony times by its own clock — or
     /// boot-reel.gif, so a house missing its new
     /// films still boots on the reel it has
-    /// always known.
+    /// always known. Ahead of all of them stands
+    /// the wardrobe: a boot.gif the operator filed
+    /// in gifs/ is the chosen boot film, full stop
+    /// (Chase's commission, 2026-10-22).
     private var providedData: Data? {
+        // The wardrobe's boot film outranks every
+        // bundled film below — it is the one film
+        // in the house the operator chose for the
+        // boot itself.
+        if let film = GifWardrobe.data("boot") {
+            return film
+        }
 #if os(macOS)
         if let film = bundleFilm(
             "nightjar-boot-laptop-1920x1080") {
@@ -2788,6 +2817,108 @@ extension UIImage {
     }
 }
 
+/// THE GIF WARDROBE (Chase's commission, 2026-10-22,
+/// the same night every GIF left the project): GIFs
+/// live in exactly one place — the bundle's gifs/
+/// folder, one file per area, uploaded by the
+/// operator one at a time under its slot's exact
+/// name (boot.gif for the boot ceremony, then
+/// centipede, eazy, magdump, redframe, assault for
+/// the five ignition splashes). A slot with a film
+/// filed lights its area up; a slot without one
+/// leaves the built-in ceremony standing, exactly
+/// as the house ran with no GIFs at all. This enum
+/// is the only door the house opens to a GIF.
+enum GifWardrobe {
+    /// The film filed under a slot, when one is
+    /// aboard. The wardrobe folder answers first;
+    /// the bundle root answers second — Xcode's
+    /// synchronized groups may flatten the folder
+    /// into the bundle's top in the built product,
+    /// and both shapes are the same wardrobe to
+    /// the operator who filed the film.
+    static func data(_ slot: String) -> Data? {
+        if let url = Bundle.main.url(
+            forResource: slot, withExtension: "gif",
+            subdirectory: "gifs") {
+            return try? Data(contentsOf: url)
+        }
+        if let url = Bundle.main.url(
+            forResource: slot, withExtension: "gif") {
+            return try? Data(contentsOf: url)
+        }
+        return nil
+    }
+
+    /// The film's full loop, in seconds, read from
+    /// frame properties alone — no frame is ever
+    /// decoded to time a film. The delay rule is
+    /// the house's own, the one UIImage.gifDelays
+    /// reads by: the unclamped delay where the
+    /// film authored one, the clamped delay behind
+    /// it, a tenth of a second behind both, and no
+    /// frame credited shorter than a fiftieth of a
+    /// second. A film whose properties will not
+    /// read keeps the house's standing three
+    /// seconds.
+    static func duration(of data: Data) -> Double {
+        let delays = UIImage.gifDelays(data)
+        guard !delays.isEmpty else { return 3.0 }
+        return delays.reduce(0, +)
+    }
+}
+
+/// A wardrobe film's stage: the GIF hung on black
+/// across the whole screen, beautifully, on any
+/// glass (Chase's commission, 2026-10-22). The fit
+/// is the backdrop's own law — BackdropFit decides:
+/// a film whose shape disagrees with the screen
+/// hangs whole and centered, a film whose shape
+/// matches fills. The player is framed to EXACTLY
+/// the size the stage is offered, never its natural
+/// size: an oversized child inflates the stack it
+/// sits in and pushes everything else off its marks
+/// (the boot film's lesson, 2026-10-17).
+struct GifStageView: View {
+    let data: Data
+
+    var body: some View {
+        GeometryReader { geo in
+            let frameAspect = geo.size.height > 0
+                ? geo.size.width / geo.size.height : 0
+            let image = UIImage(data: data)
+            let imageAspect = image.map {
+                $0.size.height > 0
+                    ? $0.size.width / $0.size.height : 0
+            } ?? 0
+            let whole = BackdropFit.wholeArtwork(
+                imageAspect: imageAspect,
+                frameAspect: frameAspect)
+            ZStack {
+                Color.black
+#if os(iOS)
+                GIFPlayerView(
+                    data: data,
+                    contentMode: whole
+                        ? .scaleAspectFit
+                        : .scaleAspectFill)
+                    .frame(width: geo.size.width,
+                           height: geo.size.height)
+                    .clipped()
+#else
+                GIFPlayerView(data: data)
+                    .frame(width: geo.size.width,
+                           height: geo.size.height)
+                    .clipped()
+#endif
+            }
+            .frame(width: geo.size.width,
+                   height: geo.size.height)
+        }
+        .ignoresSafeArea()
+    }
+}
+
 #if os(iOS)
 /// A full-bleed GIF player (UIImageView under the hood).
 struct GIFPlayerView: UIViewRepresentable {
@@ -3131,16 +3262,22 @@ struct BootFilmPlayer: UIViewRepresentable {
 
 
 #endif
-/// The drumroll: a flickering card over the whole screen
-/// when the centipede is released (tap to skip). The house
-/// carries no GIFs (Chase's ruling, 2026-10-22 — every GIF
-/// left the project), so the built-in card is the splash:
-/// three seconds of theatre. The crawl itself starts the
-/// moment Release is tapped — the splash is pure theatre
-/// laid over its first hops.
+/// The drumroll: a splash over the whole screen when
+/// the centipede is released (tap to skip). GIFs live
+/// only in the wardrobe folder (gifs/), one per area,
+/// uploaded by the operator (Chase's commission,
+/// 2026-10-22): a film filed under centipede.gif IS
+/// this splash, played on the wardrobe's stage for
+/// one loop of itself, held between three and six
+/// seconds. With the slot empty the built-in flicker
+/// card stands, three seconds of theatre, exactly as
+/// it did. The crawl itself starts the moment Release
+/// is tapped — the splash is pure theatre laid over
+/// its first hops.
 struct CentipedeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
+    @State private var gifData: Data?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3150,20 +3287,24 @@ struct CentipedeSplashView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Image(systemName: "ant.fill")
-                    .font(.system(size: 96))
-                    .foregroundStyle(.teal)
-                Text("CENTIPEDE RELEASED")
-                    .font(.headline.monospaced())
-                    .tracking(4)
-                    .foregroundStyle(.white)
-            }
-            .opacity(flicker ? 0.55 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.14)
-                    .repeatForever(autoreverses: true)) {
-                    flicker = true
+            if let gifData {
+                GifStageView(data: gifData)
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "ant.fill")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.teal)
+                    Text("CENTIPEDE RELEASED")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
                 }
             }
         }
@@ -3171,24 +3312,39 @@ struct CentipedeSplashView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
+            // The wardrobe is read ONCE, here — the
+            // film's bytes and its loop then live in
+            // state, and the body never touches disk.
+            let film = GifWardrobe.data("centipede")
+            gifData = film
+            let seconds = film.map {
+                min(6.0, max(3.0,
+                    GifWardrobe.duration(of: $0)))
+            } ?? splashSeconds
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + splashSeconds) {
+                deadline: .now() + seconds) {
                 isShown = false
             }
         }
     }
 }
 
-/// The charge-up: a flickering card over the whole
-/// screen when EAZY is released (tap to skip) — the
-/// house carries no GIFs (Chase's ruling, 2026-10-22),
-/// so the built-in card is the splash. The scan starts
-/// the moment EAZY is ordered — the splash is pure
-/// theatre laid over its first probes, the centipede's
-/// doctrine.
+/// The charge-up: a splash over the whole screen
+/// when EAZY is released (tap to skip). GIFs live
+/// only in the wardrobe folder (gifs/), one per
+/// area, uploaded by the operator (Chase's
+/// commission, 2026-10-22): a film filed under
+/// eazy.gif IS this splash, played on the wardrobe's
+/// stage for one loop of itself, held between three
+/// and six seconds. With the slot empty the built-in
+/// flicker card stands, exactly as it did. The scan
+/// starts the moment EAZY is ordered — the splash is
+/// pure theatre laid over its first probes, the
+/// centipede's doctrine.
 struct EazyIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
+    @State private var gifData: Data?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3198,20 +3354,24 @@ struct EazyIgnitionView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 96))
-                    .foregroundStyle(.yellow)
-                Text("EAZY RELEASED")
-                    .font(.headline.monospaced())
-                    .tracking(4)
-                    .foregroundStyle(.white)
-            }
-            .opacity(flicker ? 0.55 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.14)
-                    .repeatForever(autoreverses: true)) {
-                    flicker = true
+            if let gifData {
+                GifStageView(data: gifData)
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.yellow)
+                    Text("EAZY RELEASED")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
                 }
             }
         }
@@ -3219,25 +3379,40 @@ struct EazyIgnitionView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
+            // The wardrobe is read ONCE, here — the
+            // film's bytes and its loop then live in
+            // state, and the body never touches disk.
+            let film = GifWardrobe.data("eazy")
+            gifData = film
+            let seconds = film.map {
+                min(6.0, max(3.0,
+                    GifWardrobe.duration(of: $0)))
+            } ?? splashSeconds
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + splashSeconds) {
+                deadline: .now() + seconds) {
                 isShown = false
             }
         }
     }
 }
 
-/// The lock-on: a flickering targeting card over the
-/// whole screen when MAGDUMP is released, ending on
-/// TARGET LOCK ON (tap to skip) — the house carries
-/// no GIFs (Chase's ruling, 2026-10-22), so the
-/// built-in card is the splash. The battery starts
-/// the moment MAGDUMP is ordered — the splash is pure
-/// theatre laid over its first probes, the centipede's
-/// doctrine, same as EAZY's charge-up.
+/// The lock-on: a splash over the whole screen when
+/// MAGDUMP is released, ending on TARGET LOCK ON
+/// (tap to skip). GIFs live only in the wardrobe
+/// folder (gifs/), one per area, uploaded by the
+/// operator (Chase's commission, 2026-10-22): a film
+/// filed under magdump.gif IS this splash, played on
+/// the wardrobe's stage for one loop of itself, held
+/// between three and six seconds. With the slot empty
+/// the built-in flicker card stands, exactly as it
+/// did. The battery starts the moment MAGDUMP is
+/// ordered — the splash is pure theatre laid over its
+/// first probes, the centipede's doctrine, same as
+/// EAZY's charge-up.
 struct MagdumpIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
+    @State private var gifData: Data?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3247,20 +3422,24 @@ struct MagdumpIgnitionView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Image(systemName: "scope")
-                    .font(.system(size: 96))
-                    .foregroundStyle(.red)
-                Text("TARGET LOCK ON")
-                    .font(.headline.monospaced())
-                    .tracking(4)
-                    .foregroundStyle(.white)
-            }
-            .opacity(flicker ? 0.55 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.14)
-                    .repeatForever(autoreverses: true)) {
-                    flicker = true
+            if let gifData {
+                GifStageView(data: gifData)
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "scope")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.red)
+                    Text("TARGET LOCK ON")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
                 }
             }
         }
@@ -3268,24 +3447,38 @@ struct MagdumpIgnitionView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
+            // The wardrobe is read ONCE, here — the
+            // film's bytes and its loop then live in
+            // state, and the body never touches disk.
+            let film = GifWardrobe.data("magdump")
+            gifData = film
+            let seconds = film.map {
+                min(6.0, max(3.0,
+                    GifWardrobe.duration(of: $0)))
+            } ?? splashSeconds
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + splashSeconds) {
+                deadline: .now() + seconds) {
                 isShown = false
             }
         }
     }
 }
 
-/// The frame: a blood-red flicker card over the whole
-/// screen when EMCON falls to Alpha (tap to skip) —
-/// the house carries no GIFs (Chase's ruling,
-/// 2026-10-22), so the built-in card is the splash.
-/// The silence itself is never delayed — the Standard
-/// silences first, and this is the theatre laid over
-/// the hush.
+/// The frame: a splash over the whole screen when
+/// EMCON falls to Alpha (tap to skip). GIFs live only
+/// in the wardrobe folder (gifs/), one per area,
+/// uploaded by the operator (Chase's commission,
+/// 2026-10-22): a film filed under redframe.gif IS
+/// this splash, played on the wardrobe's stage for
+/// one loop of itself, held between three and six
+/// seconds. With the slot empty the built-in blood-red
+/// flicker card stands, exactly as it did. The silence
+/// itself is never delayed — the Standard silences
+/// first, and this is the theatre laid over the hush.
 struct RedframeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
+    @State private var gifData: Data?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3295,20 +3488,24 @@ struct RedframeSplashView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 16) {
-                Image(systemName: "viewfinder")
-                    .font(.system(size: 96))
-                    .foregroundStyle(.red)
-                Text("EMCON ALPHA")
-                    .font(.headline.monospaced())
-                    .tracking(4)
-                    .foregroundStyle(.white)
-            }
-            .opacity(flicker ? 0.55 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.14)
-                    .repeatForever(autoreverses: true)) {
-                    flicker = true
+            if let gifData {
+                GifStageView(data: gifData)
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "viewfinder")
+                        .font(.system(size: 96))
+                        .foregroundStyle(.red)
+                    Text("EMCON ALPHA")
+                        .font(.headline.monospaced())
+                        .tracking(4)
+                        .foregroundStyle(.white)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
                 }
             }
         }
@@ -3316,8 +3513,17 @@ struct RedframeSplashView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
+            // The wardrobe is read ONCE, here — the
+            // film's bytes and its loop then live in
+            // state, and the body never touches disk.
+            let film = GifWardrobe.data("redframe")
+            gifData = film
+            let seconds = film.map {
+                min(6.0, max(3.0,
+                    GifWardrobe.duration(of: $0)))
+            } ?? splashSeconds
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + splashSeconds) {
+                deadline: .now() + seconds) {
                 isShown = false
             }
         }

@@ -3759,19 +3759,36 @@ final class Gauntlet: ObservableObject {
             return "\(cases) cases: ten themes, "
                 + "every hex well-formed"
         }
-        add("wardrobe", "no GIFs in the house") {
+        add("wardrobe", "gifs live in the wardrobe") {
             var cases = 0
-            // Chase's ruling, 2026-10-22: every GIF
-            // left the project. The bundle must hold
-            // none at all — and the shipped stills
-            // (the bird, as PNGs) must be present.
+            // Chase's commission, 2026-10-22: GIFs
+            // live only in the wardrobe — the
+            // bundle's gifs/ folder, one per area,
+            // filed by the operator under its slot's
+            // exact name. A GIF anywhere else in the
+            // bundle is a stowaway. The wardrobe
+            // itself ships EMPTY, so its slots all
+            // answer nil until he files a film — and
+            // the shipped stills (the bird, as PNGs)
+            // must be present.
             cases += 1
-            let gifs = Bundle.main.paths(
-                forResourcesOfType: "gif",
-                inDirectory: nil)
-            try Gauntlet.require(gifs.isEmpty,
-                "a GIF still ships in the bundle: "
-                    + (gifs.first ?? ""))
+            var strays: [String] = []
+            if let resources = Bundle.main.resourceURL,
+               let enumerator = FileManager.default
+                .enumerator(
+                    at: resources,
+                    includingPropertiesForKeys: nil) {
+                for case let url as URL in enumerator {
+                    if url.pathExtension.lowercased()
+                        == "gif",
+                       !url.path.contains("/gifs/") {
+                        strays.append(url.path)
+                    }
+                }
+            }
+            try Gauntlet.require(strays.isEmpty,
+                "a GIF ships outside the wardrobe: "
+                    + (strays.first ?? ""))
             for resource in ["boot-reel", "wallpaper"] {
                 cases += 1
                 try Gauntlet.require(
@@ -3781,8 +3798,18 @@ final class Gauntlet: ObservableObject {
                     "the shipped still is missing: "
                         + resource)
             }
-            return "\(cases) cases: zero GIFs in "
-                + "the bundle; the bird stills ship"
+            cases += 1
+            try Gauntlet.require(
+                GifWardrobe.data("no-such-slot") == nil,
+                "a nonsense slot answered with a film")
+            cases += 1
+            try Gauntlet.require(
+                GifWardrobe.data("boot") == nil,
+                "the wardrobe shipped with a boot "
+                    + "film already filed")
+            return "\(cases) cases: every GIF in "
+                + "the wardrobe, the wardrobe empty, "
+                + "the bird stills ship"
         }
         add("wardrobe", "wallpaper decodes") {
             var cases = 0

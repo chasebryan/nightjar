@@ -1745,17 +1745,23 @@ struct ShareSheet: NSViewRepresentable {
 
 // MARK: - The ignition
 
-/// What plays when the mode is initialized: a flickering
-/// skull card over the run's first pass — pure theatre laid
-/// over real work, exactly like the centipede's drumroll.
-/// The house carries no GIFs (Chase's ruling, 2026-10-22 —
-/// every GIF left the project), so the built-in card is the
-/// splash. Tap to skip.
+/// What plays when the mode is initialized: a splash
+/// over the run's first pass — pure theatre laid over
+/// real work, exactly like the centipede's drumroll.
+/// GIFs live only in the wardrobe folder (gifs/), one
+/// per area, uploaded by the operator (Chase's
+/// commission, 2026-10-22): a film filed under
+/// assault.gif IS this splash, played on the wardrobe's
+/// stage for one loop of itself, held between three
+/// and six seconds. With the slot empty the built-in
+/// flickering skull card stands, exactly as it did.
+/// Tap to skip.
 struct AssaultIgnitionView: View {
     @Binding var isShown: Bool
     @ObservedObject private var themeCenter =
         ThemeCenter.shared
     @State private var flicker = false
+    @State private var gifData: Data?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -1765,24 +1771,28 @@ struct AssaultIgnitionView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            MatrixDots(color: themeCenter.current.accent
-                .opacity(0.15))
-                .ignoresSafeArea()
-            VStack(spacing: 16) {
-                SkullMark(color: .red, size: 110)
-                Text(L("NET-ASSAULT"))
-                    .font(.title.monospaced().weight(.bold))
-                    .tracking(5)
-                    .foregroundStyle(.white)
-                Text(L("the wire will hear this phone coming"))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-            }
-            .opacity(flicker ? 0.55 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.14)
-                    .repeatForever(autoreverses: true)) {
-                    flicker = true
+            if let gifData {
+                GifStageView(data: gifData)
+            } else {
+                MatrixDots(color: themeCenter.current.accent
+                    .opacity(0.15))
+                    .ignoresSafeArea()
+                VStack(spacing: 16) {
+                    SkullMark(color: .red, size: 110)
+                    Text(L("NET-ASSAULT"))
+                        .font(.title.monospaced().weight(.bold))
+                        .tracking(5)
+                        .foregroundStyle(.white)
+                    Text(L("the wire will hear this phone coming"))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                .opacity(flicker ? 0.55 : 1.0)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 0.14)
+                        .repeatForever(autoreverses: true)) {
+                        flicker = true
+                    }
                 }
             }
         }
@@ -1790,8 +1800,17 @@ struct AssaultIgnitionView: View {
         .onTapGesture { isShown = false }
         .onAppear {
             Haptics.success()
+            // The wardrobe is read ONCE, here — the
+            // film's bytes and its loop then live in
+            // state, and the body never touches disk.
+            let film = GifWardrobe.data("assault")
+            gifData = film
+            let seconds = film.map {
+                min(6.0, max(3.0,
+                    GifWardrobe.duration(of: $0)))
+            } ?? splashSeconds
             DispatchQueue.main.asyncAfter(
-                deadline: .now() + splashSeconds) {
+                deadline: .now() + seconds) {
                 isShown = false
             }
         }
