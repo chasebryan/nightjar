@@ -649,6 +649,31 @@ enum Mawk {
 
     /// The original's export shape: 48 kHz mono 16-bit
     /// PCM WAV, samples clipped and scaled by 32767.
+    /// The signal line's shape: the samples reduced
+    /// to `count` peak buckets (max absolute value
+    /// per bucket) — what the sheet's red line
+    /// draws. Pure, so the Gauntlet pins it.
+    static func peaks(_ samples: [Float],
+                      count: Int) -> [Float] {
+        guard count > 0 else { return [] }
+        guard !samples.isEmpty else {
+            return [Float](repeating: 0, count: count)
+        }
+        let n = samples.count
+        var out: [Float] = []
+        out.reserveCapacity(count)
+        for bucket in 0..<count {
+            let lo = bucket * n / count
+            let hi = max(lo + 1, (bucket + 1) * n / count)
+            var peak: Float = 0
+            for i in lo..<min(hi, n) {
+                peak = max(peak, abs(samples[i]))
+            }
+            out.append(min(peak, 1))
+        }
+        return out
+    }
+
     static func wavData(samples: [Float]) -> Data {
         var out = Data()
         let pcmCount = samples.count * 2
@@ -778,6 +803,22 @@ final class MawkCenter: ObservableObject {
     @Published var status = L("Idle.")
     @Published var heard: [MawkHeard] = []
 
+    /// The encrypting panel's stage line, while the
+    /// key turns: sealing, opening, and encoding run
+    /// scrypt off the main thread (its pause is the
+    /// security), and the sheet shows this panel
+    /// instead of freezing in silence between the
+    /// tap and the sound (Chase's word, 2026-10-22).
+    @Published var working: String?
+
+    /// The red signal line's data: peak buckets of
+    /// what is sounding right now — the song while
+    /// it sings, the room while the ear is open —
+    /// and whether it is live.
+    @Published private(set) var signalPeaks: [Float] = []
+    @Published private(set) var signalLive = false
+    private var songPeaks: [Float] = []
+
     /// The sheet's passphrase field, mirrored here so a
     /// sealed frame heard live can be opened on arrival
     /// and retried later. Never stored, never logged.
@@ -817,12 +858,76 @@ final class MawkCenter: ObservableObject {
                      EmconCondition.current.name)
     }
 
+    /// Pack off the main thread — scrypt's pause is
+    /// the security, and the sheet's encrypting
+    /// panel covers it, so a sealed message no
+    /// longer freezes the room between the tap and
+    /// the sound. The callback lands on the main
+    /// thread with the working state cleared.
+    func packAsync(text: String, passphrase: String?,
+                   then: @escaping (Data?, String?)
+                    -> Void) {
+        working = passphrase != nil
+            ? L("Encrypting — the key is turning.")
+            : L("Encoding…")
+        DispatchQueue.global(qos: .userInitiated)
+            .async {
+            var frame: Data?
+            var line: String?
+            do {
+                frame = try Mawk.pack(
+                    text: text, passphrase: passphrase)
+            } catch let error as MawkError {
+                line = error.line
+            } catch {
+                line = L("That message would not pack.")
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.working = nil
+                then(frame, line)
+            }
+        }
+    }
+
+    /// The sheet's road to the air: pack async, then
+    /// sing. A refusal or a packing failure arrives
+    /// through the same line the note shows.
+    func sing(text: String, passphrase: String?,
+              then: @escaping (String?) -> Void) {
+        if let refusal = Self.playRefusal {
+            then(refusal)
+            return
+        }
+        packAsync(text: text, passphrase: passphrase) {
+            [weak self] frame, line in
+            guard let self else { return }
+            if let line {
+                then(line)
+                return
+            }
+            guard let frame else {
+                then(L("That message would not pack."))
+                return
+            }
+            then(self.play(frame: frame))
+        }
+    }
+
     @discardableResult
     func play(frame: Data) -> String? {
         if let refusal = Self.playRefusal { return refusal }
         stopListening()
         stopPlaying()
         let samples = Mawk.modulate(frame: frame)
+        return playSamples(samples,
+                           frameBytes: frame.count)
+    }
+
+    private func playSamples(_ samples: [Float],
+                             frameBytes: Int) -> String? {
+        songPeaks = Mawk.peaks(samples, count: 240)
+        signalPeaks = songPeaks
+        signalLive = true
         let format = AVAudioFormat(
             standardFormatWithSampleRate: Double(Mawk.rate),
             channels: 1)!
@@ -870,7 +975,7 @@ final class MawkCenter: ObservableObject {
                     self.playStarted) / self.playDuration)
             }
             Journal.log("mawk", "play",
-                        "\(frame.count) bytes on the air")
+                        "\(frameBytes) bytes on the air")
             return nil
         } catch {
             return L("The speaker would not open.")
@@ -887,6 +992,7 @@ final class MawkCenter: ObservableObject {
         if playing {
             playing = false
             progress = 0
+            signalLive = false
             status = L("Stopped.")
         }
     }
@@ -897,6 +1003,7 @@ final class MawkCenter: ObservableObject {
         player = nil
         engine = nil
         playing = false
+        signalLive = false
         progress = 0
         status = L("Sung. The room heard it, if a room was listening.")
         try? AVAudioSession.sharedInstance().setActive(
@@ -951,6 +1058,8 @@ final class MawkCenter: ObservableObject {
             sampleLock.unlock()
             lastAttemptCount = 0
             listening = true
+            signalLive = true
+            signalPeaks = []
             status = L("Listening — hold the sound near the phone.")
             listenTimer = Timer.scheduledTimer(
                 withTimeInterval: 0.5, repeats: true
@@ -1003,6 +1112,11 @@ final class MawkCenter: ObservableObject {
     private func attemptDecode() {
         sampleLock.lock()
         let count = pending.count
+        // The red line's live feed: the newest two
+        // seconds of the room, bucketed.
+        signalPeaks = Mawk.peaks(
+            Array(pending.suffix(2 * Mawk.rate)),
+            count: 240)
         sampleLock.unlock()
         guard listening, !decoding,
               count >= 24000,
@@ -1062,20 +1176,42 @@ final class MawkCenter: ObservableObject {
 
     /// Re-try a heard sealed frame with the current
     /// passphrase (the sheet calls this after typing).
+    /// The opening runs off the main thread under the
+    /// encrypting panel — scrypt turns on the way in
+    /// exactly as on the way out.
     func retry(_ entry: MawkHeard) {
-        guard let at = heard.firstIndex(where: {
+        guard heard.contains(where: {
             $0.id == entry.id
         }) else { return }
-        do {
-            heard[at].text = try Mawk.unpack(
-                frame: entry.frame, passphrase: passphrase)
-            heard[at].note = nil
-            status = L("Opened.")
-        } catch let error as MawkError {
-            heard[at].note = error.line
-            status = error.line
-        } catch {
-            heard[at].note = L("It would not open.")
+        let pass = passphrase
+        working = L("Decrypting — the key is turning.")
+        DispatchQueue.global(qos: .userInitiated)
+            .async { [weak self] in
+            var text: String?
+            var line: String?
+            do {
+                text = try Mawk.unpack(
+                    frame: entry.frame, passphrase: pass)
+            } catch let error as MawkError {
+                line = error.line
+            } catch {
+                line = L("It would not open.")
+            }
+            DispatchQueue.main.async {
+                guard let self,
+                      let at = self.heard.firstIndex(
+                        where: { $0.id == entry.id })
+                else { return }
+                self.working = nil
+                if let text {
+                    self.heard[at].text = text
+                    self.heard[at].note = nil
+                    self.status = L("Opened.")
+                } else {
+                    self.heard[at].note = line
+                    self.status = line ?? self.status
+                }
+            }
         }
     }
 
@@ -1093,6 +1229,7 @@ final class MawkCenter: ObservableObject {
         converter = nil
         if listening {
             listening = false
+            signalLive = false
             status = L("The ear is shut.")
             try? AVAudioSession.sharedInstance().setActive(
                 false, options: .notifyOthersOnDeactivation)
@@ -1108,6 +1245,72 @@ import UniformTypeIdentifiers
 /// as sound; listen, and what the room sings back lands
 /// in the mailbox below. Raised from the Send tab — the
 /// mouth's house — because a song is a send.
+/// The red signal line (Chase's word, 2026-10-22):
+/// a graph of the sound itself — the song's
+/// envelope while it sings, the playhead riding
+/// it with a pulse sized by the local peak; the
+/// room's own noise while the ear is open. It
+/// mutates as the sound does, and rests dim when
+/// nothing sounds.
+struct SignalLineView: View {
+    let peaks: [Float]
+    let progress: Double
+    let live: Bool
+
+    var body: some View {
+        Canvas { ctx, size in
+            let mid = size.height / 2
+            let half = size.height / 2 - 2
+            var base = Path()
+            base.move(to: CGPoint(x: 0, y: mid))
+            base.addLine(to: CGPoint(x: size.width, y: mid))
+            ctx.stroke(base, with: .color(
+                .red.opacity(0.22)), lineWidth: 1)
+            guard peaks.count > 1 else { return }
+            let step = size.width
+                / CGFloat(peaks.count - 1)
+            var ribbon = Path()
+            for (i, p) in peaks.enumerated() {
+                let x = CGFloat(i) * step
+                let y = mid - CGFloat(p) * half
+                if i == 0 {
+                    ribbon.move(to: CGPoint(x: x, y: y))
+                } else {
+                    ribbon.addLine(to: CGPoint(x: x, y: y))
+                }
+            }
+            for (i, p) in peaks.enumerated().reversed() {
+                let x = CGFloat(i) * step
+                let y = mid + CGFloat(p) * half
+                ribbon.addLine(to: CGPoint(x: x, y: y))
+            }
+            ribbon.closeSubpath()
+            ctx.stroke(ribbon, with: .color(
+                .red.opacity(live ? 0.95 : 0.4)),
+                       lineWidth: 1.4)
+            if progress > 0 {
+                let x = size.width * CGFloat(min(progress, 1))
+                var head = Path()
+                head.move(to: CGPoint(x: x, y: 2))
+                head.addLine(to: CGPoint(
+                    x: x, y: size.height - 2))
+                ctx.stroke(head, with: .color(.red),
+                           lineWidth: 1.4)
+                let idx = min(peaks.count - 1, Int(
+                    progress * Double(peaks.count)))
+                let r = 2.5 + CGFloat(peaks[idx]) * 3.5
+                let dot = Path(ellipseIn: CGRect(
+                    x: x - r, y: mid - r,
+                    width: r * 2, height: r * 2))
+                ctx.fill(dot, with: .color(.red))
+            }
+        }
+        .frame(height: 56)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 struct MawkView: View {
     @ObservedObject private var center = MawkCenter.shared
     @Environment(\.dismiss) private var dismiss
@@ -1130,22 +1333,25 @@ struct MawkView: View {
         Double((8 + framedBytes) * 4 * Mawk.samplesPerSymbol) / Double(Mawk.rate) + 0.2
     }
 
-    private func packDraft() -> Data? {
-        do {
-            return try Mawk.pack(text: draft,
-                                 passphrase: passphrase)
-        } catch let error as MawkError {
-            note = error.line
-            return nil
-        } catch {
-            note = L("That message would not pack.")
-            return nil
-        }
-    }
-
     var body: some View {
         NavigationStack {
             List {
+                if let stage = center.working {
+                    Section {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                            VStack(alignment: .leading,
+                                   spacing: 2) {
+                                Text(stage)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                Text(L("scrypt is doing its slow work on purpose — the sound follows when the key lands."))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
                 Section(header: Text(L("Say it as sound")),
                         footer: Text(L("Four tones at 200 baud — the lab's mawkbox format, sung by the speaker. Hold the phones near each other; a quiet room carries best."))) {
                     TextField(L("Message"), text: $draft,
@@ -1163,6 +1369,11 @@ struct MawkView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    SignalLineView(
+                        peaks: center.signalPeaks,
+                        progress: center.playing
+                            ? center.progress : -1,
+                        live: center.signalLive)
                     Toggle(L("Seal it with a passphrase"),
                            isOn: $sealed)
                     if sealed {
@@ -1180,8 +1391,10 @@ struct MawkView: View {
                     } else {
                         Button {
                             Haptics.tap()
-                            if let frame = packDraft() {
-                                note = center.play(frame: frame)
+                            center.sing(
+                                text: draft,
+                                passphrase: passphrase) {
+                                note = $0
                             }
                         } label: {
                             Label(L("Play it as sound"),
@@ -1189,6 +1402,7 @@ struct MawkView: View {
                         }
                         .disabled(draft.isEmpty || overLimit
                                   || (sealed && pass.isEmpty)
+                                  || center.working != nil
                                   || MawkCenter.playRefusal != nil)
                     }
                     if let refusal = MawkCenter.playRefusal {
@@ -1252,6 +1466,7 @@ struct MawkView: View {
                                         center.retry(entry)
                                     }
                                     .font(.caption)
+                                    .disabled(center.working != nil)
                                 }
                             }
                             Text(entry.at, style: .time)
@@ -1272,7 +1487,12 @@ struct MawkView: View {
                         footer: Text(L("The same files the desktop mawkbox reads and writes — a message as a WAV, or the bare frame as a .mawkbox. Import a WAV or a frame and it lands in the mailbox."))) {
                     Button {
                         Haptics.tap()
-                        if let frame = packDraft() {
+                        center.packAsync(
+                            text: draft,
+                            passphrase: passphrase) {
+                            frame, line in
+                            if let line { note = line }
+                            guard let frame else { return }
                             let url = FileManager.default
                                 .temporaryDirectory
                                 .appendingPathComponent(
@@ -1287,10 +1507,16 @@ struct MawkView: View {
                               systemImage: "waveform.badge.plus")
                     }
                     .disabled(draft.isEmpty || overLimit
-                              || (sealed && pass.isEmpty))
+                              || (sealed && pass.isEmpty)
+                              || center.working != nil)
                     Button {
                         Haptics.tap()
-                        if let frame = packDraft() {
+                        center.packAsync(
+                            text: draft,
+                            passphrase: passphrase) {
+                            frame, line in
+                            if let line { note = line }
+                            guard let frame else { return }
                             let url = FileManager.default
                                 .temporaryDirectory
                                 .appendingPathComponent(
@@ -1303,7 +1529,8 @@ struct MawkView: View {
                               systemImage: "doc")
                     }
                     .disabled(draft.isEmpty || overLimit
-                              || (sealed && pass.isEmpty))
+                              || (sealed && pass.isEmpty)
+                              || center.working != nil)
                     Button {
                         Haptics.tap()
                         importing = true

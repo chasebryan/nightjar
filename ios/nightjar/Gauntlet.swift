@@ -4552,6 +4552,25 @@ final class Gauntlet: ObservableObject {
         // at the figure every survey tool on
         // Earth answers with.
 
+        add("mawk", "signal peaks are honest") {
+            // The red line's data (fix353): peak
+            // buckets of the samples, pinned pure.
+            try Gauntlet.require(
+                Mawk.peaks([], count: 4) == [0, 0, 0, 0],
+                "silence drew a shape")
+            try Gauntlet.require(
+                Mawk.peaks([1, -1, 0.5, -0.5],
+                           count: 2) == [1, 0.5],
+                "the peaks moved")
+            try Gauntlet.require(
+                Mawk.peaks([0.25], count: 3)
+                    == [0.25, 0.25, 0.25],
+                "a lone sample did not carry")
+            try Gauntlet.require(
+                Mawk.peaks([2, 0], count: 2) == [1, 0],
+                "an over-range peak did not clamp")
+            return nil
+        }
         add("wardrive", "record round-trip") {
             let record = WardriveRecord(
                 ts: 1_700_000_000.5,
