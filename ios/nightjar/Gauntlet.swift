@@ -3803,13 +3803,87 @@ final class Gauntlet: ObservableObject {
                 GifWardrobe.data("no-such-slot") == nil,
                 "a nonsense slot answered with a film")
             cases += 1
-            try Gauntlet.require(
-                GifWardrobe.data("boot") == nil,
-                "the wardrobe shipped with a boot "
-                    + "film already filed")
+            // A filed slot is the operator's right
+            // (the wardrobe fills by upload now);
+            // whatever a slot holds must be a GIF.
+            if let filed = GifWardrobe.data("boot") {
+                try Gauntlet.require(
+                    BootMedia.isGIF(filed),
+                    "the boot slot holds bytes that "
+                        + "are not a GIF")
+            }
             return "\(cases) cases: every GIF in "
                 + "the wardrobe, the wardrobe empty, "
                 + "the bird stills ship"
+        }
+        add("stage", "films frame their subject") {
+            var cases = 0
+            // Chase's ruling, 2026-10-23: a film is
+            // framed ON its actor. Within three-to-
+            // one of the screen's shape a film fills,
+            // centred on the subject SubjectAnchor
+            // found; wider of the line it hangs
+            // whole rather than crop the actor out
+            // of his own scene.
+            let screen: CGFloat = 0.46
+            cases += 1
+            try Gauntlet.require(
+                !FilmStageLaw.hangsWhole(
+                    imageAspect: 1.12,
+                    frameAspect: screen),
+                "the boot film's shape must fill, "
+                    + "framed on its actor")
+            cases += 1
+            try Gauntlet.require(
+                FilmStageLaw.hangsWhole(
+                    imageAspect: 2.43,
+                    frameAspect: screen),
+                "a banner-wide film must hang whole")
+            cases += 1
+            try Gauntlet.require(
+                FilmStageLaw.hangsWhole(
+                    imageAspect: 1.78,
+                    frameAspect: screen),
+                "a three-to-one-plus film must "
+                    + "hang whole")
+            cases += 1
+            try Gauntlet.require(
+                !FilmStageLaw.hangsWhole(
+                    imageAspect: 0,
+                    frameAspect: screen),
+                "an unreadable film shape fills "
+                    + "rather than vanish")
+            cases += 1
+            try Gauntlet.require(
+                !FilmStageLaw.hangsWhole(
+                    imageAspect: 1.9,
+                    frameAspect: 1.9),
+                "a film shaped like its screen fills")
+            cases += 1
+            let clamped = SubjectAnchor.clamped(
+                CGPoint(x: 0.02, y: 0.97))
+            try Gauntlet.require(
+                clamped.x == 0.15
+                    && clamped.y == 0.85,
+                "an edge actor is framed, not "
+                    + "followed out of the frame")
+            cases += 1
+            let centre = SubjectAnchor.clamped(
+                CGPoint(x: 0.5, y: 0.5))
+            try Gauntlet.require(
+                centre.x == 0.5 && centre.y == 0.5,
+                "the centre clamps to itself")
+            cases += 1
+            let fallback = SubjectAnchor.focus(
+                for: Data("not a film".utf8))
+            try Gauntlet.require(
+                fallback.x == 0.5
+                    && fallback.y == 0.5,
+                "bytes that are not a film anchor "
+                    + "at the plain centre")
+            return "\(cases) cases: the fill line "
+                + "at three-to-one, the anchor "
+                + "clamped, the fallback centred"
         }
         add("wardrobe", "wallpaper decodes") {
             var cases = 0

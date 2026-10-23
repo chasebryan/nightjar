@@ -2,6 +2,7 @@ import CoreBluetooth
 import ImageIO
 import PDFKit
 import SwiftUI
+import Vision
 #if os(iOS)
 import UIKit
 import AVFoundation
@@ -1135,6 +1136,12 @@ struct BootView: View {
     /// the film's bytes and its measured duration.
     @State private var loadedData: Data?
     @State private var loadedFilmSeconds: Double?
+    /// The film's subject and shape, read once by
+    /// the loader: the ceremony frames a film on
+    /// its actor (Chase's ruling, 2026-10-23).
+    @State private var filmFocus: CGPoint?
+    @State private var filmAspect: CGFloat = 0
+    @State private var filmIsWardrobe = false
     /// The glitch boot's engagement (Chase's
     /// commission, 2026-10-22): when the backdrop
     /// is any still, the ceremony hands the
@@ -1239,9 +1246,12 @@ struct BootView: View {
     private func filmPlayer(data: Data,
                             focusX: CGFloat = 0.5,
                             focusY: CGFloat = 0.5,
-                            zoom: CGFloat = 1) -> some View {
+                            zoom: CGFloat = 1,
+                            hangWhole: Bool = false
+    ) -> some View {
         BootFilmPlayer(data: data, focusX: focusX,
                        focusY: focusY, zoom: zoom,
+                       hangWhole: hangWhole,
                        maxPixel: pictureMode == "performance"
                            ? 512 : 1024) { value in
             if abs(value - filmProgress) > 0.004
@@ -1602,7 +1612,36 @@ struct BootView: View {
                 Color.black
                 if let data = loadedData {
                     if BootMedia.isGIF(data), gifsEnabled {
-                        if bootMedia == "provided" {
+                        if bootMedia == "provided",
+                           filmIsWardrobe {
+                            // The operator's own boot
+                            // film, out of the
+                            // wardrobe: framed on its
+                            // actor, as every film in
+                            // the house now is (Chase's
+                            // ruling, 2026-10-23) —
+                            // never the house bird's
+                            // stance, never a blind
+                            // centre crop.
+                            filmPlayer(
+                                data: data,
+                                focusX: filmFocus?.x
+                                    ?? 0.5,
+                                focusY: filmFocus?.y
+                                    ?? 0.5,
+                                hangWhole: FilmStageLaw
+                                    .hangsWhole(
+                                        imageAspect:
+                                            filmAspect,
+                                        frameAspect:
+                                            geo.size.width
+                                            / max(
+                                                geo.size
+                                                    .height,
+                                                1)))
+                                .ignoresSafeArea()
+                        } else if bootMedia
+                            == "provided" {
                             // This film's bird stands
                             // left of centre in its own
                             // frame (about 38% across,
@@ -1630,7 +1669,27 @@ struct BootView: View {
                                 // composed against.
                                 .ignoresSafeArea()
                         } else {
-                            filmPlayer(data: data)
+                            // The operator's custom
+                            // film: framed on its
+                            // subject like the
+                            // wardrobe's, by the same
+                            // law.
+                            filmPlayer(
+                                data: data,
+                                focusX: filmFocus?.x
+                                    ?? 0.5,
+                                focusY: filmFocus?.y
+                                    ?? 0.5,
+                                hangWhole: FilmStageLaw
+                                    .hangsWhole(
+                                        imageAspect:
+                                            filmAspect,
+                                        frameAspect:
+                                            geo.size.width
+                                            / max(
+                                                geo.size
+                                                    .height,
+                                                1)))
                                 .ignoresSafeArea()
                         }
                 } else if BootMedia.isVideo(data) {
@@ -1763,6 +1822,31 @@ struct BootView: View {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
+            }
+            if !flood, let data = data,
+               BootMedia.isGIF(data) {
+                // The film's shape and its subject,
+                // read once, here in the loader: the
+                // ceremony frames the film on its
+                // actor (Chase's ruling, 2026-10-23),
+                // and no view body ever goes looking.
+                if let size = UIImage(
+                    data: data)?.size,
+                   size.height > 0 {
+                    filmAspect = size.width
+                        / size.height
+                }
+                filmIsWardrobe = bootMedia
+                    == "provided"
+                    && data
+                        == GifWardrobe.data("boot")
+                if filmIsWardrobe
+                    || bootMedia == "custom" {
+                    filmFocus = await Task.detached(
+                        priority: .utility) {
+                        SubjectAnchor.focus(for: data)
+                    }.value
+                }
             }
             if !flood, let data = data,
                BootMedia.isVideo(data) {
@@ -2868,19 +2952,167 @@ enum GifWardrobe {
     }
 }
 
+/// The film stage's law (Chase's ruling, 2026-10-23,
+/// after the first wardrobe boot filled the screen
+/// with its actor's arm and cut his face out of the
+/// frame): a film is framed ON its subject. A film
+/// whose shape stands within three-to-one of the
+/// screen's FILLS the screen, centred on the subject
+/// SubjectAnchor found in it; a film wider of that
+/// line hangs WHOLE on black — at that distance no
+/// crop keeps the actor, so the whole frame stands
+/// instead. Still backdrops keep their own law
+/// (BackdropFit); this one is for films alone.
+enum FilmStageLaw {
+    static func hangsWhole(imageAspect: CGFloat,
+                           frameAspect: CGFloat) -> Bool {
+        guard imageAspect > 0, frameAspect > 0
+        else { return false }
+        let ratio = imageAspect / frameAspect
+        let mismatch = max(ratio, 1 / ratio)
+        return mismatch > 3.0
+    }
+}
+
+/// Where a film's subject sits in its frame, found
+/// by looking at the film itself: the largest face
+/// across its opening frames, taken together; behind
+/// faces, the frame's own centre of attention; behind
+/// both, the plain centre. The answer is a point in
+/// the film's own coordinates (0...1 on each axis,
+/// origin top-left), clamped off the edges so an
+/// actor standing at the frame's rim is framed, not
+/// followed out of it. Read once, when a film loads,
+/// never in a view body.
+enum SubjectAnchor {
+    private static let centre =
+        CGPoint(x: 0.5, y: 0.5)
+
+    static func clamped(_ point: CGPoint) -> CGPoint {
+        CGPoint(
+            x: min(0.85, max(0.15, point.x)),
+            y: min(0.85, max(0.15, point.y)))
+    }
+
+    static func focus(for data: Data) -> CGPoint {
+        guard let source =
+            CGImageSourceCreateWithData(
+                data as CFData, nil)
+        else { return centre }
+        let count = CGImageSourceGetCount(source)
+        guard count > 0 else { return centre }
+        // Faces first: sample the film's opening
+        // frames and take their largest faces
+        // together, weighted by size — an actor who
+        // holds the frame holds the anchor.
+        var sampleIndexes = [0]
+        if count > 3 { sampleIndexes.append(count / 4) }
+        if count > 1 { sampleIndexes.append(count / 2) }
+        var weighedX: CGFloat = 0
+        var weighedY: CGFloat = 0
+        var totalWeight: CGFloat = 0
+        for index in sampleIndexes {
+            guard let image = frameImage(
+                source, index) else { continue }
+            let request =
+                VNDetectFaceRectanglesRequest()
+            let handler = VNImageRequestHandler(
+                cgImage: image, options: [:])
+            guard (try? handler.perform(
+                [request])) != nil,
+                  let faces = request.results,
+                  var face = faces.first
+            else { continue }
+            var faceArea = face.boundingBox.width * face.boundingBox.height
+            for other in faces.dropFirst() {
+                let area = other.boundingBox.width * other.boundingBox.height
+                if area > faceArea {
+                    face = other
+                    faceArea = area
+                }
+            }
+            let box = face.boundingBox
+            let weight = box.width * box.height
+            weighedX += box.midX * weight
+            weighedY += (1 - box.midY) * weight
+            totalWeight += weight
+        }
+        if totalWeight > 0 {
+            return clamped(CGPoint(
+                x: weighedX / totalWeight,
+                y: weighedY / totalWeight))
+        }
+        // No face the house can see: ask the frame
+        // where its own attention gathers.
+        if let image = frameImage(source, 0) {
+            let request =
+                VNGenerateAttentionBasedSaliencyImageRequest()
+            let handler = VNImageRequestHandler(
+                cgImage: image, options: [:])
+            if (try? handler.perform(
+                [request])) != nil,
+               let observation = request.results?
+                .first,
+               let objects =
+                observation.salientObjects,
+               let first = objects.first {
+                let union = objects.dropFirst()
+                    .reduce(first.boundingBox) {
+                        $0.union($1.boundingBox)
+                    }
+                return clamped(CGPoint(
+                    x: union.midX,
+                    y: 1 - union.midY))
+            }
+        }
+        return centre
+    }
+
+    /// One frame of the film as an image small
+    /// enough to read at a glance, the full frame
+    /// behind it if no thumbnail will form.
+    private static func frameImage(
+        _ source: CGImageSource, _ index: Int
+    ) -> CGImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways:
+                true,
+            kCGImageSourceCreateThumbnailWithTransform:
+                true,
+            kCGImageSourceThumbnailMaxPixelSize: 640,
+        ]
+        if let thumbnail =
+            CGImageSourceCreateThumbnailAtIndex(
+                source, index,
+                options as CFDictionary) {
+            return thumbnail
+        }
+        return CGImageSourceCreateImageAtIndex(
+            source, index, nil)
+    }
+}
+
 /// A wardrobe film's stage: the GIF hung on black
 /// across the whole screen, beautifully, on any
-/// glass (Chase's commission, 2026-10-22). The fit
-/// is the backdrop's own law — BackdropFit decides:
-/// a film whose shape disagrees with the screen
-/// hangs whole and centered, a film whose shape
-/// matches fills. The player is framed to EXACTLY
-/// the size the stage is offered, never its natural
-/// size: an oversized child inflates the stack it
-/// sits in and pushes everything else off its marks
+/// glass (Chase's commission, 2026-10-22; the
+/// framing corrected to his ruling of 2026-10-23).
+/// The stage obeys FilmStageLaw: a film within
+/// three-to-one of the screen's shape FILLS it,
+/// framed on its subject — FilmFrameView lays the
+/// player out inside its own container so the
+/// subject the anchor found stands at the centre;
+/// a film wider of the line hangs WHOLE and
+/// centred. Either way the stage reports exactly
+/// the size it is offered, never its film's size:
+/// an oversized child inflates the stack it sits
+/// in and pushes everything else off its marks
 /// (the boot film's lesson, 2026-10-17).
 struct GifStageView: View {
     let data: Data
+    /// Where the film's subject sits, found when
+    /// the film loaded; the plain centre until
+    /// (or unless) the anchor speaks.
+    var focus: CGPoint? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -2891,20 +3123,27 @@ struct GifStageView: View {
                 $0.size.height > 0
                     ? $0.size.width / $0.size.height : 0
             } ?? 0
-            let whole = BackdropFit.wholeArtwork(
+            let whole = FilmStageLaw.hangsWhole(
                 imageAspect: imageAspect,
                 frameAspect: frameAspect)
             ZStack {
                 Color.black
 #if os(iOS)
-                GIFPlayerView(
-                    data: data,
-                    contentMode: whole
-                        ? .scaleAspectFit
-                        : .scaleAspectFill)
-                    .frame(width: geo.size.width,
-                           height: geo.size.height)
-                    .clipped()
+                if whole {
+                    GIFPlayerView(
+                        data: data,
+                        contentMode: .scaleAspectFit)
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                        .clipped()
+                } else {
+                    FilmFrameView(
+                        data: data,
+                        focus: focus ?? CGPoint(
+                            x: 0.5, y: 0.5))
+                        .frame(width: geo.size.width,
+                               height: geo.size.height)
+                }
 #else
                 GIFPlayerView(data: data)
                     .frame(width: geo.size.width,
@@ -3006,6 +3245,129 @@ struct GIFPlayerView: UIViewRepresentable {
     }
 }
 
+#if os(iOS)
+/// A wardrobe film FILLING its stage, framed on its
+/// subject: the container owns the framing — the
+/// player inside is sized to the film's displayed
+/// size and placed so the focus point lands at the
+/// stage's centre (BootFilmContainer's own math, on
+/// the looping player the splashes run). The
+/// SwiftUI side only ever sees a view of exactly
+/// the size it was offered.
+struct FilmFrameView: UIViewRepresentable {
+    let data: Data
+    let focus: CGPoint
+    @AppStorage(BootMedia.gifsKey)
+    private var gifsEnabled = true
+
+    final class Container: UIView {
+        let imageView = UIImageView()
+        var focus = CGPoint(x: 0.5, y: 0.5)
+        var imageAspect: CGFloat = 0
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            clipsToBounds = true
+            backgroundColor = .black
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            addSubview(imageView)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            guard imageAspect > 0, bounds.width > 0,
+                  bounds.height > 0 else {
+                imageView.frame = bounds
+                return
+            }
+            var w = bounds.height * imageAspect
+            var h = bounds.height
+            if w < bounds.width {
+                w = bounds.width
+                h = bounds.width / imageAspect
+            }
+            imageView.frame = CGRect(
+                x: bounds.width / 2 - focus.x * w,
+                y: bounds.height / 2 - focus.y * h,
+                width: w, height: h)
+        }
+    }
+
+    func makeUIView(context: Context) -> Container {
+        let view = Container()
+        view.focus = focus
+        configure(view)
+        return view
+    }
+
+    func updateUIView(_ view: Container,
+                      context: Context) {
+        view.focus = focus
+        configure(view)
+        view.setNeedsLayout()
+    }
+
+    /// Play the film — decoded light in
+    /// performance mode, the platform's animated
+    /// image otherwise; a still frame when the
+    /// house has stilled its GIFs. The same roads
+    /// GIFPlayerView runs, looping, as a splash
+    /// film runs.
+    private func configure(_ view: Container) {
+        let player = view.imageView
+        guard gifsEnabled else {
+            player.stopAnimating()
+            player.animationImages = nil
+            if player.image == nil
+                || player.image?.images != nil {
+                player.image = UIImage(data: data)
+            }
+            noteAspect(of: player, in: view)
+            return
+        }
+        if BootMedia.performanceMode {
+            if player.animationImages != nil { return }
+            let film = UIImage.gifFrames(
+                data: data, maxPixel: 640)
+            guard let first = film.frames.first
+            else { return }
+            player.image = first
+            player.animationImages = film.frames
+            player.animationDuration = film.duration
+            player.animationRepeatCount = 0
+            player.startAnimating()
+        } else {
+            if player.animationImages != nil {
+                // Came from the capped decode;
+                // rebuild at full size.
+                player.animationImages = nil
+                player.image = nil
+            }
+            if player.isAnimating { return }
+            if let image = UIImage.animatedGIF(
+                data: data) {
+                player.image = image
+                player.startAnimating()
+            }
+        }
+        noteAspect(of: player, in: view)
+    }
+
+    private func noteAspect(of player: UIImageView,
+                            in view: Container) {
+        if let size = player.image?.size,
+           size.height > 0 {
+            view.imageAspect =
+                size.width / size.height
+        }
+    }
+}
+#endif
+
 /// The boot film's stage: a screen-sized container
 /// that lays the film out INSIDE itself — filled,
 /// zoomed, and set on the film's subject — so the
@@ -3021,6 +3383,7 @@ final class BootFilmContainer: UIView {
     let playerLayer = AVPlayerLayer()
     var focus = CGPoint(x: 0.5, y: 0.5)
     var zoom: CGFloat = 1
+    var hangWhole = false
     var imageAspect: CGFloat = 0
 
     override init(frame: CGRect) {
@@ -3044,6 +3407,24 @@ final class BootFilmContainer: UIView {
               bounds.height > 0 else {
             imageView.frame = bounds
             playerLayer.frame = bounds
+            return
+        }
+        if hangWhole {
+            // The whole film, centred on black:
+            // the largest whole frame the screen
+            // holds.
+            var w = bounds.width
+            var h = w / imageAspect
+            if h > bounds.height {
+                h = bounds.height
+                w = h * imageAspect
+            }
+            let rect = CGRect(
+                x: (bounds.width - w) / 2,
+                y: (bounds.height - h) / 2,
+                width: w, height: h)
+            imageView.frame = rect
+            playerLayer.frame = rect
             return
         }
         var w = bounds.height * imageAspect
@@ -3078,6 +3459,10 @@ struct BootFilmPlayer: UIViewRepresentable {
     var focusX: CGFloat = 0.5
     var focusY: CGFloat = 0.5
     var zoom: CGFloat = 1
+    /// Hang the whole film on black instead of
+    /// filling — FilmStageLaw's verdict for a film
+    /// too wide of the screen to crop honestly.
+    var hangWhole = false
     /// The decode cap, from the house's picture
     /// mode: quality decodes wide, performance
     /// decodes light.
@@ -3092,6 +3477,7 @@ struct BootFilmPlayer: UIViewRepresentable {
         let view = BootFilmContainer()
         view.focus = CGPoint(x: focusX, y: focusY)
         view.zoom = zoom
+        view.hangWhole = hangWhole
         view.alpha = 0
         context.coordinator.begin(in: view, data: data,
                                   maxPixel: maxPixel,
@@ -3278,6 +3664,7 @@ struct CentipedeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
     @State private var gifData: Data?
+    @State private var gifFocus: CGPoint?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3288,7 +3675,8 @@ struct CentipedeSplashView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let gifData {
-                GifStageView(data: gifData)
+                GifStageView(data: gifData,
+                             focus: gifFocus)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "ant.fill")
@@ -3317,6 +3705,9 @@ struct CentipedeSplashView: View {
             // state, and the body never touches disk.
             let film = GifWardrobe.data("centipede")
             gifData = film
+            gifFocus = film.map {
+                SubjectAnchor.focus(for: $0)
+            }
             let seconds = film.map {
                 min(6.0, max(3.0,
                     GifWardrobe.duration(of: $0)))
@@ -3345,6 +3736,7 @@ struct EazyIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
     @State private var gifData: Data?
+    @State private var gifFocus: CGPoint?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3355,7 +3747,8 @@ struct EazyIgnitionView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let gifData {
-                GifStageView(data: gifData)
+                GifStageView(data: gifData,
+                             focus: gifFocus)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "bolt.fill")
@@ -3384,6 +3777,9 @@ struct EazyIgnitionView: View {
             // state, and the body never touches disk.
             let film = GifWardrobe.data("eazy")
             gifData = film
+            gifFocus = film.map {
+                SubjectAnchor.focus(for: $0)
+            }
             let seconds = film.map {
                 min(6.0, max(3.0,
                     GifWardrobe.duration(of: $0)))
@@ -3413,6 +3809,7 @@ struct MagdumpIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
     @State private var gifData: Data?
+    @State private var gifFocus: CGPoint?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3423,7 +3820,8 @@ struct MagdumpIgnitionView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let gifData {
-                GifStageView(data: gifData)
+                GifStageView(data: gifData,
+                             focus: gifFocus)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "scope")
@@ -3452,6 +3850,9 @@ struct MagdumpIgnitionView: View {
             // state, and the body never touches disk.
             let film = GifWardrobe.data("magdump")
             gifData = film
+            gifFocus = film.map {
+                SubjectAnchor.focus(for: $0)
+            }
             let seconds = film.map {
                 min(6.0, max(3.0,
                     GifWardrobe.duration(of: $0)))
@@ -3479,6 +3880,7 @@ struct RedframeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
     @State private var gifData: Data?
+    @State private var gifFocus: CGPoint?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -3489,7 +3891,8 @@ struct RedframeSplashView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let gifData {
-                GifStageView(data: gifData)
+                GifStageView(data: gifData,
+                             focus: gifFocus)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "viewfinder")
@@ -3518,6 +3921,9 @@ struct RedframeSplashView: View {
             // state, and the body never touches disk.
             let film = GifWardrobe.data("redframe")
             gifData = film
+            gifFocus = film.map {
+                SubjectAnchor.focus(for: $0)
+            }
             let seconds = film.map {
                 min(6.0, max(3.0,
                     GifWardrobe.duration(of: $0)))

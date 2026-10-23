@@ -1762,6 +1762,7 @@ struct AssaultIgnitionView: View {
         ThemeCenter.shared
     @State private var flicker = false
     @State private var gifData: Data?
+    @State private var gifFocus: CGPoint?
 
     /// How long the card stays: a beat of
     /// theatre, then it lifts — tap lifts
@@ -1772,7 +1773,8 @@ struct AssaultIgnitionView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             if let gifData {
-                GifStageView(data: gifData)
+                GifStageView(data: gifData,
+                             focus: gifFocus)
             } else {
                 MatrixDots(color: themeCenter.current.accent
                     .opacity(0.15))
@@ -1805,6 +1807,9 @@ struct AssaultIgnitionView: View {
             // state, and the body never touches disk.
             let film = GifWardrobe.data("assault")
             gifData = film
+            gifFocus = film.map {
+                SubjectAnchor.focus(for: $0)
+            }
             let seconds = film.map {
                 min(6.0, max(3.0,
                     GifWardrobe.duration(of: $0)))
