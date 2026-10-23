@@ -70,6 +70,7 @@ struct NightjarApp: App {
                 .environmentObject(emcon.chat)
                 .onAppear {
                     post.keepScreenAwake = keepScreenAwake
+                    WardriveCenter.shared.post = post
                     mouth.toasts = toasts
                     emcon.mouth = mouth
                     mouth.onHoneydropTaken = { peer in

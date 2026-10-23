@@ -1977,6 +1977,146 @@ extension SkelliCenter {
         return true
     }
 
+    // MARK: the Wardrive lane — her survey hand
+
+    /// War driving, worked by her own hand
+    /// (on onionAsk's proven shape): she
+    /// starts the drive when told, brings it
+    /// home when told, and reports its haul
+    /// when asked — she never sends the
+    /// operator to the Listen tab to work
+    /// it. Lessons about the thing itself
+    /// ("what is war driving") fall through
+    /// to the manual untouched. A QUESTION
+    /// about starting is not an order — the
+    /// fix589 fence: a questioned start
+    /// ("should I start wardriving?") gets
+    /// the report, never the roll; a negated
+    /// one ("don't start wardriving") is
+    /// honored out loud and nothing moves.
+    /// EMCON ALPHA refuses the start, and
+    /// the refusal is spoken, not silent.
+    func wardriveAsk(_ q: String) -> Bool {
+        let wardriveLessonMarks = ["explain",
+            "how does", "how do i",
+            "what is wardriving",
+            "what is war driving",
+            "what's war driving",
+            "what is a wardrive",
+            "what is the wardrive"]
+        if wardriveLessonMarks.contains(
+            where: { q.contains($0) }) {
+            return false
+        }
+        let wardriveStartMarks = [
+            "start wardriving",
+            "start war driving",
+            "start the wardrive",
+            "start a wardrive",
+            "begin wardriving",
+            "begin the wardrive",
+            "go wardriving",
+            "wardrive start"]
+        let wardriveStopMarks = [
+            "stop wardriving",
+            "stop war driving",
+            "stop the wardrive",
+            "end the wardrive",
+            "wardrive stop"]
+        let wardriveNegMarks = ["don't", "dont",
+            "do not", "never"]
+        let wardriveMarks = ["wardrive",
+            "war driving"]
+        let wantsStart = wardriveStartMarks
+            .contains(where: { q.contains($0) })
+        let wantsStop = wardriveStopMarks
+            .contains(where: { q.contains($0) })
+        let marked = wardriveMarks.contains(
+            where: { q.contains($0) })
+            || wantsStart || wantsStop
+        guard marked else { return false }
+        if wantsStart || wantsStop {
+            let firstWord = q.split(
+                separator: " ").first
+                .map(String.init) ?? ""
+            let questioned = q.contains("?")
+                || ["should", "can", "could",
+                    "is", "do", "does", "would"]
+                    .contains(firstWord)
+            let negated = wardriveNegMarks
+                .contains(where: { q.contains($0) })
+            if negated {
+                say(L("Heard — the drive stays "
+                    + "exactly as it is. I "
+                    + "won't touch it."))
+                return true
+            }
+            if !questioned {
+                if wantsStart {
+                    if WardriveCenter.shared.running {
+                        say(L("Already rolling — "
+                            + "the drive is on."))
+                    } else if let refusal =
+                        WardriveCenter.shared.start() {
+                        say(refusal)
+                    } else {
+                        wardriveSayStatus(
+                            L("Rolling."))
+                    }
+                    return true
+                }
+                if wantsStop {
+                    if WardriveCenter.shared.running {
+                        WardriveCenter.shared.stop()
+                        wardriveSayStatus(
+                            L("Home."))
+                    } else {
+                        say(L("The drive isn't "
+                            + "rolling — nothing "
+                            + "to bring home."))
+                    }
+                    return true
+                }
+            }
+        }
+        wardriveSayStatus(nil)
+        return true
+    }
+
+    /// The drive's state, in her voice: the
+    /// live haul while it rolls — devices,
+    /// networks, the ground covered — or the
+    /// shelf of finished drives when it is
+    /// home. The same center the room and
+    /// the console read.
+    private func wardriveSayStatus(
+        _ prefix: String?) {
+        let center = WardriveCenter.shared
+        var line = prefix ?? ""
+        if !line.isEmpty { line += " " }
+        if center.running {
+            line += String(format: L(
+                "The wardrive is rolling — "
+                + "%lld devices heard, %lld "
+                + "networks joined, %@ covered."),
+                Int64(center.uniqueDevices),
+                Int64(center.uniqueNetworks),
+                WardriveCenter.distanceText(
+                    center.distanceMetersTotal))
+        } else {
+            let past = WardriveCenter
+                .sessions().count
+            line += past == 0
+                ? L("The wardrive is at home — "
+                    + "no drives on file yet.")
+                : String(format: L(
+                    "The wardrive is at home — "
+                    + "%lld drives on file."),
+                    Int64(past))
+        }
+        say(line)
+    }
+
     // MARK: her send hand — she fires
 
     /// A saved pattern filled from the ask, the

@@ -237,7 +237,8 @@ final class BlacksiteShell: ObservableObject {
         "neofetch", "diagnose",
         "limits",
         "scan", "knock", "census", "eazy", "magdump", "decode",
-        "company", "port", "emcon", "onion", "applock", "macro",
+        "company", "port", "emcon", "onion", "applock", "wardrive",
+        "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom", "betafisch", "driftnet",
         "theme", "haptics", "skelli", "open",
@@ -3266,6 +3267,8 @@ final class BlacksiteShell: ObservableObject {
             onionCommand(args)
         case "applock":
             appLockCommand(args)
+        case "wardrive":
+            wardriveCommand(args)
         case "macro", "macros":
             macro(args)
         case "freedoom", "doom":
@@ -5078,6 +5081,7 @@ final class BlacksiteShell: ObservableObject {
                 ("emcon [open|charlie|bravo|alpha|off]", L("read or set the condition")),
                 ("onion [wrap on|off] [tor] [audit]", L("the wrap and the layers — the board, the road, the score")),
                 ("applock", L("the app lock's state — armed or not, its cipher, its grace; status only, the passcode never comes here")),
+                ("wardrive [start|stop]", L("the war-driving survey — every device the post hears and each network you join, logged as you move")),
                 ("macro list | run <name>", L("the macro library, run from here")),
                 ("gauntlet", L("run the gauntlet")),
                 ("freedoom", L("play freedoom — the big one")),
@@ -11433,6 +11437,53 @@ final class BlacksiteShell: ObservableObject {
         emit(AppLockStandard.biometricsEnabled()
              ? L("applock: biometrics may open it.")
              : L("applock: the passcode alone opens it."), .out)
+    }
+
+    /// wardrive [start|stop] — the survey's
+    /// console face. Bare: the state of the
+    /// drive. start and stop work the drive
+    /// itself, through the same center the
+    /// Listen room and her hand work — one
+    /// drive, whoever asks. The drive is
+    /// receive-only and instant to work, so
+    /// it is not a console job: the stop verb
+    /// has nothing of it to reclaim. A
+    /// refusal (EMCON ALPHA) is spoken as a
+    /// line, never silence.
+    private func wardriveCommand(_ args: [String]) {
+        let center = WardriveCenter.shared
+        switch args.first?.lowercased() {
+        case nil:
+            if center.running {
+                emit(String(format: L("wardrive: rolling — %lld devices, %lld networks, %lld records in %@."),
+                            Int64(center.uniqueDevices),
+                            Int64(center.uniqueNetworks),
+                            Int64(center.recordCount),
+                            center.currentLogName ?? ""),
+                     .out)
+            } else {
+                emit(String(format: L("wardrive: at home — %lld drives on file. wardrive start rolls."),
+                            Int64(WardriveCenter.sessions().count)),
+                     .out)
+            }
+        case "start":
+            if center.running {
+                emit(L("wardrive: already rolling."), .out)
+            } else if let refusal = center.start() {
+                emit("wardrive: " + refusal, .err)
+            } else {
+                emit(L("wardrive: rolling — the log is open."), .ok)
+            }
+        case "stop":
+            if center.running {
+                center.stop()
+                emit(L("wardrive: home — the log is closed."), .ok)
+            } else {
+                emit(L("wardrive: not rolling."), .out)
+            }
+        default:
+            emit(L("wardrive [start|stop] — bare wardrive prints the state of the drive."), .err)
+        }
     }
 
     /// The board: the score and band, the

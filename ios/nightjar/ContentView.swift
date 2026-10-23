@@ -683,8 +683,11 @@ struct ListenView: View {
 #endif
     @EnvironmentObject private var mouth: Mouth
     @EnvironmentObject private var toasts: ToastCenter
+    @ObservedObject private var drive =
+        WardriveCenter.shared
     @State private var label = ""
     @State private var huntRow: DeviceRow?
+    @State private var wardriveSheet = false
     @State private var now = Date().timeIntervalSince1970
 
     private let clock = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -745,6 +748,25 @@ struct ListenView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Section {
+                    Button {
+                        Haptics.tap()
+                        wardriveSheet = true
+                    } label: {
+                        Label(L("War Driving — the survey log"),
+                              systemImage: "car")
+                    }
+                    if drive.running {
+                        Text(String(format: L("Rolling — %lld devices · %lld networks"),
+                                    Int64(drive.uniqueDevices),
+                                    Int64(drive.uniqueNetworks)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(L("Take the post for a drive: every device it hears and every network you join, written to a log as you move."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if post.isListening || !post.rows.isEmpty {
                     Section(header: Text(post.isListening ? L("In earshot") : L("Last session"))) {
                         if post.rows.isEmpty {
@@ -791,6 +813,10 @@ struct ListenView: View {
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
             .sheet(item: $huntRow) { row in
                 HuntView(targetID: row.id)
+                    .environmentObject(post)
+            }
+            .sheet(isPresented: $wardriveSheet) {
+                WardriveView()
                     .environmentObject(post)
             }
         }

@@ -123,6 +123,13 @@ enum SkelliKnowledge {
                        "lock screen"],
             body: "The gate at the app's own door, set in the Vault and nowhere else. You choose the passcode and the protection both: PBKDF2-HMAC-SHA256 stretches the passcode — a hundred, three hundred or six hundred thousand rounds, your pick — into the key that seals a small proof under your choice of AES-256-GCM or ChaCha20-Poly1305, and the sealed proof is the only thing kept, in the Keychain; the passcode itself is stored nowhere. Armed, the app opens onto the lock and nothing else: the passcode lets you in, biometrics too if you allow them, and five wrong guesses start a wait that doubles — thirty seconds, a minute, two, four, eight — until a right guess clears it. It re-locks the moment the app leaves the screen, or after a grace you set: one minute, five. Changing the passcode or the scheme asks for the current passcode first, and removing the lock asks for it too. Plainly: the lock seals the interface, not the files — it does not re-encrypt anything the app has stored. In the console: applock, status only — the passcode never transits the console, or her chat."),
         SkelliEntry(
+            id: "wardrive", title: "War Driving — the survey log",
+            home: "the Listen tab",
+            keywords: ["wardrive", "war driving",
+                       "wardriving", "drive survey",
+                       "survey log"],
+            body: "The listening post, taken for a drive. Start the wardrive — from the Listen tab, the console, or by asking her — and while it rolls a sampler writes a line to the drive's log every five seconds: the time, where the phone is when it holds a fix, the Wi-Fi network it is joined to at that moment, and every Bluetooth device heard for the first time since the line before, each carrying the classification the post read off the air and the strength it was heard at. The haul is counted as it grows — devices, networks, the ground covered — and when the drive comes home the log waits on the Listen tab, ready to hand over through Deliveries or throw away. The honest boundary, printed in the room: iOS shows an app only the Wi-Fi network you are connected to — a drive logs each network as you join it, and every Bluetooth device the post hears; it never pretends to a scan of nearby networks the platform does not give. The drive transmits nothing — it is ears only — and EMCON ALPHA, total silence, is the one condition that refuses it. In the console: wardrive, wardrive start, wardrive stop."),
+        SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
             keywords: ["war chest", "chest", "configuration",
@@ -2992,6 +2999,7 @@ final class SkelliCenter: ObservableObject {
         if censusAsk(q) { return true }
         if onionAsk(q) { return true }
         if appLockAsk(q) { return true }
+        if wardriveAsk(q) { return true }
         if networkAsk(q) { return true }
         if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
@@ -3542,6 +3550,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if appLockAsk(q) {
+            return
+        }
+        if wardriveAsk(q) {
             return
         }
 

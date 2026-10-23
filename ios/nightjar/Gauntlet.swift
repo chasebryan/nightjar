@@ -3767,6 +3767,58 @@ final class Gauntlet: ObservableObject {
                 + "ChaCha20-Poly1305, opens, "
                 + "disarmed, gone"
         }
+        // -- WAR DRIVE ----------------------
+        // The survey log's own shapes, proven
+        // without rolling a yard: a record
+        // survives its JSONL line exactly —
+        // no fix, a named network, two devices
+        // heard — and the haversine prices one
+        // degree of longitude at the equator
+        // at the figure every survey tool on
+        // Earth answers with.
+
+        add("wardrive", "record round-trip") {
+            let record = WardriveRecord(
+                ts: 1_700_000_000.5,
+                lat: nil, lon: nil,
+                ssid: "CoffeeShop",
+                bssid: "aa:bb:cc:dd:ee:ff",
+                heard: [
+                    WardriveRecord.Heard(
+                        id: "11111111-2222-3333-"
+                            + "4444-555555555555",
+                        name: "Tile",
+                        kind: "Tracker",
+                        rssi: -61),
+                    WardriveRecord.Heard(
+                        id: "66666666-7777-4888-"
+                            + "9999-000000000000",
+                        name: nil,
+                        kind: "Unknown device",
+                        rssi: -100),
+                ])
+            let line = WardriveRecord.encode(record)
+            try Gauntlet.require(
+                WardriveRecord.decode(line) == record,
+                "the survey record did not "
+                + "survive its own line: " + line)
+            return "1 case: a record with no "
+                + "fix and two heard devices "
+                + "round-trips through its line"
+        }
+        add("wardrive", "haversine degree") {
+            let meters = WardriveRecord
+                .distanceMeters(lat1: 0, lon1: 0,
+                                lat2: 0, lon2: 1)
+            try Gauntlet.require(
+                abs(meters - 111_195) <= 50,
+                "one degree of longitude at "
+                + "the equator measured "
+                + "\(meters) m, want 111195 ± 50")
+            return "1 case: a degree at the "
+                + "equator is 111,195 m to "
+                + "within fifty"
+        }
         // The battery: the deep bench — chat
         // by the thousand, stress by the ten
         // thousand (GauntletBattery.swift).
