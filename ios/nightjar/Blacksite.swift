@@ -11503,8 +11503,7 @@ final class BlacksiteShell: ObservableObject {
         }
         guard let word = args.first?.lowercased()
         else {
-            emit("EMCON "
-                 + EmconCondition.current.declared
+            emit(EmconCondition.current.declared
                  + " — exposure "
                  + String(format: "%.0f",
                           center.emcon.currentScore(
@@ -11525,7 +11524,7 @@ final class BlacksiteShell: ObservableObject {
             center.emcon.activate(
                 mouth: center.mouth,
                 condition: condition)
-            emit(String(format: L("EMCON %@ set."), String(describing: condition.declared)),
+            emit(String(format: L("%@ set."), String(describing: condition.declared)),
                  .ok)
         default:
             emit(L("conditions: open, charlie, bravo, alpha."), .err)
@@ -11741,7 +11740,7 @@ final class BlacksiteShell: ObservableObject {
         emit(String(format: L("ONION — %@ of 7.0 layers · %@"),
                     OnionStandard.fmt(audit.value),
                     audit.band), .ok)
-        emit(String(format: L("EMCON %@ — %@"),
+        emit(String(format: L("%@ — %@"),
                     emcon.condition.declared,
                     OnionStandard.floorLine(
                         audit, emcon.condition)),

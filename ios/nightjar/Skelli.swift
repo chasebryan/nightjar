@@ -6916,7 +6916,7 @@ final class SkelliCenter: ObservableObject {
                     let declared =
                         EmconCondition.current
                         .declared
-                    say(String(format: L("The watch won't stand under EMCON %@ — the condition forbids its browse."), String(describing: declared)))
+                    say(String(format: L("The watch won't stand under %@ — the condition forbids its browse."), String(describing: declared)))
                 }
                 return true
             }

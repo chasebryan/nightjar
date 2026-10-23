@@ -102,7 +102,7 @@ struct OnionView: View {
         let floor = emcon.condition.onionFloor
         guard let audit else {
             return String(format: L(
-                "EMCON %@ — its onion floor "
+                "%@ — its onion floor "
                 + "is %@."),
                 emcon.condition.declared,
                 OnionStandard.fmt(floor))
@@ -111,12 +111,12 @@ struct OnionView: View {
             audit, emcon.condition)
         if gap <= 0 {
             return String(format: L(
-                "EMCON %@ — floor %@, met."),
+                "%@ — floor %@, met."),
                 emcon.condition.declared,
                 OnionStandard.fmt(floor))
         }
         return String(format: L(
-            "EMCON %@ — floor %@, short "
+            "%@ — floor %@, short "
             + "by %@."),
             emcon.condition.declared,
             OnionStandard.fmt(floor),
