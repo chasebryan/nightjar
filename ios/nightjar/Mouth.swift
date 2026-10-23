@@ -1902,7 +1902,31 @@ final class Mouth: NSObject, ObservableObject {
     /// of the Atomic Netbomb. Advertising is
     /// async by nature; a tick's delay costs
     /// nothing and breaks the nest.
+    ///
+    /// The tick alone did NOT cure it: the same
+    /// exception (—[CBUUID UTF8String]) killed
+    /// the Banshee's first scream on 2026-10-22,
+    /// thrown from inside CB while IT processed
+    /// a stop+start issued in the same tick
+    /// during a refresh storm. So the apply is
+    /// now change-gated and sequenced: an
+    /// unchanged advertisement is never
+    /// re-issued at all, and a changed one stops
+    /// on this tick and starts on the next —
+    /// the radio is never asked to tear down
+    /// and rebuild in one breath.
     private var advertisingRefreshPending = false
+
+    /// What the radio was last told to say —
+    /// the change gate's memory.
+    private struct AdSnapshot: Equatable {
+        var name: String
+        var serviceData: Data?
+        var hostsGatt: Bool
+    }
+
+    private var lastAdSnapshot: AdSnapshot?
+    private var adGeneration = 0
 
     private func refreshAdvertising() {
         guard !advertisingRefreshPending else { return }
@@ -1916,39 +1940,77 @@ final class Mouth: NSObject, ObservableObject {
 
     private func applyAdvertising() {
         guard let manager = peripheralManager, manager.state == .poweredOn else { return }
-        var advertisement: [String: Any] = [
-            CBAdvertisementDataLocalNameKey: beaconName,
-        ]
+        // What SHOULD the radio be saying now?
+        let desired: AdSnapshot?
         if gattHostOn {
-            advertisement[CBAdvertisementDataServiceUUIDsKey] = [Mouth.serviceUUID]
             beaconOn = false
+            desired = AdSnapshot(name: beaconName,
+                                 serviceData: nil,
+                                 hostsGatt: true)
         } else if wantFlare, let key = KnockKeyStore.key {
             // The flare token, computed fresh at every refresh:
             // the five-minute window turns over on its own, and
             // the thirty-second timer keeps the air current.
-            advertisement[CBAdvertisementDataServiceUUIDsKey] = [Mouth.serviceUUID]
-            advertisement[CBAdvertisementDataServiceDataKey] =
-                [Mouth.serviceUUID: Flare.tokenNow(key: key)]
             beaconOn = true
+            desired = AdSnapshot(
+                name: beaconName,
+                serviceData: Flare.tokenNow(key: key),
+                hostsGatt: false)
         } else if wantBeacon {
             // ble:// : the payload rides in service data, the one payload
             // slot iOS lets an app set. (Python stamps manufacturer data
             // too; iOS offers no API for that.)
-            advertisement[CBAdvertisementDataServiceUUIDsKey] = [Mouth.serviceUUID]
-            advertisement[CBAdvertisementDataServiceDataKey] = [Mouth.serviceUUID: beaconPayload]
             beaconOn = true
+            desired = AdSnapshot(name: beaconName,
+                                 serviceData: beaconPayload,
+                                 hostsGatt: false)
         } else {
-            manager.stopAdvertising()
+            desired = nil
+        }
+        guard let want = desired else {
+            // Silence is the order: stop once, and
+            // forget what the radio last said.
+            if lastAdSnapshot != nil || manager.isAdvertising {
+                manager.stopAdvertising()
+            }
+            lastAdSnapshot = nil
+            adGeneration += 1
             return
         }
-        DevLog.event("ble",
-                     "advertising as "
-                     + (gattHostOn ? "gatt host"
-                        : wantFlare ? "flare"
-                        : "beacon")
-                     + " \"\(beaconName)\"")
+        // The change gate: the radio already says
+        // exactly this — leave it alone.
+        if want == lastAdSnapshot, manager.isAdvertising {
+            return
+        }
+        lastAdSnapshot = want
+        adGeneration += 1
+        let generation = adGeneration
         manager.stopAdvertising()
-        manager.startAdvertising(advertisement)
+        // The start lands on the NEXT tick, and
+        // only if no newer word has superseded it.
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  generation == self.adGeneration,
+                  let manager = self.peripheralManager,
+                  manager.state == .poweredOn
+            else { return }
+            var advertisement: [String: Any] = [
+                CBAdvertisementDataLocalNameKey: want.name,
+            ]
+            advertisement[CBAdvertisementDataServiceUUIDsKey] =
+                [Mouth.serviceUUID]
+            if let data = want.serviceData {
+                advertisement[CBAdvertisementDataServiceDataKey] =
+                    [Mouth.serviceUUID: data]
+            }
+            DevLog.event("ble",
+                         "advertising as "
+                         + (want.hostsGatt ? "gatt host"
+                            : self.wantFlare ? "flare"
+                            : "beacon")
+                         + " \"\(want.name)\"")
+            manager.startAdvertising(advertisement)
+        }
     }
 
     // MARK: BLE write (central role)
