@@ -237,7 +237,7 @@ final class BlacksiteShell: ObservableObject {
         "neofetch", "diagnose",
         "limits",
         "scan", "knock", "census", "eazy", "magdump", "decode",
-        "company", "port", "emcon", "onion", "macro",
+        "company", "port", "emcon", "onion", "applock", "macro",
         "gauntlet", "journal", "log", "tomato",
         "freedoom", "doom", "betafisch", "driftnet",
         "theme", "haptics", "skelli", "open",
@@ -3264,6 +3264,8 @@ final class BlacksiteShell: ObservableObject {
             emcon(args)
         case "onion":
             onionCommand(args)
+        case "applock":
+            appLockCommand(args)
         case "macro", "macros":
             macro(args)
         case "freedoom", "doom":
@@ -5075,6 +5077,7 @@ final class BlacksiteShell: ObservableObject {
                 ("port <n> [udp]", L("what a port is for")),
                 ("emcon [open|charlie|bravo|alpha|off]", L("read or set the condition")),
                 ("onion [wrap on|off] [tor] [audit]", L("the wrap and the layers — the board, the road, the score")),
+                ("applock", L("the app lock's state — armed or not, its cipher, its grace; status only, the passcode never comes here")),
                 ("macro list | run <name>", L("the macro library, run from here")),
                 ("gauntlet", L("run the gauntlet")),
                 ("freedoom", L("play freedoom — the big one")),
@@ -11403,6 +11406,33 @@ final class BlacksiteShell: ObservableObject {
         default:
             emit(L("onion [wrap on|off] [tor] [audit] — bare onion prints the layers board."), .err)
         }
+    }
+
+    /// applock — the app lock's console face:
+    /// STATUS ONLY. Whether the gate stands,
+    /// the cipher it seals under, the rounds,
+    /// the grace, and whether biometrics may
+    /// open it. The passcode never transits
+    /// this room — arming, changing and
+    /// removing live in the Vault, behind the
+    /// passcode itself.
+    private func appLockCommand(_ args: [String]) {
+        guard AppLockStandard.isArmed() else {
+            emit(L("applock: not armed — set a passcode in the Vault to lock the app."), .out)
+            return
+        }
+        emit(String(format: L("applock: armed — sealed with %@, %lld rounds."),
+                    AppLockStandard.suite().label,
+                    Int64(AppLockStandard.kdfRounds())), .ok)
+        let grace = AppLockStandard.graceSeconds()
+        if grace == 0 {
+            emit(L("applock: it locks the moment the app leaves the screen."), .out)
+        } else {
+            emit(String(format: L("applock: it locks %lld seconds after the app leaves the screen."), Int64(grace)), .out)
+        }
+        emit(AppLockStandard.biometricsEnabled()
+             ? L("applock: biometrics may open it.")
+             : L("applock: the passcode alone opens it."), .out)
     }
 
     /// The board: the score and band, the

@@ -9,6 +9,8 @@ struct NightjarApp: App {
     @StateObject private var mouth = Mouth()
     @StateObject private var toasts = ToastCenter()
     @StateObject private var emcon = Emcon()
+    @ObservedObject private var appLock =
+        AppLockCenter.shared
     @StateObject private var language = LanguageCenter.shared
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("keepScreenAwake") private var keepScreenAwake = true
@@ -105,6 +107,7 @@ struct NightjarApp: App {
                                : "inactive"))
                     post.sceneDidChange(toBackground: phase == .background)
                     if phase == .active {
+                        appLock.noteForegrounded()
                         emcon.deadHandEvaluate(mouth: mouth)
                         emcon.steward.shiftChange(emcon: emcon)
                         mouth.appBecameActive()
@@ -113,12 +116,22 @@ struct NightjarApp: App {
 #endif
                     }
                     if phase == .background {
+                        appLock.noteBackgrounded()
                         BackupShield
                             .shieldSensitiveStores()
 #if !STORE_BUILD
                         updater.unwatch()
                         UpdateChecker.scheduleBackgroundCheck()
 #endif
+                    }
+                }
+                // The app lock's gate stands over
+                // the whole house — every tab,
+                // every room — whenever the keeper
+                // says the app is locked.
+                .overlay {
+                    if appLock.locked {
+                        LockView()
                     }
                 }
         }

@@ -43,6 +43,12 @@ struct CryptoView: View {
     @State private var producedFile: URL?
     @State private var producedLabel = ""
     @State private var importingFile = false
+    // The app lock: its armed state, read when
+    // the room opens and when its sheet closes —
+    // never inside a redraw.
+    @State private var showAppLock = false
+    @State private var appLockArmed =
+        AppLockStandard.isArmed()
 
     private var preset: CryptoPreset? {
         CryptoPreset.all.first {
@@ -72,6 +78,7 @@ struct CryptoView: View {
                 presetsSection
                 customSection
                 keysSection
+                appLockSection
             }
             // The backdrop is painted HERE, behind the
             // list itself — the tab-level modifier alone
@@ -85,6 +92,8 @@ struct CryptoView: View {
             .background { AppBackdrop() }
             .navigationTitle(L("Vault"))
             .onAppear {
+                appLockArmed =
+                    AppLockStandard.isArmed()
                 if identityPublic.isEmpty {
                     let identity = CryptoSuite
                         .identity()
@@ -100,10 +109,37 @@ struct CryptoView: View {
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
+            .sheet(isPresented: $showAppLock,
+                   onDismiss: {
+                       appLockArmed =
+                           AppLockStandard.isArmed()
+                   }) {
+                AppLockSettingsView()
+            }
             .fileImporter(
                 isPresented: $importingFile,
                 allowedContentTypes: [.item]) { result in
                 takePickedFile(result)
+            }
+        }
+    }
+
+    // MARK: - The app lock
+
+    /// The gate's door in the Vault: one row
+    /// naming the lock's state, raising the
+    /// lock's own room as a sheet. The room
+    /// (AppLockView.swift) is the only place
+    /// the lock is ever managed.
+    private var appLockSection: some View {
+        Section(header: Text(L("App lock"))) {
+            Button {
+                showAppLock = true
+            } label: {
+                Label(appLockArmed
+                      ? L("the app lock is on")
+                      : L("Set a passcode"),
+                      systemImage: "lock.fill")
             }
         }
     }

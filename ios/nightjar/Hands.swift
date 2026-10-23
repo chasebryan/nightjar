@@ -1923,6 +1923,60 @@ extension SkelliCenter {
         say(line)
     }
 
+    // MARK: the App Lock lane — her gate hand
+
+    /// The app lock, status only — on
+    /// censusAsk's proven shape, and narrower:
+    /// this lane can neither arm, change nor
+    /// remove the lock, by design. The
+    /// passcode never transits her chat; the
+    /// gate is managed in the Vault alone.
+    /// What she answers is the state of the
+    /// thing: whether a passcode stands, the
+    /// cipher it seals under, and whether the
+    /// gate is shut right now. Lessons about
+    /// the thing itself ("what is the app
+    /// lock", "how do i set a passcode") fall
+    /// through to the manual untouched.
+    func appLockAsk(_ q: String) -> Bool {
+        let appLockLessonMarks = ["explain",
+            "how does", "how do i",
+            "what is the app lock",
+            "what is app lock",
+            "what's the app lock",
+            "what is a passcode"]
+        if appLockLessonMarks.contains(
+            where: { q.contains($0) }) {
+            return false
+        }
+        let appLockMarks = ["app lock", "applock",
+            "passcode", "lock the app",
+            "app locked", "locked out",
+            "is it locked"]
+        guard appLockMarks.contains(
+            where: { q.contains($0) })
+        else { return false }
+        if AppLockStandard.isArmed() {
+            var line = String(format: L(
+                "The app lock is on — sealed "
+                + "with %@, %lld rounds "
+                + "behind it."),
+                AppLockStandard.suite().label,
+                Int64(AppLockStandard.kdfRounds()))
+            line += " " + (AppLockCenter.shared.locked
+                ? L("The gate is shut right now.")
+                : L("The gate stands open — you're in."))
+            line += " " + L("It's kept in the Vault.")
+            say(line)
+        } else {
+            say(L("No app lock — no passcode "
+                + "stands on the door. Set one "
+                + "in the Vault if you want "
+                + "the gate."))
+        }
+        return true
+    }
+
     // MARK: her send hand — she fires
 
     /// A saved pattern filled from the ask, the

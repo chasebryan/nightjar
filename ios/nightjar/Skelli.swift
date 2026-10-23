@@ -116,6 +116,13 @@ enum SkelliKnowledge {
                        "torification", "socks", "peeled"],
             body: "The wrap, kept to a Standard of its own, and scored in LAYERS — 0.0 to 7.0, seven rows whose maxima sum to exactly seven. One: the wrap itself. Everything this app sends through its shared bench core rides a SOCKS5 road — your Tor road, Orbot on the phone — when the wrap is engaged, and it fails closed: wrap on and the road down, the connect refuses and nothing goes out bare. The core connects by name, so a target is never resolved on the local wire first. Two: the score. A tunnel carrying the default route earns 1.5, a proven Tor road 1.5, DNS riding the tunnel 1.0, silent emissions 1.0, unlisted listeners 0.75, a wire identity with no personal name in it 0.5, and metadata organs that don't phone home 0.75 — PEELED at zero, FULL ONION at seven. Three: the coupling. Every EMCON condition declares an onion floor — open asks nothing, CHARLIE 2.0, BRAVO 4.5, ALPHA the whole 7.0 — and engaging a condition reports whether the floor is met and exactly what the gap is made of; reported, never enforced, never faked. The boundary, stated in the room and meant: no app can torify a whole device — other apps and the system keep their own roads. The Onion wraps what THIS app emits and grades the posture it can actually see; what it cannot see, it names unverifiable. In the console: onion, onion wrap on, onion tor."),
         SkelliEntry(
+            id: "applock", title: "The App Lock",
+            home: "the Vault tab",
+            keywords: ["app lock", "applock",
+                       "passcode lock", "passcode",
+                       "lock screen"],
+            body: "The gate at the app's own door, set in the Vault and nowhere else. You choose the passcode and the protection both: PBKDF2-HMAC-SHA256 stretches the passcode — a hundred, three hundred or six hundred thousand rounds, your pick — into the key that seals a small proof under your choice of AES-256-GCM or ChaCha20-Poly1305, and the sealed proof is the only thing kept, in the Keychain; the passcode itself is stored nowhere. Armed, the app opens onto the lock and nothing else: the passcode lets you in, biometrics too if you allow them, and five wrong guesses start a wait that doubles — thirty seconds, a minute, two, four, eight — until a right guess clears it. It re-locks the moment the app leaves the screen, or after a grace you set: one minute, five. Changing the passcode or the scheme asks for the current passcode first, and removing the lock asks for it too. Plainly: the lock seals the interface, not the files — it does not re-encrypt anything the app has stored. In the console: applock, status only — the passcode never transits the console, or her chat."),
+        SkelliEntry(
             id: "warchest", title: "War Chest — the rig, packed",
             home: "the Send tab's Trace section",
             keywords: ["war chest", "chest", "configuration",
@@ -2984,6 +2991,7 @@ final class SkelliCenter: ObservableObject {
         if quarantineAsk(q) { return true }
         if censusAsk(q) { return true }
         if onionAsk(q) { return true }
+        if appLockAsk(q) { return true }
         if networkAsk(q) { return true }
         if adminAsk(q) { return true }
         if assaultAsk(q) { return true }
@@ -3531,6 +3539,9 @@ final class SkelliCenter: ObservableObject {
             return
         }
         if onionAsk(q) {
+            return
+        }
+        if appLockAsk(q) {
             return
         }
 

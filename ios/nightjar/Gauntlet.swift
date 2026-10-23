@@ -3670,6 +3670,103 @@ final class Gauntlet: ObservableObject {
                 + "full 7.0, partials 3.75 / "
                 + "4.05 / 3.70 — to the cent"
         }
+        // -- APP LOCK (fix334) -------------
+        // The gate's standard, proven without
+        // ever touching the operator's own
+        // seal: the PBKDF2 derivation pinned
+        // to its published vector, and a seal
+        // round-trip under each suite on the
+        // TEST service — armed, opened by the
+        // right passcode, refused by a wrong
+        // one, disarmed, and wiped in a defer
+        // so the test house is left empty
+        // whatever a step does.
+
+        add("applock", "pbkdf2 vector exact") {
+            let derived = AppLockStandard.derive(
+                passcode: "password",
+                salt: Data("salt".utf8), rounds: 1)
+            let hex = derived.map {
+                String(format: "%02x", $0)
+            }.joined()
+            try Gauntlet.require(
+                hex == "120fb6cffcf8b32c"
+                    + "43e7225256c4f837"
+                    + "a86548c92ccc3548"
+                    + "0805987cb70be17b",
+                "PBKDF2-HMAC-SHA256 drifted "
+                + "from the published vector: "
+                + hex)
+            return "1 case: PBKDF2-HMAC-SHA256"
+                + "(password, salt, 1) matches "
+                + "the published vector"
+        }
+        add("applock", "seal round-trip, aes") {
+            let service = AppLockStandard.testService
+            defer {
+                AppLockStandard.wipe(service: service)
+            }
+            try AppLockStandard.configure(
+                passcode: "correct horse",
+                suite: .aesgcm, rounds: 100_000,
+                service: service)
+            try Gauntlet.require(
+                AppLockStandard.isArmed(
+                    service: service),
+                "the test seal was not stored")
+            try Gauntlet.require(
+                AppLockStandard.verify(
+                    "correct horse",
+                    service: service),
+                "the right passcode did not "
+                + "open the test seal")
+            try Gauntlet.require(
+                !AppLockStandard.verify(
+                    "wrong", service: service),
+                "a wrong passcode opened "
+                + "the test seal")
+            try Gauntlet.require(
+                AppLockStandard.disarm(
+                    passcode: "correct horse",
+                    service: service),
+                "disarm refused the right "
+                + "passcode")
+            try Gauntlet.require(
+                !AppLockStandard.isArmed(
+                    service: service),
+                "the test seal survived disarm")
+            return "5 cases: sealed under "
+                + "AES-256-GCM, right opens, "
+                + "wrong refused, disarmed, gone"
+        }
+        add("applock", "seal round-trip, chacha") {
+            let service = AppLockStandard.testService
+            defer {
+                AppLockStandard.wipe(service: service)
+            }
+            try AppLockStandard.configure(
+                passcode: "correct horse",
+                suite: .chacha, rounds: 100_000,
+                service: service)
+            try Gauntlet.require(
+                AppLockStandard.verify(
+                    "correct horse",
+                    service: service),
+                "the chacha seal did not open")
+            try Gauntlet.require(
+                AppLockStandard.disarm(
+                    passcode: "correct horse",
+                    service: service),
+                "the chacha seal would not "
+                + "disarm")
+            try Gauntlet.require(
+                !AppLockStandard.isArmed(
+                    service: service),
+                "the chacha seal survived disarm")
+            return "3 cases: sealed under "
+                + "ChaCha20-Poly1305, opens, "
+                + "disarmed, gone"
+        }
         // The battery: the deep bench — chat
         // by the thousand, stress by the ten
         // thousand (GauntletBattery.swift).
