@@ -4316,6 +4316,36 @@ final class BlacksiteShell: ObservableObject {
 
     /// Admit a program to the kernel, or
     /// say out loud why it was refused.
+    /// The kernel's two chatter lines — a
+    /// refusal and a background birth — can
+    /// arrive by the dozen a second when a
+    /// program spawns in a loop; the room
+    /// prints each distinct line at most
+    /// once a second, or the transcript
+    /// drowns in the kernel's own voice
+    /// (fix340).
+    private var lastKernelKey = ""
+    private var lastKernelLineAt =
+        Date.distantPast
+    private let kernelLineLock = NSLock()
+
+    private func kernelLine(_ text: String,
+                            _ kind: Line.Kind,
+                            key: String? = nil) {
+        kernelLineLock.lock()
+        let now = Date()
+        let k = key ?? text
+        let dupe = k == lastKernelKey
+            && now.timeIntervalSince(
+                lastKernelLineAt) < 1
+        if !dupe {
+            lastKernelKey = k
+            lastKernelLineAt = now
+        }
+        kernelLineLock.unlock()
+        if !dupe { emit(text, kind) }
+    }
+
     private func admitOrSay(
         _ name: String, _ kind: KernelKind,
         background: Bool) -> KernelProcess? {
@@ -4325,12 +4355,12 @@ final class BlacksiteShell: ObservableObject {
                 parent: currentParentPID(),
                 background: background)
         if let refusal = refusal {
-            emit(String(format: L("kernel: %@"), String(describing: refusal)), .err)
+            kernelLine(String(format: L("kernel: %@"), String(describing: refusal)), .err)
             return nil
         }
         if background, let proc = proc {
-            emit(String(format: L("kernel: [%@] %@ — background"), String(describing: proc.pid), String(describing: name)),
-                .sys)
+            kernelLine(String(format: L("kernel: [%@] %@ — background"), String(describing: proc.pid), String(describing: name)),
+                .sys, key: "birth")
         }
         updateBusy()
         return proc
@@ -8928,26 +8958,88 @@ final class BlacksiteShell: ObservableObject {
                         + " &\n")
                 let before = kernel
                     .totalSpawned
+                let elders = Set(kernel
+                    .snapshot()
+                    .filter { $0.isLive }
+                    .map { $0.pid })
                 self.runScript(
                     "/tmp/diagbomb.sh")
                 var maxLive = 0
                 var settled = 0
+                var waited = 0.0
+                var putDown = 0
+                // The drill borrows the table;
+                // it does not leave it burning.
+                // A bomb's lineage is immortal
+                // left alone — short-lived
+                // parents, endless children,
+                // every admission and refusal
+                // printing a kernel line into
+                // the room — so the drill ends
+                // by sweeping every program it
+                // spawned (fix340: the leaked
+                // bomb is what froze the room
+                // partway through diagnose).
+                func sweep() -> Int {
+                    var count = 0
+                    for proc in kernel
+                        .snapshot()
+                        where proc.isLive
+                            && !elders
+                                .contains(
+                                    proc.pid) {
+                        count += 1
+                        _ = kernel.kill(
+                            pid: proc.pid,
+                            reason: "the "
+                                + "diagnose "
+                                + "drill sweeps "
+                                + "its bomb")
+                    }
+                    return count
+                }
+                func finish() {
+                    putDown += sweep()
+                    let foreign = kernel
+                        .snapshot()
+                        .contains {
+                            $0.isLive
+                                && !elders
+                                    .contains(
+                                        $0.pid)
+                        }
+                    if foreign {
+                        DispatchQueue.main
+                            .asyncAfter(
+                                deadline:
+                                    .now()
+                                    + 0.3) {
+                                finish()
+                            }
+                        return
+                    }
+                    let spawned = kernel
+                        .totalSpawned
+                        - before
+                    done(maxLive <= 32,
+                         "peak \(maxLive) "
+                         + "live, "
+                         + "\(spawned) "
+                         + "spawned, "
+                         + "\(putDown) put "
+                         + "down by the "
+                         + "sweep")
+                }
                 func poll() {
                     let live = kernel.liveCount
                     maxLive = max(maxLive,
                                   live)
                     settled = live == 0
                         ? settled + 1 : 0
-                    if settled >= 3 {
-                        let spawned = kernel
-                            .totalSpawned
-                            - before
-                        done(maxLive <= 32,
-                             "peak \(maxLive) "
-                             + "live, "
-                             + "\(spawned) "
-                             + "spawned, all "
-                             + "reaped")
+                    waited += 0.25
+                    if settled >= 3
+                        || waited >= 6 {
+                        finish()
                         return
                     }
                     DispatchQueue.main
