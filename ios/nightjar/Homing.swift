@@ -37,14 +37,25 @@ final class CompassSource: NSObject, ObservableObject,
     }
 
     func start() {
+        // The platforms name the grant
+        // differently (PlaceCenter.isAuthorized
+        // carries the same truth): the laptop's
+        // SDK has no when-in-use case to spell.
+#if os(iOS)
+        let granted = manager.authorizationStatus
+            == .authorizedWhenInUse
+            || manager.authorizationStatus
+                == .authorizedAlways
+#else
+        let granted = manager.authorizationStatus
+            == .authorizedAlways
+#endif
         switch manager.authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse, .authorizedAlways:
-            authorized = true
-            begin()
         default:
-            authorized = false
+            authorized = granted
+            if granted { begin() }
         }
     }
 

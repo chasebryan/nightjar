@@ -293,9 +293,7 @@ final class WardriveCenter: ObservableObject {
         else { return }
         var lat: Double?
         var lon: Double?
-        let status = PlaceCenter.shared.authorization
-        if status == .authorizedWhenInUse
-            || status == .authorizedAlways,
+        if PlaceCenter.shared.isAuthorized,
            let snap = PlaceCenter.shared.snapshot {
             lat = snap.latitude
             lon = snap.longitude

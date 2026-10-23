@@ -80,6 +80,24 @@ final class PlaceCenter: NSObject, ObservableObject,
         manager.authorizationStatus
     }
 
+    /// Whether the house may know where it is.
+    /// The platforms name the grant differently:
+    /// the phone grants when-in-use or always, the
+    /// laptop only ever grants always — one truth
+    /// here, so no caller ever spells a case the
+    /// other platform's SDK does not carry.
+    var isAuthorized: Bool {
+#if os(iOS)
+        return manager.authorizationStatus
+            == .authorizedWhenInUse
+            || manager.authorizationStatus
+                == .authorizedAlways
+#else
+        return manager.authorizationStatus
+            == .authorizedAlways
+#endif
+    }
+
     override init() {
         super.init()
         manager.delegate = self
@@ -99,8 +117,7 @@ final class PlaceCenter: NSObject, ObservableObject,
            Date().timeIntervalSince(snap.at) < 600 {
             return snap
         }
-        switch manager.authorizationStatus {
-        case .authorizedWhenInUse, .authorizedAlways:
+        if isAuthorized {
             return await withCheckedContinuation {
                 waiter in
                 fixWaiters.append(waiter)
@@ -108,13 +125,14 @@ final class PlaceCenter: NSObject, ObservableObject,
                     manager.requestLocation()
                 }
             }
-        case .notDetermined:
+        }
+        if manager.authorizationStatus
+            == .notDetermined {
             wantsFix = true
             manager.requestWhenInUseAuthorization()
             return nil
-        default:
-            return nil
         }
+        return nil
     }
 
     func locationManagerDidChangeAuthorization(
