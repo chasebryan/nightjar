@@ -1940,7 +1940,7 @@ struct AboutView: View {
                 }
                 Button(L("Cancel"), role: .cancel) {}
             } message: {
-                Text(L("Every setting returns to its sane default. EMCON stands down, the GATT host disarms, and stealth turns off. Payloads, presets, sessions and logs are not touched."))
+                Text(L("Preferences return to their sane defaults, and anything transmitting stands down. Your theme, your backdrops, EMCON's condition, the app lock, and every record stay exactly as they are."))
             }
         }
     }

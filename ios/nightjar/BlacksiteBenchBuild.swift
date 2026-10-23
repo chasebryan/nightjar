@@ -533,11 +533,9 @@ extension BlacksiteBench {
             of: "<", range:
                 cursor..<xml.endIndex),
               let close = xml.range(
-                of: ">", range:
-                    open.upperBound
-                        ..<xml.endIndex) {
-            let raw = xml[open.upperBound
-                ..<close.lowerBound]
+                of: ">",
+                range: open.upperBound..<xml.endIndex) {
+            let raw = xml[open.upperBound..<close.lowerBound]
                 .trimmingCharacters(
                     in: .whitespaces)
             cursor = close.upperBound

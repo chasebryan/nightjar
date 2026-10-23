@@ -15,6 +15,29 @@ import Foundation
 /// payload library, saved presets, sessions, the trace logbook,
 /// and the EMCON tripwire log are the operator's records, not
 /// settings, and they survive a reset untouched.
+///
+/// THE CHARTER (Chase's ruling, 2026-10-22): a reset restores
+/// PREFERENCES — values with a sane shipped default — and
+/// stands down live emissions. It never touches:
+///  - ART: the selected theme, custom themes, the backdrop
+///    choices and their media (absent from this registry
+///    entirely — resetting to defaults is not redecorating);
+///  - POSTURE: EMCON's condition, the Onion wrap switch, the
+///    dead hand, the cadence seal, the knocktalk coin and
+///    suite, the voice throw's arm — the house's security
+///    stance changes only through its own deliberate
+///    controls, never as a side effect of a settings reset;
+///  - SEALS: the App Lock above all. Its seal record is the
+///    authority and its settings mirror the seal, so no
+///    applock key is ever listed here — a reset must never
+///    disarm or desync a lock;
+///  - STATE: what the house has accumulated — her heart and
+///    the facts she was told, the steward's cases, the
+///    canary's learned paths, conductor fire counts, the
+///    season, wardrive logs (records, like the data above).
+/// New systems join this registry by the same rule: their
+/// preferences are listed, their posture and their records
+/// are not. The Gauntlet pins this charter.
 enum SaneDefaults {
 
     /// Every persisted settings key in the app. Clearing a key is
@@ -41,11 +64,8 @@ enum SaneDefaults {
         "serveReply", "serveReplyMode", "serveFraming",
         "canaryPersona", "canaryPort",
         "canaryHoneydrop", "canaryDrop", "flare.on",
-        "canaryLearnedPaths", "conductorOn", "conductorRules",
-        "conductorFiredCounts", "stewardOn", "stewardLatitude",
-        "stewardProposals", "stewardFired", "stewardLastShift",
-        "stewardDismissals", "stewardOrders", "stewardWatches",
-        "stewardCases",
+        "conductorOn", "conductorRules",
+        "stewardOn", "stewardLatitude",
         "stealthMode",
         // Network Trace
         "traceScope", "traceAdaptive", "traceBonjour",
@@ -55,33 +75,26 @@ enum SaneDefaults {
         "sectionOpen.fanout", "sectionOpen.plant",
         "sectionOpen.snatch", "sectionOpen.timing",
         "sectionOpen.trace",
-        // EMCON
-        "emconActive", "emcon.condition", "emconHomeSubnet", "emconVaultCombo",
+        // EMCON — its configuration is a preference;
+        // the CONDITION is posture, outside the charter,
+        // and is not listed.
+        "emconHomeSubnet", "emconVaultCombo",
         "emconVaultAction", "emconEscalation",
-        // Onion
-        "onion.wrap", "onion.socksHost", "onion.socksPort",
+        // Onion — the SOCKS road is a preference; the
+        // wrap switch is posture and is not listed.
+        "onion.socksHost", "onion.socksPort",
         "onion.lastProbe",
-        "deadHand.on", "deadHand.hours", "deadHand.last",
-        "deadHand.firedAt",
-        "knocktalkRetentionHours", "knocktalkSuite",
+        "knocktalkRetentionHours",
         "knocktalkRelayEnabled", "knocktalkRelayURL",
         "knocktalkRelayToken", "knocktalkRelayBox",
-        "cadenceSealOn", "cadence.profiles",
-        "voiceThrow.armed",
-        "coin.hash", "coin.lockKnocktalk",
-        "season.state",
+        "cadence.profiles",
         "emconCheckName", "emconCheckAirdrop", "emconCheckHotspot",
         "emconCheckWifi", "emconCheckBluetooth",
-        // Colours
-        "theme.selected", "theme.customs",
+        // Colours — her chat's fold is a preference.
+        // The theme, the custom themes, and every
+        // backdrop choice are ART, outside the
+        // charter, and are not listed.
         "skelli.minimalChat",
-        "theme.backdrop.everywhere", "theme.backdrop.listen",
-        "theme.backdrop.send", "theme.backdrop.serve",
-        "theme.backdrop.sessions", "theme.backdrop.scan",
-        "theme.backdrop.recon", "theme.backdrop.emcon",
-        "theme.backdrop.knocktalk", "theme.backdrop.about",
-        "theme.backdrop.skelli", "theme.backdrop.macros",
-        "theme.backdrop.vault",
         // Recon bench, Net-Assault, the war rooms
         "reconHost", "reconPorts", "reconKnockUDP",
         "reconJobs", "reconTimeout",
@@ -89,22 +102,18 @@ enum SaneDefaults {
         "warRoomBLE",
         "warGamesPeerIP", "warGamesMatchPort",
         "warGamesDecoys",
-        // Her mind and her switches, the Macros editor,
-        // the BTHome v1 ear
+        // Her switches, the Macros editor, the
+        // BTHome v1 ear. (Her facts, her heart,
+        // her draft, and the weights' downloaded
+        // flag are state, outside the charter —
+        // forgetting those is her own reset's act.)
         "skelli.mindMode", "skelli.moods", "skelli.agents",
-        "skelli.draft", "macros.editingID",
+        "macros.editingID",
         "place.enabled", "skelli.schedule",
-        "skelli.birthday", "skelli.birthdayGreeted",
-    "heart.lastAnnoyance", "heart.annoyanceText",
-    "heart.annoyanceGreeted", "heart.afraidGreeted",
-    "tomato.marks",
-    "heart.rhythm", "heart.cause",
-    "heart.intensity", "heart.episodes",
         "listen.bthomeV1",
         "gattArm.name", "gattArm.payload",
         "headlines.enabled",
         "skelli.weightsModel",
-        "skelli.weightsDownloaded",
     ]
 
     /// Restore every setting to its sane default and reconcile the
@@ -116,21 +125,23 @@ enum SaneDefaults {
     ///  - stealth returns to its default through setStealth, which
     ///    also restarts a running Serve so its announcement (or
     ///    lack of one) matches the restored default,
-    ///  - EMCON stands down on the spot: the live model is
-    ///    deactivated (condition stored OPEN, tripwire down,
-    ///    relay poll refreshed), so the dialog's promise and
-    ///    the house agree before the sheet closes — a reset
-    ///    that only cleared storage left the condition, the
-    ///    tripwire, and every gate standing (the sweep's
-    ///    finding F11, 2026-10-18).
+    ///  - EMCON does NOT stand down: its condition is
+    ///    posture, outside the charter above. The gates
+    ///    read the stored condition, so a reset owes it
+    ///    no reconciliation — it stays exactly where
+    ///    the operator left it. (Before the charter, a
+    ///    reset deactivated EMCON on the spot; the
+    ///    F11 trap it answered — cleared storage under
+    ///    a standing live model — cannot recur while
+    ///    the condition is never cleared.)
     static func reset(mouth: Mouth, emcon: Emcon) {
+        _ = emcon  // posture is the operator's; untouched here
         let defaults = UserDefaults.standard
         for key in keys { defaults.removeObject(forKey: key) }
         // The setup mirror forgets too, or the
         // old configuration would restore itself
         // into the next fresh install.
         HouseSetup.forgetMirror()
-        emcon.deactivate()
         // Her room unfolds too: the fold is
         // center state now, and a reset that
         // only cleared its key would leave the
