@@ -229,7 +229,6 @@ struct BootFilmPlayer: NSViewRepresentable {
     var focusX: CGFloat = 0.5
     var focusY: CGFloat = 0.5
     var zoom: CGFloat = 1
-    var maxPixel: Int = 1024
     /// The phone's stage law (fix361) reaches
     /// the Mac as a name only: NSImageView's
     /// stage fits the film whole in both cases,
@@ -237,7 +236,13 @@ struct BootFilmPlayer: NSViewRepresentable {
     /// than fill on its subject — a documented
     /// stand-down, like the edit toggle above,
     /// until a drawing stage of its own is built.
+    /// Declared in the phone's own order —
+    /// hangWhole before maxPixel — because
+    /// the one call site is shared between
+    /// the platforms and Swift reads
+    /// arguments in declaration order.
     var hangWhole: Bool = false
+    var maxPixel: Int = 1024
     var onProgress: (Double) -> Void
 
     private var isGIF: Bool {
