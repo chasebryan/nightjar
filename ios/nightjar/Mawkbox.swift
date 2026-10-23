@@ -960,9 +960,11 @@ final class MawkCenter: ObservableObject {
                 from: src.baseAddress!, count: samples.count)
         }
         do {
+#if os(iOS)
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
+#endif
             let engine = AVAudioEngine()
             let player = AVAudioPlayerNode()
             engine.attach(player)
@@ -1051,8 +1053,10 @@ final class MawkCenter: ObservableObject {
         signalLive = false
         progress = 0
         status = L("Sung. The room heard it, if a room was listening.")
+#if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(
             false, options: .notifyOthersOnDeactivation)
+#endif
     }
 
     // MARK: Listening
@@ -1062,27 +1066,53 @@ final class MawkCenter: ObservableObject {
         if let refusal = Self.listenRefusal { return refusal }
         if listening { return nil }
         stopPlaying()
+#if os(iOS)
         AVAudioSession.sharedInstance()
             .requestRecordPermission { [weak self] granted in
-                DispatchQueue.main.async {
-                    if granted {
-                        self?.beginCapture()
-                    } else {
-                        self?.status = L("The microphone is not permitted — iOS Settings holds the switch.")
-                    }
-                }
+                self?.listenPermissionAnswered(granted)
             }
+#else
+        AVCaptureDevice.requestAccess(for: .audio) {
+            [weak self] granted in
+            self?.listenPermissionAnswered(granted)
+        }
+#endif
         status = L("Asking for the microphone…")
         return nil
     }
 
+    /// The microphone's answer, down both
+    /// platforms' roads: capture begins, or the
+    /// refusal is spoken in the platform's own
+    /// terms. (The Mac has no AVAudioSession —
+    /// its permission road is the capture
+    /// device's, and its engine needs no
+    /// session to sing or hear.)
+    private func listenPermissionAnswered(
+        _ granted: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if granted {
+                self.beginCapture()
+            } else {
+#if os(iOS)
+                self.status = L("The microphone is not permitted — iOS Settings holds the switch.")
+#else
+                self.status = L("The microphone is not permitted — System Settings holds the switch.")
+#endif
+            }
+        }
+    }
+
     private func beginCapture() {
         do {
+#if os(iOS)
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(
                 .playAndRecord, mode: .default,
                 options: [.defaultToSpeaker])
             try session.setActive(true)
+#endif
             let engine = AVAudioEngine()
             let input = engine.inputNode
             let native = input.outputFormat(forBus: 0)
@@ -1283,8 +1313,10 @@ final class MawkCenter: ObservableObject {
             listening = false
             signalLive = false
             status = L("The ear is shut.")
+#if os(iOS)
             try? AVAudioSession.sharedInstance().setActive(
                 false, options: .notifyOthersOnDeactivation)
+#endif
         }
     }
 }

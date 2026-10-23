@@ -6,6 +6,7 @@
 #if os(iOS)
 import BackgroundTasks
 #endif
+import Combine
 import Foundation
 import UserNotifications
 

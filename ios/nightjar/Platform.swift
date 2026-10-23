@@ -230,6 +230,14 @@ struct BootFilmPlayer: NSViewRepresentable {
     var focusY: CGFloat = 0.5
     var zoom: CGFloat = 1
     var maxPixel: Int = 1024
+    /// The phone's stage law (fix361) reaches
+    /// the Mac as a name only: NSImageView's
+    /// stage fits the film whole in both cases,
+    /// so the Mac boot film hangs whole rather
+    /// than fill on its subject — a documented
+    /// stand-down, like the edit toggle above,
+    /// until a drawing stage of its own is built.
+    var hangWhole: Bool = false
     var onProgress: (Double) -> Void
 
     private var isGIF: Bool {
