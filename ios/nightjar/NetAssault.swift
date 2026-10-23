@@ -1745,78 +1745,44 @@ struct ShareSheet: NSViewRepresentable {
 
 // MARK: - The ignition
 
-/// What plays when the mode is initialized: the operator's
-/// GIF, full-bleed, over the run's first pass — pure theatre
-/// laid over real work, exactly like the centipede's drumroll.
-/// The GIF comes from an "Assault" data asset or an
-/// assault.gif in the bundle; without one, a flickering
-/// skull card stands in, so the mode is never broken by a
-/// missing flourish. Tap to skip.
+/// What plays when the mode is initialized: a flickering
+/// skull card over the run's first pass — pure theatre laid
+/// over real work, exactly like the centipede's drumroll.
+/// The house carries no GIFs (Chase's ruling, 2026-10-22 —
+/// every GIF left the project), so the built-in card is the
+/// splash. Tap to skip.
 struct AssaultIgnitionView: View {
     @Binding var isShown: Bool
     @ObservedObject private var themeCenter =
         ThemeCenter.shared
     @State private var flicker = false
 
-    private var gifData: Data? {
-        if let asset = NSDataAsset(name: "Assault") {
-            return asset.data
-        }
-        if let url = Bundle.main.url(forResource: "assault",
-                                     withExtension: "gif") {
-            return try? Data(contentsOf: url)
-        }
-        // Any bundled GIF with the assault in its name —
-        // the reel is forgiving about filenames.
-        if let path = Bundle.main.paths(
-            forResourcesOfType: "gif", inDirectory: nil)
-            .first(where: {
-                $0.lowercased().contains("assault") }) {
-            return try? Data(contentsOf: URL(fileURLWithPath: path))
-        }
-        return nil
-    }
-
-    /// The GIF's own play length plus a breath, clamped
-    /// sane; 3 s for the fallback card.
-    private var splashSeconds: Double {
-        guard let data = gifData else { return 3.0 }
-        // The length from the frame headers alone —
-        // never a full decode just to tell time.
-        let seconds = UIImage.gifDelays(data).reduce(0, +)
-        guard seconds > 0 else { return 3.0 }
-        return min(max(seconds + 0.3, 1.5), 6.0)
-    }
+    /// How long the card stays: a beat of
+    /// theatre, then it lifts — tap lifts
+    /// it sooner.
+    private var splashSeconds: Double { 3.0 }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                // Just the reel, delivered the way the boot
-                // screen delivers its own: full-bleed,
-                // edge to edge, nothing over it.
-                GIFPlayerView(data: data)
-                    .ignoresSafeArea()
-            } else {
-                MatrixDots(color: themeCenter.current.accent
-                    .opacity(0.15))
-                    .ignoresSafeArea()
-                VStack(spacing: 16) {
-                    SkullMark(color: .red, size: 110)
-                    Text(L("NET-ASSAULT"))
-                        .font(.title.monospaced().weight(.bold))
-                        .tracking(5)
-                        .foregroundStyle(.white)
-                    Text(L("the wire will hear this phone coming"))
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
-                    }
+            MatrixDots(color: themeCenter.current.accent
+                .opacity(0.15))
+                .ignoresSafeArea()
+            VStack(spacing: 16) {
+                SkullMark(color: .red, size: 110)
+                Text(L("NET-ASSAULT"))
+                    .font(.title.monospaced().weight(.bold))
+                    .tracking(5)
+                    .foregroundStyle(.white)
+                Text(L("the wire will hear this phone coming"))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            .opacity(flicker ? 0.55 : 1.0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.14)
+                    .repeatForever(autoreverses: true)) {
+                    flicker = true
                 }
             }
         }

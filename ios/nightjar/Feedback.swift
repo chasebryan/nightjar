@@ -3052,63 +3052,39 @@ struct BootFilmPlayer: UIViewRepresentable {
 
 
 #endif
-/// The drumroll: a glitching, laughing skull over the whole
-/// screen when the centipede is released (tap to skip). The
-/// GIF comes from a "Centipede" data asset or a centipede.gif
-/// file in the bundle, and the splash stays up for the GIF's
-/// own duration (plus a beat); without a GIF, a built-in
-/// flicker card stands in for 3 s, so the app is never broken
-/// by a missing flourish. The crawl itself starts the moment
-/// Release is tapped — the splash is pure theatre laid over
-/// its first hops.
+/// The drumroll: a flickering card over the whole screen
+/// when the centipede is released (tap to skip). The house
+/// carries no GIFs (Chase's ruling, 2026-10-22 — every GIF
+/// left the project), so the built-in card is the splash:
+/// three seconds of theatre. The crawl itself starts the
+/// moment Release is tapped — the splash is pure theatre
+/// laid over its first hops.
 struct CentipedeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
 
-    private var gifData: Data? {
-        if let asset = NSDataAsset(name: "Centipede") {
-            return asset.data
-        }
-        if let url = Bundle.main.url(forResource: "centipede",
-                                     withExtension: "gif") {
-            return try? Data(contentsOf: url)
-        }
-        return nil
-    }
-
-    /// How long the splash stays: the GIF's own play length
-    /// plus a breath, clamped sane; 3 s for the fallback card.
-    private var splashSeconds: Double {
-        guard let data = gifData else { return 3.0 }
-        // The length from the frame headers alone —
-        // never a full decode just to tell time.
-        let seconds = UIImage.gifDelays(data).reduce(0, +)
-        guard seconds > 0 else { return 3.0 }
-        return min(max(seconds + 0.3, 1.5), 6.0)
-    }
+    /// How long the card stays: a beat of
+    /// theatre, then it lifts — tap lifts
+    /// it sooner.
+    private var splashSeconds: Double { 3.0 }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                GIFPlayerView(data: data)
-                    .ignoresSafeArea()
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "ant.fill")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.teal)
-                    Text("CENTIPEDE RELEASED")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
-                    }
+            VStack(spacing: 16) {
+                Image(systemName: "ant.fill")
+                    .font(.system(size: 96))
+                    .foregroundStyle(.teal)
+                Text("CENTIPEDE RELEASED")
+                    .font(.headline.monospaced())
+                    .tracking(4)
+                    .foregroundStyle(.white)
+            }
+            .opacity(flicker ? 0.55 : 1.0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.14)
+                    .repeatForever(autoreverses: true)) {
+                    flicker = true
                 }
             }
         }
@@ -3124,62 +3100,39 @@ struct CentipedeSplashView: View {
     }
 }
 
-/// The charge-up: a fighter powering up in the rain over
-/// the whole screen when EAZY is released (tap to skip).
-/// The GIF comes from a "Rainfall" data asset or a
-/// rainfall.gif file in the bundle (Chase's pick, wired
-/// 2026-10-21), and the splash stays up for the GIF's own
-/// duration (plus a beat); without a GIF, a built-in
-/// flicker card stands in. The scan starts the moment
-/// EAZY is ordered — the splash is pure theatre laid
-/// over its first probes, the centipede's doctrine.
+/// The charge-up: a flickering card over the whole
+/// screen when EAZY is released (tap to skip) — the
+/// house carries no GIFs (Chase's ruling, 2026-10-22),
+/// so the built-in card is the splash. The scan starts
+/// the moment EAZY is ordered — the splash is pure
+/// theatre laid over its first probes, the centipede's
+/// doctrine.
 struct EazyIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
 
-    private var gifData: Data? {
-        if let asset = NSDataAsset(name: "Rainfall") {
-            return asset.data
-        }
-        if let url = Bundle.main.url(forResource: "rainfall",
-                                     withExtension: "gif") {
-            return try? Data(contentsOf: url)
-        }
-        return nil
-    }
-
-    /// How long the splash stays: the GIF's own play
-    /// length plus a breath, clamped sane; 3 s for the
-    /// fallback card.
-    private var splashSeconds: Double {
-        guard let data = gifData else { return 3.0 }
-        let seconds = UIImage.gifDelays(data).reduce(0, +)
-        guard seconds > 0 else { return 3.0 }
-        return min(max(seconds + 0.3, 1.5), 6.0)
-    }
+    /// How long the card stays: a beat of
+    /// theatre, then it lifts — tap lifts
+    /// it sooner.
+    private var splashSeconds: Double { 3.0 }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                GIFPlayerView(data: data, playOnce: true)
-                    .ignoresSafeArea()
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.yellow)
-                    Text("EAZY RELEASED")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
-                    }
+            VStack(spacing: 16) {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 96))
+                    .foregroundStyle(.yellow)
+                Text("EAZY RELEASED")
+                    .font(.headline.monospaced())
+                    .tracking(4)
+                    .foregroundStyle(.white)
+            }
+            .opacity(flicker ? 0.55 : 1.0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.14)
+                    .repeatForever(autoreverses: true)) {
+                    flicker = true
                 }
             }
         }
@@ -3195,64 +3148,40 @@ struct EazyIgnitionView: View {
     }
 }
 
-/// The lock-on: a cockpit targeting reel over the
+/// The lock-on: a flickering targeting card over the
 /// whole screen when MAGDUMP is released, ending on
-/// TARGET LOCK ON (tap to skip). The GIF comes from
-/// a "Magdump" data asset or a magdump.gif file in
-/// the bundle (Chase's pick, wired with the program),
-/// and the splash stays up for the GIF's own duration
-/// (plus a beat); without a GIF, a built-in flicker
-/// card stands in. The battery starts the moment
-/// MAGDUMP is ordered — the splash is pure theatre
-/// laid over its first probes, the centipede's
+/// TARGET LOCK ON (tap to skip) — the house carries
+/// no GIFs (Chase's ruling, 2026-10-22), so the
+/// built-in card is the splash. The battery starts
+/// the moment MAGDUMP is ordered — the splash is pure
+/// theatre laid over its first probes, the centipede's
 /// doctrine, same as EAZY's charge-up.
 struct MagdumpIgnitionView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
 
-    private var gifData: Data? {
-        if let asset = NSDataAsset(name: "Magdump") {
-            return asset.data
-        }
-        if let url = Bundle.main.url(forResource: "magdump",
-                                     withExtension: "gif") {
-            return try? Data(contentsOf: url)
-        }
-        return nil
-    }
-
-    /// How long the splash stays: the GIF's own play
-    /// length plus a breath, clamped sane; 3 s for the
-    /// fallback card.
-    private var splashSeconds: Double {
-        guard let data = gifData else { return 3.0 }
-        let seconds = UIImage.gifDelays(data).reduce(0, +)
-        guard seconds > 0 else { return 3.0 }
-        return min(max(seconds + 0.3, 1.5), 6.0)
-    }
+    /// How long the card stays: a beat of
+    /// theatre, then it lifts — tap lifts
+    /// it sooner.
+    private var splashSeconds: Double { 3.0 }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                GIFPlayerView(data: data)
-                    .ignoresSafeArea()
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "scope")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.red)
-                    Text("TARGET LOCK ON")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
-                    }
+            VStack(spacing: 16) {
+                Image(systemName: "scope")
+                    .font(.system(size: 96))
+                    .foregroundStyle(.red)
+                Text("TARGET LOCK ON")
+                    .font(.headline.monospaced())
+                    .tracking(4)
+                    .foregroundStyle(.white)
+            }
+            .opacity(flicker ? 0.55 : 1.0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.14)
+                    .repeatForever(autoreverses: true)) {
+                    flicker = true
                 }
             }
         }
@@ -3268,62 +3197,39 @@ struct MagdumpIgnitionView: View {
     }
 }
 
-/// The frame: her fingers close a blood-red frame over
-/// the whole screen when EMCON falls to Alpha (tap to
-/// skip). The GIF comes from a "Redframe" data asset or
-/// a redframe.gif file in the bundle (Chase's pick, wired
-/// 2026-10-21), and the splash stays up for the GIF's
-/// own duration (plus a beat); without a GIF, a built-in
-/// flicker card stands in. The silence itself is never
-/// delayed — the Standard silences first, and this is
-/// the theatre laid over the hush.
+/// The frame: a blood-red flicker card over the whole
+/// screen when EMCON falls to Alpha (tap to skip) —
+/// the house carries no GIFs (Chase's ruling,
+/// 2026-10-22), so the built-in card is the splash.
+/// The silence itself is never delayed — the Standard
+/// silences first, and this is the theatre laid over
+/// the hush.
 struct RedframeSplashView: View {
     @Binding var isShown: Bool
     @State private var flicker = false
 
-    private var gifData: Data? {
-        if let asset = NSDataAsset(name: "Redframe") {
-            return asset.data
-        }
-        if let url = Bundle.main.url(forResource: "redframe",
-                                     withExtension: "gif") {
-            return try? Data(contentsOf: url)
-        }
-        return nil
-    }
-
-    /// How long the splash stays: the GIF's own play
-    /// length plus a breath, clamped sane; 3 s for the
-    /// fallback card.
-    private var splashSeconds: Double {
-        guard let data = gifData else { return 3.0 }
-        let seconds = UIImage.gifDelays(data).reduce(0, +)
-        guard seconds > 0 else { return 3.0 }
-        return min(max(seconds + 0.3, 1.5), 6.0)
-    }
+    /// How long the card stays: a beat of
+    /// theatre, then it lifts — tap lifts
+    /// it sooner.
+    private var splashSeconds: Double { 3.0 }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            if let data = gifData {
-                GIFPlayerView(data: data)
-                    .ignoresSafeArea()
-            } else {
-                VStack(spacing: 16) {
-                    Image(systemName: "viewfinder")
-                        .font(.system(size: 96))
-                        .foregroundStyle(.red)
-                    Text("EMCON ALPHA")
-                        .font(.headline.monospaced())
-                        .tracking(4)
-                        .foregroundStyle(.white)
-                }
-                .opacity(flicker ? 0.55 : 1.0)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 0.14)
-                        .repeatForever(autoreverses: true)) {
-                        flicker = true
-                    }
+            VStack(spacing: 16) {
+                Image(systemName: "viewfinder")
+                    .font(.system(size: 96))
+                    .foregroundStyle(.red)
+                Text("EMCON ALPHA")
+                    .font(.headline.monospaced())
+                    .tracking(4)
+                    .foregroundStyle(.white)
+            }
+            .opacity(flicker ? 0.55 : 1.0)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.14)
+                    .repeatForever(autoreverses: true)) {
+                    flicker = true
                 }
             }
         }

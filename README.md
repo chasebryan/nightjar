@@ -298,10 +298,6 @@ I'm Chase Bryan — cryptographer and builder. nightjar is my instrument: I buil
 
 The rest of the shelf: **orange**, a language for specifying and verifying cryptography; **snoot**, a post-quantum crypto-inventory scanner; **mawkbox**, an encrypted text-to-audio modem; and **Magic Box**, keyless time-lock encryption.
 
-<p align="center">
-  <img src="assets/the-world-is-yours.gif" width="560" alt="The world is yours">
-</p>
-
 ---
 
 <p align="center">

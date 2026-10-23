@@ -3647,40 +3647,30 @@ final class Gauntlet: ObservableObject {
             return "\(cases) cases: ten themes, "
                 + "every hex well-formed"
         }
-        add("wardrobe", "films all present") {
+        add("wardrobe", "no GIFs in the house") {
             var cases = 0
-            // Each film under both of the app's
-            // own lookups: the asset catalog and
-            // the bundle resources.
-            let films: [(String, String)] = [
-                ("Assault", "assault"),
-                ("BootReel", "boot-reel"),
-                ("Centipede", "centipede"),
-                ("Magdump", "magdump"),
-                ("Rainfall", "rainfall"),
-                ("Wallpaper", "wallpaper"),
-                ("Redframe", "redframe"),
-            ]
-            for (asset, resource) in films {
+            // Chase's ruling, 2026-10-22: every GIF
+            // left the project. The bundle must hold
+            // none at all — and the shipped stills
+            // (the bird, as PNGs) must be present.
+            cases += 1
+            let gifs = Bundle.main.paths(
+                forResourcesOfType: "gif",
+                inDirectory: nil)
+            try Gauntlet.require(gifs.isEmpty,
+                "a GIF still ships in the bundle: "
+                    + (gifs.first ?? ""))
+            for resource in ["boot-reel", "wallpaper"] {
                 cases += 1
-                let inAssets = NSDataAsset(
-                    name: asset) != nil
-                // A film or a still: the boot
-                // screen and the wallpaper ship
-                // as PNGs (the bird, 2026-10-22),
-                // the rest as GIFs.
-                let inBundle = Bundle.main.url(
-                    forResource: resource,
-                    withExtension: "gif") != nil
-                    || Bundle.main.url(
+                try Gauntlet.require(
+                    Bundle.main.url(
                         forResource: resource,
-                        withExtension: "png") != nil
-                try Gauntlet.require(inAssets || inBundle,
-                    "film missing from the bundle: "
-                        + asset)
+                        withExtension: "png") != nil,
+                    "the shipped still is missing: "
+                        + resource)
             }
-            return "\(cases) cases: every film "
-                + "found in the app's own stores"
+            return "\(cases) cases: zero GIFs in "
+                + "the bundle; the bird stills ship"
         }
         add("wardrobe", "wallpaper decodes") {
             var cases = 0
@@ -3691,10 +3681,6 @@ final class Gauntlet: ObservableObject {
             } else if let url = Bundle.main.url(
                 forResource: "wallpaper",
                 withExtension: "png") {
-                data = try? Data(contentsOf: url)
-            } else if let url = Bundle.main.url(
-                forResource: "wallpaper",
-                withExtension: "gif") {
                 data = try? Data(contentsOf: url)
             } else {
                 data = nil
