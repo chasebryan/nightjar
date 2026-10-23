@@ -74,6 +74,7 @@ extension BlacksiteBench {
         case "primecensus":
             megaPrimeCensus(
                 arg.isEmpty ? nil : arg,
+                file: false,
                 stopped: stopped,
                 emit: live, done: done)
         case "rosprobe":
@@ -3154,7 +3155,7 @@ extension BlacksiteBench {
     }
 
     static func megaPrimeCensus(
-        _ arg: String?,
+        _ arg: String?, file: Bool,
         stopped: @escaping () -> Bool,
         emit: @escaping BlacksiteEmit,
         done: @escaping () -> Void) {
