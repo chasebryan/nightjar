@@ -238,6 +238,20 @@ class Target:
     raw: str = ""
 
 
+def _check_port(port: int, where: str) -> int:
+    """Reject a port the socket layer will not treat as itself.
+
+    TCP connect goes through getaddrinfo, which folds a port above
+    65535 into 16 bits (70000 becomes 4464) and then connects there.
+    UDP send and a listen bind raise OverflowError instead, and that
+    exception is not an OSError: send would print a traceback, and
+    serve would leave its thread dead while the process kept running.
+    """
+    if port < 0 or port > 65535:
+        raise SendError(f"port {port} is outside 0-65535 in {where!r}")
+    return port
+
+
 def parse_target(raw: str) -> Target:
     if "://" in raw:
         scheme, rest = raw.split("://", 1)
@@ -282,6 +296,7 @@ def parse_target(raw: str) -> Target:
             port_n = int(port)
         except ValueError as exc:
             raise SendError(f"bad port in {raw!r}") from exc
+        port_n = _check_port(port_n, raw)
         use_tls = scheme in ("tls", "tcp+tls", "ssl")
         return Target("tcp" if use_tls else scheme, host=host, port=port_n,
                       tls=use_tls, raw=raw)
@@ -893,7 +908,7 @@ def _send_loop(target: Target, payload: Payload, args) -> int:
         count += 1
         try:
             result = do_send(target, payload, args)
-        except SendError as exc:
+        except (SendError, OverflowError) as exc:
             print(f"nightjar: send failed: {exc}", file=sys.stderr)
             return 1
         total += result.sent
@@ -1055,7 +1070,7 @@ def cmd_send(args) -> int:
                 code = _send_ble_peripheral(target, payload, args)
             else:
                 code = _send_loop(target, payload, args)
-        except (SendError, OSError) as exc:
+        except (SendError, OSError, OverflowError) as exc:
             print(f"nightjar: {exc}", file=sys.stderr)
             code = 2
         worst = max(worst, code)
@@ -1065,6 +1080,19 @@ def cmd_send(args) -> int:
 
 
 def cmd_serve(args) -> int:
+    for flag, port in (
+            ("--tcp", args.tcp),
+            ("--udp", args.udp),
+            ("--http", args.http),
+            ("--ws", getattr(args, "ws", None)),
+    ):
+        if port is None:
+            continue
+        try:
+            _check_port(port, f"{flag} {port}")
+        except SendError as exc:
+            print(f"nightjar: {exc}", file=sys.stderr)
+            return 2
     reply_fn = None
     mode = getattr(args, "reply_mode", "static")
     if mode == "echo":
@@ -1092,7 +1120,7 @@ def cmd_serve(args) -> int:
         def runner() -> None:
             try:
                 fn(*fn_args, **{**fn_kwargs, "stop": stop})
-            except (OSError, SendError) as exc:
+            except (OSError, SendError, OverflowError) as exc:
                 errors.append(f"{fn.__name__}: {exc}")
                 stop.set()
         threads.append(threading.Thread(target=runner, daemon=True))

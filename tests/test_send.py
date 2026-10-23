@@ -197,6 +197,39 @@ def test_parse_bad_port_is_a_clean_error():
         send.parse_target("tcp://127.0.0.1:notaport")
 
 
+@pytest.mark.parametrize("raw", [
+    "tcp://127.0.0.1:65536",
+    "udp://127.0.0.1:-1",
+    "tcp://127.0.0.1:70000",
+])
+def test_parse_port_out_of_range_is_a_clean_error(raw):
+    # getaddrinfo folds 70000 to 4464 and would connect there. A port
+    # outside 0-65535 has to fail here, before any socket call.
+    with pytest.raises(SendError, match="outside 0-65535"):
+        send.parse_target(raw)
+
+
+def test_parse_edge_ports_stay_in_range():
+    assert send.parse_target("tcp://127.0.0.1:0").port == 0
+    assert send.parse_target("udp://127.0.0.1:65535").port == 65535
+
+
+def test_out_of_range_tcp_port_does_not_wrap(capsys):
+    listen = free_port()
+    raw_port = listen + 65536  # getaddrinfo would fold this onto listen
+    sink = FakeSink(reply=b"ack")
+    stop, _ = start_server(send.serve_tcp, listen, sink)
+    try:
+        args = send_namespace(f"tcp://127.0.0.1:{raw_port}", "--payload", "x")
+        assert send.cmd_send(args) == 2
+    finally:
+        stop.set()
+    assert sink.records == []
+    err = capsys.readouterr().err
+    assert "nightjar:" in err
+    assert "Traceback" not in err
+
+
 # --- TCP round trips -------------------------------------------------------------
 
 def test_tcp_round_trip_raw():
@@ -266,6 +299,24 @@ def test_cmd_send_dry_run(capsys):
     out = capsys.readouterr().out
     assert '"bytes": 5' in out
     assert "hello" in out
+
+
+def test_cmd_serve_out_of_range_port_is_clean(capsys):
+    args = serve_namespace("--tcp", "70000", "--host", "127.0.0.1")
+    started = time.time()
+    assert send.cmd_serve(args) == 2
+    assert time.time() - started < 5  # it must not hang on a dead listener
+    err = capsys.readouterr().err
+    assert "outside 0-65535" in err
+    assert "Traceback" not in err
+
+
+def test_cmd_send_udp_out_of_range_port_is_clean(capsys):
+    args = send_namespace("udp://127.0.0.1:70000", "--payload", "x")
+    assert send.cmd_send(args) == 2
+    err = capsys.readouterr().err
+    assert "nightjar:" in err
+    assert "Traceback" not in err
 
 
 def test_cmd_serve_bind_conflict_is_clean(capsys):
