@@ -4571,6 +4571,29 @@ final class Gauntlet: ObservableObject {
                 "an over-range peak did not clamp")
             return nil
         }
+        add("mawk", "it hears its own song") {
+            // The self-decoding composition the
+            // center performs on every play
+            // (fix354): modulate, demodulate,
+            // unpack — on a SEALED frame, opened
+            // with the song's own passphrase.
+            let frame = try Mawk.pack(
+                text: "the world is yours",
+                passphrase: "nightjar")
+            let song = Mawk.modulate(frame: frame)
+            guard let back = Mawk.demodulate(
+                samples: song) else {
+                throw Failure("its own song came "
+                    + "back silent")
+            }
+            let text = try Mawk.unpack(
+                frame: back, passphrase: "nightjar")
+            try Gauntlet.require(
+                text == "the world is yours",
+                "the self-hearing opened "
+                    + "something else")
+            return nil
+        }
         add("wardrive", "record round-trip") {
             let record = WardriveRecord(
                 ts: 1_700_000_000.5,

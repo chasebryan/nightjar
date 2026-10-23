@@ -784,6 +784,10 @@ struct MawkHeard: Identifiable {
     let frame: Data
     var text: String? = nil
     var note: String? = nil
+    /// The house hearing its own song (fix354):
+    /// a mawk the center sang and then decoded
+    /// back itself, in the same area.
+    var selfHeard = false
     let at: Date
 
     var sealed: Bool { Mawk.isSealed(frame: frame) }
@@ -818,6 +822,14 @@ final class MawkCenter: ObservableObject {
     @Published private(set) var signalPeaks: [Float] = []
     @Published private(set) var signalLive = false
     private var songPeaks: [Float] = []
+    /// The current song ran to its end — the gate
+    /// the self-hearing stands on: a song cut
+    /// short by the operator's stop was never
+    /// fully in the air, so it is not claimed.
+    /// The serial keeps one song's hearing from
+    /// landing under the next song.
+    private var songFinished = false
+    private var songSerial = 0
 
     /// The sheet's passphrase field, mirrored here so a
     /// sealed frame heard live can be opened on arrival
@@ -909,22 +921,29 @@ final class MawkCenter: ObservableObject {
                 then(L("That message would not pack."))
                 return
             }
-            then(self.play(frame: frame))
+            then(self.play(frame: frame,
+                           passphrase: passphrase))
         }
     }
 
     @discardableResult
-    func play(frame: Data) -> String? {
+    func play(frame: Data,
+              passphrase: String? = nil) -> String? {
         if let refusal = Self.playRefusal { return refusal }
         stopListening()
         stopPlaying()
         let samples = Mawk.modulate(frame: frame)
         return playSamples(samples,
-                           frameBytes: frame.count)
+                           frameBytes: frame.count,
+                           passphrase: passphrase)
     }
 
     private func playSamples(_ samples: [Float],
-                             frameBytes: Int) -> String? {
+                             frameBytes: Int,
+                             passphrase: String?) -> String? {
+        songFinished = false
+        songSerial += 1
+        let serial = songSerial
         songPeaks = Mawk.peaks(samples, count: 240)
         signalPeaks = songPeaks
         signalLive = true
@@ -976,6 +995,31 @@ final class MawkCenter: ObservableObject {
             }
             Journal.log("mawk", "play",
                         "\(frameBytes) bytes on the air")
+            // IT HEARS ITSELF (Chase's word,
+            // 2026-10-22): the very samples just
+            // sung are demodulated and opened
+            // again — sealed ones with the song's
+            // own passphrase — and the result
+            // lands in the same mailbox, marked
+            // as its own song. A song the operator
+            // stops short was never fully in the
+            // air, so its claim is dropped.
+            let sung = samples
+            let openingPass = passphrase
+            DispatchQueue.global(qos: .utility)
+                .async { [weak self] in
+                guard let found = Mawk.demodulate(
+                    samples: sung) else { return }
+                DispatchQueue.main.async {
+                    guard let self,
+                          self.songSerial == serial,
+                          self.playing || self.songFinished
+                    else { return }
+                    self.receive(
+                        frame: found, selfHeard: true,
+                        passphraseOverride: openingPass)
+                }
+            }
             return nil
         } catch {
             return L("The speaker would not open.")
@@ -1003,6 +1047,7 @@ final class MawkCenter: ObservableObject {
         player = nil
         engine = nil
         playing = false
+        songFinished = true
         signalLive = false
         progress = 0
         status = L("Sung. The room heard it, if a room was listening.")
@@ -1150,14 +1195,20 @@ final class MawkCenter: ObservableObject {
         }
     }
 
-    private func receive(frame: Data) {
+    private func receive(frame: Data,
+                         selfHeard: Bool = false,
+                         passphraseOverride: String? = nil) {
         var entry = MawkHeard(frame: frame, at: Date())
+        entry.selfHeard = selfHeard
         do {
             entry.text = try Mawk.unpack(
                 frame: frame,
                 passphrase: Mawk.isSealed(frame: frame)
-                    ? passphrase : nil)
-            status = L("Heard — a mawk, whole.")
+                    ? (passphraseOverride ?? passphrase)
+                    : nil)
+            status = selfHeard
+                ? L("Heard itself — its own song, decoded.")
+                : L("Heard — a mawk, whole.")
         } catch let error as MawkError {
             entry.note = error.line
             status = error == .needsPassphrase
@@ -1170,7 +1221,8 @@ final class MawkCenter: ObservableObject {
         }
         heard.insert(entry, at: 0)
         Haptics.success()
-        Journal.log("mawk", "heard",
+        Journal.log("mawk",
+                    selfHeard ? "selftest" : "heard",
                     "\(frame.count) bytes off the air")
     }
 
@@ -1468,6 +1520,11 @@ struct MawkView: View {
                                     .font(.caption)
                                     .disabled(center.working != nil)
                                 }
+                            }
+                            if entry.selfHeard {
+                                Text(L("Its own song — decoded from the sound it just made."))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                             Text(entry.at, style: .time)
                                 .font(.caption2)
