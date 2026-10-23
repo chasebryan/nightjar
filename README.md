@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/nightwarelabz/nightjar/releases"><img src="assets/readme/badge-release.svg" width="178" alt="Version 11.0 — churring"></a>
+  <a href="https://github.com/nightwarelabz/nightjar/releases"><img src="assets/readme/badge-release.svg" width="178" alt="Version 12.0 — plumage"></a>
   <a href="#build-for-iphone"><img src="assets/readme/badge-ios.svg" width="130" alt="iOS 17 or later"></a>
   <a href="#build-for-mac"><img src="assets/readme/badge-macos.svg" width="154" alt="macOS 14 or later"></a>
   <a href="LICENSE"><img src="assets/readme/badge-license.svg" width="174" alt="GNU AGPLv3"></a>

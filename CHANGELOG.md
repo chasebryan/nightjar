@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.0 — 2026-10-23 — plumage
+- **The Labz boot.** The house opens in the lab's own colours now: the mare's eye ignites at its measured point, the halo swells around it, and NIGHTWARE LABZ resolves letter by letter as the stages tick off beneath — the boot is a warm-up, not a poster. On the film road the ceremony speaks terminal: a 178-card subtitle deck in the register of the wire, the manifest struck through with » markers, and one heartbeat line that names the live stage and settles, at the end, on ALL SYSTEMS NOMINAL.
+- **The derivation core.** The fingerprint whorl is gone. At the ceremony's centre three cipher rotors, ringed in hex glyphs, counter-rotate against the real boot progress and settle onto their grids as their locks land — 45, 75, 100 — while seventy-two entropy ticks light in order and one red ring, the mare's eye colour, pulses out at full lock.
+- **Films frame their subject.** A boot or backdrop film is analysed before it is framed — the largest face across its frames, weighted by attention — and hung on its subject; a still whose shape argues with the screen hangs whole on black instead of being cropped past its edges.
+- **The great audit.** The whole codebase — phone and Mac alike — was read cluster by cluster and repaired where the reading convicted it: a fragmentation trap at the sixteenth knock, key material that could have come up zeros, guest arithmetic that could trap its host, two dozen logic faults with names, a retired TLS API gathered behind one door, sixty-one closures brought to the current form, dead code buried, and one User-Agent that now derives from the build itself instead of remembering a version by hand.
+- **The Mac brought current.** The macOS target takes the same pass: its own authorisation road where the platforms differ, its film player at parity, its audio gates — the house stands whole on both kinds of glass.
+- **Serve sits in the More menu.** Taken off the bar in the last version and reachable only through Sessions, Serve is a room again — in the More menu, where it was always meant to move to. Sessions keeps its door.
+- **The Ultimate Network Administration Tool.** The README's masthead now says what the instrument is.
+
 ## 11.0 — 2026-10-21 — churring
 - **Churring opens.** The eleventh version is named for the nightjar's own song — the long churr the male pours across the dark, unbroken, unmistakable once you have heard it. Chorus was every voice at once; churring is the bird itself, at full stretch: a bench of instruments, a battery that runs itself, and the house on two kinds of glass now. What churring comes to mean will be written here as it lands.
 - **One name.** The house is nightjar everywhere — the repository, the app, the source a sideload reads — no hyphen, no second word. Nothing about an existing install changes: the bundle, the keys, the name the phones call each other all stay exactly as they were.
