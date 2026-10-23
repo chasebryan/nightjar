@@ -320,7 +320,7 @@ struct ContentView: View {
         // joins the set — it was missing, the
         // very failure this comment describes.)
         let knownTabs: Set<Int> =
-            [9, 0, 1, 12, 2, 5, 3, 4, 6, 7, 8, 10, 11, 13]
+            [9, 0, 1, 12, 14, 2, 5, 3, 4, 6, 7, 8, 10, 11, 13]
         _tab = State(initialValue:
             stored.flatMap {
                 knownTabs.contains($0) ? $0 : nil
@@ -348,11 +348,16 @@ struct ContentView: View {
             .onDisappear { TabBeat.vanished(0) }
         // The console sits right in the middle
         // of the main bar (Chase's order,
-        // 2026-10-22): Skelli, Listen, Blacksite,
-        // Send — then More. Serve is not on the
-        // bar; its room is in the More menu
-        // (Chase's correction, 2026-10-23), and
-        // Sessions keeps a door to it.
+        // 2026-10-22): Skelli, Listen, Blacksite —
+        // and the fourth seat is the Drip's
+        // (Chase's placement, 2026-10-23): the
+        // room that watches the whole device
+        // think stands where Send stood, and
+        // Send moves into the More menu, above
+        // Serve. Serve's room is in the More
+        // menu too (Chase's correction,
+        // 2026-10-23), and Sessions keeps a
+        // door to it.
         BlacksiteView()
             .appThemed(.blacksite)
             .tabItem { Label(L("Blacksite"),
@@ -360,12 +365,12 @@ struct ContentView: View {
             .tag(12)
             .onAppear { TabBeat.appeared(12) }
             .onDisappear { TabBeat.vanished(12) }
-        SendView()
-            .appThemed(.send)
-            .tabItem { Label(L("Send"), systemImage: "paperplane") }
-            .tag(1)
-            .onAppear { TabBeat.appeared(1) }
-            .onDisappear { TabBeat.vanished(1) }
+        DripView()
+            .appThemed(.drip)
+            .tabItem { Label(L("Drip"), systemImage: "drop.fill") }
+            .tag(14)
+            .onAppear { TabBeat.appeared(14) }
+            .onDisappear { TabBeat.vanished(14) }
         // Declaration order past the bar is the
         // More list's order: About heads it — it
         // is the app's identity and its options
@@ -383,6 +388,16 @@ struct ContentView: View {
             .tag(3)
             .onAppear { TabBeat.appeared(3) }
             .onDisappear { TabBeat.vanished(3) }
+        // Send's room in the More menu, above
+        // Serve (Chase's placement, 2026-10-23 —
+        // the Drip holds its old seat on the
+        // bar). Its tag is unchanged.
+        SendView()
+            .appThemed(.send)
+            .tabItem { Label(L("Send"), systemImage: "paperplane") }
+            .tag(1)
+            .onAppear { TabBeat.appeared(1) }
+            .onDisappear { TabBeat.vanished(1) }
         // Serve's room (Chase's correction,
         // 2026-10-23): fix345 took it off the
         // bar and left it reachable only as a
@@ -513,6 +528,9 @@ struct ContentView: View {
                 } else if tag == 13 {
                     AnyView(OnionView()
                         .appThemed(.onion))
+                } else if tag == 14 {
+                    AnyView(DripView()
+                        .appThemed(.drip))
                 }
             }
             .macRoomVisible(tab == tag)
@@ -551,6 +569,9 @@ struct ContentView: View {
                     Label(L("Blacksite"),
                           systemImage: "terminal.fill")
                         .tag(12)
+                    Label(L("Drip"),
+                          systemImage: "drop.fill")
+                        .tag(14)
                     Label(L("Sessions"),
                           systemImage: "list.bullet.rectangle")
                         .tag(3)
@@ -602,6 +623,7 @@ struct ContentView: View {
                 macRoom(10)
                 macRoom(11)
                 macRoom(13)
+                macRoom(14)
             }
         }
         .onAppear { visitedRooms.insert(tab) }
