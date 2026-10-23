@@ -3664,9 +3664,16 @@ final class Gauntlet: ObservableObject {
                 cases += 1
                 let inAssets = NSDataAsset(
                     name: asset) != nil
+                // A film or a still: the boot
+                // screen and the wallpaper ship
+                // as PNGs (the bird, 2026-10-22),
+                // the rest as GIFs.
                 let inBundle = Bundle.main.url(
                     forResource: resource,
                     withExtension: "gif") != nil
+                    || Bundle.main.url(
+                        forResource: resource,
+                        withExtension: "png") != nil
                 try Gauntlet.require(inAssets || inBundle,
                     "film missing from the bundle: "
                         + asset)
@@ -3682,6 +3689,10 @@ final class Gauntlet: ObservableObject {
                 data = asset.data
             } else if let url = Bundle.main.url(
                 forResource: "wallpaper",
+                withExtension: "png") {
+                data = try? Data(contentsOf: url)
+            } else if let url = Bundle.main.url(
+                forResource: "wallpaper",
                 withExtension: "gif") {
                 data = try? Data(contentsOf: url)
             } else {
@@ -3689,7 +3700,7 @@ final class Gauntlet: ObservableObject {
             }
             guard let film = data else {
                 throw Gauntlet.Failure(message:
-                    "the wallpaper film is missing")
+                    "the wallpaper is missing")
             }
             cases += 1
             try Gauntlet.require(film.count > 100_000,
@@ -3701,14 +3712,20 @@ final class Gauntlet: ObservableObject {
                 "the wallpaper does not decode")
             let delays = UIImage.gifDelays(film)
             cases += 1
-            try Gauntlet.require(delays.count > 1,
-                "the wallpaper has one frame")
+            // The stock wallpaper is a STILL —
+            // the white bird on black (Chase's
+            // selection, 2026-10-22): exactly
+            // one frame, hanging as provided.
+            try Gauntlet.require(delays.count == 1,
+                "the stock wallpaper is not the "
+                    + "one still frame it ships as")
             cases += 1
             try Gauntlet.require(
                 delays.reduce(0, +) > 0,
-                "the wallpaper's frames take no time")
+                "the wallpaper's frame takes no time")
             return "\(cases) cases: the wallpaper "
-                + "animates over \(delays.count) frames"
+                + "is the bird — one still frame, "
+                + "decoded whole"
         }
         add("stores", "session codec round-trips") {
             var cases = 0

@@ -160,17 +160,22 @@ struct ToastView: View {
     }
 }
 
-/// The living wallpaper: the operator's reel, decoded ONCE
-/// and shared by every backdrop in the app. It plays from
-/// the beginning of its loop to the end and starts again,
-/// forever — a background that breathes instead of a picture
-/// that hangs. By either road in: a "Wallpaper" data asset,
-/// or wallpaper.gif in the bundle.
+/// The provided wallpaper, decoded ONCE and shared by
+/// every backdrop in the app. As shipped it is a still —
+/// the white bird on black (Chase's selection,
+/// 2026-10-22) — and a still hangs exactly as provided;
+/// the animation machinery below still serves any reel
+/// that takes its place, looping forever. By any road
+/// in: a "Wallpaper" data asset, wallpaper.png, or
+/// wallpaper.gif in the bundle.
 enum Wallpaper {
     static let image: UIImage? = {
         let data: Data?
         if let asset = NSDataAsset(name: "Wallpaper") {
             data = asset.data
+        } else if let url = Bundle.main.url(
+            forResource: "wallpaper", withExtension: "png") {
+            data = try? Data(contentsOf: url)
         } else if let url = Bundle.main.url(
             forResource: "wallpaper", withExtension: "gif") {
             data = try? Data(contentsOf: url)
@@ -1016,9 +1021,13 @@ struct BootView: View {
     /// and the phone's portrait film on a phone.
     /// Behind every one of them stands the old
     /// road in: a "BootReel" data asset, or
-    /// boot-reel.gif in the bundle, so a house
-    /// missing its new films still boots on the
-    /// reel it has always known.
+    /// boot-reel.png in the bundle — the stock
+    /// boot screen, the white bird on black
+    /// (Chase's selection, 2026-10-22), a still
+    /// the ceremony times by its own clock — or
+    /// boot-reel.gif, so a house missing its new
+    /// films still boots on the reel it has
+    /// always known.
     private var providedData: Data? {
 #if os(macOS)
         if let film = bundleFilm(
@@ -1046,6 +1055,10 @@ struct BootView: View {
 #endif
         if let asset = NSDataAsset(name: "BootReel") {
             return asset.data
+        }
+        if let url = Bundle.main.url(forResource: "boot-reel",
+                                     withExtension: "png") {
+            return try? Data(contentsOf: url)
         }
         if let url = Bundle.main.url(forResource: "boot-reel",
                                      withExtension: "gif") {

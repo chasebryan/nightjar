@@ -1785,10 +1785,10 @@ struct AboutView: View {
                         Text(String(format: L("Living wallpaper: playing (%lld×%lld pt) — it loops behind every tab, beginning to end, forever."), Int(reel.size.width), Int(reel.size.height)))
                             .font(.footnote).foregroundStyle(.secondary)
                     } else if UIImage(named: "AppBackground") != nil {
-                        Text(L("The living wallpaper has not landed in this build — the retired Jolly Roger stands in behind every tab until wallpaper.gif joins the bundle."))
+                        Text(L("The living wallpaper has not landed in this build — the retired Jolly Roger stands in behind every tab until wallpaper.png joins the bundle."))
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
-                        Text(L("No backdrop in this build. The app looks for wallpaper.gif in the bundle (or a \"Wallpaper\" data asset) — and wears plain black until it finds one."))
+                        Text(L("No backdrop in this build. The app looks for wallpaper.png in the bundle (or a \"Wallpaper\" data asset) — and wears plain black until it finds one."))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }

@@ -1052,7 +1052,7 @@ private struct MacBenchSection: View {
                             : Color.red)
             }
             LabeledContent(L("Phone boot film")) {
-                let film = fabric("boot-reel", "gif")
+                let film = fabric("boot-reel", "png")
                 Text(film.text)
                     .foregroundStyle(
                         film.ok
