@@ -26,19 +26,9 @@ struct DripView: View {
     @ObservedObject private var themes =
         ThemeCenter.shared
 
-    /// The ledger's latest, newest first — asked
-    /// of the Journal on the view's clock, the
-    /// same two-second cadence the SIGINT
-    /// station keeps, and read from its tail
-    /// only, never the whole history.
     @State private var events: [NightEvent] = []
-    /// The exposure audit, taken on the clock —
-    /// an audit is work, and a view body is no
-    /// place to run one.
     @State private var exposure = 0.0
     @State private var exposureBand = ""
-    /// The tap's count, taken on the clock (the
-    /// tap is a locked box, not a publisher).
     @State private var tapFrames = 0
     @State private var now = Date()
     @State private var pulse: [Int] = Array(
@@ -69,11 +59,6 @@ struct DripView: View {
         .onReceive(clock) { _ in refresh() }
     }
 
-    /// One pass of the clock: the ledger's tail,
-    /// the exposure audit, the tap's count, the
-    /// pulse — everything the body renders is
-    /// gathered here, so the body itself only
-    /// ever lays out.
     private func refresh() {
         now = Date()
         events = Journal.events(limit: 60)
@@ -86,11 +71,6 @@ struct DripView: View {
             events: events, now: now)
     }
 
-    // MARK: the bars
-
-    /// The important informations, as living
-    /// bars: each a name, its number, and a
-    /// meter that moves as the house works.
     private var bars: some View {
         VStack(alignment: .leading, spacing: 10) {
             meter(
@@ -155,30 +135,18 @@ struct DripView: View {
         }
     }
 
-    /// The mouth's live organs, named in one
-    /// line — or its quiet stated plainly.
     private var mouthLine: String {
         var organs: [String] = []
-        if mouth.serveRunning {
-            organs.append(L("serving"))
-        }
-        if mouth.gattHostOn {
-            organs.append(L("GATT host"))
-        }
-        if mouth.beaconOn {
-            organs.append(L("beacon"))
-        }
-        if mouth.writeScanning {
-            organs.append(L("scanning"))
-        }
+        if mouth.serveRunning { organs.append(L("serving")) }
+        if mouth.gattHostOn { organs.append(L("GATT host")) }
+        if mouth.beaconOn { organs.append(L("beacon")) }
+        if mouth.writeScanning { organs.append(L("scanning")) }
         if !mouth.inbox.isEmpty {
             organs.append(String(
                 format: L("%lld in the inbox"),
                 Int64(mouth.inbox.count)))
         }
-        return organs.isEmpty
-            ? L("quiet")
-            : organs.joined(separator: " · ")
+        return organs.isEmpty ? L("quiet") : organs.joined(separator: " · ")
     }
 
     private var mouthFraction: Double {
@@ -190,54 +158,41 @@ struct DripView: View {
         return live / 4
     }
 
-    /// One bar: the name at the left, the number
-    /// at the right, a hairline meter beneath,
-    /// and the detail — what's actually running
-    /// — in small type under that.
     private func meter(label: String, value: String,
                        detail: String?,
                        fraction: Double,
                        tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Text(label)
-                    .font(.caption.weight(.semibold))
-                    .tracking(1.2)
+                Text(label.uppercased())
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .tracking(1.6)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(value)
-                    .font(.callout.weight(.medium))
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .monospacedDigit()
+                    .foregroundStyle(.primary.opacity(0.92))
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.secondary
-                            .opacity(0.18))
+                        .fill(Color.secondary.opacity(0.12))
                     Capsule()
-                        .fill(tint)
-                        .frame(width: max(
-                            2, geo.size.width
-                                * CGFloat(fraction)))
+                        .fill(tint.opacity(0.85))
+                        .frame(width: max(2, geo.size.width * CGFloat(fraction)))
                 }
             }
-            .frame(height: 4)
+            .frame(height: 3)
             if let detail {
                 Text(detail)
-                    .font(.footnote)
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
         }
     }
 
-    // MARK: the pulse
-
-    /// The drip itself, drawn as it falls: two
-    /// dozen ten-second buckets across the last
-    /// four minutes of the ledger, the newest
-    /// at the right — a flat line in a quiet
-    /// house, a rhythm in a working one.
     private var pulseStrip: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(L("THE DRIP — LAST FOUR MINUTES"))
@@ -262,11 +217,6 @@ struct DripView: View {
         }
     }
 
-    // MARK: now
-
-    /// What's running, while it runs: each live
-    /// process with its organ and its age, ahead
-    /// of the stream it will join when it lands.
     private var nowBoard: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !board.active.isEmpty {
@@ -304,13 +254,6 @@ struct DripView: View {
             + "\(seconds % 60)s"
     }
 
-    // MARK: the stream
-
-    /// The ledger falling: every event the house
-    /// sealed, newest first — the emcon shifts,
-    /// the steward's notes, the macros, the
-    /// voices — each with its module named and
-    /// its minute kept.
     private var feed: some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(L("THE STREAM"))
@@ -359,9 +302,6 @@ struct DripView: View {
         return formatter
     }()
 
-    /// Pure bucketing for the drip pulse: 24 ten-second
-    /// buckets covering the last four minutes, newest
-    /// (age 0) at the right (index 23 after reverse).
     static func pulseBuckets(
         events: [NightEvent], now: Date
     ) -> [Int] {
