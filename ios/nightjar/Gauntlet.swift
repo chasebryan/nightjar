@@ -3747,6 +3747,51 @@ final class Gauntlet: ObservableObject {
                 + "stills hang whole and centered, "
                 + "matched stills fill"
         }
+        add("wardrobe", "the glitch boot engages") {
+            // The boot screen's law (Chase's
+            // commission, ruled three times on
+            // 2026-10-22): the flood answers every
+            // still backdrop, from either slot —
+            // fix344's provided-only gate left a
+            // custom-still house with the old
+            // ceremony, and the ordered boot did
+            // not exist in his house.
+            let png = Data([0x89, 0x50, 0x4E, 0x47,
+                            0x0D, 0x0A, 0x1A, 0x0A])
+            let gif = Data([0x47, 0x49, 0x46, 0x38,
+                            0x39, 0x61])
+            var mp4 = Data([0, 0, 0, 0x18])
+            mp4 += Data("ftyp".utf8)
+            mp4 += Data([0, 0, 0, 0])
+            try Gauntlet.require(
+                BootMedia.glitchEngages(
+                    media: "provided", data: png),
+                "the stock still does not flood")
+            try Gauntlet.require(
+                BootMedia.glitchEngages(
+                    media: "custom", data: png),
+                "the operator's still does not "
+                    + "flood — the fix344 gate")
+            try Gauntlet.require(
+                !BootMedia.glitchEngages(
+                    media: "provided", data: mp4),
+                "a film flooded")
+            try Gauntlet.require(
+                !BootMedia.glitchEngages(
+                    media: "custom", data: gif),
+                "a GIF flooded")
+            try Gauntlet.require(
+                !BootMedia.glitchEngages(
+                    media: "none", data: png),
+                "no-backdrop flooded")
+            try Gauntlet.require(
+                !BootMedia.glitchEngages(
+                    media: "provided", data: nil),
+                "an empty backdrop flooded")
+            return "the flood answers every still; "
+                + "films, GIFs, and none keep "
+                + "the ceremony"
+        }
         add("stores", "session codec round-trips") {
             var cases = 0
             // The line codec's own primitives.

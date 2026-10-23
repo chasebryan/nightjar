@@ -587,6 +587,40 @@ enum BootMedia {
             && data[4] == 0x66 && data[5] == 0x74
             && data[6] == 0x79 && data[7] == 0x70
     }
+
+    /// THE BOOT SCREEN'S LAW (Chase's commission,
+    /// ruled three times on 2026-10-22): the
+    /// glitch flood IS the boot screen — it
+    /// engages whenever the backdrop is a still,
+    /// whatever slot the still came from. fix344
+    /// gated it on the "provided" slot alone, so
+    /// a house whose backdrop was the operator's
+    /// own still (media "custom") never saw it:
+    /// the boot he ordered did not exist in his
+    /// own house. Films keep their ceremony (a
+    /// chosen film is a chosen film, the Mac's
+    /// included), a GIF keeps its, and "none" —
+    /// the operator's explicit no-backdrop —
+    /// keeps the black ceremony.
+    static func glitchEngages(media: String,
+                              data: Data?) -> Bool {
+        guard media != "none", let data else {
+            return false
+        }
+        return !isGIF(data) && !isVideo(data)
+    }
+
+    /// The emblem the flood tears: the stock
+    /// bird still out of the bundle, whatever
+    /// the backdrop slot happens to hold.
+    static func emblem() -> UIImage? {
+        guard let url = Bundle.main.url(
+            forResource: "boot-reel",
+            withExtension: "png"),
+              let data = try? Data(contentsOf: url)
+        else { return nil }
+        return UIImage(data: data)
+    }
 }
 
 /// The boot's subtitle: not a fixed seal but a
@@ -1051,8 +1085,9 @@ struct BootView: View {
     @State private var loadedFilmSeconds: Double?
     /// The glitch boot's engagement (Chase's
     /// commission, 2026-10-22): when the backdrop
-    /// proves to be the stock bird still, the
-    /// ceremony hands the screen to the flood.
+    /// is any still, the ceremony hands the
+    /// screen to the flood — the boot screen's
+    /// law, in BootMedia.glitchEngages.
     @State private var glitchEngaged = false
     @State private var glitchImage: UIImage?
 
@@ -1617,12 +1652,11 @@ struct BootView: View {
         }
     }
 
-    /// The boot as raised: the glitch flood when
-    /// the stock bird still is the backdrop
-    /// (Chase's commission, 2026-10-22), the
-    /// classic ceremony for every other
-    /// backdrop — a film, the operator's own
-    /// still, or none. The ceremony's task
+    /// The boot as raised: the glitch flood for
+    /// every still backdrop (Chase's commission,
+    /// 2026-10-22), the classic ceremony for a
+    /// film, a GIF, or no backdrop at all. The
+    /// ceremony's task
     /// rides THIS view, not the ceremony's own
     /// body: it is the clock and the warm-up,
     /// and it must survive the glitch branch
@@ -1702,20 +1736,22 @@ struct BootView: View {
                     cursorOn.toggle()
                 }
             }
-            if bootMedia == "provided",
-               let data = loadedData,
-               !BootMedia.isGIF(data),
-               !BootMedia.isVideo(data),
-               let still = UIImage(data: data) {
+            let backdropStill = loadedData.flatMap {
+                UIImage(data: $0)
+            }
+            if BootMedia.glitchEngages(
+                media: bootMedia, data: loadedData),
+               let still = BootMedia.emblem()
+                ?? backdropStill {
                 // THE GLITCH (Chase's commission,
-                // 2026-10-22): the stock bird
-                // still does not fade in — it
-                // floods. The storm spends its
-                // 3.6 seconds on its own clock
-                // while the warm-up finishes
-                // beside it; the honours — the
-                // join, the finale beat, the
-                // hand-off — stay the ceremony's.
+                // 2026-10-22): the emblem does
+                // not fade in — it floods. The
+                // storm spends its 3.6 seconds
+                // on its own clock while the
+                // warm-up finishes beside it;
+                // the honours — the join, the
+                // finale beat, the hand-off —
+                // stay the ceremony's.
                 glitchImage = still
                 glitchEngaged = true
                 try? await Task.sleep(
