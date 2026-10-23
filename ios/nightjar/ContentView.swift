@@ -291,6 +291,13 @@ struct ContentView: View {
     @EnvironmentObject private var post: ListeningPost
     @State private var tab: Int
     @State private var showBoot = true
+    /// Serve's sheet at the shell level (iOS):
+    /// raised when a house navigation names
+    /// Serve — the console's `open serve`, her
+    /// "take me to serve" — now that Serve
+    /// lives under Sessions (Chase's order,
+    /// 2026-10-22) instead of on the bar.
+    @State private var showServe = false
     @State private var showLanguageWelcome = false
     @ObservedObject private var languageCenter =
         LanguageCenter.shared
@@ -311,8 +318,15 @@ struct ContentView: View {
         // a 0...9 clamp the day it landed, and the app
         // reopened on Listen instead of where the
         // operator had been working.
+        // (Serve's old 2 is gone on purpose:
+        // it is not a phone tab any more, so a
+        // stored 2 falls back to Listen rather
+        // than restoring a room that is not on
+        // the bar. Onion's 13 joins the set —
+        // it was missing, the very failure this
+        // comment describes.)
         let knownTabs: Set<Int> =
-            [9, 0, 1, 2, 5, 3, 4, 6, 7, 8, 10, 11, 12]
+            [9, 0, 1, 12, 5, 3, 4, 6, 7, 8, 10, 11, 13]
         _tab = State(initialValue:
             stored.flatMap {
                 knownTabs.contains($0) ? $0 : nil
@@ -338,28 +352,13 @@ struct ContentView: View {
             .tag(0)
             .onAppear { TabBeat.appeared(0) }
             .onDisappear { TabBeat.vanished(0) }
-        SendView()
-            .appThemed(.send)
-            .tabItem { Label(L("Send"), systemImage: "paperplane") }
-            .tag(1)
-            .onAppear { TabBeat.appeared(1) }
-            .onDisappear { TabBeat.vanished(1) }
-        ServeView()
-            .appThemed(.serve)
-            .tabItem { Label(L("Serve"), systemImage: "tray.and.arrow.down") }
-            .tag(2)
-            .onAppear { TabBeat.appeared(2) }
-            .onDisappear { TabBeat.vanished(2) }
-        // Declaration order is the More list's order:
-        // About heads it — it is the app's identity and
-        // its options hub — and Sessions sits under it.
-        // Tags are unchanged by position.
-        AboutView()
-            .appThemed(.about)
-            .tabItem { Label(L("About"), systemImage: "info.circle") }
-            .tag(5)
-            .onAppear { TabBeat.appeared(5) }
-            .onDisappear { TabBeat.vanished(5) }
+        // The console sits right in the middle
+        // of the main bar (Chase's order,
+        // 2026-10-22): Skelli, Listen, Blacksite,
+        // Send — then More. Serve is not on the
+        // bar any more; it lives under Sessions,
+        // raised as a sheet from there (and by
+        // any house navigation that names it).
         BlacksiteView()
             .appThemed(.blacksite)
             .tabItem { Label(L("Blacksite"),
@@ -367,6 +366,23 @@ struct ContentView: View {
             .tag(12)
             .onAppear { TabBeat.appeared(12) }
             .onDisappear { TabBeat.vanished(12) }
+        SendView()
+            .appThemed(.send)
+            .tabItem { Label(L("Send"), systemImage: "paperplane") }
+            .tag(1)
+            .onAppear { TabBeat.appeared(1) }
+            .onDisappear { TabBeat.vanished(1) }
+        // Declaration order past the bar is the
+        // More list's order: About heads it — it
+        // is the app's identity and its options
+        // hub — and Sessions sits under it.
+        // Tags are unchanged by position.
+        AboutView()
+            .appThemed(.about)
+            .tabItem { Label(L("About"), systemImage: "info.circle") }
+            .tag(5)
+            .onAppear { TabBeat.appeared(5) }
+            .onDisappear { TabBeat.vanished(5) }
         SessionsView()
             .appThemed(.sessions)
             .tabItem { Label(L("Sessions"), systemImage: "list.bullet.rectangle") }
@@ -602,13 +618,31 @@ struct ContentView: View {
         .macShellBar(processes: board.active.count) {
             showBoard = true
         }
+#if os(iOS)
+        .sheet(isPresented: $showServe) {
+            ServeView()
+                .appThemed(.serve)
+        }
+#endif
     .onReceive(
         NotificationCenter.default.publisher(
             for: Blacksite.openTabNotification)
     ) { note in
         if let tag = note.userInfo?["tag"]
             as? Int {
+#if os(iOS)
+            if tag == 2 {
+                // Serve lives under Sessions
+                // now: land there with its
+                // sheet raised.
+                tab = 3
+                showServe = true
+            } else {
+                tab = tag
+            }
+#else
             tab = tag
+#endif
         }
     }
     .onAppear {
@@ -623,7 +657,16 @@ struct ContentView: View {
     .onReceive(NotificationCenter.default.publisher(
         for: .houseNavigate)) { note in
         if let target = note.userInfo?["tab"] as? Int {
+#if os(iOS)
+            if target == 2 {
+                tab = 3
+                showServe = true
+            } else {
+                tab = target
+            }
+#else
             tab = target
+#endif
         }
     }
     .onReceive(NotificationCenter.default.publisher(
@@ -1285,6 +1328,10 @@ struct DeviceDetailView: View {
 struct SessionsView: View {
     @EnvironmentObject private var post: ListeningPost
     @EnvironmentObject private var toasts: ToastCenter
+    @EnvironmentObject private var mouth: Mouth
+    /// Serve's sheet, raised from its new home
+    /// under Sessions (Chase's order, 2026-10-22).
+    @State private var showServe = false
 #if os(iOS)
     @Environment(\.editMode) private var editMode
 #endif
@@ -1317,6 +1364,27 @@ struct SessionsView: View {
     var body: some View {
         NavigationStack {
             List(selection: $selection) {
+#if os(iOS)
+                Section {
+                    Button {
+                        showServe = true
+                    } label: {
+                        HStack {
+                            Label(L("Serve — the open door"),
+                                  systemImage: "tray.and.arrow.down")
+                            Spacer()
+                            if mouth.serveRunning {
+                                Text(L("Serving"))
+                                    .font(.footnote)
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                } footer: {
+                    Text(L("Serve lives here now — the house's listeners, kept under Sessions."))
+                }
+#endif
                 Section {
                     Button {
                         showNightLog = true
@@ -1396,6 +1464,12 @@ struct SessionsView: View {
             .sheet(item: $shareItem) { item in
                 ShareSheet(items: item.items)
             }
+#if os(iOS)
+            .sheet(isPresented: $showServe) {
+                ServeView()
+                    .appThemed(.serve)
+            }
+#endif
             .confirmationDialog(
                 L("Delete all sessions?"),
                 isPresented: $showClearConfirm,

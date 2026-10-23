@@ -7457,7 +7457,7 @@ final class SkelliCenter: ObservableObject {
             ("knocktalk", 8, L("Knocktalk — taken you there.")),
             ("listen", 0, L("Listen — taken you there.")),
             ("send", 1, L("Send — taken you there.")),
-            ("serve", 2, L("Serve — taken you there.")),
+            ("serve", 2, L("Serve — under Sessions now, and open in front of you.")),
             ("session", 3, L("Sessions — taken you there.")),
             ("colour", 5, L("Colours lives inside About — its own section there. Taken you to About.")),
             ("color", 5, L("Colours lives inside About — its own section there. Taken you to About.")),

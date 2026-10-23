@@ -36,6 +36,10 @@ enum Blacksite {
     static let openTabNotification =
         Notification.Name("blacksite.openTab")
 
+    // "serve" keeps its 2: on the phone that
+    // value is now a SIGNAL, not a tab — the
+    // shell hears it, lands on Sessions, and
+    // raises Serve's sheet (2026-10-22).
     static let tabTags: [String: Int] = [
         "skelli": 9, "listen": 0, "send": 1,
         "serve": 2, "about": 5, "sessions": 3,
