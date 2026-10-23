@@ -1,0 +1,55 @@
+name: rename-gifs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rename-gifs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore exact GIF bytes and take slot names
+        run: |
+          set -euo pipefail
+          D="ios/nightjar/gifs"
+          BOOT_SRC_SHA="7964fc7233e8abfb07546468480bd4fab097ff35"
+          changed=0
+          rename_uuid() {
+            if [ -f "$D/$1" ]; then
+              rm -f "$D/$2"
+              git mv "$D/$1" "$D/$2"
+              changed=1
+            fi
+          }
+          # boot.gif must hold the exact original bytes (10896162)
+          if [ ! -f "$D/boot.gif" ] || [ "$(stat -c%s "$D/boot.gif")" != "10896162" ]; then
+            git show "$BOOT_SRC_SHA:$D/F17B5270-22A0-4CE2-9E36-338947048C16.gif" > "$D/boot.gif"
+            changed=1
+          fi
+          rename_uuid "F17B5270-22A0-4CE2-9E36-338947048C16.gif" "boot.gif"
+          rename_uuid "E638CD3F-147F-4808-8FC2-85E6ABC297FD.gif" "centipede.gif"
+          rename_uuid "12CEAEDC-6879-4FE8-AA44-98FF8D1ADA60.gif" "eazy.gif"
+          # verify exact sizes
+          [ "$(stat -c%s "$D/boot.gif")" = "10896162" ] || { echo "boot.gif size mismatch"; exit 1; }
+          [ "$(stat -c%s "$D/centipede.gif")" = "5314219" ] || { echo "centipede.gif size mismatch"; exit 1; }
+          [ "$(stat -c%s "$D/eazy.gif")" = "8289996" ] || { echo "eazy.gif size mismatch"; exit 1; }
+          # no UUID-named gifs may remain
+          if ls "$D" | grep -Eq '^[0-9A-F-]{36}\.gif$'; then echo "UUID gif still present"; exit 1; fi
+          if [ "$changed" = "1" ]; then
+            git config user.name "nightwarelabz"
+            git config user.email "nightwarelabz@users.noreply.github.com"
+            git add -A
+            git commit -m "gifs: boot, centipede and eazy take their slot names"
+            git push
+          else
+            echo "folder already in desired state"
+          fi
