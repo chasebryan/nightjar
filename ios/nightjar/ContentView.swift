@@ -907,7 +907,7 @@ struct ListenView: View {
             .macColumn(880)
             .macListStyle()
             .background { AppBackdrop() }
-            .navigationTitle(L("nightjar"))
+            .navigationTitle(L("NIGHTJAR"))
             .onReceive(clock) { _ in now = Date().timeIntervalSince1970 }
             .sheet(item: $huntRow) { row in
                 HuntView(targetID: row.id)

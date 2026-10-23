@@ -195,7 +195,7 @@ struct DripView: View {
 
     private var pulseStrip: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(L("THE DRIP — LAST FOUR MINUTES"))
+            Text(L("THE DRIP — LAST FOUR MINUTES").uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.2)
                 .foregroundStyle(.secondary)
@@ -220,7 +220,7 @@ struct DripView: View {
     private var nowBoard: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !board.active.isEmpty {
-                Text(L("NOW"))
+                Text(L("NOW").uppercased())
                     .font(.caption.weight(.semibold))
                     .tracking(1.2)
                     .foregroundStyle(.secondary)
@@ -256,7 +256,7 @@ struct DripView: View {
 
     private var feed: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(L("THE STREAM"))
+            Text(L("THE STREAM").uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.2)
                 .foregroundStyle(.secondary)
