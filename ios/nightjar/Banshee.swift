@@ -281,7 +281,7 @@ struct BansheeView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(L("The Banshee"))
+            .navigationTitle(L("THE BANSHEE"))
             .onReceive(clock) { now = $0 }
         }
     }
