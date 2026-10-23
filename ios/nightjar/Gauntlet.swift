@@ -3788,6 +3788,37 @@ final class Gauntlet: ObservableObject {
                 !BootMedia.glitchEngages(
                     media: "provided", data: nil),
                 "an empty backdrop flooded")
+#if os(iOS)
+            // The phone's provided slot carries
+            // a bundled film; the law judges that
+            // slot by the emblem's bytes, or the
+            // film ceremony buries the flood
+            // forever (fix351's miss, convicted
+            // in Xcode on Chase's Air).
+            try Gauntlet.require(
+                BootMedia.lawData(
+                    media: "provided", backdrop: mp4,
+                    emblem: png) == png,
+                "the provided slot is judged by "
+                    + "its film")
+            try Gauntlet.require(
+                BootMedia.lawData(
+                    media: "custom", backdrop: mp4,
+                    emblem: png) == mp4,
+                "the custom slot is not judged "
+                    + "by the operator's bytes")
+            try Gauntlet.require(
+                BootMedia.glitchEngages(
+                    media: "provided",
+                    data: BootMedia.lawData(
+                        media: "provided",
+                        backdrop: mp4, emblem: png)),
+                "a film in the provided slot "
+                    + "still buries the flood")
+            try Gauntlet.require(
+                BootMedia.emblemData() != nil,
+                "the emblem is not aboard")
+#endif
             return "the flood answers every still; "
                 + "films, GIFs, and none keep "
                 + "the ceremony"

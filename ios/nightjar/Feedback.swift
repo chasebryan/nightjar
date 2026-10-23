@@ -610,16 +610,49 @@ enum BootMedia {
         return !isGIF(data) && !isVideo(data)
     }
 
-    /// The emblem the flood tears: the stock
-    /// bird still out of the bundle, whatever
-    /// the backdrop slot happens to hold.
-    static func emblem() -> UIImage? {
+    /// The emblem's bytes: the stock bird still
+    /// out of the bundle.
+    static func emblemData() -> Data? {
         guard let url = Bundle.main.url(
             forResource: "boot-reel",
-            withExtension: "png"),
-              let data = try? Data(contentsOf: url)
-        else { return nil }
+            withExtension: "png") else {
+            return nil
+        }
+        return try? Data(contentsOf: url)
+    }
+
+    /// The emblem the flood tears, whatever the
+    /// backdrop slot happens to hold.
+    static func emblem() -> UIImage? {
+        guard let data = emblemData() else {
+            return nil
+        }
         return UIImage(data: data)
+    }
+
+    /// The bytes the boot screen's law judges.
+    /// On the phone the provided slot's backdrop
+    /// is a bundled FILM (the boot films ride in
+    /// the project folder), and judging the law
+    /// by those bytes hands the boot to the film
+    /// ceremony forever — fix351's law, judged
+    /// on the film, still never engaged in
+    /// Chase's house. The provided slot is
+    /// therefore judged by the EMBLEM's bytes:
+    /// the stock boot is the flood, full stop.
+    /// The laptop keeps its film (Chase's
+    /// 2026-10-20 selection; the Mac is parked),
+    /// and a custom slot is always judged by
+    /// the operator's own bytes.
+    static func lawData(media: String,
+                        backdrop: Data?,
+                        emblem: Data?) -> Data? {
+#if os(macOS)
+        return backdrop
+#else
+        return media == "provided"
+            ? emblem : backdrop
+#endif
     }
 }
 
@@ -1685,13 +1718,24 @@ struct BootView: View {
             // redraw was the crawl.
             let data = backdropData
             loadedData = data
-            if let data = data, BootMedia.isGIF(data),
-               gifsEnabled {
+            // The boot screen's law is decided
+            // FIRST, on the bytes BootMedia
+            // appoints — on the phone the
+            // provided slot is judged by the
+            // emblem, not by the bundled film
+            // its backdrop happens to carry.
+            let flood = BootMedia.glitchEngages(
+                media: bootMedia,
+                data: BootMedia.lawData(
+                    media: bootMedia, backdrop: data,
+                    emblem: BootMedia.emblemData()))
+            if !flood, let data = data,
+               BootMedia.isGIF(data), gifsEnabled {
                 let delays = UIImage.gifDelays(data)
                 loadedFilmSeconds = delays.count > 1
                     ? delays.reduce(0, +) : nil
             }
-            if let data = data,
+            if !flood, let data = data,
                BootMedia.isVideo(data) {
                 // The film is a video, and the
                 // ceremony is timed against the
@@ -1739,8 +1783,7 @@ struct BootView: View {
             let backdropStill = loadedData.flatMap {
                 UIImage(data: $0)
             }
-            if BootMedia.glitchEngages(
-                media: bootMedia, data: loadedData),
+            if flood,
                let still = BootMedia.emblem()
                 ?? backdropStill {
                 // THE GLITCH (Chase's commission,
